@@ -1,0 +1,10 @@
+:80 {
+  # M0 uses local HTTP. TLS hardening belongs to the M3 release gate.
+  handle /api/* {
+    reverse_proxy api:3001
+  }
+
+  handle {
+    reverse_proxy web:3000
+  }
+}

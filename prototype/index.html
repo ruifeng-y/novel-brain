@@ -1,0 +1,1166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>墨舟 · NovelBrain</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark">墨</div>
+        <div class="brand-text">
+          <strong>墨舟</strong>
+          <span>NovelBrain</span>
+        </div>
+        <span class="beta-badge">BETA</span>
+      </div>
+
+      <button class="workspace-switch" data-action="toast" data-message="工作区切换器已打开">
+        <span class="workspace-avatar">林</span>
+        <span class="workspace-copy">
+          <strong>个人工作室</strong>
+          <small>林见鹿 · 3 部作品</small>
+        </span>
+        <i data-lucide="chevrons-up-down"></i>
+      </button>
+
+      <nav class="main-nav" aria-label="主导航">
+        <div class="nav-label">创作</div>
+        <button class="nav-item active" data-page="dashboard">
+          <i data-lucide="layout-dashboard"></i><span>工作台</span>
+        </button>
+        <button class="nav-item" data-page="bible">
+          <i data-lucide="book-marked"></i><span>故事圣经</span>
+          <span class="nav-dot"></span>
+        </button>
+        <button class="nav-item" data-page="settings">
+          <i data-lucide="network"></i><span>设定中心</span>
+        </button>
+        <button class="nav-item" data-page="outline">
+          <i data-lucide="list-tree"></i><span>大纲工作台</span>
+        </button>
+        <button class="nav-item" data-page="writing">
+          <i data-lucide="pen-line"></i><span>写作台</span>
+          <span class="nav-count">47</span>
+        </button>
+
+        <div class="nav-label nav-label-spaced">生产</div>
+        <button class="nav-item" data-page="batch">
+          <i data-lucide="layers-3"></i><span>批量生产</span>
+        </button>
+        <button class="nav-item" data-page="changes">
+          <i data-lucide="git-branch"></i><span>修改与版本</span>
+          <span class="nav-alert">2</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="quota-card">
+          <div class="quota-head">
+            <span>本月创作额度</span>
+            <strong>68%</strong>
+          </div>
+          <div class="progress"><span style="width:68%"></span></div>
+          <small>剩余约 41.6 万字生成额度</small>
+        </div>
+        <button class="nav-item nav-item-quiet" data-action="open-export">
+          <i data-lucide="send"></i><span>导出与发布</span>
+        </button>
+        <button class="nav-item nav-item-quiet" data-action="toast" data-message="设置中心正在建设中">
+          <i data-lucide="settings"></i><span>设置</span>
+        </button>
+        <div class="user-card">
+          <span class="avatar">林</span>
+          <span class="user-copy">
+            <strong>林见鹿</strong>
+            <small>个人作者</small>
+          </span>
+          <i data-lucide="more-horizontal"></i>
+        </div>
+      </div>
+    </aside>
+
+    <div class="main-shell">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn sidebar-toggle" data-action="toggle-sidebar" title="收起导航">
+            <i data-lucide="panel-left"></i>
+          </button>
+          <div class="crumbs" id="crumbs">
+            <span>我的作品</span><i data-lucide="chevron-right"></i><strong>仙途：忘川书</strong>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <label class="search-box">
+            <i data-lucide="search"></i>
+            <input type="search" placeholder="搜索作品、设定、章节" aria-label="搜索">
+            <kbd>⌘ K</kbd>
+          </label>
+          <button class="icon-btn has-dot" data-action="toast" data-message="有 3 条新的连续性提醒" title="通知">
+            <i data-lucide="bell"></i>
+          </button>
+          <button class="btn btn-primary" data-page="new-project">
+            <i data-lucide="plus"></i><span>新建作品</span>
+          </button>
+          <span class="avatar avatar-top">林</span>
+        </div>
+      </header>
+
+      <main class="page-container" id="app">
+        <section class="page active" data-page="dashboard">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">个人工作室 · 2026 年 11 月 1 日</p>
+              <h1>早上好，林见鹿</h1>
+              <p class="page-sub">今天想把故事推进到哪里？</p>
+            </div>
+            <div class="head-actions">
+              <button class="btn btn-ghost" data-page="new-project">
+                <i data-lucide="sparkles"></i><span>从一句话开始</span>
+              </button>
+              <button class="btn btn-primary" data-page="writing">
+                <i data-lucide="pen-line"></i><span>继续写作</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="stat-grid">
+            <article class="stat-card">
+              <span class="stat-icon jade"><i data-lucide="book-open"></i></span>
+              <div><strong>3</strong><span>进行中的作品</span></div>
+              <small>1 部正在连载</small>
+            </article>
+            <article class="stat-card">
+              <span class="stat-icon cinnabar"><i data-lucide="type"></i></span>
+              <div><strong>3,240</strong><span>今日已写字数</span></div>
+              <small>比昨天多 18%</small>
+            </article>
+            <article class="stat-card">
+              <span class="stat-icon gold"><i data-lucide="scan-search"></i></span>
+              <div><strong>7</strong><span>待处理建议</span></div>
+              <small>3 条连续性 · 4 条编辑建议</small>
+            </article>
+            <article class="stat-card">
+              <span class="stat-icon blue"><i data-lucide="gauge"></i></span>
+              <div><strong>82</strong><span>本周质量分</span></div>
+              <small>较上周 +4</small>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="continue-panel">
+              <div class="book-cover">
+                <span class="cover-line"></span>
+                <small>卷一</small>
+                <strong>仙途<br>忘川书</strong>
+                <em>少年出山</em>
+              </div>
+              <div class="continue-copy">
+                <div class="panel-kicker"><span class="status-dot live"></span>正在连载</div>
+                <h2>仙途：忘川书</h2>
+                <p class="muted">第 2 卷 · 血河夜行 · 第 47 章「断臂之后」</p>
+                <div class="continue-progress">
+                  <div class="progress"><span style="width:47%"></span></div>
+                  <span>本卷 14 / 30 章</span>
+                </div>
+                <p class="continue-note">主角左臂骨折尚未痊愈，下一章需要处理「断臂之后的第一战」。系统已准备 3 条连续性提醒。</p>
+                <div class="button-row">
+                  <button class="btn btn-primary" data-page="writing">
+                    <i data-lucide="pen-line"></i><span>写第 48 章</span>
+                  </button>
+                  <button class="btn btn-ghost" data-page="bible">
+                    <i data-lucide="book-marked"></i><span>查看故事圣经</span>
+                  </button>
+                </div>
+              </div>
+              <div class="continue-side">
+                <div class="mini-metric">
+                  <span>最近保存</span><strong>2 分钟前</strong>
+                </div>
+                <div class="mini-metric">
+                  <span>本章字数</span><strong>2,860</strong>
+                </div>
+                <div class="mini-metric">
+                  <span>质量分</span><strong class="jade-text">84</strong>
+                </div>
+              </div>
+            </article>
+
+            <aside class="side-stack">
+              <article class="panel compact-panel">
+                <div class="panel-head">
+                  <h3>今日任务</h3>
+                  <span class="badge">3 项</span>
+                </div>
+                <ul class="task-list">
+                  <li><span class="task-check done"><i data-lucide="check"></i></span><span>确认第 47 章事实入正史</span><small>已完成</small></li>
+                  <li><span class="task-check"></span><span>处理左臂骨折的连续性提醒</span><small>待处理</small></li>
+                  <li><span class="task-check"></span><span>为第 48 章选择章末钩子</span><small>待处理</small></li>
+                </ul>
+              </article>
+              <article class="panel compact-panel">
+                <div class="panel-head">
+                  <h3>最近修改</h3>
+                  <button class="text-btn" data-page="changes">查看全部</button>
+                </div>
+                <ul class="activity-list">
+                  <li><span class="activity-mark jade"></span><div><strong>故事圣经 v12 已锁定</strong><small>10 分钟前 · 你</small></div></li>
+                  <li><span class="activity-mark gold"></span><div><strong>第 47 章加入「断臂」状态</strong><small>今天 09:41 · AI 提案</small></div></li>
+                  <li><span class="activity-mark blue"></span><div><strong>血河宗控制范围更新</strong><small>昨天 22:18 · 你</small></div></li>
+                </ul>
+              </article>
+            </aside>
+          </div>
+
+          <div class="section-head">
+            <div><h2>我的作品</h2><p>每一部作品都有独立的故事圣经、正史与生产队列。</p></div>
+            <button class="text-btn" data-page="new-project"><i data-lucide="plus"></i>新建作品</button>
+          </div>
+          <div class="project-grid">
+            <article class="project-card" data-page="bible">
+              <div class="project-cover cover-xianxia"><span>仙途</span><strong>忘川书</strong></div>
+              <div class="project-info">
+                <div class="project-title-row"><h3>仙途：忘川书</h3><span class="badge live-badge">连载中</span></div>
+                <p>仙侠 · 300 万字 · 第 2 卷</p>
+                <div class="progress"><span style="width:47%"></span></div>
+                <small>今日 3,240 字 · 2 分钟前</small>
+              </div>
+            </article>
+            <article class="project-card" data-page="bible">
+              <div class="project-cover cover-urban"><span>深夜</span><strong>便利店</strong></div>
+              <div class="project-info">
+                <div class="project-title-row"><h3>深夜便利店</h3><span class="badge">筹备中</span></div>
+                <p>都市 · 120 万字 · 设定构建</p>
+                <div class="progress"><span style="width:18%"></span></div>
+                <small>昨天 22:18 · 故事蓝图</small>
+              </div>
+            </article>
+            <article class="project-card" data-page="bible">
+              <div class="project-cover cover-history"><span>长安</span><strong>十二时辰</strong></div>
+              <div class="project-info">
+                <div class="project-title-row"><h3>长安十二时辰之外</h3><span class="badge">草稿</span></div>
+                <p>历史 · 80 万字 · 灵感访谈</p>
+                <div class="progress"><span style="width:8%"></span></div>
+                <small>3 天前 · 仅有一个想法</small>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" data-page="new-project">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">新建作品</p>
+              <h1>把一个想法，长成一本书</h1>
+              <p class="page-sub">先说你最想讲的那句话，剩下的我们边写边补。</p>
+            </div>
+            <button class="btn btn-ghost" data-page="dashboard"><i data-lucide="arrow-left"></i><span>返回工作台</span></button>
+          </div>
+
+          <div class="wizard-layout">
+            <div class="wizard-main">
+              <div class="stepper">
+                <div class="step active"><span>1</span><div><strong>灵感</strong><small>一句话或一段设定</small></div></div>
+                <div class="step"><span>2</span><div><strong>题材</strong><small>选择世界规则</small></div></div>
+                <div class="step"><span>3</span><div><strong>规模</strong><small>决定故事体量</small></div></div>
+                <div class="step"><span>4</span><div><strong>预览</strong><small>确认故事蓝图</small></div></div>
+              </div>
+
+              <article class="panel wizard-panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">第 1 步</span><h2>你想写一个什么样的故事？</h2></div>
+                  <span class="badge">可以先写一句</span>
+                </div>
+                <label class="field-label" for="idea">故事灵感</label>
+                <textarea class="idea-input" id="idea" rows="6">一个被宗门抛弃的杂役，意外得到一本会吞噬记忆的古书。每使用一次，他就忘记一段最重要的过去，但也获得一位前人的战斗经验。他靠这本书一步步爬向仙途顶端，最后却发现自己的记忆才是打开天门的钥匙。</textarea>
+                <div class="idea-chips">
+                  <span>试试这些方向</span>
+                  <button class="chip" data-action="fill-idea" data-idea="一个现代法医穿进仙侠世界，靠解剖妖兽尸体破案，却发现每具尸体都指向同一个被抹掉的宗门。">法医穿仙侠</button>
+                  <button class="chip" data-action="fill-idea" data-idea="一个只能看见别人剩余寿命的便利店店员，每天都在决定要不要提醒推门进来的客人。">看见寿命</button>
+                  <button class="chip" data-action="fill-idea" data-idea="大唐长安，一个不会武功的仵作，靠一枚会记录死者最后一刻的铜镜，卷入一场改写历史的阴谋。">铜镜仵作</button>
+                </div>
+
+                <div class="two-col-fields">
+                  <div>
+                    <label class="field-label" for="genre">题材包</label>
+                    <select class="select" id="genre">
+                      <option>仙侠 · 修真文明</option>
+                      <option>都市 · 异能</option>
+                      <option>历史 · 权谋</option>
+                      <option>悬疑 · 民俗</option>
+                      <option>科幻 · 废土</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="field-label" for="scale">故事规模</label>
+                    <select class="select" id="scale">
+                      <option>长篇 · 100 到 300 万字</option>
+                      <option>中篇 · 30 到 50 万字</option>
+                      <option>超长篇 · 500 万字以上</option>
+                      <option>短篇 · 3 到 10 万字</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="field-group">
+                  <span class="field-label">读者承诺</span>
+                  <div class="tag-row">
+                    <button class="tag selected">升级爽感</button>
+                    <button class="tag selected">长线伏笔</button>
+                    <button class="tag">群像</button>
+                    <button class="tag">情感克制</button>
+                    <button class="tag">黑暗残酷</button>
+                    <button class="tag">轻松幽默</button>
+                  </div>
+                </div>
+
+                <div class="wizard-actions">
+                  <button class="btn btn-ghost" data-action="toast" data-message="已保存为草稿">保存草稿</button>
+                  <button class="btn btn-primary" data-action="generate-blueprint">
+                    <i data-lucide="sparkles"></i><span>生成故事蓝图</span>
+                  </button>
+                </div>
+              </article>
+            </div>
+
+            <aside class="wizard-preview">
+              <article class="panel preview-card">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">生成预览</span><h3>你的故事蓝图</h3></div>
+                  <i data-lucide="sparkles" class="accent-icon"></i>
+                </div>
+                <div class="preview-cover">
+                  <span class="cover-line"></span>
+                  <small>仙侠 · 长篇</small>
+                  <strong>忘川书</strong>
+                  <em>记忆是代价，也是钥匙</em>
+                </div>
+                <div class="preview-block">
+                  <span>一句话故事</span>
+                  <p>一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途，最后发现自己的记忆才是打开天门的钥匙。</p>
+                </div>
+                <div class="preview-block">
+                  <span>核心卖点</span>
+                  <ul class="dot-list">
+                    <li>每次变强都要失去一段重要记忆</li>
+                    <li>记忆碎片可以拼出前人的战斗人格</li>
+                    <li>最终真相与主角身世互为钥匙</li>
+                  </ul>
+                </div>
+                <div class="preview-block">
+                  <span>系统将自动准备</span>
+                  <div class="check-list">
+                    <span><i data-lucide="check"></i>世界规则与修炼体系</span>
+                    <span><i data-lucide="check"></i>主角与核心配角档案</span>
+                    <span><i data-lucide="check"></i>前三卷主线与伏笔账本</span>
+                    <span><i data-lucide="check"></i>黄金三章节拍表</span>
+                  </div>
+                </div>
+                <button class="btn btn-primary btn-block" data-action="generate-blueprint">
+                  <i data-lucide="wand-sparkles"></i><span>生成并进入确认</span>
+                </button>
+              </article>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page" data-page="bible">
+          <div class="page-head bible-head">
+            <div>
+              <div class="title-with-badge">
+                <h1>仙途：忘川书</h1>
+                <span class="badge live-badge">连载中</span>
+                <span class="badge locked-badge"><i data-lucide="lock"></i>故事圣经 v12 已锁定</span>
+              </div>
+              <p class="page-sub">仙侠 · 300 万字 · 第 2 卷 / 共 5 卷 · 最后更新于 10 分钟前</p>
+            </div>
+            <div class="head-actions">
+              <button class="btn btn-ghost" data-action="toast" data-message="已打开故事圣经编辑器">
+                <i data-lucide="pencil"></i><span>编辑</span>
+              </button>
+              <button class="btn btn-ghost" data-action="toast" data-message="AI 正在检查故事圣经的一致性">
+                <i data-lucide="sparkles"></i><span>让 AI 检查</span>
+              </button>
+              <button class="btn btn-primary" data-page="writing">
+                <i data-lucide="pen-line"></i><span>继续写第 48 章</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="bible-layout">
+            <div class="bible-main">
+              <article class="bible-quote panel">
+                <div class="panel-head">
+                  <span class="panel-kicker">一句话故事</span>
+                  <button class="icon-btn small" data-action="toast" data-message="可以编辑这句话"><i data-lucide="pencil"></i></button>
+                </div>
+                <blockquote>一个被宗门抛弃的杂役，靠一本吞噬记忆的古书爬上仙途，最后发现自己的记忆才是打开天门的钥匙。</blockquote>
+                <div class="quote-meta">
+                  <span class="tag">记忆代价</span>
+                  <span class="tag">身世之谜</span>
+                  <span class="tag">长线伏笔</span>
+                </div>
+              </article>
+
+              <div class="bible-grid">
+                <article class="bible-card panel">
+                  <div class="card-label"><i data-lucide="target"></i>核心卖点</div>
+                  <ul class="numbered-list">
+                    <li><span>01</span>每次变强都要失去一段重要记忆，爽感和代价同时推进。</li>
+                    <li><span>02</span>记忆碎片能拼出前人的战斗人格，形成独特的成长路线。</li>
+                    <li><span>03</span>主角的身世与天门真相互为钥匙，最终回收全部伏笔。</li>
+                  </ul>
+                </article>
+                <article class="bible-card panel">
+                  <div class="card-label"><i data-lucide="user-round"></i>主角</div>
+                  <div class="character-mini">
+                    <span class="character-avatar">沈</span>
+                    <div><strong>沈砚</strong><small>外门杂役 → 执剑人 → 天门守门人</small></div>
+                  </div>
+                  <dl class="mini-dl">
+                    <div><dt>想要</dt><dd>证明自己不是废物</dd></div>
+                    <div><dt>害怕</dt><dd>再次被抛弃</dd></div>
+                    <div><dt>秘密</dt><dd>他已经忘掉自己的真实身份</dd></div>
+                  </dl>
+                </article>
+                <article class="bible-card panel">
+                  <div class="card-label"><i data-lucide="gem"></i>金手指</div>
+                  <h4>忘川书</h4>
+                  <p class="card-copy">每使用一次，忘记一段重要记忆，获得一位前人的战斗经验。记忆越珍贵，经验越强。</p>
+                  <div class="rule-row"><span>代价</span><strong>不可逆记忆丢失</strong></div>
+                  <div class="rule-row"><span>限制</span><strong>每次只能借一人经验</strong></div>
+                  <div class="rule-row"><span>成长</span><strong>记忆碎片可拼成完整人格</strong></div>
+                </article>
+                <article class="bible-card panel">
+                  <div class="card-label"><i data-lucide="scale"></i>世界铁律</div>
+                  <ul class="rule-list">
+                    <li><span class="rule-dot"></span>境界不可越阶而战，除非付出寿元或记忆。</li>
+                    <li><span class="rule-dot"></span>飞升需渡三劫，每劫对应一段被抹掉的前世。</li>
+                    <li><span class="rule-dot"></span>天门只认完整记忆，残缺者会被留在门内。</li>
+                  </ul>
+                </article>
+                <article class="bible-card panel span-2">
+                  <div class="card-label"><i data-lucide="route"></i>主线与支线</div>
+                  <div class="thread-grid">
+                    <div class="thread-item">
+                      <div class="thread-head"><strong>主线 · 天门将开</strong><span>32%</span></div>
+                      <div class="progress"><span style="width:32%"></span></div>
+                      <small>从杂役到执剑人，最终面对天门背后的真相。</small>
+                    </div>
+                    <div class="thread-item">
+                      <div class="thread-head"><strong>支线 · 父母之死</strong><span class="jade-text">第 120 章揭示</span></div>
+                      <div class="progress jade"><span style="width:64%"></span></div>
+                      <small>主角以为父母自杀，真相是仇杀，凶手与太玄门有关。</small>
+                    </div>
+                    <div class="thread-item">
+                      <div class="thread-head"><strong>支线 · 师兄顾青</strong><span class="gold-text">进行中</span></div>
+                      <div class="progress gold"><span style="width:41%"></span></div>
+                      <small>从嫉妒到并肩，再到立场分裂，卷三迎来决裂。</small>
+                    </div>
+                  </div>
+                </article>
+                <article class="bible-card panel">
+                  <div class="card-label"><i data-lucide="flag"></i>结局方向</div>
+                  <div class="locked-line"><i data-lucide="lock"></i><span>已锁定，修改需走影响分析</span></div>
+                  <p class="card-copy">沈砚用全部记忆换天门开启，把最后一页留给读者。他忘记了自己是谁，但记得要守护的人。</p>
+                </article>
+                <article class="bible-card panel">
+                  <div class="card-label"><i data-lucide="handshake"></i>读者承诺</div>
+                  <div class="tag-row wrap">
+                    <span class="tag">升级爽感</span>
+                    <span class="tag">长线伏笔</span>
+                    <span class="tag">克制情感</span>
+                    <span class="tag">不降智反派</span>
+                    <span class="tag">每 3 章一个小高潮</span>
+                  </div>
+                  <p class="card-copy small-copy">禁忌：不写无代价复活、不写主角无缘由被所有人喜欢、不写超过两章的日常注水。</p>
+                </article>
+              </div>
+            </div>
+
+            <aside class="bible-rail">
+              <article class="panel rail-panel">
+                <div class="panel-head">
+                  <h3><i data-lucide="shield-alert"></i>连续性提醒</h3>
+                  <span class="badge alert-badge">2</span>
+                </div>
+                <div class="rail-item alert-item">
+                  <strong>左臂骨折</strong>
+                  <p>第 47 章起生效，预计第 53 章痊愈。期间不能双手结印。</p>
+                  <button class="text-btn small" data-page="writing">去写作台处理</button>
+                </div>
+                <div class="rail-item">
+                  <strong>血河宗控制范围</strong>
+                  <p>第 3 卷地图与当前势力设定有重叠，建议确认边界。</p>
+                  <button class="text-btn small" data-page="settings">查看地图</button>
+                </div>
+              </article>
+
+              <article class="panel rail-panel">
+                <div class="panel-head">
+                  <h3><i data-lucide="git-commit-horizontal"></i>未回收伏笔</h3>
+                  <span class="badge">4</span>
+                </div>
+                <ul class="foreshadow-list">
+                  <li><span>父母之死</span><small>第 120 章揭示</small></li>
+                  <li><span>忘川书缺页</span><small>第 86 章回收</small></li>
+                  <li><span>顾青的玉佩</span><small>第 64 章回收</small></li>
+                  <li><span>天门内的脚步声</span><small>卷五揭示</small></li>
+                </ul>
+              </article>
+
+              <article class="panel rail-panel">
+                <div class="panel-head">
+                  <h3><i data-lucide="history"></i>最近修改</h3>
+                  <button class="text-btn small" data-page="changes">全部</button>
+                </div>
+                <ol class="version-list">
+                  <li><span class="version-dot"></span><div><strong>v12 · 锁定故事圣经</strong><small>今天 10:21 · 你</small></div></li>
+                  <li><span class="version-dot"></span><div><strong>v11 · 补充父母之死伏笔</strong><small>昨天 18:06 · 你</small></div></li>
+                  <li><span class="version-dot"></span><div><strong>v10 · AI 建议调整核心卖点</strong><small>10 月 30 日 · AI 提案</small></div></li>
+                </ol>
+              </article>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page" data-page="settings">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">设定中心</p>
+              <h1>世界不是一张表，是一张网</h1>
+              <p class="page-sub">设定按题材包生长，地图、势力、人物、修炼体系彼此关联。</p>
+            </div>
+            <div class="head-actions">
+              <button class="btn btn-ghost" data-action="toast" data-message="已打开设定检索"><i data-lucide="search"></i><span>搜索设定</span></button>
+              <button class="btn btn-primary" data-action="toast" data-message="新设定已创建草稿"><i data-lucide="plus"></i><span>新增设定</span></button>
+            </div>
+          </div>
+
+          <div class="segmented tabs" role="tablist">
+            <button class="seg active" data-tab="world">世界</button>
+            <button class="seg" data-tab="factions">势力</button>
+            <button class="seg" data-tab="characters">人物</button>
+            <button class="seg" data-tab="map">地图</button>
+            <button class="seg" data-tab="power">修炼体系</button>
+            <button class="seg" data-tab="items">物品功法</button>
+            <button class="seg" data-tab="timeline">时间线</button>
+          </div>
+
+          <div class="tab-panel active" data-tab-panel="world">
+            <div class="settings-layout">
+              <article class="panel settings-panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">世界结构</span><h3>三重界面</h3></div>
+                  <span class="badge">3 层</span>
+                </div>
+                <div class="realm-stack">
+                  <div class="realm-card active"><span class="realm-index">01</span><div><strong>人界</strong><small>故事主舞台 · 灵气稀薄</small></div><span class="badge live-badge">当前</span></div>
+                  <div class="realm-connector"><span>飞升</span><i data-lucide="arrow-down"></i></div>
+                  <div class="realm-card"><span class="realm-index">02</span><div><strong>灵界</strong><small>宗门祖地 · 灵气充盈</small></div><span class="badge">第 3 卷</span></div>
+                  <div class="realm-connector"><span>渡劫</span><i data-lucide="arrow-down"></i></div>
+                  <div class="realm-card"><span class="realm-index">03</span><div><strong>仙界</strong><small>天门之后 · 规则残缺</small></div><span class="badge">第 5 卷</span></div>
+                </div>
+                <div class="settings-note"><i data-lucide="info"></i><span>地图层级由题材包决定。都市题材可以只有一层地图，不需要强行创建位面。</span></div>
+              </article>
+
+              <article class="panel settings-panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">核心势力</span><h3>四方角力</h3></div>
+                  <button class="text-btn" data-tab="factions">查看全部</button>
+                </div>
+                <div class="faction-list">
+                  <div class="faction-item"><span class="faction-mark jade">太</span><div><strong>太玄门</strong><small>正道魁首 · 控制东境三十六城</small></div><span class="tag">主角所属</span></div>
+                  <div class="faction-item"><span class="faction-mark cinnabar">血</span><div><strong>血河宗</strong><small>魔道大宗 · 与太玄门争夺忘川</small></div><span class="tag">主要反派</span></div>
+                  <div class="faction-item"><span class="faction-mark gold">无</span><div><strong>无相楼</strong><small>情报组织 · 买卖记忆与身份</small></div><span class="tag">中立</span></div>
+                  <div class="faction-item"><span class="faction-mark blue">天</span><div><strong>天门守</strong><small>仙界遗民 · 只在飞升时出现</small></div><span class="tag">隐藏</span></div>
+                </div>
+              </article>
+
+              <aside class="panel health-panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">设定健康度</span><h3>86 / 100</h3></div>
+                  <span class="badge jade-badge">良好</span>
+                </div>
+                <div class="health-ring"><span>86</span></div>
+                <ul class="health-list">
+                  <li><span class="health-dot jade"></span><div><strong>人物关系完整</strong><small>12 个核心人物均有动机与关系</small></div></li>
+                  <li><span class="health-dot gold"></span><div><strong>势力边界待确认</strong><small>血河宗与太玄门在第 3 卷有重叠</small></div></li>
+                  <li><span class="health-dot cinnabar"></span><div><strong>修炼体系缺口</strong><small>金丹到元婴之间缺少瓶颈设定</small></div></li>
+                </ul>
+                <button class="btn btn-ghost btn-block" data-action="toast" data-message="已生成设定修复建议">查看修复建议</button>
+              </aside>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="factions">
+            <div class="entity-grid">
+              <article class="entity-card panel"><div class="entity-top"><span class="faction-mark jade">太</span><span class="badge live-badge">正道</span></div><h3>太玄门</h3><p>东境第一宗门，表面守序，内部以记忆为贡品维持护山大阵。</p><div class="entity-meta"><span>掌门：玄微真人</span><span>控制：东境三十六城</span></div><div class="tag-row wrap"><span class="tag">主角出身</span><span class="tag">护山大阵</span><span class="tag">记忆贡品</span></div></article>
+              <article class="entity-card panel"><div class="entity-top"><span class="faction-mark cinnabar">血</span><span class="badge alert-badge">敌对</span></div><h3>血河宗</h3><p>以血河为修炼根基的魔道大宗，正在寻找忘川书的下落。</p><div class="entity-meta"><span>宗主：血河老祖</span><span>控制：南境血河</span></div><div class="tag-row wrap"><span class="tag">主要反派</span><span class="tag">忘川书</span><span class="tag">卷三冲突</span></div></article>
+              <article class="entity-card panel"><div class="entity-top"><span class="faction-mark gold">无</span><span class="badge">中立</span></div><h3>无相楼</h3><p>买卖记忆与身份的情报组织，不站队，只认代价。</p><div class="entity-meta"><span>楼主：无相先生</span><span>据点：忘川渡口</span></div><div class="tag-row wrap"><span class="tag">情报</span><span class="tag">记忆交易</span><span class="tag">身世线索</span></div></article>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="characters">
+            <div class="entity-grid character-grid">
+              <article class="entity-card panel character-card">
+                <div class="entity-top"><span class="character-avatar">沈</span><span class="badge live-badge">主角</span></div>
+                <h3>沈砚</h3><p>外门杂役，靠忘川书逆天改命。当前左臂骨折，正在隐藏忘川书的存在。</p>
+                <div class="state-chips"><span class="state-chip alert">左臂骨折 · 第 53 章痊愈</span><span class="state-chip">练气七层</span><span class="state-chip">隐藏身份</span></div>
+                <div class="entity-meta"><span>欲望：证明自己</span><span>恐惧：再次被抛弃</span></div>
+              </article>
+              <article class="entity-card panel character-card">
+                <div class="entity-top"><span class="character-avatar jade-avatar">顾</span><span class="badge">核心配角</span></div>
+                <h3>顾青</h3><p>太玄门内门师兄，天赋极佳。表面照拂沈砚，实则受命监视他。</p>
+                <div class="state-chips"><span class="state-chip">筑基三层</span><span class="state-chip">持有玉佩</span><span class="state-chip gold-chip">立场动摇</span></div>
+                <div class="entity-meta"><span>欲望：证明师门清白</span><span>秘密：知道沈砚身世</span></div>
+              </article>
+              <article class="entity-card panel character-card">
+                <div class="entity-top"><span class="character-avatar cinnabar-avatar">玄</span><span class="badge alert-badge">反派</span></div>
+                <h3>玄微真人</h3><p>太玄门掌门，正道魁首。真实身份与沈砚父母之死有关。</p>
+                <div class="state-chips"><span class="state-chip">金丹九层</span><span class="state-chip cinnabar-chip">隐藏动机</span><span class="state-chip">知道真相</span></div>
+                <div class="entity-meta"><span>欲望：守住天门</span><span>秘密：沈砚父母的凶手</span></div>
+              </article>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="map">
+            <div class="map-layout">
+              <article class="panel map-panel">
+                <div class="panel-head">
+                  <div><span class="panel-kicker">分层地图</span><h3>人界 · 东境</h3></div>
+                  <div class="map-legend"><span><i class="legend-dot jade"></i>太玄门</span><span><i class="legend-dot cinnabar"></i>血河宗</span><span><i class="legend-dot gold"></i>中立</span></div>
+                </div>
+                <div class="map-canvas">
+                  <svg viewBox="0 0 800 440" role="img" aria-label="仙侠世界地图示意">
+                    <defs>
+                      <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+                        <path d="M 32 0 L 0 0 0 32" fill="none" stroke="#d9dfda" stroke-width="1"/>
+                      </pattern>
+                    </defs>
+                    <rect width="800" height="440" fill="#f7f8f4"/>
+                    <rect width="800" height="440" fill="url(#grid)" opacity=".55"/>
+                    <path d="M60 310 C130 250 180 270 240 210 C300 150 370 190 430 160 C500 120 560 150 640 105 C690 75 735 90 760 60" fill="none" stroke="#9fb3a7" stroke-width="2" stroke-dasharray="6 7"/>
+                    <path d="M90 110 C150 150 200 120 260 160 C330 205 370 280 450 300 C530 320 600 290 690 330" fill="none" stroke="#b8a897" stroke-width="2" stroke-dasharray="6 7"/>
+                    <ellipse cx="220" cy="190" rx="145" ry="105" fill="#2f6f5e" opacity=".08" stroke="#2f6f5e" stroke-width="1.5"/>
+                    <ellipse cx="570" cy="250" rx="130" ry="92" fill="#b23a2b" opacity=".07" stroke="#b23a2b" stroke-width="1.5"/>
+                    <ellipse cx="480" cy="110" rx="100" ry="72" fill="#a9824f" opacity=".08" stroke="#a9824f" stroke-width="1.5"/>
+                    <circle cx="220" cy="190" r="9" fill="#2f6f5e"/><text x="238" y="195" font-size="15" fill="#26332d" font-weight="600">太玄门</text>
+                    <circle cx="570" cy="250" r="9" fill="#b23a2b"/><text x="588" y="255" font-size="15" fill="#3c2622" font-weight="600">血河宗</text>
+                    <circle cx="480" cy="110" r="9" fill="#a9824f"/><text x="498" y="115" font-size="15" fill="#3c3226" font-weight="600">无相楼</text>
+                    <circle cx="390" cy="330" r="7" fill="#3f5f7a"/><text x="406" y="335" font-size="14" fill="#26333d">忘川渡</text>
+                    <circle cx="660" cy="360" r="7" fill="#3f5f7a"/><text x="676" y="365" font-size="14" fill="#26333d">东境边关</text>
+                    <path d="M220 190 C320 170 400 190 480 110" fill="none" stroke="#2f6f5e" stroke-width="2" opacity=".55"/>
+                    <path d="M570 250 C500 220 470 170 480 110" fill="none" stroke="#b23a2b" stroke-width="2" opacity=".45" stroke-dasharray="4 5"/>
+                  </svg>
+                  <div class="map-pin-detail"><strong>太玄门</strong><span>东境 · 控制 36 城</span><small>当前章节发生地</small></div>
+                </div>
+              </article>
+              <aside class="panel map-side">
+                <div class="panel-head"><h3>地图层级</h3><span class="badge">4 层</span></div>
+                <div class="map-tree">
+                  <div class="map-tree-item active"><i data-lucide="globe-2"></i><div><strong>人界</strong><small>当前故事</small></div></div>
+                  <div class="map-tree-item"><i data-lucide="mountain"></i><div><strong>东境</strong><small>36 城 · 太玄门</small></div></div>
+                  <div class="map-tree-item"><i data-lucide="building-2"></i><div><strong>忘川渡</strong><small>中立据点</small></div></div>
+                  <div class="map-tree-item"><i data-lucide="map-pin"></i><div><strong>太玄门山门</strong><small>第 47 章场景</small></div></div>
+                </div>
+                <div class="divider"></div>
+                <div class="panel-head"><h3>跨地图连接</h3></div>
+                <div class="portal-item"><span class="portal-line"></span><div><strong>人界 → 灵界</strong><small>飞升 · 需渡三劫</small></div></div>
+                <div class="portal-item"><span class="portal-line gold"></span><div><strong>灵界 → 仙界</strong><small>天门 · 卷五开启</small></div></div>
+                <div class="settings-note"><i data-lucide="info"></i><span>都市题材可只保留「城市 → 区域 → 地点」一级层级。</span></div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="power">
+            <div class="power-layout">
+              <article class="panel power-panel">
+                <div class="panel-head"><div><span class="panel-kicker">修炼体系</span><h3>九境十三层</h3></div><span class="badge">人界篇</span></div>
+                <div class="realm-track">
+                  <div class="realm-step done"><span>练气</span><small>1-9 层</small></div>
+                  <div class="realm-step active"><span>筑基</span><small>初 / 中 / 后</small></div>
+                  <div class="realm-step"><span>金丹</span><small>凝丹 / 结丹</small></div>
+                  <div class="realm-step"><span>元婴</span><small>出窍 / 化神</small></div>
+                  <div class="realm-step"><span>渡劫</span><small>三劫</small></div>
+                </div>
+                <div class="power-grid">
+                  <div class="power-rule"><span>突破代价</span><strong>消耗寿元或记忆</strong><small>记忆越珍贵，突破越稳</small></div>
+                  <div class="power-rule"><span>越阶限制</span><strong>不可无代价越阶</strong><small>除非使用禁术或忘川书</small></div>
+                  <div class="power-rule"><span>战斗逻辑</span><strong>境界 + 功法 + 环境</strong><small>不做纯数值碾压</small></div>
+                </div>
+              </article>
+              <aside class="panel power-side">
+                <div class="panel-head"><h3>主角进度</h3><span class="badge live-badge">练气七层</span></div>
+                <div class="power-meter"><span style="width:64%"></span></div>
+                <p class="muted small-copy">距离筑基还有 3 个关键事件。系统建议在第 58 章安排第一次突破失败。</p>
+                <div class="divider"></div>
+                <div class="panel-head"><h3>战力曲线</h3></div>
+                <svg class="sparkline" viewBox="0 0 300 90" role="img" aria-label="战力曲线">
+                  <path d="M0 76 L30 70 L60 72 L90 58 L120 61 L150 45 L180 50 L210 33 L240 38 L270 20 L300 24" fill="none" stroke="#2f6f5e" stroke-width="2.5"/>
+                  <path d="M0 76 L30 70 L60 72 L90 58 L120 61 L150 45 L180 50 L210 33 L240 38 L270 20 L300 24 L300 90 L0 90 Z" fill="#2f6f5e" opacity=".08"/>
+                </svg>
+                <div class="chart-caption"><span>第 1 章</span><span>当前</span><span>第 120 章</span></div>
+              </aside>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="items">
+            <div class="entity-grid">
+              <article class="entity-card panel"><div class="entity-top"><span class="item-mark">书</span><span class="badge alert-badge">核心</span></div><h3>忘川书</h3><p>吞噬记忆，返还前人战斗经验。书页会随着使用逐渐减少。</p><div class="entity-meta"><span>品阶：未知</span><span>归属：沈砚</span></div></article>
+              <article class="entity-card panel"><div class="entity-top"><span class="item-mark jade-mark">剑</span><span class="badge">法器</span></div><h3>听潮剑</h3><p>太玄门内门弟子配剑，剑身会记录持剑者的杀意。</p><div class="entity-meta"><span>品阶：玄阶</span><span>归属：顾青</span></div></article>
+              <article class="entity-card panel"><div class="entity-top"><span class="item-mark gold-mark">玉</span><span class="badge">线索</span></div><h3>半枚青玉</h3><p>顾青随身携带的旧玉，与沈砚身世有关。第 64 章回收。</p><div class="entity-meta"><span>品阶：无</span><span>归属：顾青</span></div></article>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="timeline">
+            <div class="timeline-layout">
+              <article class="panel timeline-panel">
+                <div class="panel-head"><div><span class="panel-kicker">故事时间线</span><h3>从忘川村到天门</h3></div><span class="badge">当前：第 47 章</span></div>
+                <div class="timeline">
+                  <div class="timeline-item done"><span class="timeline-dot"></span><div><strong>十六年前 · 忘川村灭门</strong><p>沈砚父母被杀，真相被伪装成自杀。</p></div><small>背景事件</small></div>
+                  <div class="timeline-item done"><span class="timeline-dot"></span><div><strong>三年前 · 进入太玄门</strong><p>沈砚成为外门杂役，第一次接触忘川书。</p></div><small>第 1 章</small></div>
+                  <div class="timeline-item active"><span class="timeline-dot"></span><div><strong>现在 · 断臂之后</strong><p>沈砚在血河夜行中左臂骨折，忘川书暴露风险上升。</p></div><small>第 47 章</small></div>
+                  <div class="timeline-item future"><span class="timeline-dot"></span><div><strong>三个月后 · 天门将开</strong><p>三劫降临，沈砚必须在记忆与天门之间做选择。</p></div><small>第 120 章</small></div>
+                </div>
+              </article>
+              <aside class="panel timeline-side">
+                <div class="panel-head"><h3>时间一致性</h3><span class="badge jade-badge">正常</span></div>
+                <ul class="health-list">
+                  <li><span class="health-dot jade"></span><div><strong>人物年龄一致</strong><small>沈砚 19 岁，顾青 23 岁</small></div></li>
+                  <li><span class="health-dot jade"></span><div><strong>旅行时间合理</strong><small>东境到忘川渡 7 天</small></div></li>
+                  <li><span class="health-dot gold"></span><div><strong>突破时间待确认</strong><small>第 58 章突破是否需要闭关</small></div></li>
+                </ul>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" data-page="outline">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">大纲工作台</p>
+              <h1>先看全局，再写一章</h1>
+              <p class="page-sub">全书、卷、幕、章、场景，逐层展开。已写部分锁定，未写部分可改。</p>
+            </div>
+            <div class="head-actions">
+              <button class="btn btn-ghost" data-action="toast" data-message="已生成下一卷大纲草案"><i data-lucide="sparkles"></i><span>生成下一卷</span></button>
+              <button class="btn btn-primary" data-action="toast" data-message="本卷已锁定"><i data-lucide="lock"></i><span>锁定本卷</span></button>
+            </div>
+          </div>
+
+          <div class="outline-layout">
+            <aside class="panel volume-panel">
+              <div class="panel-head"><h3>全书结构</h3><span class="badge">5 卷</span></div>
+              <div class="volume-item active"><span class="volume-index">01</span><div><strong>少年出山</strong><small>第 1-30 章 · 已锁定</small></div><i data-lucide="lock"></i></div>
+              <div class="volume-item"><span class="volume-index">02</span><div><strong>血河夜行</strong><small>第 31-60 章 · 进行中</small></div><span class="status-pill live">47 / 60</span></div>
+              <div class="volume-item"><span class="volume-index">03</span><div><strong>灵界来客</strong><small>第 61-90 章 · 未写</small></div><span class="status-pill">0 / 30</span></div>
+              <div class="volume-item"><span class="volume-index">04</span><div><strong>天门旧梦</strong><small>第 91-120 章 · 未写</small></div><span class="status-pill">0 / 30</span></div>
+              <div class="volume-item"><span class="volume-index">05</span><div><strong>忘川尽头</strong><small>第 121-150 章 · 未写</small></div><span class="status-pill">0 / 30</span></div>
+              <button class="btn btn-ghost btn-block" data-action="toast" data-message="已打开卷结构编辑器"><i data-lucide="plus"></i><span>新增一卷</span></button>
+            </aside>
+
+            <div class="outline-main">
+              <div class="panel-head outline-head">
+                <div><span class="panel-kicker">第二卷</span><h2>血河夜行</h2><p>目标：沈砚第一次真正面对血河宗，左臂受伤，忘川书暴露。</p></div>
+                <div class="outline-stats"><span>14 / 30 章</span><span>9.8 万字</span><span class="jade-text">质量 84</span></div>
+              </div>
+              <div class="chapter-list">
+                <article class="chapter-card done" data-chapter="45">
+                  <span class="chapter-no">45</span>
+                  <div><strong>血河渡口</strong><p>沈砚第一次见到血河宗修士，发现对方也在找忘川书。</p></div>
+                  <div class="chapter-meta"><span class="tag">已锁定</span><small>3,120 字</small></div>
+                </article>
+                <article class="chapter-card done" data-chapter="46">
+                  <span class="chapter-no">46</span>
+                  <div><strong>夜船</strong><p>顾青出手相救，但沈砚发现他带着半枚青玉。</p></div>
+                  <div class="chapter-meta"><span class="tag">已锁定</span><small>2,980 字</small></div>
+                </article>
+                <article class="chapter-card active" data-chapter="47">
+                  <span class="chapter-no">47</span>
+                  <div><strong>断臂之后</strong><p>血河宗伏击，沈砚左臂骨折，靠忘川书勉强脱身。</p></div>
+                  <div class="chapter-meta"><span class="tag live-tag">进行中</span><small>2,860 字</small></div>
+                </article>
+                <article class="chapter-card" data-chapter="48">
+                  <span class="chapter-no">48</span>
+                  <div><strong>一只手也能结印</strong><p>沈砚尝试单手施法，暴露了自己不属于外门的手段。</p></div>
+                  <div class="chapter-meta"><span class="tag">待写</span><small>章纲已确认</small></div>
+                </article>
+                <article class="chapter-card" data-chapter="49">
+                  <span class="chapter-no">49</span>
+                  <div><strong>顾青的试探</strong><p>顾青用青玉试探沈砚，沈砚第一次对师兄撒谎。</p></div>
+                  <div class="chapter-meta"><span class="tag">待写</span><small>章纲已确认</small></div>
+                </article>
+              </div>
+            </div>
+
+            <aside class="panel chapter-detail">
+              <div class="panel-head"><div><span class="panel-kicker">第 48 章</span><h3>一只手也能结印</h3></div><button class="icon-btn small" data-action="toast" data-message="章纲已打开"><i data-lucide="pencil"></i></button></div>
+              <div class="detail-block">
+                <span>本章目标</span>
+                <p>让沈砚在断臂状态下找到新的战斗方式，同时让顾青第一次怀疑他。</p>
+              </div>
+              <div class="detail-block">
+                <span>场景节拍</span>
+                <ol class="beat-list">
+                  <li><span>01</span>沈砚藏起断臂，被顾青撞见。</li>
+                  <li><span>02</span>血河宗追兵逼近，两人被迫联手。</li>
+                  <li><span>03</span>沈砚单手结印，忘川书短暂显形。</li>
+                  <li><span>04</span>顾青看见书页一角，但没有点破。</li>
+                </ol>
+              </div>
+              <div class="detail-block">
+                <span>必须遵守</span>
+                <div class="state-chips"><span class="state-chip alert">左臂骨折</span><span class="state-chip">不能双手结印</span><span class="state-chip">顾青不知道忘川书</span></div>
+              </div>
+              <div class="detail-block">
+                <span>章末钩子</span>
+                <p class="hook-copy">顾青把半枚青玉收进袖中，说：“你刚才那招，我见过。”</p>
+              </div>
+              <div class="detail-block">
+                <span>情绪曲线</span>
+                <svg class="sparkline small" viewBox="0 0 260 60"><path d="M0 48 L35 40 L70 45 L105 26 L140 34 L175 18 L210 30 L260 10" fill="none" stroke="#b23a2b" stroke-width="2.5"/><path d="M0 48 L35 40 L70 45 L105 26 L140 34 L175 18 L210 30 L260 10 L260 60 L0 60 Z" fill="#b23a2b" opacity=".07"/></svg>
+              </div>
+              <button class="btn btn-primary btn-block" data-page="writing"><i data-lucide="pen-line"></i><span>去写这一章</span></button>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page" data-page="writing">
+          <div class="writing-shell">
+            <aside class="panel chapter-sidebar">
+              <div class="panel-head"><div><span class="panel-kicker">第二卷</span><h3>血河夜行</h3></div><span class="badge">14 / 30</span></div>
+              <div class="chapter-filter"><i data-lucide="search"></i><input placeholder="搜索章节"></div>
+              <div class="chapter-nav">
+                <button class="chapter-nav-item done" data-chapter="45"><span>45</span><div><strong>血河渡口</strong><small>3,120 字</small></div><i data-lucide="check"></i></button>
+                <button class="chapter-nav-item done" data-chapter="46"><span>46</span><div><strong>夜船</strong><small>2,980 字</small></div><i data-lucide="check"></i></button>
+                <button class="chapter-nav-item active" data-chapter="47"><span>47</span><div><strong>断臂之后</strong><small>2,860 字</small></div><i data-lucide="pen-line"></i></button>
+                <button class="chapter-nav-item" data-chapter="48"><span>48</span><div><strong>一只手也能结印</strong><small>待写</small></div><span class="status-pill">待写</span></button>
+                <button class="chapter-nav-item" data-chapter="49"><span>49</span><div><strong>顾青的试探</strong><small>章纲</small></div><span class="status-pill">章纲</span></button>
+              </div>
+              <button class="btn btn-ghost btn-block" data-action="toast" data-message="新章节草稿已创建"><i data-lucide="plus"></i><span>新建章节</span></button>
+            </aside>
+
+            <section class="editor-panel">
+              <div class="editor-toolbar">
+                <div class="toolbar-left">
+                  <button class="icon-btn small" title="加粗"><i data-lucide="bold"></i></button>
+                  <button class="icon-btn small" title="斜体"><i data-lucide="italic"></i></button>
+                  <button class="icon-btn small" title="引用"><i data-lucide="quote"></i></button>
+                  <span class="toolbar-divider"></span>
+                  <button class="icon-btn small" title="撤销"><i data-lucide="undo-2"></i></button>
+                  <button class="icon-btn small" title="重做"><i data-lucide="redo-2"></i></button>
+                  <span class="toolbar-divider"></span>
+                  <button class="btn btn-ghost btn-small" data-action="toggle-comments"><i data-lucide="message-square-text"></i><span>编辑批注</span></button>
+                </div>
+                <div class="toolbar-right">
+                  <span class="save-state"><i data-lucide="cloud-check"></i>已自动保存</span>
+                  <button class="btn btn-ghost btn-small" data-action="toast" data-message="正在检查连续性"><i data-lucide="shield-check"></i><span>检查一致性</span></button>
+                  <button class="btn btn-primary btn-small" data-action="toast" data-message="AI 正在续写下一段"><i data-lucide="sparkles"></i><span>续写</span></button>
+                </div>
+              </div>
+
+              <div class="editor-paper" contenteditable="true" spellcheck="false">
+                <div class="chapter-heading">
+                  <span>第 47 章</span>
+                  <h1>断臂之后</h1>
+                </div>
+                <p>血从袖口滴下来，落在青石板上，像一串没有写完的省略号。</p>
+                <p>沈砚把左臂往袖中缩了缩，指节已经发白。他听见身后脚步声逼近，知道血河宗的人没有走远。</p>
+                <p>“你还能打？”顾青问。</p>
+                <p>“能。”</p>
+                <p>沈砚没有回头。他试着抬起左手，骨头里立刻传来一阵钝痛，像有人拿烧红的铁签慢慢搅动。那本古书在识海里翻了一页，纸声很轻，却让他想起一件已经想不起来的事。</p>
+                <p><span class="comment-mark" data-comment="这里左臂还断着，不能双手结印。建议改成单手结印，或让顾青替他挡下第一击。">他双手结印，灵力在掌心凝成一道细线。</span></p>
+                <p>顾青的眼神变了。</p>
+                <p>那道细线没有撑过一息，便碎成满掌的血。沈砚踉跄半步，右膝重重跪地，却趁势把断臂藏到身后。</p>
+                <p>“我说了，能。”</p>
+                <p>顾青没有拆穿他。他只是把手按在剑柄上，望向夜色里越来越近的火光。</p>
+                <p>“那就跑。”</p>
+              </div>
+
+              <div class="editor-statusbar">
+                <span><i data-lucide="type"></i>2,860 字</span>
+                <span><i data-lucide="clock-3"></i>预计阅读 7 分钟</span>
+                <span class="jade-text"><i data-lucide="activity"></i>本章质量 84</span>
+                <span><i data-lucide="git-branch"></i>基于 v12</span>
+              </div>
+            </section>
+
+            <aside class="writing-notes">
+              <div class="notes-tabs">
+                <button class="note-tab active" data-note-tab="advice">编辑建议 <span>3</span></button>
+                <button class="note-tab" data-note-tab="continuity">连续性 <span class="alert-count">2</span></button>
+                <button class="note-tab" data-note-tab="threads">伏笔 <span>4</span></button>
+              </div>
+              <div class="note-panel active" data-note-panel="advice">
+                <article class="note-card">
+                  <div class="note-head"><span class="badge gold-badge">钩子偏弱</span><small>第 47 章</small></div>
+                  <h4>章末可以再留一只手</h4>
+                  <p>现在结尾停在“跑”，读者知道接下来是追逐，但没有新的信息。可以让顾青说出“你刚才那招，我见过”，把悬念推向人物关系。</p>
+                  <button class="text-btn small" data-action="toast" data-message="已应用钩子建议">应用建议</button>
+                </article>
+                <article class="note-card">
+                  <div class="note-head"><span class="badge">节奏</span><small>第 46-47 章</small></div>
+                  <h4>两章都在夜里赶路</h4>
+                  <p>建议在第 48 章加入一个白天的场景，让读者喘口气，也让断臂的代价更具体。</p>
+                </article>
+                <article class="note-card">
+                  <div class="note-head"><span class="badge jade-badge">人物声纹</span><small>顾青</small></div>
+                  <h4>这句台词不太像他</h4>
+                  <p>顾青习惯用问句掩饰判断。可以把“那就跑”改成“你跑得动吗”，更符合他的克制。</p>
+                </article>
+              </div>
+              <div class="note-panel" data-note-panel="continuity">
+                <article class="note-card alert-note">
+                  <div class="note-head"><span class="badge alert-badge">冲突</span><small>左臂</small></div>
+                  <h4>第 7 段出现“双手结印”</h4>
+                  <p>第 47 章第 3 段已记录左臂骨折，预计第 53 章痊愈。当前段落与状态冲突。</p>
+                  <div class="note-actions"><button class="text-btn small" data-action="toast" data-message="已定位到冲突段落">定位</button><button class="text-btn small" data-action="toast" data-message="已生成修改建议">查看改法</button></div>
+                </article>
+                <article class="note-card">
+                  <div class="note-head"><span class="badge">状态</span><small>沈砚</small></div>
+                  <h4>隐藏忘川书</h4>
+                  <p>顾青目前不知道忘川书的存在。本章第 10 段让书页短暂显形，需要确认顾青是否看见。</p>
+                </article>
+                <article class="note-card">
+                  <div class="note-head"><span class="badge">时间</span><small>第 47 章</small></div>
+                  <h4>距离天亮还有两个时辰</h4>
+                  <p>与上一章结尾的时间一致。下一章如果直接写白天，需要补一个过渡。</p>
+                </article>
+              </div>
+              <div class="note-panel" data-note-panel="threads">
+                <article class="note-card">
+                  <div class="note-head"><span class="badge">伏笔</span><small>第 120 章揭示</small></div>
+                  <h4>父母之死</h4>
+                  <p>沈砚仍相信父母是自杀。本章不要让他主动怀疑仇杀，但可以让他对“记忆”这个词有异常反应。</p>
+                </article>
+                <article class="note-card">
+                  <div class="note-head"><span class="badge">伏笔</span><small>第 64 章回收</small></div>
+                  <h4>顾青的半枚青玉</h4>
+                  <p>本章可以让青玉短暂出现，但不要解释它的来历。</p>
+                </article>
+                <article class="note-card">
+                  <div class="note-head"><span class="badge">未回收</span><small>第 86 章</small></div>
+                  <h4>忘川书缺页</h4>
+                  <p>本章使用忘川书时，可以再少一页，强化“记忆在减少”的代价。</p>
+                </article>
+              </div>
+              <div class="writing-ai-card">
+                <div class="panel-head"><h3><i data-lucide="sparkles"></i>让 AI 改这一段</h3></div>
+                <textarea class="mini-textarea" rows="3" placeholder="例如：保留断臂设定，把这段改成更克制的写法">保留左臂骨折的设定，改成沈砚单手结印，但让顾青看见他袖口的血。</textarea>
+                <button class="btn btn-primary btn-block" data-action="toast" data-message="已生成改写提案，等待你确认"><i data-lucide="wand-sparkles"></i><span>生成改写提案</span></button>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <section class="page" data-page="batch">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">批量生产</p>
+              <h1>把长跑拆成可管理的段落</h1>
+              <p class="page-sub">按章、按卷、按自定义区间或全本生成。每一步都可暂停、审批、回滚。</p>
+            </div>
+            <div class="head-actions">
+              <button class="btn btn-ghost" data-action="toast" data-message="任务中心已刷新"><i data-lucide="refresh-cw"></i><span>刷新</span></button>
+              <button class="btn btn-primary" data-action="toast" data-message="新任务已创建"><i data-lucide="plus"></i><span>新建任务</span></button>
+            </div>
+          </div>
+
+          <div class="batch-layout">
+            <article class="panel batch-form">
+              <div class="panel-head"><div><span class="panel-kicker">新建生产任务</span><h3>生成范围</h3></div><span class="badge">预算可控</span></div>
+              <div class="segmented scope-segments">
+                <button class="seg active">按章</button>
+                <button class="seg">按卷</button>
+                <button class="seg">自定义</button>
+                <button class="seg">全本</button>
+              </div>
+              <div class="two-col-fields">
+                <div><label class="field-label">起始章节</label><input class="input" value="第 48 章"></div>
+                <div><label class="field-label">结束章节</label><input class="input" value="第 60 章"></div>
+              </div>
+              <div class="field-group">
+                <label class="field-label" for="quality">质量档位</label>
+                <select class="select" id="quality">
+                  <option>精品 · 重点章节多轮打磨</option>
+                  <option>标准 · 日常章节稳定产出</option>
+                  <option>快速 · 先出草稿，后统一润色</option>
+                </select>
+              </div>
+              <div class="field-group">
+                <div class="range-head"><label class="field-label" for="budget">本任务预算上限</label><strong>¥ 180</strong></div>
+                <input type="range" id="budget" min="20" max="500" value="180" class="range">
+                <div class="range-scale"><span>¥20</span><span>¥500</span></div>
+              </div>
+              <div class="field-group">
+                <span class="field-label">审批方式</span>
+                <label class="check-row"><input type="radio" name="approval" checked><span>逐卷审批</span><small>推荐</small></label>
+                <label class="check-row"><input type="radio" name="approval"><span>逐章审批</span><small>质量优先</small></label>
+                <label class="check-row"><input type="radio" name="approval"><span>自动通过</span><small>仅限已锁定大纲</small></label>
+              </div>
+              <button class="btn btn-primary btn-block" data-action="toast" data-message="批量任务已加入队列"><i data-lucide="play"></i><span>开始生成</span></button>
+            </article>
+
+            <div class="batch-tasks">
+              <article class="panel task-panel">
+                <div class="panel-head"><div><span class="panel-kicker">运行中</span><h3>第二卷 · 第 48-60 章</h3></div><span class="badge live-badge">62%</span></div>
+                <div class="progress"><span style="width:62%"></span></div>
+                <div class="task-meta"><span>已完成 8 / 13 章</span><span>预计 24 分钟</span><span>已用 ¥ 96</span></div>
+                <div class="dag">
+                  <div class="dag-node done"><i data-lucide="check"></i><span>草拟</span></div><span class="dag-line done"></span>
+                  <div class="dag-node done"><i data-lucide="check"></i><span>连续性</span></div><span class="dag-line done"></span>
+                  <div class="dag-node active"><i data-lucide="loader-circle"></i><span>审阅中</span></div><span class="dag-line"></span>
+                  <div class="dag-node"><i data-lucide="database"></i><span>入正史</span></div>
+                </div>
+                <div class="task-actions"><button class="btn btn-ghost btn-small" data-action="toast" data-message="任务已暂停"><i data-lucide="pause"></i>暂停</button><button class="btn btn-ghost btn-small" data-action="toast" data-message="已打开任务详情"><i data-lucide="external-link"></i>详情</button></div>
+              </article>
+
+              <article class="panel task-panel">
+                <div class="panel-head"><div><span class="panel-kicker">排队中</span><h3>第三卷大纲</h3></div><span class="badge">等待中</span></div>
+                <div class="progress"><span style="width:0%"></span></div>
+                <div class="task-meta"><span>依赖第二卷完成</span><span>预算 ¥ 60</span></div>
+              </article>
+
+              <article class="panel task-panel">
+                <div class="panel-head"><div><span class="panel-kicker">已完成</span><h3>第一卷 · 完本审计</h3></div><span class="badge jade-badge">通过</span></div>
+                <div class="progress jade"><span style="width:100%"></span></div>
+                <div class="task-meta"><span>发现 2 个待确认项</span><span>用时 18 分钟</span><span>花费 ¥ 42</span></div>
+                <button class="text-btn small" data-page="changes">查看审计报告</button>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" data-page="changes">
+          <div class="page-head">
+            <div>
+              <p class="eyebrow">修改与版本</p>
+              <h1>改故事，不改历史</h1>
+              <p class="page-sub">已写部分锁定，大修拉平行版本；所有修改保留原因、影响与回滚点。</p>
+            </div>
+            <div class="head-actions">
+              <button class="btn btn-ghost" data-action="toast" data-message="已打开版本对比"><i data-lucide="columns-2"></i><span>版本对比</span></button>
+              <button class="btn btn-primary" data-action="toast" data-message="新建修改请求"><i data-lucide="plus"></i><span>新建修改</span></button>
+            </div>
+          </div>
+
+          <div class="change-layout">
+            <div class="change-main">
+              <article class="panel change-request">
+                <div class="change-head">
+                  <div><span class="panel-kicker">修改请求 CR-024</span><h2>把玄微真人改成沈砚父母之死的幕后黑手</h2><p>作者想法：让掌门从“守序者”变成“最终反派”，但前 47 章不能直接暴露。</p></div>
+                  <span class="badge alert-badge">结构性冲突</span>
+                </div>
+                <div class="change-meta"><span>发起人：林见鹿</span><span>时间：今天 14:08</span><span>原因：卷三需要更强的反派动机</span><span>目标分支：主线</span></div>
+                <div class="diff-box">
+                  <div class="diff-col"><span>原设定</span><p>玄微真人是太玄门掌门，正道魁首，暗中维持护山大阵。与沈砚父母之死无关。</p></div>
+                  <div class="diff-col new"><span>新设定</span><p>玄微真人是当年灭门案的决策者，以“守住天门”为理由牺牲了沈砚父母。他一直在寻找忘川书。</p></div>
+                </div>
+              </article>
+
+              <div class="impact-grid">
+                <article class="impact-card safe"><div class="impact-head"><span>安全</span><strong>12</strong></div><p>未写章节、背景设定、可追加的隐藏动机。</p><small>可直接应用</small></article>
+                <article class="impact-card repair"><div class="impact-head"><span>可修复</span><strong>3</strong></div><p>第 37、52、61 章的对话与内心戏，需要改写 8 处。</p><small>可给修改建议</small></article>
+                <article class="impact-card structural"><div class="impact-head"><span>结构性冲突</span><strong>2</strong></div><p>第 18 章掌门救下沈砚的动机、第 44 章掌门与血河宗的秘密交易。</p><small>必须拉平行版本</small></article>
+              </div>
+
+              <article class="panel impact-detail">
+                <div class="panel-head"><div><span class="panel-kicker">影响分析</span><h3>会波及哪些章节</h3></div><span class="badge">17 处</span></div>
+                <div class="affected-list">
+                  <div class="affected-item"><span class="chapter-no">18</span><div><strong>掌门救下沈砚</strong><p>原写法是真心相救，新设定下需要改成“确认忘川书是否在他身上”。</p></div><span class="badge alert-badge">冲突</span></div>
+                  <div class="affected-item"><span class="chapter-no">37</span><div><strong>掌门与沈砚夜谈</strong><p>可以保留表面台词，追加一句关于“记忆”的试探。</p></div><span class="badge gold-badge">可修复</span></div>
+                  <div class="affected-item"><span class="chapter-no">44</span><div><strong>掌门与血河宗的交易</strong><p>原设定是掌门不知情，新设定下需要改成他默许。</p></div><span class="badge alert-badge">冲突</span></div>
+                  <div class="affected-item"><span class="chapter-no">52</span><div><strong>沈砚对掌门的信任</strong><p>可以保留信任，但增加一层不安的伏笔。</p></div><span class="badge gold-badge">可修复</span></div>
+                </div>
+              </article>
+            </div>
+
+            <aside class="change-side">
+              <article class="panel decision-panel">
+                <div class="panel-head"><h3>你的选择</h3><span class="badge">需要决策</span></div>
+                <button class="decision-option recommended" data-action="toast" data-message="已从第 18 章拉出平行版本">
+                  <span class="decision-icon"><i data-lucide="git-branch"></i></span>
+                  <span><strong>从第 18 章拉平行版本</strong><small>保留主线，平行线重写掌门动机</small></span>
+                  <i data-lucide="chevron-right"></i>
+                </button>
+                <button class="decision-option" data-action="toast" data-message="已生成 8 处修复建议">
+                  <span class="decision-icon"><i data-lucide="wrench"></i></span>
+                  <span><strong>先看修复建议</strong><small>尝试不动主线，修补可修复的 3 章</small></span>
+                  <i data-lucide="chevron-right"></i>
+                </button>
+                <button class="decision-option" data-action="toast" data-message="修改请求已取消">
+                  <span class="decision-icon"><i data-lucide="x"></i></span>
+                  <span><strong>放弃这次修改</strong><small>保留当前主线设定</small></span>
+                  <i data-lucide="chevron-right"></i>
+                </button>
+              </article>
+
+              <article class="panel version-panel">
+                <div class="panel-head"><h3>版本线</h3><button class="text-btn small" data-action="toast" data-message="版本图已打开">全部</button></div>
+                <div class="branch-tree">
+                  <div class="branch-row"><span class="branch-dot main"></span><div><strong>主线</strong><small>当前 v12 · 第 47 章</small></div><span class="badge live-badge">当前</span></div>
+                  <div class="branch-row branch-indent"><span class="branch-line"></span><span class="branch-dot"></span><div><strong>v11 · 故事圣经</strong><small>昨天 18:06</small></div></div>
+                  <div class="branch-row branch-indent"><span class="branch-line"></span><span class="branch-dot"></span><div><strong>v10 · 第 47 章草稿</strong><small>今天 09:41</small></div></div>
+                  <div class="branch-row branch-fork"><span class="branch-dot alt"></span><div><strong>if · 掌门是黑手</strong><small>从 v9 / 第 18 章分出</small></div><span class="badge gold-badge">未应用</span></div>
+                </div>
+              </article>
+
+              <article class="panel compare-panel">
+                <div class="panel-head"><h3>并排比较</h3><span class="badge">第 18 章</span></div>
+                <div class="compare-box">
+                  <div><span>主线</span><p>“你活着，比什么都重要。”掌门把他从雪地里抱起来。</p></div>
+                  <div class="alt"><span>平行版本</span><p>“你身上……有他的味道。”掌门把他从雪地里抱起来，手指在他袖口停了一瞬。</p></div>
+                </div>
+                <button class="btn btn-ghost btn-block" data-action="toast" data-message="已打开完整对比"><i data-lucide="columns-2"></i><span>查看完整对比</span></button>
+              </article>
+            </aside>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <div class="modal-backdrop" id="export-modal" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="export-title">
+      <div class="modal-head">
+        <div><span class="panel-kicker">导出与发布</span><h2 id="export-title">把故事带出去</h2></div>
+        <button class="icon-btn" data-action="close-export" title="关闭"><i data-lucide="x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="field-group">
+          <span class="field-label">导出范围</span>
+          <div class="segmented">
+            <button class="seg active">当前卷</button>
+            <button class="seg">全书</button>
+            <button class="seg">自定义</button>
+          </div>
+        </div>
+        <div class="field-group">
+          <span class="field-label">文件格式</span>
+          <div class="format-grid">
+            <button class="format-card active"><i data-lucide="file-text"></i><strong>TXT</strong><small>纯文本</small></button>
+            <button class="format-card"><i data-lucide="file-code-2"></i><strong>Markdown</strong><small>保留结构</small></button>
+            <button class="format-card"><i data-lucide="file-type-2"></i><strong>DOCX</strong><small>投稿格式</small></button>
+            <button class="format-card"><i data-lucide="book-open"></i><strong>EPUB</strong><small>电子书</small></button>
+          </div>
+        </div>
+        <label class="check-row"><input type="checkbox" checked><span>包含故事圣经与设定附录</span></label>
+        <label class="check-row"><input type="checkbox"><span>包含章节批注与修改记录</span></label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-action="close-export">取消</button>
+        <button class="btn btn-primary" data-action="toast" data-message="导出任务已创建"><i data-lucide="download"></i><span>开始导出</span></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
