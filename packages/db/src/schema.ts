@@ -206,3 +206,55 @@ export type WorkRow = typeof works.$inferSelect;
 export type NewWorkRow = typeof works.$inferInsert;
 export type WorkBranchRow = typeof workBranches.$inferSelect;
 export type NewWorkBranchRow = typeof workBranches.$inferInsert;
+
+export const storyBibles = pgTable(
+  'story_bibles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    oneSentenceStory: text('one_sentence_story').notNull(),
+    protagonist: text('protagonist').notNull(),
+    worldIronLaw: text('world_iron_law').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('story_bibles_work_branch_unique').on(table.workId, table.branchId)],
+);
+
+export type StoryBibleRow = typeof storyBibles.$inferSelect;
+export type NewStoryBibleRow = typeof storyBibles.$inferInsert;
+
+export const chapterOutlines = pgTable(
+  'chapter_outlines',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    chapterNumber: integer('chapter_number').notNull(),
+    chapterGoal: text('chapter_goal').notNull(),
+    pov: text('pov').notNull(),
+    sceneBeats: jsonb('scene_beats').$type<string[]>().notNull(),
+    chapterEndHook: text('chapter_end_hook').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('chapter_outlines_work_branch_chapter_unique').on(
+      table.workId,
+      table.branchId,
+      table.chapterNumber,
+    ),
+  ],
+);
+
+export type ChapterOutlineRow = typeof chapterOutlines.$inferSelect;
+export type NewChapterOutlineRow = typeof chapterOutlines.$inferInsert;

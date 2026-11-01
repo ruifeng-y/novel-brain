@@ -9,6 +9,8 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { RedisModule } from './redis/redis.module';
 import { validateEnv } from './config/env';
+import { StoryPlanningController } from './planning/story-planning.controller';
+import { StoryPlanningModule } from './planning/story-planning.module';
 import { WorksController } from './works/works.controller';
 import { WorksModule } from './works/works.module';
 
@@ -23,6 +25,7 @@ import { WorksModule } from './works/works.module';
     AuthModule,
     AiModule,
     WorksModule,
+    StoryPlanningModule,
     HealthModule,
   ],
 })
@@ -30,6 +33,6 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
       .apply(cookieParser())
-      .forRoutes(AuthController, WorksController, ModelConfigsController);
+      .forRoutes(AuthController, WorksController, ModelConfigsController, StoryPlanningController);
   }
 }
