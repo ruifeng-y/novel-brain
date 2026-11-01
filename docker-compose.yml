@@ -124,6 +124,7 @@ services:
       MINIO_BUCKET: novel-brain
       SESSION_SECRET: development-session-secret
       MODEL_KEY_ENCRYPTION_KEY: ABEiM0RVZneImaq7zN3u/wARIjNEVWZ3iJmqu8zd7v8=
+      AI_PROVIDER: ${AI_PROVIDER:-deepseek}
     depends_on:
       api:
         condition: service_healthy

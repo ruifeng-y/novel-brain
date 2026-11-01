@@ -15,6 +15,7 @@ export const envSchema = z.object({
   MINIO_BUCKET: z.string().default('novel-brain'),
   SESSION_SECRET: z.string().min(16),
   MODEL_KEY_ENCRYPTION_KEY: z.string().min(1),
+  AI_PROVIDER: z.enum(['deepseek', 'fake']).default('deepseek'),
   SMTP_HOST: z.string().default('localhost'),
   SMTP_PORT: z.coerce.number().int().positive().default(1025),
   SMTP_USER: z.string().optional(),

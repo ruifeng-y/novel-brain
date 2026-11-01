@@ -57,6 +57,20 @@
       "when": 1793547873639,
       "tag": "0007_brown_psynapse",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793550711168,
+      "tag": "0008_faulty_wendell_rand",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793550955840,
+      "tag": "0009_outstanding_scream",
+      "breakpoints": true
     }
   ]
 }

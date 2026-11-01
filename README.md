@@ -37,6 +37,17 @@ pnpm db:seed
 pnpm dev
 ```
 
+正文生成的 E2E 测试使用确定性 fake provider，不调用真实 DeepSeek：
+
+```powershell
+$env:AI_PROVIDER="fake"
+docker compose up -d --build api worker web
+pnpm test:e2e
+```
+
+如果本机 Playwright 浏览器下载不可用，可以通过 `PLAYWRIGHT_EXECUTABLE_PATH`
+指向现有的 Chromium 可执行文件。
+
 ## 常用命令
 
 ```bash
@@ -59,6 +70,7 @@ pnpm db:seed
 - 本地验证码邮件会进入 Mailpit。
 - Drizzle 迁移和 seed 可执行。
 - Worker 有一个 BullMQ 示例任务，写入 `system_jobs`。
+- 作者可从章纲生成整章，在写作台流式查看、编辑并保存章节版本；失败时保留草稿。
 - Vitest、Playwright、lint、typecheck 和 CI 可用。
 
 ## 文档
