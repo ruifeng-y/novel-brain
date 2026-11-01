@@ -1,100 +1,70 @@
 import Link from 'next/link';
 
-const cards = [
+const promises = [
   {
-    label: '接口',
-    value: '创作服务',
-    detail: '健康检查、接口文档和数据库连接',
+    label: '故事有根',
+    detail: '人物、地点、规则和关系始终有据可查，不会写着写着变了样。',
   },
   {
-    label: '后台任务',
-    value: '任务队列',
-    detail: '示例任务会写入数据库',
+    label: '线索有回响',
+    detail: '伏笔、承诺和人物弧光放在同一处，重要的线不会被忘记。',
   },
   {
-    label: 'Data',
-    value: 'Postgres + MinIO',
-    detail: '数据库和对象存储已接入',
+    label: '修改有退路',
+    detail: '每一次调整都留有痕迹，想回头时不用重写整本书。',
   },
 ];
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen px-6 py-10 lg:px-12">
-      <div className="mx-auto flex max-w-6xl flex-col gap-10">
-        <header className="flex flex-col gap-5 border-b border-[var(--line)] pb-8 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="mb-3 text-xs font-semibold tracking-[0.18em] text-[var(--muted)]">
-              NOVELBRAIN · M0 PLATFORM FOUNDATION
-            </p>
-            <h1 className="font-serif text-5xl font-bold tracking-tight text-[var(--foreground)]">
-              NovelBrain
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--muted)]">
-              面向个人作者的长篇 AI 创作平台。M0 平台底座已经把 Web、API、Worker、
-              Postgres、Redis 和对象存储接成一条可启动的链路。
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Link
-              className="rounded-md bg-[var(--foreground)] px-4 py-2 text-sm text-white"
-              href="/health"
-            >
-              查看系统健康
-            </Link>
-            <a
-              className="rounded-md border border-[var(--line)] bg-white px-4 py-2 text-sm"
-              href="/api/v1/health"
-            >
-              API 健康接口
-            </a>
-          </div>
-        </header>
+    <main className="home-shell">
+      <header className="home-header">
+        <Link className="home-brand" href="/">
+          NovelBrain
+        </Link>
+        <nav className="home-nav" aria-label="账号">
+          <Link href="/login">登录</Link>
+          <Link className="home-nav-primary" href="/register">
+            开始写作
+          </Link>
+        </nav>
+      </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
-          {cards.map((card) => (
-            <article
-              className="rounded-lg border border-[var(--line)] bg-white p-5 shadow-sm"
-              key={card.label}
-            >
-              <p className="text-xs font-semibold tracking-[0.12em] text-[var(--muted)]">
-                {card.label}
-              </p>
-              <h2 className="mt-3 text-xl font-semibold">{card.value}</h2>
-              <p className="mt-2 text-sm leading-6 text-[var(--muted)]">{card.detail}</p>
-            </article>
-          ))}
-        </section>
+      <section className="home-hero">
+        <p className="home-kicker">写给认真写长篇的人</p>
+        <h1>
+          把故事写到最后一行，
+          <br />
+          也让它始终站得住。
+        </h1>
+        <p className="home-lead">
+          从一句想法开始，照看人物的选择、世界的规则和每一次伏笔。 NovelBrain
+          陪你把漫长的一本书写到完成。
+        </p>
+        <div className="home-actions">
+          <Link className="primary-button home-primary" href="/register">
+            创建作者账号
+          </Link>
+          <Link className="home-secondary" href="/login">
+            已有账号，直接登录
+          </Link>
+        </div>
+      </section>
 
-        <section className="rounded-lg border border-[var(--line)] bg-white p-6">
-          <p className="text-xs font-semibold tracking-[0.12em] text-[var(--muted)]">
-            M0 平台底座
-          </p>
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
-            <div>
-              <h2 className="text-lg font-semibold">已经接好的</h2>
-              <ul className="mt-3 space-y-2 text-sm text-[var(--muted)]">
-                <li>邮箱验证码注册和登录的接口位置</li>
-                <li>作品与分支的数据入口</li>
-                <li>自带模型 Key 的配置位置</li>
-                <li>创作与后台任务的共享契约</li>
-              </ul>
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">下一步</h2>
-              <p className="mt-3 text-sm leading-7 text-[var(--muted)]">
-                M0 的下一张票是邮箱验证码注册与登录。随后是作品创建、DeepSeek 配置、
-                最小故事圣经、单章生成和事实确认。
-              </p>
-            </div>
-          </div>
-        </section>
+      <section className="home-promises" aria-label="写作支持">
+        {promises.map((promise, index) => (
+          <article key={promise.label}>
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <h2>{promise.label}</h2>
+            <p>{promise.detail}</p>
+          </article>
+        ))}
+      </section>
 
-        <footer className="flex flex-col gap-2 border-t border-[var(--line)] pt-6 text-xs text-[var(--muted)] md:flex-row md:items-center md:justify-between">
-          <span>NovelBrain V1 · M0 walking skeleton</span>
-          <span>M0 平台底座 · 可启动、可迁移、可观测</span>
-        </footer>
-      </div>
+      <footer className="home-footer">
+        <span>NovelBrain</span>
+        <span>为长篇创作留出足够的空间</span>
+      </footer>
     </main>
   );
 }

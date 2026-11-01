@@ -129,7 +129,7 @@ infra/
 关键接口：
 
 ```text
-POST /api/v1/auth/register/send-code
+POST /api/v1/auth/send-code
 POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/logout

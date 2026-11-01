@@ -15,6 +15,20 @@
       "when": 1793538575798,
       "tag": "0001_outgoing_plazm",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793539803350,
+      "tag": "0002_fluffy_black_crow",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793540188014,
+      "tag": "0003_lovely_madrox",
+      "breakpoints": true
     }
   ]
 }

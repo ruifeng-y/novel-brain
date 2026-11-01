@@ -18,14 +18,19 @@ docker compose up --build
 - API 健康检查：http://localhost/api/v1/health
 - API 就绪检查：http://localhost/api/v1/health/ready
 - Swagger：http://localhost/api/docs
+- 邮件收件箱（Mailpit）：http://localhost:8025
 - MinIO 控制台：http://localhost:9001
 
 ## 本地开发
 
 ```bash
 pnpm install
-docker compose up -d postgres redis minio
+docker compose up -d postgres redis mailpit minio
 $env:DATABASE_URL="postgres://novel:novel@localhost:5432/novel"
+$env:SESSION_SECRET="development-session-secret"
+$env:SMTP_HOST="localhost"
+$env:SMTP_PORT="1025"
+$env:SMTP_FROM="noreply@novelbrain.local"
 pnpm db:migrate
 pnpm db:seed
 pnpm dev
@@ -48,6 +53,8 @@ pnpm db:seed
 
 - Web、API、Worker、Postgres、Redis、MinIO 可启动。
 - API 有存活和就绪检查。
+- 邮箱验证码注册、密码登录、Cookie 会话和退出所有设备可用。
+- 本地验证码邮件会进入 Mailpit。
 - Drizzle 迁移和 seed 可执行。
 - Worker 有一个 BullMQ 示例任务，写入 `system_jobs`。
 - Vitest、Playwright、lint、typecheck 和 CI 可用。
