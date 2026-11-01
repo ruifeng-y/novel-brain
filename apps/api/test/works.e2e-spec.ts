@@ -56,6 +56,8 @@ describe('works API', () => {
     process.env.REDIS_HOST = '127.0.0.1';
     process.env.REDIS_PORT = '6379';
     process.env.SESSION_SECRET = 'test-session-secret-at-least-16-characters';
+    process.env.MODEL_KEY_ENCRYPTION_KEY =
+      '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
     passwordHash = await hash('correct horse battery staple', {
       algorithm: Algorithm.Argon2id,
       memoryCost: 19_456,

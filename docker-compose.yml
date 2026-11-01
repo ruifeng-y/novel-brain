@@ -79,6 +79,7 @@ services:
       MINIO_SECRET_KEY: minio123
       MINIO_BUCKET: novel-brain
       SESSION_SECRET: development-session-secret
+      MODEL_KEY_ENCRYPTION_KEY: ABEiM0RVZneImaq7zN3u/wARIjNEVWZ3iJmqu8zd7v8=
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       SMTP_FROM: noreply@novelbrain.local
@@ -122,6 +123,7 @@ services:
       MINIO_SECRET_KEY: minio123
       MINIO_BUCKET: novel-brain
       SESSION_SECRET: development-session-secret
+      MODEL_KEY_ENCRYPTION_KEY: ABEiM0RVZneImaq7zN3u/wARIjNEVWZ3iJmqu8zd7v8=
     depends_on:
       api:
         condition: service_healthy

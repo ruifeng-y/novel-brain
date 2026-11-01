@@ -63,6 +63,9 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         </Link>
         <div className="workspace-account">
           <span>{state.user.displayName}</span>
+          <Link className="text-button" href="/workspace/settings">
+            模型设置
+          </Link>
           <Link className="text-button" href="/workspace">
             返回作品列表
           </Link>
