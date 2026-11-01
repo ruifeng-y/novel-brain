@@ -10,5 +10,6 @@ import { SessionAuthGuard } from './session-auth.guard';
   imports: [DatabaseModule, RedisModule, MailModule],
   controllers: [AuthController],
   providers: [AuthService, SessionAuthGuard],
+  exports: [AuthService, SessionAuthGuard],
 })
 export class AuthModule {}

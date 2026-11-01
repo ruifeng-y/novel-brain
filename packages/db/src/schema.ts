@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  boolean,
   index,
   integer,
   jsonb,
@@ -109,3 +110,68 @@ export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type SessionRow = typeof sessions.$inferSelect;
 export type NewSessionRow = typeof sessions.$inferInsert;
+
+export const workStatusEnum = pgEnum('work_status', [
+  'preparing',
+  'serializing',
+  'paused',
+  'completed',
+  'archived',
+]);
+
+export const workBranchStatusEnum = pgEnum('work_branch_status', ['active', 'archived']);
+
+export const works = pgTable(
+  'works',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    penName: text('pen_name').notNull(),
+    genrePack: text('genre_pack').notNull(),
+    scale: text('scale').notNull(),
+    targetPlatform: text('target_platform').notNull(),
+    status: workStatusEnum('status').notNull().default('preparing'),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('works_user_status_updated_idx').on(table.userId, table.status, table.updatedAt),
+  ],
+);
+
+export const workBranches = pgTable(
+  'work_branches',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    isMain: boolean('is_main').notNull().default(false),
+    parentBranchId: uuid('parent_branch_id'),
+    baseCommitId: uuid('base_commit_id'),
+    status: workBranchStatusEnum('status').notNull().default('active'),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('work_branches_work_id_name_unique').on(table.workId, table.name),
+    uniqueIndex('work_branches_one_main_unique')
+      .on(table.workId)
+      .where(sql`${table.isMain} = true`),
+    index('work_branches_work_status_idx').on(table.workId, table.status),
+  ],
+);
+
+export type WorkRow = typeof works.$inferSelect;
+export type NewWorkRow = typeof works.$inferInsert;
+export type WorkBranchRow = typeof workBranches.$inferSelect;
+export type NewWorkBranchRow = typeof workBranches.$inferInsert;
