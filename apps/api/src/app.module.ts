@@ -1,6 +1,8 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
+import { AiModule } from './ai/ai.module';
+import { ModelConfigsController } from './ai/model-configs.controller';
 import { AuthModule } from './auth/auth.module';
 import { AuthController } from './auth/auth.controller';
 import { DatabaseModule } from './database/database.module';
@@ -19,12 +21,15 @@ import { WorksModule } from './works/works.module';
     DatabaseModule,
     RedisModule,
     AuthModule,
+    AiModule,
     WorksModule,
     HealthModule,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(cookieParser()).forRoutes(AuthController, WorksController);
+    consumer
+      .apply(cookieParser())
+      .forRoutes(AuthController, WorksController, ModelConfigsController);
   }
 }

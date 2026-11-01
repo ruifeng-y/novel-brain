@@ -28,6 +28,7 @@ pnpm install
 docker compose up -d postgres redis mailpit minio
 $env:DATABASE_URL="postgres://novel:novel@localhost:5432/novel"
 $env:SESSION_SECRET="development-session-secret"
+$env:MODEL_KEY_ENCRYPTION_KEY="ABEiM0RVZneImaq7zN3u/wARIjNEVWZ3iJmqu8zd7v8="
 $env:SMTP_HOST="localhost"
 $env:SMTP_PORT="1025"
 $env:SMTP_FROM="noreply@novelbrain.local"
@@ -54,6 +55,7 @@ pnpm db:seed
 - Web、API、Worker、Postgres、Redis、MinIO 可启动。
 - API 有存活和就绪检查。
 - 邮箱验证码注册、密码登录、Cookie 会话和退出所有设备可用。
+- 作者可保存加密的 DeepSeek 模型配置，并为规划、正文和校验分配用途。
 - 本地验证码邮件会进入 Mailpit。
 - Drizzle 迁移和 seed 可执行。
 - Worker 有一个 BullMQ 示例任务，写入 `system_jobs`。

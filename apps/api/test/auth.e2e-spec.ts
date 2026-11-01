@@ -68,6 +68,8 @@ describe('email authentication API', () => {
     process.env.REDIS_HOST = '127.0.0.1';
     process.env.REDIS_PORT = '6379';
     process.env.SESSION_SECRET = 'test-session-secret-at-least-16-characters';
+    process.env.MODEL_KEY_ENCRYPTION_KEY =
+      '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff';
     process.env.SMTP_HOST = '127.0.0.1';
     process.env.SMTP_PORT = '1025';
     process.env.SMTP_FROM = 'noreply@novelbrain.local';

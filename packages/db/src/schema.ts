@@ -111,6 +111,37 @@ export type NewUserRow = typeof users.$inferInsert;
 export type SessionRow = typeof sessions.$inferSelect;
 export type NewSessionRow = typeof sessions.$inferInsert;
 
+export const modelPurposeEnum = pgEnum('model_purpose', ['planning', 'prose', 'check']);
+
+export const modelConfigs = pgTable(
+  'model_configs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    provider: text('provider').notNull().default('deepseek'),
+    baseUrl: text('base_url').notNull(),
+    encryptedApiKey: text('encrypted_api_key').notNull(),
+    model: text('model').notNull(),
+    purpose: modelPurposeEnum('purpose').notNull().default('prose'),
+    isDefault: boolean('is_default').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('model_configs_user_updated_idx').on(table.userId, table.updatedAt),
+    uniqueIndex('model_configs_user_purpose_unique').on(table.userId, table.purpose),
+    uniqueIndex('model_configs_one_default_unique')
+      .on(table.userId)
+      .where(sql`${table.isDefault} = true`),
+  ],
+);
+
+export type ModelConfigRow = typeof modelConfigs.$inferSelect;
+export type NewModelConfigRow = typeof modelConfigs.$inferInsert;
+
 export const workStatusEnum = pgEnum('work_status', [
   'preparing',
   'serializing',
