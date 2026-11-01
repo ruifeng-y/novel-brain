@@ -14,6 +14,12 @@ export const envSchema = z.object({
   MINIO_SECRET_KEY: z.string().default('minio123'),
   MINIO_BUCKET: z.string().default('novel-brain'),
   SESSION_SECRET: z.string().min(16),
+  SMTP_HOST: z.string().default('localhost'),
+  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  SMTP_FROM: z.string().min(1).default('noreply@novelbrain.local'),
+  COOKIE_SECURE: z.enum(['true', 'false']).default('false'),
 });
 
 export type Env = z.infer<typeof envSchema>;
