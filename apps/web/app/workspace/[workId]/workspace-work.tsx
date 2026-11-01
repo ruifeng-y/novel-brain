@@ -4,11 +4,24 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../lib/auth-api';
+import {
+  loadChapterOutline,
+  loadStoryBible,
+  type ChapterOutline,
+  type StoryBible,
+} from '../../../lib/story-planning-api';
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
+import { StoryPlanningPanel } from './story-planning-panel';
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'ready'; user: User; work: Work }
+  | {
+      status: 'ready';
+      user: User;
+      work: Work;
+      storyBible: StoryBible | null;
+      chapterOutline: ChapterOutline | null;
+    }
   | { status: 'error'; message: string; notFound: boolean };
 
 export function WorkspaceWork({ workId }: { workId: string }) {
@@ -17,7 +30,18 @@ export function WorkspaceWork({ workId }: { workId: string }) {
 
   useEffect(() => {
     Promise.all([apiRequest<User>('/api/v1/auth/me'), apiRequest<Work>(`/api/v1/works/${workId}`)])
-      .then(([user, work]) => setState({ status: 'ready', user, work }))
+      .then(async ([user, work]) => {
+        if (!work.mainBranch) {
+          setState({ status: 'ready', user, work, storyBible: null, chapterOutline: null });
+          return;
+        }
+
+        const [storyBible, chapterOutline] = await Promise.all([
+          loadStoryBible(work.id, work.mainBranch.id),
+          loadChapterOutline(work.id, work.mainBranch.id, 1),
+        ]);
+        setState({ status: 'ready', user, work, storyBible, chapterOutline });
+      })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
           router.replace('/login');
@@ -104,6 +128,27 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         </div>
       </section>
 
+      <section className="planning-board" aria-labelledby="planning-board-title">
+        <div className="planning-board-heading">
+          <div>
+            <p className="workspace-step">创作骨架</p>
+            <h2 id="planning-board-title">先把故事站稳</h2>
+          </div>
+          <p>故事圣经定方向，第一章章纲定落点。保存后随时回来接着写。</p>
+        </div>
+
+        {state.storyBible && state.chapterOutline && work.mainBranch ? (
+          <StoryPlanningPanel
+            branchId={work.mainBranch.id}
+            chapterOutline={state.chapterOutline}
+            storyBible={state.storyBible}
+            workId={work.id}
+          />
+        ) : (
+          <p className="planning-unavailable">这个故事暂时还没有可编辑的创作线。</p>
+        )}
+      </section>
+
       <div className="work-detail-grid">
         <section className="work-detail-section">
           <p className="workspace-step">作品信息</p>
@@ -131,7 +176,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         <section className="work-readiness">
           <p className="workspace-step">当前状态</p>
           <h2>主创作线已就绪</h2>
-          <p>作品已经建立。接下来可以准备故事圣经、大纲和第一章。</p>
+          <p>作品已经建立。故事圣经和第一章章纲填好后，就可以继续准备正文。</p>
         </section>
       </div>
     </main>
