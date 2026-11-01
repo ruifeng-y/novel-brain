@@ -7,6 +7,8 @@ import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
 import { RedisModule } from './redis/redis.module';
 import { validateEnv } from './config/env';
+import { WorksController } from './works/works.controller';
+import { WorksModule } from './works/works.module';
 
 @Module({
   imports: [
@@ -17,11 +19,12 @@ import { validateEnv } from './config/env';
     DatabaseModule,
     RedisModule,
     AuthModule,
+    WorksModule,
     HealthModule,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(cookieParser()).forRoutes(AuthController);
+    consumer.apply(cookieParser()).forRoutes(AuthController, WorksController);
   }
 }

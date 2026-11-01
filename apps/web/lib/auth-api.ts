@@ -56,6 +56,12 @@ export function friendlyError(error: unknown): string {
     if (error.code === 'EMAIL_ALREADY_REGISTERED') {
       return '这个邮箱已经注册，可以直接登录。';
     }
+    if (error.code === 'VALIDATION_ERROR') {
+      return '请补全作品信息后再试。';
+    }
+    if (error.code === 'WORK_NOT_FOUND') {
+      return '没有找到这部作品，它可能已被删除。';
+    }
   }
 
   return error instanceof Error ? error.message : '请求失败，请稍后再试。';

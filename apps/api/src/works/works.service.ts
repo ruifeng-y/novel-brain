@@ -1,0 +1,137 @@
+import { HttpStatus, Injectable } from '@nestjs/common';
+import { WORK_STATUS_LABELS, type CreateWorkInput } from '@novel/contracts';
+import { workBranches, works, type WorkBranchRow, type WorkRow } from '@novel/db';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { DatabaseService } from '../database/database.service';
+import { worksError } from './works.errors';
+
+type WorkResponse = {
+  id: string;
+  title: string;
+  penName: string;
+  genrePack: string;
+  scale: string;
+  targetPlatform: string;
+  status: WorkRow['status'];
+  statusLabel: string;
+  wordCount: number;
+  progressPercent: number;
+  lastEditedAt: string;
+  createdAt: string;
+  mainBranch: {
+    id: string;
+    name: string;
+    isMain: boolean;
+  } | null;
+};
+
+@Injectable()
+export class WorksService {
+  constructor(private readonly database: DatabaseService) {}
+
+  async list(userId: string): Promise<{ items: WorkResponse[] }> {
+    const workRows = await this.database.db
+      .select()
+      .from(works)
+      .where(and(eq(works.userId, userId), isNull(works.deletedAt)))
+      .orderBy(desc(works.updatedAt));
+
+    if (workRows.length === 0) {
+      return { items: [] };
+    }
+
+    const branchRows = await this.database.db
+      .select()
+      .from(workBranches)
+      .where(
+        and(
+          inArray(
+            workBranches.workId,
+            workRows.map((work) => work.id),
+          ),
+          eq(workBranches.isMain, true),
+        ),
+      );
+    const branchesByWorkId = new Map(branchRows.map((branch) => [branch.workId, branch]));
+
+    return {
+      items: workRows.map((work) => this.toResponse(work, branchesByWorkId.get(work.id) ?? null)),
+    };
+  }
+
+  async create(userId: string, input: CreateWorkInput): Promise<WorkResponse> {
+    const created = await this.database.db.transaction(async (tx) => {
+      const [work] = await tx
+        .insert(works)
+        .values({
+          userId,
+          title: input.title,
+          penName: input.penName,
+          genrePack: input.genrePack,
+          scale: input.scale,
+          targetPlatform: input.targetPlatform,
+          status: 'preparing',
+        })
+        .returning();
+
+      const [mainBranch] = await tx
+        .insert(workBranches)
+        .values({
+          workId: work.id,
+          name: 'main',
+          isMain: true,
+          status: 'active',
+          createdBy: userId,
+        })
+        .returning();
+
+      return { work, mainBranch };
+    });
+
+    return this.toResponse(created.work, created.mainBranch);
+  }
+
+  async get(userId: string, workId: string): Promise<WorkResponse> {
+    const [work] = await this.database.db
+      .select()
+      .from(works)
+      .where(and(eq(works.id, workId), eq(works.userId, userId), isNull(works.deletedAt)))
+      .limit(1);
+
+    if (!work) {
+      throw worksError(HttpStatus.NOT_FOUND, 'WORK_NOT_FOUND', 'Work not found');
+    }
+
+    const [mainBranch] = await this.database.db
+      .select()
+      .from(workBranches)
+      .where(and(eq(workBranches.workId, work.id), eq(workBranches.isMain, true)))
+      .limit(1);
+
+    return this.toResponse(work, mainBranch ?? null);
+  }
+
+  private toResponse(work: WorkRow, mainBranch: WorkBranchRow | null): WorkResponse {
+    return {
+      id: work.id,
+      title: work.title,
+      penName: work.penName,
+      genrePack: work.genrePack,
+      scale: work.scale,
+      targetPlatform: work.targetPlatform,
+      status: work.status,
+      statusLabel: WORK_STATUS_LABELS[work.status],
+      wordCount: 0,
+      progressPercent: 0,
+      lastEditedAt: work.updatedAt.toISOString(),
+      createdAt: work.createdAt.toISOString(),
+      mainBranch: mainBranch
+        ? {
+            id: mainBranch.id,
+            name: mainBranch.name,
+            isMain: mainBranch.isMain,
+          }
+        : null,
+    };
+  }
+}
