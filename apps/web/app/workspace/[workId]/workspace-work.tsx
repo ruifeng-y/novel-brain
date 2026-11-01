@@ -87,6 +87,9 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         </Link>
         <div className="workspace-account">
           <span>{state.user.displayName}</span>
+          <Link className="text-button" href={`/workspace/${work.id}/write`}>
+            写作台
+          </Link>
           <Link className="text-button" href="/workspace/settings">
             模型设置
           </Link>
@@ -177,6 +180,9 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           <p className="workspace-step">当前状态</p>
           <h2>主创作线已就绪</h2>
           <p>作品已经建立。故事圣经和第一章章纲填好后，就可以继续准备正文。</p>
+          <Link className="secondary-button back-button" href={`/workspace/${work.id}/write`}>
+            进入写作台
+          </Link>
         </section>
       </div>
     </main>
