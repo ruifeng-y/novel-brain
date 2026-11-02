@@ -9,6 +9,7 @@ export const GENRE_PACK_LABELS = {
 
 export const workGenrePackSchema = z.enum(['xianxia', 'history', 'urban']);
 export const workScaleSchema = z.enum(['short', 'medium', 'long', 'epic']);
+export const workCreationModeSchema = z.enum(['idea', 'blank']);
 export const workStatusSchema = z.enum([
   'preparing',
   'serializing',
@@ -17,17 +18,66 @@ export const workStatusSchema = z.enum([
   'archived',
 ]);
 
+export const WORK_CREATION_MODE_LABELS: Record<z.infer<typeof workCreationModeSchema>, string> = {
+  idea: '一句话想法',
+  blank: '空白作品',
+};
+
+export const WORK_UPDATE_CADENCE_OPTIONS = [
+  '日更',
+  '每周三更',
+  '每周两更',
+  '周更',
+  '不定期更新',
+] as const;
+
+const workTagsSchema = z
+  .array(z.string().trim().min(1).max(30))
+  .max(20)
+  .transform((tags) => Array.from(new Set(tags.map((tag) => tag.trim()).filter(Boolean))));
+
+export function deriveWorkTitleFromIdea(idea: string): string {
+  const firstClause = idea
+    .trim()
+    .split(/[。！？!?\n，,；;]/)[0]
+    ?.trim();
+  return (firstClause || '未命名作品').slice(0, 24);
+}
+
 export const createWorkSchema = z
   .object({
-    title: z.string().trim().min(1).max(120),
+    title: z.string().trim().min(1).max(120).optional(),
     penName: z.string().trim().min(1).max(60).optional(),
     penNameId: z.string().uuid().optional(),
     genrePack: workGenrePackSchema,
     genreVariant: historyVariantSchema.optional(),
     scale: workScaleSchema,
     targetPlatform: z.string().trim().min(1).max(80),
+    creationMode: workCreationModeSchema.optional().default('blank'),
+    idea: z.string().trim().max(5_000).optional().default(''),
+    targetReader: z.string().trim().max(200).optional().default(''),
+    chapterWordCount: z.coerce.number().int().min(500).max(20_000).optional().default(3_000),
+    updateCadence: z.string().trim().min(1).max(60).optional().default('日更'),
+    styleSamples: z.string().trim().max(20_000).optional().default(''),
+    taboos: z.string().trim().max(2_000).optional().default(''),
+    synopsis: z.string().trim().max(4_000).optional().default(''),
+    tags: workTagsSchema.optional().default([]),
   })
   .superRefine((value, context) => {
+    if (value.creationMode === 'idea' && !value.idea) {
+      context.addIssue({
+        code: 'custom',
+        path: ['idea'],
+        message: 'Write a one-line story idea',
+      });
+    }
+    if (value.creationMode !== 'idea' && !value.title) {
+      context.addIssue({
+        code: 'custom',
+        path: ['title'],
+        message: 'Give the work a title',
+      });
+    }
     if (!value.penName && !value.penNameId) {
       context.addIssue({
         code: 'custom',
@@ -95,6 +145,13 @@ export const updateWorkSchema = z
     genreVariant: historyVariantSchema.optional().nullable(),
     scale: workScaleSchema.optional(),
     targetPlatform: z.string().trim().min(1).max(80).optional(),
+    targetReader: z.string().trim().max(200).optional(),
+    chapterWordCount: z.coerce.number().int().min(500).max(20_000).optional(),
+    updateCadence: z.string().trim().min(1).max(60).optional(),
+    styleSamples: z.string().trim().max(20_000).optional(),
+    taboos: z.string().trim().max(2_000).optional(),
+    synopsis: z.string().trim().max(4_000).optional(),
+    tags: workTagsSchema.optional(),
     status: workStatusSchema.optional(),
     changeReason: z.string().trim().max(500).optional(),
   })
@@ -138,6 +195,7 @@ export const IMPORT_FORMAT_LABELS = {
 export type CreateWorkInput = z.infer<typeof createWorkSchema>;
 export type WorkGenrePack = z.infer<typeof workGenrePackSchema>;
 export type WorkScale = z.infer<typeof workScaleSchema>;
+export type WorkCreationMode = z.infer<typeof workCreationModeSchema>;
 export type WorkStatus = z.infer<typeof workStatusSchema>;
 export type WorkView = z.infer<typeof workViewSchema>;
 export type WorkSort = z.infer<typeof workSortSchema>;

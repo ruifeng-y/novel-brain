@@ -266,6 +266,42 @@ describe('publish assistance API', () => {
     });
   });
 
+  it('uses work-level synopsis, tags, and cover in the reader preview', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '天门残卷');
+    await seedPublishBook(app, work.id, work.mainBranchId, author.userId);
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    );
+
+    await author.agent
+      .patch(`/api/v1/works/${work.id}`)
+      .send({
+        synopsis: '边城剑客用一段段记忆换回天门后的真相。',
+        tags: ['记忆代价', '边城', '群像'],
+      })
+      .expect(200);
+    await author.agent
+      .post(`/api/v1/works/${work.id}/cover`)
+      .attach('cover', png, { filename: 'cover.png', contentType: 'image/png' })
+      .expect(201);
+
+    const response = await author.agent
+      .get(publishPath(work.id, work.mainBranchId, 'preview'))
+      .expect(200);
+
+    expect(response.body).toMatchObject({
+      synopsis: '边城剑客用一段段记忆换回天门后的真相。',
+      coverUrl: expect.stringMatching(
+        new RegExp(`^/api/v1/works/${work.id}/cover/content\\?v=\\d+$`),
+      ),
+    });
+    expect(response.body.tags).toEqual(
+      expect.arrayContaining(['仙侠', '记忆代价', '边城', '群像']),
+    );
+  });
+
   it('runs every publish check and returns a copyable report', async () => {
     const author = await createAuthor(app, passwordHash);
     const work = await createWork(author.agent, '天门残卷');

@@ -11,8 +11,10 @@ import {
   GENRE_LABELS,
   SCALE_LABELS,
   TARGET_PLATFORMS,
+  UPDATE_CADENCE_OPTIONS,
   formatWorkDate,
   type Work,
+  type WorkCreationMode,
   type WorkListResponse,
   type WorkListFilters,
   type WorkStatus,
@@ -65,6 +67,7 @@ export function WorkspaceHome() {
   const [recentDays, setRecentDays] = useState('');
   const [sort, setSort] = useState<WorkListFilters['sort']>('updated_desc');
   const [mode, setMode] = useState<CreateMode>('create');
+  const [entryMode, setEntryMode] = useState<WorkCreationMode>('blank');
   const [genrePack, setGenrePack] = useState<'xianxia' | 'history' | 'urban'>('xianxia');
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState('');
@@ -179,7 +182,7 @@ export function WorkspaceHome() {
     try {
       const work = await apiRequest<Work>('/api/v1/works', {
         method: 'POST',
-        body: JSON.stringify(workPayload(form)),
+        body: JSON.stringify(workPayload(form, entryMode)),
       });
       router.push(`/workspace/${work.id}`);
     } catch (error) {
@@ -213,7 +216,7 @@ export function WorkspaceHome() {
         {
           method: 'POST',
           body: JSON.stringify({
-            ...workPayload(form),
+            ...workPayload(form, 'blank'),
             fileName: file.name,
             ...manuscript,
           }),
@@ -512,22 +515,31 @@ export function WorkspaceHome() {
               {works.map((work) => (
                 <article className="work-card" key={work.id}>
                   <div className="work-card-heading">
-                    <div>
-                      <p className="work-card-genre">
-                        {GENRE_LABELS[work.genrePack] ?? work.genrePack}
-                        {work.genreVariantLabel ? ` · ${work.genreVariantLabel}` : ''}
-                      </p>
-                      {view === 'trash' ? (
-                        <h3>{work.title}</h3>
-                      ) : (
-                        <Link
-                          aria-label={`打开《${work.title}》`}
-                          className="work-card-title-link"
-                          href={`/workspace/${work.id}`}
-                        >
+                    <div className="work-card-heading-main">
+                      {work.coverUrl && view !== 'trash' ? (
+                        <img
+                          alt={`《${work.title}》封面`}
+                          className="work-card-cover"
+                          src={work.coverUrl}
+                        />
+                      ) : null}
+                      <div>
+                        <p className="work-card-genre">
+                          {GENRE_LABELS[work.genrePack] ?? work.genrePack}
+                          {work.genreVariantLabel ? ` · ${work.genreVariantLabel}` : ''}
+                        </p>
+                        {view === 'trash' ? (
                           <h3>{work.title}</h3>
-                        </Link>
-                      )}
+                        ) : (
+                          <Link
+                            aria-label={`打开《${work.title}》`}
+                            className="work-card-title-link"
+                            href={`/workspace/${work.id}`}
+                          >
+                            <h3>{work.title}</h3>
+                          </Link>
+                        )}
+                      </div>
                     </div>
                     <span className={`work-status work-status-${work.status}`}>
                       {work.statusLabel}
@@ -537,6 +549,13 @@ export function WorkspaceHome() {
                     {work.penName} · {SCALE_LABELS[work.scale] ?? work.scale} ·{' '}
                     {work.targetPlatform}
                   </p>
+                  {work.tags.length > 0 ? (
+                    <ul className="work-card-tags" aria-label="作品标签">
+                      {work.tags.slice(0, 5).map((tag) => (
+                        <li key={tag}>{tag}</li>
+                      ))}
+                    </ul>
+                  ) : null}
                   <div className="work-card-stats">
                     <div className="work-stat">
                       <span>进度</span>
@@ -693,7 +712,34 @@ export function WorkspaceHome() {
 
           {mode === 'create' ? (
             <form className="auth-form create-form" onSubmit={submitCreate}>
+              <div className="create-entry-tabs" role="tablist" aria-label="创建入口">
+                <button
+                  aria-selected={entryMode === 'idea'}
+                  className={entryMode === 'idea' ? 'active' : ''}
+                  onClick={() => {
+                    setEntryMode('idea');
+                    setFormError('');
+                  }}
+                  role="tab"
+                  type="button"
+                >
+                  一句话想法
+                </button>
+                <button
+                  aria-selected={entryMode === 'blank'}
+                  className={entryMode === 'blank' ? 'active' : ''}
+                  onClick={() => {
+                    setEntryMode('blank');
+                    setFormError('');
+                  }}
+                  role="tab"
+                  type="button"
+                >
+                  空白作品
+                </button>
+              </div>
               <WorkFields
+                entryMode={entryMode}
                 genrePack={genrePack}
                 onGenrePackChange={setGenrePack}
                 penNames={penNames}
@@ -710,6 +756,7 @@ export function WorkspaceHome() {
           ) : (
             <form className="auth-form create-form" onSubmit={submitImport}>
               <WorkFields
+                entryMode="blank"
                 genrePack={genrePack}
                 onGenrePackChange={setGenrePack}
                 penNames={penNames}
@@ -751,33 +798,45 @@ export function WorkspaceHome() {
 }
 
 function WorkFields({
+  entryMode,
   genrePack,
   onGenrePackChange,
   penNames,
 }: {
+  entryMode: WorkCreationMode;
   genrePack: 'xianxia' | 'history' | 'urban';
   onGenrePackChange: (genrePack: 'xianxia' | 'history' | 'urban') => void;
   penNames: PenNameListResponse['items'];
 }) {
   return (
     <>
+      {entryMode === 'idea' ? (
+        <label className="field">
+          <span>故事灵感</span>
+          <textarea
+            maxLength={5_000}
+            name="idea"
+            placeholder="一句话写下最想讲的故事"
+            required
+            rows={4}
+          />
+        </label>
+      ) : null}
       <label className="field">
-        <span>书名</span>
+        <span>{entryMode === 'idea' ? '书名（可选）' : '书名'}</span>
         <input
           autoComplete="off"
           maxLength={120}
           name="title"
-          placeholder="例如：仙途万里"
-          required
+          placeholder={entryMode === 'idea' ? '留空时从灵感里提炼' : '例如：仙途万里'}
+          required={entryMode === 'blank'}
         />
       </label>
       <label className="field">
         <span>笔名</span>
         <input
           autoComplete="off"
-          defaultValue={
-            penNames.find((penName) => penName.isDefault)?.name ?? penNames[0]?.name
-          }
+          defaultValue={penNames.find((penName) => penName.isDefault)?.name ?? penNames[0]?.name}
           list="workspace-pen-names"
           maxLength={60}
           name="penName"
@@ -842,19 +901,107 @@ function WorkFields({
           ))}
         </select>
       </label>
+      <details className="create-workshop-details">
+        <summary>写作约定（可选）</summary>
+        <div className="create-field-row">
+          <label className="field">
+            <span>目标读者</span>
+            <input maxLength={200} name="targetReader" placeholder="例如：喜欢长线伏笔的读者" />
+          </label>
+          <label className="field">
+            <span>章节字数</span>
+            <input
+              defaultValue={3000}
+              max={20_000}
+              min={500}
+              name="chapterWordCount"
+              step={100}
+              type="number"
+            />
+          </label>
+        </div>
+        <div className="create-field-row">
+          <label className="field">
+            <span>更新节奏</span>
+            <select defaultValue="日更" name="updateCadence">
+              {UPDATE_CADENCE_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field">
+            <span>作品标签</span>
+            <input maxLength={300} name="tags" placeholder="用逗号分隔，例如：升级流，群像" />
+          </label>
+        </div>
+        <label className="field">
+          <span>简介</span>
+          <textarea maxLength={4_000} name="synopsis" placeholder="写给读者看的作品简介" rows={3} />
+        </label>
+        <label className="field">
+          <span>风格样本</span>
+          <textarea
+            maxLength={20_000}
+            name="styleSamples"
+            placeholder="贴一段代表这本书语感的文字"
+            rows={3}
+          />
+        </label>
+        <label className="field">
+          <span>禁忌</span>
+          <textarea maxLength={2_000} name="taboos" placeholder="例如：不写无代价复活" rows={2} />
+        </label>
+      </details>
     </>
   );
 }
 
-function workPayload(form: FormData): Record<string, string> {
+function workPayload(form: FormData, entryMode: WorkCreationMode): Record<string, unknown> {
+  const title = String(form.get('title') ?? '').trim();
+  const idea = String(form.get('idea') ?? '').trim();
+  const chapterWordCount = String(form.get('chapterWordCount') ?? '').trim();
   return {
-    title: String(form.get('title') ?? ''),
+    creationMode: entryMode,
+    ...(title ? { title } : {}),
+    ...(entryMode === 'idea' ? { idea } : {}),
     penName: String(form.get('penName') ?? ''),
     genrePack: String(form.get('genrePack') ?? ''),
     ...(form.get('genreVariant') ? { genreVariant: String(form.get('genreVariant')) } : {}),
     scale: String(form.get('scale') ?? ''),
     targetPlatform: String(form.get('targetPlatform') ?? ''),
+    ...(chapterWordCount ? { chapterWordCount: Number(chapterWordCount) } : {}),
+    ...(form.get('updateCadence') ? { updateCadence: String(form.get('updateCadence')) } : {}),
+    ...(String(form.get('targetReader') ?? '').trim()
+      ? { targetReader: String(form.get('targetReader')).trim() }
+      : {}),
+    ...(String(form.get('synopsis') ?? '').trim()
+      ? { synopsis: String(form.get('synopsis')).trim() }
+      : {}),
+    ...(String(form.get('styleSamples') ?? '').trim()
+      ? { styleSamples: String(form.get('styleSamples')).trim() }
+      : {}),
+    ...(String(form.get('taboos') ?? '').trim()
+      ? { taboos: String(form.get('taboos')).trim() }
+      : {}),
+    ...(String(form.get('tags') ?? '').trim()
+      ? {
+          tags: splitCommaValues(String(form.get('tags'))),
+        }
+      : {}),
   };
+}
+
+function splitCommaValues(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(/[,，\n]/)
+        .map((item) => item.trim())
+        .filter(Boolean),
+    ),
+  );
 }
 
 async function readManuscript(file: File): Promise<{ content?: string; contentBase64?: string }> {
