@@ -1,6 +1,7 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   countCjkCharacters,
+  deriveWorkTitleFromIdea,
   getGenrePackDefinition,
   HISTORY_MAIN_TEMPLATE,
   HISTORY_VARIANT_LABELS,
@@ -48,6 +49,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { BranchStateService, type BranchStateCloneTable } from '../branches/branch-state.service';
 import { DatabaseService } from '../database/database.service';
 import { ObjectStorageService } from '../storage/object-storage.service';
@@ -113,6 +115,21 @@ type WorkResponse = {
   mainTemplate: string | null;
   scale: string;
   targetPlatform: string;
+  creationMode: string;
+  idea: string;
+  targetReader: string;
+  chapterWordCount: number;
+  updateCadence: string;
+  styleSamples: string;
+  taboos: string;
+  synopsis: string;
+  tags: string[];
+  coverUrl: string | null;
+  coverMimeType: string | null;
+  coverWidth: number | null;
+  coverHeight: number | null;
+  coverSize: number | null;
+  coverUpdatedAt: string | null;
   status: WorkRow['status'];
   statusLabel: string;
   wordCount: number;
@@ -145,6 +162,13 @@ type ImportResponse = {
     title: string;
     wordCount: number;
   }>;
+};
+
+type UploadedCoverImage = {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+  originalname?: string;
 };
 
 @Injectable()
@@ -264,11 +288,12 @@ export class WorksService {
         penNameId = matching?.id;
       }
 
+      const title = input.title ?? deriveWorkTitleFromIdea(input.idea);
       const [work] = await tx
         .insert(works)
         .values({
           userId,
-          title: input.title,
+          title,
           penName: penNameText as string,
           penNameId,
           genrePack: input.genrePack,
@@ -276,6 +301,15 @@ export class WorksService {
             input.genrePack === 'history' ? (input.genreVariant ?? 'alternate_ancient') : null,
           scale: input.scale,
           targetPlatform: input.targetPlatform,
+          creationMode: input.creationMode,
+          idea: input.idea,
+          targetReader: input.targetReader,
+          chapterWordCount: input.chapterWordCount,
+          updateCadence: input.updateCadence,
+          styleSamples: input.styleSamples,
+          taboos: input.taboos,
+          synopsis: input.synopsis,
+          tags: input.tags,
           status: 'preparing',
         })
         .returning();
@@ -311,13 +345,22 @@ export class WorksService {
     input: CreateWorkInput & WorkImportInput,
   ): Promise<{ work: WorkResponse } & ImportResponse> {
     const work = await this.create(userId, {
-      title: input.title,
+      ...(input.title === undefined ? {} : { title: input.title }),
       ...(input.penName === undefined ? {} : { penName: input.penName }),
       ...(input.penNameId === undefined ? {} : { penNameId: input.penNameId }),
       genrePack: input.genrePack,
       ...(input.genreVariant === undefined ? {} : { genreVariant: input.genreVariant }),
       scale: input.scale,
       targetPlatform: input.targetPlatform,
+      creationMode: input.creationMode,
+      idea: input.idea,
+      targetReader: input.targetReader,
+      chapterWordCount: input.chapterWordCount,
+      updateCadence: input.updateCadence,
+      styleSamples: input.styleSamples,
+      taboos: input.taboos,
+      synopsis: input.synopsis,
+      tags: input.tags,
     });
     const imported = await this.importManuscript(userId, work.id, {
       fileName: input.fileName,
@@ -342,6 +385,13 @@ export class WorksService {
       'genreVariant',
       'scale',
       'targetPlatform',
+      'targetReader',
+      'chapterWordCount',
+      'updateCadence',
+      'styleSamples',
+      'taboos',
+      'synopsis',
+      'tags',
     ] as const;
     if (
       current.status === 'completed' &&
@@ -401,6 +451,15 @@ export class WorksService {
             }),
         ...(input.scale === undefined ? {} : { scale: input.scale }),
         ...(input.targetPlatform === undefined ? {} : { targetPlatform: input.targetPlatform }),
+        ...(input.targetReader === undefined ? {} : { targetReader: input.targetReader }),
+        ...(input.chapterWordCount === undefined
+          ? {}
+          : { chapterWordCount: input.chapterWordCount }),
+        ...(input.updateCadence === undefined ? {} : { updateCadence: input.updateCadence }),
+        ...(input.styleSamples === undefined ? {} : { styleSamples: input.styleSamples }),
+        ...(input.taboos === undefined ? {} : { taboos: input.taboos }),
+        ...(input.synopsis === undefined ? {} : { synopsis: input.synopsis }),
+        ...(input.tags === undefined ? {} : { tags: input.tags }),
         status: nextStatus,
         ...(archiving ? { archivedFromStatus: current.status, archivedAt: now } : {}),
         updatedAt: now,
@@ -553,6 +612,15 @@ export class WorksService {
             genreVariant: source.genreVariant,
             scale: source.scale,
             targetPlatform: source.targetPlatform,
+            creationMode: 'blank',
+            idea: source.idea,
+            targetReader: source.targetReader,
+            chapterWordCount: source.chapterWordCount,
+            updateCadence: source.updateCadence,
+            styleSamples: source.styleSamples,
+            taboos: source.taboos,
+            synopsis: source.synopsis,
+            tags: source.tags,
             status: 'preparing',
           })
           .returning();
@@ -592,7 +660,30 @@ export class WorksService {
             .set({ storageKey: targetKey, updatedAt: new Date() })
             .where(eq(mapImages.id, image.id));
         }
-        return { work, branch };
+        let copiedWork = work;
+        if (source.coverStorageKey) {
+          const targetKey = userStorageKey(userId, work.id, 'cover', `${randomUUID()}.webp`);
+          await this.storage.copyObject(
+            userId,
+            source.coverStorageKey,
+            targetKey,
+            source.coverMimeType ?? 'image/webp',
+          );
+          copiedObjectKeys.push(targetKey);
+          [copiedWork] = await tx
+            .update(works)
+            .set({
+              coverStorageKey: targetKey,
+              coverMimeType: source.coverMimeType,
+              coverWidth: source.coverWidth,
+              coverHeight: source.coverHeight,
+              coverSize: source.coverSize,
+              coverUpdatedAt: source.coverUpdatedAt,
+            })
+            .where(eq(works.id, work.id))
+            .returning();
+        }
+        return { work: copiedWork, branch };
       });
 
       await this.audit.record({
@@ -767,6 +858,126 @@ export class WorksService {
     };
   }
 
+  async uploadCover(
+    userId: string,
+    workId: string,
+    file: UploadedCoverImage | undefined,
+  ): Promise<WorkResponse> {
+    const work = await this.requireWritableWork(userId, workId);
+    if (!file?.buffer || !['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
+      throw worksError(
+        HttpStatus.BAD_REQUEST,
+        'WORK_COVER_INVALID',
+        'Choose a PNG, JPEG, or WebP cover image',
+      );
+    }
+
+    let optimized: Buffer;
+    let width: number;
+    let height: number;
+    try {
+      const source = sharp(file.buffer, { failOn: 'error', limitInputPixels: 40_000_000 });
+      const metadata = await source.metadata();
+      if (!metadata.format || !['jpeg', 'png', 'webp'].includes(metadata.format)) {
+        throw new Error('Unsupported image format');
+      }
+      optimized = await sharp(file.buffer, { failOn: 'error', limitInputPixels: 40_000_000 })
+        .rotate()
+        .resize({
+          width: 1_600,
+          height: 2_400,
+          fit: 'inside',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 86, effort: 4 })
+        .toBuffer();
+      const outputMetadata = await sharp(optimized).metadata();
+      width = outputMetadata.width ?? 0;
+      height = outputMetadata.height ?? 0;
+    } catch {
+      throw worksError(
+        HttpStatus.BAD_REQUEST,
+        'WORK_COVER_INVALID',
+        'The cover image could not be read or is too large',
+      );
+    }
+
+    const storageKey = userStorageKey(userId, workId, 'cover', `${randomUUID()}.webp`);
+    const now = new Date();
+    await this.storage.putObject(userId, storageKey, optimized, 'image/webp');
+    const [updated] = await this.database.db
+      .update(works)
+      .set({
+        coverStorageKey: storageKey,
+        coverMimeType: 'image/webp',
+        coverWidth: width,
+        coverHeight: height,
+        coverSize: optimized.length,
+        coverUpdatedAt: now,
+        updatedAt: now,
+      })
+      .where(and(eq(works.id, workId), eq(works.userId, userId)))
+      .returning();
+
+    if (work.coverStorageKey) {
+      await this.storage.removeObject(userId, work.coverStorageKey).catch(() => undefined);
+    }
+    const branch = await this.requireMainBranch(workId);
+    await this.audit.record({
+      userId,
+      workId,
+      branchId: branch.id,
+      action: 'work_cover_updated',
+      targetType: 'work',
+      targetId: workId,
+      title: `更新封面：${work.title}`,
+      metadata: { width, height, size: optimized.length },
+    });
+    return this.toResponse(updated, branch, (await this.loadMetrics([branch.id])).get(branch.id));
+  }
+
+  async getCoverContent(userId: string, workId: string) {
+    const work = await this.requireWork(userId, workId);
+    if (!work.coverStorageKey) {
+      throw worksError(HttpStatus.NOT_FOUND, 'WORK_COVER_NOT_FOUND', 'Work cover not found');
+    }
+    return {
+      buffer: await this.storage.getObject(userId, work.coverStorageKey),
+      mimeType: work.coverMimeType ?? 'image/webp',
+    };
+  }
+
+  async removeCover(userId: string, workId: string): Promise<void> {
+    const work = await this.requireWritableWork(userId, workId);
+    if (!work.coverStorageKey) {
+      throw worksError(HttpStatus.NOT_FOUND, 'WORK_COVER_NOT_FOUND', 'Work cover not found');
+    }
+    const now = new Date();
+    await this.database.db
+      .update(works)
+      .set({
+        coverStorageKey: null,
+        coverMimeType: null,
+        coverWidth: null,
+        coverHeight: null,
+        coverSize: null,
+        coverUpdatedAt: null,
+        updatedAt: now,
+      })
+      .where(and(eq(works.id, workId), eq(works.userId, userId)));
+    await this.storage.removeObject(userId, work.coverStorageKey).catch(() => undefined);
+    const branch = await this.requireMainBranch(workId);
+    await this.audit.record({
+      userId,
+      workId,
+      branchId: branch.id,
+      action: 'work_cover_removed',
+      targetType: 'work',
+      targetId: workId,
+      title: `移除封面：${work.title}`,
+    });
+  }
+
   private async parseImport(input: WorkImportInput) {
     try {
       return await parseManuscript(input);
@@ -786,6 +997,19 @@ export class WorksService {
       .limit(1);
     if (!work) {
       throw worksError(HttpStatus.NOT_FOUND, 'WORK_NOT_FOUND', 'Work not found');
+    }
+    return work;
+  }
+
+  private async requireWritableWork(userId: string, workId: string): Promise<WorkRow> {
+    const work = await this.requireWork(userId, workId);
+    if (work.status === 'completed') {
+      throw worksError(
+        HttpStatus.CONFLICT,
+        'WORK_COMPLETED_READ_ONLY',
+        'Reopen the work before changing its cover',
+        { canReopen: true, canCreateParallel: true },
+      );
     }
     return work;
   }
@@ -938,6 +1162,25 @@ export class WorksService {
       mainTemplate: work.genrePack === 'history' ? HISTORY_MAIN_TEMPLATE : null,
       scale: work.scale,
       targetPlatform: work.targetPlatform,
+      creationMode: work.creationMode,
+      idea: work.idea,
+      targetReader: work.targetReader,
+      chapterWordCount: work.chapterWordCount,
+      updateCadence: work.updateCadence,
+      styleSamples: work.styleSamples,
+      taboos: work.taboos,
+      synopsis: work.synopsis,
+      tags: work.tags,
+      coverUrl: work.coverStorageKey
+        ? `/api/v1/works/${work.id}/cover/content?v=${(
+            work.coverUpdatedAt ?? work.updatedAt
+          ).getTime()}`
+        : null,
+      coverMimeType: work.coverMimeType,
+      coverWidth: work.coverWidth,
+      coverHeight: work.coverHeight,
+      coverSize: work.coverSize,
+      coverUpdatedAt: work.coverUpdatedAt?.toISOString() ?? null,
       status: work.status,
       statusLabel: WORK_STATUS_LABELS[work.status],
       wordCount: metrics.wordCount,

@@ -236,9 +236,20 @@ export function PublishPanel({
           </div>
           {readerMode && preview ? (
             <article className="publish-reader" aria-label="读者预览">
-              <p className="publish-reader-genre">{preview.genreLabel}</p>
-              <h4>{displayTitle}</h4>
-              <p className="publish-reader-author">{preview.penName}</p>
+              <div className="publish-reader-heading">
+                {preview.coverUrl ? (
+                  <img
+                    alt={`《${preview.title}》封面`}
+                    className="publish-reader-cover"
+                    src={preview.coverUrl}
+                  />
+                ) : null}
+                <div>
+                  <p className="publish-reader-genre">{preview.genreLabel}</p>
+                  <h4>{displayTitle}</h4>
+                  <p className="publish-reader-author">{preview.penName}</p>
+                </div>
+              </div>
               <p className="publish-reader-synopsis">{displaySynopsis}</p>
               <div className="publish-tags">
                 {displayTags.map((tag) => (

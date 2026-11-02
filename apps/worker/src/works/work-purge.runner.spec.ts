@@ -239,6 +239,35 @@ describe('work purge runner', () => {
     );
     expect(receiptCount.rows[0].count).toBe('0');
   });
+
+  it('removes covers owned by expired works and preserves covers still referenced elsewhere', async () => {
+    const now = new Date('2003-01-02T00:00:00.000Z');
+    const exclusive = await seedUserAndWork(pool, now, '独占封面', 31);
+    const userId = exclusive.userId;
+    const shared = await seedUserAndWork(pool, now, '共享封面', 31, userId);
+    const live = await seedUserAndWork(pool, now, '仍在使用', null, userId);
+    const exclusiveCover = objectKey(userId, exclusive.workId, 'cover', 'exclusive.webp');
+    const sharedCover = objectKey(userId, shared.workId, 'cover', 'shared.webp');
+
+    await pool.query('update works set cover_storage_key = $2 where id = $1', [
+      exclusive.workId,
+      exclusiveCover,
+    ]);
+    await pool.query('update works set cover_storage_key = $2 where id = $1', [
+      shared.workId,
+      sharedCover,
+    ]);
+    await pool.query('update works set cover_storage_key = $2 where id = $1', [
+      live.workId,
+      sharedCover,
+    ]);
+
+    const result = await runner.run({ now, limit: 10 });
+
+    expect(result).toMatchObject({ purged: 2, failed: 0 });
+    expect(removeObject.mock.calls).toEqual([[userId, exclusiveCover]]);
+    expect(removeObject).not.toHaveBeenCalledWith(userId, sharedCover);
+  });
 });
 
 async function seedUserAndWork(

@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -10,8 +11,12 @@ import {
   Post,
   Query,
   Req,
+  StreamableFile,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   createWorkFromImportSchema,
@@ -26,6 +31,13 @@ import type { AuthenticatedRequest } from '../auth/auth.types';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import { worksError } from './works.errors';
 import { WorksService } from './works.service';
+
+type UploadedCoverImage = {
+  buffer: Buffer;
+  mimetype: string;
+  size: number;
+  originalname?: string;
+};
 
 @ApiTags('works')
 @Controller('works')
@@ -88,6 +100,39 @@ export class WorksController {
     }
 
     return this.worksService.get(this.requireUserId(request), parsed.data);
+  }
+
+  @Post(':workId/cover')
+  @UseInterceptors(FileInterceptor('cover', { limits: { fileSize: 10 * 1024 * 1024 } }))
+  @ApiOperation({ summary: 'Upload and optimize a work cover image' })
+  uploadCover(
+    @Param('workId') workId: string,
+    @UploadedFile() file: UploadedCoverImage | undefined,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.worksService.uploadCover(
+      this.requireUserId(request),
+      this.parsePathId(workId),
+      file,
+    );
+  }
+
+  @Get(':workId/cover/content')
+  @Header('Cache-Control', 'private, max-age=300')
+  @ApiOperation({ summary: 'Read the signed-in author work cover' })
+  async coverContent(@Param('workId') workId: string, @Req() request: AuthenticatedRequest) {
+    const cover = await this.worksService.getCoverContent(
+      this.requireUserId(request),
+      this.parsePathId(workId),
+    );
+    return new StreamableFile(cover.buffer, { type: cover.mimeType });
+  }
+
+  @Delete(':workId/cover')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Remove a work cover' })
+  async removeCover(@Param('workId') workId: string, @Req() request: AuthenticatedRequest) {
+    await this.worksService.removeCover(this.requireUserId(request), this.parsePathId(workId));
   }
 
   @Patch(':workId')

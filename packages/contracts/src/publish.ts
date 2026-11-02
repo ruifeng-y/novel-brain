@@ -76,6 +76,7 @@ export type PublishReaderPreview = {
   genreLabel: string;
   synopsis: string;
   tags: string[];
+  coverUrl: string | null;
   chapters: PublishReaderChapter[];
   exportOnly: true;
 };

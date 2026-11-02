@@ -35,6 +35,7 @@ import { StoryPlanningPanel } from './story-planning-panel';
 import { StoryLedgerPanel } from './story-ledger-panel';
 import { VersionHistoryPanel } from './version-history-panel';
 import { WorkSearchPanel } from './work-search-panel';
+import { WorkProfilePanel } from './work-profile-panel';
 
 type LoadState =
   | { status: 'loading' }
@@ -204,19 +205,32 @@ export function WorkspaceWork({ workId }: { workId: string }) {
       </nav>
 
       <section className="work-detail-hero">
-        <div>
-          <p className="workspace-step">
-            {work.genrePackLabel ?? GENRE_LABELS[work.genrePack] ?? work.genrePack}
-            {work.genreVariantLabel
-              ? ` · ${work.genreVariantLabel}`
-              : work.genreTemplate
-                ? ` · ${work.genreTemplate.name}`
-                : ''}
-          </p>
-          <h1>{work.title}</h1>
-          <p>
-            {work.penName} · {SCALE_LABELS[work.scale] ?? work.scale} · {work.targetPlatform}
-          </p>
+        <div className="work-detail-hero-main">
+          {work.coverUrl ? (
+            <img alt={`《${work.title}》封面`} className="work-detail-cover" src={work.coverUrl} />
+          ) : null}
+          <div>
+            <p className="workspace-step">
+              {work.genrePackLabel ?? GENRE_LABELS[work.genrePack] ?? work.genrePack}
+              {work.genreVariantLabel
+                ? ` · ${work.genreVariantLabel}`
+                : work.genreTemplate
+                  ? ` · ${work.genreTemplate.name}`
+                  : ''}
+            </p>
+            <h1>{work.title}</h1>
+            <p>
+              {work.penName} · {SCALE_LABELS[work.scale] ?? work.scale} · {work.targetPlatform}
+            </p>
+            {work.synopsis ? <p className="work-detail-synopsis">{work.synopsis}</p> : null}
+            {work.tags.length > 0 ? (
+              <ul className="work-tag-list" aria-label="作品标签">
+                {work.tags.map((tag) => (
+                  <li key={tag}>{tag}</li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
         </div>
         <span className={`work-status work-status-${work.status}`}>{work.statusLabel}</span>
       </section>
@@ -266,6 +280,15 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           {lifecycleError}
         </p>
       ) : null}
+
+      <WorkProfilePanel
+        onWorkChange={(updated) =>
+          setState((current) =>
+            current.status === 'ready' ? { ...current, work: updated } : current,
+          )
+        }
+        work={work}
+      />
 
       {work.mainBranch ? <WorkSearchPanel branchId={work.mainBranch.id} workId={work.id} /> : null}
 
@@ -385,6 +408,18 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             <div>
               <dt>目标平台</dt>
               <dd>{work.targetPlatform}</dd>
+            </div>
+            <div>
+              <dt>目标读者</dt>
+              <dd>{work.targetReader || '还没有填写'}</dd>
+            </div>
+            <div>
+              <dt>章节字数</dt>
+              <dd>{work.chapterWordCount.toLocaleString('zh-CN')} 字</dd>
+            </div>
+            <div>
+              <dt>更新节奏</dt>
+              <dd>{work.updateCadence}</dd>
             </div>
           </dl>
         </section>

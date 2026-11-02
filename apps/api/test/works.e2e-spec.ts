@@ -288,6 +288,274 @@ describe('works API', () => {
       });
   });
 
+  it('creates a work from a one-line idea with reading, writing, and publishing parameters', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const idea = '一个被宗门抛弃的杂役，意外得到一本会吞噬记忆的古书。';
+
+    const created = await author.agent
+      .post('/api/v1/works')
+      .send({
+        creationMode: 'idea',
+        idea,
+        penName: '青云客',
+        genrePack: 'xianxia',
+        scale: 'long',
+        targetPlatform: '起点中文网',
+        targetReader: '喜欢长线伏笔和升级感的男频读者',
+        chapterWordCount: 2600,
+        updateCadence: '每周三更',
+        styleSamples: '雨落在断碑上，像有人在很远的地方磨剑。',
+        taboos: '不写无代价复活，不写主角无缘由被所有人喜欢。',
+        synopsis: '杂役沈砚靠一本吞忆古书追查母亲失踪的真相。',
+        tags: ['升级流', '长线伏笔', '群像'],
+      })
+      .expect(201);
+
+    expect(created.body).toMatchObject({
+      title: '一个被宗门抛弃的杂役',
+      creationMode: 'idea',
+      idea,
+      targetReader: '喜欢长线伏笔和升级感的男频读者',
+      chapterWordCount: 2600,
+      updateCadence: '每周三更',
+      styleSamples: '雨落在断碑上，像有人在很远的地方磨剑。',
+      taboos: '不写无代价复活，不写主角无缘由被所有人喜欢。',
+      synopsis: '杂役沈砚靠一本吞忆古书追查母亲失踪的真相。',
+      tags: ['升级流', '长线伏笔', '群像'],
+      coverUrl: null,
+    });
+
+    await author.agent
+      .get(`/api/v1/works/${created.body.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          creationMode: 'idea',
+          idea,
+          targetReader: '喜欢长线伏笔和升级感的男频读者',
+          chapterWordCount: 2600,
+          updateCadence: '每周三更',
+          tags: ['升级流', '长线伏笔', '群像'],
+        });
+      });
+  });
+
+  it('creates a blank work with sensible writing defaults and validates incomplete entries', async () => {
+    const author = await createAuthor(app, passwordHash);
+
+    const created = await author.agent
+      .post('/api/v1/works')
+      .send({
+        creationMode: 'blank',
+        title: '空白新书',
+        penName: '青云客',
+        genrePack: 'xianxia',
+        scale: 'medium',
+        targetPlatform: '番茄小说',
+      })
+      .expect(201);
+
+    expect(created.body).toMatchObject({
+      creationMode: 'blank',
+      title: '空白新书',
+      idea: '',
+      targetReader: '',
+      chapterWordCount: 3000,
+      updateCadence: '日更',
+      styleSamples: '',
+      taboos: '',
+      synopsis: '',
+      tags: [],
+    });
+
+    await author.agent
+      .post('/api/v1/works')
+      .send({
+        creationMode: 'blank',
+        penName: '青云客',
+        genrePack: 'xianxia',
+        scale: 'medium',
+        targetPlatform: '番茄小说',
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('VALIDATION_ERROR');
+      });
+
+    await author.agent
+      .post('/api/v1/works')
+      .send({
+        creationMode: 'idea',
+        idea: '   ',
+        penName: '青云客',
+        genrePack: 'xianxia',
+        scale: 'medium',
+        targetPlatform: '番茄小说',
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('VALIDATION_ERROR');
+      });
+
+    await author.agent
+      .post('/api/v1/works')
+      .send({
+        creationMode: 'blank',
+        title: '字数越界',
+        penName: '青云客',
+        genrePack: 'xianxia',
+        scale: 'medium',
+        targetPlatform: '番茄小说',
+        chapterWordCount: 100,
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('VALIDATION_ERROR');
+      });
+  });
+
+  it('updates work-level creation parameters without crossing accounts', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const otherAuthor = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, { title: '写作约定' });
+
+    await author.agent
+      .patch(`/api/v1/works/${work.id}`)
+      .send({
+        targetReader: '偏爱克制感情线的读者',
+        chapterWordCount: 3200,
+        updateCadence: '隔日更新',
+        styleSamples: '城门开时，风先一步进来。',
+        taboos: '不写虐主，不写误会拖章。',
+        synopsis: '一个守城人从旧信里翻出二十年前的真相。',
+        tags: ['悬疑', '克制', '旧城'],
+        changeReason: '补齐作品资料',
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          targetReader: '偏爱克制感情线的读者',
+          chapterWordCount: 3200,
+          updateCadence: '隔日更新',
+          styleSamples: '城门开时，风先一步进来。',
+          taboos: '不写虐主，不写误会拖章。',
+          synopsis: '一个守城人从旧信里翻出二十年前的真相。',
+          tags: ['悬疑', '克制', '旧城'],
+        });
+      });
+
+    await otherAuthor.agent
+      .patch(`/api/v1/works/${work.id}`)
+      .send({ targetReader: '不该写进去的读者' })
+      .expect(404);
+
+    await otherAuthor.agent.get(`/api/v1/works/${work.id}`).expect(404);
+
+    await author.agent
+      .get('/api/v1/works')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items[0]).toMatchObject({
+          targetReader: '偏爱克制感情线的读者',
+          chapterWordCount: 3200,
+          updateCadence: '隔日更新',
+          tags: ['悬疑', '克制', '旧城'],
+        });
+      });
+
+    await author.agent.patch(`/api/v1/works/${work.id}`).send({ status: 'completed' }).expect(200);
+    await author.agent
+      .patch(`/api/v1/works/${work.id}`)
+      .send({ chapterWordCount: 2800 })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_COMPLETED_READ_ONLY');
+      });
+  });
+
+  it('uploads, serves, replaces, and removes a work cover without crossing accounts', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const otherAuthor = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, { title: '封面作品' });
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    );
+
+    const uploaded = await author.agent
+      .post(`/api/v1/works/${work.id}/cover`)
+      .attach('cover', png, { filename: 'cover.png', contentType: 'image/png' })
+      .expect(201);
+    expect(uploaded.body).toMatchObject({
+      id: work.id,
+      coverUrl: expect.stringMatching(
+        new RegExp(`^/api/v1/works/${work.id}/cover/content\\?v=\\d+$`),
+      ),
+    });
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/cover/content`)
+      .expect(200)
+      .expect('Content-Type', /image\/webp/)
+      .expect(({ body }) => {
+        expect(Buffer.isBuffer(body)).toBe(true);
+        expect((body as Buffer).subarray(0, 4).toString()).toBe('RIFF');
+      });
+
+    await otherAuthor.agent.get(`/api/v1/works/${work.id}/cover/content`).expect(404);
+    await otherAuthor.agent
+      .post(`/api/v1/works/${work.id}/cover`)
+      .attach('cover', png, { filename: 'cover.png', contentType: 'image/png' })
+      .expect(404);
+
+    await author.agent
+      .post(`/api/v1/works/${work.id}/cover`)
+      .attach('cover', Buffer.from('not an image'), {
+        filename: 'cover.txt',
+        contentType: 'text/plain',
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_COVER_INVALID');
+      });
+
+    await author.agent.delete(`/api/v1/works/${work.id}/cover`).expect(204);
+    await author.agent
+      .get(`/api/v1/works/${work.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.coverUrl).toBeNull();
+      });
+    await author.agent.get(`/api/v1/works/${work.id}/cover/content`).expect(404);
+  });
+
+  it('copies a work cover into an independent asset when duplicating a work', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, { title: '带封面的原书' });
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    );
+
+    await author.agent
+      .post(`/api/v1/works/${work.id}/cover`)
+      .attach('cover', png, { filename: 'cover.png', contentType: 'image/png' })
+      .expect(201);
+    const copied = await author.agent
+      .post(`/api/v1/works/${work.id}/duplicate`)
+      .send({ title: '带封面的副本' })
+      .expect(201);
+
+    expect(copied.body.coverUrl).toMatch(
+      new RegExp(`^/api/v1/works/${copied.body.id}/cover/content\\?v=\\d+$`),
+    );
+    await author.agent.delete(`/api/v1/works/${work.id}/cover`).expect(204);
+    await author.agent
+      .get(`/api/v1/works/${copied.body.id}/cover/content`)
+      .expect(200)
+      .expect('Content-Type', /image\/webp/);
+  });
+
   it('reports word count and completion progress from the main branch', async () => {
     const author = await createAuthor(app, passwordHash);
     const created = await author.agent
@@ -588,6 +856,18 @@ describe('works API', () => {
     const branchId = work.mainBranch.id;
     const database = app.get(DatabaseService);
 
+    await author.agent
+      .patch(`/api/v1/works/${work.id}`)
+      .send({
+        targetReader: '喜欢群像和长线伏笔的读者',
+        chapterWordCount: 2800,
+        updateCadence: '每周两更',
+        styleSamples: '雨落在旧城墙上，像一场迟到的告别。',
+        taboos: '不写误会拖章。',
+        synopsis: '守城人追查二十年前的旧案。',
+        tags: ['旧城', '群像'],
+      })
+      .expect(200);
     await database.pool.query(
       `insert into story_bibles (work_id, branch_id, one_sentence_story, protagonist, world_iron_law, cards)
        values ($1, $2, '主角追查断碑旧案。', '沈砚', '记忆有代价。', '[]'::jsonb)`,
@@ -622,6 +902,13 @@ describe('works API', () => {
       title: '同世界观新书·续篇',
       status: 'preparing',
       wordCount: 0,
+      targetReader: '喜欢群像和长线伏笔的读者',
+      chapterWordCount: 2800,
+      updateCadence: '每周两更',
+      styleSamples: '雨落在旧城墙上，像一场迟到的告别。',
+      taboos: '不写误会拖章。',
+      synopsis: '守城人追查二十年前的旧案。',
+      tags: ['旧城', '群像'],
       mainBranch: { isMain: true },
     });
     expect(copied.body.id).not.toBe(work.id);
