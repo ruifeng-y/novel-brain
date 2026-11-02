@@ -10,12 +10,14 @@ import { BatchJobsService } from './batch-jobs.service';
 import { ChapterGenerationController } from './chapter-generation.controller';
 import { ChapterGenerationService } from './chapter-generation.service';
 import { GenerationJobAccessGuard } from './generation-job-access.guard';
+import { VersionsModule } from '../versions/versions.module';
 
 @Module({
   imports: [
     DatabaseModule,
     AuthModule,
     BranchStateModule,
+    VersionsModule,
     BullModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({

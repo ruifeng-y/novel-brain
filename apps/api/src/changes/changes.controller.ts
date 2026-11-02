@@ -6,6 +6,7 @@ import {
   cancelChangeRequestSchema,
   createChangeRequestSchema,
   falsePositiveSchema,
+  undoChangeRequestSchema,
   workIdSchema,
 } from '@novel/contracts';
 import type { AuthenticatedRequest } from '../auth/auth.types';
@@ -117,6 +118,28 @@ export class ChangesController {
         applyChangeRequestSchema,
         body ?? {},
         'Choose whether to apply directly or after repairing the affected content',
+      ),
+    );
+  }
+
+  @Post(':changeId/undo')
+  @ApiOperation({ summary: 'Undo one applied change as a new immutable version' })
+  undo(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('changeId') changeId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.changesService.undo(
+      this.requireUserId(request),
+      this.parsePathId(workId),
+      this.parsePathId(branchId),
+      this.parsePathId(changeId),
+      this.parseBody(
+        undoChangeRequestSchema,
+        body ?? {},
+        'Check the reason for undoing this change',
       ),
     );
   }

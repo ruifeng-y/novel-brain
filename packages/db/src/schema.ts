@@ -167,6 +167,15 @@ export const workBranchForkPointKindEnum = pgEnum('work_branch_fork_point_kind',
   'chapter_version',
 ]);
 
+export const branchCommitKindEnum = pgEnum('branch_commit_kind', [
+  'chapter_version',
+  'edit',
+  'change',
+  'undo',
+  'rollback',
+  'merge',
+]);
+
 export type WorkBranchForkSnapshotValue = {
   settings?: Record<string, string>;
   outlines?: Record<string, string>;
@@ -212,6 +221,9 @@ export const workBranches = pgTable(
     parentBranchId: uuid('parent_branch_id'),
     baselineBranchId: uuid('baseline_branch_id'),
     baselineMaterializedAt: timestamp('baseline_materialized_at', { withTimezone: true }),
+    stateBranchId: uuid('state_branch_id').references((): AnyPgColumn => workBranches.id, {
+      onDelete: 'set null',
+    }),
     baseCommitId: uuid('base_commit_id'),
     kind: workBranchKindEnum('kind').notNull().default('experiment'),
     reason: text('reason').notNull().default(''),
@@ -1133,9 +1145,18 @@ export const branchCommits = pgTable(
     snapshotBranchId: uuid('snapshot_branch_id')
       .notNull()
       .references(() => workBranches.id, { onDelete: 'cascade' }),
-    chapterVersionId: uuid('chapter_version_id')
+    chapterVersionId: uuid('chapter_version_id').references(() => chapterVersions.id, {
+      onDelete: 'cascade',
+    }),
+    parentCommitId: uuid('parent_commit_id'),
+    changeRequestId: uuid('change_request_id'),
+    kind: branchCommitKindEnum('kind').notNull().default('chapter_version'),
+    title: text('title').notNull().default(''),
+    reason: text('reason').notNull().default(''),
+    metadata: jsonb('metadata')
+      .$type<Record<string, unknown>>()
       .notNull()
-      .references(() => chapterVersions.id, { onDelete: 'cascade' }),
+      .default(sql`'{}'::jsonb`),
     message: text('message').notNull(),
     createdBy: uuid('created_by')
       .notNull()
@@ -1145,11 +1166,47 @@ export const branchCommits = pgTable(
   (table) => [
     uniqueIndex('branch_commits_chapter_version_unique').on(table.chapterVersionId),
     index('branch_commits_source_created_idx').on(table.sourceBranchId, table.createdAt),
+    index('branch_commits_parent_idx').on(table.parentCommitId),
   ],
 );
 
 export type BranchCommitRow = typeof branchCommits.$inferSelect;
 export type NewBranchCommitRow = typeof branchCommits.$inferInsert;
+
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    action: text('action').notNull(),
+    targetType: text('target_type').notNull(),
+    targetId: uuid('target_id'),
+    title: text('title').notNull(),
+    detail: text('detail').notNull().default(''),
+    metadata: jsonb('metadata')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('audit_logs_work_branch_created_idx').on(table.workId, table.branchId, table.createdAt),
+    index('audit_logs_action_idx').on(table.workId, table.action, table.createdAt),
+  ],
+);
+
+export type AuditLogRow = typeof auditLogs.$inferSelect;
+export type NewAuditLogRow = typeof auditLogs.$inferInsert;
 
 export const branchIdMappings = pgTable(
   'branch_id_mappings',
@@ -1684,6 +1741,7 @@ export const changeRequestStatusEnum = pgEnum('change_request_status', [
   'waiting_confirmation',
   'applying',
   'applied',
+  'undone',
   'rejected',
   'canceled',
   'failed',

@@ -39,6 +39,9 @@ import { WorksController } from './works/works.controller';
 import { WorksModule } from './works/works.module';
 import { WorldbuildingController } from './worldbuilding/worldbuilding.controller';
 import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
+import { VersionCaptureInterceptor } from './versions/version-capture.interceptor';
+import { VersionsController } from './versions/versions.controller';
+import { VersionsModule } from './versions/versions.module';
 
 @Module({
   imports: [
@@ -53,6 +56,7 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     AiModule,
     WorksModule,
     BranchStateModule,
+    VersionsModule,
     BranchesModule,
     StoryPlanningModule,
     EntitiesModule,
@@ -74,6 +78,10 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
       provide: APP_INTERCEPTOR,
       useClass: BranchBaselineInterceptor,
     },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: VersionCaptureInterceptor,
+    },
   ],
 })
 export class AppModule implements NestModule {
@@ -85,6 +93,7 @@ export class AppModule implements NestModule {
         UsersController,
         WorksController,
         BranchesController,
+        VersionsController,
         ModelConfigsController,
         OutlineController,
         StoryPlanningController,

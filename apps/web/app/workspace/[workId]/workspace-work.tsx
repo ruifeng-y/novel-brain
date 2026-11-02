@@ -31,6 +31,7 @@ import { OutlineWorkspacePanel } from './outline-workspace-panel';
 import { ParallelVersionsPanel } from './parallel-versions-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 import { StoryLedgerPanel } from './story-ledger-panel';
+import { VersionHistoryPanel } from './version-history-panel';
 
 type LoadState =
   | { status: 'loading' }
@@ -274,6 +275,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
 
       {work.mainBranch ? (
         <ParallelVersionsPanel branchId={work.mainBranch.id} workId={work.id} />
+      ) : null}
+
+      {work.mainBranch ? (
+        <VersionHistoryPanel branchId={work.mainBranch.id} workId={work.id} />
       ) : null}
 
       {work.mainBranch && work.genrePack === 'history' ? (

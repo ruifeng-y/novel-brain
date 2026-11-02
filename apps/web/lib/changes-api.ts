@@ -166,6 +166,21 @@ export function applyChange(
   );
 }
 
+export function undoChange(
+  workId: string,
+  branchId: string,
+  changeId: string,
+  reason?: string,
+): Promise<ChangeRequest> {
+  return apiRequest<ChangeRequest>(
+    `${changesPath(workId, branchId)}/${encodeURIComponent(changeId)}/undo`,
+    {
+      method: 'POST',
+      body: JSON.stringify(reason ? { reason } : {}),
+    },
+  );
+}
+
 export function branchChange(
   workId: string,
   branchId: string,

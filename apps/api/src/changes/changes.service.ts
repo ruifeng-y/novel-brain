@@ -12,6 +12,7 @@ import {
   type ChangeDiffEntry,
   type CreateChangeRequestInput,
   type FalsePositiveInput,
+  type UndoChangeRequestInput,
 } from '@novel/contracts';
 import {
   analyzeChangeImpact,
@@ -43,10 +44,18 @@ import {
 import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
+import { VersionGraphService } from '../versions/version-graph.service';
 import { changesError } from './changes.errors';
 
 type ChangeDatabase = Parameters<Parameters<DatabaseService['db']['transaction']>[0]>[0];
 type ChangeCheckStep = (typeof changeValidations.$inferSelect)['step'];
+
+type ApplyVersionContext = {
+  kind?: 'change' | 'merge';
+  title?: string;
+  reason?: string;
+  metadata?: Record<string, unknown>;
+};
 
 type ResolvedTarget = {
   id: string | null;
@@ -111,7 +120,10 @@ const CHECK_ORDER: ChangeCheckStep[] = [
 
 @Injectable()
 export class ChangesService {
-  constructor(private readonly database: DatabaseService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly versions: VersionGraphService,
+  ) {}
 
   async list(
     userId: string,
@@ -501,6 +513,7 @@ export class ChangesService {
     branchId: string,
     changeId: string,
     input: ApplyChangeRequestInput,
+    versionContext?: ApplyVersionContext,
   ): Promise<ChangeResponse> {
     await this.requireBranch(userId, workId, branchId);
     let row = await this.requireChange(workId, branchId, changeId);
@@ -574,6 +587,74 @@ export class ChangesService {
         .where(eq(changeRequests.id, row.id));
       throw error;
     }
+    await this.versions.recordVersion({
+      userId,
+      workId,
+      branchId,
+      kind: versionContext?.kind ?? 'change',
+      title: versionContext?.title ?? `应用修改：${row.title}`,
+      reason: versionContext?.reason ?? input.repairNotes ?? row.reason,
+      changeRequestId: row.id,
+      metadata: {
+        targetType: row.targetType,
+        targetId: row.targetId,
+        ...versionContext?.metadata,
+      },
+    });
+    return this.get(userId, workId, branchId, changeId);
+  }
+
+  async undo(
+    userId: string,
+    workId: string,
+    branchId: string,
+    changeId: string,
+    input: UndoChangeRequestInput,
+  ): Promise<ChangeResponse> {
+    await this.requireBranch(userId, workId, branchId);
+    const row = await this.requireChange(workId, branchId, changeId);
+    if (row.status !== 'applied') {
+      throw changesError(
+        HttpStatus.CONFLICT,
+        'CHANGE_ALREADY_SETTLED',
+        'Only an applied change can be undone',
+      );
+    }
+    const now = new Date();
+    const inverse: ChangeRequestRow = {
+      ...row,
+      title: `撤销：${row.title}`,
+      reason: input.reason ?? `撤销修改请求：${row.title}`,
+      oldValue: row.newValue,
+      newValue: row.oldValue,
+      diff: this.diffValues(row.newValue, row.oldValue),
+    };
+    await this.database.db.transaction(async (tx) => {
+      await this.applyTarget(tx, userId, workId, branchId, inverse, input.reason);
+      await tx
+        .update(changeRequests)
+        .set({
+          status: 'undone',
+          decisionReason: input.reason ?? '作者撤销了这次修改。',
+          updatedAt: now,
+        })
+        .where(eq(changeRequests.id, row.id));
+      await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
+    });
+    await this.versions.recordVersion({
+      userId,
+      workId,
+      branchId,
+      kind: 'undo',
+      title: `撤销修改：${row.title}`,
+      reason: input.reason ?? `撤销修改请求：${row.title}`,
+      changeRequestId: row.id,
+      metadata: {
+        targetType: row.targetType,
+        targetId: row.targetId,
+        undoneChangeRequestId: row.id,
+      },
+    });
     return this.get(userId, workId, branchId, changeId);
   }
 
@@ -1723,7 +1804,7 @@ export class ChangesService {
   }
 
   private isSettled(status: ChangeRequestRow['status']): boolean {
-    return ['applied', 'branched', 'canceled', 'rejected'].includes(status);
+    return ['applied', 'undone', 'branched', 'canceled', 'rejected'].includes(status);
   }
 
   private async touchWork(workId: string, now: Date): Promise<void> {
