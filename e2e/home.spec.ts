@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-test('landing page shows the M0 scaffold', async ({ page }) => {
+test('landing page invites an author to sign in or register', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /NovelBrain/i })).toBeVisible();
-  await expect(page.getByText('M0 平台底座', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /把故事写到最后一行/ })).toBeVisible();
+  await expect(page.getByRole('link', { name: '创建作者账号' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '登录', exact: true })).toBeVisible();
 });
 
 test('health page renders without a client crash', async ({ page }) => {

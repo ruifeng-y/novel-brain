@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const channel = process.env.PLAYWRIGHT_CHANNEL;
+const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === '1';
 
 export default defineConfig({
   testDir: './e2e',
@@ -9,7 +11,7 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,13 +20,16 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         ...(channel ? { channel } : {}),
+        ...(executablePath ? { launchOptions: { executablePath } } : {}),
       },
     },
   ],
-  webServer: {
-    command: 'pnpm --filter @novel/web dev',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: skipWebServer
+    ? undefined
+    : {
+        command: 'pnpm --filter @novel/web dev',
+        url: 'http://127.0.0.1:3000',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
 });

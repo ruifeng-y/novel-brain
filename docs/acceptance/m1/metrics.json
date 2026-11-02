@@ -1,0 +1,57 @@
+{
+  "measuredAt": "2026-11-02T08:30:00.526Z",
+  "runtime": "Windows Docker Compose, fake AI provider",
+  "workId": "9aa8811b-f451-4b22-872d-153ef9d953f7",
+  "branchId": "d560dbf3-7d5f-430a-a8eb-2c079d053d9a",
+  "chapterGenerationMs": {
+    "1": 1382,
+    "2": 885,
+    "3": 873
+  },
+  "totalJourneyMs": 9193,
+  "readLatency": {
+    "p50Ms": 15,
+    "p95Ms": 24,
+    "maxMs": 30,
+    "samples": 60
+  },
+  "searchLatency": {
+    "p50Ms": 12,
+    "p95Ms": 17,
+    "maxMs": 18,
+    "samples": 20
+  },
+  "confirmedFacts": 9,
+  "qualityDimensions": [
+    {
+      "key": "hook",
+      "label": "钩子",
+      "status": "可提升"
+    },
+    {
+      "key": "pacing",
+      "label": "节奏",
+      "status": "良好"
+    },
+    {
+      "key": "information_density",
+      "label": "信息密度",
+      "status": "可提升"
+    },
+    {
+      "key": "character_voice",
+      "label": "人物声纹",
+      "status": "可提升"
+    },
+    {
+      "key": "prose",
+      "label": "文笔",
+      "status": "良好"
+    },
+    {
+      "key": "continuity",
+      "label": "连续性",
+      "status": "良好"
+    }
+  ]
+}
