@@ -6,8 +6,8 @@ import { DatabaseService } from '../database/database.service';
 
 type AuditRecordInput = {
   userId: string;
-  workId: string;
-  branchId: string;
+  workId?: string | null;
+  branchId?: string | null;
   action: AuditAction;
   targetType: string;
   targetId?: string | null;
@@ -38,8 +38,8 @@ export class AuditService {
   async record(input: AuditRecordInput): Promise<void> {
     await this.database.db.insert(auditLogs).values({
       userId: input.userId,
-      workId: input.workId,
-      branchId: input.branchId,
+      workId: input.workId ?? null,
+      branchId: input.branchId ?? null,
       action: input.action,
       targetType: input.targetType,
       targetId: input.targetId ?? null,

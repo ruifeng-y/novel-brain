@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ApiError, apiRequest, friendlyError, type User } from '../../lib/auth-api';
+import type { PenNameListResponse } from '../../lib/account-api';
 import {
   GENRE_LABELS,
   SCALE_LABELS,
@@ -16,7 +17,7 @@ import {
 
 type LoadState =
   | { status: 'loading' }
-  | { status: 'ready'; user: User; works: Work[] }
+  | { status: 'ready'; user: User; works: Work[]; penNames: PenNameListResponse['items'] }
   | { status: 'error'; message: string };
 
 export function WorkspaceHome() {
@@ -31,8 +32,16 @@ export function WorkspaceHome() {
     Promise.all([
       apiRequest<User>('/api/v1/auth/me'),
       apiRequest<WorkListResponse>('/api/v1/works'),
+      apiRequest<PenNameListResponse>('/api/v1/users/me/pen-names'),
     ])
-      .then(([user, works]) => setState({ status: 'ready', user, works: works.items }))
+      .then(([user, works, penNames]) =>
+        setState({
+          status: 'ready',
+          user,
+          works: works.items,
+          penNames: penNames.items,
+        }),
+      )
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
           router.replace('/login');
@@ -112,6 +121,7 @@ export function WorkspaceHome() {
         <span className="workspace-brand">NovelBrain</span>
         <div className="workspace-account">
           <Link href="/workspace/settings">模型设置</Link>
+          <Link href="/workspace/settings/account">账号设置</Link>
           <Link href="/workspace/settings/privacy">隐私与合规</Link>
           <span>{state.user.displayName}</span>
           <button
@@ -133,7 +143,7 @@ export function WorkspaceHome() {
           </div>
           <h1>你的作品</h1>
           <p className="workspace-beta-note">
-            M3 功能验收中，当前不对外发布；质量、真实模型和账号生命周期仍待闭环。
+            M3 功能验收中，当前不对外发布；质量、真实模型、完整审计和完整导出仍待闭环。
           </p>
         </div>
         <p className="workspace-email">共 {state.works.length} 部作品</p>
@@ -223,11 +233,23 @@ export function WorkspaceHome() {
               <span>笔名</span>
               <input
                 autoComplete="off"
+                defaultValue={
+                  state.penNames.find((penName) => penName.isDefault)?.name ??
+                  state.penNames[0]?.name
+                }
+                list="workspace-pen-names"
                 maxLength={60}
                 name="penName"
                 placeholder="这本书使用的笔名"
                 required
               />
+              <datalist id="workspace-pen-names">
+                {state.penNames.map((penName) => (
+                  <option key={penName.id} value={penName.name}>
+                    {penName.isDefault ? '默认笔名' : penName.bio || '已保存笔名'}
+                  </option>
+                ))}
+              </datalist>
             </label>
             <div className="create-field-row">
               <label className="field">

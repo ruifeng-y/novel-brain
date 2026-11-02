@@ -34,6 +34,7 @@ export default function PrivacySettingsPage() {
         <nav className="workspace-nav" aria-label="账号导航">
           <Link href="/workspace">作品书架</Link>
           <Link href="/workspace/settings">模型设置</Link>
+          <Link href="/workspace/settings/account">账号设置</Link>
           <Link aria-current="page" href="/workspace/settings/privacy">
             隐私与合规
           </Link>
@@ -110,8 +111,11 @@ export default function PrivacySettingsPage() {
               </li>
             </ol>
             <p>
-              当前如需注销或恢复账号，可通过注册邮箱联系平台运营方。第三方模型服务中的历史记录需要按对应服务的规则另行处理。
+              账号设置里提供数据导出、注销申请和恢复入口。第三方模型服务中的历史记录需要按对应服务的规则另行处理。
             </p>
+            <Link className="privacy-inline-link" href="/workspace/settings/account">
+              打开账号设置
+            </Link>
           </section>
 
           <section className="privacy-center-section" id="ai">

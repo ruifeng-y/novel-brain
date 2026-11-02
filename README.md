@@ -4,7 +4,7 @@
 
 M0 到 M2 的创作闭环、批量生产、修改版本和安全能力已回归通过；M3 的导出、发布
 检查、性能、安全、备份恢复和合规文档也已完成本地验收。V1 总验收结论是
-**NO-GO**：质量盲评、真实 DeepSeek、账号生命周期、完整审计/导出、作品生命周期、
+**NO-GO**：质量盲评、真实 DeepSeek、完整账号级审计、完整导出、作品生命周期、
 TLS/静态加密/日志保留和法务事项仍未闭环。详见
 `docs/acceptance/m3/acceptance.md` 和 `docs/release/v1-known-limitations.md`。
 
@@ -113,8 +113,7 @@ pnpm db:seed
 
 V1 正式公开发布前仍必须关闭：
 
-- 账号找回/修改/注销/30 天恢复/永久删除。
-- 登录、Key 变更、导出和删除的账号级审计。
+- Key 变更审计、账号级审计查询/导出和保留策略。
 - 一键导出全部作品数据。
 - 导入旧稿、作品归档/软删除/恢复/复制和完本只读。
 - 目标读者盲评、人工质量量表和真实 DeepSeek 证据。
@@ -134,6 +133,7 @@ V1 正式公开发布前仍必须关闭：
 - `docs/acceptance/m3/acceptance.md`
 - `docs/acceptance/m3/demo.md`
 - `docs/operations/security-backup.md`
+- `docs/operations/account-lifecycle.md`
 - `docs/operations/content-moderation.md`
 - `docs/operations/security-checklist.md`
 - `docs/compliance/legal-pending-items.md`

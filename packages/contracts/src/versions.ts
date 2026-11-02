@@ -47,6 +47,21 @@ export const AUDIT_ACTION_LABELS = {
   rollback: '回滚',
   branch_created: '创建平行版本',
   merge_applied: '合并到主线',
+  account_login: '登录账号',
+  account_logout: '退出登录',
+  account_logout_all: '退出所有设备',
+  account_password_changed: '修改密码',
+  account_password_reset: '重置密码',
+  account_email_change_requested: '发起邮箱变更',
+  account_email_changed: '修改邮箱',
+  account_profile_updated: '更新账号资料',
+  account_pen_name_created: '新增笔名',
+  account_pen_name_updated: '修改笔名',
+  account_pen_name_deleted: '删除笔名',
+  account_exported: '导出账号数据',
+  account_deletion_requested: '申请注销账号',
+  account_recovered: '恢复账号',
+  account_purged: '永久删除账号',
 } as const;
 
 export type AuditAction = keyof typeof AUDIT_ACTION_LABELS;
