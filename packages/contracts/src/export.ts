@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
-export const exportFormatSchema = z.enum(['txt', 'markdown', 'docx', 'epub']);
+export const manuscriptExportFormatSchema = z.enum(['txt', 'markdown', 'docx', 'epub']);
+export type ManuscriptExportFormat = z.infer<typeof manuscriptExportFormatSchema>;
+
+export const outlineExportFormatSchema = z.enum(['markdown', 'json']);
+export type OutlineExportFormat = z.infer<typeof outlineExportFormatSchema>;
+
+export const exportFormatSchema = z.enum(['txt', 'markdown', 'docx', 'epub', 'json', 'zip']);
 export type ExportFormat = z.infer<typeof exportFormatSchema>;
 
 export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
@@ -8,6 +14,17 @@ export const EXPORT_FORMAT_LABELS: Record<ExportFormat, string> = {
   markdown: 'Markdown',
   docx: 'Word 文档',
   epub: 'EPUB 电子书',
+  json: 'JSON 文件',
+  zip: 'ZIP 压缩包',
+};
+
+export const exportKindSchema = z.enum(['manuscript', 'outline', 'version']);
+export type ExportKind = z.infer<typeof exportKindSchema>;
+
+export const EXPORT_KIND_LABELS: Record<ExportKind, string> = {
+  manuscript: '正文',
+  outline: '大纲',
+  version: '历史版本',
 };
 
 export const exportPresetSchema = z.enum(['generic', 'qidian', 'fanqie']);
@@ -20,6 +37,30 @@ export const EXPORT_PRESET_LABELS: Record<ExportPreset, string> = {
 };
 
 const chapterNumberSchema = z.coerce.number().int().min(1).max(100_000);
+
+export const manuscriptExportScopeSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('chapter'),
+    chapterNumber: chapterNumberSchema,
+  }),
+  z.object({
+    type: z.literal('chapters'),
+    chapterNumbers: z.array(chapterNumberSchema).min(1).max(1_000),
+  }),
+  z.object({
+    type: z.literal('range'),
+    startChapter: chapterNumberSchema,
+    endChapter: chapterNumberSchema,
+  }),
+  z.object({
+    type: z.literal('volume'),
+    volumeId: z.string().uuid(),
+  }),
+  z.object({
+    type: z.literal('book'),
+  }),
+]);
+export type ManuscriptExportScope = z.infer<typeof manuscriptExportScopeSchema>;
 
 export const exportScopeSchema = z.discriminatedUnion('type', [
   z.object({
@@ -42,6 +83,13 @@ export const exportScopeSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('book'),
   }),
+  z.object({
+    type: z.literal('outline'),
+  }),
+  z.object({
+    type: z.literal('version'),
+    versionCommitId: z.string().uuid(),
+  }),
 ]);
 export type ExportScope = z.infer<typeof exportScopeSchema>;
 
@@ -51,6 +99,8 @@ export const EXPORT_SCOPE_LABELS: Record<ExportScope['type'], string> = {
   range: '自定义区间',
   volume: '整卷',
   book: '全本',
+  outline: '全文大纲',
+  version: '历史版本',
 };
 
 export const exportOptionsSchema = z.object({
@@ -73,8 +123,8 @@ const defaultExportOptions = exportOptionsSchema.parse({ preset: 'generic' });
 
 export const createExportRequestSchema = z
   .object({
-    format: exportFormatSchema,
-    scope: exportScopeSchema,
+    format: manuscriptExportFormatSchema,
+    scope: manuscriptExportScopeSchema,
     options: exportOptionsSchema.default(defaultExportOptions),
   })
   .superRefine((value, context) => {
@@ -99,12 +149,35 @@ export const createExportRequestSchema = z
 export type CreateExportRequest = z.infer<typeof createExportRequestSchema>;
 
 export const exportPreviewRequestSchema = z.object({
-  format: exportFormatSchema,
-  scope: exportScopeSchema,
+  format: manuscriptExportFormatSchema,
+  scope: manuscriptExportScopeSchema,
   options: exportOptionsSchema.default(defaultExportOptions),
   previewChapterCount: z.coerce.number().int().min(1).max(5).default(3),
 });
 export type ExportPreviewRequest = z.infer<typeof exportPreviewRequestSchema>;
+
+export const createOutlineExportRequestSchema = z.object({
+  format: outlineExportFormatSchema.default('markdown'),
+});
+export type CreateOutlineExportRequest = z.infer<typeof createOutlineExportRequestSchema>;
+
+const historicalVersionExportRequestBaseSchema = z.object({
+  versionCommitId: z.string().uuid().optional(),
+  versionId: z.string().uuid().optional(),
+});
+
+export const createHistoricalVersionExportRequestSchema =
+  historicalVersionExportRequestBaseSchema
+    .refine((value) => Boolean(value.versionCommitId ?? value.versionId), {
+      message: 'Choose a historical version',
+      path: ['versionCommitId'],
+    })
+    .transform((value) => ({
+      versionCommitId: value.versionCommitId ?? value.versionId!,
+    }));
+export type CreateHistoricalVersionExportRequest = z.infer<
+  typeof createHistoricalVersionExportRequestSchema
+>;
 
 export const exportStatusSchema = z.enum(['queued', 'running', 'completed', 'failed']);
 export type ExportStatus = z.infer<typeof exportStatusSchema>;
@@ -119,6 +192,8 @@ export const EXPORT_STATUS_LABELS: Record<ExportStatus | 'expired', string> = {
 
 export type ExportHistoryItem = {
   id: string;
+  kind: ExportKind;
+  kindLabel: string;
   format: ExportFormat;
   formatLabel: string;
   preset: ExportPreset;
@@ -140,6 +215,10 @@ export type ExportHistoryItem = {
   createdAt: string;
   expiresAt: string;
   completedAt: string | null;
+  version: {
+    id: string;
+    title: string;
+  } | null;
 };
 
 export type ExportPreviewChapter = {

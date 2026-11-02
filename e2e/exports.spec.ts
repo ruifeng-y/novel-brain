@@ -146,6 +146,19 @@ test('an author previews, exports, and downloads a book in the selected platform
   await panel.getByRole('button', { name: '开始导出' }).click();
   await expect(history.getByRole('link', { name: '下载 Word 文档' })).toBeVisible();
 
+  await panel.getByLabel('大纲格式').selectOption('json');
+  await panel.getByRole('button', { name: '导出大纲' }).click();
+  await expect(panel.getByText('大纲已导出，可以下载了。')).toBeVisible();
+  const outlineLink = history.getByRole('link', { name: '下载 JSON 文件' }).first();
+  const outlineHref = await outlineLink.getAttribute('href');
+  const outlineResponse = await page.request.get(outlineHref as string);
+  expect(outlineResponse.status()).toBe(200);
+  const outline = (await outlineResponse.json()) as {
+    outline: Array<{ title: string; children: Array<{ title: string }> }>;
+  };
+  expect(outline.outline[0].title).toBe('天门残卷');
+  expect(outline.outline[0].children[0].title).toBe('第一卷 天门初开');
+
   await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(0);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(

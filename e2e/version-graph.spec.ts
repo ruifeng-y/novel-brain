@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import JSZip from 'jszip';
+import { readFile } from 'node:fs/promises';
 import { createFirstChapterOutline, currentWorkAndBranch, useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
@@ -110,6 +112,26 @@ test('an author can inspect versions, undo one change, export history, and roll 
   await expect(versionPanel.getByText(/版本 1/).first()).toBeVisible();
   await expect(versionPanel.getByText(/版本 2/).first()).toBeVisible();
   await expect(versionPanel.getByText('合并点').first()).toBeVisible();
+
+  const firstHistoricalVersion = versionPanel
+    .locator('.version-list-item')
+    .filter({ hasText: '版本 1' })
+    .first();
+  const versionDownloadPromise = page.waitForEvent('download');
+  await firstHistoricalVersion.getByRole('button', { name: '导出这个版本' }).click();
+  const versionDownload = await versionDownloadPromise;
+  expect(versionDownload.suggestedFilename()).toMatch(/\.zip$/);
+  const versionDownloadPath = await versionDownload.path();
+  expect(versionDownloadPath).toBeTruthy();
+  const versionArchive = await JSZip.loadAsync(
+    await readFile(versionDownloadPath as string),
+  );
+  expect(versionArchive.file('manifest.json')).not.toBeNull();
+  expect(versionArchive.file('outline.json')).not.toBeNull();
+  expect(versionArchive.file('version-history.json')).not.toBeNull();
+  expect(await versionArchive.file('manuscript.md')?.async('string')).toContain(
+    '沈砚听见剑鸣。',
+  );
 
   const changePanel = page.getByRole('region', { name: '修改请求' });
   await expect(changePanel.getByRole('button', { name: '撤销这次修改' })).toBeVisible();

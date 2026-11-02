@@ -11,6 +11,7 @@ import {
   type GraphNode,
   type VersionGraph,
 } from '../../../lib/versions-api';
+import { exportHistoricalVersion } from '../../../lib/exports-api';
 
 type Notice =
   | { status: 'idle' }
@@ -160,6 +161,23 @@ export function VersionHistoryPanel({ workId, branchId }: { workId: string; bran
     try {
       await exportAudit(workId, branchId, appliedQuery);
       setNotice({ status: 'saved', message: '操作记录已导出。' });
+    } catch (error) {
+      setNotice({ status: 'error', message: friendlyError(error) });
+    }
+  }
+
+  async function downloadVersion(version: GraphNode) {
+    setNotice({ status: 'working', message: '正在整理这个历史版本…' });
+    try {
+      const exported = await exportHistoricalVersion(workId, branchId, version.id);
+      if (!exported.downloadUrl) {
+        throw new Error('历史版本文件还没有准备好。');
+      }
+      const link = document.createElement('a');
+      link.href = exported.downloadUrl;
+      link.download = exported.fileName ?? '历史版本.zip';
+      link.click();
+      setNotice({ status: 'saved', message: '历史版本已导出，下载已开始。' });
     } catch (error) {
       setNotice({ status: 'error', message: friendlyError(error) });
     }
@@ -384,16 +402,26 @@ export function VersionHistoryPanel({ workId, branchId }: { workId: string; bran
                   </small>
                   {version.reason ? <p>{version.reason}</p> : null}
                 </div>
-                <button
-                  className="secondary-button"
-                  onClick={() => {
-                    setRollbackTarget(version);
-                    setRollbackReason('');
-                  }}
-                  type="button"
-                >
-                  回到这个版本
-                </button>
+                <div className="version-list-actions">
+                  <button
+                    className="secondary-button"
+                    disabled={notice.status === 'working'}
+                    onClick={() => void downloadVersion(version)}
+                    type="button"
+                  >
+                    导出这个版本
+                  </button>
+                  <button
+                    className="text-button"
+                    onClick={() => {
+                      setRollbackTarget(version);
+                      setRollbackReason('');
+                    }}
+                    type="button"
+                  >
+                    回到这个版本
+                  </button>
+                </div>
               </article>
             ))}
           </div>

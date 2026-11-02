@@ -1819,7 +1819,16 @@ export const jobEvents = pgTable(
 
 export type JobEventRow = typeof jobEvents.$inferSelect;
 
-export const exportFormatEnum = pgEnum('export_format', ['txt', 'markdown', 'docx', 'epub']);
+export const exportFormatEnum = pgEnum('export_format', [
+  'txt',
+  'markdown',
+  'docx',
+  'epub',
+  'json',
+  'zip',
+]);
+
+export const exportKindEnum = pgEnum('export_kind', ['manuscript', 'outline', 'version']);
 
 export const exportStatusEnum = pgEnum('export_status', [
   'queued',
@@ -1841,6 +1850,10 @@ export const exportJobs = pgTable(
     branchId: uuid('branch_id')
       .notNull()
       .references(() => workBranches.id, { onDelete: 'cascade' }),
+    kind: exportKindEnum('kind').notNull().default('manuscript'),
+    versionCommitId: uuid('version_commit_id').references(() => branchCommits.id, {
+      onDelete: 'cascade',
+    }),
     format: exportFormatEnum('format').notNull(),
     scope: jsonb('scope').$type<Record<string, unknown>>().notNull(),
     options: jsonb('options').$type<Record<string, unknown>>().notNull(),

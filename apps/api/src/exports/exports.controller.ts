@@ -12,7 +12,9 @@ import {
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
+  createHistoricalVersionExportRequestSchema,
   createExportRequestSchema,
+  createOutlineExportRequestSchema,
   exportPreviewRequestSchema,
   workIdSchema,
 } from '@novel/contracts';
@@ -28,6 +30,58 @@ import { ExportsService } from './exports.service';
 @UseGuards(SessionAuthGuard)
 export class ExportsController {
   constructor(private readonly exports: ExportsService) {}
+
+  @Post(['outline', 'outlines'])
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Export the standalone outline as Markdown or JSON' })
+  createOutline(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = createOutlineExportRequestSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw exportsError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        '请选择 Markdown 或 JSON 格式',
+        parsed.error.flatten(),
+      );
+    }
+    return this.exports.createOutline(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      parsed.data,
+    );
+  }
+
+  @Post(['version', 'versions', 'historical-version'])
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Export one historical story version as a ZIP with a manifest' })
+  createHistoricalVersion(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = createHistoricalVersionExportRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      throw exportsError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        '请选择要导出的历史版本',
+        parsed.error.flatten(),
+      );
+    }
+    return this.exports.createHistoricalVersion(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      parsed.data,
+    );
+  }
 
   @Post('preview')
   @HttpCode(HttpStatus.CREATED)
