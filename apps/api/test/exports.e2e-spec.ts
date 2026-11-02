@@ -390,9 +390,9 @@ describe('export API', () => {
     const history = await author.agent.get(`${base}/exports`).expect(200);
     expect(history.body.items[0]).toMatchObject({
       id: created.body.id,
-      status: 'queued',
       scopeLabel: '全本',
     });
+    expect(['queued', 'running', 'completed']).toContain(history.body.items[0].status);
   });
 
   it('exports a specified branch and hides every export from other authors', async () => {

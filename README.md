@@ -4,12 +4,12 @@
 **尚未批准公开发布**。
 
 M0 到 M2 的创作闭环、批量生产、修改版本和安全能力已回归通过；M3 的导出、发布
-检查、性能、安全、备份恢复和合规文档也已完成本地验收。B-01、B-02/B-03、B-04
-和 B-07 工程门槛已关闭并通过复验，因此 **LAN/internal RC 为 GO**。
+检查、性能、安全、备份恢复和合规文档也已完成本地验收。B-01、B-02/B-03、B-04、
+B-07、B-12 和 B-13 工程门槛已关闭并通过复验，因此 **LAN/internal RC 为 GO**。
 
 正式公开发布仍是 **NO-GO**：B-05 人工质量盲评、B-06 真实 DeepSeek、B-08
-法务/运营确认、B-07 的真实云部署证据，以及 B-12/B-13 的工作级资料/设置和
-独立大纲/历史版本导出仍未闭环。详见
+法务/运营确认和 B-07 的真实云部署证据仍未闭环。没有已知代码 P1；P2 残余见
+`docs/release/v1-known-limitations.md`。详见
 `docs/acceptance/m3/acceptance.md` 和 `docs/release/v1-known-limitations.md`。
 
 ## 环境要求
@@ -120,8 +120,6 @@ V1 正式公开发布前仍必须关闭：
 - 目标读者盲评、人工质量量表和真实 DeepSeek 证据。
 - 真实云环境的 TLS/HSTS、静态加密、日志 30 天保留、生产监控和异地备份证据。
 - L-01 到 L-12 法务/运营确认。
-- 工作级资料/设置（目标读者、章节字数、节奏、风格、禁忌、简介、标签、封面）。
-- 独立大纲 Markdown/JSON 导出和历史版本导出。
 
 生产部署使用 `docker-compose.production.yml` 与
 `infra/caddy/Caddyfile.production` 覆盖本地配置；本地 `docker compose up` 仍使用

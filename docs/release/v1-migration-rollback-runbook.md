@@ -1,7 +1,7 @@
 # NovelBrain V1 迁移、备份与回滚 Runbook
 
-> 适用版本：V1.0.0-rc.2 / 代码基线 `808a16b`
-> 当前迁移：`0000` 到 `0049`，共 50 条
+> 适用版本：V1.0.0-rc.3 / 代码基线 `8f376a5`
+> 当前迁移：`0000` 到 `0051`，共 52 条
 > 目标：RPO 24 小时，RTO 4 小时  
 > 注意：本 runbook 不替代生产变更审批；公网发布前还必须完成 TLS、静态加密、
 > 日志保留和法务确认。
@@ -58,7 +58,7 @@ docker compose -p <project> exec -T postgres `
   psql -U novel -d novel -tAc "select count(*) from drizzle.__drizzle_migrations;"
 ```
 
-本版本期望 `50`。
+本版本期望 `52`。
 
 ## 3. 备份
 
@@ -116,6 +116,8 @@ pnpm --filter @novel/db db:migrate
 
 - 当前项目没有 down migration。
 - 迁移是前向追加；不要把迁移文件改写成不同语义。
+- `0050` 增加工作级创建参数和封面字段；`0051` 增加大纲/历史版本导出所需结构。
+- 这两条迁移已在前向集成中重新编号并生成 snapshot；不要与旧分支的临时编号混用。
 - 如果后续 ticket 引入新迁移，合并前按集成顺序重新编号并更新 snapshot。
 - 迁移失败时保留现场，不重复执行破坏性 SQL；按第 6 节回滚。
 
@@ -265,12 +267,12 @@ node scripts/ops.mjs restore-drill `
 - 对象数量、集合校验和和逐对象 SHA-256 一致。
 - 证据写入 `docs/acceptance/m3/restore-drill/<timestamp>.json`。
 
-2026-11-03 V1 复验证据：
+2026-11-03 V1 最终复验证据：
 
-- `docs/acceptance/m3/restore-drill/20261102T183431Z.json`
+- `docs/acceptance/m3/restore-drill/20261102T195913Z.json`
 - 数据库恢复 3 秒，备份年龄 2 秒。
-- 38 个账号、33 部作品、1,173 章、1,186 个章节版本、27 个任务行数一致。
-- 10/10 对象逐字节校验。
+- 39 个账号、34 部作品、1,173 章、1,186 个章节版本、27 个任务行数一致。
+- 13/13 对象逐字节校验。
 
 演练失败时不要删除旧备份，也不要执行正式切换。
 
