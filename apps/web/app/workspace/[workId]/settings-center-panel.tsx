@@ -8,7 +8,7 @@ import {
   RELATION_PREDICATE_LABELS,
   type CustomFieldValue,
 } from '@novel/contracts';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError, friendlyError } from '../../../lib/auth-api';
 import {
   createCustomField,
@@ -93,6 +93,15 @@ function splitValues(value: string): string[] {
   );
 }
 
+function sameFilters(left: EntitySearchFilters, right: EntitySearchFilters): boolean {
+  return (
+    left.q === right.q &&
+    left.type === right.type &&
+    left.tag === right.tag &&
+    left.status === right.status
+  );
+}
+
 function settingsError(error: unknown): string {
   if (error instanceof ApiError) {
     if (error.code === 'ENTITY_NAME_CONFLICT') {
@@ -158,6 +167,8 @@ export function SettingsCenterPanel({
   const [relationValidFrom, setRelationValidFrom] = useState('');
   const [relationValidTo, setRelationValidTo] = useState('');
   const [relationSource, setRelationSource] = useState('作者录入');
+  const editIntentRef = useRef(0);
+  const filtersRef = useRef<EntitySearchFilters>({});
 
   useEffect(() => {
     if (!selectedId) {
@@ -189,6 +200,7 @@ export function SettingsCenterPanel({
   async function applyFilters(next: EntitySearchFilters) {
     setListState({ status: 'saving' });
     setActiveFilters(next);
+    filtersRef.current = next;
     try {
       const result = await searchEntities(workId, branchId, next);
       setItems(result.items);
@@ -218,6 +230,7 @@ export function SettingsCenterPanel({
   }
 
   function startNewEntity() {
+    editIntentRef.current += 1;
     setSelectedId(null);
     setDetail(null);
     setDraft(emptyEntity(activeFilters.type));
@@ -225,8 +238,10 @@ export function SettingsCenterPanel({
   }
 
   function openEntity(entityId: string) {
+    editIntentRef.current += 1;
     setSelectedId(entityId);
     setRelationFrom(entityId);
+    setSaveState({ status: 'idle' });
     setRelationState({ status: 'idle' });
   }
 
@@ -246,22 +261,35 @@ export function SettingsCenterPanel({
 
   async function onSaveEntity(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const intent = editIntentRef.current + 1;
+    editIntentRef.current = intent;
+    const filtersAtSave = filtersRef.current;
     setSaveState({ status: 'saving' });
     try {
       const saved = selectedId
         ? await updateEntity(workId, branchId, selectedId, draft)
         : await createEntity(workId, branchId, draft);
       setCatalog((current) => upsertEntity(current, saved));
-      const refreshed = await searchEntities(workId, branchId, activeFilters);
-      setItems(refreshed.items);
+      const refreshed = await searchEntities(workId, branchId, filtersAtSave);
+      if (sameFilters(filtersRef.current, filtersAtSave)) {
+        setItems(refreshed.items);
+      }
+      if (intent !== editIntentRef.current) {
+        return;
+      }
       setSelectedId(saved.id);
       setRelationFrom(saved.id);
       const savedDetail = await loadEntity(workId, branchId, saved.id);
+      if (intent !== editIntentRef.current) {
+        return;
+      }
       setDetail(savedDetail);
       setDraft(entityDraft(savedDetail));
       setSaveState({ status: 'saved', message: '设定已保存' });
     } catch (error) {
-      setSaveState({ status: 'error', message: settingsError(error) });
+      if (intent === editIntentRef.current) {
+        setSaveState({ status: 'error', message: settingsError(error) });
+      }
     }
   }
 

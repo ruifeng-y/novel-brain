@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "turbo dev",
     "demo:m0": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/m0-demo.ps1",
+    "demo:m1": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/m1-demo.ps1",
     "build": "turbo build",
     "lint": "eslint .",
     "typecheck": "turbo typecheck",
