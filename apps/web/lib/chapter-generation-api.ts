@@ -107,6 +107,7 @@ export type GenerationEvent = {
 
 export type FactType = 'event' | 'body_state' | 'character_knowledge';
 export type FactProposalStatus = 'proposed' | 'confirmed' | 'rejected';
+export type ContinuityIssueStatus = 'open' | 'ignored';
 
 export type FactProposal = {
   id: string;
@@ -136,6 +137,30 @@ export type ConfirmFactProposalResult = {
     snapshotId: string;
     createdAt: string;
   } | null;
+};
+
+export type ContinuityIssue = {
+  id: string;
+  category: string;
+  categoryLabel: string;
+  severity: string;
+  severityLabel: string;
+  message: string;
+  suggestion: string;
+  sourceSentence: string;
+  startOffset: number;
+  endOffset: number;
+  status: ContinuityIssueStatus;
+  statusLabel: string;
+  ignoredReason: string | null;
+  ignoredAt: string | null;
+  confirmedFact: {
+    id: string;
+    statement: string;
+    chapterNumber: number;
+    typeLabel: string;
+  };
+  createdAt: string;
 };
 
 function generationPath(workId: string, branchId: string): string {
@@ -264,6 +289,32 @@ export function rejectFactProposal(
     {
       method: 'POST',
       body: JSON.stringify({}),
+    },
+  );
+}
+
+export function loadContinuityIssues(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+): Promise<{ items: ContinuityIssue[] }> {
+  return apiRequest<{ items: ContinuityIssue[] }>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/annotations`,
+  );
+}
+
+export function ignoreContinuityIssue(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+  issueId: string,
+  reason: string,
+): Promise<ContinuityIssue> {
+  return apiRequest<ContinuityIssue>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/annotations/${issueId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ reason }),
     },
   );
 }

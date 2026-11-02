@@ -17,6 +17,7 @@ import {
   chapterNumberSchema,
   confirmFactProposalSchema,
   generateChapterSchema,
+  ignoreContinuityIssueSchema,
   saveChapterVersionSchema,
   updateFactProposalSchema,
   workIdSchema,
@@ -120,6 +121,56 @@ export class ChapterGenerationController {
       this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
       this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
       this.parseChapterNumber(chapterNumber),
+    );
+  }
+
+  @Get('chapters/:chapterNumber/annotations')
+  @ApiOperation({ summary: 'List continuity issues tied to chapter text' })
+  listContinuityIssues(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.listContinuityIssues(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+    );
+  }
+
+  @Patch('chapters/:chapterNumber/annotations/:annotationId')
+  @ApiOperation({ summary: 'Ignore a continuity issue and record the author reason' })
+  ignoreContinuityIssue(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Param('annotationId') annotationId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = ignoreContinuityIssueSchema.safeParse(body);
+    if (!parsed.success) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Record a reason before ignoring this continuity issue',
+        parsed.error.flatten(),
+      );
+    }
+
+    return this.chapters.ignoreContinuityIssue(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      this.parseId(
+        annotationId,
+        'CONTINUITY_ISSUE_NOT_FOUND',
+        'Continuity issue not found',
+      ),
+      parsed.data,
     );
   }
 

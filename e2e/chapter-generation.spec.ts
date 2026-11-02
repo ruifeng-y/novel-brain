@@ -177,3 +177,160 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
     0,
   );
 });
+
+test('an author sees and can ignore a left-arm continuity conflict in the writing desk', async ({
+  page,
+}) => {
+  const email = `continuity-e2e-${Date.now()}@example.com`;
+  const password = 'correct horse battery staple';
+  const title = `断臂结印${Date.now()}`;
+  const chapterOneOutline = {
+    chapterGoal: '沈砚在断碑前第一次引动残剑。',
+    pov: '沈砚',
+    sceneBeats: '沈砚逃入荒寺避雨\n断碑浮现旧日剑痕\n残剑认主并反噬记忆',
+    chapterEndHook: '他想起的母亲，竟从未在自己的记忆里活过。',
+  };
+
+  await page.context().setExtraHTTPHeaders({
+    'X-Forwarded-For': `192.0.2.${(Date.now() % 250) + 1}`,
+  });
+  await page.goto('/register');
+  await page.getByLabel('邮箱').fill(email);
+  await page.getByRole('button', { name: '发送验证码' }).click();
+  await expect(page.getByText('验证码已发送')).toBeVisible();
+
+  const code = await readVerificationCode(email);
+  await page.getByLabel('验证码').fill(code);
+  await page.getByLabel('密码').fill(password);
+  await page.getByRole('button', { name: '创建账号' }).click();
+  await expect(page).toHaveURL(/\/workspace$/);
+
+  await page.getByRole('link', { name: '模型设置' }).click();
+  await page.getByLabel('配置名称').fill('DeepSeek 正文');
+  await page.getByLabel('API Key').fill('sk-e2e-fake-provider');
+  await page.getByLabel('用途', { exact: true }).selectOption('prose');
+  await page.getByRole('button', { name: '保存配置' }).click();
+  await expect(page.getByText('配置已保存')).toBeVisible();
+
+  await page.getByRole('link', { name: '作品书架' }).click();
+  await page.getByLabel('书名').fill(title);
+  await page.getByLabel('笔名').fill('青云客');
+  await page.getByRole('button', { name: '创建并开始' }).click();
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  const workId = new URL(page.url()).pathname.split('/').at(-1) as string;
+
+  await page.getByLabel('一句话故事').fill(
+    '边城少年以残剑问仙，最终守住人间最后一道天门。',
+  );
+  await page.getByLabel('主角').fill('沈砚，外冷内热的边城剑客');
+  await page.getByLabel('世界铁律').fill(
+    '任何人借天门之力，都必须以一段真实记忆作为代价。',
+  );
+  await page.getByRole('button', { name: '保存故事圣经' }).click();
+  await expect(page.getByText('故事圣经已保存')).toBeVisible();
+
+  await page.getByLabel('章目标').fill(chapterOneOutline.chapterGoal);
+  await page.getByLabel('叙事视角').fill(chapterOneOutline.pov);
+  await page.getByLabel('场景节拍').fill(chapterOneOutline.sceneBeats);
+  await page.getByLabel('章末钩子').fill(chapterOneOutline.chapterEndHook);
+  await page.getByRole('button', { name: '保存章纲' }).click();
+  await expect(page.getByText('章纲已保存')).toBeVisible();
+
+  await page.getByRole('link', { name: '写作台', exact: true }).click();
+  await page.getByRole('button', { name: '根据章纲生成' }).click();
+  await expect(page.getByText('初稿已生成', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const factPanel = page.getByRole('region', { name: '本章事实' });
+  const bodyStateFact = factPanel.getByTestId('fact-proposal-body_state');
+  await bodyStateFact
+    .getByLabel('事实内容：身体状况')
+    .fill('沈砚的左臂骨折，左手无法用力。');
+  await bodyStateFact.getByRole('button', { name: '保存修改' }).click();
+  await expect(factPanel.getByText('事实修改已保存')).toBeVisible();
+  await bodyStateFact.getByRole('button', { name: '确认采用' }).click();
+  await expect(bodyStateFact.getByText('已确认')).toBeVisible();
+
+  const workResponse = await page.request.get(`/api/v1/works/${workId}`);
+  expect(workResponse.ok()).toBeTruthy();
+  const work = (await workResponse.json()) as {
+    mainBranch: { id: string };
+  };
+  const branchId = work.mainBranch.id;
+  const outlineResponse = await page.request.put(
+    `/api/v1/works/${workId}/branches/${branchId}/chapter-outlines/2`,
+    {
+      data: {
+        chapterGoal: '沈砚在追兵围困中结印破局。[[LEFT_ARM_CONFLICT]]',
+        pov: '沈砚',
+        sceneBeats: ['追兵封住山道', '沈砚催动残剑', '碑文反噬引来旧敌'],
+        chapterEndHook: '来人的袖口绣着母亲旧宅的家纹。',
+      },
+    },
+  );
+  expect(outlineResponse.ok()).toBeTruthy();
+
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({ hasText: '第 2 章' })
+    .click();
+  await page.getByRole('button', { name: '根据章纲生成' }).click();
+  await expect(page.getByText('初稿已生成', { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
+
+  const continuityPanel = page.getByRole('region', { name: '连续性提示' });
+  await expect(continuityPanel).toBeVisible();
+  await expect(continuityPanel.getByText('身体状态冲突')).toBeVisible();
+  await expect(continuityPanel.locator('.continuity-issue-message')).toContainText(
+    '左臂',
+  );
+  await expect(continuityPanel.locator('.continuity-suggestion')).toContainText(
+    '右手',
+  );
+  await expect(
+    page.locator('.continuity-highlight mark').getByText(/双手结印/),
+  ).toBeVisible();
+  await page.screenshot({
+    fullPage: true,
+    path: 'test-results/ticket-9-continuity.png',
+  });
+
+  const ignoreReason = '这里用右手代替左手结印，后文会解释左臂已经恢复。';
+  await continuityPanel.getByLabel('忽略原因').fill(ignoreReason);
+  await continuityPanel.getByRole('button', { name: '忽略这条提示' }).click();
+  await expect(continuityPanel.getByText('已忽略', { exact: true })).toBeVisible();
+  await expect(continuityPanel.getByText(ignoreReason)).toBeVisible();
+
+  await page.reload();
+  await page
+    .getByRole('button')
+    .filter({ hasText: '第 2 章' })
+    .click();
+  const reloadedPanel = page.getByRole('region', { name: '连续性提示' });
+  await expect(reloadedPanel.getByText('已忽略', { exact: true })).toBeVisible();
+  await expect(reloadedPanel.getByText(ignoreReason)).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(reloadedPanel).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
+    ),
+  ).toBe(true);
+  expect(
+    await reloadedPanel.locator('.continuity-issue').evaluate(
+      (element) => element.scrollWidth <= element.clientWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    fullPage: true,
+    path: 'test-results/ticket-9-continuity-mobile.png',
+  });
+
+  await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(
+    0,
+  );
+});

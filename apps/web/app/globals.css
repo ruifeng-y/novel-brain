@@ -1840,6 +1840,47 @@ textarea {
   color: #a4ada5;
 }
 
+.continuity-highlight {
+  margin-top: 10px;
+  padding: 11px 13px;
+  border: 1px solid #e2b9a9;
+  border-left: 3px solid var(--cinnabar);
+  border-radius: 6px;
+  background: #fff8f3;
+}
+
+.continuity-highlight > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.continuity-highlight span {
+  color: #853a2b;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.continuity-highlight small {
+  color: #8a776d;
+  font-size: 0.65rem;
+}
+
+.continuity-highlight p {
+  margin: 8px 0 0;
+  color: #5c514b;
+  font-family: 'Songti SC', 'STSong', 'SimSun', Georgia, serif;
+  font-size: 0.78rem;
+  line-height: 1.75;
+}
+
+.continuity-highlight mark {
+  padding: 1px 3px;
+  background: #f5d7c8;
+  color: #6e2d22;
+}
+
 .writing-editor-footer {
   display: flex;
   align-items: center;
@@ -2089,6 +2130,160 @@ textarea {
 .fact-actions .fact-reject {
   margin-left: auto;
   color: #8b4b3d;
+}
+
+.continuity-review-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.continuity-review-heading h3 {
+  margin-bottom: 7px;
+}
+
+.continuity-review-heading p {
+  margin: 0;
+  color: #647269;
+  font-size: 0.72rem;
+  line-height: 1.65;
+}
+
+.continuity-review-heading > span {
+  flex: 0 0 auto;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #f3e5dc;
+  color: #843f30;
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.continuity-review > .form-message {
+  margin: 12px 0 0;
+}
+
+.continuity-review-empty {
+  margin: 15px 0 0;
+  color: #78857c;
+  font-size: 0.74rem;
+}
+
+.continuity-issue-list {
+  display: grid;
+  gap: 11px;
+  margin-top: 15px;
+}
+
+.continuity-issue {
+  padding: 12px;
+  border: 1px solid #e1baaa;
+  border-radius: 6px;
+  background: #fffaf5;
+}
+
+.continuity-issue-ignored {
+  border-color: #d5d9d2;
+  background: #f7f6f1;
+  opacity: 0.82;
+}
+
+.continuity-issue-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.continuity-issue-heading strong {
+  color: #7e382b;
+  font-size: 0.72rem;
+}
+
+.continuity-status {
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #f3dfd5;
+  color: #86402f;
+  font-size: 0.59rem;
+  font-weight: 700;
+}
+
+.continuity-status-ignored {
+  background: #e6e8e2;
+  color: #626b63;
+}
+
+.continuity-issue-message {
+  margin: 9px 0 0;
+  color: #443a35;
+  font-size: 0.74rem;
+  line-height: 1.7;
+}
+
+.continuity-confirmed-fact,
+.continuity-suggestion,
+.continuity-ignored-reason {
+  margin-top: 9px;
+  padding-left: 9px;
+  border-left: 2px solid #e5d5ca;
+}
+
+.continuity-confirmed-fact span,
+.continuity-suggestion span,
+.continuity-ignored-reason span {
+  color: #9a5e48;
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.continuity-confirmed-fact p,
+.continuity-suggestion p,
+.continuity-ignored-reason p {
+  margin: 3px 0 0;
+  color: #5c665f;
+  font-size: 0.7rem;
+  line-height: 1.65;
+}
+
+.continuity-ignore {
+  display: grid;
+  gap: 6px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid #eee3dc;
+}
+
+.continuity-ignore label {
+  color: #8a6a5b;
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+
+.continuity-ignore textarea {
+  width: 100%;
+  padding: 8px 9px;
+  resize: vertical;
+  border: 1px solid #ddcec4;
+  border-radius: 5px;
+  background: #fffefb;
+  color: #4b413c;
+  font: inherit;
+  font-size: 0.71rem;
+  line-height: 1.55;
+}
+
+.continuity-ignore textarea:focus {
+  border-color: #c79a84;
+  outline: none;
+  box-shadow: 0 0 0 3px rgb(178 58 43 / 8%);
+}
+
+.continuity-ignore .text-button {
+  justify-self: start;
+  font-size: 0.67rem;
 }
 
 .writing-empty {
