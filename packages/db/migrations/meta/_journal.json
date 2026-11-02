@@ -176,6 +176,13 @@
       "when": 1793600359601,
       "tag": "0024_elite_marrow",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793601564345,
+      "tag": "0025_rapid_mole_man",
+      "breakpoints": true
     }
   ]
 }

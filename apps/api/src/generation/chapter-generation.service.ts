@@ -1,22 +1,28 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
+  CHAPTER_ACTION_OUTPUT_KIND,
   CONTINUITY_CATEGORY_LABELS,
   CONTINUITY_SEVERITY_LABELS,
   CONTINUITY_STATUS_LABELS,
   CHAPTER_STATUS_LABELS,
   FACT_TYPE_LABELS,
+  QUALITY_TIER_LABELS,
   countCjkCharacters,
+  type ChapterGenerationAction,
   type ChapterStatus,
   type ConfirmFactProposalInput,
   type GenerateChapterInput,
   type IgnoreContinuityIssueInput,
+  type SaveChapterAutosaveInput,
   type SaveChapterVersionInput,
+  type UpdateChapterMetadataInput,
 } from '@novel/contracts';
 import {
   annotations,
   canonCommits,
   canonSnapshots,
+  characterStates,
   chapterOutlines,
   chapterVersions,
   chapters,
@@ -24,11 +30,13 @@ import {
   drafts,
   factProposals,
   facts,
+  foreshadows,
   generationRequests,
   jobEvents,
   jobSteps,
   jobs,
   modelConfigs,
+  entities,
   workBranches,
   works,
   type ChapterOutlineRow,
@@ -206,6 +214,8 @@ export class ChapterGenerationService {
       status: chapter?.status ?? 'planned',
       statusLabel: CHAPTER_STATUS_LABELS[chapter?.status ?? 'planned'],
       wordCount: chapter?.wordCount ?? 0,
+      summary: chapter?.summary ?? '',
+      hook: chapter?.hook ?? '',
       content: currentVersion?.content ?? '',
       outline: this.toOutlineResponse(outline),
       currentVersion: currentVersion ? this.toVersionResponse(chapterNumber, currentVersion) : null,
@@ -219,6 +229,14 @@ export class ChapterGenerationService {
             updatedAt: latestDraft.updatedAt.toISOString(),
           }
         : null,
+      autosave:
+        chapter?.autosaveUpdatedAt && chapter.autosaveContent
+          ? {
+              content: chapter.autosaveContent,
+              wordCount: countCjkCharacters(chapter.autosaveContent),
+              updatedAt: chapter.autosaveUpdatedAt.toISOString(),
+            }
+          : null,
       versions: versionRows.map((version) => this.toVersionResponse(chapterNumber, version)),
       context: latestContext
         ? {
@@ -246,9 +264,21 @@ export class ChapterGenerationService {
     chapterNumber: number,
     input: GenerateChapterInput,
   ) {
+    return this.startGenerationAction(userId, workId, branchId, chapterNumber, 'chapter', input);
+  }
+
+  async startGenerationAction(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    action: ChapterGenerationAction,
+    input: GenerateChapterInput,
+  ) {
     await this.requireBranch(userId, workId, branchId);
     const outline = await this.requireOutline(workId, branchId, chapterNumber);
-    const modelConfig = await this.selectProseModelConfig(userId);
+    this.requireActionInput(action, input);
+    const modelConfig = await this.selectProseModelConfig(userId, input.modelConfigId);
     if (!modelConfig) {
       throw chapterGenerationError(
         HttpStatus.CONFLICT,
@@ -257,6 +287,23 @@ export class ChapterGenerationService {
       );
     }
 
+    const outputKind = CHAPTER_ACTION_OUTPUT_KIND[action];
+    const writingSettings = {
+      qualityTier: input.qualityTier,
+      qualityTierLabel: QUALITY_TIER_LABELS[input.qualityTier],
+      modelConfigId: modelConfig.id,
+      targetMinCharacters: input.targetMinCharacters,
+      targetMaxCharacters: input.targetMaxCharacters,
+      pov: input.pov ?? null,
+      targetPov: input.targetPov ?? null,
+      mustInclude: input.mustInclude,
+      mustAvoid: input.mustAvoid,
+      referenceChapters: input.referenceChapters,
+      tabooWords: input.tabooWords,
+      cursorOffset: input.cursorOffset ?? null,
+      selectionStart: input.selectionStart ?? null,
+      selectionEnd: input.selectionEnd ?? null,
+    };
     const chapter = await this.ensureChapter(workId, branchId, chapterNumber, outline.title);
     const created = await this.database.db.transaction(async (tx) => {
       const now = new Date();
@@ -266,7 +313,7 @@ export class ChapterGenerationService {
           workId,
           branchId,
           chapterId: chapter.id,
-          type: 'chapter',
+          type: action,
           instruction: input.instruction || null,
           modelConfigId: modelConfig.id,
           status: 'queued',
@@ -289,8 +336,16 @@ export class ChapterGenerationService {
             chapterId: chapter.id,
             chapterNumber,
             outlineId: outline.id,
+            action,
+            outputKind,
             targetMinCharacters: input.targetMinCharacters,
             targetMaxCharacters: input.targetMaxCharacters,
+            settings: writingSettings,
+            content: input.content ?? null,
+            selection: input.selection ?? null,
+            selectionStart: input.selectionStart ?? null,
+            selectionEnd: input.selectionEnd ?? null,
+            targetPov: input.targetPov ?? null,
           },
           progress: 0,
           maxAttempts: 1,
@@ -370,6 +425,8 @@ export class ChapterGenerationService {
       generationRequestId: created.generation.id,
       jobId: created.job.id,
       chapterNumber,
+      action,
+      outputKind,
       status: 'queued',
     };
   }
@@ -405,8 +462,14 @@ export class ChapterGenerationService {
       id: job.id,
       generationRequestId: generation?.id ?? null,
       chapterNumber: Number(job.payload.chapterNumber ?? 0),
+      action: job.payload.action ?? generation?.type ?? 'chapter',
+      outputKind:
+        job.payload.outputKind ?? CHAPTER_ACTION_OUTPUT_KIND[
+          (job.payload.action as ChapterGenerationAction | undefined) ?? 'chapter'
+        ],
       targetMinCharacters: Number(job.payload.targetMinCharacters ?? 0),
       targetMaxCharacters: Number(job.payload.targetMaxCharacters ?? 0),
+      settings: job.payload.settings ?? {},
       status: job.status,
       progress: job.progress,
       modelConfigId: generation?.modelConfigId ?? null,
@@ -551,6 +614,8 @@ export class ChapterGenerationService {
           status: 'writing',
           currentVersionId: created.id,
           wordCount,
+          autosaveContent: '',
+          autosaveUpdatedAt: null,
           updatedAt: now,
         })
         .where(eq(chapters.id, chapter.id));
@@ -559,6 +624,136 @@ export class ChapterGenerationService {
     });
 
     return this.toVersionResponse(chapterNumber, saved);
+  }
+
+  async autosaveChapter(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    input: SaveChapterAutosaveInput,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    const outline = await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.ensureChapter(workId, branchId, chapterNumber, outline.title);
+    const now = new Date();
+    const wordCount = countCjkCharacters(input.content);
+    const [updated] = await this.database.db
+      .update(chapters)
+      .set({
+        autosaveContent: input.content,
+        autosaveUpdatedAt: now,
+        wordCount,
+        status: input.content.trim() ? 'writing' : chapter.status,
+        updatedAt: now,
+      })
+      .where(eq(chapters.id, chapter.id))
+      .returning();
+
+    return {
+      content: updated.autosaveContent,
+      wordCount,
+      updatedAt: now.toISOString(),
+    };
+  }
+
+  async updateChapterMetadata(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    input: UpdateChapterMetadataInput,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    const outline = await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.ensureChapter(workId, branchId, chapterNumber, outline.title);
+    const [updated] = await this.database.db
+      .update(chapters)
+      .set({
+        ...(input.title ? { title: input.title } : {}),
+        ...(input.summary !== undefined ? { summary: input.summary } : {}),
+        ...(input.hook !== undefined ? { hook: input.hook } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(chapters.id, chapter.id))
+      .returning();
+
+    return {
+      chapterNumber,
+      title: updated.title,
+      summary: updated.summary,
+      hook: updated.hook,
+      status: updated.status,
+      statusLabel: CHAPTER_STATUS_LABELS[updated.status],
+    };
+  }
+
+  async restoreVersion(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    versionId: string,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    const outline = await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.ensureChapter(workId, branchId, chapterNumber, outline.title);
+
+    const restored = await this.database.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${chapter.id}))`);
+      const [version] = await tx
+        .select()
+        .from(chapterVersions)
+        .where(
+          and(
+            eq(chapterVersions.id, versionId),
+            eq(chapterVersions.chapterId, chapter.id),
+          ),
+        )
+        .limit(1);
+      if (!version) {
+        throw chapterGenerationError(
+          HttpStatus.NOT_FOUND,
+          'CHAPTER_VERSION_NOT_FOUND',
+          'Chapter version not found',
+        );
+      }
+      const [currentMax] = await tx
+        .select({ version: max(chapterVersions.version) })
+        .from(chapterVersions)
+        .where(eq(chapterVersions.chapterId, chapter.id));
+      const nextVersion = Number(currentMax?.version ?? 0) + 1;
+      const now = new Date();
+      const [created] = await tx
+        .insert(chapterVersions)
+        .values({
+          chapterId: chapter.id,
+          version: nextVersion,
+          content: version.content,
+          contentHash: createHash('sha256').update(version.content).digest('hex'),
+          wordCount: version.wordCount,
+          modelConfigId: version.modelConfigId,
+          createdBy: userId,
+          source: 'restored',
+          createdAt: now,
+        })
+        .returning();
+      await tx
+        .update(chapters)
+        .set({
+          currentVersionId: created.id,
+          wordCount: created.wordCount,
+          status: 'writing',
+          autosaveContent: '',
+          autosaveUpdatedAt: null,
+          updatedAt: now,
+        })
+        .where(eq(chapters.id, chapter.id));
+      await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
+      return created;
+    });
+
+    return this.toVersionResponse(chapterNumber, restored);
   }
 
   async listVersions(userId: string, workId: string, branchId: string, chapterNumber: number) {
@@ -633,8 +828,8 @@ export class ChapterGenerationService {
         factChapterNumber: chapters.chapterNumber,
       })
       .from(annotations)
-      .innerJoin(facts, eq(facts.id, annotations.factId))
-      .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+      .leftJoin(facts, eq(facts.id, annotations.factId))
+      .leftJoin(chapters, eq(chapters.id, facts.chapterId))
       .where(
         and(
           eq(annotations.workId, workId),
@@ -646,6 +841,90 @@ export class ChapterGenerationService {
 
     return {
       items: rows.map((row) => this.toContinuityIssueResponse(row)),
+    };
+  }
+
+  async getWritingInsights(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.findChapter(workId, branchId, chapterNumber);
+
+    const [annotationRows, foreshadowRows, characterRows] = await Promise.all([
+      chapter
+        ? this.database.db
+            .select({
+              annotation: annotations,
+              fact: facts,
+              factChapterNumber: chapters.chapterNumber,
+            })
+            .from(annotations)
+            .leftJoin(facts, eq(facts.id, annotations.factId))
+            .leftJoin(chapters, eq(chapters.id, facts.chapterId))
+            .where(
+              and(
+                eq(annotations.workId, workId),
+                eq(annotations.branchId, branchId),
+                eq(annotations.chapterId, chapter.id),
+              ),
+            )
+            .orderBy(asc(annotations.status), asc(annotations.startOffset))
+        : Promise.resolve([]),
+      this.database.db
+        .select()
+        .from(foreshadows)
+        .where(
+          and(
+            eq(foreshadows.workId, workId),
+            eq(foreshadows.branchId, branchId),
+            eq(foreshadows.status, 'planted'),
+          ),
+        )
+        .orderBy(asc(foreshadows.importance), asc(foreshadows.plannedPayoffChapter))
+        .limit(12),
+      this.database.db
+        .select({
+          state: characterStates,
+          name: entities.name,
+        })
+        .from(characterStates)
+        .innerJoin(entities, eq(entities.id, characterStates.characterId))
+        .where(
+          and(
+            eq(characterStates.workId, workId),
+            eq(characterStates.branchId, branchId),
+          ),
+        )
+        .orderBy(asc(entities.name)),
+    ]);
+
+    const issues = annotationRows.map((row) => this.toContinuityIssueResponse(row));
+    return {
+      suggestions: issues.filter((issue) => issue.category !== 'body_state'),
+      continuity: issues.filter((issue) => issue.category === 'body_state'),
+      foreshadows: foreshadowRows.map((foreshadow) => ({
+        id: foreshadow.id,
+        title: foreshadow.title,
+        description: foreshadow.description,
+        setupChapter: foreshadow.setupChapter,
+        plannedPayoffChapter: foreshadow.plannedPayoffChapter,
+        importanceLabel: foreshadow.importance === 'must' ? '必须回收' : '可选回收',
+      })),
+      characters: characterRows.map(({ state, name }) => ({
+        id: state.characterId,
+        name,
+        body: state.body,
+        power: state.power,
+        location: state.location,
+        possessions: state.possessions,
+        disguise: state.disguise,
+        knowledgeCount: state.knowledge.length,
+        updatedAt: state.updatedAt.toISOString(),
+      })),
     };
   }
 
@@ -707,8 +986,8 @@ export class ChapterGenerationService {
           factChapterNumber: chapters.chapterNumber,
         })
         .from(annotations)
-        .innerJoin(facts, eq(facts.id, annotations.factId))
-        .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+        .leftJoin(facts, eq(facts.id, annotations.factId))
+        .leftJoin(chapters, eq(chapters.id, facts.chapterId))
         .where(eq(annotations.id, annotationId))
         .limit(1);
       if (!updated) {
@@ -1104,7 +1383,6 @@ export class ChapterGenerationService {
       .onConflictDoUpdate({
         target: [chapters.workId, chapters.branchId, chapters.chapterNumber],
         set: {
-          ...(title?.trim() ? { title: title.trim() } : {}),
           updatedAt: new Date(),
         },
       })
@@ -1181,7 +1459,38 @@ export class ChapterGenerationService {
     return chapter;
   }
 
-  private async selectProseModelConfig(userId: string) {
+  private requireActionInput(action: ChapterGenerationAction, input: GenerateChapterInput) {
+    const segmentActions: ChapterGenerationAction[] = [
+      'rewrite',
+      'expand',
+      'condense',
+      'change_pov',
+    ];
+    if (segmentActions.includes(action) && !input.selection?.trim()) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'SELECTION_REQUIRED',
+        'Select chapter text before using this writing action',
+      );
+    }
+    if (action === 'change_pov' && !input.targetPov?.trim() && !input.pov?.trim()) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'TARGET_POV_REQUIRED',
+        'Choose the target point of view before changing it',
+      );
+    }
+  }
+
+  private async selectProseModelConfig(userId: string, modelConfigId?: string) {
+    if (modelConfigId) {
+      const [selected] = await this.database.db
+        .select()
+        .from(modelConfigs)
+        .where(and(eq(modelConfigs.userId, userId), eq(modelConfigs.id, modelConfigId)))
+        .limit(1);
+      return selected;
+    }
     const rows = await this.database.db
       .select()
       .from(modelConfigs)
@@ -1313,8 +1622,8 @@ export class ChapterGenerationService {
 
   private toContinuityIssueResponse(row: {
     annotation: typeof annotations.$inferSelect;
-    fact: typeof facts.$inferSelect;
-    factChapterNumber: number;
+    fact: typeof facts.$inferSelect | null;
+    factChapterNumber: number | null;
   }) {
     const { annotation, fact, factChapterNumber } = row;
     return {
@@ -1332,12 +1641,14 @@ export class ChapterGenerationService {
       statusLabel: CONTINUITY_STATUS_LABELS[annotation.status],
       ignoredReason: annotation.ignoredReason,
       ignoredAt: annotation.ignoredAt?.toISOString() ?? null,
-      confirmedFact: {
-        id: fact.id,
-        statement: fact.statement,
-        chapterNumber: factChapterNumber,
-        typeLabel: FACT_TYPE_LABELS[fact.type],
-      },
+      confirmedFact: fact
+        ? {
+            id: fact.id,
+            statement: fact.statement,
+            chapterNumber: factChapterNumber ?? 0,
+            typeLabel: FACT_TYPE_LABELS[fact.type],
+          }
+        : null,
       createdAt: annotation.createdAt.toISOString(),
     };
   }

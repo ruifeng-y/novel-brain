@@ -1,16 +1,22 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { AI_GATEWAY, AiGatewayError, extractChapterFacts, type AiGateway } from '@novel/ai';
 import {
+  CHAPTER_ACTION_OUTPUT_KIND,
   countCjkCharacters,
   FACT_TYPE_LABELS,
   DEFAULT_CHAPTER_TARGET_MAX,
   DEFAULT_CHAPTER_TARGET_MIN,
+  QUALITY_TIER_LABELS,
   normalizeStoryBibleCards,
+  type ChapterGenerationAction,
+  type ChapterGenerationOutputKind,
+  type WritingQualityTier,
 } from '@novel/contracts';
 import { detectBodyStateConflicts } from '@novel/core';
 import {
   annotations,
   chapterOutlines,
+  chapterVersions,
   chapters,
   contextPacks,
   drafts,
@@ -27,7 +33,7 @@ import {
   type JobRow,
   type StoryBibleRow,
 } from '@novel/db';
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { GenerationModelConfigResolver } from './generation-model-config.resolver';
 
@@ -44,6 +50,22 @@ type ContextSection = {
   key: string;
   title: string;
   content: Record<string, unknown>;
+};
+
+type WritingSettings = {
+  qualityTier: WritingQualityTier;
+  modelConfigId: string | null;
+  targetMinCharacters: number;
+  targetMaxCharacters: number;
+  pov: string | null;
+  targetPov: string | null;
+  mustInclude: string[];
+  mustAvoid: string[];
+  referenceChapters: number[];
+  tabooWords: string[];
+  cursorOffset: number | null;
+  selectionStart: number | null;
+  selectionEnd: number | null;
 };
 
 @Injectable()
@@ -113,6 +135,12 @@ export class ChapterGenerationRunner {
       jobRow.payload.targetMaxCharacters,
       DEFAULT_CHAPTER_TARGET_MAX,
     );
+    const action = this.actionValue(jobRow.payload.action);
+    const outputKind = this.outputKindValue(jobRow.payload.outputKind, action);
+    const settings = this.writingSettings(jobRow.payload.settings, {
+      targetMinCharacters,
+      targetMaxCharacters,
+    });
     let draftId: string | undefined;
     let draftContent = '';
     let lastPersistedContent = '';
@@ -135,7 +163,10 @@ export class ChapterGenerationRunner {
           'Save the story bible before generating a chapter',
         );
       }
-      const model = await this.modelResolver.resolve(generation.createdBy);
+      const model = await this.modelResolver.resolve(
+        generation.createdBy,
+        settings.modelConfigId ?? undefined,
+      );
       await this.completeStep(
         jobId,
         'readiness',
@@ -172,6 +203,15 @@ export class ChapterGenerationRunner {
         generation,
         targetMinCharacters,
         targetMaxCharacters,
+        action,
+        outputKind,
+        settings,
+        await this.referenceChapterContext(
+          generation.workId,
+          generation.branchId,
+          settings.referenceChapters,
+        ),
+        jobRow.payload,
         confirmedFactRows.map(({ fact, chapterNumber }) => ({
           id: fact.id,
           chapterNumber,
@@ -236,7 +276,8 @@ export class ChapterGenerationRunner {
         })
         .where(eq(generationRequests.id, generation.id));
 
-      const maxAttempts = 2;
+      const enforceLength = outputKind === 'chapter' || outputKind === 'segment';
+      const maxAttempts = enforceLength ? 2 : 1;
       let attempts = 0;
       let characterCount = 0;
       let accepted = false;
@@ -311,12 +352,15 @@ export class ChapterGenerationRunner {
         }
 
         characterCount = countCjkCharacters(draftContent);
-        if (characterCount >= targetMinCharacters && characterCount <= targetMaxCharacters) {
+        if (
+          !enforceLength ||
+          (characterCount >= targetMinCharacters && characterCount <= targetMaxCharacters)
+        ) {
           accepted = true;
           break;
         }
 
-        if (attempts < maxAttempts) {
+        if (enforceLength && attempts < maxAttempts) {
           await this.appendEvent(jobId, 'job.draft.correcting', {
             characterCount,
             targetMinCharacters,
@@ -326,7 +370,7 @@ export class ChapterGenerationRunner {
         }
       }
 
-      if (!accepted) {
+      if (!accepted && enforceLength) {
         throw new InvalidGenerationInput(
           'DRAFT_LENGTH_OUT_OF_BOUNDS',
           'The chapter did not meet the requested length bounds',
@@ -357,91 +401,116 @@ export class ChapterGenerationRunner {
         98,
       );
 
-      await this.beginStep(jobId, 'extract_facts', { draftId }, 98);
-      const extracted = await extractChapterFacts(this.gateway, {
-        chapterNumber: Number(jobRow.payload.chapterNumber),
-        chapterText: draftContent,
-        storyBible: {
-          protagonist: bible.protagonist,
-          worldIronLaw: bible.worldIronLaw,
-        },
-      });
-      await this.database.db.transaction(async (tx) => {
-        await tx
-          .delete(factProposals)
-          .where(
-            and(
-              eq(factProposals.chapterId, generation.chapterId),
-              eq(factProposals.status, 'proposed'),
-            ),
-          );
-        const now = new Date();
-        await tx.insert(factProposals).values(
-          extracted.facts.map((fact) => ({
-            workId: generation.workId,
-            branchId: generation.branchId,
-            chapterId: generation.chapterId,
-            generationRequestId: generation.id,
-            type: fact.type,
-            statement: fact.statement,
-            sourceSentence: fact.sourceSentence,
-            status: 'proposed' as const,
-            createdAt: now,
-            updatedAt: now,
-          })),
+      let extracted: Awaited<ReturnType<typeof extractChapterFacts>> = { facts: [] };
+      if (action === 'chapter') {
+        await this.beginStep(jobId, 'extract_facts', { draftId }, 98);
+        extracted = await extractChapterFacts(this.gateway, {
+          chapterNumber: Number(jobRow.payload.chapterNumber),
+          chapterText: draftContent,
+          storyBible: {
+            protagonist: bible.protagonist,
+            worldIronLaw: bible.worldIronLaw,
+          },
+        });
+        await this.database.db.transaction(async (tx) => {
+          await tx
+            .delete(factProposals)
+            .where(
+              and(
+                eq(factProposals.chapterId, generation.chapterId),
+                eq(factProposals.status, 'proposed'),
+              ),
+            );
+          const now = new Date();
+          if (extracted.facts.length > 0) {
+            await tx.insert(factProposals).values(
+              extracted.facts.map((fact) => ({
+                workId: generation.workId,
+                branchId: generation.branchId,
+                chapterId: generation.chapterId,
+                generationRequestId: generation.id,
+                type: fact.type,
+                statement: fact.statement,
+                sourceSentence: fact.sourceSentence,
+                status: 'proposed' as const,
+                createdAt: now,
+                updatedAt: now,
+              })),
+            );
+          }
+        });
+        await this.completeStep(
+          jobId,
+          'extract_facts',
+          {
+            proposalCount: extracted.facts.length,
+            types: [...new Set(extracted.facts.map((fact) => fact.type))],
+          },
+          99,
         );
-      });
-      await this.completeStep(
-        jobId,
-        'extract_facts',
-        {
-          proposalCount: extracted.facts.length,
-          types: [...new Set(extracted.facts.map((fact) => fact.type))],
-        },
-        99,
-      );
+      } else {
+        await this.skipStep(jobId, 'extract_facts', { reason: 'not_a_full_chapter' });
+      }
 
       await this.beginStep(jobId, 'verify', { draftId }, 99);
-      const bodyStateConflicts = detectBodyStateConflicts(
+      const bodyStateConflicts =
+        action === 'chapter'
+          ? detectBodyStateConflicts(
+              draftContent,
+              confirmedFactRows
+                .filter(({ fact }) => fact.type === 'body_state')
+                .map(({ fact, chapterNumber }) => ({
+                  id: fact.id,
+                  statement: fact.statement,
+                  sourceSentence: fact.sourceSentence,
+                  chapterNumber,
+                })),
+            )
+          : [];
+      const tabooIssues = this.detectTabooIssues(
         draftContent,
-        confirmedFactRows
-          .filter(({ fact }) => fact.type === 'body_state')
-          .map(({ fact, chapterNumber }) => ({
-            id: fact.id,
-            statement: fact.statement,
-            sourceSentence: fact.sourceSentence,
-            chapterNumber,
-          })),
+        settings.tabooWords,
+        generation,
+        draftId,
       );
       await this.database.db.transaction(async (tx) => {
         await tx.delete(annotations).where(eq(annotations.chapterId, generation.chapterId));
-        if (bodyStateConflicts.length > 0) {
+        if (bodyStateConflicts.length > 0 || tabooIssues.length > 0) {
           await tx.insert(annotations).values(
-            bodyStateConflicts.map((issue) => ({
-              workId: generation.workId,
-              branchId: generation.branchId,
-              chapterId: generation.chapterId,
-              generationRequestId: generation.id,
-              draftId,
-              factId: issue.factId,
-              category: issue.category,
-              severity: issue.severity,
-              message: issue.message,
-              suggestion: issue.suggestion,
-              sourceSentence: issue.sourceSentence,
-              startOffset: issue.startOffset,
-              endOffset: issue.endOffset,
-              status: 'open' as const,
-            })),
+            [
+              ...bodyStateConflicts.map((issue) => ({
+                workId: generation.workId,
+                branchId: generation.branchId,
+                chapterId: generation.chapterId,
+                generationRequestId: generation.id,
+                draftId,
+                factId: issue.factId,
+                category: issue.category,
+                severity: issue.severity,
+                message: issue.message,
+                suggestion: issue.suggestion,
+                sourceSentence: issue.sourceSentence,
+                startOffset: issue.startOffset,
+                endOffset: issue.endOffset,
+                status: 'open' as const,
+              })),
+              ...tabooIssues,
+            ],
           );
         }
       });
+      const issueCount = bodyStateConflicts.length + tabooIssues.length;
       await this.completeStep(
         jobId,
         'verify',
         {
-          issueCount: bodyStateConflicts.length,
-          categories: [...new Set(bodyStateConflicts.map((issue) => issue.category))],
+          issueCount,
+          categories: [
+            ...new Set([
+              ...bodyStateConflicts.map((issue) => issue.category),
+              ...tabooIssues.map((issue) => issue.category),
+            ]),
+          ],
         },
         99,
       );
@@ -455,7 +524,9 @@ export class ChapterGenerationRunner {
         targetMaxCharacters,
         attempts,
         proposalCount: extracted.facts.length,
-        continuityIssueCount: bodyStateConflicts.length,
+        continuityIssueCount: issueCount,
+        action,
+        outputKind,
         progress: 100,
       });
       await this.database.db
@@ -503,6 +574,16 @@ export class ChapterGenerationRunner {
     generation: GenerationRequestRow,
     targetMinCharacters: number,
     targetMaxCharacters: number,
+    action: ChapterGenerationAction,
+    outputKind: ChapterGenerationOutputKind,
+    settings: WritingSettings,
+    referenceChapters: Array<{
+      chapterNumber: number;
+      title: string;
+      summary: string;
+      content: string;
+    }>,
+    jobPayload: Record<string, unknown>,
     confirmedFacts: Array<{
       id: string;
       chapterNumber: number;
@@ -559,6 +640,32 @@ export class ChapterGenerationRunner {
           ]
         : []),
       {
+        key: 'writingControls',
+        title: '写作控制',
+        content: {
+          qualityTier: settings.qualityTier,
+          qualityTierLabel: QUALITY_TIER_LABELS[settings.qualityTier],
+          pov: settings.targetPov ?? settings.pov ?? outline.pov,
+          mustInclude: settings.mustInclude,
+          mustAvoid: settings.mustAvoid,
+          referenceChapters: settings.referenceChapters,
+          tabooWords: settings.tabooWords,
+          action,
+          outputKind,
+        },
+      },
+      ...(referenceChapters.length > 0
+        ? [
+            {
+              key: 'referenceChapters',
+              title: '参考章节',
+              content: {
+                chapters: referenceChapters,
+              },
+            },
+          ]
+        : []),
+      {
         key: 'writingGuidance',
         title: '写作要求',
         content: {
@@ -567,6 +674,11 @@ export class ChapterGenerationRunner {
           targetCharacters: `${targetMinCharacters} 到 ${targetMaxCharacters} 个汉字`,
           instruction: generation.instruction ?? '',
           output: '只输出章节正文，不解释创作过程。',
+          qualityTier: settings.qualityTier,
+          pov: settings.targetPov ?? settings.pov ?? outline.pov,
+          mustInclude: settings.mustInclude,
+          mustAvoid: settings.mustAvoid,
+          tabooWords: settings.tabooWords,
         },
       },
     ];
@@ -574,19 +686,21 @@ export class ChapterGenerationRunner {
     const systemPrompt = [
       '你是一位擅长中文长篇网络小说的作者。',
       '请严格依据作者提供的创作资料写作，保持人物、世界规则和前文事实一致。',
-      `正文必须包含 ${targetMinCharacters} 到 ${targetMaxCharacters} 个汉字；标点、空格和换行不计入汉字数量。`,
-      '只输出可以直接进入编辑器的章节正文，不要标题、说明、Markdown 代码块或创作分析。',
+      ...(outputKind === 'chapter' || outputKind === 'segment'
+        ? [
+            `正文必须包含 ${targetMinCharacters} 到 ${targetMaxCharacters} 个汉字；标点、空格和换行不计入汉字数量。`,
+          ]
+        : []),
+      '只输出可以直接进入编辑器的内容，不要说明、Markdown 代码块或创作分析。',
     ].join('\n');
-    const userPrompt = [
-      `请写出这一章的完整正文，目标汉字数：${targetMinCharacters} 到 ${targetMaxCharacters}。`,
-      '只统计汉字，标点、空格和换行不计入。',
-      '',
+    const effectivePov = settings.targetPov ?? settings.pov ?? outline.pov;
+    const sharedMaterials = [
       '【故事圣经】',
       storyBiblePrompt,
       '',
       '【本章章纲】',
       `章目标：${outline.chapterGoal}`,
-      `叙事视角：${outline.pov}`,
+      `叙事视角：${effectivePov}`,
       `场景节拍：${outline.sceneBeats.join('；')}`,
       `章末钩子：${outline.chapterEndHook}`,
       ...(confirmedFacts.length > 0
@@ -598,9 +712,40 @@ export class ChapterGenerationRunner {
             ),
           ]
         : []),
-      ...(generation.instruction ? ['', '【作者补充要求】', generation.instruction] : []),
       '',
-      '正文要有清楚的动作、对话和场景推进，结尾落在章末钩子上。',
+      '【写作控制】',
+      `质量档位：${QUALITY_TIER_LABELS[settings.qualityTier]}`,
+      ...(settings.mustInclude.length > 0
+        ? [`必须包含：${settings.mustInclude.join('、')}`]
+        : []),
+      ...(settings.mustAvoid.length > 0
+        ? [`必须避免：${settings.mustAvoid.join('、')}`]
+        : []),
+      ...(settings.tabooWords.length > 0
+        ? [`禁忌词：${settings.tabooWords.join('、')}`]
+        : []),
+      ...(referenceChapters.length > 0
+        ? [
+            '',
+            '【参考章节】',
+            ...referenceChapters.map(
+              (chapter) =>
+                `第 ${chapter.chapterNumber} 章《${chapter.title}》\n摘要：${chapter.summary || '无'}\n节选：${chapter.content}`,
+            ),
+          ]
+        : []),
+      ...(generation.instruction ? ['', '【作者补充要求】', generation.instruction] : []),
+    ].join('\n');
+    const userPrompt = [
+      this.actionInstruction(
+        action,
+        effectivePov,
+        targetMinCharacters,
+        targetMaxCharacters,
+        jobPayload,
+      ),
+      '',
+      sharedMaterials,
     ].join('\n');
 
     return {
@@ -608,11 +753,263 @@ export class ChapterGenerationRunner {
       sourceRefs: [
         `story_bible:${bible.id}`,
         `chapter_outline:${outline.id}`,
+        ...referenceChapters.map(
+          (chapter) => `chapter:${chapter.chapterNumber}`,
+        ),
         ...confirmedFacts.map((fact) => `fact:${fact.id}`),
       ],
       systemPrompt,
       userPrompt,
     };
+  }
+
+  private actionInstruction(
+    action: ChapterGenerationAction,
+    pov: string,
+    targetMinCharacters: number,
+    targetMaxCharacters: number,
+    payload: Record<string, unknown>,
+  ): string {
+    const content = typeof payload.content === 'string' ? payload.content : '';
+    const selection = typeof payload.selection === 'string' ? payload.selection : '';
+    const cursorOffset =
+      typeof payload.cursorOffset === 'number' ? payload.cursorOffset : content.length;
+    const targetLength = `目标汉字数：${targetMinCharacters} 到 ${targetMaxCharacters}。`;
+
+    switch (action) {
+      case 'continue':
+        return [
+          '【续写要求】',
+          '从作者给出的光标位置继续写下去，不要重复光标前的正文。',
+          targetLength,
+          `【光标位置】${cursorOffset}`,
+          '【光标前正文】',
+          content.slice(0, cursorOffset),
+        ].join('\n');
+      case 'rewrite':
+        return [
+          '【改写要求】',
+          '在保持情节事实不变的前提下重写选中文字，只输出替换后的文字。',
+          targetLength,
+          `【选中文字】\n${selection}`,
+          `【所在正文】\n${content}`,
+        ].join('\n');
+      case 'expand':
+        return [
+          '【扩写要求】',
+          '补充动作、感官和情绪细节，扩写选中文字，只输出替换后的文字。',
+          targetLength,
+          `【选中文字】\n${selection}`,
+          `【所在正文】\n${content}`,
+        ].join('\n');
+      case 'condense':
+        return [
+          '【缩写要求】',
+          '保留关键信息和语气，压缩选中文字，只输出替换后的文字。',
+          targetLength,
+          `【选中文字】\n${selection}`,
+          `【所在正文】\n${content}`,
+        ].join('\n');
+      case 'change_pov':
+        return [
+          '【改视角要求】',
+          `把选中文字改写成以“${pov}”为叙事视角的版本，只输出替换后的文字。`,
+          targetLength,
+          `【选中文字】\n${selection}`,
+          `【所在正文】\n${content}`,
+        ].join('\n');
+      case 'hooks':
+        return [
+          '【钩子要求】',
+          '基于正文生成三个不同的章末钩子，每行一个，从 1. 开始编号，只输出三条钩子。',
+          `【正文】\n${content}`,
+        ].join('\n');
+      case 'title':
+        return [
+          '【标题要求】',
+          '为这一章生成一个不含“第几章”的中文标题，只输出标题本身，不超过 20 个汉字。',
+          `【正文】\n${content}`,
+        ].join('\n');
+      case 'summary':
+        return [
+          '【摘要要求】',
+          '用 80 到 160 个汉字概括本章发生的关键事件、人物变化和留下的悬念，只输出摘要。',
+          `【正文】\n${content}`,
+        ].join('\n');
+      case 'chapter':
+      default:
+        return [
+          `请写出这一章的完整正文，目标汉字数：${targetMinCharacters} 到 ${targetMaxCharacters}。`,
+          '只统计汉字，标点、空格和换行不计入。',
+          '',
+          '正文要有清楚的动作、对话和场景推进，结尾落在章末钩子上。',
+        ].join('\n');
+    }
+  }
+
+  private async referenceChapterContext(
+    workId: string,
+    branchId: string,
+    chapterNumbers: number[],
+  ): Promise<
+    Array<{ chapterNumber: number; title: string; summary: string; content: string }>
+  > {
+    if (chapterNumbers.length === 0) {
+      return [];
+    }
+    const rows = await this.database.db
+      .select({
+        chapter: chapters,
+        version: chapterVersions,
+        outline: chapterOutlines,
+      })
+      .from(chapters)
+      .innerJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
+      .leftJoin(
+        chapterOutlines,
+        and(
+          eq(chapterOutlines.workId, chapters.workId),
+          eq(chapterOutlines.branchId, chapters.branchId),
+          eq(chapterOutlines.chapterNumber, chapters.chapterNumber),
+          eq(chapterOutlines.level, 'chapter'),
+        ),
+      )
+      .where(
+        and(
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, branchId),
+          inArray(chapters.chapterNumber, chapterNumbers),
+        ),
+      )
+      .orderBy(asc(chapters.chapterNumber));
+
+    return rows.map(({ chapter, version, outline }) => ({
+      chapterNumber: chapter.chapterNumber,
+      title: chapter.title,
+      summary: outline?.chapterGoal ?? '',
+      content: Array.from(version.content).slice(0, 4_000).join(''),
+    }));
+  }
+
+  private writingSettings(
+    raw: unknown,
+    fallback: { targetMinCharacters: number; targetMaxCharacters: number },
+  ): WritingSettings {
+    const value =
+      raw && typeof raw === 'object' && !Array.isArray(raw)
+        ? (raw as Record<string, unknown>)
+        : {};
+    const qualityTier: WritingQualityTier =
+      value.qualityTier === 'fast' || value.qualityTier === 'premium'
+        ? value.qualityTier
+        : 'standard';
+    return {
+      qualityTier,
+      modelConfigId:
+        typeof value.modelConfigId === 'string' ? value.modelConfigId : null,
+      targetMinCharacters: this.targetValue(
+        value.targetMinCharacters,
+        fallback.targetMinCharacters,
+      ),
+      targetMaxCharacters: this.targetValue(
+        value.targetMaxCharacters,
+        fallback.targetMaxCharacters,
+      ),
+      pov: typeof value.pov === 'string' && value.pov.trim() ? value.pov.trim() : null,
+      targetPov:
+        typeof value.targetPov === 'string' && value.targetPov.trim()
+          ? value.targetPov.trim()
+          : null,
+      mustInclude: this.stringList(value.mustInclude),
+      mustAvoid: this.stringList(value.mustAvoid),
+      referenceChapters: Array.isArray(value.referenceChapters)
+        ? value.referenceChapters.filter(
+            (chapter): chapter is number =>
+              typeof chapter === 'number' && Number.isInteger(chapter) && chapter > 0,
+          )
+        : [],
+      tabooWords: this.stringList(value.tabooWords),
+      cursorOffset:
+        typeof value.cursorOffset === 'number' ? value.cursorOffset : null,
+      selectionStart:
+        typeof value.selectionStart === 'number' ? value.selectionStart : null,
+      selectionEnd:
+        typeof value.selectionEnd === 'number' ? value.selectionEnd : null,
+    };
+  }
+
+  private actionValue(raw: unknown): ChapterGenerationAction {
+    const actions: ChapterGenerationAction[] = [
+      'chapter',
+      'continue',
+      'rewrite',
+      'expand',
+      'condense',
+      'change_pov',
+      'hooks',
+      'title',
+      'summary',
+    ];
+    return actions.includes(raw as ChapterGenerationAction)
+      ? (raw as ChapterGenerationAction)
+      : 'chapter';
+  }
+
+  private outputKindValue(
+    raw: unknown,
+    action: ChapterGenerationAction,
+  ): ChapterGenerationOutputKind {
+    const kinds: ChapterGenerationOutputKind[] = [
+      'chapter',
+      'segment',
+      'hook_options',
+      'title',
+      'summary',
+    ];
+    return kinds.includes(raw as ChapterGenerationOutputKind)
+      ? (raw as ChapterGenerationOutputKind)
+      : CHAPTER_ACTION_OUTPUT_KIND[action];
+  }
+
+  private stringList(raw: unknown): string[] {
+    return Array.isArray(raw)
+      ? raw
+          .filter((item): item is string => typeof item === 'string')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      : [];
+  }
+
+  private detectTabooIssues(
+    content: string,
+    tabooWords: string[],
+    generation: GenerationRequestRow,
+    draftId: string | undefined,
+  ) {
+    return tabooWords.flatMap((word) => {
+      const startOffset = content.indexOf(word);
+      if (startOffset < 0) {
+        return [];
+      }
+      return [
+        {
+          workId: generation.workId,
+          branchId: generation.branchId,
+          chapterId: generation.chapterId,
+          generationRequestId: generation.id,
+          draftId,
+          factId: null,
+          category: 'taboo',
+          severity: 'warning',
+          message: `正文出现了需要避开的词语“${word}”。`,
+          suggestion: `删去“${word}”，或换成不违反作者禁忌的写法。`,
+          sourceSentence: word,
+          startOffset,
+          endOffset: startOffset + word.length,
+          status: 'open' as const,
+        },
+      ];
+    });
   }
 
   private correctionPrompt(
@@ -679,6 +1076,22 @@ export class ChapterGenerationRunner {
       })
       .where(eq(jobs.id, jobId));
     await this.appendEvent(jobId, 'job.step.succeeded', { stepKey, progress });
+  }
+
+  private async skipStep(
+    jobId: string,
+    stepKey: GenerationStepKey,
+    output: Record<string, unknown>,
+  ): Promise<void> {
+    await this.database.db
+      .update(jobSteps)
+      .set({
+        status: 'skipped',
+        output,
+        finishedAt: new Date(),
+      })
+      .where(and(eq(jobSteps.jobId, jobId), eq(jobSteps.stepKey, stepKey)));
+    await this.appendEvent(jobId, 'job.step.skipped', { stepKey, ...output });
   }
 
   private async fail(

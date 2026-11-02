@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Req,
   Sse,
   UseGuards,
@@ -18,7 +19,9 @@ import {
   confirmFactProposalSchema,
   generateChapterSchema,
   ignoreContinuityIssueSchema,
+  saveChapterAutosaveSchema,
   saveChapterVersionSchema,
+  updateChapterMetadataSchema,
   updateFactProposalSchema,
   workIdSchema,
 } from '@novel/contracts';
@@ -63,6 +66,60 @@ export class ChapterGenerationController {
     );
   }
 
+  @Patch('chapters/:chapterNumber')
+  @ApiOperation({ summary: 'Update chapter title, summary, or hook' })
+  updateChapter(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = updateChapterMetadataSchema.safeParse(body);
+    if (!parsed.success) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Check the chapter details',
+        parsed.error.flatten(),
+      );
+    }
+    return this.chapters.updateChapterMetadata(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      parsed.data,
+    );
+  }
+
+  @Put('chapters/:chapterNumber/autosave')
+  @ApiOperation({ summary: 'Autosave the chapter editor content' })
+  autosaveChapter(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = saveChapterAutosaveSchema.safeParse(body);
+    if (!parsed.success) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Check the chapter text before autosaving',
+        parsed.error.flatten(),
+      );
+    }
+    return this.chapters.autosaveChapter(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      parsed.data,
+    );
+  }
+
   @Post('chapters/:chapterNumber/generate')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({ summary: 'Queue chapter generation from the saved chapter outline' })
@@ -90,6 +147,127 @@ export class ChapterGenerationController {
       this.parseChapterNumber(chapterNumber),
       parsed.data,
     );
+  }
+
+  @Post('chapters/:chapterNumber/continue')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Continue the chapter from the current cursor' })
+  continueChapter(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = generateChapterSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Check the chapter writing settings',
+        parsed.error.flatten(),
+      );
+    }
+
+    return this.chapters.startGenerationAction(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      'continue',
+      parsed.data,
+    );
+  }
+
+  @Post('chapters/:chapterNumber/rewrite')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Rewrite selected chapter text' })
+  rewriteSelection(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.startWritingAction('rewrite', workId, branchId, chapterNumber, body, request);
+  }
+
+  @Post('chapters/:chapterNumber/expand')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Expand selected chapter text' })
+  expandSelection(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.startWritingAction('expand', workId, branchId, chapterNumber, body, request);
+  }
+
+  @Post('chapters/:chapterNumber/condense')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Condense selected chapter text' })
+  condenseSelection(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.startWritingAction('condense', workId, branchId, chapterNumber, body, request);
+  }
+
+  @Post('chapters/:chapterNumber/change-pov')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Rewrite selected text from another point of view' })
+  changePerspective(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.startWritingAction('change_pov', workId, branchId, chapterNumber, body, request);
+  }
+
+  @Post('chapters/:chapterNumber/hooks')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Generate three chapter-end hook options' })
+  generateHooks(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.startWritingAction('hooks', workId, branchId, chapterNumber, body, request);
+  }
+
+  @Post('chapters/:chapterNumber/title')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Generate a chapter title' })
+  generateTitle(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.startWritingAction('title', workId, branchId, chapterNumber, body, request);
+  }
+
+  @Post('chapters/:chapterNumber/summary')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Generate a chapter summary' })
+  generateSummary(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.startWritingAction('summary', workId, branchId, chapterNumber, body, request);
   }
 
   @Get('chapters/:chapterNumber/versions')
@@ -133,6 +311,22 @@ export class ChapterGenerationController {
     @Req() request: AuthenticatedRequest,
   ) {
     return this.chapters.listContinuityIssues(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+    );
+  }
+
+  @Get('chapters/:chapterNumber/insights')
+  @ApiOperation({ summary: 'Read review panels for the current chapter' })
+  getWritingInsights(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.getWritingInsights(
       this.requireUserId(request),
       this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
       this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
@@ -327,6 +521,25 @@ export class ChapterGenerationController {
     );
   }
 
+  @Post('chapters/:chapterNumber/versions/:versionId/restore')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Restore an older chapter version as a new version' })
+  restoreVersion(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Param('versionId') versionId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.restoreVersion(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      this.parseId(versionId, 'CHAPTER_VERSION_NOT_FOUND', 'Chapter version not found'),
+    );
+  }
+
   @Get('jobs/:jobId')
   @ApiOperation({ summary: 'Read chapter generation task state' })
   getJob(
@@ -368,6 +581,41 @@ export class ChapterGenerationController {
       throw chapterGenerationError(HttpStatus.NOT_FOUND, code, message);
     }
     return parsed.data;
+  }
+
+  private startWritingAction(
+    action:
+      | 'rewrite'
+      | 'expand'
+      | 'condense'
+      | 'change_pov'
+      | 'hooks'
+      | 'title'
+      | 'summary',
+    workId: string,
+    branchId: string,
+    chapterNumber: string,
+    body: unknown,
+    request: AuthenticatedRequest,
+  ) {
+    const parsed = generateChapterSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Check the chapter writing settings',
+        parsed.error.flatten(),
+      );
+    }
+
+    return this.chapters.startGenerationAction(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      action,
+      parsed.data,
+    );
   }
 
   private parseChapterNumber(value: string): number {

@@ -2,7 +2,13 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type UIEvent,
+} from 'react';
 import { countCjkCharacters } from '@novel/contracts';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../../lib/auth-api';
 import {
@@ -13,18 +19,39 @@ import {
   loadChapters,
   loadContinuityIssues,
   loadGenerationJob,
+  loadWritingInsights,
+  restoreChapterVersion,
+  saveChapterAutosave,
   saveChapterVersion,
-  startChapterGeneration,
+  startChapterAction,
+  updateChapterMetadata,
   type ChapterDetail,
   type ChapterListItem,
+  type ChapterVersion,
   type ContinuityIssue,
   type GenerationEvent,
   type GenerationJob,
+  type WritingAction,
+  type WritingInsights,
+  type WritingOutputKind,
+  type WritingQualityTier,
+  type WritingRequest,
 } from '../../../../lib/chapter-generation-api';
+import {
+  type ModelConfig,
+  type ModelConfigListResponse,
+} from '../../../../lib/model-configs-api';
 import { loadStoryBible, type StoryBible } from '../../../../lib/story-planning-api';
 import { GENRE_LABELS, type Work } from '../../../../lib/works-api';
 import { ContinuityReviewPanel } from './continuity-review-panel';
 import { FactReviewPanel } from './fact-review-panel';
+import {
+  CharacterStatePanel,
+  ForeshadowPanel,
+  SuggestionsPanel,
+  VersionHistoryPanel,
+  type AssistantOutput,
+} from './writing-insight-panels';
 
 type BootState =
   | { status: 'loading' }
@@ -35,18 +62,67 @@ type BootState =
       branchId: string;
       storyBible: StoryBible | null;
       chapters: ChapterListItem[];
+      models: ModelConfig[];
     }
   | { status: 'error'; message: string; notFound: boolean };
 
 type GenerationState = 'idle' | 'preparing' | 'streaming' | 'completed' | 'failed';
+type AutosaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+type InsightTab = 'suggestions' | 'continuity' | 'foreshadows' | 'characters' | 'versions';
+
+type WritingControls = {
+  qualityTier: WritingQualityTier;
+  modelConfigId: string;
+  targetWordCount: number;
+  pov: string;
+  mustInclude: string;
+  mustAvoid: string;
+  referenceChapters: number[];
+  tabooWords: string;
+  instruction: string;
+};
+
+type SelectionRange = {
+  start: number;
+  end: number;
+};
+
+type GenerationRun = {
+  action: WritingAction;
+  outputKind: WritingOutputKind;
+  baseContent: string;
+  start: number;
+  end: number;
+  streamText: string;
+};
 
 const STEP_MESSAGES: Record<string, string> = {
   readiness: '正在核对章纲和故事设定…',
-  brief: '正在整理本章写作任务…',
+  brief: '正在整理本次写作任务…',
   context: '正在准备本章参考资料…',
   draft: '正在起草正文…',
   verify: '正在检查前后设定…',
 };
+
+const QUALITY_LABELS: Record<WritingQualityTier, string> = {
+  fast: '快速',
+  standard: '标准',
+  premium: '精品',
+};
+
+const ACTION_LABELS: Record<WritingAction, string> = {
+  chapter: '整章',
+  continue: '续写',
+  rewrite: '选中重写',
+  expand: '扩写',
+  condense: '缩写',
+  change_pov: '转换视角',
+  hooks: '章末钩子',
+  title: '标题',
+  summary: '摘要',
+};
+
+const DEFAULT_TARGET_WORDS = 2_500;
 
 export function WritingDesk({ workId }: { workId: string }) {
   const router = useRouter();
@@ -57,46 +133,83 @@ export function WritingDesk({ workId }: { workId: string }) {
   const [content, setContent] = useState('');
   const [chapterLoading, setChapterLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [currentAction, setCurrentAction] = useState<WritingAction | null>(null);
   const [saving, setSaving] = useState(false);
   const [generationState, setGenerationState] = useState<GenerationState>('idle');
+  const [completionLabel, setCompletionLabel] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [previousContent, setPreviousContent] = useState('');
+  const [selection, setSelection] = useState<SelectionRange>({ start: 0, end: 0 });
   const [continuityIssues, setContinuityIssues] = useState<ContinuityIssue[]>([]);
   const [continuityLoading, setContinuityLoading] = useState(false);
   const [continuityBusyId, setContinuityBusyId] = useState<string>();
   const [continuityError, setContinuityError] = useState('');
   const [continuityNotice, setContinuityNotice] = useState('');
+  const [insights, setInsights] = useState<WritingInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+  const [insightsError, setInsightsError] = useState('');
+  const [activePanel, setActivePanel] = useState<InsightTab>('suggestions');
+  const [assistantOutputs, setAssistantOutputs] = useState<AssistantOutput[]>([]);
+  const [selectedVersionId, setSelectedVersionId] = useState<string>();
+  const [restoringVersionId, setRestoringVersionId] = useState<string>();
+  const [autosaveState, setAutosaveState] = useState<AutosaveState>('idle');
+  const [autosaveError, setAutosaveError] = useState('');
+  const [lastAutosaveAt, setLastAutosaveAt] = useState('');
+  const [writingControls, setWritingControls] = useState<WritingControls>({
+    qualityTier: 'standard',
+    modelConfigId: '',
+    targetWordCount: DEFAULT_TARGET_WORDS,
+    pov: '',
+    mustInclude: '',
+    mustAvoid: '',
+    referenceChapters: [],
+    tabooWords: '',
+    instruction: '',
+  });
   const [highlightScrollbarWidth, setHighlightScrollbarWidth] = useState(0);
   const streamRef = useRef<EventSource | null>(null);
+  const runRef = useRef<GenerationRun | null>(null);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const highlightBackdropRef = useRef<HTMLDivElement | null>(null);
-  const openContinuityIssues = continuityIssues.filter(
-    (issue) => issue.status === 'open',
+  const bodyStateIssues = continuityIssues.filter(
+    (issue) => issue.category === 'body_state',
   );
-  const bodyHighlightRanges = buildBodyHighlightRanges(
-    content,
-    openContinuityIssues,
-  );
+  const openHighlights = continuityIssues.filter((issue) => issue.status === 'open');
+  const bodyHighlightRanges = buildBodyHighlightRanges(content, openHighlights);
   const hasBodyHighlights = bodyHighlightRanges.length > 0;
+  const hasSelection = selection.end > selection.start;
+  const models = boot.status === 'ready' ? boot.models : [];
+  const busy = generating || chapterLoading;
 
   useEffect(() => {
     let active = true;
 
-    Promise.all([apiRequest<User>('/api/v1/auth/me'), apiRequest<Work>(`/api/v1/works/${workId}`)])
+    Promise.all([
+      apiRequest<User>('/api/v1/auth/me'),
+      apiRequest<Work>(`/api/v1/works/${workId}`),
+    ])
       .then(async ([user, work]) => {
         if (!work.mainBranch) {
           throw new Error('这部作品还没有可用的创作线。');
         }
-        const [storyBible, chapterList] = await Promise.all([
+        const [storyBible, chapterList, modelList] = await Promise.all([
           loadStoryBible(work.id, work.mainBranch.id),
           loadChapters(work.id, work.mainBranch.id),
+          apiRequest<ModelConfigListResponse>('/api/v1/model-configs'),
         ]);
         if (!active) {
           return;
         }
 
+        const proseModels = modelList.items.filter((model) => model.purpose === 'prose');
+        const defaultModelId =
+          modelList.effectivePurposes.prose.configId ??
+          proseModels[0]?.id ??
+          modelList.items[0]?.id ??
+          '';
         setBoot({
           status: 'ready',
           user,
@@ -104,8 +217,13 @@ export function WritingDesk({ workId }: { workId: string }) {
           branchId: work.mainBranch.id,
           storyBible,
           chapters: chapterList.items,
+          models: modelList.items,
         });
         setChapters(chapterList.items);
+        setWritingControls((current) => ({
+          ...current,
+          modelConfigId: defaultModelId,
+        }));
         if (chapterList.items.length > 0) {
           const first = chapterList.items[0];
           setChapterNumber(first.chapterNumber);
@@ -113,6 +231,10 @@ export function WritingDesk({ workId }: { workId: string }) {
           if (active) {
             setDetail(opened);
             setContent(initialChapterContent(opened));
+            setWritingControls((current) => ({
+              ...current,
+              pov: opened.outline.pov,
+            }));
           }
         }
       })
@@ -134,32 +256,57 @@ export function WritingDesk({ workId }: { workId: string }) {
     return () => {
       active = false;
       streamRef.current?.close();
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+      }
     };
   }, [router, workId]);
 
   useEffect(() => {
     if (boot.status !== 'ready' || !chapterNumber) {
       setContinuityIssues([]);
+      setInsights(null);
       return;
     }
 
     let active = true;
     setContinuityLoading(true);
+    setInsightsLoading(true);
     setContinuityError('');
-    loadContinuityIssues(boot.work.id, boot.branchId, chapterNumber)
-      .then((result) => {
-        if (active) {
-          setContinuityIssues(result.items);
+    setInsightsError('');
+    Promise.all([
+      loadContinuityIssues(boot.work.id, boot.branchId, chapterNumber),
+      loadWritingInsights(boot.work.id, boot.branchId, chapterNumber),
+    ])
+      .then(([issueResult, insightResult]) => {
+        if (!active) {
+          return;
+        }
+        setContinuityIssues(issueResult.items);
+        setInsights(insightResult);
+        if (
+          issueResult.items.some(
+            (issue) => issue.category === 'body_state',
+          ) &&
+          insightResult.suggestions.length === 0
+        ) {
+          setActivePanel((current) =>
+            current === 'suggestions' ? 'continuity' : current,
+          );
         }
       })
       .catch((loadError: unknown) => {
-        if (active) {
-          setContinuityError(friendlyError(loadError));
+        if (!active) {
+          return;
         }
+        const message = friendlyError(loadError);
+        setContinuityError(message);
+        setInsightsError(message);
       })
       .finally(() => {
         if (active) {
           setContinuityLoading(false);
+          setInsightsLoading(false);
         }
       });
 
@@ -206,23 +353,36 @@ export function WritingDesk({ workId }: { workId: string }) {
   }, [content, hasBodyHighlights]);
 
   async function openChapter(nextChapterNumber: number) {
-    if (!boot || boot.status !== 'ready' || generating) {
+    if (boot.status !== 'ready' || generating) {
       return;
     }
     closeStream();
+    cancelAutosave();
     setChapterLoading(true);
     setError('');
     setNotice('');
     setGenerationState('idle');
+    setCompletionLabel('');
     setStatusMessage('');
     setContinuityNotice('');
     setContinuityError('');
+    setInsightsError('');
+    setAssistantOutputs([]);
+    setSelectedVersionId(undefined);
+    setAutosaveState('idle');
+    setAutosaveError('');
+    setLastAutosaveAt('');
 
     try {
       const opened = await loadChapter(boot.work.id, boot.branchId, nextChapterNumber);
       setChapterNumber(nextChapterNumber);
       setDetail(opened);
       setContent(initialChapterContent(opened));
+      setSelection({ start: 0, end: 0 });
+      setWritingControls((current) => ({
+        ...current,
+        pov: opened.outline.pov,
+      }));
     } catch (loadError) {
       setError(friendlyError(loadError));
     } finally {
@@ -230,37 +390,147 @@ export function WritingDesk({ workId }: { workId: string }) {
     }
   }
 
-  async function generateChapter() {
-    if (!boot || boot.status !== 'ready' || !chapterNumber || generating) {
+  async function runWritingAction(action: WritingAction) {
+    if (boot.status !== 'ready' || !chapterNumber || generating) {
       return;
     }
 
+    const segmentActions: WritingAction[] = [
+      'rewrite',
+      'expand',
+      'condense',
+      'change_pov',
+    ];
+    const textarea = bodyTextareaRef.current;
+    const selectedStart = textarea?.selectionStart ?? selection.start;
+    const selectedEnd = textarea?.selectionEnd ?? selection.end;
+    const selectedText = content.slice(selectedStart, selectedEnd);
+    if (segmentActions.includes(action) && !selectedText.trim()) {
+      setError('先在正文里选中一段文字，再使用这个改写动作。');
+      return;
+    }
+    if (['hooks', 'title', 'summary'].includes(action) && !content.trim()) {
+      setError('正文还是空的，先写一点内容再生成。');
+      return;
+    }
+
+    const outputKind = outputKindForAction(action);
+    const start = action === 'continue' ? selectedStart : selectedStart;
+    const end = segmentActions.includes(action) ? selectedEnd : action === 'continue' ? selectedStart : 0;
+    const run: GenerationRun = {
+      action,
+      outputKind,
+      baseContent: content,
+      start,
+      end,
+      streamText: '',
+    };
+    runRef.current = run;
     closeStream();
     setPreviousContent(content);
     setGenerating(true);
+    setCurrentAction(action);
     setGenerationState('preparing');
-    setStatusMessage('正在准备这一章…');
+    setCompletionLabel('');
+    setStatusMessage(actionMessage(action));
     setError('');
     setNotice('');
-    setContent('');
+    setActivePanel(
+      action === 'hooks' || action === 'title' || action === 'summary'
+        ? 'suggestions'
+        : activePanel,
+    );
+    if (action === 'chapter') {
+      setContent('');
+    }
 
     try {
-      const started = await startChapterGeneration(
+      const started = await startChapterAction(
         boot.work.id,
         boot.branchId,
         chapterNumber,
+        action,
+        buildWritingRequest(action, selectedText, selectedStart, selectedEnd),
       );
-      connectToEvents(started.jobId, boot.work.id, boot.branchId);
+      connectToEvents(started.jobId, boot.work.id, boot.branchId, run);
     } catch (startError) {
       setGenerating(false);
+      setCurrentAction(null);
       setGenerationState('failed');
-      setContent(previousContent);
+      setContent(content);
       setStatusMessage('');
-      setError(generationErrorMessage(startError));
+      setError(
+        startError instanceof ApiError && startError.code === 'SELECTION_REQUIRED'
+          ? '先在正文里选中一段文字，再使用这个改写动作。'
+          : generationErrorMessage(startError),
+      );
     }
   }
 
-  function connectToEvents(jobId: string, workIdValue: string, branchId: string) {
+  function buildWritingRequest(
+    action: WritingAction,
+    selectedText: string,
+    selectedStart: number,
+    selectedEnd: number,
+  ): WritingRequest {
+    const targetWordCount = Math.min(
+      20_000,
+      Math.max(1, Number(writingControls.targetWordCount) || DEFAULT_TARGET_WORDS),
+    );
+    const selectionCharacters = Math.max(
+      1,
+      countCjkCharacters(selectedText) || selectedText.length,
+    );
+    let targetMinCharacters = targetWordCount;
+    let targetMaxCharacters = targetWordCount;
+    if (action === 'continue') {
+      targetMinCharacters = Math.max(1, Math.floor(targetWordCount * 0.6));
+      targetMaxCharacters = targetWordCount;
+    } else if (action === 'expand') {
+      targetMinCharacters = Math.ceil(selectionCharacters * 1.25);
+      targetMaxCharacters = Math.max(targetMinCharacters + 20, Math.ceil(selectionCharacters * 2));
+    } else if (action === 'condense') {
+      targetMinCharacters = Math.max(1, Math.floor(selectionCharacters * 0.35));
+      targetMaxCharacters = Math.max(targetMinCharacters, Math.ceil(selectionCharacters * 0.75));
+    } else if (['rewrite', 'change_pov'].includes(action)) {
+      targetMinCharacters = Math.max(1, Math.floor(selectionCharacters * 0.75));
+      targetMaxCharacters = Math.max(targetMinCharacters, Math.ceil(selectionCharacters * 1.35));
+    }
+
+    return {
+      qualityTier: writingControls.qualityTier,
+      ...(writingControls.modelConfigId
+        ? { modelConfigId: writingControls.modelConfigId }
+        : {}),
+      targetMinCharacters,
+      targetMaxCharacters,
+      pov: writingControls.pov.trim(),
+      ...(action === 'change_pov' ? { targetPov: writingControls.pov.trim() } : {}),
+      mustInclude: splitWritingList(writingControls.mustInclude),
+      mustAvoid: splitWritingList(writingControls.mustAvoid),
+      referenceChapters: writingControls.referenceChapters,
+      tabooWords: splitWritingList(writingControls.tabooWords),
+      ...(writingControls.instruction.trim()
+        ? { instruction: writingControls.instruction.trim() }
+        : {}),
+      content,
+      ...(action === 'rewrite' || action === 'expand' || action === 'condense' || action === 'change_pov'
+        ? {
+            selection: selectedText,
+            selectionStart: selectedStart,
+            selectionEnd: selectedEnd,
+          }
+        : {}),
+      ...(action === 'continue' ? { cursorOffset: selectedStart } : {}),
+    };
+  }
+
+  function connectToEvents(
+    jobId: string,
+    workIdValue: string,
+    branchId: string,
+    run: GenerationRun,
+  ) {
     const source = new EventSource(generationEventsUrl(workIdValue, branchId, jobId));
     streamRef.current = source;
 
@@ -273,21 +543,23 @@ export function WritingDesk({ workId }: { workId: string }) {
 
       if (type === 'job.draft.delta') {
         const delta = typeof data.delta === 'string' ? data.delta : '';
-        setContent((current) => current + delta);
+        run.streamText += delta;
+        applyLivePreview(run);
         setGenerationState('streaming');
-        setStatusMessage('正在起草正文…');
+        setStatusMessage(actionMessage(run.action));
         return;
       }
 
       if (type === 'job.draft.reset') {
-        setContent('');
+        run.streamText = '';
+        applyLivePreview(run);
         setGenerationState('streaming');
-        setStatusMessage('正在按目标汉字数重新生成…');
+        setStatusMessage('正在按新的篇幅要求重新生成…');
         return;
       }
 
       if (type === 'job.draft.correcting') {
-        setStatusMessage('正在校正本章篇幅…');
+        setStatusMessage('正在校正篇幅…');
         return;
       }
 
@@ -297,12 +569,12 @@ export function WritingDesk({ workId }: { workId: string }) {
       }
 
       if (type === 'job.completed') {
-        void finishFromJob(jobId, workIdValue, branchId, 'completed');
+        void finishFromJob(jobId, workIdValue, branchId, run, 'completed');
         return;
       }
 
       if (type === 'job.failed') {
-        void finishFromJob(jobId, workIdValue, branchId, 'failed');
+        void finishFromJob(jobId, workIdValue, branchId, run, 'failed');
       }
     };
 
@@ -321,54 +593,91 @@ export function WritingDesk({ workId }: { workId: string }) {
     }
 
     source.onerror = () => {
-      if (generating) {
+      if (runRef.current) {
         setStatusMessage('连接有些慢，正在恢复生成进度…');
       }
     };
+  }
+
+  function applyLivePreview(run: GenerationRun) {
+    if (run.outputKind === 'chapter' || run.outputKind === 'segment') {
+      setContent(previewContent(run, run.streamText));
+    }
   }
 
   async function finishFromJob(
     jobId: string,
     workIdValue: string,
     branchId: string,
+    run: GenerationRun,
     expected: 'completed' | 'failed',
   ) {
     closeStream();
     try {
       const job = await loadGenerationJob(workIdValue, branchId, jobId);
-      applyJobResult(job, expected);
+      applyJobResult(job, run, expected);
     } catch {
       setGenerating(false);
+      setCurrentAction(null);
       setGenerationState('failed');
       setStatusMessage('');
       setError('暂时无法确认生成结果，已经写出的内容仍留在编辑器里。');
     }
   }
 
-  function applyJobResult(job: GenerationJob, expected: 'completed' | 'failed') {
-    const draftContent = job.draft?.content ?? '';
-    if (draftContent) {
-      setContent(draftContent);
-    } else if (expected === 'failed') {
-      setContent(previousContent);
-    }
+  function applyJobResult(
+    job: GenerationJob,
+    run: GenerationRun,
+    expected: 'completed' | 'failed',
+  ) {
+    const draftContent = job.draft?.content ?? run.streamText;
+    const completed = job.status === 'completed' || expected === 'completed';
     setGenerating(false);
+    setCurrentAction(null);
+    runRef.current = null;
 
-    if (job.status === 'completed' || expected === 'completed') {
+    if (completed) {
+      if (run.outputKind === 'chapter' || run.outputKind === 'segment') {
+        const nextContent = previewContent(run, draftContent || run.baseContent);
+        setContent(nextContent);
+        scheduleAutosave(nextContent);
+      } else if (draftContent.trim()) {
+        const outputKind = run.outputKind;
+        setAssistantOutputs((current) => [
+          {
+            id: `${job.id}-${outputKind}`,
+            kind: outputKind,
+            content: draftContent.trim(),
+            createdAt: new Date().toISOString(),
+          },
+          ...current.filter((output) => output.kind !== outputKind),
+        ]);
+      }
       setGenerationState('completed');
+      setCompletionLabel(completionText(run));
       setStatusMessage('');
-      setNotice('初稿已生成。你可以继续修改，满意后保存为新版本。');
-      void refreshChapterSummary(job);
+      setNotice(completionNotice(run));
+      void refreshChapterSummary(job, run);
       return;
     }
 
+    if (run.outputKind === 'chapter' || run.outputKind === 'segment') {
+      const preserved = draftContent.trim()
+        ? previewContent(run, draftContent)
+        : run.baseContent;
+      setContent(preserved);
+      if (draftContent.trim()) {
+        scheduleAutosave(preserved);
+      }
+    }
     setGenerationState('failed');
+    setCompletionLabel('等待处理');
     setStatusMessage('');
     setError(jobFailureMessage(job));
-    void refreshChapterSummary(job);
+    void refreshChapterSummary(job, run);
   }
 
-  async function refreshChapterSummary(job: GenerationJob) {
+  async function refreshChapterSummary(job: GenerationJob, run: GenerationRun) {
     if (boot.status !== 'ready') {
       return;
     }
@@ -380,7 +689,7 @@ export function WritingDesk({ workId }: { workId: string }) {
           ? {
               ...current,
               latestDraft:
-                job.draft
+                job.draft && run.outputKind === 'chapter'
                   ? {
                       id: job.draft.id,
                       jobId: job.id,
@@ -398,8 +707,49 @@ export function WritingDesk({ workId }: { workId: string }) {
     }
   }
 
+  function scheduleAutosave(nextContent: string) {
+    if (boot.status !== 'ready' || !chapterNumber) {
+      return;
+    }
+    cancelAutosave();
+    setAutosaveError('');
+    setAutosaveState('pending');
+    const targetChapter = chapterNumber;
+    autosaveTimerRef.current = setTimeout(() => {
+      setAutosaveState('saving');
+      saveChapterAutosave(boot.work.id, boot.branchId, targetChapter, nextContent)
+        .then((saved) => {
+          setAutosaveState('saved');
+          setLastAutosaveAt(saved.updatedAt);
+          setDetail((current) =>
+            current && chapterNumber === targetChapter
+              ? {
+                  ...current,
+                  autosave: {
+                    content: saved.content,
+                    wordCount: saved.wordCount,
+                    updatedAt: saved.updatedAt,
+                  },
+                }
+              : current,
+          );
+        })
+        .catch((saveError: unknown) => {
+          setAutosaveState('error');
+          setAutosaveError(friendlyError(saveError));
+        });
+    }, 1_100);
+  }
+
+  function cancelAutosave() {
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+  }
+
   async function saveVersion() {
-    if (!boot || boot.status !== 'ready' || !chapterNumber) {
+    if (boot.status !== 'ready' || !chapterNumber) {
       return;
     }
     if (!content.trim()) {
@@ -407,6 +757,7 @@ export function WritingDesk({ workId }: { workId: string }) {
       return;
     }
 
+    cancelAutosave();
     setSaving(true);
     setError('');
     setNotice('');
@@ -446,6 +797,8 @@ export function WritingDesk({ workId }: { workId: string }) {
             : chapter,
         ),
       );
+      setAutosaveState('saved');
+      setLastAutosaveAt(saved.createdAt);
       setNotice(`版本 ${saved.version} 已保存`);
     } catch (saveError) {
       setError(friendlyError(saveError));
@@ -454,15 +807,76 @@ export function WritingDesk({ workId }: { workId: string }) {
     }
   }
 
+  async function restoreVersion(version: ChapterVersion) {
+    if (boot.status !== 'ready' || !chapterNumber) {
+      return;
+    }
+    cancelAutosave();
+    setRestoringVersionId(version.id);
+    setError('');
+    setNotice('');
+    try {
+      const restored = await restoreChapterVersion(
+        boot.work.id,
+        boot.branchId,
+        chapterNumber,
+        version.id,
+      );
+      setContent(restored.content);
+      setSelection({ start: 0, end: 0 });
+      setSelectedVersionId(restored.id);
+      setDetail((current) =>
+        current
+          ? {
+              ...current,
+              status: 'writing',
+              statusLabel: '写作中',
+              wordCount: restored.wordCount,
+              content: restored.content,
+              currentVersion: restored,
+              versions: [
+                restored,
+                ...current.versions.filter((item) => item.id !== restored.id),
+              ],
+              autosave: null,
+            }
+          : current,
+      );
+      setChapters((current) =>
+        current.map((chapter) =>
+          chapter.chapterNumber === chapterNumber
+            ? {
+                ...chapter,
+                status: 'writing',
+                statusLabel: '写作中',
+                wordCount: restored.wordCount,
+                hasContent: true,
+              }
+            : chapter,
+        ),
+      );
+      setAutosaveState('saved');
+      setLastAutosaveAt(restored.createdAt);
+      setNotice(`已恢复版本 ${version.version}，并保留为新版本 ${restored.version}`);
+    } catch (restoreError) {
+      setError(friendlyError(restoreError));
+    } finally {
+      setRestoringVersionId(undefined);
+    }
+  }
+
   function restorePrevious() {
     setContent(previousContent);
+    setSelection({ start: 0, end: 0 });
     setError('');
     setGenerationState('idle');
+    setCompletionLabel('');
     setNotice('已恢复生成前的内容。');
+    scheduleAutosave(previousContent);
   }
 
   async function ignoreIssue(issue: ContinuityIssue, reason: string) {
-    if (!boot || boot.status !== 'ready' || !chapterNumber) {
+    if (boot.status !== 'ready' || !chapterNumber) {
       return;
     }
     setContinuityBusyId(issue.id);
@@ -479,6 +893,19 @@ export function WritingDesk({ workId }: { workId: string }) {
       setContinuityIssues((current) =>
         current.map((item) => (item.id === updated.id ? updated : item)),
       );
+      setInsights((current) =>
+        current
+          ? {
+              ...current,
+              suggestions: current.suggestions.map((item) =>
+                item.id === updated.id ? updated : item,
+              ),
+              continuity: current.continuity.map((item) =>
+                item.id === updated.id ? updated : item,
+              ),
+            }
+          : current,
+      );
       setContinuityNotice('已忽略这条提示，并记录了你填写的原因。');
     } catch (ignoreError) {
       setContinuityError(friendlyError(ignoreError));
@@ -487,12 +914,92 @@ export function WritingDesk({ workId }: { workId: string }) {
     }
   }
 
+  function locateIssue(issue: ContinuityIssue) {
+    const textarea = bodyTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+    let start = issue.startOffset;
+    let end = issue.endOffset;
+    if (content.slice(start, end) !== issue.sourceSentence) {
+      const index = content.indexOf(issue.sourceSentence);
+      if (index < 0) {
+        setError('正文已经改动，这条批注对应的原句暂时找不到了。');
+        return;
+      }
+      start = index;
+      end = index + issue.sourceSentence.length;
+    }
+    textarea.focus();
+    textarea.setSelectionRange(start, end);
+    setSelection({ start, end });
+    setActivePanel(issue.category === 'body_state' ? 'continuity' : 'suggestions');
+  }
+
+  async function applyTitle(title: string) {
+    if (boot.status !== 'ready' || !chapterNumber) {
+      return;
+    }
+    try {
+      const updated = await updateChapterMetadata(
+        boot.work.id,
+        boot.branchId,
+        chapterNumber,
+        { title },
+      );
+      setDetail((current) => (current ? { ...current, title: updated.title } : current));
+      setChapters((current) =>
+        current.map((chapter) =>
+          chapter.chapterNumber === chapterNumber
+            ? { ...chapter, title: updated.title }
+            : chapter,
+        ),
+      );
+      setNotice('章名已更新。');
+    } catch (updateError) {
+      setError(friendlyError(updateError));
+    }
+  }
+
+  async function saveSummary(summary: string) {
+    if (boot.status !== 'ready' || !chapterNumber) {
+      return;
+    }
+    try {
+      const updated = await updateChapterMetadata(
+        boot.work.id,
+        boot.branchId,
+        chapterNumber,
+        { summary },
+      );
+      setDetail((current) => (current ? { ...current, summary: updated.summary } : current));
+      setNotice('本章摘要已保存。');
+    } catch (updateError) {
+      setError(friendlyError(updateError));
+    }
+  }
+
+  function appendHook(hook: string) {
+    const nextContent = `${content.trimEnd()}\n\n${hook}`;
+    setContent(nextContent);
+    scheduleAutosave(nextContent);
+    setNotice('章末钩子已放到正文末尾。');
+  }
+
   function closeStream() {
     streamRef.current?.close();
     streamRef.current = null;
   }
 
-  function syncHighlightScroll(event: React.UIEvent<HTMLTextAreaElement>) {
+  function updateSelectionFromTextarea(textarea: HTMLTextAreaElement) {
+    setSelection({
+      start: textarea.selectionStart,
+      end: textarea.selectionEnd,
+    });
+  }
+
+  function syncHighlightScroll(event: UIEvent<HTMLTextAreaElement>) {
+    updateSelectionFromTextarea(event.currentTarget);
     const backdrop = highlightBackdropRef.current;
     if (!backdrop) {
       return;
@@ -564,7 +1071,7 @@ export function WritingDesk({ workId }: { workId: string }) {
                 <button
                   aria-current={chapter.chapterNumber === chapterNumber ? 'page' : undefined}
                   className="writing-chapter-item"
-                  disabled={generating || chapterLoading}
+                  disabled={busy}
                   key={chapter.chapterNumber}
                   onClick={() => void openChapter(chapter.chapterNumber)}
                   type="button"
@@ -583,7 +1090,7 @@ export function WritingDesk({ workId }: { workId: string }) {
               ))}
             </div>
             <div className="writing-chapter-foot">
-              <p>先从章纲生成整章，再在正文里逐句修改。</p>
+              <p>章节、正文和参考面板同屏工作，改动会自动保存。</p>
               <Link href={`/workspace/${boot.work.id}`}>调整章纲</Link>
             </div>
           </aside>
@@ -598,26 +1105,99 @@ export function WritingDesk({ workId }: { workId: string }) {
                 <p>{detail?.outline.chapterGoal}</p>
               </div>
               <span className={`writing-status writing-status-${generationState}`}>
-                {generationState === 'preparing'
-                  ? '准备中'
-                  : generationState === 'streaming'
-                    ? '生成中'
-                    : generationState === 'completed'
-                      ? '初稿已生成'
-                      : generationState === 'failed'
-                        ? '等待处理'
-                        : '可编辑'}
+                {currentAction
+                  ? `正在${ACTION_LABELS[currentAction]}`
+                  : generationState === 'preparing'
+                    ? '准备中'
+                    : generationState === 'streaming'
+                      ? '生成中'
+                      : generationState === 'completed'
+                        ? completionLabel || '已完成'
+                        : generationState === 'failed'
+                          ? completionLabel || '等待处理'
+                          : detail?.statusLabel ?? '可编辑'}
               </span>
             </div>
 
-            <div className="writing-toolbar">
+            <WritingControlsPanel
+              chapters={chapters}
+              models={models}
+              onChange={(next) => setWritingControls(next)}
+              controls={writingControls}
+            />
+
+            <div className="writing-action-grid" aria-label="写作动作">
               <button
                 className="primary-button"
-                disabled={generating || chapterLoading}
-                onClick={() => void generateChapter()}
+                disabled={busy}
+                onClick={() => void runWritingAction('chapter')}
                 type="button"
               >
-                {generating ? '正在生成…' : '根据章纲生成'}
+                {generating && currentAction === 'chapter' ? '正在生成…' : '根据章纲生成'}
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => void runWritingAction('continue')}
+                type="button"
+              >
+                从光标续写
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy || !hasSelection}
+                onClick={() => void runWritingAction('rewrite')}
+                type="button"
+              >
+                重写选中
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy || !hasSelection}
+                onClick={() => void runWritingAction('expand')}
+                type="button"
+              >
+                扩写选中
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy || !hasSelection}
+                onClick={() => void runWritingAction('condense')}
+                type="button"
+              >
+                缩写选中
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy || !hasSelection}
+                onClick={() => void runWritingAction('change_pov')}
+                type="button"
+              >
+                转换选中视角
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy || !content.trim()}
+                onClick={() => void runWritingAction('hooks')}
+                type="button"
+              >
+                生成章末钩子
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy || !content.trim()}
+                onClick={() => void runWritingAction('title')}
+                type="button"
+              >
+                生成标题
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy || !content.trim()}
+                onClick={() => void runWritingAction('summary')}
+                type="button"
+              >
+                生成摘要
               </button>
               <button
                 className="secondary-button"
@@ -627,11 +1207,30 @@ export function WritingDesk({ workId }: { workId: string }) {
               >
                 {saving ? '正在保存…' : '保存版本'}
               </button>
+            </div>
+
+            <div className="writing-toolbar">
               <span aria-live="polite" className="writing-live-status">
                 {statusMessage || (generating ? '正在连接写作服务…' : '')}
               </span>
+              <span className={`writing-autosave writing-autosave-${autosaveState}`}>
+                {autosaveState === 'pending'
+                  ? '等待自动保存…'
+                  : autosaveState === 'saving'
+                    ? '正在自动保存…'
+                    : autosaveState === 'saved'
+                      ? `已自动保存${lastAutosaveAt ? ` · ${formatClock(lastAutosaveAt)}` : ''}`
+                      : autosaveState === 'error'
+                        ? '自动保存暂时失败'
+                        : '自动保存已开启'}
+              </span>
             </div>
 
+            {autosaveError ? (
+              <p className="form-message form-message-error" role="status">
+                {autosaveError}
+              </p>
+            ) : null}
             {error ? (
               <div className="writing-error" role="alert">
                 <p>{error}</p>
@@ -639,7 +1238,9 @@ export function WritingDesk({ workId }: { workId: string }) {
                   <button
                     className="secondary-button"
                     disabled={generating}
-                    onClick={() => void generateChapter()}
+                    onClick={() =>
+                      void runWritingAction(currentAction ?? 'chapter')
+                    }
                     type="button"
                   >
                     再试一次
@@ -688,12 +1289,18 @@ export function WritingDesk({ workId }: { workId: string }) {
                 }`}
                 id="chapter-content"
                 onChange={(event) => {
-                  setContent(event.target.value);
+                  const nextContent = event.target.value;
+                  setContent(nextContent);
+                  updateSelectionFromTextarea(event.currentTarget);
+                  scheduleAutosave(nextContent);
                   if (notice) {
                     setNotice('');
                   }
                 }}
+                onKeyUp={(event) => updateSelectionFromTextarea(event.currentTarget)}
+                onMouseUp={(event) => updateSelectionFromTextarea(event.currentTarget)}
                 onScroll={syncHighlightScroll}
+                onSelect={(event) => updateSelectionFromTextarea(event.currentTarget)}
                 placeholder="正文会在这里出现，也可以直接开始写。"
                 ref={bodyTextareaRef}
                 spellCheck={false}
@@ -708,6 +1315,9 @@ export function WritingDesk({ workId }: { workId: string }) {
                   ? `预计阅读 ${Math.max(1, Math.ceil(countCjkCharacters(content) / 500))} 分钟`
                   : '还没有正文'}
               </span>
+              {hasSelection ? (
+                <span>已选中 {countCjkCharacters(content.slice(selection.start, selection.end))} 字</span>
+              ) : null}
               <span>
                 {detail?.versions.length
                   ? `已保存 ${detail.versions.length} 个版本`
@@ -720,12 +1330,13 @@ export function WritingDesk({ workId }: { workId: string }) {
             <div className="writing-panel-heading">
               <p className="workspace-step">随手查</p>
               <h2 id="writing-context-title">本章参考</h2>
+              <span>建议、连续性、伏笔、人物与版本</span>
             </div>
 
             {detail ? (
               <>
-                <section className="writing-context-section">
-                  <h3>章纲</h3>
+                <details className="writing-outline-reference">
+                  <summary>章纲与故事方向</summary>
                   <dl>
                     <div>
                       <dt>章目标</dt>
@@ -736,46 +1347,76 @@ export function WritingDesk({ workId }: { workId: string }) {
                       <dd>{detail.outline.pov}</dd>
                     </div>
                     <div>
-                      <dt>场景节拍</dt>
-                      <dd>{detail.outline.sceneBeats.join(' / ')}</dd>
-                    </div>
-                    <div>
                       <dt>章末钩子</dt>
                       <dd>{detail.outline.chapterEndHook}</dd>
                     </div>
+                    <div>
+                      <dt>本章摘要</dt>
+                      <dd>{detail.summary || '尚未保存'}</dd>
+                    </div>
                   </dl>
-                </section>
+                </details>
 
-                <section className="writing-context-section">
-                  <h3>故事方向</h3>
-                  {boot.storyBible ? (
-                    <dl>
-                      <div>
-                        <dt>一句话故事</dt>
-                        <dd>{boot.storyBible.oneSentenceStory}</dd>
-                      </div>
-                      <div>
-                        <dt>主角</dt>
-                        <dd>{boot.storyBible.protagonist}</dd>
-                      </div>
-                      <div>
-                        <dt>世界铁律</dt>
-                        <dd>{boot.storyBible.worldIronLaw}</dd>
-                      </div>
-                    </dl>
-                  ) : (
-                    <p>故事圣经还没有保存，补充后本章参考会更完整。</p>
-                  )}
-                </section>
+                <div className="writing-tabs" role="tablist" aria-label="本章参考面板">
+                  {[
+                    ['suggestions', '建议'],
+                    ['continuity', '连续性'],
+                    ['foreshadows', '伏笔'],
+                    ['characters', '人物'],
+                    ['versions', '版本'],
+                  ].map(([key, label]) => (
+                    <button
+                      aria-selected={activePanel === key}
+                      className="writing-tab"
+                      key={key}
+                      onClick={() => setActivePanel(key as InsightTab)}
+                      role="tab"
+                      type="button"
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
 
-                {chapterNumber ? (
+                {activePanel === 'suggestions' ? (
+                  <SuggestionsPanel
+                    busyId={continuityBusyId}
+                    error={insightsError || continuityError}
+                    loading={insightsLoading}
+                    notice={continuityNotice}
+                    onAppendHook={appendHook}
+                    onApplyTitle={applyTitle}
+                    onIgnore={ignoreIssue}
+                    onLocate={locateIssue}
+                    onSaveSummary={saveSummary}
+                    outputs={assistantOutputs}
+                    suggestions={insights?.suggestions ?? []}
+                  />
+                ) : null}
+                {activePanel === 'continuity' ? (
                   <ContinuityReviewPanel
                     busyId={continuityBusyId}
                     error={continuityError}
-                    issues={continuityIssues}
+                    issues={bodyStateIssues}
                     loading={continuityLoading}
                     notice={continuityNotice}
                     onIgnore={ignoreIssue}
+                  />
+                ) : null}
+                {activePanel === 'foreshadows' ? (
+                  <ForeshadowPanel insights={insights} loading={insightsLoading} />
+                ) : null}
+                {activePanel === 'characters' ? (
+                  <CharacterStatePanel insights={insights} loading={insightsLoading} />
+                ) : null}
+                {activePanel === 'versions' ? (
+                  <VersionHistoryPanel
+                    currentContent={content}
+                    onRestore={restoreVersion}
+                    onSelect={setSelectedVersionId}
+                    restoringId={restoringVersionId}
+                    selectedVersionId={selectedVersionId}
+                    versions={detail.versions}
                   />
                 ) : null}
 
@@ -787,12 +1428,6 @@ export function WritingDesk({ workId }: { workId: string }) {
                     workId={boot.work.id}
                   />
                 ) : null}
-
-                <section className="writing-context-section">
-                  <h3>写作要求</h3>
-                  <p>整章 2000 到 3000 字，从章纲进入，落在章末钩子上。</p>
-                  <p>生成内容会先进入草稿，不会自动覆盖已保存版本。</p>
-                </section>
               </>
             ) : (
               <p className="writing-context-loading">
@@ -803,6 +1438,147 @@ export function WritingDesk({ workId }: { workId: string }) {
         </div>
       )}
     </main>
+  );
+}
+
+function WritingControlsPanel({
+  controls,
+  models,
+  chapters,
+  onChange,
+}: {
+  controls: WritingControls;
+  models: ModelConfig[];
+  chapters: ChapterListItem[];
+  onChange: (controls: WritingControls) => void;
+}) {
+  const update = <Key extends keyof WritingControls>(
+    key: Key,
+    value: WritingControls[Key],
+  ) => onChange({ ...controls, [key]: value });
+
+  return (
+    <section aria-labelledby="writing-controls-title" className="writing-controls">
+      <div className="writing-controls-heading">
+        <div>
+          <h2 id="writing-controls-title">生成设置</h2>
+          <p>这些要求会随每一次生成一起交给正文模型。</p>
+        </div>
+      </div>
+
+      <div className="writing-control-grid">
+        <label className="writing-control-field">
+          <span>质量档位</span>
+          <select
+            onChange={(event) =>
+              update('qualityTier', event.target.value as WritingQualityTier)
+            }
+            value={controls.qualityTier}
+          >
+            {Object.entries(QUALITY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="writing-control-field">
+          <span>模型</span>
+          <select
+            onChange={(event) => update('modelConfigId', event.target.value)}
+            value={controls.modelConfigId}
+          >
+            <option value="">沿用默认正文模型</option>
+            {models.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name} · {model.model}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="writing-control-field">
+          <span>目标字数</span>
+          <input
+            max={20_000}
+            min={1}
+            onChange={(event) =>
+              update('targetWordCount', Number(event.target.value))
+            }
+            step={100}
+            type="number"
+            value={controls.targetWordCount}
+          />
+        </label>
+        <label className="writing-control-field">
+          <span>叙事视角</span>
+          <input
+            maxLength={120}
+            onChange={(event) => update('pov', event.target.value)}
+            placeholder="例如：沈砚"
+            type="text"
+            value={controls.pov}
+          />
+        </label>
+        <label className="writing-control-field">
+          <span>参考章节</span>
+          <select
+            multiple
+            onChange={(event) =>
+              update(
+                'referenceChapters',
+                Array.from(event.target.selectedOptions, (option) => Number(option.value)),
+              )
+            }
+            value={controls.referenceChapters.map(String)}
+          >
+            {chapters.map((chapter) => (
+              <option key={chapter.chapterNumber} value={chapter.chapterNumber}>
+                第 {chapter.chapterNumber} 章 · {chapter.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      <div className="writing-control-textareas">
+        <label className="writing-control-field">
+          <span>必须包含</span>
+          <textarea
+            onChange={(event) => update('mustInclude', event.target.value)}
+            placeholder="每行一项，例如：断碑、母亲的家纹"
+            rows={2}
+            value={controls.mustInclude}
+          />
+        </label>
+        <label className="writing-control-field">
+          <span>必须避免</span>
+          <textarea
+            onChange={(event) => update('mustAvoid', event.target.value)}
+            placeholder="每行一项，例如：天降神迹、无代价突破"
+            rows={2}
+            value={controls.mustAvoid}
+          />
+        </label>
+        <label className="writing-control-field">
+          <span>禁忌词</span>
+          <textarea
+            onChange={(event) => update('tabooWords', event.target.value)}
+            placeholder="每行一项，正文会检查是否出现"
+            rows={2}
+            value={controls.tabooWords}
+          />
+        </label>
+        <label className="writing-control-field">
+          <span>补充要求</span>
+          <textarea
+            onChange={(event) => update('instruction', event.target.value)}
+            placeholder="例如：放慢节奏，保留悬念。"
+            rows={2}
+            value={controls.instruction}
+          />
+        </label>
+      </div>
+    </section>
   );
 }
 
@@ -880,17 +1656,30 @@ function renderBodyWithHighlights(
 }
 
 function initialChapterContent(detail: ChapterDetail): string {
-  const draft = detail.latestDraft;
-  if (!draft?.content) {
-    return detail.content;
+  const candidates: Array<{ content: string; updatedAt: string }> = [];
+  if (detail.autosave?.content) {
+    candidates.push({
+      content: detail.autosave.content,
+      updatedAt: detail.autosave.updatedAt,
+    });
   }
-  if (!detail.currentVersion) {
-    return draft.content;
+  if (detail.latestDraft?.content) {
+    candidates.push({
+      content: detail.latestDraft.content,
+      updatedAt: detail.latestDraft.updatedAt,
+    });
   }
-  return new Date(draft.updatedAt).getTime() >=
-    new Date(detail.currentVersion.createdAt).getTime()
-    ? draft.content
-    : detail.content;
+  if (detail.currentVersion?.content) {
+    candidates.push({
+      content: detail.currentVersion.content,
+      updatedAt: detail.currentVersion.createdAt,
+    });
+  }
+  candidates.sort(
+    (left, right) =>
+      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+  );
+  return candidates[0]?.content ?? detail.content;
 }
 
 function parseGenerationEvent(event: MessageEvent<string>): GenerationEvent | null {
@@ -903,6 +1692,88 @@ function parseGenerationEvent(event: MessageEvent<string>): GenerationEvent | nu
     };
   } catch {
     return null;
+  }
+}
+
+function previewContent(run: GenerationRun, streamText: string): string {
+  if (run.outputKind === 'chapter') {
+    return streamText;
+  }
+  if (run.outputKind !== 'segment') {
+    return run.baseContent;
+  }
+  return `${run.baseContent.slice(0, run.start)}${streamText}${run.baseContent.slice(run.end)}`;
+}
+
+function outputKindForAction(action: WritingAction): WritingOutputKind {
+  if (action === 'chapter') {
+    return 'chapter';
+  }
+  if (action === 'hooks') {
+    return 'hook_options';
+  }
+  if (action === 'title') {
+    return 'title';
+  }
+  if (action === 'summary') {
+    return 'summary';
+  }
+  return 'segment';
+}
+
+function actionMessage(action: WritingAction): string {
+  switch (action) {
+    case 'chapter':
+      return '正在准备这一章…';
+    case 'continue':
+      return '正在从光标处续写…';
+    case 'rewrite':
+      return '正在重写选中文字…';
+    case 'expand':
+      return '正在扩写选中文字…';
+    case 'condense':
+      return '正在缩写选中文字…';
+    case 'change_pov':
+      return '正在转换叙事视角…';
+    case 'hooks':
+      return '正在生成章末钩子…';
+    case 'title':
+      return '正在生成章名…';
+    case 'summary':
+      return '正在整理本章摘要…';
+  }
+}
+
+function completionText(run: GenerationRun): string {
+  if (run.outputKind === 'chapter') {
+    return '初稿已生成';
+  }
+  if (run.outputKind === 'segment') {
+    return '改写已生成';
+  }
+  return '建议已生成';
+}
+
+function completionNotice(run: GenerationRun): string {
+  switch (run.action) {
+    case 'chapter':
+      return '初稿已生成。你可以继续修改，满意后保存为新版本。';
+    case 'continue':
+      return '续写已经接在光标处，可以继续打磨。';
+    case 'rewrite':
+      return '选中文字已经重写，可以对比后继续修改。';
+    case 'expand':
+      return '选中文字已经扩写。';
+    case 'condense':
+      return '选中文字已经缩写。';
+    case 'change_pov':
+      return '选中文字已经转换视角。';
+    case 'hooks':
+      return '三个章末钩子已经生成，可在建议面板里选用。';
+    case 'title':
+      return '章名建议已经生成，可在建议面板里采用。';
+    case 'summary':
+      return '本章摘要已生成，可在建议面板里保存。';
   }
 }
 
@@ -921,4 +1792,22 @@ function jobFailureMessage(job: GenerationJob): string {
     return '故事圣经还没有保存，补全后就能生成这一章。';
   }
   return '这次生成没有完成，已经写出的内容已保留。你可以继续修改，或稍后再试。';
+}
+
+function splitWritingList(value: string): string[] {
+  return value
+    .split(/[\n,，、]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function formatClock(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }
