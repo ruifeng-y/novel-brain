@@ -20,6 +20,7 @@
     "@novel/contracts": "workspace:*",
     "@novel/core": "workspace:*",
     "@novel/db": "workspace:*",
+    "@novel/storage": "workspace:*",
     "bullmq": "6.5.3",
     "cookie-parser": "1.4.7",
     "drizzle-orm": "0.45.4",

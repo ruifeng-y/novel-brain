@@ -6,6 +6,7 @@ export * from './chapter-generation';
 export * from './changes';
 export * from './entity-center';
 export * from './env';
+export * from './export';
 export * from './fact-extraction';
 export * from './genre-packs';
 export * from './health';
