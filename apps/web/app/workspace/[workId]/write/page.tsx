@@ -7,9 +7,22 @@ export const metadata: Metadata = {
 
 export default async function WritingDeskPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workId: string }>;
+  searchParams: Promise<{ chapter?: string }>;
 }) {
   const { workId } = await params;
-  return <WritingDesk workId={workId} />;
+  const { chapter } = await searchParams;
+  const chapterNumber = chapter ? Number.parseInt(chapter, 10) : undefined;
+  return (
+    <WritingDesk
+      initialChapterNumber={
+        Number.isFinite(chapterNumber) && chapterNumber && chapterNumber > 0
+          ? chapterNumber
+          : undefined
+      }
+      workId={workId}
+    />
+  );
 }

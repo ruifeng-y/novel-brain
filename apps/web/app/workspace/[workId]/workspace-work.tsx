@@ -156,6 +156,9 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         </Link>
         <div className="workspace-account">
           <span>{state.user.displayName}</span>
+          <Link className="text-button" href={`/workspace/${work.id}/jobs`}>
+            创作任务
+          </Link>
           <Link className="text-button" href={`/workspace/${work.id}/write`}>
             写作台
           </Link>

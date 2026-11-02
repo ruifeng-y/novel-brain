@@ -74,6 +74,24 @@ type WritingSettings = {
   selectionEnd: number | null;
 };
 
+const GENERATION_STEP_ORDER = [
+  'readiness',
+  'brief',
+  'context',
+  'draft',
+  'extract_facts',
+  'verify',
+] as const;
+
+export type GenerationRunResult = {
+  ok: boolean;
+  draftId?: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  continuityIssueCount?: number;
+  error?: GenerationErrorInfo;
+};
+
 @Injectable()
 export class ChapterGenerationRunner {
   constructor(
@@ -82,13 +100,51 @@ export class ChapterGenerationRunner {
     @Inject(AI_GATEWAY) private readonly gateway: AiGateway,
   ) {}
 
-  async run(jobId: string): Promise<{ ok: boolean }> {
+  async run(jobId: string, options: { retry?: boolean } = {}): Promise<GenerationRunResult> {
     const [jobRow] = await this.database.db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
     if (!jobRow) {
       throw new Error(`Generation job ${jobId} was not found`);
     }
-    if (jobRow.status === 'completed' || jobRow.status === 'failed') {
-      return { ok: jobRow.status === 'completed' };
+    if (jobRow.status === 'completed') {
+      return { ok: true };
+    }
+    if (jobRow.status === 'failed' && !options.retry) {
+      return {
+        ok: false,
+        ...(jobRow.error ? { error: jobRow.error as GenerationErrorInfo } : {}),
+      };
+    }
+
+    const existingSteps = await this.database.db
+      .select()
+      .from(jobSteps)
+      .where(eq(jobSteps.jobId, jobId))
+      .orderBy(asc(jobSteps.position));
+    if (options.retry) {
+      const retryAt = new Date();
+      const failedStep = existingSteps.find((step) => step.status === 'failed');
+      if (failedStep) {
+        await this.database.db
+          .update(jobSteps)
+          .set({
+            status: 'pending',
+            error: null,
+            finishedAt: null,
+          })
+          .where(eq(jobSteps.id, failedStep.id));
+      }
+      await this.database.db
+        .update(jobs)
+        .set({
+          status: 'preparing',
+          error: null,
+          finishedAt: null,
+          updatedAt: retryAt,
+        })
+        .where(eq(jobs.id, jobId));
+      await this.appendEvent(jobId, 'job.retry', {
+        fromStep: failedStep?.stepKey ?? null,
+      });
     }
 
     const [generation] = await this.database.db
@@ -147,9 +203,21 @@ export class ChapterGenerationRunner {
       targetMinCharacters,
       targetMaxCharacters,
     });
+    const failedStepKey = existingSteps.find((step) => step.status === 'failed')?.stepKey;
+    const resumeIndex =
+      options.retry && failedStepKey
+        ? GENERATION_STEP_ORDER.indexOf(failedStepKey as (typeof GENERATION_STEP_ORDER)[number])
+        : -1;
+    const shouldRunStep = (stepKey: (typeof GENERATION_STEP_ORDER)[number]) =>
+      !options.retry || resumeIndex < 0
+        ? true
+        : GENERATION_STEP_ORDER.indexOf(stepKey) >= resumeIndex;
     let draftId: string | undefined;
     let draftContent = '';
     let lastPersistedContent = '';
+    let promptTokens = 0;
+    let completionTokens = 0;
+    let proposalCount = 0;
     try {
       const [bible] = await this.database.db
         .select()
@@ -162,38 +230,46 @@ export class ChapterGenerationRunner {
         )
         .limit(1);
 
-      await this.beginStep(jobId, 'readiness', { outlineId: outline.id }, 10);
       if (!bible) {
         throw new InvalidGenerationInput(
           'STORY_BIBLE_REQUIRED',
           'Save the story bible before generating a chapter',
         );
       }
+      if (shouldRunStep('readiness')) {
+        await this.beginStep(jobId, 'readiness', { outlineId: outline.id }, 10);
+      }
       const model = await this.modelResolver.resolve(
         generation.createdBy,
         settings.modelConfigId ?? undefined,
       );
-      await this.completeStep(
-        jobId,
-        'readiness',
-        {
-          model: model.model,
-          storyBibleReady: true,
-          outlineReady: true,
-        },
-        15,
-      );
+      if (shouldRunStep('readiness')) {
+        await this.completeStep(
+          jobId,
+          'readiness',
+          {
+            model: model.model,
+            storyBibleReady: true,
+            outlineReady: true,
+          },
+          15,
+        );
+      }
 
-      await this.beginStep(jobId, 'brief', { outlineId: outline.id }, 20);
       const brief = {
         goal: outline.chapterGoal,
         pov: outline.pov,
         sceneBeats: outline.sceneBeats,
         chapterEndHook: outline.chapterEndHook,
       };
-      await this.completeStep(jobId, 'brief', brief, 30);
+      if (shouldRunStep('brief')) {
+        await this.beginStep(jobId, 'brief', { outlineId: outline.id }, 20);
+        await this.completeStep(jobId, 'brief', brief, 30);
+      }
 
-      await this.beginStep(jobId, 'context', { outlineId: outline.id }, 35);
+      if (shouldRunStep('context')) {
+        await this.beginStep(jobId, 'context', { outlineId: outline.id }, 35);
+      }
       const confirmedFactRows = await this.database.db
         .select({
           fact: facts,
@@ -258,188 +334,230 @@ export class ChapterGenerationRunner {
           fields: setting.customFields,
         })),
       );
-      await this.database.db
-        .insert(contextPacks)
-        .values({
-          generationRequestId: generation.id,
-          tokenBudget: 4_000,
-          sections: context.sections,
-          sourceRefs: context.sourceRefs,
-        })
-        .onConflictDoUpdate({
-          target: contextPacks.generationRequestId,
-          set: {
+      if (shouldRunStep('context')) {
+        await this.database.db
+          .insert(contextPacks)
+          .values({
+            generationRequestId: generation.id,
             tokenBudget: 4_000,
             sections: context.sections,
             sourceRefs: context.sourceRefs,
+          })
+          .onConflictDoUpdate({
+            target: contextPacks.generationRequestId,
+            set: {
+              tokenBudget: 4_000,
+              sections: context.sections,
+              sourceRefs: context.sourceRefs,
+            },
+          });
+        await this.completeStep(
+          jobId,
+          'context',
+          {
+            sectionKeys: context.sections.map((section) => section.key),
+            sourceRefs: context.sourceRefs,
           },
-        });
-      await this.completeStep(
-        jobId,
-        'context',
-        {
-          sectionKeys: context.sections.map((section) => section.key),
-          sourceRefs: context.sourceRefs,
-        },
-        45,
-      );
-
-      await this.beginStep(jobId, 'draft', { modelConfigId: model.id }, 50);
-      const [createdDraft] = await this.database.db
-        .insert(drafts)
-        .values({
-          generationRequestId: generation.id,
-          chapterId: generation.chapterId,
-          content: '',
-          status: 'streaming',
-        })
-        .onConflictDoUpdate({
-          target: drafts.generationRequestId,
-          set: {
-            content: '',
-            status: 'streaming',
-            updatedAt: new Date(),
-          },
-        })
-        .returning();
-      draftId = createdDraft.id;
-
-      await this.database.db
-        .update(generationRequests)
-        .set({
-          status: 'running',
-          modelConfigId: model.id,
-          updatedAt: new Date(),
-        })
-        .where(eq(generationRequests.id, generation.id));
+          45,
+        );
+      }
 
       const enforceLength = outputKind === 'chapter' || outputKind === 'segment';
       const maxAttempts = enforceLength ? 2 : 1;
       let attempts = 0;
       let characterCount = 0;
       let accepted = false;
+      const reusableDraft =
+        options.retry && !shouldRunStep('draft')
+          ? (
+              await this.database.db
+                .select()
+                .from(drafts)
+                .where(eq(drafts.generationRequestId, generation.id))
+                .limit(1)
+            )[0]
+          : undefined;
 
-      while (attempts < maxAttempts && !accepted) {
-        attempts += 1;
-        if (attempts > 1) {
-          lastPersistedContent = draftContent;
-          draftContent = '';
-          await this.database.db
-            .update(drafts)
-            .set({ content: '', status: 'streaming', updatedAt: new Date() })
-            .where(eq(drafts.id, draftId));
-          await this.appendEvent(jobId, 'job.draft.reset', {
-            reason: 'length_bounds',
-            attempt: attempts,
-            previousCharacterCount: characterCount,
-            targetMinCharacters,
-            targetMaxCharacters,
-          });
-        }
+      if (reusableDraft?.content.trim()) {
+        draftId = reusableDraft.id;
+        draftContent = reusableDraft.content;
+        characterCount = countCjkCharacters(draftContent);
+        attempts = 1;
+        accepted = true;
+        await this.appendEvent(jobId, 'job.draft.reused', {
+          draftId,
+          fromStep: 'verify',
+        });
+      } else {
+        await this.beginStep(jobId, 'draft', { modelConfigId: model.id }, 50);
+        const [createdDraft] = await this.database.db
+          .insert(drafts)
+          .values({
+            generationRequestId: generation.id,
+            chapterId: generation.chapterId,
+            content: '',
+            status: 'streaming',
+          })
+          .onConflictDoUpdate({
+            target: drafts.generationRequestId,
+            set: {
+              content: '',
+              status: 'streaming',
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        draftId = createdDraft.id;
 
-        const prompt =
-          attempts === 1
-            ? context.userPrompt
-            : this.correctionPrompt(
-                context.userPrompt,
-                characterCount,
-                targetMinCharacters,
-                targetMaxCharacters,
-              );
-        let chunkCount = 0;
-        for await (const chunk of this.gateway.streamText({
-          system: context.systemPrompt,
-          prompt,
-          model: model.model,
-          apiKey: model.apiKey,
-          baseUrl: model.baseUrl,
-          maxTokens: 4_000,
-          temperature: 0.75,
-        })) {
-          if (!chunk.text) {
-            continue;
-          }
-          draftContent += chunk.text;
-          chunkCount += 1;
-          await this.database.db
-            .update(drafts)
-            .set({ content: draftContent, updatedAt: new Date() })
-            .where(eq(drafts.id, draftId));
-          await this.appendEvent(jobId, 'job.draft.delta', {
-            delta: chunk.text,
-            characterCount: countCjkCharacters(draftContent),
-          });
-          if (chunkCount % 4 === 0) {
+        await this.database.db
+          .update(generationRequests)
+          .set({
+            status: 'running',
+            modelConfigId: model.id,
+            updatedAt: new Date(),
+          })
+          .where(eq(generationRequests.id, generation.id));
+
+        while (attempts < maxAttempts && !accepted) {
+          attempts += 1;
+          if (attempts > 1) {
+            lastPersistedContent = draftContent;
+            draftContent = '';
             await this.database.db
-              .update(jobs)
-              .set({
-                status: 'running',
-                progress: Math.min(95, 50 + Math.floor(chunkCount / 2)),
-                updatedAt: new Date(),
-              })
-              .where(eq(jobs.id, jobId));
+              .update(drafts)
+              .set({ content: '', status: 'streaming', updatedAt: new Date() })
+              .where(eq(drafts.id, draftId));
+            await this.appendEvent(jobId, 'job.draft.reset', {
+              reason: 'length_bounds',
+              attempt: attempts,
+              previousCharacterCount: characterCount,
+              targetMinCharacters,
+              targetMaxCharacters,
+            });
+          }
+
+          const prompt =
+            attempts === 1
+              ? context.userPrompt
+              : this.correctionPrompt(
+                  context.userPrompt,
+                  characterCount,
+                  targetMinCharacters,
+                  targetMaxCharacters,
+                );
+          let chunkCount = 0;
+          for await (const chunk of this.gateway.streamText({
+            system: context.systemPrompt,
+            prompt,
+            model: model.model,
+            apiKey: model.apiKey,
+            baseUrl: model.baseUrl,
+            maxTokens: 4_000,
+            temperature: 0.75,
+          })) {
+            if (chunk.usage) {
+              promptTokens += chunk.usage.promptTokens ?? 0;
+              completionTokens += chunk.usage.completionTokens ?? 0;
+            }
+            if (!chunk.text) {
+              continue;
+            }
+            draftContent += chunk.text;
+            chunkCount += 1;
+            await this.database.db
+              .update(drafts)
+              .set({ content: draftContent, updatedAt: new Date() })
+              .where(eq(drafts.id, draftId));
+            await this.appendEvent(jobId, 'job.draft.delta', {
+              delta: chunk.text,
+              characterCount: countCjkCharacters(draftContent),
+            });
+            if (chunkCount % 4 === 0) {
+              await this.database.db
+                .update(jobs)
+                .set({
+                  status: 'running',
+                  progress: Math.min(95, 50 + Math.floor(chunkCount / 2)),
+                  updatedAt: new Date(),
+                })
+                .where(eq(jobs.id, jobId));
+            }
+          }
+
+          if (!draftContent.trim()) {
+            throw new InvalidGenerationInput(
+              'EMPTY_GENERATION',
+              'The model did not return any chapter text',
+            );
+          }
+
+          characterCount = countCjkCharacters(draftContent);
+          if (
+            !enforceLength ||
+            (characterCount >= targetMinCharacters && characterCount <= targetMaxCharacters)
+          ) {
+            accepted = true;
+            break;
+          }
+
+          if (enforceLength && attempts < maxAttempts) {
+            await this.appendEvent(jobId, 'job.draft.correcting', {
+              characterCount,
+              targetMinCharacters,
+              targetMaxCharacters,
+              nextAttempt: attempts + 1,
+            });
           }
         }
 
-        if (!draftContent.trim()) {
+        if (!accepted && enforceLength) {
           throw new InvalidGenerationInput(
-            'EMPTY_GENERATION',
-            'The model did not return any chapter text',
+            'DRAFT_LENGTH_OUT_OF_BOUNDS',
+            'The chapter did not meet the requested length bounds',
+            {
+              characterCount,
+              targetMinCharacters,
+              targetMaxCharacters,
+              attempts,
+            },
           );
         }
 
-        characterCount = countCjkCharacters(draftContent);
-        if (
-          !enforceLength ||
-          (characterCount >= targetMinCharacters && characterCount <= targetMaxCharacters)
-        ) {
-          accepted = true;
-          break;
-        }
-
-        if (enforceLength && attempts < maxAttempts) {
-          await this.appendEvent(jobId, 'job.draft.correcting', {
-            characterCount,
-            targetMinCharacters,
-            targetMaxCharacters,
-            nextAttempt: attempts + 1,
-          });
-        }
-      }
-
-      if (!accepted && enforceLength) {
-        throw new InvalidGenerationInput(
-          'DRAFT_LENGTH_OUT_OF_BOUNDS',
-          'The chapter did not meet the requested length bounds',
+        await this.database.db
+          .update(drafts)
+          .set({ content: draftContent, status: 'ready', updatedAt: new Date() })
+          .where(eq(drafts.id, draftId));
+        await this.completeStep(
+          jobId,
+          'draft',
           {
+            draftId,
+            wordCount: characterCount,
             characterCount,
             targetMinCharacters,
             targetMaxCharacters,
             attempts,
           },
+          98,
         );
       }
 
-      await this.database.db
-        .update(drafts)
-        .set({ content: draftContent, status: 'ready', updatedAt: new Date() })
-        .where(eq(drafts.id, draftId));
-      await this.completeStep(
-        jobId,
-        'draft',
-        {
-          draftId,
-          wordCount: characterCount,
-          characterCount,
-          targetMinCharacters,
-          targetMaxCharacters,
-          attempts,
-        },
-        98,
-      );
-
       let extracted: Awaited<ReturnType<typeof extractChapterFacts>> = { facts: [] };
-      if (action === 'chapter') {
+      if (action === 'chapter' && options.retry && !shouldRunStep('extract_facts')) {
+        const existingProposals = await this.database.db
+          .select({ id: factProposals.id })
+          .from(factProposals)
+          .where(
+            and(
+              eq(factProposals.chapterId, generation.chapterId),
+              eq(factProposals.status, 'proposed'),
+            ),
+          );
+        proposalCount = existingProposals.length;
+        await this.appendEvent(jobId, 'job.fact_extraction.reused', {
+          proposalCount,
+        });
+      } else if (action === 'chapter') {
         await this.beginStep(jobId, 'extract_facts', { draftId }, 98);
         extracted = await extractChapterFacts(this.gateway, {
           chapterNumber: Number(jobRow.payload.chapterNumber),
@@ -449,6 +567,7 @@ export class ChapterGenerationRunner {
             worldIronLaw: bible.worldIronLaw,
           },
         });
+        proposalCount = extracted.facts.length;
         await this.database.db.transaction(async (tx) => {
           await tx
             .delete(factProposals)
@@ -598,7 +717,7 @@ export class ChapterGenerationRunner {
         targetMinCharacters,
         targetMaxCharacters,
         attempts,
-        proposalCount: extracted.facts.length,
+        proposalCount,
         continuityIssueCount: issueCount,
         action,
         outputKind,
@@ -623,7 +742,13 @@ export class ChapterGenerationRunner {
         })
         .where(eq(generationRequests.id, generation.id));
 
-      return { ok: true };
+      return {
+        ok: true,
+        ...(draftId ? { draftId } : {}),
+        promptTokens,
+        completionTokens,
+        continuityIssueCount: issueCount,
+      };
     } catch (error) {
       const errorInfo = this.toErrorInfo(error);
       if (draftId) {
@@ -639,7 +764,13 @@ export class ChapterGenerationRunner {
           .where(eq(drafts.id, draftId));
       }
       await this.fail(jobRow, generation, draftId, errorInfo);
-      return { ok: false };
+      return {
+        ok: false,
+        ...(draftId ? { draftId } : {}),
+        promptTokens,
+        completionTokens,
+        error: errorInfo,
+      };
     }
   }
 

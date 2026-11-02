@@ -4,6 +4,8 @@ import { ConfigService } from '@nestjs/config';
 import { parseRedisConnection } from '@novel/contracts';
 import { AuthModule } from '../auth/auth.module';
 import { DatabaseModule } from '../database/database.module';
+import { BatchJobsController } from './batch-jobs.controller';
+import { BatchJobsService } from './batch-jobs.service';
 import { ChapterGenerationController } from './chapter-generation.controller';
 import { ChapterGenerationService } from './chapter-generation.service';
 
@@ -21,7 +23,7 @@ import { ChapterGenerationService } from './chapter-generation.service';
     }),
     BullModule.registerQueue({ name: 'generation' }),
   ],
-  controllers: [ChapterGenerationController],
-  providers: [ChapterGenerationService],
+  controllers: [ChapterGenerationController, BatchJobsController],
+  providers: [ChapterGenerationService, BatchJobsService],
 })
 export class ChapterGenerationModule {}

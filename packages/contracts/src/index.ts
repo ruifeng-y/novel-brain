@@ -1,4 +1,5 @@
 export * from './auth';
+export * from './batch-jobs';
 export * from './character-state';
 export * from './chapter-generation';
 export * from './entity-center';

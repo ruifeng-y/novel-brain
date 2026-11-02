@@ -2,13 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import {
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type UIEvent,
-} from 'react';
+import { useEffect, useRef, useState, type ReactNode, type UIEvent } from 'react';
 import { CONTINUITY_ISSUE_CATEGORIES, countCjkCharacters } from '@novel/contracts';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../../lib/auth-api';
 import {
@@ -37,10 +31,7 @@ import {
   type WritingQualityTier,
   type WritingRequest,
 } from '../../../../lib/chapter-generation-api';
-import {
-  type ModelConfig,
-  type ModelConfigListResponse,
-} from '../../../../lib/model-configs-api';
+import { type ModelConfig, type ModelConfigListResponse } from '../../../../lib/model-configs-api';
 import { loadStoryBible, type StoryBible } from '../../../../lib/story-planning-api';
 import { GENRE_LABELS, type Work } from '../../../../lib/works-api';
 import { ContinuityReviewPanel } from './continuity-review-panel';
@@ -70,12 +61,7 @@ type BootState =
 type GenerationState = 'idle' | 'preparing' | 'streaming' | 'completed' | 'failed';
 type AutosaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 type InsightTab =
-  | 'suggestions'
-  | 'continuity'
-  | 'quality'
-  | 'foreshadows'
-  | 'characters'
-  | 'versions';
+  'suggestions' | 'continuity' | 'quality' | 'foreshadows' | 'characters' | 'versions';
 
 type WritingControls = {
   qualityTier: WritingQualityTier;
@@ -131,7 +117,13 @@ const ACTION_LABELS: Record<WritingAction, string> = {
 
 const DEFAULT_TARGET_WORDS = 2_500;
 
-export function WritingDesk({ workId }: { workId: string }) {
+export function WritingDesk({
+  workId,
+  initialChapterNumber,
+}: {
+  workId: string;
+  initialChapterNumber?: number;
+}) {
   const router = useRouter();
   const [boot, setBoot] = useState<BootState>({ status: 'loading' });
   const [chapters, setChapters] = useState<ChapterListItem[]>([]);
@@ -195,10 +187,7 @@ export function WritingDesk({ workId }: { workId: string }) {
   useEffect(() => {
     let active = true;
 
-    Promise.all([
-      apiRequest<User>('/api/v1/auth/me'),
-      apiRequest<Work>(`/api/v1/works/${workId}`),
-    ])
+    Promise.all([apiRequest<User>('/api/v1/auth/me'), apiRequest<Work>(`/api/v1/works/${workId}`)])
       .then(async ([user, work]) => {
         if (!work.mainBranch) {
           throw new Error('这部作品还没有可用的创作线。');
@@ -233,7 +222,9 @@ export function WritingDesk({ workId }: { workId: string }) {
           modelConfigId: defaultModelId,
         }));
         if (chapterList.items.length > 0) {
-          const first = chapterList.items[0];
+          const first =
+            chapterList.items.find((chapter) => chapter.chapterNumber === initialChapterNumber) ??
+            chapterList.items[0];
           setChapterNumber(first.chapterNumber);
           const opened = await loadChapter(work.id, work.mainBranch.id, first.chapterNumber);
           if (active) {
@@ -268,7 +259,7 @@ export function WritingDesk({ workId }: { workId: string }) {
         clearTimeout(autosaveTimerRef.current);
       }
     };
-  }, [router, workId]);
+  }, [initialChapterNumber, router, workId]);
 
   useEffect(() => {
     if (boot.status !== 'ready' || !chapterNumber) {
@@ -293,14 +284,10 @@ export function WritingDesk({ workId }: { workId: string }) {
         setContinuityIssues(issueResult.items);
         setInsights(insightResult);
         if (
-          issueResult.items.some(
-            (issue) => continuityCategories.has(issue.category),
-          ) &&
+          issueResult.items.some((issue) => continuityCategories.has(issue.category)) &&
           insightResult.suggestions.length === 0
         ) {
-          setActivePanel((current) =>
-            current === 'suggestions' ? 'continuity' : current,
-          );
+          setActivePanel((current) => (current === 'suggestions' ? 'continuity' : current));
         }
       })
       .catch((loadError: unknown) => {
@@ -337,8 +324,7 @@ export function WritingDesk({ workId }: { workId: string }) {
     const measure = () => {
       const styles = window.getComputedStyle(textarea);
       const borderWidth =
-        Number.parseFloat(styles.borderLeftWidth) +
-        Number.parseFloat(styles.borderRightWidth);
+        Number.parseFloat(styles.borderLeftWidth) + Number.parseFloat(styles.borderRightWidth);
       setHighlightScrollbarWidth(
         Math.max(0, Math.round(textarea.offsetWidth - textarea.clientWidth - borderWidth)),
       );
@@ -403,12 +389,7 @@ export function WritingDesk({ workId }: { workId: string }) {
       return;
     }
 
-    const segmentActions: WritingAction[] = [
-      'rewrite',
-      'expand',
-      'condense',
-      'change_pov',
-    ];
+    const segmentActions: WritingAction[] = ['rewrite', 'expand', 'condense', 'change_pov'];
     const textarea = bodyTextareaRef.current;
     const selectedStart = textarea?.selectionStart ?? selection.start;
     const selectedEnd = textarea?.selectionEnd ?? selection.end;
@@ -424,7 +405,11 @@ export function WritingDesk({ workId }: { workId: string }) {
 
     const outputKind = outputKindForAction(action);
     const start = action === 'continue' ? selectedStart : selectedStart;
-    const end = segmentActions.includes(action) ? selectedEnd : action === 'continue' ? selectedStart : 0;
+    const end = segmentActions.includes(action)
+      ? selectedEnd
+      : action === 'continue'
+        ? selectedStart
+        : 0;
     const run: GenerationRun = {
       action,
       outputKind,
@@ -507,9 +492,7 @@ export function WritingDesk({ workId }: { workId: string }) {
 
     return {
       qualityTier: writingControls.qualityTier,
-      ...(writingControls.modelConfigId
-        ? { modelConfigId: writingControls.modelConfigId }
-        : {}),
+      ...(writingControls.modelConfigId ? { modelConfigId: writingControls.modelConfigId } : {}),
       targetMinCharacters,
       targetMaxCharacters,
       pov: writingControls.pov.trim(),
@@ -522,7 +505,10 @@ export function WritingDesk({ workId }: { workId: string }) {
         ? { instruction: writingControls.instruction.trim() }
         : {}),
       content,
-      ...(action === 'rewrite' || action === 'expand' || action === 'condense' || action === 'change_pov'
+      ...(action === 'rewrite' ||
+      action === 'expand' ||
+      action === 'condense' ||
+      action === 'change_pov'
         ? {
             selection: selectedText,
             selectionStart: selectedStart,
@@ -670,9 +656,7 @@ export function WritingDesk({ workId }: { workId: string }) {
     }
 
     if (run.outputKind === 'chapter' || run.outputKind === 'segment') {
-      const preserved = draftContent.trim()
-        ? previewContent(run, draftContent)
-        : run.baseContent;
+      const preserved = draftContent.trim() ? previewContent(run, draftContent) : run.baseContent;
       setContent(preserved);
       if (draftContent.trim()) {
         scheduleAutosave(preserved);
@@ -770,12 +754,7 @@ export function WritingDesk({ workId }: { workId: string }) {
     setError('');
     setNotice('');
     try {
-      const saved = await saveChapterVersion(
-        boot.work.id,
-        boot.branchId,
-        chapterNumber,
-        content,
-      );
+      const saved = await saveChapterVersion(boot.work.id, boot.branchId, chapterNumber, content);
       setDetail((current) =>
         current
           ? {
@@ -785,10 +764,7 @@ export function WritingDesk({ workId }: { workId: string }) {
               wordCount: saved.wordCount,
               content,
               currentVersion: saved,
-              versions: [
-                saved,
-                ...current.versions.filter((version) => version.id !== saved.id),
-              ],
+              versions: [saved, ...current.versions.filter((version) => version.id !== saved.id)],
             }
           : current,
       );
@@ -842,10 +818,7 @@ export function WritingDesk({ workId }: { workId: string }) {
               wordCount: restored.wordCount,
               content: restored.content,
               currentVersion: restored,
-              versions: [
-                restored,
-                ...current.versions.filter((item) => item.id !== restored.id),
-              ],
+              versions: [restored, ...current.versions.filter((item) => item.id !== restored.id)],
               autosave: null,
             }
           : current,
@@ -941,9 +914,7 @@ export function WritingDesk({ workId }: { workId: string }) {
     textarea.focus();
     textarea.setSelectionRange(start, end);
     setSelection({ start, end });
-    setActivePanel(
-      continuityCategories.has(issue.category) ? 'continuity' : 'suggestions',
-    );
+    setActivePanel(continuityCategories.has(issue.category) ? 'continuity' : 'suggestions');
   }
 
   async function applyTitle(title: string) {
@@ -951,18 +922,13 @@ export function WritingDesk({ workId }: { workId: string }) {
       return;
     }
     try {
-      const updated = await updateChapterMetadata(
-        boot.work.id,
-        boot.branchId,
-        chapterNumber,
-        { title },
-      );
+      const updated = await updateChapterMetadata(boot.work.id, boot.branchId, chapterNumber, {
+        title,
+      });
       setDetail((current) => (current ? { ...current, title: updated.title } : current));
       setChapters((current) =>
         current.map((chapter) =>
-          chapter.chapterNumber === chapterNumber
-            ? { ...chapter, title: updated.title }
-            : chapter,
+          chapter.chapterNumber === chapterNumber ? { ...chapter, title: updated.title } : chapter,
         ),
       );
       setNotice('章名已更新。');
@@ -976,12 +942,9 @@ export function WritingDesk({ workId }: { workId: string }) {
       return;
     }
     try {
-      const updated = await updateChapterMetadata(
-        boot.work.id,
-        boot.branchId,
-        chapterNumber,
-        { summary },
-      );
+      const updated = await updateChapterMetadata(boot.work.id, boot.branchId, chapterNumber, {
+        summary,
+      });
       setDetail((current) => (current ? { ...current, summary: updated.summary } : current));
       setNotice('本章摘要已保存。');
     } catch (updateError) {
@@ -1055,6 +1018,7 @@ export function WritingDesk({ workId }: { workId: string }) {
         </div>
         <nav className="workspace-nav" aria-label="写作台导航">
           <Link href={`/workspace/${boot.work.id}`}>作品与章纲</Link>
+          <Link href={`/workspace/${boot.work.id}/jobs`}>创作任务</Link>
           <Link href="/workspace/settings">模型设置</Link>
         </nav>
       </header>
@@ -1125,7 +1089,7 @@ export function WritingDesk({ workId }: { workId: string }) {
                         ? completionLabel || '已完成'
                         : generationState === 'failed'
                           ? completionLabel || '等待处理'
-                          : detail?.statusLabel ?? '可编辑'}
+                          : (detail?.statusLabel ?? '可编辑')}
               </span>
             </div>
 
@@ -1248,9 +1212,7 @@ export function WritingDesk({ workId }: { workId: string }) {
                   <button
                     className="secondary-button"
                     disabled={generating}
-                    onClick={() =>
-                      void runWritingAction(currentAction ?? 'chapter')
-                    }
+                    onClick={() => void runWritingAction(currentAction ?? 'chapter')}
                     type="button"
                   >
                     再试一次
@@ -1326,7 +1288,9 @@ export function WritingDesk({ workId }: { workId: string }) {
                   : '还没有正文'}
               </span>
               {hasSelection ? (
-                <span>已选中 {countCjkCharacters(content.slice(selection.start, selection.end))} 字</span>
+                <span>
+                  已选中 {countCjkCharacters(content.slice(selection.start, selection.end))} 字
+                </span>
               ) : null}
               <span>
                 {detail?.versions.length
@@ -1469,10 +1433,8 @@ function WritingControlsPanel({
   chapters: ChapterListItem[];
   onChange: (controls: WritingControls) => void;
 }) {
-  const update = <Key extends keyof WritingControls>(
-    key: Key,
-    value: WritingControls[Key],
-  ) => onChange({ ...controls, [key]: value });
+  const update = <Key extends keyof WritingControls>(key: Key, value: WritingControls[Key]) =>
+    onChange({ ...controls, [key]: value });
 
   return (
     <section aria-labelledby="writing-controls-title" className="writing-controls">
@@ -1487,9 +1449,7 @@ function WritingControlsPanel({
         <label className="writing-control-field">
           <span>质量档位</span>
           <select
-            onChange={(event) =>
-              update('qualityTier', event.target.value as WritingQualityTier)
-            }
+            onChange={(event) => update('qualityTier', event.target.value as WritingQualityTier)}
             value={controls.qualityTier}
           >
             {Object.entries(QUALITY_LABELS).map(([value, label]) => (
@@ -1518,9 +1478,7 @@ function WritingControlsPanel({
           <input
             max={20_000}
             min={1}
-            onChange={(event) =>
-              update('targetWordCount', Number(event.target.value))
-            }
+            onChange={(event) => update('targetWordCount', Number(event.target.value))}
             step={100}
             type="number"
             value={controls.targetWordCount}
@@ -1643,10 +1601,7 @@ function buildBodyHighlightRanges(
   return nonOverlapping;
 }
 
-function renderBodyWithHighlights(
-  content: string,
-  ranges: BodyHighlightRange[],
-): ReactNode[] {
+function renderBodyWithHighlights(content: string, ranges: BodyHighlightRange[]): ReactNode[] {
   const parts: ReactNode[] = [];
   let cursor = 0;
 
@@ -1693,8 +1648,7 @@ function initialChapterContent(detail: ChapterDetail): string {
     });
   }
   candidates.sort(
-    (left, right) =>
-      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+    (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
   );
   return candidates[0]?.content ?? detail.content;
 }

@@ -1500,6 +1500,78 @@ export const jobEvents = pgTable(
 
 export type JobEventRow = typeof jobEvents.$inferSelect;
 
+export const batchChapterStatusEnum = pgEnum('batch_chapter_status', [
+  'pending',
+  'running',
+  'waiting_review',
+  'completed',
+  'failed',
+  'canceled',
+]);
+
+export const batchReviewStatusEnum = pgEnum('batch_review_status', [
+  'pending',
+  'approved',
+  'sent_to_desk',
+  'rejected',
+  'ignored',
+]);
+
+export const jobChapters = pgTable(
+  'job_chapters',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    jobId: uuid('job_id')
+      .notNull()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    chapterNumber: integer('chapter_number').notNull(),
+    status: batchChapterStatusEnum('status').notNull().default('pending'),
+    reviewStatus: batchReviewStatusEnum('review_status').notNull().default('pending'),
+    generationJobId: uuid('generation_job_id').references(() => jobs.id, {
+      onDelete: 'set null',
+    }),
+    draftId: uuid('draft_id').references(() => drafts.id, { onDelete: 'set null' }),
+    promptTokens: integer('prompt_tokens').notNull().default(0),
+    completionTokens: integer('completion_tokens').notNull().default(0),
+    cost: real('cost').notNull().default(0),
+    error: jsonb('error').$type<Record<string, unknown>>(),
+    reviewNote: text('review_note'),
+    reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('job_chapters_job_chapter_unique').on(table.jobId, table.chapterNumber),
+    index('job_chapters_work_branch_status_idx').on(table.workId, table.branchId, table.status),
+    index('job_chapters_job_position_idx').on(table.jobId, table.chapterNumber),
+  ],
+);
+
+export type JobChapterRow = typeof jobChapters.$inferSelect;
+export type NewJobChapterRow = typeof jobChapters.$inferInsert;
+
+export const jobReports = pgTable(
+  'job_reports',
+  {
+    jobId: uuid('job_id')
+      .primaryKey()
+      .references(() => jobs.id, { onDelete: 'cascade' }),
+    report: jsonb('report').$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('job_reports_updated_idx').on(table.updatedAt)],
+);
+
+export type JobReportRow = typeof jobReports.$inferSelect;
+export type NewJobReportRow = typeof jobReports.$inferInsert;
+
 export const mapLevelEnum = pgEnum('map_level', [
   'world',
   'realm',
