@@ -38,7 +38,7 @@ import {
   type JobRow,
 } from '@novel/db';
 import type { Queue } from 'bullmq';
-import { and, asc, desc, eq, gt, isNull, max, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, isNotNull, isNull, max, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
 import { DatabaseService } from '../database/database.service';
@@ -110,14 +110,21 @@ export class ChapterGenerationService {
         ),
       )
       .where(
-        and(eq(chapterOutlines.workId, workId), eq(chapterOutlines.branchId, branchId)),
+        and(
+          eq(chapterOutlines.workId, workId),
+          eq(chapterOutlines.branchId, branchId),
+          eq(chapterOutlines.level, 'chapter'),
+          isNotNull(chapterOutlines.chapterNumber),
+        ),
       )
       .orderBy(chapterOutlines.chapterNumber);
 
     return {
       items: rows.map(({ outline, chapter }) => ({
-        chapterNumber: outline.chapterNumber,
-        title: chapter?.title ?? this.defaultChapterTitle(outline.chapterNumber),
+        chapterNumber: outline.chapterNumber ?? 0,
+        title:
+          chapter?.title ??
+          (outline.title.trim() || this.defaultChapterTitle(outline.chapterNumber ?? 0)),
         goal: outline.chapterGoal,
         status: chapter?.status ?? 'planned',
         statusLabel: CHAPTER_STATUS_LABELS[chapter?.status ?? 'planned'],
@@ -127,12 +134,7 @@ export class ChapterGenerationService {
     };
   }
 
-  async getChapter(
-    userId: string,
-    workId: string,
-    branchId: string,
-    chapterNumber: number,
-  ) {
+  async getChapter(userId: string, workId: string, branchId: string, chapterNumber: number) {
     await this.requireBranch(userId, workId, branchId);
     const outline = await this.requireOutline(workId, branchId, chapterNumber);
     const [chapter] = await this.database.db
@@ -200,15 +202,13 @@ export class ChapterGenerationService {
 
     return {
       chapterNumber,
-      title: chapter?.title ?? this.defaultChapterTitle(chapterNumber),
+      title: chapter?.title ?? (outline.title.trim() || this.defaultChapterTitle(chapterNumber)),
       status: chapter?.status ?? 'planned',
       statusLabel: CHAPTER_STATUS_LABELS[chapter?.status ?? 'planned'],
       wordCount: chapter?.wordCount ?? 0,
       content: currentVersion?.content ?? '',
       outline: this.toOutlineResponse(outline),
-      currentVersion: currentVersion
-        ? this.toVersionResponse(chapterNumber, currentVersion)
-        : null,
+      currentVersion: currentVersion ? this.toVersionResponse(chapterNumber, currentVersion) : null,
       latestDraft: latestDraft
         ? {
             id: latestDraft.id,
@@ -219,9 +219,7 @@ export class ChapterGenerationService {
             updatedAt: latestDraft.updatedAt.toISOString(),
           }
         : null,
-      versions: versionRows.map((version) =>
-        this.toVersionResponse(chapterNumber, version),
-      ),
+      versions: versionRows.map((version) => this.toVersionResponse(chapterNumber, version)),
       context: latestContext
         ? {
             id: latestContext.id,
@@ -259,7 +257,7 @@ export class ChapterGenerationService {
       );
     }
 
-    const chapter = await this.ensureChapter(workId, branchId, chapterNumber);
+    const chapter = await this.ensureChapter(workId, branchId, chapterNumber, outline.title);
     const created = await this.database.db.transaction(async (tx) => {
       const now = new Date();
       const [generation] = await tx
@@ -322,10 +320,7 @@ export class ChapterGenerationService {
           progress: 0,
         },
       });
-      await tx
-        .update(works)
-        .set({ updatedAt: now })
-        .where(eq(works.id, workId));
+      await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
 
       return { generation, job };
     });
@@ -523,15 +518,13 @@ export class ChapterGenerationService {
     input: SaveChapterVersionInput,
   ) {
     await this.requireBranch(userId, workId, branchId);
-    await this.requireOutline(workId, branchId, chapterNumber);
-    const chapter = await this.ensureChapter(workId, branchId, chapterNumber);
+    const outline = await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.ensureChapter(workId, branchId, chapterNumber, outline.title);
     const contentHash = createHash('sha256').update(input.content).digest('hex');
     const wordCount = countCjkCharacters(input.content);
 
     const saved = await this.database.db.transaction(async (tx) => {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${chapter.id}))`,
-      );
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${chapter.id}))`);
       const [currentMax] = await tx
         .select({ version: max(chapterVersions.version) })
         .from(chapterVersions)
@@ -561,22 +554,14 @@ export class ChapterGenerationService {
           updatedAt: now,
         })
         .where(eq(chapters.id, chapter.id));
-      await tx
-        .update(works)
-        .set({ updatedAt: now })
-        .where(eq(works.id, workId));
+      await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
       return created;
     });
 
     return this.toVersionResponse(chapterNumber, saved);
   }
 
-  async listVersions(
-    userId: string,
-    workId: string,
-    branchId: string,
-    chapterNumber: number,
-  ) {
+  async listVersions(userId: string, workId: string, branchId: string, chapterNumber: number) {
     await this.requireBranch(userId, workId, branchId);
     await this.requireOutline(workId, branchId, chapterNumber);
     const [chapter] = await this.database.db
@@ -603,12 +588,7 @@ export class ChapterGenerationService {
     };
   }
 
-  async listFactProposals(
-    userId: string,
-    workId: string,
-    branchId: string,
-    chapterNumber: number,
-  ) {
+  async listFactProposals(userId: string, workId: string, branchId: string, chapterNumber: number) {
     await this.requireBranch(userId, workId, branchId);
     await this.requireOutline(workId, branchId, chapterNumber);
     const chapter = await this.findChapter(workId, branchId, chapterNumber);
@@ -689,9 +669,7 @@ export class ChapterGenerationService {
     }
 
     return this.database.db.transaction(async (tx) => {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${annotationId}))`,
-      );
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${annotationId}))`);
       const [existing] = await tx
         .select()
         .from(annotations)
@@ -775,12 +753,7 @@ export class ChapterGenerationService {
           'Fact proposal not found',
         );
       }
-      await this.requireProposalChapter(
-        proposal.chapterId,
-        workId,
-        branchId,
-        chapterNumber,
-      );
+      await this.requireProposalChapter(proposal.chapterId, workId, branchId, chapterNumber);
       if (proposal.status !== 'proposed') {
         throw chapterGenerationError(
           HttpStatus.CONFLICT,
@@ -792,12 +765,7 @@ export class ChapterGenerationService {
       const [updated] = await tx
         .update(factProposals)
         .set({ statement, updatedAt: new Date() })
-        .where(
-          and(
-            eq(factProposals.id, proposal.id),
-            eq(factProposals.status, 'proposed'),
-          ),
-        )
+        .where(and(eq(factProposals.id, proposal.id), eq(factProposals.status, 'proposed')))
         .returning();
       if (!updated) {
         throw chapterGenerationError(
@@ -840,12 +808,7 @@ export class ChapterGenerationService {
           'Fact proposal not found',
         );
       }
-      await this.requireProposalChapter(
-        proposal.chapterId,
-        workId,
-        branchId,
-        chapterNumber,
-      );
+      await this.requireProposalChapter(proposal.chapterId, workId, branchId, chapterNumber);
       if (proposal.status !== 'proposed') {
         throw chapterGenerationError(
           HttpStatus.CONFLICT,
@@ -857,12 +820,7 @@ export class ChapterGenerationService {
       const [updated] = await tx
         .update(factProposals)
         .set({ status: 'rejected', updatedAt: new Date() })
-        .where(
-          and(
-            eq(factProposals.id, proposal.id),
-            eq(factProposals.status, 'proposed'),
-          ),
-        )
+        .where(and(eq(factProposals.id, proposal.id), eq(factProposals.status, 'proposed')))
         .returning();
       if (!updated) {
         throw chapterGenerationError(
@@ -912,9 +870,7 @@ export class ChapterGenerationService {
     await this.requireOutline(workId, branchId, chapterNumber);
 
     return this.database.db.transaction(async (tx) => {
-      await tx.execute(
-        sql`select pg_advisory_xact_lock(hashtext(${branchId}))`,
-      );
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${branchId}))`);
       const [proposal] = await tx
         .select()
         .from(factProposals)
@@ -963,11 +919,7 @@ export class ChapterGenerationService {
 
       let [fact] =
         proposal.status === 'confirmed'
-          ? await tx
-              .select()
-              .from(facts)
-              .where(eq(facts.sourceProposalId, proposal.id))
-              .limit(1)
+          ? await tx.select().from(facts).where(eq(facts.sourceProposalId, proposal.id)).limit(1)
           : [];
 
       if (proposal.status === 'confirmed') {
@@ -978,9 +930,7 @@ export class ChapterGenerationService {
               .where(
                 and(
                   eq(canonCommits.branchId, branchId),
-                  sql`${canonCommits.eventLog} @> ${JSON.stringify([
-                    { factId: fact.id },
-                  ])}::jsonb`,
+                  sql`${canonCommits.eventLog} @> ${JSON.stringify([{ factId: fact.id }])}::jsonb`,
                 ),
               )
               .orderBy(desc(canonCommits.createdAt))
@@ -1093,9 +1043,7 @@ export class ChapterGenerationService {
       })
       .from(canonCommits)
       .innerJoin(chapters, eq(chapters.id, canonCommits.chapterId))
-      .where(
-        and(eq(canonCommits.workId, workId), eq(canonCommits.branchId, branchId)),
-      )
+      .where(and(eq(canonCommits.workId, workId), eq(canonCommits.branchId, branchId)))
       .orderBy(desc(canonCommits.createdAt));
 
     return {
@@ -1110,12 +1058,7 @@ export class ChapterGenerationService {
     };
   }
 
-  async getCanonSnapshot(
-    userId: string,
-    workId: string,
-    branchId: string,
-    snapshotId: string,
-  ) {
+  async getCanonSnapshot(userId: string, workId: string, branchId: string, snapshotId: string) {
     await this.requireBranch(userId, workId, branchId);
     const [row] = await this.database.db
       .select()
@@ -1147,6 +1090,7 @@ export class ChapterGenerationService {
     workId: string,
     branchId: string,
     chapterNumber: number,
+    title?: string,
   ): Promise<ChapterRow> {
     const [chapter] = await this.database.db
       .insert(chapters)
@@ -1154,12 +1098,15 @@ export class ChapterGenerationService {
         workId,
         branchId,
         chapterNumber,
-        title: this.defaultChapterTitle(chapterNumber),
+        title: title?.trim() || this.defaultChapterTitle(chapterNumber),
         status: 'planned',
       })
       .onConflictDoUpdate({
         target: [chapters.workId, chapters.branchId, chapters.chapterNumber],
-        set: { updatedAt: new Date() },
+        set: {
+          ...(title?.trim() ? { title: title.trim() } : {}),
+          updatedAt: new Date(),
+        },
       })
       .returning();
     return chapter;
@@ -1178,6 +1125,7 @@ export class ChapterGenerationService {
           eq(chapterOutlines.workId, workId),
           eq(chapterOutlines.branchId, branchId),
           eq(chapterOutlines.chapterNumber, chapterNumber),
+          eq(chapterOutlines.level, 'chapter'),
         ),
       )
       .limit(1);
@@ -1210,11 +1158,7 @@ export class ChapterGenerationService {
       )
       .limit(1);
     if (!chapter) {
-      throw chapterGenerationError(
-        HttpStatus.NOT_FOUND,
-        'CHAPTER_NOT_FOUND',
-        'Chapter not found',
-      );
+      throw chapterGenerationError(HttpStatus.NOT_FOUND, 'CHAPTER_NOT_FOUND', 'Chapter not found');
     }
   }
 
@@ -1246,22 +1190,14 @@ export class ChapterGenerationService {
     return rows.find((row) => row.purpose === 'prose') ?? rows.find((row) => row.isDefault);
   }
 
-  private async requireBranch(
-    userId: string,
-    workId: string,
-    branchId: string,
-  ): Promise<void> {
+  private async requireBranch(userId: string, workId: string, branchId: string): Promise<void> {
     const [work] = await this.database.db
       .select({ id: works.id })
       .from(works)
       .where(and(eq(works.id, workId), eq(works.userId, userId), isNull(works.deletedAt)))
       .limit(1);
     if (!work) {
-      throw chapterGenerationError(
-        HttpStatus.NOT_FOUND,
-        'WORK_NOT_FOUND',
-        'Work not found',
-      );
+      throw chapterGenerationError(HttpStatus.NOT_FOUND, 'WORK_NOT_FOUND', 'Work not found');
     }
 
     const [branch] = await this.database.db
@@ -1316,7 +1252,7 @@ export class ChapterGenerationService {
       id: row.id,
       workId: row.workId,
       branchId: row.branchId,
-      chapterNumber: row.chapterNumber,
+      chapterNumber: row.chapterNumber ?? 0,
       chapterGoal: row.chapterGoal,
       pov: row.pov,
       sceneBeats: row.sceneBeats,
@@ -1384,11 +1320,9 @@ export class ChapterGenerationService {
     return {
       id: annotation.id,
       category: annotation.category,
-      categoryLabel:
-        CONTINUITY_CATEGORY_LABELS[annotation.category] ?? '连续性',
+      categoryLabel: CONTINUITY_CATEGORY_LABELS[annotation.category] ?? '连续性',
       severity: annotation.severity,
-      severityLabel:
-        CONTINUITY_SEVERITY_LABELS[annotation.severity] ?? '需要确认',
+      severityLabel: CONTINUITY_SEVERITY_LABELS[annotation.severity] ?? '需要确认',
       message: annotation.message,
       suggestion: annotation.suggestion,
       sourceSentence: annotation.sourceSentence,

@@ -155,6 +155,13 @@
       "when": 1793595371045,
       "tag": "0021_legal_medusa",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1793596626485,
+      "tag": "0022_soft_jetstream",
+      "breakpoints": true
     }
   ]
 }

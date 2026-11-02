@@ -15,6 +15,7 @@ import { ChapterGenerationModule } from './generation/chapter-generation.module'
 import { HealthModule } from './health/health.module';
 import { MapsController } from './maps/maps.controller';
 import { MapsModule } from './maps/maps.module';
+import { OutlineController } from './planning/outline.controller';
 import { RedisModule } from './redis/redis.module';
 import { validateEnv } from './config/env';
 import { StoryPlanningController } from './planning/story-planning.controller';
@@ -52,6 +53,7 @@ export class AppModule implements NestModule {
         AuthController,
         WorksController,
         ModelConfigsController,
+        OutlineController,
         StoryPlanningController,
         EntitiesController,
         MapsController,

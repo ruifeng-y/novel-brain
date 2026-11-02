@@ -12,16 +12,19 @@ import {
 } from '../../../lib/entities-api';
 import { loadMapOverview, type MapOverview } from '../../../lib/maps-api';
 import {
-  loadChapterOutline,
+  loadOutlineNodes,
+  loadOutlineReadiness,
   loadStoryBibleInsights,
   loadStoryBible,
-  type ChapterOutline,
+  type OutlineNode,
+  type OutlineReadiness,
   type StoryBible,
   type StoryBibleInsights,
 } from '../../../lib/story-planning-api';
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
 import { SettingsCenterPanel } from './settings-center-panel';
 import { MapFactionPanel } from './map-faction-panel';
+import { OutlineWorkspacePanel } from './outline-workspace-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 
 type LoadState =
@@ -31,7 +34,8 @@ type LoadState =
       user: User;
       work: Work;
       storyBible: StoryBible | null;
-      chapterOutline: ChapterOutline | null;
+      outlineNodes: OutlineNode[];
+      outlineReadiness: OutlineReadiness | null;
       storyBibleInsights: StoryBibleInsights | null;
       entities: Entity[];
       customFields: CustomFieldDefinition[];
@@ -53,7 +57,8 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             user,
             work,
             storyBible: null,
-            chapterOutline: null,
+            outlineNodes: [],
+            outlineReadiness: null,
             storyBibleInsights: null,
             entities: [],
             customFields: [],
@@ -70,20 +75,28 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           return;
         }
 
-        const [storyBible, chapterOutline, storyBibleInsights, entityCenter, mapOverview] =
-          await Promise.all([
-            loadStoryBible(work.id, work.mainBranch.id),
-            loadChapterOutline(work.id, work.mainBranch.id, 1),
-            loadStoryBibleInsights(work.id, work.mainBranch.id),
-            loadEntityCenter(work.id, work.mainBranch.id),
-            loadMapOverview(work.id, work.mainBranch.id),
-          ]);
+        const [
+          storyBible,
+          outlineResponse,
+          outlineReadiness,
+          storyBibleInsights,
+          entityCenter,
+          mapOverview,
+        ] = await Promise.all([
+          loadStoryBible(work.id, work.mainBranch.id),
+          loadOutlineNodes(work.id, work.mainBranch.id),
+          loadOutlineReadiness(work.id, work.mainBranch.id),
+          loadStoryBibleInsights(work.id, work.mainBranch.id),
+          loadEntityCenter(work.id, work.mainBranch.id),
+          loadMapOverview(work.id, work.mainBranch.id),
+        ]);
         setState({
           status: 'ready',
           user,
           work,
           storyBible,
-          chapterOutline,
+          outlineNodes: outlineResponse.items,
+          outlineReadiness,
           storyBibleInsights,
           entities: entityCenter.entities,
           customFields: entityCenter.customFields,
@@ -186,13 +199,12 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             <p className="workspace-step">创作骨架</p>
             <h2 id="planning-board-title">先把故事站稳</h2>
           </div>
-          <p>故事圣经定方向，第一章章纲定落点。保存后随时回来接着写。</p>
+          <p>故事圣经定方向，完整大纲定节奏。保存后随时回来接着写。</p>
         </div>
 
-        {state.storyBible && state.chapterOutline && state.storyBibleInsights && work.mainBranch ? (
+        {state.storyBible && state.storyBibleInsights && work.mainBranch ? (
           <StoryPlanningPanel
             branchId={work.mainBranch.id}
-            chapterOutline={state.chapterOutline}
             initialInsights={state.storyBibleInsights}
             storyBible={state.storyBible}
             workId={work.id}
@@ -201,6 +213,15 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           <p className="planning-unavailable">这个故事暂时还没有可编辑的创作线。</p>
         )}
       </section>
+
+      {state.outlineReadiness && work.mainBranch ? (
+        <OutlineWorkspacePanel
+          branchId={work.mainBranch.id}
+          initialNodes={state.outlineNodes}
+          initialReadiness={state.outlineReadiness}
+          workId={work.id}
+        />
+      ) : null}
 
       {work.mainBranch ? (
         <SettingsCenterPanel
@@ -248,7 +269,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         <section className="work-readiness">
           <p className="workspace-step">当前状态</p>
           <h2>主创作线已就绪</h2>
-          <p>作品已经建立。故事圣经和第一章章纲填好后，就可以继续准备正文。</p>
+          <p>作品已经建立。故事圣经和完整大纲准备好后，就可以继续准备正文。</p>
           <Link className="secondary-button back-button" href={`/workspace/${work.id}/write`}>
             进入写作台
           </Link>

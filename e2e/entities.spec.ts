@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { useIsolatedClientIp } from './support';
+import { createFirstChapterOutline, currentWorkAndBranch, useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -51,12 +51,13 @@ test('an author can build and search a linked settings center', async ({ page })
   await page.getByRole('button', { name: '创建并开始' }).click();
   await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
 
-  await page.getByLabel('章目标').fill('沈砚在断碑前第一次引动残剑。');
-  await page.getByLabel('叙事视角').fill('沈砚');
-  await page.getByLabel('场景节拍').fill('沈砚逃入荒寺避雨\n断碑浮现旧日剑痕');
-  await page.getByLabel('章末钩子').fill('他想起的母亲，竟从未在自己的记忆里活过。');
-  await page.getByRole('button', { name: '保存章纲' }).click();
-  await expect(page.getByText('章纲已保存')).toBeVisible();
+  const work = await currentWorkAndBranch(page);
+  await createFirstChapterOutline(page, work.workId, work.branchId, {
+    chapterGoal: '沈砚在断碑前第一次引动残剑。',
+    pov: '沈砚',
+    sceneBeats: '沈砚逃入荒寺避雨\n断碑浮现旧日剑痕',
+    chapterEndHook: '他想起的母亲，竟从未在自己的记忆里活过。',
+  });
 
   await expect(page.getByRole('heading', { name: '设定中心' })).toBeVisible();
   await page.getByRole('button', { name: '字段设置' }).click();

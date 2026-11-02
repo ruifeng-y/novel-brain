@@ -80,6 +80,7 @@ export class ChapterGenerationRunner {
           eq(chapterOutlines.workId, generation.workId),
           eq(chapterOutlines.branchId, generation.branchId),
           eq(chapterOutlines.chapterNumber, Number(jobRow.payload.chapterNumber ?? 0)),
+          eq(chapterOutlines.level, 'chapter'),
         ),
       )
       .limit(1);

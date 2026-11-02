@@ -5,9 +5,7 @@ import { ApiError, friendlyError } from '../../../lib/auth-api';
 import {
   loadStoryBibleInsights,
   lockStoryBible,
-  saveChapterOutline,
   saveStoryBible,
-  type ChapterOutline,
   type StoryBible,
   type StoryBibleCard,
   type StoryBibleInsights,
@@ -68,13 +66,11 @@ export function StoryPlanningPanel({
   workId,
   branchId,
   storyBible,
-  chapterOutline,
   initialInsights,
 }: {
   workId: string;
   branchId: string;
   storyBible: StoryBible;
-  chapterOutline: ChapterOutline;
   initialInsights: StoryBibleInsights;
 }) {
   const [bible, setBible] = useState(storyBible);
@@ -83,7 +79,6 @@ export function StoryPlanningPanel({
   const [insights, setInsights] = useState(initialInsights);
   const [bibleSave, setBibleSave] = useState<SaveState>({ status: 'idle' });
   const [lockSave, setLockSave] = useState<SaveState>({ status: 'idle' });
-  const [outlineSave, setOutlineSave] = useState<SaveState>({ status: 'idle' });
   const [pendingLockedSave, setPendingLockedSave] = useState<string[] | null>(null);
   const [changeReason, setChangeReason] = useState('');
 
@@ -184,28 +179,6 @@ export function StoryPlanningPanel({
       }
       return next;
     });
-  }
-
-  async function onSaveChapterOutline(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const sceneBeats = String(form.get('sceneBeats') ?? '')
-      .split(/\r?\n/)
-      .map((beat) => beat.trim())
-      .filter(Boolean);
-    setOutlineSave({ status: 'saving' });
-
-    try {
-      await saveChapterOutline(workId, branchId, 1, {
-        chapterGoal: String(form.get('chapterGoal') ?? ''),
-        pov: String(form.get('pov') ?? ''),
-        sceneBeats,
-        chapterEndHook: String(form.get('chapterEndHook') ?? ''),
-      });
-      setOutlineSave({ status: 'saved', message: '章纲已保存' });
-    } catch (error) {
-      setOutlineSave({ status: 'error', message: friendlyError(error) });
-    }
   }
 
   return (
@@ -477,85 +450,6 @@ export function StoryPlanningPanel({
           </section>
         </aside>
       </div>
-
-      <section
-        className="planning-section chapter-outline-section"
-        aria-labelledby="chapter-outline-title"
-      >
-        <div className="planning-section-heading">
-          <p className="workspace-step">第一章准备</p>
-          <h2 id="chapter-outline-title">章纲</h2>
-          <p>把这一章要完成的事拆成清楚的场景节拍。</p>
-        </div>
-
-        <form className="auth-form planning-form" onSubmit={onSaveChapterOutline}>
-          <div className="chapter-outline-grid">
-            <label className="field">
-              <span>章目标</span>
-              <textarea
-                defaultValue={chapterOutline.chapterGoal}
-                maxLength={1_000}
-                name="chapterGoal"
-                placeholder="这一章结束时，故事必须向前推进到哪里"
-                required
-                rows={3}
-              />
-            </label>
-            <label className="field">
-              <span>叙事视角</span>
-              <input
-                defaultValue={chapterOutline.pov}
-                maxLength={120}
-                name="pov"
-                placeholder="这一章由谁的眼睛来看"
-                required
-              />
-            </label>
-            <label className="field chapter-outline-beats">
-              <span>场景节拍</span>
-              <textarea
-                defaultValue={chapterOutline.sceneBeats.join('\n')}
-                name="sceneBeats"
-                placeholder={'一行一个节拍，例如：\n沈砚逃入荒寺避雨\n断碑浮现旧日剑痕'}
-                required
-                rows={5}
-              />
-            </label>
-            <label className="field">
-              <span>章末钩子</span>
-              <textarea
-                defaultValue={chapterOutline.chapterEndHook}
-                maxLength={500}
-                name="chapterEndHook"
-                placeholder="读者看到最后一句，为什么还想翻下一章"
-                required
-                rows={5}
-              />
-            </label>
-          </div>
-
-          {outlineSave.status === 'error' ? (
-            <p className="form-message form-message-error" role="alert">
-              {outlineSave.message}
-            </p>
-          ) : null}
-          {outlineSave.status === 'saved' ? (
-            <p className="form-message form-message-success" role="status">
-              {outlineSave.message}
-            </p>
-          ) : null}
-
-          <div className="planning-actions">
-            <button
-              className="primary-button"
-              disabled={outlineSave.status === 'saving'}
-              type="submit"
-            >
-              {outlineSave.status === 'saving' ? '正在保存…' : '保存章纲'}
-            </button>
-          </div>
-        </form>
-      </section>
     </>
   );
 }
