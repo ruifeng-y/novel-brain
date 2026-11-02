@@ -1,5 +1,5 @@
 {
-  "id": "4c49f0f0-da96-4b48-849d-9c7f77e64047",
+  "id": "af33d979-bd59-4f07-93f2-2982e2fc4616",
   "prevId": "48a09802-2873-48e5-bbd0-e1e62925e565",
   "version": "7",
   "dialect": "postgresql",
@@ -255,6 +255,280 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.branch_commits": {
+      "name": "branch_commits",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_branch_id": {
+          "name": "source_branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "snapshot_branch_id": {
+          "name": "snapshot_branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter_version_id": {
+          "name": "chapter_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "message": {
+          "name": "message",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "branch_commits_chapter_version_unique": {
+          "name": "branch_commits_chapter_version_unique",
+          "columns": [
+            {
+              "expression": "chapter_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "branch_commits_source_created_idx": {
+          "name": "branch_commits_source_created_idx",
+          "columns": [
+            {
+              "expression": "source_branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "branch_commits_work_id_works_id_fk": {
+          "name": "branch_commits_work_id_works_id_fk",
+          "tableFrom": "branch_commits",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "branch_commits_source_branch_id_work_branches_id_fk": {
+          "name": "branch_commits_source_branch_id_work_branches_id_fk",
+          "tableFrom": "branch_commits",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "source_branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "branch_commits_snapshot_branch_id_work_branches_id_fk": {
+          "name": "branch_commits_snapshot_branch_id_work_branches_id_fk",
+          "tableFrom": "branch_commits",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "snapshot_branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "branch_commits_chapter_version_id_chapter_versions_id_fk": {
+          "name": "branch_commits_chapter_version_id_chapter_versions_id_fk",
+          "tableFrom": "branch_commits",
+          "tableTo": "chapter_versions",
+          "columnsFrom": [
+            "chapter_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "branch_commits_created_by_users_id_fk": {
+          "name": "branch_commits_created_by_users_id_fk",
+          "tableFrom": "branch_commits",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.branch_id_mappings": {
+      "name": "branch_id_mappings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "fork_branch_id": {
+          "name": "fork_branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "table_name": {
+          "name": "table_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_id": {
+          "name": "target_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "branch_id_mappings_fork_source_unique": {
+          "name": "branch_id_mappings_fork_source_unique",
+          "columns": [
+            {
+              "expression": "fork_branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "branch_id_mappings_fork_table_idx": {
+          "name": "branch_id_mappings_fork_table_idx",
+          "columns": [
+            {
+              "expression": "fork_branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "table_name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "branch_id_mappings_fork_branch_id_work_branches_id_fk": {
+          "name": "branch_id_mappings_fork_branch_id_work_branches_id_fk",
+          "tableFrom": "branch_id_mappings",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "fork_branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -7974,9 +8248,28 @@
           "notNull": true,
           "default": false
         },
+        "is_snapshot": {
+          "name": "is_snapshot",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
         "parent_branch_id": {
           "name": "parent_branch_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseline_branch_id": {
+          "name": "baseline_branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "baseline_materialized_at": {
+          "name": "baseline_materialized_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },

@@ -1487,6 +1487,17 @@ export class ChapterGenerationRunner {
     });
   }
 
+  private async requireVisibleJob(jobId: string): Promise<JobRow> {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const [job] = await this.database.db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+      if (job) {
+        return job;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`Generation job ${jobId} was not found`);
+  }
+
   private toErrorInfo(error: unknown): GenerationErrorInfo {
     if (error instanceof AiGatewayError) {
       return {

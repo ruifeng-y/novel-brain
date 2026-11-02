@@ -451,6 +451,34 @@ CREATE POLICY character_presences_tenant ON public.character_presences
   USING (app.owns_work(work_id))
   WITH CHECK (app.owns_work(work_id));
 
+ALTER TABLE public.branch_commits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.branch_commits FORCE ROW LEVEL SECURITY;
+CREATE POLICY branch_commits_tenant ON public.branch_commits
+  FOR ALL
+  USING (app.owns_work(work_id))
+  WITH CHECK (app.owns_work(work_id));
+
+ALTER TABLE public.branch_id_mappings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.branch_id_mappings FORCE ROW LEVEL SECURITY;
+CREATE POLICY branch_id_mappings_tenant ON public.branch_id_mappings
+  FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1
+      FROM public.work_branches branch
+      WHERE branch.id = fork_branch_id
+        AND app.owns_work(branch.work_id)
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1
+      FROM public.work_branches branch
+      WHERE branch.id = fork_branch_id
+        AND app.owns_work(branch.work_id)
+    )
+  );
+
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA app TO novel_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO novel_app;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO novel_app;

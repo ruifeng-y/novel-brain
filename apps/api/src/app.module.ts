@@ -1,6 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
 import { APP_INTERCEPTOR } from '@nestjs/core';
+import { ConfigModule } from '@nestjs/config';
 import cookieParser from 'cookie-parser';
 import { AiModule } from './ai/ai.module';
 import { ModelConfigsController } from './ai/model-configs.controller';
@@ -8,6 +8,8 @@ import { AuthModule } from './auth/auth.module';
 import { AuthController } from './auth/auth.controller';
 import { BranchesController } from './branches/branches.controller';
 import { BranchesModule } from './branches/branches.module';
+import { BranchBaselineInterceptor } from './branches/branch-baseline.interceptor';
+import { BranchStateModule } from './branches/branch-state.module';
 import { CharactersController } from './characters/characters.controller';
 import { CharactersModule } from './characters/characters.module';
 import { ChangesController } from './changes/changes.controller';
@@ -50,6 +52,7 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     AuthModule,
     AiModule,
     WorksModule,
+    BranchStateModule,
     BranchesModule,
     StoryPlanningModule,
     EntitiesModule,
@@ -66,6 +69,10 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: TenantContextInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: BranchBaselineInterceptor,
     },
   ],
 })

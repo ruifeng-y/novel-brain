@@ -10,7 +10,7 @@ import {
   Post,
   Put,
   Req,
-  Res,
+  Sse,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
@@ -25,11 +25,11 @@ import {
   updateFactProposalSchema,
   workIdSchema,
 } from '@novel/contracts';
-import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import { chapterGenerationError } from './chapter-generation.errors';
 import { ChapterGenerationService } from './chapter-generation.service';
+import { GenerationJobAccessGuard } from './generation-job-access.guard';
 
 @ApiTags('chapter-generation')
 @Controller('works/:workId/branches/:branchId')
@@ -553,7 +553,8 @@ export class ChapterGenerationController {
     );
   }
 
-  @Get('jobs/:jobId/events')
+  @Sse('jobs/:jobId/events')
+  @UseGuards(GenerationJobAccessGuard)
   @ApiOperation({ summary: 'Stream chapter generation progress and text deltas' })
   async streamJobEvents(
     @Param('workId') workId: string,
@@ -561,50 +562,15 @@ export class ChapterGenerationController {
     @Param('jobId') jobId: string,
     @Headers('last-event-id') lastEventId: string | undefined,
     @Req() request: AuthenticatedRequest,
-    @Res() response: Response,
   ) {
     const afterSequence = lastEventId ? Number.parseInt(lastEventId, 10) : 0;
-    const events = await this.chapters.streamJobEvents(
+    return this.chapters.streamJobEvents(
       this.requireUserId(request),
       this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
       this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
       this.parseId(jobId, 'GENERATION_JOB_NOT_FOUND', 'Generation task not found'),
       Number.isFinite(afterSequence) ? afterSequence : 0,
     );
-
-    response.status(HttpStatus.OK).set({
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache, no-transform',
-      Connection: 'keep-alive',
-      'X-Accel-Buffering': 'no',
-    });
-    response.flushHeaders();
-
-    await new Promise<void>((resolve) => {
-      const subscription = events.subscribe({
-        next: (message) => {
-          response.write(
-            `id: ${message.id}\nevent: ${message.type}\ndata: ${JSON.stringify(message.data)}\n\n`,
-          );
-        },
-        error: () => {
-          if (!response.writableEnded) {
-            response.end();
-          }
-          resolve();
-        },
-        complete: () => {
-          if (!response.writableEnded) {
-            response.end();
-          }
-          resolve();
-        },
-      });
-      response.once('close', () => {
-        subscription.unsubscribe();
-        resolve();
-      });
-    });
   }
 
   private parseId(value: string, code: string, message: string): string {

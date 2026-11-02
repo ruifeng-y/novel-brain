@@ -310,6 +310,14 @@ export function ParallelVersionsPanel({ workId, branchId }: { workId: string; br
                   <dd>{comparison.summary.chaptersChanged}</dd>
                 </div>
                 <div>
+                  <dt>事实差异</dt>
+                  <dd>{comparison.summary.factsChanged}</dd>
+                </div>
+                <div>
+                  <dt>人物与地图</dt>
+                  <dd>{comparison.summary.charactersChanged + comparison.summary.mapsChanged}</dd>
+                </div>
+                <div>
                   <dt>两边都改</dt>
                   <dd>{comparison.summary.conflicts}</dd>
                 </div>
@@ -340,6 +348,30 @@ export function ParallelVersionsPanel({ workId, branchId }: { workId: string; br
                 selectedItems={selectedItems}
                 onToggle={toggleItem}
               />
+              <CompareGroup
+                title="已确认事实"
+                type="setting"
+                items={comparison.facts}
+                selectable={false}
+                selectedItems={selectedItems}
+                onToggle={toggleItem}
+              />
+              <CompareGroup
+                title="人物状态"
+                type="setting"
+                items={comparison.characters}
+                selectable={false}
+                selectedItems={selectedItems}
+                onToggle={toggleItem}
+              />
+              <CompareGroup
+                title="地图地点"
+                type="setting"
+                items={comparison.maps}
+                selectable={false}
+                selectedItems={selectedItems}
+                onToggle={toggleItem}
+              />
               <div className="parallel-pickup-actions">
                 <button
                   className="primary-button"
@@ -365,12 +397,14 @@ function CompareGroup({
   title,
   type,
   items,
+  selectable = true,
   selectedItems,
   onToggle,
 }: {
   title: string;
   type: 'setting' | 'outline' | 'chapter';
   items: CompareItem[];
+  selectable?: boolean;
   selectedItems: Set<PickKey>;
   onToggle: (key: PickKey) => void;
 }) {
@@ -386,7 +420,7 @@ function CompareGroup({
         <div className="parallel-compare-items">
           {items.map((item) => {
             const key = `${type}:${item.comparedId ?? item.id}` as PickKey;
-            const selectable = Boolean(item.comparedId) && item.status !== 'same';
+            const canPick = selectable && Boolean(item.comparedId) && item.status !== 'same';
             return (
               <article
                 className={
@@ -399,7 +433,7 @@ function CompareGroup({
                     <strong>{item.label}</strong>
                     <span>{statusLabel(item)}</span>
                   </div>
-                  {selectable ? (
+                  {canPick ? (
                     <label className="parallel-pickup-check">
                       <input
                         checked={selectedItems.has(key)}

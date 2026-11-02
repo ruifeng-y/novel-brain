@@ -53,6 +53,7 @@ import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, gt, isNotNull, isNull, max, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
+import { BranchStateService } from '../branches/branch-state.service';
 import { DatabaseService } from '../database/database.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { chapterGenerationError } from './chapter-generation.errors';
@@ -100,6 +101,7 @@ export class ChapterGenerationService {
   constructor(
     private readonly database: DatabaseService,
     private readonly rateLimits: RateLimitService,
+    private readonly branchState: BranchStateService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
@@ -477,7 +479,8 @@ export class ChapterGenerationService {
       chapterNumber: Number(job.payload.chapterNumber ?? 0),
       action: job.payload.action ?? generation?.type ?? 'chapter',
       outputKind:
-        job.payload.outputKind ?? CHAPTER_ACTION_OUTPUT_KIND[
+        job.payload.outputKind ??
+        CHAPTER_ACTION_OUTPUT_KIND[
           (job.payload.action as ChapterGenerationAction | undefined) ?? 'chapter'
         ],
       targetMinCharacters: Number(job.payload.targetMinCharacters ?? 0),
@@ -586,6 +589,15 @@ export class ChapterGenerationService {
     });
   }
 
+  async assertJobAccess(
+    userId: string,
+    workId: string,
+    branchId: string,
+    jobId: string,
+  ): Promise<void> {
+    await this.requireJob(userId, workId, branchId, jobId);
+  }
+
   async saveVersion(
     userId: string,
     workId: string,
@@ -635,6 +647,7 @@ export class ChapterGenerationService {
       await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
       return created;
     });
+    await this.branchState.snapshotVersion(userId, workId, branchId, saved.id);
 
     return this.toVersionResponse(chapterNumber, saved);
   }
@@ -717,12 +730,7 @@ export class ChapterGenerationService {
       const [version] = await tx
         .select()
         .from(chapterVersions)
-        .where(
-          and(
-            eq(chapterVersions.id, versionId),
-            eq(chapterVersions.chapterId, chapter.id),
-          ),
-        )
+        .where(and(eq(chapterVersions.id, versionId), eq(chapterVersions.chapterId, chapter.id)))
         .limit(1);
       if (!version) {
         throw chapterGenerationError(
@@ -765,6 +773,7 @@ export class ChapterGenerationService {
       await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
       return created;
     });
+    await this.branchState.snapshotVersion(userId, workId, branchId, restored.id);
 
     return this.toVersionResponse(chapterNumber, restored);
   }
@@ -906,12 +915,7 @@ export class ChapterGenerationService {
         })
         .from(characterStates)
         .innerJoin(entities, eq(entities.id, characterStates.characterId))
-        .where(
-          and(
-            eq(characterStates.workId, workId),
-            eq(characterStates.branchId, branchId),
-          ),
-        )
+        .where(and(eq(characterStates.workId, workId), eq(characterStates.branchId, branchId)))
         .orderBy(asc(entities.name)),
       chapter
         ? this.database.db

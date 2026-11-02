@@ -62,10 +62,16 @@ export type CompareResult = {
   settings: CompareItem[];
   outlines: CompareItem[];
   chapters: CompareItem[];
+  facts: CompareItem[];
+  characters: CompareItem[];
+  maps: CompareItem[];
   summary: {
     settingsChanged: number;
     outlinesChanged: number;
     chaptersChanged: number;
+    factsChanged: number;
+    charactersChanged: number;
+    mapsChanged: number;
     conflicts: number;
   };
 };

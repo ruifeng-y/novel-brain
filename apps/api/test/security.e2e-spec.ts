@@ -191,6 +191,8 @@ describe('security boundaries', () => {
       'map_images',
       'map_markers',
       'character_presences',
+      'branch_commits',
+      'branch_id_mappings',
     ];
     const result = await owner.query<{
       relname: string;
@@ -245,6 +247,11 @@ describe('security boundaries', () => {
       .expect(({ body }) => {
         expect(body.items.map((item: { id: string }) => item.id)).toEqual([created.body.id]);
       });
+    await alice.agent
+      .get(
+        `/api/v1/works/${created.body.id}/branches/${created.body.mainBranch.id}/version-points`,
+      )
+      .expect(200);
 
     await bob.agent
       .get('/api/v1/works')
@@ -254,6 +261,11 @@ describe('security boundaries', () => {
       });
 
     await bob.agent.get(`/api/v1/works/${created.body.id}`).expect(404);
+    await bob.agent
+      .get(
+        `/api/v1/works/${created.body.id}/branches/${created.body.mainBranch.id}/version-points`,
+      )
+      .expect(404);
   });
 
   it('rate limits account exports and never includes a model key', async () => {

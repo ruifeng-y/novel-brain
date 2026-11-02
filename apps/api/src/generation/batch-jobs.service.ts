@@ -31,6 +31,7 @@ import {
 import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
+import { BranchStateService } from '../branches/branch-state.service';
 import { DatabaseService } from '../database/database.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { chapterGenerationError } from './chapter-generation.errors';
@@ -42,6 +43,7 @@ export class BatchJobsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly rateLimits: RateLimitService,
+    private readonly branchState: BranchStateService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
@@ -712,7 +714,7 @@ export class BatchJobsService {
           .limit(1)
       : [];
 
-    await this.database.db.transaction(async (tx) => {
+    const created = await this.database.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${chapter.id}))`);
       const [currentMax] = await tx
         .select({ version: max(chapterVersions.version) })
@@ -746,7 +748,9 @@ export class BatchJobsService {
         })
         .where(eq(chapters.id, chapter.id));
       await tx.update(works).set({ updatedAt: new Date() }).where(eq(works.id, job.workId));
+      return created;
     });
+    await this.branchState.snapshotVersion(job.userId, job.workId, item.branchId, created.id);
   }
 
   private async ignoreChapterIssues(job: JobRow, item: JobChapterRow, reason: string) {
