@@ -8,5 +8,6 @@ import { ChangesService } from './changes.service';
   imports: [DatabaseModule, AuthModule],
   controllers: [ChangesController],
   providers: [ChangesService],
+  exports: [ChangesService],
 })
 export class ChangesModule {}
