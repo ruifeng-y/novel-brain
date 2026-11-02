@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AI_GATEWAY, AiGatewayError, extractChapterFacts, type AiGateway } from '@novel/ai';
+import {
+  AI_GATEWAY,
+  AiGatewayError,
+  extractChapterFacts,
+  redactModelSecrets,
+  type AiGateway,
+} from '@novel/ai';
 import {
   CHAPTER_ACTION_OUTPUT_KIND,
   countCjkCharacters,
@@ -1488,7 +1494,7 @@ export class ChapterGenerationRunner {
     if (error instanceof AiGatewayError) {
       return {
         code: error.code,
-        message: error.message,
+        message: redactModelSecrets(error.message),
         recoverable: true,
       };
     }

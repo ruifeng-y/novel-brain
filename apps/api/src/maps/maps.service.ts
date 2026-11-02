@@ -6,6 +6,7 @@ import {
   type MapConnectionCreateInput,
   type MapNodeCreateInput,
 } from '@novel/contracts';
+import { userStorageKey } from '@novel/core';
 import {
   characterPresences,
   entities,
@@ -470,8 +471,8 @@ export class MapsService {
         ),
       )
       .limit(1);
-    const storageKey = `${userId}/${workId}/${branchId}/maps/${randomUUID()}.webp`;
-    await this.storage.putObject(storageKey, optimized, 'image/webp');
+    const storageKey = userStorageKey(userId, workId, branchId, 'maps', `${randomUUID()}.webp`);
+    await this.storage.putObject(userId, storageKey, optimized, 'image/webp');
     const now = new Date();
 
     let saved;
@@ -488,7 +489,7 @@ export class MapsService {
         })
         .where(eq(mapImages.id, existing.id))
         .returning();
-      await this.storage.removeObject(existing.storageKey).catch(() => undefined);
+      await this.storage.removeObject(userId, existing.storageKey).catch(() => undefined);
     } else {
       [saved] = await this.database.db
         .insert(mapImages)
@@ -581,7 +582,7 @@ export class MapsService {
       throw mapsError(HttpStatus.NOT_FOUND, 'MAP_IMAGE_NOT_FOUND', 'Map image not found');
     }
     return {
-      buffer: await this.storage.getObject(image.storageKey),
+      buffer: await this.storage.getObject(userId, image.storageKey),
       mimeType: image.mimeType,
     };
   }

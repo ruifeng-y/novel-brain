@@ -1,4 +1,5 @@
 import { countCjkCharacters, isCjkIdeograph, type ExtractedFact } from '@novel/contracts';
+import { redactModelSecrets } from './redaction';
 
 export type AiUsage = {
   promptTokens?: number;
@@ -455,7 +456,9 @@ export class DeepSeekAiGateway implements AiGateway {
     } catch (error) {
       throw new AiGatewayError(
         'MODEL_NETWORK_ERROR',
-        error instanceof Error ? error.message : 'The model provider could not be reached',
+        error instanceof Error
+          ? redactModelSecrets(error.message)
+          : 'The model provider could not be reached',
       );
     }
 
@@ -562,7 +565,9 @@ export class DeepSeekAiGateway implements AiGateway {
     } catch (error) {
       throw new AiGatewayError(
         'MODEL_NETWORK_ERROR',
-        error instanceof Error ? error.message : 'The model provider could not be reached',
+        error instanceof Error
+          ? redactModelSecrets(error.message)
+          : 'The model provider could not be reached',
       );
     }
 

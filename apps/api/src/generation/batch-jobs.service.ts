@@ -32,6 +32,7 @@ import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
+import { RateLimitService } from '../security/rate-limit.service';
 import { chapterGenerationError } from './chapter-generation.errors';
 
 const BATCH_STEPS = ['prepare', 'generate', 'report'] as const;
@@ -40,10 +41,18 @@ const BATCH_STEPS = ['prepare', 'generate', 'report'] as const;
 export class BatchJobsService {
   constructor(
     private readonly database: DatabaseService,
+    private readonly rateLimits: RateLimitService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
   async create(userId: string, workId: string, branchId: string, input: CreateBatchJobInput) {
+    if (!(await this.rateLimits.consume('generation:batch', userId, 5, 60))) {
+      throw chapterGenerationError(
+        HttpStatus.TOO_MANY_REQUESTS,
+        'RATE_LIMITED',
+        '批量生成请求过于频繁，请稍后再试',
+      );
+    }
     await this.requireBranch(userId, workId, branchId);
     const chapterNumbers = await this.expandScope(workId, branchId, input);
     const now = new Date();
@@ -100,7 +109,7 @@ export class BatchJobsService {
       return job;
     });
 
-    await this.enqueue(created.id, 'initial');
+    await this.enqueue(created.id, 'initial', userId);
     return this.getJob(userId, workId, branchId, created.id);
   }
 
@@ -138,7 +147,7 @@ export class BatchJobsService {
   async resume(userId: string, workId: string, branchId: string, jobId: string) {
     const job = await this.requireJob(userId, workId, branchId, jobId);
     await this.transition(job, 'resume');
-    await this.enqueue(job.id, 'resume');
+    await this.enqueue(job.id, 'resume', userId);
     return this.getJob(userId, workId, branchId, jobId);
   }
 
@@ -172,7 +181,7 @@ export class BatchJobsService {
     await this.appendEvent(job.id, 'job.retry', {
       message: '从失败步骤继续',
     });
-    await this.enqueue(job.id, 'retry');
+    await this.enqueue(job.id, 'retry', userId);
     return this.getJob(userId, workId, branchId, jobId);
   }
 
@@ -276,7 +285,7 @@ export class BatchJobsService {
           updatedAt: now,
         })
         .where(eq(jobs.id, job.id));
-      await this.enqueue(job.id, 'review-reject');
+      await this.enqueue(job.id, 'review-reject', userId);
     }
 
     await this.appendEvent(job.id, 'job.review.decided', {
@@ -413,11 +422,11 @@ export class BatchJobsService {
     });
   }
 
-  private async enqueue(jobId: string, reason: string) {
+  private async enqueue(jobId: string, reason: string, userId: string) {
     try {
       await this.generationQueue.add(
         'generate-batch',
-        { jobId },
+        { jobId, userId },
         {
           jobId: `batch-${jobId}-${reason}-${Date.now()}`,
           attempts: 1,

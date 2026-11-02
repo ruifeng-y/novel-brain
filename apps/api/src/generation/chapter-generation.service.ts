@@ -54,6 +54,7 @@ import { and, asc, desc, eq, gt, isNotNull, isNull, max, sql } from 'drizzle-orm
 import { createHash, randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
 import { DatabaseService } from '../database/database.service';
+import { RateLimitService } from '../security/rate-limit.service';
 import { chapterGenerationError } from './chapter-generation.errors';
 
 const GENERATION_STEPS = [
@@ -98,6 +99,7 @@ export type JobEventMessage = {
 export class ChapterGenerationService {
   constructor(
     private readonly database: DatabaseService,
+    private readonly rateLimits: RateLimitService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
@@ -279,6 +281,13 @@ export class ChapterGenerationService {
     action: ChapterGenerationAction,
     input: GenerateChapterInput,
   ) {
+    if (!(await this.rateLimits.consume('generation:chapter', userId, 10, 60))) {
+      throw chapterGenerationError(
+        HttpStatus.TOO_MANY_REQUESTS,
+        'RATE_LIMITED',
+        '生成请求过于频繁，请稍后再试',
+      );
+    }
     await this.requireBranch(userId, workId, branchId);
     const outline = await this.requireOutline(workId, branchId, chapterNumber);
     this.requireActionInput(action, input);
@@ -387,7 +396,7 @@ export class ChapterGenerationService {
     try {
       await this.generationQueue.add(
         'generate-chapter',
-        { jobId: created.job.id },
+        { jobId: created.job.id, userId },
         {
           jobId: created.job.id,
           attempts: 1,

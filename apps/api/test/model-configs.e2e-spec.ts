@@ -180,7 +180,7 @@ describe('model configuration API', () => {
       is_default: true,
     });
     expect(stored.rows[0].encrypted_api_key).not.toContain(apiKey);
-    expect(stored.rows[0].encrypted_api_key).toMatch(/^v1\./);
+    expect(stored.rows[0].encrypted_api_key).toMatch(/^v2\./);
 
     await author.agent
       .get('/api/v1/model-configs')

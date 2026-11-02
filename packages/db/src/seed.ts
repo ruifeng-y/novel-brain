@@ -4,7 +4,7 @@ import { systemJobs } from './schema';
 const SEED_JOB_ID = '00000000-0000-4000-8000-000000000002';
 
 async function main(): Promise<void> {
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.DATABASE_ADMIN_URL ?? process.env.DATABASE_URL;
   if (!connectionString) {
     throw new Error('DATABASE_URL is required to seed the database');
   }
