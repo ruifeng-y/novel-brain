@@ -1,5 +1,31 @@
 # M3 Postgres 与对象存储恢复演练记录
 
+## 2026-11-03 V1 复验（`808a16b`）
+
+命令：
+
+```powershell
+$env:COMPOSE_PROJECT_NAME = 'novel-brain-v1-acceptance-808a16b'
+node scripts/ops.mjs backup
+node scripts/ops.mjs restore-drill `
+  --backup backups/postgres/20261102T183426Z `
+  --verify-key <first-object-key-from-objects-manifest>
+```
+
+结果：通过。
+
+- 备份时间：2026-11-02T18:34:26.889Z（Asia/Shanghai 2026-11-03 02:34）。
+- 数据库备份 SHA-256：`ac8bd3d16db3f9a11d5d335a3fa66535814f564f740cc2bab6b406c1e95ab1b4`。
+- 备份年龄：2 秒，低于 24 小时 RPO。
+- 恢复耗时：3 秒，低于 4 小时 RTO。
+- 数据库恢复目标：`novel_restore_drill_20261102183428`，演练后自动删除。
+- 行数核对：源快照与恢复库均为 38 个账号、33 部作品、1,173 章、1,186 个章节版本、27 个任务。
+- 对象存储源桶：`novel-brain`，全桶前缀，共 10 个对象、44,961 字节。
+- 对象集合校验和：`e50b8e52d48d6abbe4f66cd2c7ee1b29c81cde5c954b8859d008a0d4ecd072b9`。
+- 对象恢复目标：`novel-brain-restore-drill-20261102183428`，演练后自动删除。
+- 对象校验：10/10 个对象逐个读取并比对 SHA-256，全部一致。
+- 原始证据：`docs/acceptance/m3/restore-drill/20261102T183431Z.json`。
+
 ## 2026-11-02
 
 命令：

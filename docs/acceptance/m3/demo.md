@@ -11,7 +11,8 @@
    和 MinIO。
 2. API 存活、就绪和迁移/seed 正常。
 3. 导出、发布检查、读者预览、法律页面和移动视口可用。
-4. 全量 Vitest、Playwright、性能、安全和恢复证据可由同一分支复现。
+4. 账号生命周期、审计、完整导出、作品回收站和 30 天清理可用。
+5. 全量 Vitest、Playwright、性能、安全和恢复证据可由同一分支复现。
 
 ## 安全边界
 
@@ -29,7 +30,7 @@ pnpm demo:m3
 已有健康的隔离 Compose 环境时可跳过重建：
 
 ```powershell
-$env:M3_COMPOSE_PROJECT = 'novel-brain-v1-acceptance'
+$env:M3_COMPOSE_PROJECT = 'novel-brain-v1-acceptance-808a16b'
 pnpm demo:m3 -- -SkipBuild
 ```
 
@@ -43,8 +44,8 @@ pnpm demo:m3 -- -SkipBuild -Full
 
 1. 设置 fake provider 并启动 8 个 Compose 服务。
 2. 检查 API 存活和就绪。
-3. 运行导出、发布检查、合规和响应式 Playwright。
-4. 打印 V1 发布候选提醒和未闭环范围。
+3. 运行 M3 导出、发布检查、合规和响应式 Playwright。
+4. 打印内部 RC / 公开发布边界。
 
 ## 手工演示
 
@@ -56,8 +57,11 @@ pnpm demo:m3 -- -SkipBuild -Full
    预览目录并下载。
 4. 打开“发布准备”，生成书名/简介/标签/章节名建议，查看读者预览，运行六项
    发布检查并复制/下载报告。
-5. 打开隐私与合规、隐私政策、用户协议和 AI 内容标识页面。
-6. 把视口调到 390px，确认没有横向溢出。
+5. 打开“账号设置”，测试找回密码、修改资料、多笔名、邮箱/密码变更和注销恢复入口。
+6. 打开“隐私与合规”，完成一次完整账号导出并查看账号审计。
+7. 在作品书架导入旧稿、归档、移入回收站、恢复和复制作品；确认完本作品只读。
+8. 打开隐私与合规、隐私政策、用户协议和 AI 内容标识页面。
+9. 把视口调到 390px，确认没有横向溢出。
 
 ## 完整门禁
 
@@ -67,7 +71,7 @@ pnpm typecheck --force
 pnpm test
 pnpm build --force
 $env:AI_PROVIDER = 'fake'
-docker compose -p novel-brain-v1-acceptance up -d --build --wait
+docker compose -p novel-brain-v1-acceptance-808a16b up -d --build --wait
 $env:PLAYWRIGHT_SKIP_WEBSERVER = '1'
 $env:PLAYWRIGHT_BASE_URL = 'http://127.0.0.1:3000'
 pnpm exec playwright test --workers=4
@@ -78,6 +82,7 @@ pnpm exec playwright test --workers=4
 
 ## 结果边界
 
-本演示通过只表示 M3 发布候选的本地功能、性能和恢复门禁通过。质量盲评、真实
-DeepSeek、账号生命周期、完整审计/导出、TLS/静态加密/日志保留和法务确认仍未
-闭环，详见 `acceptance.md` 和 `docs/release/v1-known-limitations.md`。
+本演示通过表示 B-01/B-02/B-03/B-04/B-07 工程门槛和本地自动化门禁通过，可作为
+局域网/内部发布候选。B-05 人工质量、B-06 真实 DeepSeek、B-08 法务、B-07
+真实部署证据和 B-12/B-13 功能范围仍未闭环，详见 `acceptance.md` 和
+`docs/release/v1-known-limitations.md`。

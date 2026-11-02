@@ -59,6 +59,9 @@ try {
     pnpm exec playwright test --workers=4
   } else {
     pnpm exec playwright test `
+      e2e/account-lifecycle.spec.ts `
+      e2e/account-audit-export.spec.ts `
+      e2e/work-lifecycle.spec.ts `
       e2e/exports.spec.ts `
       e2e/publish-assistance.spec.ts `
       e2e/compliance.spec.ts `
@@ -70,11 +73,11 @@ try {
 
   Write-Host ''
   Write-Host 'M3 release-candidate gate passed.'
-  Write-Host 'Export, publish assistance, compliance, and responsive checks are green.'
+  Write-Host 'Account lifecycle, audit/export, work lifecycle, export, publish, and compliance checks are green.'
   Write-Host ''
-  Write-Host 'V1 remains a release candidate, not an approved public release.'
-  Write-Host 'Quality blind review, real DeepSeek, account lifecycle, audit/export completeness,'
-  Write-Host 'TLS/encryption/log retention, and legal sign-off are still open.'
+  Write-Host 'LAN/internal release candidate: GO.'
+  Write-Host 'Public release: NO-GO until B-05 human quality, B-06 real DeepSeek,'
+  Write-Host 'B-08 legal sign-off, B-07 real deployment evidence, and B-12/B-13 scope close.'
   Write-Host 'See docs/acceptance/m3/acceptance.md and docs/release/v1-known-limitations.md.'
 } finally {
   Pop-Location

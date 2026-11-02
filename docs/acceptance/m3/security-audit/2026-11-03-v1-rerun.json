@@ -1,0 +1,85 @@
+{
+  "ticket": 33,
+  "title": "V1 release-gate rerun after B-01/B-02/B-03/B-04/B-07",
+  "baseline": "808a16b",
+  "checkedAt": "2026-11-03T02:33:54+08:00",
+  "environment": {
+    "runtime": "Windows Docker Compose",
+    "node": "24.22.1",
+    "pnpm": "10.20.0",
+    "docker": "29.7.2",
+    "compose": "5.5.0",
+    "postgres": "16.15",
+    "redis": "7",
+    "objectStorage": "MinIO",
+    "aiProvider": "fake",
+    "composeProject": "novel-brain-v1-acceptance-808a16b",
+    "migrations": 50
+  },
+  "commands": [
+    {
+      "name": "full-tests",
+      "command": "pnpm test",
+      "status": "passed",
+      "testFiles": 55,
+      "tests": 256
+    },
+    {
+      "name": "security-deployment-tests",
+      "command": "pnpm exec vitest run <security/account-audit/export/lifecycle/download/logging/env/deployment suites> --maxWorkers=1",
+      "status": "passed",
+      "testFiles": 12,
+      "tests": 43
+    },
+    {
+      "name": "dependency-audit",
+      "command": "pnpm audit --prod --audit-level high --registry=https://registry.npmjs.org",
+      "status": "passed",
+      "critical": 0,
+      "high": 0,
+      "moderate": 3
+    },
+    {
+      "name": "deployment-check",
+      "command": "pnpm deploy:check",
+      "status": "passed",
+      "artifacts": "PASS",
+      "compose": "PASS",
+      "caddy": "PASS",
+      "effectiveEnv": "SKIPPED"
+    },
+    {
+      "name": "playwright",
+      "command": "PLAYWRIGHT_SKIP_WEBSERVER=1 PLAYWRIGHT_BASE_URL=http://127.0.0.1:3000 pnpm exec playwright test --workers=4",
+      "status": "passed",
+      "tests": 38,
+      "durationSeconds": 42.9
+    }
+  ],
+  "securityChecks": {
+    "accountAudit": "login/logout, key changes, exports, deletion, generation and fact decisions",
+    "accountExport": "complete ZIP with signed download, 7-day expiry and author isolation",
+    "accountLifecycle": "password reset/change, email change, pen names, deletion/recovery/purge",
+    "workLifecycle": "import, archive, soft delete/recover, copy, completed read-only and purge",
+    "signedDownloads": "short-lived HMAC tokens with path redaction",
+    "logging": "JSON redaction and 30-day rotation configuration",
+    "productionTls": "Caddy TLS/HSTS/Secure Cookie configuration",
+    "backupRestore": "Postgres and object-store restore drill passed"
+  },
+  "dependencyResidualRisk": {
+    "package": "minio@8.0.7",
+    "transitive": "stream-json@1.9.1",
+    "severity": "moderate",
+    "count": 3,
+    "exposure": "bucket notification parser is not called by the product",
+    "owner": "engineering"
+  },
+  "externalGates": [
+    "B-05 human quality and reader blind review",
+    "B-06 real DeepSeek provider evidence",
+    "B-07 real DNS/ACME/KMS/SMTP/central logging/offsite disaster-recovery evidence",
+    "B-08 legal and operations sign-off"
+  ],
+  "status": "passed_with_external_public_release_gates",
+  "sensitiveDataIncluded": false
+}
