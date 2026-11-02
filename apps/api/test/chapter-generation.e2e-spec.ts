@@ -1,7 +1,12 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Algorithm, hash } from '@node-rs/argon2';
-import { AI_GATEWAY, FakeAiGateway } from '@novel/ai';
+import {
+  AI_GATEWAY,
+  FakeAiGateway,
+  buildDeterministicChineseChapter,
+} from '@novel/ai';
+import { countCjkCharacters } from '@novel/contracts';
 import { createDatabase, users as usersTable } from '@novel/db';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { randomUUID } from 'node:crypto';
@@ -73,6 +78,59 @@ function chapterOutlinePayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function chapterForPrompt(prompt: string): string {
+  const match = prompt.match(/目标汉字数：(\d+)\s*到\s*(\d+)/);
+  const target = match
+    ? Number(match[1]) + Math.floor((Number(match[2]) - Number(match[1])) / 2)
+    : 2_500;
+  return buildDeterministicChineseChapter(target);
+}
+
+async function saveStoryBible(
+  agent: ReturnType<typeof request.agent>,
+  workId: string,
+  branchId: string,
+) {
+  await agent
+    .put(`/api/v1/works/${workId}/branches/${branchId}/story-bible`)
+    .send({
+      oneSentenceStory: '边城少年以残剑问仙，最终守住人间最后一道天门。',
+      protagonist: '沈砚，外冷内热的边城剑客',
+      worldIronLaw: '任何人借天门之力，都必须以一段真实记忆作为代价。',
+    })
+    .expect(200);
+}
+
+async function saveOutline(
+  agent: ReturnType<typeof request.agent>,
+  workId: string,
+  branchId: string,
+  overrides: Record<string, unknown> = {},
+) {
+  await agent
+    .put(`/api/v1/works/${workId}/branches/${branchId}/chapter-outlines/1`)
+    .send(chapterOutlinePayload(overrides))
+    .expect(200);
+}
+
+async function saveProseModel(
+  agent: ReturnType<typeof request.agent>,
+  name = '正文模型',
+) {
+  return agent
+    .post('/api/v1/model-configs')
+    .send({
+      name,
+      provider: 'deepseek',
+      baseUrl: 'https://api.deepseek.com',
+      model: 'deepseek-chat',
+      apiKey: 'sk-test-never-used',
+      purpose: 'prose',
+      isDefault: true,
+    })
+    .expect(201);
+}
+
 describe('chapter generation API', () => {
   let app: INestApplication;
   let workerApp: INestApplication;
@@ -116,7 +174,17 @@ describe('chapter generation API', () => {
     }
 
     fakeGateway = new FakeAiGateway({
-      mode: 'chapter',
+      responseFactory: (input) => {
+        if (input.prompt.includes('[[ALWAYS_SHORT]]')) {
+          return buildDeterministicChineseChapter(500);
+        }
+        if (input.prompt.includes('[[RETRY_LENGTH]]')) {
+          return input.prompt.includes('【篇幅校正】')
+            ? chapterForPrompt(input.prompt)
+            : buildDeterministicChineseChapter(500);
+        }
+        return chapterForPrompt(input.prompt);
+      },
       chunkSize: 120,
       delayMs: 2,
     });
@@ -234,6 +302,10 @@ describe('chapter generation API', () => {
     );
     expect(job.status).toBe('completed');
     expect(job.modelConfigId).toBe(modelConfig.body.id);
+    expect(job).toMatchObject({
+      targetMinCharacters: 2_000,
+      targetMaxCharacters: 3_000,
+    });
     expect(job.steps.map((step: { key: string }) => step.key)).toEqual([
       'readiness',
       'brief',
@@ -246,9 +318,18 @@ describe('chapter generation API', () => {
     expect(job.context.sections.map((section: { key: string }) => section.key)).toEqual(
       expect.arrayContaining(['storyBible', 'chapterOutline', 'writingGuidance']),
     );
+    expect(
+      job.context.sections.find(
+        (section: { key: string }) => section.key === 'writingGuidance',
+      ).content,
+    ).toMatchObject({
+      targetMinCharacters: 2_000,
+      targetMaxCharacters: 3_000,
+    });
     expect(job.draft.status).toBe('ready');
-    expect(job.draft.content.length).toBeGreaterThanOrEqual(2000);
-    expect(job.draft.content.length).toBeLessThanOrEqual(3000);
+    const draftCharacters = countCjkCharacters(job.draft.content);
+    expect(draftCharacters).toBeGreaterThanOrEqual(2_000);
+    expect(draftCharacters).toBeLessThanOrEqual(3_000);
 
     const chapter = await author.agent
       .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1`)
@@ -279,7 +360,7 @@ describe('chapter generation API', () => {
       chapterNumber: 1,
       version: 1,
       source: 'manual',
-      wordCount: manualContent.length,
+      wordCount: countCjkCharacters(manualContent),
     });
 
     await author.agent
@@ -345,8 +426,8 @@ describe('chapter generation API', () => {
       recoverable: true,
     });
     expect(job.draft.status).toBe('failed');
-    expect(job.draft.content.length).toBeGreaterThan(0);
-    expect(job.draft.content.length).toBeLessThan(2000);
+    expect(countCjkCharacters(job.draft.content)).toBeGreaterThan(0);
+    expect(countCjkCharacters(job.draft.content)).toBeLessThan(2_000);
     expect(job.steps.find((step: { key: string }) => step.key === 'draft')).toMatchObject({
       status: 'failed',
     });
@@ -359,6 +440,195 @@ describe('chapter generation API', () => {
           status: 'failed',
           content: job.draft.content,
         });
+      });
+  });
+
+  it('honors custom target bounds through context, task state, and the final draft', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '窄幅天门');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({
+        targetMinCharacters: 2_100,
+        targetMaxCharacters: 2_200,
+      })
+      .expect(202);
+    const job = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.jobId as string,
+      'completed',
+    );
+
+    expect(job).toMatchObject({
+      targetMinCharacters: 2_100,
+      targetMaxCharacters: 2_200,
+    });
+    expect(
+      job.context.sections.find(
+        (section: { key: string }) => section.key === 'writingGuidance',
+      ).content,
+    ).toMatchObject({
+      targetMinCharacters: 2_100,
+      targetMaxCharacters: 2_200,
+    });
+    const characterCount = countCjkCharacters(job.draft.content);
+    expect(characterCount).toBeGreaterThanOrEqual(2_100);
+    expect(characterCount).toBeLessThanOrEqual(2_200);
+  });
+
+  it('rejects target bounds when the minimum exceeds the maximum', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '倒置篇幅');
+
+    await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({
+        targetMinCharacters: 2_600,
+        targetMaxCharacters: 2_500,
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('VALIDATION_ERROR');
+      });
+  });
+
+  it('counts only CJK ideographs when saving a chapter version', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '字数校准');
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    const content = '山河，\n大明 123 abc！';
+
+    const saved = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/versions`)
+      .send({ content })
+      .expect(201);
+    expect(saved.body.wordCount).toBe(4);
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.wordCount).toBe(4);
+        expect(body.currentVersion.wordCount).toBe(4);
+      });
+  });
+
+  it('performs one corrective retry when the first draft misses the target', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '重写篇幅');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId, {
+      chapterGoal: '沈砚在断碑前引动残剑。[[RETRY_LENGTH]]',
+    });
+    await saveProseModel(author.agent);
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    const job = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.jobId as string,
+      'completed',
+    );
+    const draftStep = job.steps.find((step: { key: string }) => step.key === 'draft');
+
+    expect(draftStep.output).toMatchObject({
+      attempts: 2,
+      targetMinCharacters: 2_000,
+      targetMaxCharacters: 3_000,
+    });
+    expect(countCjkCharacters(job.draft.content)).toBeGreaterThanOrEqual(2_000);
+    expect(countCjkCharacters(job.draft.content)).toBeLessThanOrEqual(3_000);
+
+    const sse = await readSse(
+      author.agent,
+      `/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.jobId}/events`,
+    );
+    expect(sse).toContain('event: job.draft.correcting');
+    expect(sse).toContain('event: job.draft.reset');
+  });
+
+  it('fails recoverably after one correction if the draft is still out of bounds', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '始终过短');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId, {
+      chapterGoal: '沈砚在断碑前引动残剑。[[ALWAYS_SHORT]]',
+    });
+    await saveProseModel(author.agent);
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    const job = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.jobId as string,
+      'failed',
+    );
+
+    expect(job.error).toMatchObject({
+      code: 'DRAFT_LENGTH_OUT_OF_BOUNDS',
+      recoverable: true,
+      details: {
+        attempts: 2,
+        targetMinCharacters: 2_000,
+        targetMaxCharacters: 3_000,
+      },
+    });
+    expect(countCjkCharacters(job.draft.content)).toBe(500);
+    expect(job.draft.status).toBe('failed');
+    expect(job.steps.find((step: { key: string }) => step.key === 'draft')).toMatchObject({
+      status: 'failed',
+    });
+  });
+
+  it('prevents another author from starting or reading generation jobs', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const otherAuthor = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '私有天门');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+
+    await otherAuthor.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_NOT_FOUND');
+      });
+    await otherAuthor.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.jobId}`,
+      )
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_NOT_FOUND');
+      });
+    await otherAuthor.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.jobId}/events`,
+      )
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_NOT_FOUND');
       });
   });
 });

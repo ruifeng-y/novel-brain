@@ -1,3 +1,5 @@
+import { countCjkCharacters, isCjkIdeograph } from '@novel/contracts';
+
 export type AiUsage = {
   promptTokens?: number;
   completionTokens?: number;
@@ -101,7 +103,11 @@ export class FakeAiGateway implements AiGateway {
       return this.options.response;
     }
     if (this.options.mode === 'chapter') {
-      return buildDeterministicChineseChapter();
+      const match = input.prompt.match(/目标汉字数：(\d+)\s*到\s*(\d+)/);
+      const target = match
+        ? Number(match[1]) + Math.floor((Number(match[2]) - Number(match[1])) / 2)
+        : 2_500;
+      return buildDeterministicChineseChapter(target);
     }
     return `fake response:${input.prompt}`;
   }
@@ -120,14 +126,28 @@ const CHAPTER_PARAGRAPHS = [
   '这一次，他听清了。那声音是在叫他回家。',
 ];
 
-export function buildDeterministicChineseChapter(targetLength = 2400): string {
+export function buildDeterministicChineseChapter(targetCharacters = 2_500): string {
+  const target = Math.max(1, targetCharacters);
   let text = CHAPTER_PARAGRAPHS.join('\n\n');
   let index = 0;
-  while (text.length < targetLength) {
+  while (countCjkCharacters(text) < target) {
     text += `\n\n${CHAPTER_PARAGRAPHS[index % CHAPTER_PARAGRAPHS.length]}`;
     index += 1;
   }
-  return text.slice(0, targetLength);
+
+  let count = 0;
+  const characters = Array.from(text);
+  let end = 0;
+  for (; end < characters.length; end += 1) {
+    if (isCjkIdeograph(characters[end])) {
+      count += 1;
+      if (count === target) {
+        end += 1;
+        break;
+      }
+    }
+  }
+  return characters.slice(0, end).join('');
 }
 
 export class DeepSeekAiGateway implements AiGateway {
@@ -250,3 +270,4 @@ export class DeepSeekAiGateway implements AiGateway {
     }
   }
 }
+

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { countCjkCharacters } from '@novel/contracts';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../../lib/auth-api';
 import {
   generationErrorMessage,
@@ -186,6 +187,18 @@ export function WritingDesk({ workId }: { workId: string }) {
         return;
       }
 
+      if (type === 'job.draft.reset') {
+        setContent('');
+        setGenerationState('streaming');
+        setStatusMessage('正在按目标汉字数重新生成…');
+        return;
+      }
+
+      if (type === 'job.draft.correcting') {
+        setStatusMessage('正在校正本章篇幅…');
+        return;
+      }
+
       if (type === 'job.step.started' && typeof data.stepKey === 'string') {
         setStatusMessage(STEP_MESSAGES[data.stepKey] ?? '正在推进这一章…');
         return;
@@ -207,6 +220,8 @@ export function WritingDesk({ workId }: { workId: string }) {
       'job.step.started',
       'job.step.succeeded',
       'job.draft.delta',
+      'job.draft.reset',
+      'job.draft.correcting',
       'job.completed',
       'job.failed',
     ]) {
@@ -538,10 +553,10 @@ export function WritingDesk({ workId }: { workId: string }) {
             />
 
             <footer className="writing-editor-footer">
-              <span>{content.length.toLocaleString('zh-CN')} 字</span>
+              <span>{countCjkCharacters(content).toLocaleString('zh-CN')} 字</span>
               <span>
-                {content.length > 0
-                  ? `预计阅读 ${Math.max(1, Math.ceil(content.length / 500))} 分钟`
+                {countCjkCharacters(content) > 0
+                  ? `预计阅读 ${Math.max(1, Math.ceil(countCjkCharacters(content) / 500))} 分钟`
                   : '还没有正文'}
               </span>
               <span>
