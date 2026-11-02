@@ -541,19 +541,55 @@ export class OutlineService {
       .select()
       .from(chapterOutlines)
       .where(and(eq(chapterOutlines.workId, workId), eq(chapterOutlines.branchId, branchId)));
+    const byId = new Map(nodes.map((node) => [node.id, node]));
+    const connectedIds = new Set<string>();
+    for (const node of nodes) {
+      let current = node;
+      const seen = new Set<string>();
+      while (current.level !== 'book' && !seen.has(current.id)) {
+        seen.add(current.id);
+        const expectedParent = OUTLINE_PARENT_LEVEL[current.level];
+        const parent = current.parentId ? byId.get(current.parentId) : undefined;
+        if (!parent || !expectedParent || parent.level !== expectedParent) {
+          break;
+        }
+        current = parent;
+      }
+      if (current.level === 'book' && byId.has(current.id)) {
+        for (const id of seen) {
+          connectedIds.add(id);
+        }
+        connectedIds.add(current.id);
+      }
+    }
+
     const missing: string[] = [];
-    if (!nodes.some((node) => node.level === 'book')) missing.push('全书总纲');
-    if (!nodes.some((node) => node.level === 'volume')) missing.push('卷纲');
-    if (!nodes.some((node) => node.level === 'act')) missing.push('幕纲');
+    if (!nodes.some((node) => node.level === 'book' && connectedIds.has(node.id))) {
+      missing.push('全书总纲');
+    }
+    if (!nodes.some((node) => node.level === 'volume' && connectedIds.has(node.id))) {
+      missing.push('卷纲');
+    }
+    if (!nodes.some((node) => node.level === 'act' && connectedIds.has(node.id))) {
+      missing.push('幕纲');
+    }
     const targetChapter = query.chapterNumber;
     if (
       !nodes.some(
         (node) =>
           node.level === 'chapter' &&
+          connectedIds.has(node.id) &&
           (targetChapter === undefined || node.chapterNumber === targetChapter),
       )
     ) {
       missing.push(targetChapter === undefined ? '章纲' : `第 ${targetChapter} 章章纲`);
+    }
+    const orphanNodes = nodes.filter((node) => !connectedIds.has(node.id));
+    if (orphanNodes.length > 0) {
+      const titles = orphanNodes.slice(0, 5).map((node) => node.title);
+      missing.push(
+        `孤立节点：${titles.join('、')}${orphanNodes.length > titles.length ? ` 等 ${orphanNodes.length} 个` : ''}`,
+      );
     }
     const outline: ReadinessCheck = {
       ready: missing.length === 0,

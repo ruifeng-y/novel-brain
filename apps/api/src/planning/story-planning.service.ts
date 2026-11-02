@@ -427,6 +427,25 @@ export class StoryPlanningService {
         )
         .limit(1);
       if (existing) {
+        if (existing.lockedAt && !input.confirmLockedChange) {
+          throw storyPlanningError(
+            HttpStatus.CONFLICT,
+            'OUTLINE_LOCKED',
+            'Confirm the change and record a reason before editing the locked outline node',
+            {
+              requiresConfirmation: true,
+              reasonRequired: true,
+              version: existing.version,
+            },
+          );
+        }
+        if (existing.lockedAt && (!input.confirmLockedChange || !input.changeReason)) {
+          throw storyPlanningError(
+            HttpStatus.BAD_REQUEST,
+            'VALIDATION_ERROR',
+            'Explain why the locked outline node needs to change',
+          );
+        }
         const [updated] = await tx
           .update(chapterOutlines)
           .set({

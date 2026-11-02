@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { ApiError, friendlyError } from '../../../lib/auth-api';
 import {
   createOutlineNode,
@@ -31,6 +31,7 @@ type OutlineDraft = {
   title: string;
   summary: string;
   details: string;
+  parentId: string;
   chapterGoal: string;
   pov: string;
   sceneBeats: string;
@@ -40,7 +41,13 @@ type OutlineDraft = {
 type PendingLockedAction =
   | { kind: 'save'; node: OutlineNode; input: OutlineNodeUpdate }
   | { kind: 'regenerate'; node: OutlineNode; instruction: string }
-  | { kind: 'delete'; node: OutlineNode };
+  | { kind: 'delete'; node: OutlineNode }
+  | {
+      kind: 'reorder';
+      node: OutlineNode;
+      parentId: string | null;
+      orderedIds: string[];
+    };
 
 const LEVEL_LABELS: Record<OutlineLevel, string> = {
   book: '全书',
@@ -57,11 +64,19 @@ const CHILD_LEVEL: Partial<Record<OutlineLevel, OutlineLevel>> = {
   chapter: 'scene',
 };
 
+const PARENT_LEVEL: Partial<Record<OutlineLevel, OutlineLevel>> = {
+  volume: 'book',
+  act: 'volume',
+  chapter: 'act',
+  scene: 'chapter',
+};
+
 function blankDraft(): OutlineDraft {
   return {
     title: '',
     summary: '',
     details: '',
+    parentId: '',
     chapterGoal: '',
     pov: '',
     sceneBeats: '',
@@ -74,6 +89,7 @@ function draftForNode(node: OutlineNode): OutlineDraft {
     title: node.title,
     summary: node.summary,
     details: node.details,
+    parentId: node.parentId ?? '',
     chapterGoal: node.chapterGoal,
     pov: node.pov,
     sceneBeats: node.sceneBeats.join('\n'),
@@ -128,11 +144,19 @@ export function OutlineWorkspacePanel({
   );
   const [pendingDelete, setPendingDelete] = useState<OutlineNode | null>(null);
   const [readinessLoading, setReadinessLoading] = useState(false);
+  const [dragOverNodeId, setDragOverNodeId] = useState<string | null>(null);
+  const draggedNodeRef = useRef<string | null>(null);
 
   const book = childrenOf(nodes, null).find((node) => node.level === 'book') ?? null;
   const editorNode =
     editor?.kind === 'edit' ? (nodes.find((node) => node.id === editor.nodeId) ?? null) : null;
   const editorLevel = editor?.kind === 'create' ? editor.level : (editorNode?.level ?? 'book');
+  const editorParentLevel = PARENT_LEVEL[editorLevel];
+  const editorParentOptions = editorParentLevel
+    ? nodes
+        .filter((node) => node.level === editorParentLevel)
+        .sort((left, right) => left.orderIndex - right.orderIndex)
+    : [];
 
   function applyNode(saved: OutlineNode) {
     setNodes((current) => {
@@ -175,7 +199,7 @@ export function OutlineWorkspacePanel({
 
   function openCreate(level: OutlineLevel, parentId: string | null) {
     setEditor({ kind: 'create', level, parentId });
-    setDraft(blankDraft());
+    setDraft({ ...blankDraft(), parentId: parentId ?? '' });
     setSaveState({ status: 'idle' });
   }
 
@@ -227,7 +251,7 @@ export function OutlineWorkspacePanel({
     const input = outlineInput(
       draft,
       editorLevel,
-      editor.kind === 'create' ? editor.parentId : null,
+      editor.kind === 'create' ? draft.parentId || editor.parentId : null,
     );
     if (editor.kind === 'create') {
       setSaveState({ status: 'saving' });
@@ -248,6 +272,7 @@ export function OutlineWorkspacePanel({
       title: input.title,
       summary: input.summary,
       details: input.details,
+      ...(editorLevel === 'book' ? {} : { parentId: draft.parentId || null }),
       chapterGoal: input.chapterGoal,
       pov: input.pov,
       sceneBeats: input.sceneBeats,
@@ -280,13 +305,26 @@ export function OutlineWorkspacePanel({
         applyNode(saved);
         setRegeneration(null);
         setSaveState({ status: 'saved', message: '锁定节点已重新生成' });
-      } else {
+      } else if (pendingLocked.kind === 'delete') {
         await deleteOutlineNode(workId, branchId, pendingLocked.node.id, {
           confirmLockedChange: true,
           changeReason: changeReason.trim(),
         });
         removeNode(pendingLocked.node.id);
         setSaveState({ status: 'saved', message: '大纲节点已删除' });
+      } else if (pendingLocked.kind === 'reorder') {
+        const result = await reorderOutlineNodes(
+          workId,
+          branchId,
+          pendingLocked.parentId,
+          pendingLocked.orderedIds,
+          {
+            confirmLockedChange: true,
+            changeReason: changeReason.trim(),
+          },
+        );
+        applyReorderedNodes(result.items);
+        setSaveState({ status: 'saved', message: '大纲顺序已调整' });
       }
       setPendingLocked(null);
       setChangeReason('');
@@ -321,18 +359,33 @@ export function OutlineWorkspacePanel({
     }
     const reordered = [...siblings];
     [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+    await requestReorder(node, reordered);
+  }
+
+  function applyReorderedNodes(savedNodes: OutlineNode[]) {
+    setNodes((current) => {
+      const byId = new Map(savedNodes.map((saved) => [saved.id, saved]));
+      return current.map((candidate) => byId.get(candidate.id) ?? candidate);
+    });
+  }
+
+  async function requestReorder(node: OutlineNode, reordered: OutlineNode[]) {
+    const orderedIds = reordered.map((sibling) => sibling.id);
+    if (reordered.some((sibling) => sibling.locked)) {
+      setPendingLocked({
+        kind: 'reorder',
+        node,
+        parentId: node.parentId,
+        orderedIds,
+      });
+      setChangeReason('');
+      setSaveState({ status: 'idle' });
+      return;
+    }
     setSaveState({ status: 'saving' });
     try {
-      const result = await reorderOutlineNodes(
-        workId,
-        branchId,
-        node.parentId,
-        reordered.map((sibling) => sibling.id),
-      );
-      setNodes((current) => {
-        const byId = new Map(result.items.map((saved) => [saved.id, saved]));
-        return current.map((candidate) => byId.get(candidate.id) ?? candidate);
-      });
+      const result = await reorderOutlineNodes(workId, branchId, node.parentId, orderedIds);
+      applyReorderedNodes(result.items);
       setSaveState({ status: 'saved', message: '大纲顺序已调整' });
     } catch (error) {
       setSaveState({ status: 'error', message: friendlyError(error) });
@@ -388,6 +441,28 @@ export function OutlineWorkspacePanel({
     }
   }
 
+  function dropNode(target: OutlineNode) {
+    const draggedId = draggedNodeRef.current;
+    if (!draggedId || draggedId === target.id) {
+      draggedNodeRef.current = null;
+      setDragOverNodeId(null);
+      return;
+    }
+    const dragged = nodes.find((node) => node.id === draggedId);
+    if (!dragged || dragged.parentId !== target.parentId) {
+      draggedNodeRef.current = null;
+      setDragOverNodeId(null);
+      return;
+    }
+    const siblings = childrenOf(nodes, dragged.parentId);
+    const targetIndex = siblings.findIndex((sibling) => sibling.id === target.id);
+    const reordered = siblings.filter((sibling) => sibling.id !== dragged.id);
+    reordered.splice(targetIndex, 0, dragged);
+    draggedNodeRef.current = null;
+    setDragOverNodeId(null);
+    void requestReorder(dragged, reordered);
+  }
+
   function renderNode(node: OutlineNode): React.ReactNode {
     const childLevel = CHILD_LEVEL[node.level];
     const siblings = childrenOf(nodes, node.parentId);
@@ -395,12 +470,72 @@ export function OutlineWorkspacePanel({
     return (
       <li
         aria-label={`${node.levelLabel}：${node.title}`}
-        className={`outline-tree-node outline-tree-${node.level}`}
+        className={`outline-tree-node outline-tree-${node.level}${
+          dragOverNodeId === node.id ? ' drag-over' : ''
+        }`}
         data-outline-level={node.level}
         key={node.id}
+        onDragLeave={() => setDragOverNodeId(null)}
+        onDragOver={(event) => {
+          if (draggedNodeRef.current && draggedNodeRef.current !== node.id) {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'move';
+            setDragOverNodeId(node.id);
+          }
+        }}
+        onPointerEnter={() => {
+          if (draggedNodeRef.current && draggedNodeRef.current !== node.id) {
+            setDragOverNodeId(node.id);
+          }
+        }}
+        onPointerUp={(event) => {
+          if (!draggedNodeRef.current) {
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          dropNode(node);
+        }}
+        onDrop={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          dropNode(node);
+        }}
       >
         <div className="outline-node-main">
           <div className="outline-node-heading">
+            <span
+              aria-label={`拖动《${node.title}》`}
+              className="outline-drag-handle"
+              draggable
+              onDragEnd={() => {
+                draggedNodeRef.current = null;
+                setDragOverNodeId(null);
+              }}
+              onDragStart={(event) => {
+                draggedNodeRef.current = node.id;
+                event.dataTransfer.effectAllowed = 'move';
+                event.dataTransfer.setData('text/plain', node.id);
+              }}
+              onPointerDown={() => {
+                draggedNodeRef.current = node.id;
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowUp') {
+                  event.preventDefault();
+                  void moveNode(node, -1);
+                }
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  void moveNode(node, 1);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+              title="拖动调整同层顺序"
+            >
+              拖动
+            </span>
             <span className="outline-level-badge">{node.levelLabel}</span>
             <strong className="outline-node-title">{node.title}</strong>
             <span className={node.locked ? 'outline-lock-state locked' : 'outline-lock-state'}>
@@ -452,7 +587,7 @@ export function OutlineWorkspacePanel({
           <button
             aria-label={`上移《${node.title}》`}
             className="text-button"
-            disabled={index <= 0 || node.locked}
+            disabled={index <= 0}
             onClick={() => void moveNode(node, -1)}
             type="button"
           >
@@ -461,7 +596,7 @@ export function OutlineWorkspacePanel({
           <button
             aria-label={`下移《${node.title}》`}
             className="text-button"
-            disabled={index < 0 || index >= siblings.length - 1 || node.locked}
+            disabled={index < 0 || index >= siblings.length - 1}
             onClick={() => void moveNode(node, 1)}
             type="button"
           >
@@ -637,6 +772,23 @@ export function OutlineWorkspacePanel({
                   value={draft.details}
                 />
               </label>
+              {editorParentOptions.length > 0 ? (
+                <label className="field">
+                  <span>上级节点</span>
+                  <select
+                    onChange={(event) => updateDraft('parentId', event.currentTarget.value)}
+                    required
+                    value={draft.parentId}
+                  >
+                    <option value="">选择上级{LEVEL_LABELS[editorParentLevel ?? 'book']}</option>
+                    {editorParentOptions.map((parent) => (
+                      <option key={parent.id} value={parent.id}>
+                        {parent.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
             </div>
 
             {editorLevel === 'chapter' ? (
@@ -709,7 +861,11 @@ export function OutlineWorkspacePanel({
         {pendingLocked ? (
           <div className="locked-change-confirm" role="alertdialog" aria-modal="false">
             <p className="workspace-step">需要确认</p>
-            <h3>这次保存会修改已锁定的大纲节点</h3>
+            <h3>
+              {pendingLocked.kind === 'reorder'
+                ? '这次调整会修改已锁定的大纲节点'
+                : '这次保存会修改已锁定的大纲节点'}
+            </h3>
             <p>将修改《{pendingLocked.node.title}》。保存后节点仍保持锁定，并保留本次修改原因。</p>
             <label className="field">
               <span>修改原因</span>
@@ -733,7 +889,9 @@ export function OutlineWorkspacePanel({
                   ? '正在确认…'
                   : pendingLocked.kind === 'delete'
                     ? '确认并删除'
-                    : '确认并保存修改'}
+                    : pendingLocked.kind === 'reorder'
+                      ? '确认并调整顺序'
+                      : '确认并保存修改'}
               </button>
               <button
                 className="text-button"

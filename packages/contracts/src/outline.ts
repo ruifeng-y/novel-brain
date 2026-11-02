@@ -107,7 +107,7 @@ export type DeleteOutlineNodeInput = z.infer<typeof deleteOutlineNodeSchema>;
 export const reorderOutlineNodesSchema = z
   .object({
     parentId: outlineIdSchema.nullable(),
-    orderedIds: z.array(outlineIdSchema).min(1).max(100),
+    orderedIds: z.array(outlineIdSchema).min(1).max(10_000),
     ...lockedChangeSchema,
   })
   .superRefine((value, context) => {
