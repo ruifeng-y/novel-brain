@@ -1,5 +1,5 @@
 {
-  "id": "3e07071d-7d0c-4f50-bc9d-c3dbcc96eb5c",
+  "id": "97cb720d-bdb9-429a-b6bf-abebb212944f",
   "prevId": "3b04d01e-1092-49bb-8cfe-f6548308420c",
   "version": "7",
   "dialect": "postgresql",
@@ -10161,6 +10161,105 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "creation_mode": {
+          "name": "creation_mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'blank'"
+        },
+        "idea": {
+          "name": "idea",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "target_reader": {
+          "name": "target_reader",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "chapter_word_count": {
+          "name": "chapter_word_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 3000
+        },
+        "update_cadence": {
+          "name": "update_cadence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'日更'"
+        },
+        "style_samples": {
+          "name": "style_samples",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "taboos": {
+          "name": "taboos",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "synopsis": {
+          "name": "synopsis",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "tags": {
+          "name": "tags",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "cover_storage_key": {
+          "name": "cover_storage_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cover_mime_type": {
+          "name": "cover_mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cover_width": {
+          "name": "cover_width",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cover_height": {
+          "name": "cover_height",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cover_size": {
+          "name": "cover_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cover_updated_at": {
+          "name": "cover_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         },
         "status": {
           "name": "status",
