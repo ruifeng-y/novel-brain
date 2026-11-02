@@ -1,4 +1,4 @@
-import { assertUserStorageKey } from '@novel/core';
+import { assertUserStorageKey, userStoragePrefix } from '@novel/core';
 import { Client } from 'minio';
 
 export type ObjectStorageConfig = {
@@ -47,6 +47,17 @@ export class ObjectStorageClient {
     assertUserStorageKey(userId, key);
     await this.ensureBucket();
     await this.client.removeObject(this.config.bucket, key);
+  }
+
+  async removeUserObjects(userId: string): Promise<void> {
+    const prefix = `${userStoragePrefix(userId)}/`;
+    await this.ensureBucket();
+    const objects = this.client.listObjectsV2(this.config.bucket, prefix, true);
+    for await (const item of objects) {
+      if (item.name) {
+        await this.client.removeObject(this.config.bucket, item.name);
+      }
+    }
   }
 
   private async ensureBucket(): Promise<void> {

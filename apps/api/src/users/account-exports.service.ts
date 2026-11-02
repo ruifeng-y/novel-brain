@@ -9,7 +9,7 @@ import {
 import { accountExportJobs, type AccountExportJobRow } from '@novel/db';
 import type { Queue } from 'bullmq';
 import { desc, eq } from 'drizzle-orm';
-import { AccountAuditService } from '../audit/account-audit.service';
+import { AccountAuditService } from '../account-audit/account-audit.service';
 import { DatabaseService } from '../database/database.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { ObjectStorageService } from '../storage/object-storage.service';

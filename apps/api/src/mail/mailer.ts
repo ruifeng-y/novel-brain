@@ -11,8 +11,22 @@ export type VerificationCodeMessage = {
   expiresInMinutes: number;
 };
 
+export type PasswordResetMessage = {
+  to: string;
+  resetUrl: string;
+  expiresInMinutes: number;
+};
+
+export type EmailChangeCodeMessage = {
+  to: string;
+  code: string;
+  expiresInMinutes: number;
+};
+
 export interface Mailer {
   sendVerificationCode(message: VerificationCodeMessage): Promise<void>;
+  sendPasswordReset(message: PasswordResetMessage): Promise<void>;
+  sendEmailChangeCode(message: EmailChangeCodeMessage): Promise<void>;
 }
 
 @Injectable()
@@ -42,6 +56,24 @@ export class SmtpMailer implements Mailer {
       to: message.to,
       subject: 'NovelBrain 注册验证码',
       text: `你的注册验证码是 ${message.code}，${message.expiresInMinutes} 分钟内有效。不要将验证码告诉他人。`,
+    });
+  }
+
+  async sendPasswordReset(message: PasswordResetMessage): Promise<void> {
+    await this.transporter.sendMail({
+      from: this.from,
+      to: message.to,
+      subject: 'NovelBrain 密码重置',
+      text: `请打开以下链接重置密码：${message.resetUrl}\n链接 ${message.expiresInMinutes} 分钟内有效，只能使用一次。如果不是你发起的，请忽略这封邮件。`,
+    });
+  }
+
+  async sendEmailChangeCode(message: EmailChangeCodeMessage): Promise<void> {
+    await this.transporter.sendMail({
+      from: this.from,
+      to: message.to,
+      subject: 'NovelBrain 邮箱变更验证码',
+      text: `你的邮箱变更验证码是 ${message.code}，${message.expiresInMinutes} 分钟内有效。确认这是你要使用的邮箱后，再回到账号设置完成修改。`,
     });
   }
 }

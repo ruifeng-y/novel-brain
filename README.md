@@ -4,7 +4,7 @@
 
 M0 到 M2 的创作闭环、批量生产、修改版本和安全能力已回归通过；M3 的导出、发布
 检查、性能、安全、备份恢复和合规文档也已完成本地验收。V1 总验收结论是
-**NO-GO**：质量盲评、真实 DeepSeek、账号生命周期、作品生命周期、真实云环境的
+**NO-GO**：质量盲评、真实 DeepSeek、作品生命周期、真实云环境的
 TLS/静态加密/日志保留证据和法务事项仍未闭环。生产部署加固配置已提供并通过本地
 Compose/Caddy 冒烟，详见
 `docs/acceptance/m3/acceptance.md` 和 `docs/release/v1-known-limitations.md`。
@@ -114,7 +114,6 @@ pnpm db:seed
 
 V1 正式公开发布前仍必须关闭：
 
-- 账号找回/修改/注销/30 天恢复/永久删除。
 - 导入旧稿、作品归档/软删除/恢复/复制和完本只读。
 - 目标读者盲评、人工质量量表和真实 DeepSeek 证据。
 - 真实云环境的 TLS/HSTS、静态加密、日志 30 天保留、生产监控和异地备份证据。
@@ -142,6 +141,7 @@ pnpm deploy:verify --env-file /etc/novel-brain/production.env
 - `docs/acceptance/m3/acceptance.md`
 - `docs/acceptance/m3/demo.md`
 - `docs/operations/security-backup.md`
+- `docs/operations/account-lifecycle.md`
 - `docs/operations/content-moderation.md`
 - `docs/operations/security-checklist.md`
 - `docs/operations/production-deployment.md`

@@ -4,17 +4,18 @@ import {
   type AccountAuditAction,
   type AccountAuditItem,
   type AccountAuditSearchInput,
+  type AuditAction,
 } from '@novel/contracts';
 import { auditLogs, users } from '@novel/db';
 import { and, desc, eq, ilike, isNull, or, type SQL } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 
-type AccountAuditRecordInput = {
+type AccountAuditInput = {
   userId: string;
-  action: AccountAuditAction;
-  targetType: string;
-  targetId?: string | null;
+  action: AuditAction;
   title: string;
+  targetType?: string;
+  targetId?: string | null;
   detail?: string;
   metadata?: Record<string, unknown>;
   ip?: string | null;
@@ -27,13 +28,13 @@ const SENSITIVE_METADATA_KEY = /api.?key|password|token|secret|credential/i;
 export class AccountAuditService {
   constructor(private readonly database: DatabaseService) {}
 
-  async record(input: AccountAuditRecordInput): Promise<void> {
+  async record(input: AccountAuditInput): Promise<void> {
     await this.database.db.insert(auditLogs).values({
       userId: input.userId,
       workId: null,
       branchId: null,
       action: input.action,
-      targetType: input.targetType,
+      targetType: input.targetType ?? 'account',
       targetId: input.targetId ?? null,
       title: input.title,
       detail: input.detail ?? '',
@@ -127,9 +128,6 @@ export class AccountAuditService {
       Object.entries(value).map(([key, entry]) => {
         if (SENSITIVE_METADATA_KEY.test(key)) {
           return [key, '[redacted]'];
-        }
-        if (Array.isArray(entry)) {
-          return [key, entry.map((item) => this.redactValue(item))];
         }
         return [key, this.redactValue(entry)];
       }),

@@ -264,15 +264,64 @@
     {
       "idx": 37,
       "version": "7",
-      "when": 1793636528640,
-      "tag": "0037_premium_whirlwind",
+      "when": 1793636528551,
+      "tag": "0037_lumpy_mariko_yashida",
       "breakpoints": true
     },
     {
       "idx": 38,
       "version": "7",
-      "when": 1793636793413,
-      "tag": "0038_harsh_cerebro",
+      "when": 1793636606425,
+      "tag": "0038_tranquil_rhino",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1793636694905,
+      "tag": "0039_military_celestials",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1793636751292,
+      "tag": "0040_minor_zemo",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793636829772,
+      "tag": "0041_quiet_forgotten_one",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793637017698,
+      "tag": "0042_slow_tana_nile",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793637154780,
+      "tag": "0043_colossal_multiple_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793638000000,
+      "tag": "0044_account-lifecycle-repair",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793638100000,
+      "tag": "0045_pen-name-auth-policy",
       "breakpoints": true
     }
   ]

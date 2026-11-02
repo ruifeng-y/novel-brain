@@ -22,7 +22,7 @@ import { exportJobs, loadExportSource, works, type ExportJobRow } from '@novel/d
 import type { Queue } from 'bullmq';
 import { and, desc, eq, gte, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
-import { AccountAuditService } from '../audit/account-audit.service';
+import { AccountAuditService } from '../account-audit/account-audit.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { ObjectStorageService } from '../storage/object-storage.service';
 import { DownloadTokenService } from './download-token.service';

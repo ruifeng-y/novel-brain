@@ -4,6 +4,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AI_GATEWAY, DeepSeekAiGateway, FakeAiGateway } from '@novel/ai';
 import { parseRedisConnection } from '@novel/contracts';
 import { DatabaseModule } from './database/database.module';
+import { AccountPurgeRunner } from './accounts/account-purge.runner';
 import { validateEnv } from './config/env';
 import { ExportProcessor } from './exports/export.processor';
 import { ExportRunner } from './exports/export.runner';
@@ -42,6 +43,7 @@ import { WorkerBootstrapService } from './worker-bootstrap.service';
   ],
   providers: [
     SystemProcessor,
+    AccountPurgeRunner,
     WorkerBootstrapService,
     ChapterGenerationProcessor,
     BatchGenerationRunner,

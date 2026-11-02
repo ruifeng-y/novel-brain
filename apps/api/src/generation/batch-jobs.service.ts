@@ -33,7 +33,7 @@ import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
-import { AccountAuditService } from '../audit/account-audit.service';
+import { AccountAuditService } from '../account-audit/account-audit.service';
 import { VersionGraphService } from '../versions/version-graph.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { chapterGenerationError } from './chapter-generation.errors';

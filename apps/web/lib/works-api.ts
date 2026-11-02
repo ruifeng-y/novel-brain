@@ -7,6 +7,7 @@ export type Work = {
   id: string;
   title: string;
   penName: string;
+  penNameId: string | null;
   genrePack: WorkGenrePack;
   genrePackLabel: string;
   genreTemplate:

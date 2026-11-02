@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AccountAuditModule } from '../audit/account-audit.module';
+import { AccountAuditModule } from '../account-audit/account-audit.module';
 import { DatabaseModule } from '../database/database.module';
 import { MailModule } from '../mail/mail.module';
 import { RedisModule } from '../redis/redis.module';
@@ -8,7 +8,7 @@ import { AuthService } from './auth.service';
 import { SessionAuthGuard } from './session-auth.guard';
 
 @Module({
-  imports: [DatabaseModule, RedisModule, MailModule, AccountAuditModule],
+  imports: [AccountAuditModule, DatabaseModule, RedisModule, MailModule],
   controllers: [AuthController],
   providers: [AuthService, SessionAuthGuard],
   exports: [AuthService, SessionAuthGuard],

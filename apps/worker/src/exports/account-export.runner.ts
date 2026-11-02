@@ -5,6 +5,7 @@ import {
   accountExportJobs,
   auditLogs,
   loadAccountExportData,
+  users,
   type AccountExportJobRow,
 } from '@novel/db';
 import { eq } from 'drizzle-orm';
@@ -74,6 +75,10 @@ export class AccountExportRunner {
           updatedAt: completedAt,
         })
         .where(eq(accountExportJobs.id, job.id));
+      await this.database.db
+        .update(users)
+        .set({ lastExportAt: completedAt, updatedAt: completedAt })
+        .where(eq(users.id, job.userId));
       await this.recordAudit(job.userId, 'account_export_completed', job.id, {
         fileName,
         fileSize: archive.data.length,

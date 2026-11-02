@@ -8,7 +8,7 @@ import {
 import { modelConfigs, type ModelConfigRow, type NewModelConfigRow } from '@novel/db';
 import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
-import { AccountAuditService } from '../audit/account-audit.service';
+import { AccountAuditService } from '../account-audit/account-audit.service';
 import {
   MODEL_CONNECTION_TESTER,
   type ModelConnectionTestResult,

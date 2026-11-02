@@ -20,13 +20,21 @@ export const workStatusSchema = z.enum([
 export const createWorkSchema = z
   .object({
     title: z.string().trim().min(1).max(120),
-    penName: z.string().trim().min(1).max(60),
+    penName: z.string().trim().min(1).max(60).optional(),
+    penNameId: z.string().uuid().optional(),
     genrePack: workGenrePackSchema,
     genreVariant: historyVariantSchema.optional(),
     scale: workScaleSchema,
     targetPlatform: z.string().trim().min(1).max(80),
   })
   .superRefine((value, context) => {
+    if (!value.penName && !value.penNameId) {
+      context.addIssue({
+        code: 'custom',
+        path: ['penName'],
+        message: 'Choose or enter a pen name',
+      });
+    }
     if (value.genrePack !== 'history' && value.genreVariant !== undefined) {
       context.addIssue({
         code: 'custom',

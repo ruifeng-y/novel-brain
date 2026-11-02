@@ -42,6 +42,31 @@ export const systemJobs = pgTable(
 export type SystemJobRow = typeof systemJobs.$inferSelect;
 export type NewSystemJobRow = typeof systemJobs.$inferInsert;
 
+export const accountPurgeReceipts = pgTable(
+  'account_purge_receipts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').notNull(),
+    emailHash: text('email_hash').notNull(),
+    status: text('status').notNull(),
+    deletionRequestedAt: timestamp('deletion_requested_at', { withTimezone: true }),
+    deletionScheduledFor: timestamp('deletion_scheduled_for', { withTimezone: true }),
+    purgedAt: timestamp('purged_at', { withTimezone: true }).notNull(),
+    summary: jsonb('summary')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('account_purge_receipts_user_unique').on(table.userId),
+    index('account_purge_receipts_purged_idx').on(table.purgedAt),
+  ],
+);
+
+export type AccountPurgeReceiptRow = typeof accountPurgeReceipts.$inferSelect;
+export type NewAccountPurgeReceiptRow = typeof accountPurgeReceipts.$inferInsert;
+
 export const emailCodePurposeEnum = pgEnum('email_code_purpose', ['register']);
 
 export const emailCodes = pgTable(
@@ -62,6 +87,50 @@ export const emailCodes = pgTable(
 export type EmailCodeRow = typeof emailCodes.$inferSelect;
 export type NewEmailCodeRow = typeof emailCodes.$inferInsert;
 
+export const passwordResets = pgTable(
+  'password_resets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('password_resets_token_hash_unique').on(table.tokenHash),
+    index('password_resets_user_created_idx').on(table.userId, table.createdAt),
+  ],
+);
+
+export type PasswordResetRow = typeof passwordResets.$inferSelect;
+export type NewPasswordResetRow = typeof passwordResets.$inferInsert;
+
+export const emailChangeRequests = pgTable(
+  'email_change_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    newEmail: text('new_email').notNull(),
+    codeHash: text('code_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    attempts: integer('attempts').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('email_change_requests_user_created_idx').on(table.userId, table.createdAt),
+    index('email_change_requests_email_idx').on(table.newEmail),
+  ],
+);
+
+export type EmailChangeRequestRow = typeof emailChangeRequests.$inferSelect;
+export type NewEmailChangeRequestRow = typeof emailChangeRequests.$inferInsert;
+
 export const userStatusEnum = pgEnum('user_status', [
   'active',
   'disabled',
@@ -76,8 +145,13 @@ export const users = pgTable(
     email: text('email').notNull(),
     passwordHash: text('password_hash').notNull(),
     displayName: text('display_name').notNull(),
+    bio: text('bio').notNull().default(''),
+    avatarUrl: text('avatar_url'),
     status: userStatusEnum('status').notNull().default('active'),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+    lastExportAt: timestamp('last_export_at', { withTimezone: true }),
+    deletionRequestedAt: timestamp('deletion_requested_at', { withTimezone: true }),
+    deletionScheduledFor: timestamp('deletion_scheduled_for', { withTimezone: true }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -85,6 +159,7 @@ export const users = pgTable(
   (table) => [
     uniqueIndex('users_email_unique').on(sql`lower(${table.email})`),
     index('users_status_idx').on(table.status),
+    index('users_deletion_scheduled_idx').on(table.status, table.deletionScheduledFor),
   ],
 );
 
@@ -113,6 +188,31 @@ export type UserRow = typeof users.$inferSelect;
 export type NewUserRow = typeof users.$inferInsert;
 export type SessionRow = typeof sessions.$inferSelect;
 export type NewSessionRow = typeof sessions.$inferInsert;
+
+export const penNames = pgTable(
+  'pen_names',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    bio: text('bio').notNull().default(''),
+    avatarUrl: text('avatar_url'),
+    isDefault: boolean('is_default').notNull().default(false),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('pen_names_user_name_unique').on(table.userId, table.name),
+    uniqueIndex('pen_names_one_default_unique')
+      .on(table.userId)
+      .where(sql`${table.isDefault} = true`),
+  ],
+);
+
+export type PenNameRow = typeof penNames.$inferSelect;
+export type NewPenNameRow = typeof penNames.$inferInsert;
 
 export const modelPurposeEnum = pgEnum('model_purpose', ['planning', 'prose', 'check']);
 
@@ -194,6 +294,7 @@ export const works = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     title: text('title').notNull(),
     penName: text('pen_name').notNull(),
+    penNameId: uuid('pen_name_id').references(() => penNames.id, { onDelete: 'set null' }),
     genrePack: text('genre_pack').notNull(),
     genreVariant: text('genre_variant'),
     scale: text('scale').notNull(),

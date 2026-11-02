@@ -22,4 +22,8 @@ export class ObjectStorageService {
   getObject(userId: string, key: string): Promise<Buffer> {
     return this.client.getObject(userId, key);
   }
+
+  removeUserObjects(userId: string): Promise<void> {
+    return this.client.removeUserObjects(userId);
+  }
 }

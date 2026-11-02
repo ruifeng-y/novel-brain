@@ -1,3 +1,4 @@
+export * from './account';
 export * from './account-audit';
 export * from './account-export';
 export * from './auth';

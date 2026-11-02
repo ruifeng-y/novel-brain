@@ -3,7 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseRedisConnection } from '@novel/contracts';
 import { AuthModule } from '../auth/auth.module';
-import { AccountAuditModule } from '../audit/account-audit.module';
+import { AccountAuditModule } from '../account-audit/account-audit.module';
 import { BranchStateModule } from '../branches/branch-state.module';
 import { DatabaseModule } from '../database/database.module';
 import { StorageModule } from '../storage/storage.module';

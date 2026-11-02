@@ -54,7 +54,7 @@ import { and, asc, count, desc, eq, gt, isNotNull, isNull, max, sql } from 'driz
 import { createHash, randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
 import { DatabaseService } from '../database/database.service';
-import { AccountAuditService } from '../audit/account-audit.service';
+import { AccountAuditService } from '../account-audit/account-audit.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { VersionGraphService } from '../versions/version-graph.service';
 import { chapterGenerationError } from './chapter-generation.errors';
