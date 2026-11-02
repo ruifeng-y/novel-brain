@@ -1266,6 +1266,43 @@ export const auditLogs = pgTable(
 export type AuditLogRow = typeof auditLogs.$inferSelect;
 export type NewAuditLogRow = typeof auditLogs.$inferInsert;
 
+export const accountAuditLogs = pgTable(
+  'account_audit_logs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    action: text('action').notNull(),
+    targetType: text('target_type').notNull(),
+    targetId: text('target_id'),
+    title: text('title').notNull(),
+    detail: text('detail').notNull().default(''),
+    metadata: jsonb('metadata')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    ip: text('ip'),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('account_audit_logs_user_created_idx').on(table.userId, table.createdAt),
+    index('account_audit_logs_user_action_created_idx').on(
+      table.userId,
+      table.action,
+      table.createdAt,
+    ),
+    index('account_audit_logs_search_trgm_idx').using(
+      'gin',
+      sql`((${table.title} || ' ' || ${table.detail})) gin_trgm_ops`,
+    ),
+  ],
+);
+
+export type AccountAuditLogRow = typeof accountAuditLogs.$inferSelect;
+export type NewAccountAuditLogRow = typeof accountAuditLogs.$inferInsert;
+
 export const branchIdMappings = pgTable(
   'branch_id_mappings',
   {
@@ -1750,6 +1787,42 @@ export const exportJobs = pgTable(
 
 export type ExportJobRow = typeof exportJobs.$inferSelect;
 export type NewExportJobRow = typeof exportJobs.$inferInsert;
+
+export const accountExportStatusEnum = pgEnum('account_export_status', [
+  'queued',
+  'running',
+  'completed',
+  'failed',
+]);
+
+export const accountExportJobs = pgTable(
+  'account_export_jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: accountExportStatusEnum('status').notNull().default('queued'),
+    progress: integer('progress').notNull().default(0),
+    fileKey: text('file_key'),
+    fileName: text('file_name'),
+    mimeType: text('mime_type'),
+    fileSize: integer('file_size'),
+    summary: jsonb('summary')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    error: jsonb('error').$type<Record<string, unknown>>(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [index('account_export_jobs_user_created_idx').on(table.userId, table.createdAt)],
+);
+
+export type AccountExportJobRow = typeof accountExportJobs.$inferSelect;
+export type NewAccountExportJobRow = typeof accountExportJobs.$inferInsert;
 
 export const batchChapterStatusEnum = pgEnum('batch_chapter_status', [
   'pending',

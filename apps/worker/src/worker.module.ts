@@ -7,6 +7,8 @@ import { DatabaseModule } from './database/database.module';
 import { validateEnv } from './config/env';
 import { ExportProcessor } from './exports/export.processor';
 import { ExportRunner } from './exports/export.runner';
+import { AccountExportProcessor } from './exports/account-export.processor';
+import { AccountExportRunner } from './exports/account-export.runner';
 import { BatchGenerationRunner } from './generation/batch-generation.runner';
 import { ChapterGenerationProcessor } from './generation/chapter-generation.processor';
 import { ChapterGenerationRunner } from './generation/chapter-generation.runner';
@@ -36,6 +38,7 @@ import { WorkerBootstrapService } from './worker-bootstrap.service';
     BullModule.registerQueue({ name: 'system' }),
     BullModule.registerQueue({ name: 'generation' }),
     BullModule.registerQueue({ name: 'export' }),
+    BullModule.registerQueue({ name: 'account-export' }),
   ],
   providers: [
     SystemProcessor,
@@ -45,6 +48,8 @@ import { WorkerBootstrapService } from './worker-bootstrap.service';
     ChapterGenerationRunner,
     ExportProcessor,
     ExportRunner,
+    AccountExportProcessor,
+    AccountExportRunner,
     GenerationModelConfigResolver,
     {
       provide: GenerationConcurrencyGate,

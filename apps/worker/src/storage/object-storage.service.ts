@@ -18,4 +18,8 @@ export class ObjectStorageService {
   putObject(userId: string, key: string, data: Buffer, contentType: string): Promise<void> {
     return this.client.putObject(userId, key, data, contentType);
   }
+
+  getObject(userId: string, key: string): Promise<Buffer> {
+    return this.client.getObject(userId, key);
+  }
 }

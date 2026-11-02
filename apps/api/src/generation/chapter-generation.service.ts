@@ -54,6 +54,7 @@ import { and, asc, count, desc, eq, gt, isNotNull, isNull, max, sql } from 'driz
 import { createHash, randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
 import { DatabaseService } from '../database/database.service';
+import { AccountAuditService } from '../audit/account-audit.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { VersionGraphService } from '../versions/version-graph.service';
 import { chapterGenerationError } from './chapter-generation.errors';
@@ -104,6 +105,7 @@ export class ChapterGenerationService {
     private readonly database: DatabaseService,
     private readonly rateLimits: RateLimitService,
     private readonly versions: VersionGraphService,
+    private readonly accountAudit: AccountAuditService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
@@ -406,6 +408,24 @@ export class ChapterGenerationService {
       await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
 
       return { generation, job };
+    });
+
+    await this.accountAudit.record({
+      userId,
+      action: 'generation.requested',
+      targetType: 'generation_request',
+      targetId: created.generation.id,
+      title: '发起生成',
+      detail: `第 ${chapterNumber} 章 · ${action}`,
+      metadata: {
+        workId,
+        branchId,
+        chapterNumber,
+        action,
+        outputKind,
+        generationJobId: created.job.id,
+        modelConfigId: modelConfig.id,
+      },
     });
 
     try {
@@ -1143,7 +1163,7 @@ export class ChapterGenerationService {
     await this.requireBranch(userId, workId, branchId);
     await this.requireOutline(workId, branchId, chapterNumber);
 
-    return this.database.db.transaction(async (tx) => {
+    const result = await this.database.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${branchId}))`);
       const [proposal] = await tx
         .select()
@@ -1186,6 +1206,16 @@ export class ChapterGenerationService {
       }
       return this.toFactProposalResponse(chapterNumber, updated);
     });
+    await this.accountAudit.record({
+      userId,
+      action: 'fact.rejected',
+      targetType: 'fact_proposal',
+      targetId: proposalId,
+      title: '驳回事实',
+      detail: `第 ${chapterNumber} 章的事实提案已驳回`,
+      metadata: { workId, branchId, chapterNumber, proposalId },
+    });
+    return result;
   }
 
   async listConfirmedFacts(userId: string, workId: string, branchId: string) {
@@ -1224,7 +1254,7 @@ export class ChapterGenerationService {
     await this.requireBranch(userId, workId, branchId);
     await this.requireOutline(workId, branchId, chapterNumber);
 
-    return this.database.db.transaction(async (tx) => {
+    const result = await this.database.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${branchId}))`);
       const [proposal] = await tx
         .select()
@@ -1387,6 +1417,22 @@ export class ChapterGenerationService {
         },
       };
     });
+    await this.accountAudit.record({
+      userId,
+      action: 'fact.confirmed',
+      targetType: 'fact_proposal',
+      targetId: proposalId,
+      title: '确认事实',
+      detail: `第 ${chapterNumber} 章的事实提案已确认`,
+      metadata: {
+        workId,
+        branchId,
+        chapterNumber,
+        proposalId,
+        factId: result.fact?.id ?? null,
+      },
+    });
+    return result;
   }
 
   async listCanonCommits(userId: string, workId: string, branchId: string) {

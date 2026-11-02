@@ -5,6 +5,7 @@ import { emailCodes, sessions, users, type UserRow } from '@novel/db';
 import { and, desc, eq, gt, isNull, lt } from 'drizzle-orm';
 import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
+import { AccountAuditService } from '../audit/account-audit.service';
 import { MAILER, type Mailer } from '../mail/mailer';
 import { RedisService } from '../redis/redis.service';
 import { MAX_CODE_ATTEMPTS, SESSION_TTL_DAYS } from './auth.constants';
@@ -25,6 +26,7 @@ export class AuthService {
     private readonly database: DatabaseService,
     private readonly redis: RedisService,
     private readonly config: ConfigService,
+    private readonly accountAudit: AccountAuditService,
     @Inject(MAILER) private readonly mailer: Mailer,
   ) {}
 
@@ -178,6 +180,18 @@ export class AuthService {
         .limit(1);
 
       if (!user || !(await verify(user.passwordHash, password))) {
+        if (user) {
+          await this.accountAudit.record({
+            userId: user.id,
+            action: 'auth.login_failed',
+            targetType: 'session',
+            title: '登录失败',
+            detail: '密码不正确',
+            metadata: { email },
+            ip,
+            userAgent,
+          });
+        }
         throw authError(
           HttpStatus.UNAUTHORIZED,
           'INVALID_CREDENTIALS',
@@ -201,6 +215,17 @@ export class AuthService {
           .update(users)
           .set({ lastLoginAt: now, updatedAt: now })
           .where(eq(users.id, user.id));
+      });
+
+      await this.accountAudit.record({
+        userId: user.id,
+        action: 'auth.login_succeeded',
+        targetType: 'session',
+        title: '登录账号',
+        detail: '邮箱和密码登录成功',
+        metadata: { email },
+        ip,
+        userAgent,
       });
 
       return { token, user: this.toPublicUser(user) };
@@ -245,18 +270,47 @@ export class AuthService {
     });
   }
 
-  async logout(sessionId: string): Promise<void> {
+  async logout(
+    sessionId: string,
+    userId: string,
+    ip?: string | null,
+    userAgent?: string | null,
+  ): Promise<void> {
     await this.database.db
       .update(sessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
+    await this.accountAudit.record({
+      userId,
+      action: 'auth.logout',
+      targetType: 'session',
+      targetId: sessionId,
+      title: '退出当前设备',
+      detail: '当前会话已失效',
+      ip,
+      userAgent,
+    });
   }
 
-  async logoutAll(userId: string): Promise<void> {
+  async logoutAll(
+    userId: string,
+    ip?: string | null,
+    userAgent?: string | null,
+  ): Promise<void> {
     await this.database.db
       .update(sessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
+    await this.accountAudit.record({
+      userId,
+      action: 'auth.logout_all',
+      targetType: 'account',
+      targetId: userId,
+      title: '退出所有设备',
+      detail: '账号的全部会话已失效',
+      ip,
+      userAgent,
+    });
   }
 
   private async enforceCodeSendLimits(email: string, ip: string): Promise<void> {

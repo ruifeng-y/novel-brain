@@ -260,6 +260,20 @@
       "when": 1793628375401,
       "tag": "0036_performance-search-indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793636528640,
+      "tag": "0037_premium_whirlwind",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1793636793413,
+      "tag": "0038_harsh_cerebro",
+      "breakpoints": true
     }
   ]
 }

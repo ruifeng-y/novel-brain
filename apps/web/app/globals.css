@@ -1842,6 +1842,266 @@ textarea {
   text-underline-offset: 3px;
 }
 
+.account-data-tools {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  border-top: 1px solid #d9d8d0;
+}
+
+.account-export-tool,
+.account-audit-tool {
+  min-width: 0;
+  padding: 20px 22px 4px 0;
+}
+
+.account-audit-tool {
+  padding-left: 22px;
+  border-left: 1px solid #dfe3dd;
+}
+
+.account-tool-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.account-tool-heading h3 {
+  margin: 7px 0 0;
+  color: #29382f;
+  font-family: Georgia, 'Songti SC', serif;
+  font-size: 1.25rem;
+  line-height: 1.3;
+}
+
+.account-tool-heading .primary-button {
+  flex: 0 0 auto;
+  min-height: 38px;
+  padding: 7px 12px;
+  font-size: 0.74rem;
+}
+
+.account-tool-heading .text-button {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  white-space: nowrap;
+}
+
+.account-export-tool > p,
+.account-tool-error,
+.account-tool-empty {
+  margin: 11px 0 0;
+  color: #637067;
+  font-size: 0.75rem;
+  line-height: 1.75;
+}
+
+.account-export-tool > .form-message {
+  margin-top: 12px;
+}
+
+.account-export-current {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 15px;
+  padding: 13px 0;
+  border-top: 1px solid #e1e4de;
+  border-bottom: 1px solid #e1e4de;
+}
+
+.account-export-current > div {
+  min-width: 0;
+}
+
+.account-export-current strong,
+.account-export-current span,
+.account-export-current small {
+  display: block;
+}
+
+.account-export-current strong {
+  overflow-wrap: anywhere;
+  color: #2d3a32;
+  font-size: 0.78rem;
+}
+
+.account-export-current span {
+  margin-top: 4px;
+  color: #5d6a61;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.account-export-current small {
+  margin-top: 4px;
+  color: #858d86;
+  font-size: 0.62rem;
+}
+
+.account-export-current .secondary-button {
+  flex: 0 0 auto;
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.68rem;
+}
+
+.account-export-progress {
+  width: min(100%, 260px);
+  height: 4px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e1e6df;
+}
+
+.account-export-progress span {
+  height: 100%;
+  margin: 0;
+  border-radius: inherit;
+  background: var(--jade);
+  transition: width 240ms ease;
+}
+
+.account-export-history {
+  display: grid;
+  gap: 0;
+  margin-top: 12px;
+}
+
+.account-export-history > div {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eceee9;
+  font-size: 0.66rem;
+}
+
+.account-export-history span {
+  color: #7b847d;
+}
+
+.account-export-history strong {
+  overflow: hidden;
+  color: #3b4a41;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-export-history a {
+  color: #8a3528;
+  font-weight: 800;
+}
+
+.account-audit-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(110px, 0.55fr) auto;
+  align-items: end;
+  gap: 8px;
+  margin-top: 13px;
+}
+
+.account-audit-search .field {
+  gap: 5px;
+}
+
+.account-audit-search .field > span {
+  font-size: 0.68rem;
+}
+
+.account-audit-search .field input,
+.account-audit-search .field select {
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 9px;
+  border: 1px solid #cfd6cf;
+  border-radius: 5px;
+  background: #fffefa;
+  color: #26332c;
+  outline: none;
+}
+
+.account-audit-search .field input:focus,
+.account-audit-search .field select:focus {
+  border-color: #8ca696;
+  box-shadow: 0 0 0 3px rgb(47 111 94 / 10%);
+}
+
+.account-audit-search .secondary-button {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 0.68rem;
+}
+
+.account-audit-tool > .form-message {
+  margin-top: 10px;
+}
+
+.account-audit-list {
+  display: grid;
+  gap: 0;
+  max-height: 390px;
+  margin-top: 12px;
+  overflow: auto;
+  border-top: 1px solid #e1e4de;
+}
+
+.account-audit-item {
+  min-width: 0;
+  padding: 11px 0;
+  border-bottom: 1px solid #eceee9;
+}
+
+.account-audit-item > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.account-audit-item > div span {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: #e8eee7;
+  color: #4f6558;
+  font-size: 0.58rem;
+  font-weight: 800;
+}
+
+.account-audit-item time {
+  flex: 0 0 auto;
+  color: #858d86;
+  font-size: 0.59rem;
+}
+
+.account-audit-item strong {
+  display: block;
+  margin-top: 6px;
+  overflow-wrap: anywhere;
+  color: #34423a;
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.account-audit-item p {
+  margin: 4px 0 0;
+  overflow-wrap: anywhere;
+  color: #66736a;
+  font-size: 0.68rem;
+  line-height: 1.65;
+}
+
+.account-audit-item small {
+  display: block;
+  margin-top: 5px;
+  color: #858c85;
+  font-size: 0.6rem;
+}
+
 .privacy-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2270,6 +2530,21 @@ textarea {
   .privacy-legal-links {
     position: static;
   }
+
+  .account-data-tools {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-export-tool,
+  .account-audit-tool {
+    padding-right: 0;
+  }
+
+  .account-audit-tool {
+    padding-left: 0;
+    border-top: 1px solid #dfe3dd;
+    border-left: 0;
+  }
 }
 
 @media (max-width: 680px) {
@@ -2292,6 +2567,28 @@ textarea {
   .privacy-data-list > div:nth-child(even) {
     padding-left: 0;
     border-left: 0;
+  }
+
+  .account-tool-heading,
+  .account-export-current {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .account-audit-search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-audit-search .secondary-button {
+    justify-self: start;
+  }
+
+  .account-export-history > div {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .account-export-history span {
+    grid-column: 1 / -1;
   }
 
   .privacy-steps li + li {

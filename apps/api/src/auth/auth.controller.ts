@@ -107,7 +107,12 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     if (request.auth) {
-      await this.authService.logout(request.auth.sessionId);
+      await this.authService.logout(
+        request.auth.sessionId,
+        request.auth.user.id,
+        request.ip ?? request.socket.remoteAddress ?? null,
+        request.get('user-agent'),
+      );
     }
     this.clearSessionCookie(response);
   }
@@ -121,7 +126,11 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     if (request.auth) {
-      await this.authService.logoutAll(request.auth.user.id);
+      await this.authService.logoutAll(
+        request.auth.user.id,
+        request.ip ?? request.socket.remoteAddress ?? null,
+        request.get('user-agent'),
+      );
     }
     this.clearSessionCookie(response);
   }

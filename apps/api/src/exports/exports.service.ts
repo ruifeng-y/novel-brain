@@ -22,6 +22,7 @@ import { exportJobs, loadExportSource, works, type ExportJobRow } from '@novel/d
 import type { Queue } from 'bullmq';
 import { and, desc, eq, gte, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
+import { AccountAuditService } from '../audit/account-audit.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { ObjectStorageService } from '../storage/object-storage.service';
 import { exportsError } from './exports.errors';
@@ -36,6 +37,7 @@ export class ExportsService {
     private readonly database: DatabaseService,
     private readonly storage: ObjectStorageService,
     private readonly rateLimits: RateLimitService,
+    private readonly accountAudit: AccountAuditService,
     @InjectQueue('export') private readonly exportQueue: Queue,
   ) {}
 
@@ -105,6 +107,22 @@ export class ExportsService {
         updatedAt: now,
       })
       .returning();
+    await this.accountAudit.record({
+      userId,
+      action: 'export.requested',
+      targetType: 'work_export',
+      targetId: created.id,
+      title: '发起作品导出',
+      detail: `《${source.work.title}》· ${input.format}`,
+      metadata: {
+        kind: 'work',
+        workId,
+        branchId,
+        format: input.format,
+        scope: input.scope,
+        chapterCount: selected.length,
+      },
+    });
 
     const totalCharacters = selected.reduce((total, chapter) => total + chapter.content.length, 0);
     const runInBackground =
@@ -206,6 +224,20 @@ export class ExportsService {
     if (row.status !== 'completed' || !row.fileKey || !row.fileName || !row.mimeType) {
       throw exportsError(HttpStatus.CONFLICT, 'EXPORT_NOT_READY', '导出文件还在准备中');
     }
+    await this.accountAudit.record({
+      userId,
+      action: 'export.downloaded',
+      targetType: 'work_export',
+      targetId: row.id,
+      title: '下载作品导出',
+      detail: row.fileName,
+      metadata: {
+        kind: 'work',
+        workId,
+        branchId,
+        format: row.format,
+      },
+    });
     return {
       data: await this.storage.getObject(userId, row.fileKey),
       fileName: row.fileName,

@@ -8,6 +8,7 @@ import {
 import { modelConfigs, type ModelConfigRow, type NewModelConfigRow } from '@novel/db';
 import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
+import { AccountAuditService } from '../audit/account-audit.service';
 import {
   MODEL_CONNECTION_TESTER,
   type ModelConnectionTestResult,
@@ -37,6 +38,11 @@ type ModelConfigResponse = {
   apiKeyMasked: string;
   createdAt: string;
   updatedAt: string;
+};
+
+type AuditRequestMeta = {
+  ip?: string | null;
+  userAgent?: string | null;
 };
 
 type ModelConfigListResponse = {
@@ -69,6 +75,7 @@ export class ModelConfigService {
   constructor(
     private readonly database: DatabaseService,
     private readonly cipher: ModelKeyCipher,
+    private readonly accountAudit: AccountAuditService,
     @Inject(MODEL_CONNECTION_TESTER) private readonly tester: ModelConnectionTester,
   ) {}
 
@@ -85,7 +92,11 @@ export class ModelConfigService {
     };
   }
 
-  async create(userId: string, input: CreateModelConfigInput): Promise<ModelConfigResponse> {
+  async create(
+    userId: string,
+    input: CreateModelConfigInput,
+    requestMeta?: AuditRequestMeta,
+  ): Promise<ModelConfigResponse> {
     const row = await this.database.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
 
@@ -136,6 +147,24 @@ export class ModelConfigService {
       return created;
     });
 
+    await this.accountAudit.record({
+      userId,
+      action: 'model_key.created',
+      targetType: 'model_config',
+      targetId: row.id,
+      title: '添加模型 Key',
+      detail: `添加模型配置「${row.name}」`,
+      metadata: {
+        configId: row.id,
+        name: row.name,
+        provider: row.provider,
+        baseUrl: row.baseUrl,
+        model: row.model,
+        purpose: row.purpose,
+        keyChanged: true,
+      },
+      ...requestMeta,
+    });
     return this.toResponse(row);
   }
 
@@ -147,6 +176,7 @@ export class ModelConfigService {
     userId: string,
     configId: string,
     input: UpdateModelConfigInput,
+    requestMeta?: AuditRequestMeta,
   ): Promise<ModelConfigResponse> {
     const row = await this.database.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
@@ -208,10 +238,35 @@ export class ModelConfigService {
       return updated;
     });
 
+    if (input.apiKey !== undefined) {
+      await this.accountAudit.record({
+        userId,
+        action: 'model_key.updated',
+        targetType: 'model_config',
+        targetId: row.id,
+        title: '更新模型 Key',
+        detail: `更新模型配置「${row.name}」的凭证`,
+        metadata: {
+          configId: row.id,
+          name: row.name,
+          provider: row.provider,
+          baseUrl: row.baseUrl,
+          model: row.model,
+          purpose: row.purpose,
+          keyChanged: true,
+        },
+        ...requestMeta,
+      });
+    }
     return this.toResponse(row);
   }
 
-  async remove(userId: string, configId: string): Promise<void> {
+  async remove(
+    userId: string,
+    configId: string,
+    requestMeta?: AuditRequestMeta,
+  ): Promise<void> {
+    let removed: { name: string; purpose: string } | undefined;
     await this.database.db.transaction(async (tx) => {
       await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${userId}))`);
 
@@ -220,12 +275,14 @@ export class ModelConfigService {
         .where(and(eq(modelConfigs.id, configId), eq(modelConfigs.userId, userId)))
         .returning({
           id: modelConfigs.id,
+          name: modelConfigs.name,
           purpose: modelConfigs.purpose,
           isDefault: modelConfigs.isDefault,
         });
       if (!deleted) {
         throw this.notFound();
       }
+      removed = deleted;
 
       if (!deleted.isDefault) {
         return;
@@ -245,6 +302,23 @@ export class ModelConfigService {
           .where(and(eq(modelConfigs.id, replacement.id), eq(modelConfigs.userId, userId)));
       }
     });
+    if (removed) {
+      await this.accountAudit.record({
+        userId,
+        action: 'model_key.deleted',
+        targetType: 'model_config',
+        targetId: configId,
+        title: '删除模型 Key',
+        detail: `删除模型配置「${removed.name}」及其凭证`,
+        metadata: {
+          configId,
+          name: removed.name,
+          purpose: removed.purpose,
+          keyChanged: true,
+        },
+        ...requestMeta,
+      });
+    }
   }
 
   async testConnection(userId: string, configId: string): Promise<ConnectionTestResponse> {

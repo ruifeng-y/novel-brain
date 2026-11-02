@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { AccountDataTools } from './account-data-tools';
 
 export const metadata: Metadata = {
   title: '隐私与合规 · NovelBrain',
@@ -86,6 +87,8 @@ export default function PrivacySettingsPage() {
               管理模型设置
             </Link>
           </section>
+
+          <AccountDataTools />
 
           <section className="privacy-center-section" id="deletion">
             <div className="privacy-center-heading">

@@ -4,6 +4,7 @@ import {
   BATCH_CHAPTER_STATUS_LABELS,
   BATCH_JOB_STATUS_LABELS,
   BATCH_REVIEW_STATUS_LABELS,
+  type AccountAuditAction,
   type BatchJobReport,
   type BatchReviewDecision,
   type CreateBatchJobInput,
@@ -32,6 +33,7 @@ import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
+import { AccountAuditService } from '../audit/account-audit.service';
 import { VersionGraphService } from '../versions/version-graph.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { chapterGenerationError } from './chapter-generation.errors';
@@ -44,6 +46,7 @@ export class BatchJobsService {
     private readonly database: DatabaseService,
     private readonly rateLimits: RateLimitService,
     private readonly versions: VersionGraphService,
+    private readonly accountAudit: AccountAuditService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
@@ -111,6 +114,21 @@ export class BatchJobsService {
       return job;
     });
 
+    await this.accountAudit.record({
+      userId,
+      action: 'generation.requested',
+      targetType: 'batch_job',
+      targetId: created.id,
+      title: '发起批量生成',
+      detail: `${chapterNumbers.length} 章的批量生成任务已进入队列`,
+      metadata: {
+        workId,
+        branchId,
+        jobId: created.id,
+        chapterNumbers,
+        scope: input.scope,
+      },
+    });
     await this.enqueue(created.id, 'initial', userId, workId);
     return this.getJob(userId, workId, branchId, created.id);
   }
@@ -143,6 +161,7 @@ export class BatchJobsService {
   async pause(userId: string, workId: string, branchId: string, jobId: string) {
     const job = await this.requireJob(userId, workId, branchId, jobId);
     await this.transition(job, 'pause');
+    await this.recordControl(userId, workId, branchId, job.id, 'paused', '暂停批量生成');
     return this.getJob(userId, workId, branchId, jobId);
   }
 
@@ -150,6 +169,7 @@ export class BatchJobsService {
     const job = await this.requireJob(userId, workId, branchId, jobId);
     await this.transition(job, 'resume');
     await this.enqueue(job.id, 'resume', userId, workId);
+    await this.recordControl(userId, workId, branchId, job.id, 'resumed', '继续批量生成');
     return this.getJob(userId, workId, branchId, jobId);
   }
 
@@ -165,6 +185,7 @@ export class BatchJobsService {
       );
     await this.appendEvent(job.id, 'job.canceled', {});
     await this.refreshReport(job.id);
+    await this.recordControl(userId, workId, branchId, job.id, 'canceled', '取消批量生成');
     return this.getJob(userId, workId, branchId, jobId);
   }
 
@@ -184,6 +205,7 @@ export class BatchJobsService {
       message: '从失败步骤继续',
     });
     await this.enqueue(job.id, 'retry', userId, workId);
+    await this.recordControl(userId, workId, branchId, job.id, 'retried', '重试批量生成');
     return this.getJob(userId, workId, branchId, jobId);
   }
 
@@ -301,6 +323,23 @@ export class BatchJobsService {
       .from(jobChapters)
       .where(eq(jobChapters.id, item.id))
       .limit(1);
+    await this.accountAudit.record({
+      userId,
+      action: 'generation.reviewed',
+      targetType: 'batch_review_item',
+      targetId: item.id,
+      title: '确认生成结果',
+      detail: `第 ${item.chapterNumber} 章 · ${decision.action}`,
+      metadata: {
+        workId,
+        branchId,
+        jobId: job.id,
+        itemId: item.id,
+        chapterNumber: item.chapterNumber,
+        decision: decision.action,
+        reason: decision.action === 'ignore' ? decision.reason : null,
+      },
+    });
     return this.toJobChapterResponse(updated);
   }
 
@@ -928,6 +967,33 @@ export class BatchJobsService {
       jobId,
       eventType,
       payload,
+    });
+  }
+
+  private async recordControl(
+    userId: string,
+    workId: string,
+    branchId: string,
+    jobId: string,
+    action: 'paused' | 'resumed' | 'canceled' | 'retried',
+    title: string,
+  ): Promise<void> {
+    const auditAction: AccountAuditAction =
+      action === 'paused'
+        ? 'generation.paused'
+        : action === 'resumed'
+          ? 'generation.resumed'
+          : action === 'canceled'
+            ? 'generation.canceled'
+            : 'generation.retried';
+    await this.accountAudit.record({
+      userId,
+      action: auditAction,
+      targetType: 'batch_job',
+      targetId: jobId,
+      title,
+      detail: '批量生成任务状态已更新',
+      metadata: { workId, branchId, jobId },
     });
   }
 }

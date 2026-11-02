@@ -47,7 +47,10 @@ export class ModelConfigsController {
       );
     }
 
-    return this.modelConfigs.create(this.requireUserId(request), parsed.data);
+    return this.modelConfigs.create(this.requireUserId(request), parsed.data, {
+      ip: request.ip ?? request.socket.remoteAddress ?? null,
+      userAgent: request.get('user-agent'),
+    });
   }
 
   @Get(':configId')
@@ -80,6 +83,10 @@ export class ModelConfigsController {
       this.requireUserId(request),
       this.parseConfigId(configId),
       parsed.data,
+      {
+        ip: request.ip ?? request.socket.remoteAddress ?? null,
+        userAgent: request.get('user-agent'),
+      },
     );
   }
 
@@ -93,6 +100,10 @@ export class ModelConfigsController {
     await this.modelConfigs.remove(
       this.requireUserId(request),
       this.parseConfigId(configId),
+      {
+        ip: request.ip ?? request.socket.remoteAddress ?? null,
+        userAgent: request.get('user-agent'),
+      },
     );
   }
 
