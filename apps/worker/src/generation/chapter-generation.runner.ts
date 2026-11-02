@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { AI_GATEWAY, AiGatewayError, extractChapterFacts, type AiGateway } from '@novel/ai';
+import {
+  AI_GATEWAY,
+  AiGatewayError,
+  extractChapterFacts,
+  redactModelSecrets,
+  type AiGateway,
+} from '@novel/ai';
 import {
   CHAPTER_ACTION_OUTPUT_KIND,
   countCjkCharacters,
@@ -105,10 +111,7 @@ export class ChapterGenerationRunner {
   ) {}
 
   async run(jobId: string, options: { retry?: boolean } = {}): Promise<GenerationRunResult> {
-    const [jobRow] = await this.database.db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
-    if (!jobRow) {
-      throw new Error(`Generation job ${jobId} was not found`);
-    }
+    const jobRow = await this.requireVisibleJob(jobId);
     if (jobRow.status === 'completed') {
       return { ok: true };
     }
@@ -1484,11 +1487,22 @@ export class ChapterGenerationRunner {
     });
   }
 
+  private async requireVisibleJob(jobId: string): Promise<JobRow> {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const [job] = await this.database.db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+      if (job) {
+        return job;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`Generation job ${jobId} was not found`);
+  }
+
   private toErrorInfo(error: unknown): GenerationErrorInfo {
     if (error instanceof AiGatewayError) {
       return {
         code: error.code,
-        message: error.message,
+        message: redactModelSecrets(error.message),
         recoverable: true,
       };
     }

@@ -30,7 +30,8 @@ docker compose up --build
 ```bash
 pnpm install
 docker compose up -d postgres redis mailpit minio
-$env:DATABASE_URL="postgres://novel:novel@localhost:5432/novel"
+$env:DATABASE_URL="postgres://novel_app:novel_app@localhost:5432/novel"
+$env:DATABASE_ADMIN_URL="postgres://novel:novel@localhost:5432/novel"
 $env:SESSION_SECRET="development-session-secret"
 $env:MODEL_KEY_ENCRYPTION_KEY="ABEiM0RVZneImaq7zN3u/wARIjNEVWZ3iJmqu8zd7v8="
 $env:SMTP_HOST="localhost"
@@ -95,3 +96,5 @@ pnpm db:seed
 - `docs/adr/0001-canon-first-story-state.md`
 - `docs/acceptance/m0/acceptance.md`
 - `docs/acceptance/m1/acceptance.md`
+- `docs/operations/security-backup.md`
+- `docs/acceptance/m3/restore-drill.md`

@@ -6,5 +6,6 @@ export * from './change-impact';
 export * from './history-rules';
 export * from './job-state-machine';
 export * from './quality-audit';
+export * from './storage-key';
 export * from './urban-audit';
 export * from './usage-cost';

@@ -6,6 +6,9 @@ export default defineConfig({
   out: './migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? 'postgres://novel:novel@localhost:5432/novel',
+    url:
+      process.env.DATABASE_ADMIN_URL ??
+      process.env.DATABASE_URL ??
+      'postgres://novel:novel@localhost:5432/novel',
   },
 });

@@ -72,7 +72,9 @@ services:
     environment:
       NODE_ENV: production
       API_PORT: 3001
-      DATABASE_URL: postgres://novel:novel@postgres:5432/novel
+      DATABASE_URL: postgres://novel_app:novel_app@postgres:5432/novel
+      DATABASE_ADMIN_URL: postgres://novel:novel@postgres:5432/novel
+      ALLOW_DEFAULT_DB_PASSWORD: 'true'
       REDIS_URL: redis://redis:6379
       REDIS_HOST: redis
       REDIS_PORT: 6379
@@ -117,7 +119,9 @@ services:
       dockerfile: infra/docker/worker.Dockerfile
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgres://novel:novel@postgres:5432/novel
+      DATABASE_URL: postgres://novel_app:novel_app@postgres:5432/novel
+      DATABASE_ADMIN_URL: postgres://novel:novel@postgres:5432/novel
+      ALLOW_DEFAULT_DB_PASSWORD: 'true'
       REDIS_URL: redis://redis:6379
       REDIS_HOST: redis
       REDIS_PORT: 6379

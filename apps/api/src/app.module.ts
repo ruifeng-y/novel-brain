@@ -31,6 +31,10 @@ import { validateEnv } from './config/env';
 import { StoryPlanningController } from './planning/story-planning.controller';
 import { StoryPlanningModule } from './planning/story-planning.module';
 import { StoryLedgerController } from './planning/story-ledger.controller';
+import { TenantContextInterceptor } from './security/tenant-context.interceptor';
+import { SecurityModule } from './security/security.module';
+import { UsersController } from './users/users.controller';
+import { UsersModule } from './users/users.module';
 import { WorksController } from './works/works.controller';
 import { WorksModule } from './works/works.module';
 import { WorldbuildingController } from './worldbuilding/worldbuilding.controller';
@@ -44,6 +48,7 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     }),
     DatabaseModule,
     RedisModule,
+    SecurityModule,
     AuthModule,
     AiModule,
     WorksModule,
@@ -57,9 +62,19 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     ChangesModule,
     ChapterGenerationModule,
     HistoryModule,
+    UsersModule,
     HealthModule,
   ],
-  providers: [{ provide: APP_INTERCEPTOR, useClass: BranchBaselineInterceptor }],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TenantContextInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: BranchBaselineInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
@@ -67,6 +82,7 @@ export class AppModule implements NestModule {
       .apply(cookieParser())
       .forRoutes(
         AuthController,
+        UsersController,
         WorksController,
         BranchesController,
         ModelConfigsController,

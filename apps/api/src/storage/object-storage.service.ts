@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { assertUserStorageKey } from '@novel/core';
 import { Client } from 'minio';
 
 @Injectable()
@@ -21,14 +22,21 @@ export class ObjectStorageService {
     this.bucket = config.get<string>('MINIO_BUCKET') ?? 'novel-brain';
   }
 
-  async putObject(key: string, data: Buffer, contentType: string): Promise<void> {
+  async putObject(
+    userId: string,
+    key: string,
+    data: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    assertUserStorageKey(userId, key);
     await this.ensureBucket();
     await this.client.putObject(this.bucket, key, data, data.length, {
       'Content-Type': contentType,
     });
   }
 
-  async getObject(key: string): Promise<Buffer> {
+  async getObject(userId: string, key: string): Promise<Buffer> {
+    assertUserStorageKey(userId, key);
     await this.ensureBucket();
     const stream = await this.client.getObject(this.bucket, key);
     const chunks: Buffer[] = [];
@@ -38,7 +46,8 @@ export class ObjectStorageService {
     return Buffer.concat(chunks);
   }
 
-  async removeObject(key: string): Promise<void> {
+  async removeObject(userId: string, key: string): Promise<void> {
+    assertUserStorageKey(userId, key);
     await this.ensureBucket();
     await this.client.removeObject(this.bucket, key);
   }

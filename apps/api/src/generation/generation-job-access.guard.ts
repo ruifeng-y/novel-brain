@@ -2,12 +2,16 @@ import { CanActivate, ExecutionContext, HttpStatus, Injectable } from '@nestjs/c
 import type { Request } from 'express';
 import { workIdSchema } from '@novel/contracts';
 import type { AuthenticatedRequest } from '../auth/auth.types';
+import { DatabaseService } from '../database/database.service';
 import { chapterGenerationError } from './chapter-generation.errors';
 import { ChapterGenerationService } from './chapter-generation.service';
 
 @Injectable()
 export class GenerationJobAccessGuard implements CanActivate {
-  constructor(private readonly chapters: ChapterGenerationService) {}
+  constructor(
+    private readonly database: DatabaseService,
+    private readonly chapters: ChapterGenerationService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest & Request>();
@@ -28,11 +32,13 @@ export class GenerationJobAccessGuard implements CanActivate {
         'Generation task not found',
       );
     }
-    await this.chapters.assertJobAccess(
-      request.auth.user.id,
-      workId.data,
-      branchId.data,
-      jobId.data,
+    await this.database.withUserContext(request.auth.user.id, () =>
+      this.chapters.assertJobAccess(
+        request.auth!.user.id,
+        workId.data,
+        branchId.data,
+        jobId.data,
+      ),
     );
     return true;
   }

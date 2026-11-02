@@ -35,126 +35,130 @@ export class AuthService {
     const email = emailInput.trim().toLowerCase();
     await this.enforceCodeSendLimits(email, ip);
 
-    const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + CODE_TTL_MINUTES * 60_000);
+    return this.database.withAuthContext(async () => {
+      const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + CODE_TTL_MINUTES * 60_000);
 
-    await this.database.db.transaction(async (tx) => {
-      await tx
-        .update(emailCodes)
-        .set({ consumedAt: now })
-        .where(
-          and(
-            eq(emailCodes.email, email),
-            eq(emailCodes.purpose, 'register'),
-            isNull(emailCodes.consumedAt),
-          ),
-        );
-      await tx.insert(emailCodes).values({
-        email,
-        purpose: 'register',
-        codeHash: this.hashCode(email, 'register', code),
-        expiresAt,
-      });
-    });
-
-    try {
-      await this.mailer.sendVerificationCode({
-        to: email,
-        code,
-        expiresInMinutes: CODE_TTL_MINUTES,
-      });
-    } catch {
-      await this.database.db
-        .update(emailCodes)
-        .set({ consumedAt: new Date() })
-        .where(
-          and(
-            eq(emailCodes.email, email),
-            eq(emailCodes.purpose, 'register'),
-            isNull(emailCodes.consumedAt),
-          ),
-        );
-      throw authError(
-        HttpStatus.SERVICE_UNAVAILABLE,
-        'MAIL_UNAVAILABLE',
-        'Verification email could not be sent',
-      );
-    }
-
-    return { expiresInSeconds: CODE_TTL_MINUTES * 60 };
-  }
-
-  async register(emailInput: string, code: string, password: string): Promise<PublicUser> {
-    const email = emailInput.trim().toLowerCase();
-    const [existingUser] = await this.database.db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.email, email))
-      .limit(1);
-
-    if (existingUser) {
-      throw authError(
-        HttpStatus.CONFLICT,
-        'EMAIL_ALREADY_REGISTERED',
-        'An account already exists for this email',
-      );
-    }
-
-    const codeRecord = await this.findRegistrationCode(email, code);
-    const passwordHash = await hash(password, {
-      algorithm: Algorithm.Argon2id,
-      memoryCost: 19_456,
-      timeCost: 2,
-      parallelism: 1,
-    });
-
-    try {
-      const created = await this.database.db.transaction(async (tx) => {
-        const now = new Date();
-        const consumed = await tx
+      await this.database.db.transaction(async (tx) => {
+        await tx
           .update(emailCodes)
           .set({ consumedAt: now })
           .where(
             and(
-              eq(emailCodes.id, codeRecord.id),
+              eq(emailCodes.email, email),
+              eq(emailCodes.purpose, 'register'),
               isNull(emailCodes.consumedAt),
-              gt(emailCodes.expiresAt, now),
-              lt(emailCodes.attempts, MAX_CODE_ATTEMPTS),
             ),
-          )
-          .returning({ id: emailCodes.id });
-
-        if (consumed.length === 0) {
-          throw authError(
-            HttpStatus.BAD_REQUEST,
-            'INVALID_CODE',
-            'The verification code is invalid or expired',
           );
-        }
-
-        const [user] = await tx
-          .insert(users)
-          .values({
-            email,
-            passwordHash,
-            displayName: email.slice(0, email.indexOf('@')),
-          })
-          .returning();
-        return user;
+        await tx.insert(emailCodes).values({
+          email,
+          purpose: 'register',
+          codeHash: this.hashCode(email, 'register', code),
+          expiresAt,
+        });
       });
 
-      return this.toPublicUser(created);
-    } catch (error) {
-      if (this.isUniqueViolation(error)) {
+      try {
+        await this.mailer.sendVerificationCode({
+          to: email,
+          code,
+          expiresInMinutes: CODE_TTL_MINUTES,
+        });
+      } catch {
+        await this.database.db
+          .update(emailCodes)
+          .set({ consumedAt: new Date() })
+          .where(
+            and(
+              eq(emailCodes.email, email),
+              eq(emailCodes.purpose, 'register'),
+              isNull(emailCodes.consumedAt),
+            ),
+          );
+        throw authError(
+          HttpStatus.SERVICE_UNAVAILABLE,
+          'MAIL_UNAVAILABLE',
+          'Verification email could not be sent',
+        );
+      }
+
+      return { expiresInSeconds: CODE_TTL_MINUTES * 60 };
+    });
+  }
+
+  async register(emailInput: string, code: string, password: string): Promise<PublicUser> {
+    const email = emailInput.trim().toLowerCase();
+    return this.database.withAuthContext(async () => {
+      const [existingUser] = await this.database.db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (existingUser) {
         throw authError(
           HttpStatus.CONFLICT,
           'EMAIL_ALREADY_REGISTERED',
           'An account already exists for this email',
         );
       }
-      throw error;
-    }
+
+      const codeRecord = await this.findRegistrationCode(email, code);
+      const passwordHash = await hash(password, {
+        algorithm: Algorithm.Argon2id,
+        memoryCost: 19_456,
+        timeCost: 2,
+        parallelism: 1,
+      });
+
+      try {
+        const created = await this.database.db.transaction(async (tx) => {
+          const now = new Date();
+          const consumed = await tx
+            .update(emailCodes)
+            .set({ consumedAt: now })
+            .where(
+              and(
+                eq(emailCodes.id, codeRecord.id),
+                isNull(emailCodes.consumedAt),
+                gt(emailCodes.expiresAt, now),
+                lt(emailCodes.attempts, MAX_CODE_ATTEMPTS),
+              ),
+            )
+            .returning({ id: emailCodes.id });
+
+          if (consumed.length === 0) {
+            throw authError(
+              HttpStatus.BAD_REQUEST,
+              'INVALID_CODE',
+              'The verification code is invalid or expired',
+            );
+          }
+
+          const [user] = await tx
+            .insert(users)
+            .values({
+              email,
+              passwordHash,
+              displayName: email.slice(0, email.indexOf('@')),
+            })
+            .returning();
+          return user;
+        });
+
+        return this.toPublicUser(created);
+      } catch (error) {
+        if (this.isUniqueViolation(error)) {
+          throw authError(
+            HttpStatus.CONFLICT,
+            'EMAIL_ALREADY_REGISTERED',
+            'An account already exists for this email',
+          );
+        }
+        throw error;
+      }
+    });
   }
 
   async login(
@@ -166,72 +170,79 @@ export class AuthService {
     const email = emailInput.trim().toLowerCase();
     await this.enforceLoginLimits(email, ip);
 
-    const [user] = await this.database.db
-      .select()
-      .from(users)
-      .where(and(eq(users.email, email), eq(users.status, 'active')))
-      .limit(1);
+    return this.database.withAuthContext(async () => {
+      const [user] = await this.database.db
+        .select()
+        .from(users)
+        .where(and(eq(users.email, email), eq(users.status, 'active')))
+        .limit(1);
 
-    if (!user || !(await verify(user.passwordHash, password))) {
-      throw authError(
-        HttpStatus.UNAUTHORIZED,
-        'INVALID_CREDENTIALS',
-        'The email or password is incorrect',
-      );
-    }
+      if (!user || !(await verify(user.passwordHash, password))) {
+        throw authError(
+          HttpStatus.UNAUTHORIZED,
+          'INVALID_CREDENTIALS',
+          'The email or password is incorrect',
+        );
+      }
 
-    const token = randomBytes(32).toString('base64url');
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
+      const token = randomBytes(32).toString('base64url');
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + SESSION_TTL_DAYS * 24 * 60 * 60 * 1000);
 
-    await this.database.db.transaction(async (tx) => {
-      await tx.insert(sessions).values({
-        userId: user.id,
-        tokenHash: this.hashSessionToken(token),
-        userAgent: userAgent?.slice(0, 500),
-        ip,
-        expiresAt,
+      await this.database.db.transaction(async (tx) => {
+        await tx.insert(sessions).values({
+          userId: user.id,
+          tokenHash: this.hashSessionToken(token),
+          userAgent: userAgent?.slice(0, 500),
+          ip,
+          expiresAt,
+        });
+        await tx
+          .update(users)
+          .set({ lastLoginAt: now, updatedAt: now })
+          .where(eq(users.id, user.id));
       });
-      await tx.update(users).set({ lastLoginAt: now, updatedAt: now }).where(eq(users.id, user.id));
-    });
 
-    return { token, user: this.toPublicUser(user) };
+      return { token, user: this.toPublicUser(user) };
+    });
   }
 
   async getSessionIdentity(token: string): Promise<AuthIdentity | null> {
-    const now = new Date();
-    const [session] = await this.database.db
-      .select()
-      .from(sessions)
-      .where(
-        and(
-          eq(sessions.tokenHash, this.hashSessionToken(token)),
-          isNull(sessions.revokedAt),
-          gt(sessions.expiresAt, now),
-        ),
-      )
-      .limit(1);
+    return this.database.withAuthContext(async () => {
+      const now = new Date();
+      const [session] = await this.database.db
+        .select()
+        .from(sessions)
+        .where(
+          and(
+            eq(sessions.tokenHash, this.hashSessionToken(token)),
+            isNull(sessions.revokedAt),
+            gt(sessions.expiresAt, now),
+          ),
+        )
+        .limit(1);
 
-    if (!session) {
-      return null;
-    }
+      if (!session) {
+        return null;
+      }
 
-    const [user] = await this.database.db
-      .select()
-      .from(users)
-      .where(and(eq(users.id, session.userId), eq(users.status, 'active')))
-      .limit(1);
+      const [user] = await this.database.db
+        .select()
+        .from(users)
+        .where(and(eq(users.id, session.userId), eq(users.status, 'active')))
+        .limit(1);
 
-    if (!user) {
-      return null;
-    }
+      if (!user) {
+        return null;
+      }
 
-    await this.database.db
-      .update(sessions)
-      .set({ lastSeenAt: now })
-      .where(eq(sessions.id, session.id));
+      await this.database.db
+        .update(sessions)
+        .set({ lastSeenAt: now })
+        .where(eq(sessions.id, session.id));
 
-    return { sessionId: session.id, user: this.toPublicUser(user) };
+      return { sessionId: session.id, user: this.toPublicUser(user) };
+    });
   }
 
   async logout(sessionId: string): Promise<void> {
