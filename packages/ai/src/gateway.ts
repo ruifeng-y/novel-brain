@@ -191,6 +191,20 @@ export class FakeAiGateway implements AiGateway {
   }
 
   private defaultObject(input: GenerateObjectInput<unknown>): unknown {
+    if (input.schemaName === 'publish_suggestions') {
+      return {
+        titles: ['断碑问心', '雨夜残剑', '天门旧名'],
+        synopsis:
+          '沈砚在荒寺断碑前引动残剑，以一段记忆为代价窥见母亲失踪的线索。追兵逼近时，他发现碑文正在回应自己的名字，而每一次借剑都会让最亲近的人从记忆里消失。',
+        tags: ['仙侠', '成长', '悬疑'],
+        chapterTitles: [
+          { chapterNumber: 1, title: '断碑夜雨' },
+          { chapterNumber: 2, title: '城门来客' },
+          { chapterNumber: 3, title: '残剑初鸣' },
+        ],
+      };
+    }
+
     if (input.schemaName === 'outline_node') {
       const currentTitle = input.prompt.match(/当前标题：(.+)/)?.[1]?.trim() ?? '大纲节点';
       const level = input.prompt.match(/节点层级：(.+)/)?.[1]?.trim() ?? '章';
