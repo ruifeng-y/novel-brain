@@ -5,6 +5,7 @@ import { AI_GATEWAY, DeepSeekAiGateway, FakeAiGateway } from '@novel/ai';
 import { parseRedisConnection } from '@novel/contracts';
 import { DatabaseModule } from './database/database.module';
 import { validateEnv } from './config/env';
+import { BatchGenerationRunner } from './generation/batch-generation.runner';
 import { ChapterGenerationProcessor } from './generation/chapter-generation.processor';
 import { ChapterGenerationRunner } from './generation/chapter-generation.runner';
 import { GenerationModelConfigResolver } from './generation/generation-model-config.resolver';
@@ -34,6 +35,7 @@ import { WorkerBootstrapService } from './worker-bootstrap.service';
     SystemProcessor,
     WorkerBootstrapService,
     ChapterGenerationProcessor,
+    BatchGenerationRunner,
     ChapterGenerationRunner,
     GenerationModelConfigResolver,
     {

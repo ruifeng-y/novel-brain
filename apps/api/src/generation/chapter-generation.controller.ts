@@ -375,11 +375,7 @@ export class ChapterGenerationController {
       this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
       this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
       this.parseChapterNumber(chapterNumber),
-      this.parseId(
-        annotationId,
-        'CONTINUITY_ISSUE_NOT_FOUND',
-        'Continuity issue not found',
-      ),
+      this.parseId(annotationId, 'CONTINUITY_ISSUE_NOT_FOUND', 'Continuity issue not found'),
       parsed.data,
     );
   }
@@ -556,22 +552,6 @@ export class ChapterGenerationController {
     );
   }
 
-  @Get('jobs/:jobId')
-  @ApiOperation({ summary: 'Read chapter generation task state' })
-  getJob(
-    @Param('workId') workId: string,
-    @Param('branchId') branchId: string,
-    @Param('jobId') jobId: string,
-    @Req() request: AuthenticatedRequest,
-  ) {
-    return this.chapters.getJob(
-      this.requireUserId(request),
-      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
-      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
-      this.parseId(jobId, 'GENERATION_JOB_NOT_FOUND', 'Generation task not found'),
-    );
-  }
-
   @Sse('jobs/:jobId/events')
   @ApiOperation({ summary: 'Stream chapter generation progress and text deltas' })
   async streamJobEvents(
@@ -600,14 +580,7 @@ export class ChapterGenerationController {
   }
 
   private startWritingAction(
-    action:
-      | 'rewrite'
-      | 'expand'
-      | 'condense'
-      | 'change_pov'
-      | 'hooks'
-      | 'title'
-      | 'summary',
+    action: 'rewrite' | 'expand' | 'condense' | 'change_pov' | 'hooks' | 'title' | 'summary',
     workId: string,
     branchId: string,
     chapterNumber: string,
