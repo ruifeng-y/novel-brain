@@ -7,10 +7,12 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 export const systemJobStatusEnum = pgEnum('system_job_status', [
@@ -470,6 +472,187 @@ export const entityRelations = pgTable(
 
 export type EntityRelationRow = typeof entityRelations.$inferSelect;
 export type NewEntityRelationRow = typeof entityRelations.$inferInsert;
+
+export const mapLevelEnum = pgEnum('map_level', [
+  'world',
+  'realm',
+  'continent',
+  'region',
+  'city',
+  'location',
+]);
+
+export const mapNodes = pgTable(
+  'map_nodes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    parentNodeId: uuid('parent_node_id').references((): AnyPgColumn => mapNodes.id, {
+      onDelete: 'cascade',
+    }),
+    level: mapLevelEnum('level').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('map_nodes_entity_unique').on(table.entityId),
+    uniqueIndex('map_nodes_one_world_per_branch')
+      .on(table.workId, table.branchId)
+      .where(sql`${table.level} = 'world'`),
+    index('map_nodes_work_branch_level_idx').on(table.workId, table.branchId, table.level),
+    index('map_nodes_parent_idx').on(table.parentNodeId),
+  ],
+);
+
+export type MapNodeRow = typeof mapNodes.$inferSelect;
+export type NewMapNodeRow = typeof mapNodes.$inferInsert;
+
+export const mapConnections = pgTable(
+  'map_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    fromNodeId: uuid('from_node_id')
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: 'cascade' }),
+    toNodeId: uuid('to_node_id')
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: 'cascade' }),
+    travelMinutes: integer('travel_minutes').notNull(),
+    label: text('label').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('map_connections_work_branch_pair_unique').on(
+      table.workId,
+      table.branchId,
+      table.fromNodeId,
+      table.toNodeId,
+    ),
+    index('map_connections_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type MapConnectionRow = typeof mapConnections.$inferSelect;
+export type NewMapConnectionRow = typeof mapConnections.$inferInsert;
+
+export const mapImages = pgTable(
+  'map_images',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    nodeId: uuid('node_id')
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: 'cascade' }),
+    storageKey: text('storage_key').notNull(),
+    mimeType: text('mime_type').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    size: integer('size').notNull(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('map_images_node_unique').on(table.nodeId),
+    index('map_images_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type MapImageRow = typeof mapImages.$inferSelect;
+export type NewMapImageRow = typeof mapImages.$inferInsert;
+
+export const mapMarkers = pgTable(
+  'map_markers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    imageId: uuid('image_id')
+      .notNull()
+      .references(() => mapImages.id, { onDelete: 'cascade' }),
+    nodeId: uuid('node_id')
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: 'cascade' }),
+    xPercent: real('x_percent').notNull(),
+    yPercent: real('y_percent').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('map_markers_image_node_unique').on(table.imageId, table.nodeId),
+    index('map_markers_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type MapMarkerRow = typeof mapMarkers.$inferSelect;
+export type NewMapMarkerRow = typeof mapMarkers.$inferInsert;
+
+export const characterPresences = pgTable(
+  'character_presences',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    characterEntityId: uuid('character_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    locationNodeId: uuid('location_node_id')
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: 'cascade' }),
+    storyTime: text('story_time').notNull(),
+    source: text('source').notNull().default('作者录入'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('character_presences_branch_character_location_time_unique').on(
+      table.workId,
+      table.branchId,
+      table.characterEntityId,
+      table.locationNodeId,
+      table.storyTime,
+    ),
+    index('character_presences_branch_character_time_idx').on(
+      table.workId,
+      table.branchId,
+      table.characterEntityId,
+      table.storyTime,
+    ),
+  ],
+);
+
+export type CharacterPresenceRow = typeof characterPresences.$inferSelect;
+export type NewCharacterPresenceRow = typeof characterPresences.$inferInsert;
 
 export const chapterStatusEnum = pgEnum('chapter_status', [
   'planned',

@@ -4,6 +4,7 @@ export * from './entity-center';
 export * from './env';
 export * from './fact-extraction';
 export * from './health';
+export * from './map-faction';
 export * from './model-configs';
 export * from './redis';
 export * from './story-planning';
