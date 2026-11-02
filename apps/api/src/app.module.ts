@@ -12,6 +12,7 @@ import { ChangesModule } from './changes/changes.module';
 import { DatabaseModule } from './database/database.module';
 import { EntitiesController } from './entities/entities.controller';
 import { EntitiesModule } from './entities/entities.module';
+import { BatchJobsController } from './generation/batch-jobs.controller';
 import { ChapterGenerationController } from './generation/chapter-generation.controller';
 import { ChapterGenerationModule } from './generation/chapter-generation.module';
 import { HealthModule } from './health/health.module';
@@ -66,6 +67,7 @@ export class AppModule implements NestModule {
         CharactersController,
         ChangesController,
         ChapterGenerationController,
+        BatchJobsController,
       );
   }
 }

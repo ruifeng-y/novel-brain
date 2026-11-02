@@ -1,5 +1,6 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import type { Job } from 'bullmq';
+import { BatchGenerationRunner } from './batch-generation.runner';
 import { ChapterGenerationRunner } from './chapter-generation.runner';
 
 export type ChapterGenerationJobData = {
@@ -8,14 +9,20 @@ export type ChapterGenerationJobData = {
 
 @Processor('generation')
 export class ChapterGenerationProcessor extends WorkerHost {
-  constructor(private readonly runner: ChapterGenerationRunner) {
+  constructor(
+    private readonly runner: ChapterGenerationRunner,
+    private readonly batchRunner: BatchGenerationRunner,
+  ) {
     super();
   }
 
   async process(job: Job<ChapterGenerationJobData>): Promise<{ ok: boolean } | undefined> {
-    if (job.name !== 'generate-chapter') {
-      throw new Error(`Unsupported generation job: ${job.name}`);
+    if (job.name === 'generate-chapter') {
+      return this.runner.run(job.data.jobId);
     }
-    return this.runner.run(job.data.jobId);
+    if (job.name === 'generate-batch') {
+      return this.batchRunner.run(job.data.jobId);
+    }
+    throw new Error(`Unsupported generation job: ${job.name}`);
   }
 }
