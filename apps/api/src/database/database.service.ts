@@ -23,7 +23,9 @@ export class DatabaseService implements OnModuleDestroy {
   private readonly transactionContext = new AsyncLocalStorage<DatabaseTransactionContext>();
 
   constructor(config: ConfigService) {
-    this.connection = createDatabase(config.getOrThrow<string>('DATABASE_URL'));
+    this.connection = createDatabase(
+      withApplicationName(config.getOrThrow<string>('DATABASE_URL'), 'novel-api'),
+    );
   }
 
   get pool() {
@@ -148,4 +150,10 @@ export class DatabaseService implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
   }
+}
+
+function withApplicationName(connectionString: string, applicationName: string): string {
+  const url = new URL(connectionString);
+  url.searchParams.set('application_name', applicationName);
+  return url.toString();
 }

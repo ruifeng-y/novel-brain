@@ -111,10 +111,7 @@ export class ChapterGenerationRunner {
   ) {}
 
   async run(jobId: string, options: { retry?: boolean } = {}): Promise<GenerationRunResult> {
-    const [jobRow] = await this.database.db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
-    if (!jobRow) {
-      throw new Error(`Generation job ${jobId} was not found`);
-    }
+    const jobRow = await this.requireVisibleJob(jobId);
     if (jobRow.status === 'completed') {
       return { ok: true };
     }

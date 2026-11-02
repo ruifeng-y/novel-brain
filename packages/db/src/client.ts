@@ -20,9 +20,15 @@ export function createDatabaseClient(client: Pool | PoolClient): Database {
   return drizzle(client, { schema });
 }
 
-export function createScopedDatabase(client: PoolClient): Database {
+export function createScopedDatabase(
+  client: PoolClient,
+  mode: 'transaction' | 'session' = 'transaction',
+): Database {
   serializeClientQueries(client);
   const db = createDatabaseClient(client) as Database;
+  if (mode === 'session') {
+    return db;
+  }
   let depth = 0;
 
   Object.defineProperty(db, 'transaction', {

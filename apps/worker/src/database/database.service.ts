@@ -23,7 +23,9 @@ export class DatabaseService implements OnModuleDestroy {
   private readonly transactionContext = new AsyncLocalStorage<WorkerTransactionContext>();
 
   constructor(config: ConfigService) {
-    this.connection = createDatabase(config.getOrThrow<string>('DATABASE_URL'));
+    this.connection = createDatabase(
+      withApplicationName(config.getOrThrow<string>('DATABASE_URL'), 'novel-worker'),
+    );
   }
 
   get db() {
@@ -34,26 +36,25 @@ export class DatabaseService implements OnModuleDestroy {
     const client = await this.connection.pool.connect();
     const context: WorkerTransactionContext = {
       client,
-      db: createScopedDatabase(client),
+      db: createScopedDatabase(client, 'session'),
       finished: false,
     };
-    let succeeded = false;
     try {
-      await client.query('BEGIN');
       await context.db.execute(
-        sql`select set_config('app.user_id', ${userId}, true),
-                   set_config('app.auth', '', true)`,
+        sql`select set_config('app.user_id', ${userId}, false),
+                   set_config('app.auth', '', false)`,
       );
-      const result = await this.transactionContext.run(context, callback);
-      succeeded = true;
-      return result;
+      return await this.transactionContext.run(context, callback);
     } finally {
       if (!context.finished) {
         context.finished = true;
         try {
-          await client.query(succeeded ? 'COMMIT' : 'ROLLBACK');
+          await context.db.execute(
+            sql`select set_config('app.user_id', '', false),
+                       set_config('app.auth', '', false)`,
+          );
         } catch {
-          this.logger.error('Worker database transaction could not be finalized');
+          this.logger.error('Worker database tenant context could not be cleared');
           await client.query('ROLLBACK').catch(() => undefined);
         } finally {
           client.release();
@@ -65,4 +66,10 @@ export class DatabaseService implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.connection.pool.end();
   }
+}
+
+function withApplicationName(connectionString: string, applicationName: string): string {
+  const url = new URL(connectionString);
+  url.searchParams.set('application_name', applicationName);
+  return url.toString();
 }

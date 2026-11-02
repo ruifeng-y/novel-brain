@@ -36,7 +36,7 @@ export class BatchGenerationRunner {
   ) {}
 
   async run(batchJobId: string): Promise<{ ok: boolean }> {
-    const job = await this.requireJob(batchJobId);
+    const job = await this.requireVisibleJob(batchJobId);
     if (['paused', 'canceled', 'completed', 'failed'].includes(job.status)) {
       return { ok: job.status === 'completed' };
     }
@@ -564,6 +564,17 @@ export class BatchGenerationRunner {
       throw new Error(`Batch job ${jobId} was not found`);
     }
     return job;
+  }
+
+  private async requireVisibleJob(jobId: string): Promise<JobRow> {
+    for (let attempt = 0; attempt < 50; attempt += 1) {
+      const [job] = await this.database.db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+      if (job) {
+        return job;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+    throw new Error(`Batch job ${jobId} was not found`);
   }
 
   private async beginBatchStep(

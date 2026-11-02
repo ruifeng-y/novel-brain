@@ -33,6 +33,9 @@ describe('security boundaries', () => {
     await admin.end();
 
     const migrated = createDatabase(TEST_DATABASE_URL);
+    await migrated.pool.query('drop schema if exists drizzle cascade');
+    await migrated.pool.query('drop schema public cascade');
+    await migrated.pool.query('create schema public');
     await migrate(migrated.db, {
       migrationsFolder: path.resolve(process.cwd(), 'packages/db/migrations'),
     });
