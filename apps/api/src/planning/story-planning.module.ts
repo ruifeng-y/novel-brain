@@ -6,10 +6,12 @@ import { OutlineController } from './outline.controller';
 import { OutlineService } from './outline.service';
 import { StoryPlanningController } from './story-planning.controller';
 import { StoryPlanningService } from './story-planning.service';
+import { StoryLedgerController } from './story-ledger.controller';
+import { StoryLedgerService } from './story-ledger.service';
 
 @Module({
   imports: [DatabaseModule, AuthModule, AiModule],
-  controllers: [StoryPlanningController, OutlineController],
-  providers: [StoryPlanningService, OutlineService],
+  controllers: [StoryPlanningController, OutlineController, StoryLedgerController],
+  providers: [StoryPlanningService, OutlineService, StoryLedgerService],
 })
 export class StoryPlanningModule {}

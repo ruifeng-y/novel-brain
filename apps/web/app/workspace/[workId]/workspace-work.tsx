@@ -21,11 +21,13 @@ import {
   type StoryBible,
   type StoryBibleInsights,
 } from '../../../lib/story-planning-api';
+import { loadStoryLedger, type StoryLedger } from '../../../lib/story-ledger-api';
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
 import { SettingsCenterPanel } from './settings-center-panel';
 import { MapFactionPanel } from './map-faction-panel';
 import { OutlineWorkspacePanel } from './outline-workspace-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
+import { StoryLedgerPanel } from './story-ledger-panel';
 
 type LoadState =
   | { status: 'loading' }
@@ -37,6 +39,7 @@ type LoadState =
       outlineNodes: OutlineNode[];
       outlineReadiness: OutlineReadiness | null;
       storyBibleInsights: StoryBibleInsights | null;
+      storyLedger: StoryLedger | null;
       entities: Entity[];
       customFields: CustomFieldDefinition[];
       relations: Relation[];
@@ -60,6 +63,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             outlineNodes: [],
             outlineReadiness: null,
             storyBibleInsights: null,
+            storyLedger: null,
             entities: [],
             customFields: [],
             relations: [],
@@ -80,6 +84,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           outlineResponse,
           outlineReadiness,
           storyBibleInsights,
+          storyLedger,
           entityCenter,
           mapOverview,
         ] = await Promise.all([
@@ -87,6 +92,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           loadOutlineNodes(work.id, work.mainBranch.id),
           loadOutlineReadiness(work.id, work.mainBranch.id),
           loadStoryBibleInsights(work.id, work.mainBranch.id),
+          loadStoryLedger(work.id, work.mainBranch.id),
           loadEntityCenter(work.id, work.mainBranch.id),
           loadMapOverview(work.id, work.mainBranch.id),
         ]);
@@ -98,6 +104,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           outlineNodes: outlineResponse.items,
           outlineReadiness,
           storyBibleInsights,
+          storyLedger,
           entities: entityCenter.entities,
           customFields: entityCenter.customFields,
           relations: entityCenter.relations,
@@ -213,6 +220,14 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           <p className="planning-unavailable">这个故事暂时还没有可编辑的创作线。</p>
         )}
       </section>
+
+      {state.storyLedger && work.mainBranch ? (
+        <StoryLedgerPanel
+          branchId={work.mainBranch.id}
+          initialLedger={state.storyLedger}
+          workId={work.id}
+        />
+      ) : null}
 
       {state.outlineReadiness && work.mainBranch ? (
         <OutlineWorkspacePanel
