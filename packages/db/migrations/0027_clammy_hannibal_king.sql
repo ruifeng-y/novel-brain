@@ -1,0 +1,1 @@
+ALTER TABLE "entities" ADD COLUMN "subtype" text DEFAULT '' NOT NULL;

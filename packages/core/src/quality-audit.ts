@@ -1,7 +1,12 @@
 import { detectBodyStateConflicts } from './continuity';
+import { auditUrbanConstraints, type UrbanAuditInput } from './urban-audit';
 
 export type ChapterAuditIssueCategory =
+  | 'real_world'
   | 'outline'
+  | 'relationship'
+  | 'money'
+  | 'law'
   | 'confirmed_fact'
   | 'timeline'
   | 'body_state'
@@ -26,12 +31,7 @@ export type ChapterAuditIssue = {
 };
 
 export type ChapterQualityDimensionKey =
-  | 'hook'
-  | 'pacing'
-  | 'information_density'
-  | 'character_voice'
-  | 'prose'
-  | 'continuity';
+  'hook' | 'pacing' | 'information_density' | 'character_voice' | 'prose' | 'continuity';
 
 export type ChapterQualityDimension = {
   key: ChapterQualityDimensionKey;
@@ -51,6 +51,8 @@ export type ChapterQualityReport = {
 export type ChapterAuditInput = {
   chapterNumber: number;
   content: string;
+  genrePack?: string;
+  urban?: Omit<UrbanAuditInput, 'content'>;
   outline: {
     chapterGoal: string;
     pov: string;
@@ -137,8 +139,7 @@ const LIVING_ACTION_PATTERN =
   /(推门|走进|走入|站起|站起身|睁开眼|睁开眼睛|呼吸|说道|笑道|伸手|握住|抬头|转身)/;
 const POWER_CHANGE_PATTERN = /(突破|晋升|达到|已是|踏入|修成|修为)/;
 const CONTROL_VERBS = ['控制', '占据', '掌管', '掌握', '封锁', '治理', '统辖'];
-const PRESENCE_ACTION_PATTERN =
-  /(坐在|站在|来到|抵达|出现在|走进|走入|回到|赶到|跨到|赶到|守在)/;
+const PRESENCE_ACTION_PATTERN = /(坐在|站在|来到|抵达|出现在|走进|走入|回到|赶到|跨到|赶到|守在)/;
 const DURATION_PATTERNS: Array<{ pattern: RegExp; minutes: number }> = [
   { pattern: /一盏茶/, minutes: 10 },
   { pattern: /一炷香/, minutes: 30 },
@@ -176,11 +177,21 @@ export function auditChapterQuality(input: ChapterAuditInput): {
     ...detectPowerIssues(input, sentences),
     ...detectFactionIssues(input, sentences),
     ...detectItemOwnershipIssues(input, sentences),
-    ...detectTimelineIssues(input, sentences),
+    ...detectTimelineIssues(
+      input,
+      sentences,
+      input.genrePack === 'urban' ? 'real_world' : 'timeline',
+    ),
     ...detectLocationIssues(input, sentences),
     ...detectPovIssues(input, sentences),
     ...detectRepetitionIssues(sentences),
     ...detectAiToneIssues(sentences),
+    ...(input.urban
+      ? auditUrbanConstraints({
+          ...input.urban,
+          content: input.content,
+        })
+      : []),
   ];
 
   return {
@@ -189,25 +200,19 @@ export function auditChapterQuality(input: ChapterAuditInput): {
   };
 }
 
-function detectRepetitionIssues(
-  sentences: SentenceWithOffset[],
-): ChapterAuditIssue[] {
+function detectRepetitionIssues(sentences: SentenceWithOffset[]): ChapterAuditIssue[] {
   const groups = new Map<string, Array<{ sentence: SentenceWithOffset; index: number }>>();
   for (const [index, sentence] of sentences.entries()) {
     const normalized = sentence.text.replace(/[，。！？!?；;：:\s]/g, '');
     if (normalized.length < 8) {
       continue;
     }
-    groups.set(normalized, [
-      ...(groups.get(normalized) ?? []),
-      { sentence, index },
-    ]);
+    groups.set(normalized, [...(groups.get(normalized) ?? []), { sentence, index }]);
   }
 
   return [...groups.values()].flatMap((group) => {
     const nearby = group.filter(
-      (entry, index) =>
-        index > 0 && entry.index - (group[index - 1]?.index ?? -10) === 1,
+      (entry, index) => index > 0 && entry.index - (group[index - 1]?.index ?? -10) === 1,
     );
     if (nearby.length === 0) {
       return [];
@@ -244,8 +249,7 @@ function detectAiToneIssues(sentences: SentenceWithOffset[]): ChapterAuditIssue[
 
   const firstPhrase = counts[0]?.phrase;
   const sentence =
-    sentences.find((candidate) => candidate.text.includes(firstPhrase ?? '')) ??
-    sentences[0];
+    sentences.find((candidate) => candidate.text.includes(firstPhrase ?? '')) ?? sentences[0];
   if (!sentence) {
     return [];
   }
@@ -277,6 +281,7 @@ function countOccurrences(text: string, phrase: string): number {
 function detectTimelineIssues(
   input: ChapterAuditInput,
   sentences: SentenceWithOffset[],
+  category: 'timeline' | 'real_world',
 ): ChapterAuditIssue[] {
   const issues: ChapterAuditIssue[] = [];
 
@@ -293,7 +298,7 @@ function detectTimelineIssues(
         continue;
       }
       issues.push({
-        category: 'timeline',
+        category,
         severity: 'warning',
         message: `“${phrase}”是第 ${fact.chapterNumber} 章才确认发生的事，本章已经提前写到。`,
         suggestion: `删掉这段提前发生的情节，或把它改成传闻、预兆或尚未实现的猜测，等到第 ${fact.chapterNumber} 章再正式发生。`,
@@ -318,7 +323,7 @@ function detectTimelineIssues(
         continue;
       }
       issues.push({
-        category: 'timeline',
+        category,
         severity: 'warning',
         message: `正文写${connection.fromName}到${connection.toName}只用了${statedMinutes}分钟，但地图记录至少需要 ${connection.travelMinutes} 分钟。`,
         suggestion: `补足赶路时间，或把“${connection.fromName}”和“${connection.toName}”之间的路程改成更近的地点。`,
@@ -353,8 +358,7 @@ function detectLocationIssues(
         continue;
       }
       const otherPlace = input.places.find(
-        (place) =>
-          place.name !== currentLocation && sentence.text.includes(place.name),
+        (place) => place.name !== currentLocation && sentence.text.includes(place.name),
       );
       if (!otherPlace) {
         continue;
@@ -376,12 +380,57 @@ function detectLocationIssues(
 }
 
 function statedTravelMinutes(sentence: string): number | null {
+  const modern = sentence.match(/([0-9一二三四五六七八九十两]+)\s*个?\s*(半小时|分钟|小时)/);
+  if (modern) {
+    const amount = parseChineseNumber(modern[1]);
+    if (amount !== null && amount > 0) {
+      if (modern[2] === '小时') {
+        return amount * 60;
+      }
+      if (modern[2] === '半小时') {
+        return amount * 30;
+      }
+      return amount;
+    }
+  }
+  if (/半小时/.test(sentence)) {
+    return 30;
+  }
   for (const duration of DURATION_PATTERNS) {
     if (duration.pattern.test(sentence)) {
       return duration.minutes;
     }
   }
   return null;
+}
+
+function parseChineseNumber(value: string): number | null {
+  if (/^\d+$/.test(value)) {
+    return Number(value);
+  }
+  const digits: Record<string, number> = {
+    零: 0,
+    一: 1,
+    二: 2,
+    两: 2,
+    三: 3,
+    四: 4,
+    五: 5,
+    六: 6,
+    七: 7,
+    八: 8,
+    九: 9,
+  };
+  if (value === '十') {
+    return 10;
+  }
+  const tenIndex = value.indexOf('十');
+  if (tenIndex >= 0) {
+    const tens = tenIndex === 0 ? 1 : digits[value.slice(0, tenIndex)];
+    const ones = tenIndex === value.length - 1 ? 0 : digits[value.slice(tenIndex + 1)];
+    return tens === undefined || ones === undefined ? null : tens * 10 + ones;
+  }
+  return digits[value] ?? null;
 }
 
 function detectOutlineIssues(
@@ -393,23 +442,15 @@ function detectOutlineIssues(
     return [];
   }
 
-  const outlineText = [
-    input.outline.chapterGoal,
-    ...input.outline.sceneBeats,
-  ].join(' ');
+  const outlineText = [input.outline.chapterGoal, ...input.outline.sceneBeats].join(' ');
   const anchors = [
-    ...input.characters.flatMap((character) => [
-      character.name,
-      ...(character.aliases ?? []),
-    ]),
+    ...input.characters.flatMap((character) => [character.name, ...(character.aliases ?? [])]),
     ...input.places.flatMap((place) => [place.name, ...(place.aliases ?? [])]),
     ...input.items.map((item) => item.name),
   ]
     .map((anchor) => anchor.trim())
     .filter((anchor) => anchor.length >= 2 && outlineText.includes(anchor));
-  const missing = [...new Set(anchors)].filter(
-    (anchor) => !input.content.includes(anchor),
-  );
+  const missing = [...new Set(anchors)].filter((anchor) => !input.content.includes(anchor));
   if (missing.length === 0) {
     return [];
   }
@@ -448,10 +489,7 @@ function detectPowerIssues(
     }
 
     for (const sentence of sentences) {
-      if (
-        !sentence.text.includes(character.name) ||
-        !POWER_CHANGE_PATTERN.test(sentence.text)
-      ) {
+      if (!sentence.text.includes(character.name) || !POWER_CHANGE_PATTERN.test(sentence.text)) {
         continue;
       }
       const mentionedIndex = highestLevelIndex(sentence.text, input.powerLevels);
@@ -516,10 +554,7 @@ function detectFactionIssues(
 
 function detectBodyStateIssues(input: ChapterAuditInput): ChapterAuditIssue[] {
   const confirmedBodyStates = input.confirmedFacts
-    .filter(
-      (fact) =>
-        fact.type === 'body_state' && fact.chapterNumber <= input.chapterNumber,
-    )
+    .filter((fact) => fact.type === 'body_state' && fact.chapterNumber <= input.chapterNumber)
     .map((fact) => ({
       id: fact.id,
       statement: fact.statement,
@@ -536,10 +571,10 @@ function detectBodyStateIssues(input: ChapterAuditInput): ChapterAuditIssue[] {
       sourceSentence: '',
       chapterNumber: input.chapterNumber - 1,
     }));
-  return detectBodyStateConflicts(
-    input.content,
-    [...confirmedBodyStates, ...characterBodyStates],
-  ).map((issue) => ({
+  return detectBodyStateConflicts(input.content, [
+    ...confirmedBodyStates,
+    ...characterBodyStates,
+  ]).map((issue) => ({
     category: 'body_state',
     severity: 'warning',
     message: issue.message,
@@ -553,8 +588,7 @@ function detectBodyStateIssues(input: ChapterAuditInput): ChapterAuditIssue[] {
 
 function highestLevelIndex(text: string, levels: string[]): number {
   return levels.reduce(
-    (highest, level, index) =>
-      level.trim() && text.includes(level.trim()) ? index : highest,
+    (highest, level, index) => (level.trim() && text.includes(level.trim()) ? index : highest),
     -1,
   );
 }
@@ -567,9 +601,7 @@ function detectConfirmedFactIssues(
   input: ChapterAuditInput,
   sentences: SentenceWithOffset[],
 ): ChapterAuditIssue[] {
-  const characterNames = input.characters
-    .map((character) => character.name.trim())
-    .filter(Boolean);
+  const characterNames = input.characters.map((character) => character.name.trim()).filter(Boolean);
   const issues: ChapterAuditIssue[] = [];
 
   for (const fact of input.confirmedFacts) {
@@ -586,10 +618,7 @@ function detectConfirmedFactIssues(
     }
 
     for (const sentence of sentences) {
-      if (
-        !sentence.text.includes(subject) ||
-        !LIVING_ACTION_PATTERN.test(sentence.text)
-      ) {
+      if (!sentence.text.includes(subject) || !LIVING_ACTION_PATTERN.test(sentence.text)) {
         continue;
       }
       issues.push({
@@ -650,9 +679,7 @@ function detectItemOwnershipIssues(
   sentences: SentenceWithOffset[],
 ): ChapterAuditIssue[] {
   const issues: ChapterAuditIssue[] = [];
-  const characterNames = input.characters
-    .map((character) => character.name.trim())
-    .filter(Boolean);
+  const characterNames = input.characters.map((character) => character.name.trim()).filter(Boolean);
 
   for (const item of input.items) {
     const ownerName = item.ownerName?.trim();
@@ -747,41 +774,29 @@ function buildQualityReport(
   const averageSentenceLength =
     sentences.length > 0
       ? Math.round(
-          sentences.reduce(
-            (sum, sentence) => sum + Array.from(sentence.text).length,
-            0,
-          ) / sentences.length,
+          sentences.reduce((sum, sentence) => sum + Array.from(sentence.text).length, 0) /
+            sentences.length,
         )
       : 0;
   const dialogueRatio =
     input.content.length > 0
-      ? (input.content.match(/[“"「][^”"」]+[”"」]/g)?.join('').length ?? 0) /
-        input.content.length
+      ? (input.content.match(/[“"「][^”"」]+[”"」]/g)?.join('').length ?? 0) / input.content.length
       : 0;
   const hook = hookStatus(input, sentences);
   const pacingStatus =
-    (issueCounts.repetition ?? 0) > 0 || averageSentenceLength > 80
-      ? '可提升'
-      : '良好';
+    (issueCounts.repetition ?? 0) > 0 || averageSentenceLength > 80 ? '可提升' : '良好';
   const densityStatus = informationDensityStatus(input.content);
   const voiceStatus = input.characters.some((character) => character.voice?.trim())
     ? dialogueRatio >= 0.05
       ? '良好'
       : '可提升'
     : '可提升';
-  const toneIssueCount =
-    (issueCounts.ai_tone ?? 0) + (issueCounts.repetition ?? 0);
-  const proseStatus =
-    toneIssueCount >= 2 ? '需优先处理' : toneIssueCount === 1 ? '可提升' : '良好';
+  const toneIssueCount = (issueCounts.ai_tone ?? 0) + (issueCounts.repetition ?? 0);
+  const proseStatus = toneIssueCount >= 2 ? '需优先处理' : toneIssueCount === 1 ? '可提升' : '良好';
   const continuityStatus =
     issues.length === 0 ? '良好' : issues.length < 3 ? '可提升' : '需优先处理';
   const dimensions: ChapterQualityDimension[] = [
-    dimension(
-      'hook',
-      hook.status,
-      hook.summary,
-      hook.suggestion,
-    ),
+    dimension('hook', hook.status, hook.summary, hook.suggestion),
     dimension(
       'pacing',
       pacingStatus,
@@ -801,9 +816,7 @@ function buildQualityReport(
     dimension(
       'character_voice',
       voiceStatus,
-      voiceStatus === '良好'
-        ? '人物表达有可辨认的语气。'
-        : '人物声纹资料或对话样本还不够具体。',
+      voiceStatus === '良好' ? '人物表达有可辨认的语气。' : '人物声纹资料或对话样本还不够具体。',
       '给主要人物补一两句说话习惯，并让冲突通过对话或选择体现。',
     ),
     dimension(
@@ -860,9 +873,7 @@ function hookStatus(
   const mentionsHook =
     tail.includes(hook) ||
     hookAnchors.some((anchor) => tail.includes(anchor)) ||
-    /[？?！!]|(竟|却|突然|原来|发现|门外|身后|声音)/.test(
-      sentences.at(-1)?.text ?? '',
-    );
+    /[？?！!]|(竟|却|突然|原来|发现|门外|身后|声音)/.test(sentences.at(-1)?.text ?? '');
   return mentionsHook
     ? {
         status: '良好',

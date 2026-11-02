@@ -541,6 +541,7 @@ export const entities = pgTable(
       .notNull()
       .default(sql`'[]'::jsonb`),
     type: text('type').notNull(),
+    subtype: text('subtype').notNull().default(''),
     summary: text('summary').notNull().default(''),
     description: text('description').notNull().default(''),
     tags: jsonb('tags')

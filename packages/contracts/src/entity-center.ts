@@ -92,6 +92,8 @@ export const customFieldValueSchema = z.union([
 ]);
 
 export type CustomFieldValue = z.infer<typeof customFieldValueSchema>;
+export type CustomFieldType = z.infer<typeof customFieldTypeSchema>;
+export type EntityType = z.infer<typeof entityTypeSchema>;
 
 const uniqueOptionsSchema = z
   .array(z.string().trim().min(1).max(120))
@@ -125,6 +127,7 @@ const entityFieldsSchema = z.object({
   name: z.string().trim().min(1).max(200),
   aliases: z.array(z.string().trim().min(1).max(200)).max(50),
   type: entityTypeSchema,
+  subtype: z.string().trim().max(80),
   summary: z.string().trim().max(2_000),
   description: z.string().trim().max(30_000),
   tags: z.array(z.string().trim().min(1).max(80)).max(50),
@@ -136,6 +139,7 @@ const entityFieldsSchema = z.object({
 export const entityCreateSchema = entityFieldsSchema
   .extend({
     aliases: entityFieldsSchema.shape.aliases.default([]),
+    subtype: entityFieldsSchema.shape.subtype.default(''),
     summary: entityFieldsSchema.shape.summary.default(''),
     description: entityFieldsSchema.shape.description.default(''),
     tags: entityFieldsSchema.shape.tags.default([]),
@@ -196,6 +200,7 @@ export type RelationCreateInput = z.infer<typeof relationCreateSchema>;
 export const entitySearchSchema = z.object({
   q: z.string().trim().max(200).optional(),
   type: entityTypeSchema.optional(),
+  subtype: z.string().trim().max(80).optional(),
   tag: z.string().trim().max(80).optional(),
   status: entityStatusSchema.optional(),
 });

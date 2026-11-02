@@ -1,4 +1,5 @@
 import type { ChapterAuditInput } from '@novel/core';
+import { URBAN_FIELD_KEYS } from '@novel/contracts';
 import {
   characterProfiles,
   characterStates,
@@ -9,7 +10,7 @@ import {
   mapNodes,
   powerSystemProfiles,
 } from '@novel/db';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import type { DatabaseService } from '../database/database.service';
 
@@ -30,11 +31,14 @@ export async function loadChapterAuditInput(
   content: string,
   outline: AuditOutline,
   confirmedFacts: AuditFact[],
+  genrePack: string,
 ): Promise<ChapterAuditInput> {
   const factionEntity = alias(entities, 'audit_faction_entity');
   const placeEntity = alias(entities, 'audit_place_entity');
   const itemEntity = alias(entities, 'audit_item_entity');
   const ownerEntity = alias(entities, 'audit_owner_entity');
+  const socialFromEntity = alias(entities, 'audit_social_from_entity');
+  const socialToEntity = alias(entities, 'audit_social_to_entity');
   const connectionFromNode = alias(mapNodes, 'audit_connection_from_node');
   const connectionToNode = alias(mapNodes, 'audit_connection_to_node');
   const connectionFromEntity = alias(entities, 'audit_connection_from_entity');
@@ -47,6 +51,8 @@ export async function loadChapterAuditInput(
     itemRows,
     connectionRows,
     powerProfileRows,
+    urbanSettingRows,
+    socialRelationRows,
   ] = await Promise.all([
     database.db
       .select({
@@ -128,37 +134,43 @@ export async function loadChapterAuditInput(
         travelMinutes: mapConnections.travelMinutes,
       })
       .from(mapConnections)
-      .innerJoin(
-        connectionFromNode,
-        eq(connectionFromNode.id, mapConnections.fromNodeId),
-      )
-      .innerJoin(
-        connectionToNode,
-        eq(connectionToNode.id, mapConnections.toNodeId),
-      )
-      .innerJoin(
-        connectionFromEntity,
-        eq(connectionFromEntity.id, connectionFromNode.entityId),
-      )
-      .innerJoin(
-        connectionToEntity,
-        eq(connectionToEntity.id, connectionToNode.entityId),
-      )
-      .where(
-        and(
-          eq(mapConnections.workId, workId),
-          eq(mapConnections.branchId, branchId),
-        ),
-      ),
+      .innerJoin(connectionFromNode, eq(connectionFromNode.id, mapConnections.fromNodeId))
+      .innerJoin(connectionToNode, eq(connectionToNode.id, mapConnections.toNodeId))
+      .innerJoin(connectionFromEntity, eq(connectionFromEntity.id, connectionFromNode.entityId))
+      .innerJoin(connectionToEntity, eq(connectionToEntity.id, connectionToNode.entityId))
+      .where(and(eq(mapConnections.workId, workId), eq(mapConnections.branchId, branchId))),
     database.db
       .select({ levels: powerSystemProfiles.levels })
       .from(powerSystemProfiles)
       .where(
-        and(
-          eq(powerSystemProfiles.workId, workId),
-          eq(powerSystemProfiles.branchId, branchId),
-        ),
+        and(eq(powerSystemProfiles.workId, workId), eq(powerSystemProfiles.branchId, branchId)),
       ),
+    genrePack === 'urban'
+      ? database.db
+          .select()
+          .from(entities)
+          .where(
+            and(
+              eq(entities.workId, workId),
+              eq(entities.branchId, branchId),
+              ne(entities.subtype, ''),
+              isNull(entities.deletedAt),
+            ),
+          )
+      : Promise.resolve([]),
+    genrePack === 'urban'
+      ? database.db
+          .select({
+            fromName: socialFromEntity.name,
+            toName: socialToEntity.name,
+            predicate: entityRelations.predicate,
+            validTo: entityRelations.validTo,
+          })
+          .from(entityRelations)
+          .innerJoin(socialFromEntity, eq(socialFromEntity.id, entityRelations.fromEntityId))
+          .innerJoin(socialToEntity, eq(socialToEntity.id, entityRelations.toEntityId))
+          .where(and(eq(entityRelations.workId, workId), eq(entityRelations.branchId, branchId)))
+      : Promise.resolve([]),
   ]);
 
   const powerLevels = [
@@ -172,6 +184,7 @@ export async function loadChapterAuditInput(
   return {
     chapterNumber,
     content,
+    genrePack,
     outline,
     confirmedFacts,
     characters: characterRows.map(({ entity, state, profile }) => ({
@@ -190,5 +203,93 @@ export async function loadChapterAuditInput(
     items: itemRows,
     mapConnections: connectionRows,
     powerLevels,
+    ...(genrePack === 'urban'
+      ? {
+          urban: {
+            relationships: socialRelationRows,
+            moneyAccounts: urbanMoneyAccounts(urbanSettingRows),
+            laws: urbanLaws(urbanSettingRows),
+          },
+        }
+      : {}),
   };
+}
+
+function urbanMoneyAccounts(
+  settings: Array<{
+    name: string;
+    subtype: string;
+    customFields: Record<string, unknown>;
+  }>,
+) {
+  return settings.flatMap((setting) => {
+    if (setting.subtype === 'money') {
+      const balance = numericField(setting.customFields, URBAN_FIELD_KEYS.money.balance);
+      if (balance === undefined) {
+        return [];
+      }
+      return [
+        {
+          name: setting.name,
+          holderName:
+            stringField(setting.customFields, URBAN_FIELD_KEYS.money.holder) || setting.name,
+          balanceWan: balance,
+          currency: stringField(setting.customFields, URBAN_FIELD_KEYS.money.currency) || '人民币',
+        },
+      ];
+    }
+    if (setting.subtype === 'company') {
+      const balance = numericField(setting.customFields, URBAN_FIELD_KEYS.company.cashBalance);
+      if (balance === undefined) {
+        return [];
+      }
+      return [
+        {
+          name: setting.name,
+          holderName:
+            stringField(setting.customFields, URBAN_FIELD_KEYS.company.legalRepresentative) ||
+            setting.name,
+          balanceWan: balance,
+          currency: '人民币',
+        },
+      ];
+    }
+    return [];
+  });
+}
+
+function urbanLaws(
+  settings: Array<{
+    name: string;
+    subtype: string;
+    customFields: Record<string, unknown>;
+  }>,
+) {
+  return settings
+    .filter((setting) => setting.subtype === 'law')
+    .map((setting) => ({
+      name: setting.name,
+      prohibitedActions: stringArrayField(
+        setting.customFields,
+        URBAN_FIELD_KEYS.law.prohibitedActions,
+      ),
+    }))
+    .filter((law) => law.prohibitedActions.length > 0);
+}
+
+function stringField(fields: Record<string, unknown>, key: string): string {
+  const value = fields[key];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function numericField(fields: Record<string, unknown>, key: string): number | undefined {
+  const value = fields[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function stringArrayField(fields: Record<string, unknown>, key: string): string[] {
+  const value = fields[key];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
 }

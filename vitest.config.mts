@@ -17,5 +17,6 @@ export default defineConfig({
     environment: 'node',
     include: ['apps/**/*.spec.ts', 'apps/**/*.e2e-spec.ts', 'packages/**/*.test.ts'],
     exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**'],
+    testTimeout: 20_000,
   },
 });

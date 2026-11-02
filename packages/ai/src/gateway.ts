@@ -148,6 +148,15 @@ export class FakeAiGateway implements AiGateway {
         '3. 他低头时，发现碑上多了一行自己刚刚才写下的字。',
       ].join('\n');
     }
+    if (input.prompt.includes('【都市题材创作要求】')) {
+      const match = input.prompt.match(/目标汉字数：(\d+)\s*到\s*(\d+)/);
+      const target = match
+        ? Number(match[1]) + Math.floor((Number(match[2]) - Number(match[1])) / 2)
+        : 2_500;
+      return buildDeterministicUrbanChapter(target, {
+        includeConflicts: input.prompt.includes('[[URBAN_CONFLICTS]]'),
+      });
+    }
     if (
       input.prompt.includes('【续写要求】') ||
       input.prompt.includes('【改写要求】') ||
@@ -193,23 +202,41 @@ export class FakeAiGateway implements AiGateway {
     }
 
     const chapterText = input.prompt.split('【章节正文】\n')[1] ?? '';
-    const candidates: ExtractedFact[] = [
-      {
-        type: 'event',
-        statement: '沈砚以血触发断碑，碑面浮现陌生文字。',
-        sourceSentence: '沈砚握住剑柄，掌心被锋刃割开，血没有落地，而是逆着雨丝向碑面流去。',
-      },
-      {
-        type: 'body_state',
-        statement: '沈砚的太阳穴剧痛，并吐出一口带着寒意的血。',
-        sourceSentence: '他的太阳穴剧烈跳动，眼前同时闪过边城、雪夜和一道关上的门。',
-      },
-      {
-        type: 'character_knowledge',
-        statement: '沈砚知道自己一旦退开，今夜就再也找不到这块碑。',
-        sourceSentence: '沈砚没有松手。他知道自己一旦退开，今夜便再也找不到这块碑。',
-      },
-    ];
+    const candidates: ExtractedFact[] = chapterText.includes('陈默从城东开车到城西')
+      ? [
+          {
+            type: 'event',
+            statement: '陈默把五万元转给供应商。',
+            sourceSentence: '陈默把 50000 元转给供应商，心里松了一口气。',
+          },
+          {
+            type: 'body_state',
+            statement: '陈默的太阳穴隐隐作痛。',
+            sourceSentence: '陈默的太阳穴还在隐隐作痛。',
+          },
+          {
+            type: 'character_knowledge',
+            statement: '陈默知道这笔钱转出后必须留下完整凭证。',
+            sourceSentence: '陈默知道这笔钱一旦转出，就必须留下完整凭证。',
+          },
+        ]
+      : [
+          {
+            type: 'event',
+            statement: '沈砚以血触发断碑，碑面浮现陌生文字。',
+            sourceSentence: '沈砚握住剑柄，掌心被锋刃割开，血没有落地，而是逆着雨丝向碑面流去。',
+          },
+          {
+            type: 'body_state',
+            statement: '沈砚的太阳穴剧痛，并吐出一口带着寒意的血。',
+            sourceSentence: '他的太阳穴剧烈跳动，眼前同时闪过边城、雪夜和一道关上的门。',
+          },
+          {
+            type: 'character_knowledge',
+            statement: '沈砚知道自己一旦退开，今夜就再也找不到这块碑。',
+            sourceSentence: '沈砚没有松手。他知道自己一旦退开，今夜便再也找不到这块碑。',
+          },
+        ];
 
     return {
       facts: candidates.filter((fact) => chapterText.includes(fact.sourceSentence)),
@@ -230,6 +257,19 @@ const CHAPTER_PARAGRAPHS = [
   '这一次，他听清了。那声音是在叫他回家。',
 ];
 
+const URBAN_PARAGRAPHS = [
+  '南城的早高峰像一条缓慢移动的河。陈默站在写字楼三十七层的窗边，看见高架上的车灯一盏接一盏亮起来，手机里供应商的未接来电已经排到屏幕最下方。',
+  '远山资本的会议室里还留着昨夜会议的咖啡味。财务总监把现金流表推到他面前，提醒他本周必须付清第一笔货款，否则旧城仓库的货就会被对方扣下。',
+  '陈默没有立刻回答。他翻开项目合同，逐页核对授权签字和付款节点。桌上的座机响了两次，都是前台在问楼下的人有没有预约。',
+  '苏晚来得很准时。她把风衣搭在椅背上，先看了一眼墙上的城市地图，又看向陈默手边的文件。两个人之间隔着一张长桌，也隔着董事会还没有解决的控制权争议。',
+  '窗外的云压得很低，中央空调把会议室吹得有些冷。陈默把供应商名单折好，提醒自己先处理眼前能核实的账目，再决定要不要去见旧城商会的人。',
+  '楼下的便利店刚开始换午间盒饭。前台发来消息，说周警官在会客区等十分钟，只谈公开案件流程，不接受任何没有凭据的请求。',
+  '陈默下楼时经过法务部。门半开着，里面的人正在讨论一份需要股东会决议的大额转账，桌上摊着双人复核单和授权委托书。',
+  '他忽然意识到，今天真正难的不是凑钱，而是每一步都要留下能解释的来源。旧城仓库、公司账户和个人余额之间，只要有一条线说不清，明天就会有人拿着合同找上门。',
+  '回到会议室时，苏晚已经把那页股权结构翻到最后一页。她没有催促，只把笔帽扣上，像是在等他先说出一个能让双方都承担后果的方案。',
+  '南城的午间新闻开始播报跨江高架拥堵。陈默把手机调成静音，重新坐回桌边，决定先让财务打印全部流水，再约供应商当面核对。',
+];
+
 export function buildDeterministicChineseChapter(
   targetCharacters = 2_500,
   options: { includeLeftArmConflict?: boolean } = {},
@@ -242,6 +282,43 @@ export function buildDeterministicChineseChapter(
   let index = 0;
   while (countCjkCharacters(text) < target) {
     text += `\n\n${CHAPTER_PARAGRAPHS[index % CHAPTER_PARAGRAPHS.length]}`;
+    index += 1;
+  }
+
+  let count = 0;
+  const characters = Array.from(text);
+  let end = 0;
+  for (; end < characters.length; end += 1) {
+    if (isCjkIdeograph(characters[end])) {
+      count += 1;
+      if (count === target) {
+        end += 1;
+        break;
+      }
+    }
+  }
+  return characters.slice(0, end).join('');
+}
+
+export function buildDeterministicUrbanChapter(
+  targetCharacters = 2_500,
+  options: { includeConflicts?: boolean } = {},
+): string {
+  const target = Math.max(1, targetCharacters);
+  const conflictParagraphs = options.includeConflicts
+    ? [
+        '陈默从城东开车到城西只用了五分钟。',
+        '陈默和苏晚在会议室握手，决定并肩作战。',
+        '陈默把 50000 元转给供应商，心里松了一口气。',
+        '陈默的太阳穴还在隐隐作痛。',
+        '陈默知道这笔钱一旦转出，就必须留下完整凭证。',
+        '陈默擅自挪用公司资金，给供应商补上缺口。',
+      ].join('\n\n')
+    : '';
+  let text = [conflictParagraphs, URBAN_PARAGRAPHS.join('\n\n')].filter(Boolean).join('\n\n');
+  let index = 0;
+  while (countCjkCharacters(text) < target) {
+    text += `\n\n${URBAN_PARAGRAPHS[index % URBAN_PARAGRAPHS.length]}`;
     index += 1;
   }
 
