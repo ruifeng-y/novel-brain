@@ -7,6 +7,8 @@ import { AccountAuditModule } from '../audit/account-audit.module';
 import { BranchStateModule } from '../branches/branch-state.module';
 import { DatabaseModule } from '../database/database.module';
 import { StorageModule } from '../storage/storage.module';
+import { DownloadTokenService } from './download-token.service';
+import { DownloadsController } from './downloads.controller';
 import { ExportsController } from './exports.controller';
 import { ExportsService } from './exports.service';
 
@@ -27,7 +29,7 @@ import { ExportsService } from './exports.service';
     }),
     BullModule.registerQueue({ name: 'export' }),
   ],
-  controllers: [ExportsController],
-  providers: [ExportsService],
+  controllers: [ExportsController, DownloadsController],
+  providers: [ExportsService, DownloadTokenService],
 })
 export class ExportsModule {}
