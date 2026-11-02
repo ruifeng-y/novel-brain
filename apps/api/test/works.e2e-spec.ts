@@ -257,6 +257,74 @@ describe('works API', () => {
       });
   });
 
+  it('reports word count and completion progress from the main branch', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const created = await author.agent
+      .post('/api/v1/works')
+      .send({
+        title: '断碑进度',
+        penName: '青云客',
+        genrePack: 'xianxia',
+        scale: 'long',
+        targetPlatform: '起点中文网',
+      })
+      .expect(201);
+    const base = `/api/v1/works/${created.body.id}/branches/${created.body.mainBranch.id}`;
+
+    await author.agent
+      .put(`${base}/chapter-outlines/1`)
+      .send({
+        chapterGoal: '沈砚听见剑鸣。',
+        pov: '沈砚',
+        sceneBeats: ['断碑'],
+        chapterEndHook: '黑暗里有人叫出母亲的名字。',
+      })
+      .expect(200);
+    await author.agent
+      .put(`${base}/chapter-outlines/2`)
+      .send({
+        chapterGoal: '城门下出现陌生人。',
+        pov: '沈砚',
+        sceneBeats: ['城门'],
+        chapterEndHook: '陌生人露出焚毁的家纹。',
+      })
+      .expect(200);
+    await author.agent
+      .post(`${base}/chapters/1/versions`)
+      .send({ content: '沈砚听见剑鸣。' })
+      .expect(201);
+    await author.agent
+      .post(`${base}/chapters/2/versions`)
+      .send({ content: '城门下站着一个陌生人。' })
+      .expect(201);
+    await app
+      .get(DatabaseService)
+      .pool.query(
+        `update chapters set status = 'locked' where work_id = $1 and chapter_number = 1`,
+        [created.body.id],
+      );
+
+    await author.agent
+      .get('/api/v1/works')
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items[0]).toMatchObject({
+          id: created.body.id,
+          wordCount: 16,
+          progressPercent: 50,
+        });
+      });
+    await author.agent
+      .get(`/api/v1/works/${created.body.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          wordCount: 16,
+          progressPercent: 50,
+        });
+      });
+  });
+
   it('rejects incomplete work details without creating a branch', async () => {
     const author = await createAuthor(app, passwordHash);
 

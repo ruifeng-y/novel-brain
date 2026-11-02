@@ -8,10 +8,20 @@ import {
   type GenrePackDefinition,
   type HistoryVariant,
 } from '@novel/contracts';
-import { workBranches, works, type WorkBranchRow, type WorkRow } from '@novel/db';
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { chapters, workBranches, works, type WorkBranchRow, type WorkRow } from '@novel/db';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { worksError } from './works.errors';
+
+type WorkMetrics = {
+  wordCount: number;
+  progressPercent: number;
+};
+
+const EMPTY_METRICS: WorkMetrics = {
+  wordCount: 0,
+  progressPercent: 0,
+};
 
 type WorkResponse = {
   id: string;
@@ -68,9 +78,17 @@ export class WorksService {
         ),
       );
     const branchesByWorkId = new Map(branchRows.map((branch) => [branch.workId, branch]));
+    const metricsByBranchId = await this.loadMetrics(branchRows.map((branch) => branch.id));
 
     return {
-      items: workRows.map((work) => this.toResponse(work, branchesByWorkId.get(work.id) ?? null)),
+      items: workRows.map((work) => {
+        const branch = branchesByWorkId.get(work.id) ?? null;
+        return this.toResponse(
+          work,
+          branch,
+          branch ? (metricsByBranchId.get(branch.id) ?? EMPTY_METRICS) : EMPTY_METRICS,
+        );
+      }),
     };
   }
 
@@ -84,9 +102,7 @@ export class WorksService {
           penName: input.penName,
           genrePack: input.genrePack,
           genreVariant:
-            input.genrePack === 'history'
-              ? (input.genreVariant ?? 'alternate_ancient')
-              : null,
+            input.genrePack === 'history' ? (input.genreVariant ?? 'alternate_ancient') : null,
           scale: input.scale,
           targetPlatform: input.targetPlatform,
           status: 'preparing',
@@ -127,10 +143,46 @@ export class WorksService {
       .where(and(eq(workBranches.workId, work.id), eq(workBranches.isMain, true)))
       .limit(1);
 
-    return this.toResponse(work, mainBranch ?? null);
+    const metrics = mainBranch
+      ? (await this.loadMetrics([mainBranch.id])).get(mainBranch.id)
+      : undefined;
+
+    return this.toResponse(work, mainBranch ?? null, metrics ?? EMPTY_METRICS);
   }
 
-  private toResponse(work: WorkRow, mainBranch: WorkBranchRow | null): WorkResponse {
+  private async loadMetrics(branchIds: string[]): Promise<Map<string, WorkMetrics>> {
+    if (branchIds.length === 0) {
+      return new Map();
+    }
+
+    const rows = await this.database.db
+      .select({
+        branchId: chapters.branchId,
+        wordCount: sql<number>`coalesce(sum(${chapters.wordCount}), 0)::int`,
+        chapterCount: sql<number>`count(*)::int`,
+        completedCount: sql<number>`count(*) filter (where ${chapters.status} in ('locked', 'published'))::int`,
+      })
+      .from(chapters)
+      .where(inArray(chapters.branchId, branchIds))
+      .groupBy(chapters.branchId);
+
+    return new Map(
+      rows.map((row) => [
+        row.branchId,
+        {
+          wordCount: row.wordCount,
+          progressPercent:
+            row.chapterCount === 0 ? 0 : Math.round((row.completedCount / row.chapterCount) * 100),
+        },
+      ]),
+    );
+  }
+
+  private toResponse(
+    work: WorkRow,
+    mainBranch: WorkBranchRow | null,
+    metrics: WorkMetrics = EMPTY_METRICS,
+  ): WorkResponse {
     const genrePack = getGenrePackDefinition(work.genrePack);
     const historyVariant =
       work.genrePack === 'history'
@@ -157,8 +209,8 @@ export class WorksService {
       targetPlatform: work.targetPlatform,
       status: work.status,
       statusLabel: WORK_STATUS_LABELS[work.status],
-      wordCount: 0,
-      progressPercent: 0,
+      wordCount: metrics.wordCount,
+      progressPercent: metrics.progressPercent,
       lastEditedAt: work.updatedAt.toISOString(),
       createdAt: work.createdAt.toISOString(),
       mainBranch: mainBranch

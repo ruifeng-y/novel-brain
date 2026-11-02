@@ -184,7 +184,7 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   const journeyStartedAt = performance.now();
 
   await registerAuthor(page, email);
-  await expect(page.getByText('M2 扩大 beta', { exact: true })).toBeVisible();
+  await expect(page.getByText('V1 验收候选', { exact: true })).toBeVisible();
 
   const xianxiaTitle = `九门问心·M2验收${stamp}`;
   await page.getByLabel('书名').fill(xianxiaTitle);

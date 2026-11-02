@@ -1,5 +1,12 @@
 # Ticket #31 性能与压测验收记录
 
+> V1 总验收复跑（2026-11-02 15:45 UTC）：在干净
+> `novel-brain-v1-acceptance` Compose 项目上重新执行同一基准，原始数据见
+> `docs/acceptance/m3/performance/v1-acceptance-metrics.json`。本轮结果为打开 p95
+> 16.8ms、1,000 章列表 p95 29.1ms、单章 p95 14.0ms、自动保存 p95 16.4ms、
+> 搜索 p95 124.0ms、首 token p95 153ms、SSE p95 99ms，4 任务并发 4/2/2。
+> 真实 DeepSeek 和 30/1,000 章墙钟仍未验证。
+
 - 执行时间：2026-11-02（Asia/Shanghai）
 - 分支：`codex/ticket-31-performance`
 - 集成基线：`88acc4a`（已合并 #28）
