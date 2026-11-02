@@ -171,6 +171,9 @@ export type WorkBranchForkSnapshotValue = {
   settings?: Record<string, string>;
   outlines?: Record<string, string>;
   chapters?: Record<string, string>;
+  facts?: Record<string, string>;
+  characters?: Record<string, string>;
+  maps?: Record<string, string>;
 };
 
 export const works = pgTable(
@@ -205,7 +208,10 @@ export const workBranches = pgTable(
       .references(() => works.id, { onDelete: 'cascade' }),
     name: text('name').notNull(),
     isMain: boolean('is_main').notNull().default(false),
+    isSnapshot: boolean('is_snapshot').notNull().default(false),
     parentBranchId: uuid('parent_branch_id'),
+    baselineBranchId: uuid('baseline_branch_id'),
+    baselineMaterializedAt: timestamp('baseline_materialized_at', { withTimezone: true }),
     baseCommitId: uuid('base_commit_id'),
     kind: workBranchKindEnum('kind').notNull().default('experiment'),
     reason: text('reason').notNull().default(''),
@@ -1113,6 +1119,57 @@ export const chapterVersions = pgTable(
 
 export type ChapterVersionRow = typeof chapterVersions.$inferSelect;
 export type NewChapterVersionRow = typeof chapterVersions.$inferInsert;
+
+export const branchCommits = pgTable(
+  'branch_commits',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    sourceBranchId: uuid('source_branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    snapshotBranchId: uuid('snapshot_branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    chapterVersionId: uuid('chapter_version_id')
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: 'cascade' }),
+    message: text('message').notNull(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('branch_commits_chapter_version_unique').on(table.chapterVersionId),
+    index('branch_commits_source_created_idx').on(table.sourceBranchId, table.createdAt),
+  ],
+);
+
+export type BranchCommitRow = typeof branchCommits.$inferSelect;
+export type NewBranchCommitRow = typeof branchCommits.$inferInsert;
+
+export const branchIdMappings = pgTable(
+  'branch_id_mappings',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    forkBranchId: uuid('fork_branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    tableName: text('table_name').notNull(),
+    sourceId: uuid('source_id').notNull(),
+    targetId: uuid('target_id').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('branch_id_mappings_fork_source_unique').on(table.forkBranchId, table.sourceId),
+    index('branch_id_mappings_fork_table_idx').on(table.forkBranchId, table.tableName),
+  ],
+);
+
+export type BranchIdMappingRow = typeof branchIdMappings.$inferSelect;
 
 export const generationStatusEnum = pgEnum('generation_status', [
   'queued',

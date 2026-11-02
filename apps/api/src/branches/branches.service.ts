@@ -8,12 +8,14 @@ import {
   type ParallelVersionKind,
 } from '@novel/contracts';
 import {
+  branchCommits,
+  characterStates,
   chapterOutlines,
   chapters,
   chapterVersions,
   entities,
-  entityRelations,
-  storyBibles,
+  facts,
+  mapNodes,
   workBranches,
   works,
   type WorkBranchForkSnapshotValue,
@@ -21,11 +23,10 @@ import {
 } from '@novel/db';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
+import { BranchStateService } from './branch-state.service';
 import { ChangesService } from '../changes/changes.service';
 import { DatabaseService } from '../database/database.service';
 import { branchesError } from './branches.errors';
-
-type BranchDatabase = Parameters<Parameters<DatabaseService['db']['transaction']>[0]>[0];
 
 type VersionPoint = {
   id: string;
@@ -83,10 +84,16 @@ type CompareResponse = {
   settings: CompareItem[];
   outlines: CompareItem[];
   chapters: CompareItem[];
+  facts: CompareItem[];
+  characters: CompareItem[];
+  maps: CompareItem[];
   summary: {
     settingsChanged: number;
     outlinesChanged: number;
     chaptersChanged: number;
+    factsChanged: number;
+    charactersChanged: number;
+    mapsChanged: number;
     conflicts: number;
   };
 };
@@ -113,6 +120,7 @@ export class BranchesService {
   constructor(
     private readonly database: DatabaseService,
     private readonly changes: ChangesService,
+    private readonly branchState: BranchStateService,
   ) {}
 
   async list(userId: string, workId: string): Promise<{ items: BranchResponse[] }> {
@@ -120,7 +128,7 @@ export class BranchesService {
     const rows = await this.database.db
       .select()
       .from(workBranches)
-      .where(eq(workBranches.workId, workId))
+      .where(and(eq(workBranches.workId, workId), eq(workBranches.isSnapshot, false)))
       .orderBy(desc(workBranches.isMain), asc(workBranches.createdAt));
     const names = new Map(rows.map((row) => [row.id, row.name]));
     return { items: rows.map((row) => this.toResponse(row, names)) };
@@ -138,7 +146,8 @@ export class BranchesService {
         version: chapterVersions,
         outlineTitle: chapterOutlines.title,
       })
-      .from(chapterVersions)
+      .from(branchCommits)
+      .innerJoin(chapterVersions, eq(chapterVersions.id, branchCommits.chapterVersionId))
       .innerJoin(chapters, eq(chapters.id, chapterVersions.chapterId))
       .leftJoin(
         chapterOutlines,
@@ -149,7 +158,7 @@ export class BranchesService {
           eq(chapterOutlines.level, 'chapter'),
         ),
       )
-      .where(and(eq(chapters.workId, workId), eq(chapters.branchId, branchId)))
+      .where(and(eq(branchCommits.workId, workId), eq(branchCommits.sourceBranchId, branchId)))
       .orderBy(asc(chapters.chapterNumber), desc(chapterVersions.version));
 
     return {
@@ -208,40 +217,30 @@ export class BranchesService {
     }
 
     const now = new Date();
-    const forkSnapshot = await this.buildForkSnapshot(workId, source.branch.id);
-    const created = await this.database.db.transaction(async (tx) => {
-      const [branch] = await tx
-        .insert(workBranches)
-        .values({
-          workId,
-          name: input.name,
-          isMain: false,
-          parentBranchId: source.branch.id,
-          kind: input.kind,
-          reason: input.reason,
-          forkPointKind: versionPoint.kind,
-          forkChapterId: versionPoint.chapterId,
-          forkChapterVersionId: versionPoint.chapterVersionId,
-          forkChapterNumber: versionPoint.chapterNumber,
-          forkSnapshot,
-          status: 'active',
-          createdBy: userId,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-      await this.copyActiveStory(
-        tx,
-        userId,
+    const forkSnapshot = await this.buildForkSnapshot(workId, versionPoint.baselineBranchId);
+    const [created] = await this.database.db
+      .insert(workBranches)
+      .values({
         workId,
-        source.branch.id,
-        branch.id,
-        versionPoint,
-        now,
-      );
-      await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
-      return branch;
-    });
+        name: input.name,
+        isMain: false,
+        isSnapshot: false,
+        parentBranchId: source.branch.id,
+        baselineBranchId: versionPoint.baselineBranchId,
+        kind: input.kind,
+        reason: input.reason,
+        forkPointKind: versionPoint.kind,
+        forkChapterId: versionPoint.chapterId,
+        forkChapterVersionId: versionPoint.chapterVersionId,
+        forkChapterNumber: versionPoint.chapterNumber,
+        forkSnapshot,
+        status: 'active',
+        createdBy: userId,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    await this.database.db.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
 
     return this.toResponse(created, new Map([[source.branch.id, source.branch.name]]));
   }
@@ -254,15 +253,35 @@ export class BranchesService {
   ): Promise<CompareResponse> {
     const source = await this.requireBranch(userId, workId, branchId);
     const compared = await this.requireBranch(userId, workId, input.withBranchId);
-    const [sourceEntities, comparedEntities, sourceOutlines, comparedOutlines] = await Promise.all([
-      this.loadEntities(workId, source.branch.id),
-      this.loadEntities(workId, compared.branch.id),
-      this.loadOutlines(workId, source.branch.id),
-      this.loadOutlines(workId, compared.branch.id),
-    ]);
-    const [sourceChapters, comparedChapters] = await Promise.all([
-      this.loadChaptersWithContent(workId, source.branch.id),
-      this.loadChaptersWithContent(workId, compared.branch.id),
+    const sourceReadId = await this.branchState.effectiveReadBranchId(source.branch.id);
+    const comparedReadId = await this.branchState.effectiveReadBranchId(compared.branch.id);
+
+    const [
+      sourceEntities,
+      comparedEntities,
+      sourceOutlines,
+      comparedOutlines,
+      sourceChapters,
+      comparedChapters,
+      sourceFacts,
+      comparedFacts,
+      sourceCharacters,
+      comparedCharacters,
+      sourceMaps,
+      comparedMaps,
+    ] = await Promise.all([
+      this.loadEntities(workId, sourceReadId),
+      this.loadEntities(workId, comparedReadId),
+      this.loadOutlines(workId, sourceReadId),
+      this.loadOutlines(workId, comparedReadId),
+      this.loadChaptersWithContent(workId, sourceReadId),
+      this.loadChaptersWithContent(workId, comparedReadId),
+      this.loadFacts(workId, sourceReadId),
+      this.loadFacts(workId, comparedReadId),
+      this.loadCharacterStates(workId, sourceReadId),
+      this.loadCharacterStates(workId, comparedReadId),
+      this.loadMaps(workId, sourceReadId),
+      this.loadMaps(workId, comparedReadId),
     ]);
 
     const settings = this.compareByKey(
@@ -305,7 +324,7 @@ export class BranchesService {
       compared.branch.forkSnapshot.outlines,
       OUTLINE_FIELDS,
     );
-    const chapters = this.compareByKey(
+    const chapterItems = this.compareByKey(
       sourceChapters,
       comparedChapters,
       ({ chapter }) => String(chapter.chapterNumber),
@@ -322,18 +341,76 @@ export class BranchesService {
       compared.branch.forkSnapshot.chapters,
       CHAPTER_FIELDS,
     );
+    const factItems = this.compareByKey(
+      sourceFacts,
+      comparedFacts,
+      (row) => `${row.fact.type}:${row.fact.statement}`,
+      (row) => row.fact.id,
+      (row) => `第 ${row.chapterNumber} 章 · ${row.fact.statement}`,
+      (row) => ({
+        statement: row.fact.statement,
+        sourceSentence: row.fact.sourceSentence,
+        type: row.fact.type,
+      }),
+      (row) => this.factFingerprint(row),
+      compared.branch.forkSnapshot.facts,
+      FACT_FIELDS,
+    );
+    const characterItems = this.compareByKey(
+      sourceCharacters,
+      comparedCharacters,
+      (row) => row.name,
+      (row) => row.state.id,
+      (row) => row.name,
+      (row) => ({
+        body: row.state.body,
+        power: row.state.power,
+        location: row.state.location,
+        possessions: row.state.possessions,
+        disguise: row.state.disguise,
+        knowledge: row.state.knowledge,
+      }),
+      (row) => this.characterFingerprint(row),
+      compared.branch.forkSnapshot.characters,
+      CHARACTER_FIELDS,
+    );
+    const mapItems = this.compareByKey(
+      sourceMaps,
+      comparedMaps,
+      (row) => row.name,
+      (row) => row.node.id,
+      (row) => row.name,
+      (row) => ({ level: row.node.level }),
+      (row) => this.mapFingerprint(row),
+      compared.branch.forkSnapshot.maps,
+      MAP_FIELDS,
+    );
+    const allItems = [
+      ...settings,
+      ...outlines,
+      ...chapterItems,
+      ...factItems,
+      ...characterItems,
+      ...mapItems,
+    ];
 
     return {
       sourceBranch: { id: source.branch.id, name: source.branch.name },
       comparedBranch: { id: compared.branch.id, name: compared.branch.name },
       settings,
       outlines,
-      chapters,
+      chapters: chapterItems,
+      facts: factItems,
+      characters: characterItems,
+      maps: mapItems,
       summary: {
         settingsChanged: settings.filter((item) => item.status !== 'same').length,
         outlinesChanged: outlines.filter((item) => item.status !== 'same').length,
-        chaptersChanged: chapters.filter((item) => item.status !== 'same').length,
-        conflicts: [...settings, ...outlines, ...chapters].filter((item) => item.conflict).length,
+        chaptersChanged: chapterItems.filter((item) => item.status !== 'same').length,
+        factsChanged: factItems.filter((item) => item.status !== 'same').length,
+        charactersChanged: characterItems.filter((item) => item.status !== 'same').length,
+        mapsChanged: mapItems.filter((item) => item.status !== 'same').length,
+        conflicts: allItems.filter((item) => item.conflict).length,
       },
     };
   }
@@ -360,11 +437,19 @@ export class BranchesService {
         'Choose a parallel version to pick content from',
       );
     }
-
+    const sourceReadId = await this.branchState.effectiveReadBranchId(source.branch.id);
     const items: CherryPickResult['items'] = [];
     for (const item of input.items) {
       items.push(
-        await this.pickOne(userId, workId, source.branch, target.branch, item.type, item.id),
+        await this.pickOne(
+          userId,
+          workId,
+          source.branch,
+          sourceReadId,
+          target.branch,
+          item.type,
+          item.id,
+        ),
       );
     }
     return {
@@ -377,22 +462,129 @@ export class BranchesService {
     };
   }
 
+  private async resolveVersionPoint(
+    workId: string,
+    sourceBranchId: string,
+    versionPointId: string,
+  ): Promise<VersionPoint & { baselineBranchId: string }> {
+    if (versionPointId === 'current') {
+      return {
+        id: 'current',
+        kind: 'current',
+        chapterId: null,
+        chapterNumber: null,
+        chapterTitle: '',
+        chapterVersionId: null,
+        version: null,
+        sourceLabel: '当前状态',
+        label: '当前创作线',
+        baselineBranchId: await this.branchState.effectiveReadBranchId(sourceBranchId),
+      };
+    }
+
+    const [row] = await this.database.db
+      .select({
+        commit: branchCommits,
+        chapter: chapters,
+        version: chapterVersions,
+        outlineTitle: chapterOutlines.title,
+      })
+      .from(branchCommits)
+      .innerJoin(chapterVersions, eq(chapterVersions.id, branchCommits.chapterVersionId))
+      .innerJoin(chapters, eq(chapters.id, chapterVersions.chapterId))
+      .leftJoin(
+        chapterOutlines,
+        and(
+          eq(chapterOutlines.workId, chapters.workId),
+          eq(chapterOutlines.branchId, chapters.branchId),
+          eq(chapterOutlines.chapterNumber, chapters.chapterNumber),
+          eq(chapterOutlines.level, 'chapter'),
+        ),
+      )
+      .where(
+        and(eq(branchCommits.workId, workId), eq(branchCommits.chapterVersionId, versionPointId)),
+      )
+      .limit(1);
+    if (!row) {
+      throw branchesError(
+        HttpStatus.NOT_FOUND,
+        'VERSION_POINT_NOT_RECONSTRUCTABLE',
+        'This version point does not have a complete story-state snapshot',
+      );
+    }
+    const chapterTitle =
+      row.chapter.title || row.outlineTitle || `第 ${row.chapter.chapterNumber} 章`;
+    return {
+      id: row.version.id,
+      kind: 'chapter_version',
+      chapterId: row.chapter.id,
+      chapterNumber: row.chapter.chapterNumber,
+      chapterTitle,
+      chapterVersionId: row.version.id,
+      version: row.version.version,
+      sourceLabel: row.version.source === 'generated' ? '生成版本' : '保存版本',
+      label: `第 ${row.chapter.chapterNumber} 章 · ${chapterTitle} · 版本 ${row.version.version}`,
+      baselineBranchId: row.commit.snapshotBranchId,
+    };
+  }
+
+  private async buildForkSnapshot(
+    workId: string,
+    branchId: string,
+  ): Promise<WorkBranchForkSnapshotValue> {
+    const [entityRows, outlineRows, chapterRows, factRows, characterRows, mapRows] =
+      await Promise.all([
+        this.loadEntities(workId, branchId),
+        this.loadOutlines(workId, branchId),
+        this.loadChaptersWithContent(workId, branchId),
+        this.loadFacts(workId, branchId),
+        this.loadCharacterStates(workId, branchId),
+        this.loadMaps(workId, branchId),
+      ]);
+
+    return {
+      settings: Object.fromEntries(
+        entityRows.map((row) => [
+          this.settingKey(row.type, row.name),
+          this.settingFingerprint(row),
+        ]),
+      ),
+      outlines: Object.fromEntries(
+        outlineRows.map((row) => [this.outlineKey(row), this.outlineFingerprint(row)]),
+      ),
+      chapters: Object.fromEntries(
+        chapterRows.map((row) => [String(row.chapter.chapterNumber), this.chapterFingerprint(row)]),
+      ),
+      facts: Object.fromEntries(
+        factRows.map((row) => [
+          `${row.fact.type}:${row.fact.statement}`,
+          this.factFingerprint(row),
+        ]),
+      ),
+      characters: Object.fromEntries(
+        characterRows.map((row) => [row.name, this.characterFingerprint(row)]),
+      ),
+      maps: Object.fromEntries(mapRows.map((row) => [row.name, this.mapFingerprint(row)])),
+    };
+  }
+
   private async pickOne(
     userId: string,
     workId: string,
     sourceBranch: WorkBranchRow,
+    sourceReadId: string,
     targetBranch: WorkBranchRow,
     type: CherryPickInput['items'][number]['type'],
     id: string,
   ): Promise<CherryPickResult['items'][number]> {
     try {
       if (type === 'chapter') {
-        return await this.pickChapter(userId, workId, sourceBranch, targetBranch, id);
+        return await this.pickChapter(userId, workId, sourceBranch, sourceReadId, targetBranch, id);
       }
       if (type === 'setting') {
-        return await this.pickSetting(userId, workId, sourceBranch, targetBranch, id);
+        return await this.pickSetting(userId, workId, sourceBranch, sourceReadId, targetBranch, id);
       }
-      return await this.pickOutline(userId, workId, sourceBranch, targetBranch, id);
+      return await this.pickOutline(userId, workId, sourceBranch, sourceReadId, targetBranch, id);
     } catch (error) {
       if (error instanceof PickupSkip) {
         return {
@@ -413,6 +605,7 @@ export class BranchesService {
     userId: string,
     workId: string,
     sourceBranch: WorkBranchRow,
+    sourceReadId: string,
     targetBranch: WorkBranchRow,
     chapterId: string,
   ) {
@@ -423,7 +616,7 @@ export class BranchesService {
         and(
           eq(chapters.id, chapterId),
           eq(chapters.workId, workId),
-          eq(chapters.branchId, sourceBranch.id),
+          eq(chapters.branchId, sourceReadId),
         ),
       )
       .limit(1);
@@ -479,6 +672,7 @@ export class BranchesService {
     userId: string,
     workId: string,
     sourceBranch: WorkBranchRow,
+    sourceReadId: string,
     targetBranch: WorkBranchRow,
     entityId: string,
   ) {
@@ -489,7 +683,7 @@ export class BranchesService {
         and(
           eq(entities.id, entityId),
           eq(entities.workId, workId),
-          eq(entities.branchId, sourceBranch.id),
+          eq(entities.branchId, sourceReadId),
           isNull(entities.deletedAt),
         ),
       )
@@ -531,6 +725,7 @@ export class BranchesService {
     userId: string,
     workId: string,
     sourceBranch: WorkBranchRow,
+    sourceReadId: string,
     targetBranch: WorkBranchRow,
     outlineId: string,
   ) {
@@ -541,7 +736,7 @@ export class BranchesService {
         and(
           eq(chapterOutlines.id, outlineId),
           eq(chapterOutlines.workId, workId),
-          eq(chapterOutlines.branchId, sourceBranch.id),
+          eq(chapterOutlines.branchId, sourceReadId),
         ),
       )
       .limit(1);
@@ -605,9 +800,15 @@ export class BranchesService {
       risk: 'medium',
     });
     const analyzed = await this.changes.analyze(userId, workId, targetBranchId, created.id);
-    if (analyzed.impact?.classification === 'safe') {
+    if (
+      analyzed.impact?.classification === 'safe' ||
+      analyzed.impact?.classification === 'repairable'
+    ) {
       const applied = await this.changes.apply(userId, workId, targetBranchId, created.id, {
-        mode: 'apply',
+        mode: analyzed.impact.classification === 'repairable' ? 'repair' : 'apply',
+        ...(analyzed.impact.classification === 'repairable'
+          ? { repairNotes: '作者明确选择只摘取这一项，影响范围已记录在修改请求中。' }
+          : {}),
       });
       return {
         type:
@@ -685,338 +886,6 @@ export class BranchesService {
       )
       .limit(1);
     return version?.content ?? chapter.autosaveContent;
-  }
-
-  private async resolveVersionPoint(
-    workId: string,
-    branchId: string,
-    versionPointId: string,
-  ): Promise<VersionPoint> {
-    if (versionPointId === 'current') {
-      return {
-        id: 'current',
-        kind: 'current',
-        chapterId: null,
-        chapterNumber: null,
-        chapterTitle: '',
-        chapterVersionId: null,
-        version: null,
-        sourceLabel: '当前状态',
-        label: '当前创作线',
-      };
-    }
-
-    const [row] = await this.database.db
-      .select({
-        chapter: chapters,
-        version: chapterVersions,
-        outlineTitle: chapterOutlines.title,
-      })
-      .from(chapterVersions)
-      .innerJoin(chapters, eq(chapters.id, chapterVersions.chapterId))
-      .leftJoin(
-        chapterOutlines,
-        and(
-          eq(chapterOutlines.workId, chapters.workId),
-          eq(chapterOutlines.branchId, chapters.branchId),
-          eq(chapterOutlines.chapterNumber, chapters.chapterNumber),
-          eq(chapterOutlines.level, 'chapter'),
-        ),
-      )
-      .where(
-        and(
-          eq(chapterVersions.id, versionPointId),
-          eq(chapters.workId, workId),
-          eq(chapters.branchId, branchId),
-        ),
-      )
-      .limit(1);
-    if (!row) {
-      throw branchesError(
-        HttpStatus.NOT_FOUND,
-        'VERSION_POINT_NOT_FOUND',
-        'The selected version point is not available in this story line',
-      );
-    }
-    const chapterTitle =
-      row.chapter.title || row.outlineTitle || `第 ${row.chapter.chapterNumber} 章`;
-    return {
-      id: row.version.id,
-      kind: 'chapter_version',
-      chapterId: row.chapter.id,
-      chapterNumber: row.chapter.chapterNumber,
-      chapterTitle,
-      chapterVersionId: row.version.id,
-      version: row.version.version,
-      sourceLabel: row.version.source === 'generated' ? '生成版本' : '保存版本',
-      label: `第 ${row.chapter.chapterNumber} 章 · ${chapterTitle} · 版本 ${row.version.version}`,
-    };
-  }
-
-  private async buildForkSnapshot(
-    workId: string,
-    branchId: string,
-  ): Promise<WorkBranchForkSnapshotValue> {
-    const [entityRows, outlineRows, chapterRows] = await Promise.all([
-      this.database.db
-        .select()
-        .from(entities)
-        .where(
-          and(
-            eq(entities.workId, workId),
-            eq(entities.branchId, branchId),
-            isNull(entities.deletedAt),
-          ),
-        ),
-      this.database.db
-        .select()
-        .from(chapterOutlines)
-        .where(and(eq(chapterOutlines.workId, workId), eq(chapterOutlines.branchId, branchId))),
-      this.database.db
-        .select({ chapter: chapters, contentHash: chapterVersions.contentHash })
-        .from(chapters)
-        .leftJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
-        .where(and(eq(chapters.workId, workId), eq(chapters.branchId, branchId))),
-    ]);
-
-    return {
-      settings: Object.fromEntries(
-        entityRows.map((row) => [
-          this.settingKey(row.type, row.name),
-          this.settingFingerprint(row),
-        ]),
-      ),
-      outlines: Object.fromEntries(
-        outlineRows.map((row) => [this.outlineKey(row), this.outlineFingerprint(row)]),
-      ),
-      chapters: Object.fromEntries(
-        chapterRows.map(({ chapter, contentHash }) => [
-          String(chapter.chapterNumber),
-          this.chapterFingerprint({ chapter, content: '', contentHash }),
-        ]),
-      ),
-    };
-  }
-
-  private async copyActiveStory(
-    tx: BranchDatabase,
-    userId: string,
-    workId: string,
-    sourceBranchId: string,
-    targetBranchId: string,
-    versionPoint: VersionPoint,
-    now: Date,
-  ): Promise<void> {
-    const [bibleRows, sourceEntities, relationRows, outlineRows, sourceChapters] =
-      await Promise.all([
-        tx
-          .select()
-          .from(storyBibles)
-          .where(and(eq(storyBibles.workId, workId), eq(storyBibles.branchId, sourceBranchId))),
-        tx
-          .select()
-          .from(entities)
-          .where(
-            and(
-              eq(entities.workId, workId),
-              eq(entities.branchId, sourceBranchId),
-              isNull(entities.deletedAt),
-            ),
-          ),
-        tx
-          .select()
-          .from(entityRelations)
-          .where(
-            and(eq(entityRelations.workId, workId), eq(entityRelations.branchId, sourceBranchId)),
-          ),
-        tx
-          .select()
-          .from(chapterOutlines)
-          .where(
-            and(eq(chapterOutlines.workId, workId), eq(chapterOutlines.branchId, sourceBranchId)),
-          )
-          .orderBy(asc(chapterOutlines.orderIndex), asc(chapterOutlines.createdAt)),
-        tx
-          .select()
-          .from(chapters)
-          .where(and(eq(chapters.workId, workId), eq(chapters.branchId, sourceBranchId)))
-          .orderBy(asc(chapters.chapterNumber)),
-      ]);
-
-    for (const row of bibleRows) {
-      await tx.insert(storyBibles).values({
-        workId,
-        branchId: targetBranchId,
-        oneSentenceStory: row.oneSentenceStory,
-        protagonist: row.protagonist,
-        worldIronLaw: row.worldIronLaw,
-        cards: row.cards,
-        version: row.version,
-        lockedAt: row.lockedAt,
-        lockedBy: row.lockedBy,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    const entityIds = new Map<string, string>();
-    for (const row of sourceEntities) {
-      const [created] = await tx
-        .insert(entities)
-        .values({
-          workId,
-          branchId: targetBranchId,
-          name: row.name,
-          aliases: row.aliases,
-          type: row.type,
-          subtype: row.subtype,
-          summary: row.summary,
-          description: row.description,
-          tags: row.tags,
-          scope: row.scope,
-          status: row.status,
-          source: row.source,
-          customFields: row.customFields,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning({ id: entities.id });
-      entityIds.set(row.id, created.id);
-    }
-
-    for (const row of relationRows) {
-      const fromEntityId = entityIds.get(row.fromEntityId);
-      const toEntityId = entityIds.get(row.toEntityId);
-      if (!fromEntityId || !toEntityId) {
-        continue;
-      }
-      await tx.insert(entityRelations).values({
-        workId,
-        branchId: targetBranchId,
-        fromEntityId,
-        predicate: row.predicate,
-        toEntityId,
-        validFrom: row.validFrom,
-        validTo: row.validTo,
-        source: row.source,
-        createdAt: now,
-        updatedAt: now,
-      });
-    }
-
-    const outlineIds = new Map<string, string>();
-    for (const row of outlineRows) {
-      const [created] = await tx
-        .insert(chapterOutlines)
-        .values({
-          workId,
-          branchId: targetBranchId,
-          level: row.level,
-          parentId: null,
-          orderIndex: row.orderIndex,
-          title: row.title,
-          summary: row.summary,
-          details: row.details,
-          chapterNumber: row.chapterNumber,
-          chapterGoal: row.chapterGoal,
-          pov: row.pov,
-          sceneBeats: row.sceneBeats,
-          chapterEndHook: row.chapterEndHook,
-          lockedAt: row.lockedAt,
-          lockedBy: row.lockedBy,
-          version: row.version,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning({ id: chapterOutlines.id });
-      outlineIds.set(row.id, created.id);
-    }
-    for (const row of outlineRows) {
-      const newId = outlineIds.get(row.id);
-      const parentId = row.parentId ? (outlineIds.get(row.parentId) ?? null) : null;
-      if (newId && parentId) {
-        await tx.update(chapterOutlines).set({ parentId }).where(eq(chapterOutlines.id, newId));
-      }
-    }
-
-    for (const chapter of sourceChapters) {
-      const selectedContent =
-        versionPoint.chapterId === chapter.id && versionPoint.chapterVersionId
-          ? await this.loadVersionContent(tx, chapter.id, versionPoint.chapterVersionId)
-          : await this.loadCurrentContent(tx, chapter);
-      const [createdChapter] = await tx
-        .insert(chapters)
-        .values({
-          workId,
-          branchId: targetBranchId,
-          chapterNumber: chapter.chapterNumber,
-          title: chapter.title,
-          status: chapter.status,
-          wordCount: selectedContent.wordCount,
-          summary: chapter.summary,
-          hook: chapter.hook,
-          autosaveContent: selectedContent.content,
-          autosaveUpdatedAt: selectedContent.content ? now : null,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-      if (selectedContent.content) {
-        const [createdVersion] = await tx
-          .insert(chapterVersions)
-          .values({
-            chapterId: createdChapter.id,
-            version: 1,
-            content: selectedContent.content,
-            contentHash:
-              selectedContent.contentHash ??
-              createHash('sha256').update(selectedContent.content).digest('hex'),
-            wordCount: selectedContent.wordCount,
-            createdBy: userId,
-            source: 'manual',
-            createdAt: now,
-          })
-          .returning();
-        await tx
-          .update(chapters)
-          .set({ currentVersionId: createdVersion.id, autosaveUpdatedAt: now })
-          .where(eq(chapters.id, createdChapter.id));
-      }
-    }
-  }
-
-  private async loadVersionContent(
-    tx: BranchDatabase,
-    chapterId: string,
-    versionId: string,
-  ): Promise<{ content: string; contentHash: string | null; wordCount: number }> {
-    const [row] = await tx
-      .select()
-      .from(chapterVersions)
-      .where(and(eq(chapterVersions.id, versionId), eq(chapterVersions.chapterId, chapterId)))
-      .limit(1);
-    return row
-      ? { content: row.content, contentHash: row.contentHash, wordCount: row.wordCount }
-      : { content: '', contentHash: null, wordCount: 0 };
-  }
-
-  private async loadCurrentContent(
-    tx: BranchDatabase,
-    chapter: typeof chapters.$inferSelect,
-  ): Promise<{ content: string; contentHash: string | null; wordCount: number }> {
-    if (chapter.currentVersionId) {
-      const loaded = await this.loadVersionContent(tx, chapter.id, chapter.currentVersionId);
-      if (loaded.content) {
-        return loaded;
-      }
-    }
-    return {
-      content: chapter.autosaveContent,
-      contentHash: chapter.autosaveContent
-        ? createHash('sha256').update(chapter.autosaveContent).digest('hex')
-        : null,
-      wordCount: chapter.wordCount,
-    };
   }
 
   private toResponse(row: WorkBranchRow, names: Map<string, string>): BranchResponse {
@@ -1102,6 +971,33 @@ export class BranchesService {
     });
   }
 
+  private factFingerprint(row: { fact: typeof facts.$inferSelect; chapterNumber: number }): string {
+    return this.fingerprint({
+      statement: row.fact.statement,
+      sourceSentence: row.fact.sourceSentence,
+      type: row.fact.type,
+      chapterNumber: row.chapterNumber,
+    });
+  }
+
+  private characterFingerprint(row: {
+    state: typeof characterStates.$inferSelect;
+    name: string;
+  }): string {
+    return this.fingerprint({
+      body: row.state.body,
+      power: row.state.power,
+      location: row.state.location,
+      possessions: row.state.possessions,
+      disguise: row.state.disguise,
+      knowledge: row.state.knowledge,
+    });
+  }
+
+  private mapFingerprint(row: { node: typeof mapNodes.$inferSelect; name: string }): string {
+    return this.fingerprint({ name: row.name, level: row.node.level });
+  }
+
   private async loadEntities(workId: string, branchId: string) {
     return this.database.db
       .select()
@@ -1133,6 +1029,45 @@ export class BranchesService {
       .leftJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
       .where(and(eq(chapters.workId, workId), eq(chapters.branchId, branchId)))
       .orderBy(asc(chapters.chapterNumber));
+  }
+
+  private async loadFacts(workId: string, branchId: string) {
+    return this.database.db
+      .select({ fact: facts, chapterNumber: chapters.chapterNumber })
+      .from(facts)
+      .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+      .where(and(eq(facts.workId, workId), eq(facts.branchId, branchId)))
+      .orderBy(asc(chapters.chapterNumber));
+  }
+
+  private async loadCharacterStates(workId: string, branchId: string) {
+    return this.database.db
+      .select({ state: characterStates, name: entities.name })
+      .from(characterStates)
+      .innerJoin(entities, eq(entities.id, characterStates.characterId))
+      .where(
+        and(
+          eq(characterStates.workId, workId),
+          eq(characterStates.branchId, branchId),
+          isNull(entities.deletedAt),
+        ),
+      )
+      .orderBy(asc(entities.name));
+  }
+
+  private async loadMaps(workId: string, branchId: string) {
+    return this.database.db
+      .select({ node: mapNodes, name: entities.name })
+      .from(mapNodes)
+      .innerJoin(entities, eq(entities.id, mapNodes.entityId))
+      .where(
+        and(
+          eq(mapNodes.workId, workId),
+          eq(mapNodes.branchId, branchId),
+          isNull(entities.deletedAt),
+        ),
+      )
+      .orderBy(asc(entities.name));
   }
 
   private compareByKey<Row>(
@@ -1268,6 +1203,23 @@ const CHAPTER_FIELDS = [
   { field: 'hook', label: '章末钩子' },
   { field: 'content', label: '正文' },
 ];
+
+const FACT_FIELDS = [
+  { field: 'statement', label: '已确认内容' },
+  { field: 'sourceSentence', label: '来源原句' },
+  { field: 'type', label: '类型' },
+];
+
+const CHARACTER_FIELDS = [
+  { field: 'body', label: '身体状态' },
+  { field: 'power', label: '力量' },
+  { field: 'location', label: '位置' },
+  { field: 'possessions', label: '持有物' },
+  { field: 'disguise', label: '伪装' },
+  { field: 'knowledge', label: '人物认知' },
+];
+
+const MAP_FIELDS = [{ field: 'level', label: '地点层级' }];
 
 const OUTLINE_LEVEL_TITLES: Record<typeof chapterOutlines.$inferSelect.level, string> = {
   book: '全书',
