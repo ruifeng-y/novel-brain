@@ -29,6 +29,7 @@ import {
   type Relation,
   type RelationPredicate,
 } from '../../../lib/entities-api';
+import { CharacterPanel } from './character-panel';
 
 type SaveState =
   | { status: 'idle' }
@@ -697,6 +698,10 @@ export function SettingsCenterPanel({
               <p>保存后就能在搜索、关系和被引用清单里找到它。</p>
             </div>
           </form>
+
+          {selectedId && draft.type === 'character' ? (
+            <CharacterPanel branchId={branchId} characterId={selectedId} workId={workId} />
+          ) : null}
         </div>
 
         <aside className="settings-context" aria-label="关系与引用">
