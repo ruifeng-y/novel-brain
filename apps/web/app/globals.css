@@ -10041,3 +10041,260 @@ textarea {
     width: 100%;
   }
 }
+
+.create-entry-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid #405048;
+  border-radius: 7px;
+  background: #101a16;
+}
+
+.create-entry-tabs button {
+  min-height: 34px;
+  cursor: pointer;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #a9b7ae;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.create-entry-tabs button.active {
+  background: #dbe7df;
+  color: #17241f;
+}
+
+.create-form .field textarea {
+  min-height: 84px;
+  border-color: #405048;
+  background: #fbfcf8;
+  resize: vertical;
+}
+
+.create-workshop-details {
+  display: grid;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #33423a;
+}
+
+.create-workshop-details summary {
+  cursor: pointer;
+  color: #c6d0c7;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.create-workshop-details[open] {
+  padding-bottom: 4px;
+}
+
+.work-card-heading-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+}
+
+.work-card-cover {
+  width: 46px;
+  height: 64px;
+  flex: 0 0 auto;
+  border-radius: 4px;
+  object-fit: cover;
+  box-shadow: 0 4px 12px rgb(23 36 31 / 14%);
+}
+
+.work-card-tags,
+.work-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.work-card-tags li,
+.work-tag-list li {
+  padding: 3px 8px;
+  border: 1px solid #d8ded6;
+  border-radius: 999px;
+  background: #f3f6f1;
+  color: #526058;
+  font-size: 0.68rem;
+  line-height: 1.4;
+}
+
+.work-detail-hero-main {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  min-width: 0;
+}
+
+.work-detail-cover {
+  width: 118px;
+  height: 164px;
+  flex: 0 0 auto;
+  border-radius: 6px;
+  object-fit: cover;
+  box-shadow: 0 12px 30px rgb(23 36 31 / 18%);
+}
+
+.work-detail-synopsis {
+  max-width: 720px;
+  margin-top: 10px !important;
+  color: #4f5d54 !important;
+}
+
+.work-profile-board {
+  margin-top: 28px;
+  padding: 26px;
+  border: 1px solid #d9d8d0;
+  border-radius: 8px;
+  background: #fbfcf8;
+}
+
+.work-profile-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #e4e7e1;
+}
+
+.work-profile-heading h2 {
+  margin: 8px 0 8px;
+  font-family: Georgia, 'Songti SC', serif;
+  font-size: 1.8rem;
+}
+
+.work-profile-heading p:last-child {
+  max-width: 640px;
+  margin: 0;
+  color: #68736a;
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
+
+.work-profile-readonly {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #e7ebf0;
+  color: #425568;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.work-profile-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 28px;
+  padding-top: 22px;
+}
+
+.work-profile-form {
+  display: grid;
+  gap: 15px;
+  align-content: start;
+}
+
+.work-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.work-cover-editor {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #e0e4dd;
+  border-radius: 8px;
+  background: #f5f7f3;
+}
+
+.work-cover-editor h3 {
+  margin: 6px 0 0;
+  font-family: Georgia, 'Songti SC', serif;
+  font-size: 1.2rem;
+}
+
+.work-cover-frame {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 1px dashed #c9d1ca;
+  border-radius: 6px;
+  background: #eef2ed;
+  color: #78837a;
+  font-size: 0.76rem;
+  text-align: center;
+}
+
+.work-cover-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.publish-reader-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.publish-reader-cover {
+  width: 88px;
+  height: 122px;
+  flex: 0 0 auto;
+  border-radius: 5px;
+  object-fit: cover;
+  box-shadow: 0 8px 20px rgb(23 36 31 / 16%);
+}
+
+@media (max-width: 900px) {
+  .work-profile-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .work-cover-editor {
+    max-width: 320px;
+  }
+}
+
+@media (max-width: 680px) {
+  .work-profile-board {
+    padding: 20px;
+  }
+
+  .work-profile-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .work-detail-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .work-detail-hero-main {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .work-detail-cover {
+    width: 94px;
+    height: 130px;
+  }
+}

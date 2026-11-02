@@ -1,7 +1,9 @@
 import type { GenrePackDefinition, WorkGenrePack } from '@novel/contracts';
+import { apiRequest } from './auth-api';
 
 export type WorkStatus = 'preparing' | 'serializing' | 'paused' | 'completed' | 'archived';
 export type WorkScale = 'short' | 'medium' | 'long' | 'epic';
+export type WorkCreationMode = 'idea' | 'blank';
 
 export type Work = {
   id: string;
@@ -20,6 +22,21 @@ export type Work = {
   mainTemplate: string | null;
   scale: WorkScale;
   targetPlatform: string;
+  creationMode: WorkCreationMode;
+  idea: string;
+  targetReader: string;
+  chapterWordCount: number;
+  updateCadence: string;
+  styleSamples: string;
+  taboos: string;
+  synopsis: string;
+  tags: string[];
+  coverUrl: string | null;
+  coverMimeType: string | null;
+  coverWidth: number | null;
+  coverHeight: number | null;
+  coverSize: number | null;
+  coverUpdatedAt: string | null;
   status: WorkStatus;
   statusLabel: string;
   wordCount: number;
@@ -69,6 +86,13 @@ export const SCALE_LABELS: Record<WorkScale, string> = {
 };
 
 export const TARGET_PLATFORMS = ['起点中文网', '番茄小说', '七猫中文网', '其他平台'];
+export const UPDATE_CADENCE_OPTIONS = [
+  '日更',
+  '每周三更',
+  '每周两更',
+  '周更',
+  '不定期更新',
+] as const;
 
 export function buildWorksQuery(filters: WorkListFilters): string {
   const params = new URLSearchParams();
@@ -108,4 +132,17 @@ export function formatWorkDate(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
   }).format(new Date(value));
+}
+
+export function uploadWorkCover(workId: string, file: File): Promise<Work> {
+  const body = new FormData();
+  body.append('cover', file);
+  return apiRequest<Work>(`/api/v1/works/${workId}/cover`, {
+    method: 'POST',
+    body,
+  });
+}
+
+export function removeWorkCover(workId: string): Promise<void> {
+  return apiRequest<void>(`/api/v1/works/${workId}/cover`, { method: 'DELETE' });
 }

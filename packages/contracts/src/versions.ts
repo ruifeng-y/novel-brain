@@ -49,6 +49,8 @@ export const AUDIT_ACTION_LABELS = {
   work_deleted: '移入回收站',
   work_status_changed: '更新作品状态',
   work_updated: '更新作品信息',
+  work_cover_updated: '更新作品封面',
+  work_cover_removed: '移除作品封面',
   work_purged: '永久删除作品',
   version_created: '保存版本',
   change_applied: '应用修改',

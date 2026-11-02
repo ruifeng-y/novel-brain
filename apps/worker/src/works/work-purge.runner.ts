@@ -255,7 +255,7 @@ export class WorkPurgeRunner implements OnModuleDestroy {
     db: Database,
     workId: string,
   ): Promise<{ counts: WorkCounts; objectKeys: string[] }> {
-    const [branchRows, chapterRows, versionRows, imageRows, exportRows, auditRows] =
+    const [branchRows, chapterRows, versionRows, imageRows, exportRows, auditRows, workRows] =
       await Promise.all([
         db
           .select({ count: sql<number>`count(*)::int` })
@@ -282,6 +282,11 @@ export class WorkPurgeRunner implements OnModuleDestroy {
           .select({ count: sql<number>`count(*)::int` })
           .from(auditLogs)
           .where(eq(auditLogs.workId, workId)),
+        db
+          .select({ coverStorageKey: works.coverStorageKey })
+          .from(works)
+          .where(eq(works.id, workId))
+          .limit(1),
       ]);
 
     return {
@@ -297,6 +302,9 @@ export class WorkPurgeRunner implements OnModuleDestroy {
         ...new Set([
           ...imageRows.map((row) => row.storageKey),
           ...exportRows.map((row) => row.fileKey).filter((key): key is string => Boolean(key)),
+          ...workRows
+            .map((row) => row.coverStorageKey)
+            .filter((key): key is string => Boolean(key)),
         ]),
       ],
     };
@@ -347,6 +355,7 @@ export class WorkPurgeRunner implements OnModuleDestroy {
         .limit(1),
       db.select({ id: users.id }).from(users).where(eq(users.avatarUrl, key)).limit(1),
       db.select({ id: penNames.id }).from(penNames).where(eq(penNames.avatarUrl, key)).limit(1),
+      db.select({ id: works.id }).from(works).where(eq(works.coverStorageKey, key)).limit(1),
     ]);
     return checks.some((rows) => rows.length > 0);
   }

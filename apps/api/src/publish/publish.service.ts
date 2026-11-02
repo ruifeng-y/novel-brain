@@ -107,8 +107,13 @@ export class PublishService {
       title: source.work.title,
       penName: source.work.penName,
       genreLabel,
-      synopsis: source.bible?.oneSentenceStory ?? '还没有填写作品简介。',
-      tags: [genreLabel],
+      synopsis: source.work.synopsis || source.bible?.oneSentenceStory || '还没有填写作品简介。',
+      tags: [...new Set([genreLabel, ...source.work.tags])].slice(0, 10),
+      coverUrl: source.work.coverStorageKey
+        ? `/api/v1/works/${source.work.id}/cover/content?v=${(
+            source.work.coverUpdatedAt ?? source.work.updatedAt
+          ).getTime()}`
+        : null,
       chapters: source.chapters
         .filter((chapter) => chapter.content.trim().length > 0)
         .slice(0, 3)
@@ -152,6 +157,11 @@ export class PublishService {
         penName: works.penName,
         genrePack: works.genrePack,
         genreVariant: works.genreVariant,
+        synopsis: works.synopsis,
+        tags: works.tags,
+        coverStorageKey: works.coverStorageKey,
+        coverUpdatedAt: works.coverUpdatedAt,
+        updatedAt: works.updatedAt,
       })
       .from(works)
       .where(and(eq(works.id, workId), eq(works.userId, userId), isNull(works.deletedAt)))
