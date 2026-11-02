@@ -38,7 +38,17 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+      - name: Start fake-provider stack
+        env:
+          AI_PROVIDER: fake
+        run: docker compose up -d --build --wait postgres redis mailpit minio api worker web
+      - name: Run browser acceptance
+        env:
+          PLAYWRIGHT_SKIP_WEBSERVER: '1'
+        run: pnpm test:e2e
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v
 
   compose-smoke:
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')

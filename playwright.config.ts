@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const channel = process.env.PLAYWRIGHT_CHANNEL;
 const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER === '1';
 
 export default defineConfig({
   testDir: './e2e',
@@ -23,10 +24,12 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: 'pnpm --filter @novel/web dev',
-    url: 'http://127.0.0.1:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
-  },
+  webServer: skipWebServer
+    ? undefined
+    : {
+        command: 'pnpm --filter @novel/web dev',
+        url: 'http://127.0.0.1:3000',
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
 });
