@@ -19,6 +19,7 @@ import {
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../auth/auth.types';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
+import { sendExportDownload } from './download-response';
 import { exportsError } from './exports.errors';
 import { ExportsService } from './exports.service';
 
@@ -125,13 +126,7 @@ export class ExportsController {
       this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
       this.parseId(exportId, 'EXPORT_NOT_FOUND', 'Export not found'),
     );
-    response.setHeader('Content-Type', file.mimeType);
-    response.setHeader(
-      'Content-Disposition',
-      `attachment; filename="novel-export"; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
-    );
-    response.setHeader('Cache-Control', 'no-store');
-    response.send(file.data);
+    sendExportDownload(response, file);
   }
 
   private parseId(value: string, code: string, message: string): string {

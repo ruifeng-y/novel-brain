@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Patch,
   Post,
   Req,
   Res,
@@ -11,9 +12,18 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { loginSchema, registerSchema, sendCodeSchema } from '@novel/contracts';
+import {
+  changePasswordSchema,
+  forgotPasswordSchema,
+  loginSchema,
+  recoverAccountSchema,
+  registerSchema,
+  resetPasswordSchema,
+  sendCodeSchema,
+} from '@novel/contracts';
 import type { Request, Response } from 'express';
-import { SESSION_COOKIE_NAME, SESSION_TTL_DAYS } from './auth.constants';
+import { SESSION_COOKIE_NAME } from './auth.constants';
+import { clearSessionCookieOptions, createSessionCookieOptions } from './session-cookie';
 import { SessionAuthGuard } from './session-auth.guard';
 import { AuthService } from './auth.service';
 import { authError } from './auth.errors';
@@ -107,7 +117,12 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     if (request.auth) {
-      await this.authService.logout(request.auth.sessionId);
+      await this.authService.logout(
+        request.auth.sessionId,
+        request.auth.user.id,
+        request.ip ?? request.socket.remoteAddress ?? null,
+        request.get('user-agent') ?? null,
+      );
     }
     this.clearSessionCookie(response);
   }
@@ -121,27 +136,129 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
     if (request.auth) {
-      await this.authService.logoutAll(request.auth.user.id);
+      await this.authService.logoutAll(
+        request.auth.user.id,
+        request.ip ?? request.socket.remoteAddress ?? null,
+        request.get('user-agent') ?? null,
+      );
     }
     this.clearSessionCookie(response);
   }
 
+  @Patch('password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'Change the signed-in author password' })
+  async changePassword(
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const parsed = changePasswordSchema.safeParse(body);
+    if (!parsed.success) {
+      throw authError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Enter your current password and a new password of at least 8 characters',
+        parsed.error.flatten(),
+      );
+    }
+
+    if (!request.auth) {
+      throw authError(HttpStatus.UNAUTHORIZED, 'UNAUTHENTICATED', 'Sign in to continue');
+    }
+
+    await this.authService.changePassword(
+      request.auth.user.id,
+      parsed.data.currentPassword,
+      parsed.data.newPassword,
+      request.ip ?? request.socket.remoteAddress ?? null,
+      request.get('user-agent') ?? null,
+    );
+    this.clearSessionCookie(response);
+  }
+
+  @Post('password/forgot')
+  @HttpCode(HttpStatus.ACCEPTED)
+  @ApiOperation({ summary: 'Send a password reset link when the account exists' })
+  async forgotPassword(@Body() body: unknown, @Req() request: Request) {
+    const parsed = forgotPasswordSchema.safeParse(body);
+    if (!parsed.success) {
+      throw authError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Enter a valid email address',
+        parsed.error.flatten(),
+      );
+    }
+
+    await this.authService.forgotPassword(
+      parsed.data.email,
+      request.ip ?? request.socket.remoteAddress ?? 'unknown',
+    );
+    return { accepted: true };
+  }
+
+  @Post('password/reset')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Reset a password with a one-time email token' })
+  async resetPassword(
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    const parsed = resetPasswordSchema.safeParse(body);
+    if (!parsed.success) {
+      throw authError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Enter a valid reset link and a new password of at least 8 characters',
+        parsed.error.flatten(),
+      );
+    }
+
+    await this.authService.resetPassword(
+      parsed.data.token,
+      parsed.data.newPassword,
+      request.ip ?? request.socket.remoteAddress ?? null,
+      request.get('user-agent') ?? null,
+    );
+    this.clearSessionCookie(response);
+  }
+
+  @Post('recover')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Recover an account during its deletion grace period' })
+  async recoverAccount(@Body() body: unknown, @Req() request: Request): Promise<void> {
+    const parsed = recoverAccountSchema.safeParse(body);
+    if (!parsed.success) {
+      throw authError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Enter the account email and password',
+        parsed.error.flatten(),
+      );
+    }
+    await this.authService.recoverAccount(
+      parsed.data.email,
+      parsed.data.password,
+      request.ip ?? request.socket.remoteAddress ?? 'unknown',
+      request.get('user-agent') ?? null,
+    );
+  }
+
   private setSessionCookie(response: Response, token: string): void {
-    response.cookie(SESSION_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: this.config.get<string>('COOKIE_SECURE') === 'true',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_TTL_DAYS * 24 * 60 * 60 * 1000,
-    });
+    response.cookie(
+      SESSION_COOKIE_NAME,
+      token,
+      createSessionCookieOptions(this.config.get<boolean>('COOKIE_SECURE') === true),
+    );
   }
 
   private clearSessionCookie(response: Response): void {
-    response.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: this.config.get<string>('COOKIE_SECURE') === 'true',
-      sameSite: 'lax',
-      path: '/',
-    });
+    response.clearCookie(
+      SESSION_COOKIE_NAME,
+      clearSessionCookieOptions(this.config.get<boolean>('COOKIE_SECURE') === true),
+    );
   }
 }

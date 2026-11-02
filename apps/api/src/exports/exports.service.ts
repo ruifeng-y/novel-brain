@@ -22,8 +22,10 @@ import { exportJobs, loadExportSource, works, type ExportJobRow } from '@novel/d
 import type { Queue } from 'bullmq';
 import { and, desc, eq, gte, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
+import { AccountAuditService } from '../account-audit/account-audit.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { ObjectStorageService } from '../storage/object-storage.service';
+import { DownloadTokenService } from './download-token.service';
 import { exportsError } from './exports.errors';
 
 const EXPORT_RETENTION_DAYS = 7;
@@ -36,6 +38,8 @@ export class ExportsService {
     private readonly database: DatabaseService,
     private readonly storage: ObjectStorageService,
     private readonly rateLimits: RateLimitService,
+    private readonly accountAudit: AccountAuditService,
+    private readonly downloadTokens: DownloadTokenService,
     @InjectQueue('export') private readonly exportQueue: Queue,
   ) {}
 
@@ -105,6 +109,22 @@ export class ExportsService {
         updatedAt: now,
       })
       .returning();
+    await this.accountAudit.record({
+      userId,
+      action: 'work_export_requested',
+      targetType: 'work_export',
+      targetId: created.id,
+      title: '发起作品导出',
+      detail: `《${source.work.title}》· ${input.format}`,
+      metadata: {
+        kind: 'work',
+        workId,
+        branchId,
+        format: input.format,
+        scope: input.scope,
+        chapterCount: selected.length,
+      },
+    });
 
     const totalCharacters = selected.reduce((total, chapter) => total + chapter.content.length, 0);
     const runInBackground =
@@ -206,11 +226,43 @@ export class ExportsService {
     if (row.status !== 'completed' || !row.fileKey || !row.fileName || !row.mimeType) {
       throw exportsError(HttpStatus.CONFLICT, 'EXPORT_NOT_READY', '导出文件还在准备中');
     }
+    await this.accountAudit.record({
+      userId,
+      action: 'work_export_downloaded',
+      targetType: 'work_export',
+      targetId: row.id,
+      title: '下载作品导出',
+      detail: row.fileName,
+      metadata: {
+        kind: 'work',
+        workId,
+        branchId,
+        format: row.format,
+      },
+    });
     return {
       data: await this.storage.getObject(userId, row.fileKey),
       fileName: row.fileName,
       mimeType: row.mimeType,
     };
+  }
+
+  async downloadSignedToken(token: string): Promise<{
+    data: Buffer;
+    fileName: string;
+    mimeType: string;
+  }> {
+    const claims = this.downloadTokens.verify(token);
+    if (!claims) {
+      throw exportsError(
+        HttpStatus.FORBIDDEN,
+        'DOWNLOAD_LINK_INVALID',
+        'This download link is invalid or has expired',
+      );
+    }
+    return this.database.withUserContext(claims.userId, () =>
+      this.download(claims.userId, claims.workId, claims.branchId, claims.exportId),
+    );
   }
 
   private async loadSource(userId: string, workId: string, branchId: string) {
@@ -326,7 +378,12 @@ export class ExportsService {
       error: typeof row.error?.message === 'string' ? row.error.message : null,
       downloadUrl:
         row.status === 'completed' && !expired
-          ? `/api/v1/works/${row.workId}/branches/${row.branchId}/exports/${row.id}/download`
+          ? `/api/v1/downloads/${this.downloadTokens.sign({
+              exportId: row.id,
+              userId: row.userId,
+              workId: row.workId,
+              branchId: row.branchId,
+            })}`
           : null,
       branch: { id: row.branchId, name: branchName },
       createdAt: row.createdAt.toISOString(),

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ApiError, apiRequest, friendlyError, type User } from '../../lib/auth-api';
+import type { PenNameListResponse } from '../../lib/account-api';
 import {
   buildWorksQuery,
   GENRE_LABELS,
@@ -52,6 +53,7 @@ export function WorkspaceHome() {
   const [userState, setUserState] = useState<UserState>({ status: 'loading' });
   const [works, setWorks] = useState<Work[]>([]);
   const [worksLoading, setWorksLoading] = useState(false);
+  const [penNames, setPenNames] = useState<PenNameListResponse['items']>([]);
   const [worksError, setWorksError] = useState('');
   const [notice, setNotice] = useState('');
   const [view, setView] = useState<ShelfView>('active');
@@ -71,8 +73,14 @@ export function WorkspaceHome() {
   const [leaving, setLeaving] = useState<'current' | 'all'>();
 
   useEffect(() => {
-    apiRequest<User>('/api/v1/auth/me')
-      .then((user) => setUserState({ status: 'ready', user }))
+    Promise.all([
+      apiRequest<User>('/api/v1/auth/me'),
+      apiRequest<PenNameListResponse>('/api/v1/users/me/pen-names'),
+    ])
+      .then(([user, response]) => {
+        setUserState({ status: 'ready', user });
+        setPenNames(response.items);
+      })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
           router.replace('/login');
@@ -313,6 +321,7 @@ export function WorkspaceHome() {
         <span className="workspace-brand">NovelBrain</span>
         <div className="workspace-account">
           <Link href="/workspace/settings">模型设置</Link>
+          <Link href="/workspace/settings/account">账号设置</Link>
           <Link href="/workspace/settings/privacy">隐私与合规</Link>
           <span>{userState.user.displayName}</span>
           <button
@@ -684,7 +693,11 @@ export function WorkspaceHome() {
 
           {mode === 'create' ? (
             <form className="auth-form create-form" onSubmit={submitCreate}>
-              <WorkFields genrePack={genrePack} onGenrePackChange={setGenrePack} />
+              <WorkFields
+                genrePack={genrePack}
+                onGenrePackChange={setGenrePack}
+                penNames={penNames}
+              />
               {formError ? (
                 <p className="form-message form-message-error" role="alert">
                   {formError}
@@ -696,7 +709,11 @@ export function WorkspaceHome() {
             </form>
           ) : (
             <form className="auth-form create-form" onSubmit={submitImport}>
-              <WorkFields genrePack={genrePack} onGenrePackChange={setGenrePack} />
+              <WorkFields
+                genrePack={genrePack}
+                onGenrePackChange={setGenrePack}
+                penNames={penNames}
+              />
               <label className="field">
                 <span>旧稿文件</span>
                 <input accept=".txt,.md,.markdown,.docx" name="manuscript" type="file" />
@@ -736,9 +753,11 @@ export function WorkspaceHome() {
 function WorkFields({
   genrePack,
   onGenrePackChange,
+  penNames,
 }: {
   genrePack: 'xianxia' | 'history' | 'urban';
   onGenrePackChange: (genrePack: 'xianxia' | 'history' | 'urban') => void;
+  penNames: PenNameListResponse['items'];
 }) {
   return (
     <>
@@ -756,11 +775,22 @@ function WorkFields({
         <span>笔名</span>
         <input
           autoComplete="off"
+          defaultValue={
+            penNames.find((penName) => penName.isDefault)?.name ?? penNames[0]?.name
+          }
+          list="workspace-pen-names"
           maxLength={60}
           name="penName"
           placeholder="这本书使用的笔名"
           required
         />
+        <datalist id="workspace-pen-names">
+          {penNames.map((penName) => (
+            <option key={penName.id} value={penName.name}>
+              {penName.isDefault ? '默认笔名' : penName.bio || '已保存笔名'}
+            </option>
+          ))}
+        </datalist>
       </label>
       <div className="create-field-row">
         <label className="field">

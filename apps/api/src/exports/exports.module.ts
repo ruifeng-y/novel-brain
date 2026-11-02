@@ -3,9 +3,12 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseRedisConnection } from '@novel/contracts';
 import { AuthModule } from '../auth/auth.module';
+import { AccountAuditModule } from '../account-audit/account-audit.module';
 import { BranchStateModule } from '../branches/branch-state.module';
 import { DatabaseModule } from '../database/database.module';
 import { StorageModule } from '../storage/storage.module';
+import { DownloadTokenService } from './download-token.service';
+import { DownloadsController } from './downloads.controller';
 import { ExportsController } from './exports.controller';
 import { ExportsService } from './exports.service';
 
@@ -13,6 +16,7 @@ import { ExportsService } from './exports.service';
   imports: [
     DatabaseModule,
     AuthModule,
+    AccountAuditModule,
     BranchStateModule,
     StorageModule,
     BullModule.forRootAsync({
@@ -25,7 +29,7 @@ import { ExportsService } from './exports.service';
     }),
     BullModule.registerQueue({ name: 'export' }),
   ],
-  controllers: [ExportsController],
-  providers: [ExportsService],
+  controllers: [ExportsController, DownloadsController],
+  providers: [ExportsService, DownloadTokenService],
 })
 export class ExportsModule {}

@@ -145,6 +145,8 @@ describe('security boundaries', () => {
     const tenantTables = [
       'users',
       'sessions',
+      'pen_names',
+      'account_export_jobs',
       'model_configs',
       'works',
       'work_branches',
@@ -267,10 +269,10 @@ describe('security boundaries', () => {
 
   it('rate limits account exports and never includes a model key', async () => {
     const email = `export-${randomUUID()}@example.com`;
-    const inserted = await owner.query<{ id: string }>(
+    await owner.query(
       `insert into users (email, password_hash, display_name)
        values ($1, $2, '导出作者')
-       returning id`,
+       `,
       [email, passwordHash],
     );
     const agent = request.agent(app.getHttpServer());
@@ -303,17 +305,15 @@ describe('security boundaries', () => {
       })
       .expect(201);
 
-    const first = await agent.get('/api/v1/users/me/export').expect(200);
-    expect(first.headers['content-disposition']).toContain('attachment');
-    expect(first.body.account.id).toBe(inserted.rows[0].id);
-    expect(first.body.works.map((work: { title: string }) => work.title)).toEqual(['导出之书']);
+    const first = await agent.post('/api/v1/users/me/export').expect(202);
+    expect(first.body.status).toBe('queued');
+    expect(first.body.id).toBeTruthy();
     expect(JSON.stringify(first.body)).not.toContain(apiKey);
-    expect(JSON.stringify(first.body)).not.toContain('encryptedApiKey');
 
-    await agent.get('/api/v1/users/me/export').expect(200);
-    await agent.get('/api/v1/users/me/export').expect(200);
+    await agent.post('/api/v1/users/me/export').expect(202);
+    await agent.post('/api/v1/users/me/export').expect(202);
     await agent
-      .get('/api/v1/users/me/export')
+      .post('/api/v1/users/me/export')
       .expect(429)
       .expect(({ body }) => {
         expect(body.code).toBe('RATE_LIMITED');

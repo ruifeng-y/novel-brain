@@ -75,7 +75,7 @@ node scripts/ops.mjs backup
 每日 03:00 执行示例：
 
 ```cron
-0 3 * * * cd /srv/novel-brain && node scripts/ops.mjs backup >> /var/log/novel-brain-backup.log 2>&1
+0 3 * * * cd /srv/novel-brain && node scripts/ops.mjs backup >> /var/log/novel-brain-backup.log 2>&1 && node scripts/ops.mjs offsite --backup "$(ls -1d backups/postgres/* | tail -1)" --target /mnt/novel-brain-offsite/postgres >> /var/log/novel-brain-backup.log 2>&1
 ```
 
 Windows 计划任务只运行：
@@ -85,6 +85,17 @@ node D:\AI\Codex\novel-brain\scripts\ops.mjs backup
 ```
 
 将 `backups/` 同步到独立磁盘、NAS 或启用版本控制的对象存储。备份目录已经同时包含数据库和对象文件，只保留主机本地副本不满足容灾要求。
+
+内置异地复制命令会校验复制结果并写入 `offsite-manifest.json`：
+
+```bash
+node scripts/ops.mjs offsite \
+  --backup backups/postgres/20261102T120621Z \
+  --target /mnt/novel-brain-offsite/postgres
+```
+
+目标已经存在时命令拒绝覆盖。生产目标必须启用静态加密，并使用独立故障域；完整
+步骤见 `docs/operations/production-deployment.md`。
 
 备份目标：
 

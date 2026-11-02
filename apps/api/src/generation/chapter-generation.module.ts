@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { parseRedisConnection } from '@novel/contracts';
 import { AuthModule } from '../auth/auth.module';
+import { AccountAuditModule } from '../account-audit/account-audit.module';
 import { BranchStateModule } from '../branches/branch-state.module';
 import { DatabaseModule } from '../database/database.module';
 import { BatchJobsController } from './batch-jobs.controller';
@@ -16,6 +17,7 @@ import { VersionsModule } from '../versions/versions.module';
   imports: [
     DatabaseModule,
     AuthModule,
+    AccountAuditModule,
     BranchStateModule,
     VersionsModule,
     BullModule.forRootAsync({
