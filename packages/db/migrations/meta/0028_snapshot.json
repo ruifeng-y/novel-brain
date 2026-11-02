@@ -2741,6 +2741,13 @@
           "primaryKey": false,
           "notNull": true
         },
+        "subtype": {
+          "name": "subtype",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
         "summary": {
           "name": "summary",
           "type": "text",

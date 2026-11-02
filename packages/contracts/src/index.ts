@@ -5,6 +5,7 @@ export * from './changes';
 export * from './entity-center';
 export * from './env';
 export * from './fact-extraction';
+export * from './genre-packs';
 export * from './health';
 export * from './map-faction';
 export * from './model-configs';

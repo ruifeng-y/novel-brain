@@ -26,7 +26,10 @@ export function WorkspaceHome() {
   const [createError, setCreateError] = useState('');
 
   useEffect(() => {
-    Promise.all([apiRequest<User>('/api/v1/auth/me'), apiRequest<WorkListResponse>('/api/v1/works')])
+    Promise.all([
+      apiRequest<User>('/api/v1/auth/me'),
+      apiRequest<WorkListResponse>('/api/v1/works'),
+    ])
       .then(([user, works]) => setState({ status: 'ready', user, works: works.items }))
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
@@ -219,7 +222,11 @@ export function WorkspaceHome() {
               <label className="field">
                 <span>题材</span>
                 <select defaultValue="xianxia" name="genrePack">
-                  <option value="xianxia">仙侠</option>
+                  {Object.entries(GENRE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="field">

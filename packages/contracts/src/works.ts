@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const workGenrePackSchema = z.enum(['xianxia']);
+export const workGenrePackSchema = z.enum(['xianxia', 'urban']);
 export const workScaleSchema = z.enum(['short', 'medium', 'long', 'epic']);
 export const workStatusSchema = z.enum([
   'preparing',
