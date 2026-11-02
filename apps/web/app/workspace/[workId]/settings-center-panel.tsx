@@ -29,6 +29,7 @@ import {
   type Relation,
   type RelationPredicate,
 } from '../../../lib/entities-api';
+import { CharacterPanel } from './character-panel';
 import { StructuredSettingsPanel } from './structured-settings-panel';
 
 type SaveState =
@@ -703,6 +704,10 @@ export function SettingsCenterPanel({
               <p>保存后就能在搜索、关系和被引用清单里找到它。</p>
             </div>
           </form>
+
+          {selectedId && draft.type === 'character' ? (
+            <CharacterPanel branchId={branchId} characterId={selectedId} workId={workId} />
+          ) : null}
 
           {structuredEntity ? (
             <StructuredSettingsPanel

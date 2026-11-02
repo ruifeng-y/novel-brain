@@ -5,6 +5,8 @@ import { AiModule } from './ai/ai.module';
 import { ModelConfigsController } from './ai/model-configs.controller';
 import { AuthModule } from './auth/auth.module';
 import { AuthController } from './auth/auth.controller';
+import { CharactersController } from './characters/characters.controller';
+import { CharactersModule } from './characters/characters.module';
 import { DatabaseModule } from './database/database.module';
 import { EntitiesController } from './entities/entities.controller';
 import { EntitiesModule } from './entities/entities.module';
@@ -34,6 +36,7 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     StoryPlanningModule,
     EntitiesModule,
     WorldbuildingModule,
+    CharactersModule,
     ChapterGenerationModule,
     HealthModule,
   ],
@@ -49,6 +52,7 @@ export class AppModule implements NestModule {
         StoryPlanningController,
         EntitiesController,
         WorldbuildingController,
+        CharactersController,
         ChapterGenerationController,
       );
   }

@@ -435,6 +435,129 @@ export const entities = pgTable(
 export type EntityRow = typeof entities.$inferSelect;
 export type NewEntityRow = typeof entities.$inferInsert;
 
+export const characterProfiles = pgTable(
+  'character_profiles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    desire: text('desire').notNull().default(''),
+    fear: text('fear').notNull().default(''),
+    secret: text('secret').notNull().default(''),
+    voice: text('voice').notNull().default(''),
+    arc: text('arc').notNull().default(''),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('character_profiles_entity_unique').on(table.entityId),
+    index('character_profiles_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type CharacterProfileRow = typeof characterProfiles.$inferSelect;
+export type NewCharacterProfileRow = typeof characterProfiles.$inferInsert;
+
+export type CharacterKnowledgeValue = {
+  id: string;
+  title: string;
+  objectiveTruth: string;
+  characterBelief: string;
+  validFrom: string;
+  validTo: string | null;
+  source: string;
+};
+
+export type CharacterStateValue = {
+  body: string;
+  power: string;
+  location: string;
+  possessions: string;
+  disguise: string;
+  knowledge: CharacterKnowledgeValue[];
+};
+
+export const characterStates = pgTable(
+  'character_states',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    body: text('body').notNull().default(''),
+    power: text('power').notNull().default(''),
+    location: text('location').notNull().default(''),
+    possessions: text('possessions').notNull().default(''),
+    disguise: text('disguise').notNull().default(''),
+    knowledge: jsonb('knowledge')
+      .$type<CharacterKnowledgeValue[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    version: integer('version').notNull().default(1),
+    updatedBy: uuid('updated_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('character_states_character_unique').on(table.characterId),
+    index('character_states_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type CharacterStateRow = typeof characterStates.$inferSelect;
+export type NewCharacterStateRow = typeof characterStates.$inferInsert;
+
+export const characterStateRevisions = pgTable(
+  'character_state_revisions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    version: integer('version').notNull(),
+    reason: text('reason').notNull(),
+    source: text('source').notNull().default('作者录入'),
+    changedFields: jsonb('changed_fields').$type<string[]>().notNull(),
+    beforeState: jsonb('before_state').$type<CharacterStateValue>(),
+    afterState: jsonb('after_state').$type<CharacterStateValue>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('character_state_revisions_character_version_unique').on(
+      table.characterId,
+      table.version,
+    ),
+    index('character_state_revisions_character_created_idx').on(table.characterId, table.createdAt),
+  ],
+);
+
+export type CharacterStateRevisionRow = typeof characterStateRevisions.$inferSelect;
+export type NewCharacterStateRevisionRow = typeof characterStateRevisions.$inferInsert;
+
 export const entityRelations = pgTable(
   'entity_relations',
   {
