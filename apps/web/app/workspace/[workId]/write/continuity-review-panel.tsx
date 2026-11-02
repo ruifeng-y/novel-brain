@@ -48,7 +48,7 @@ export function ContinuityReviewPanel({
         </p>
       ) : null}
       {!loading && issues.length === 0 ? (
-        <p className="continuity-review-empty">这一章暂时没有发现身体状态冲突。</p>
+        <p className="continuity-review-empty">这一章暂时没有发现前后设定冲突。</p>
       ) : null}
 
       <div className="continuity-issue-list">
@@ -61,7 +61,7 @@ export function ContinuityReviewPanel({
               key={issue.id}
             >
               <div className="continuity-issue-heading">
-                <strong>{issue.categoryLabel}冲突</strong>
+                <strong>{issue.categoryLabel}</strong>
                 <span
                   className={`continuity-status continuity-status-${issue.status}`}
                 >

@@ -12,7 +12,7 @@ import {
   type ChapterGenerationOutputKind,
   type WritingQualityTier,
 } from '@novel/contracts';
-import { detectBodyStateConflicts } from '@novel/core';
+import { auditChapterQuality, type ChapterQualityReport } from '@novel/core';
 import {
   annotations,
   chapterOutlines,
@@ -27,6 +27,7 @@ import {
   jobEvents,
   jobSteps,
   jobs,
+  qualityReports,
   storyBibles,
   type ChapterOutlineRow,
   type GenerationRequestRow,
@@ -35,6 +36,7 @@ import {
 } from '@novel/db';
 import { and, asc, eq, inArray } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
+import { loadChapterAuditInput } from './chapter-audit-context';
 import { GenerationModelConfigResolver } from './generation-model-config.resolver';
 
 type GenerationStepKey = 'readiness' | 'brief' | 'context' | 'draft' | 'extract_facts' | 'verify';
@@ -453,20 +455,31 @@ export class ChapterGenerationRunner {
       }
 
       await this.beginStep(jobId, 'verify', { draftId }, 99);
-      const bodyStateConflicts =
+      const audit =
         action === 'chapter'
-          ? detectBodyStateConflicts(
-              draftContent,
-              confirmedFactRows
-                .filter(({ fact }) => fact.type === 'body_state')
-                .map(({ fact, chapterNumber }) => ({
+          ? auditChapterQuality(
+              await loadChapterAuditInput(
+                this.database,
+                generation.workId,
+                generation.branchId,
+                Number(jobRow.payload.chapterNumber),
+                draftContent,
+                {
+                  chapterGoal: outline.chapterGoal,
+                  pov: outline.pov,
+                  sceneBeats: outline.sceneBeats,
+                  chapterEndHook: outline.chapterEndHook,
+                },
+                confirmedFactRows.map(({ fact, chapterNumber }) => ({
                   id: fact.id,
+                  chapterNumber,
+                  type: fact.type,
                   statement: fact.statement,
                   sourceSentence: fact.sourceSentence,
-                  chapterNumber,
                 })),
+              ),
             )
-          : [];
+          : { issues: [], report: null as ChapterQualityReport | null };
       const tabooIssues = this.detectTabooIssues(
         draftContent,
         settings.tabooWords,
@@ -475,10 +488,10 @@ export class ChapterGenerationRunner {
       );
       await this.database.db.transaction(async (tx) => {
         await tx.delete(annotations).where(eq(annotations.chapterId, generation.chapterId));
-        if (bodyStateConflicts.length > 0 || tabooIssues.length > 0) {
+        if (audit.issues.length > 0 || tabooIssues.length > 0) {
           await tx.insert(annotations).values(
             [
-              ...bodyStateConflicts.map((issue) => ({
+              ...audit.issues.map((issue) => ({
                 workId: generation.workId,
                 branchId: generation.branchId,
                 chapterId: generation.chapterId,
@@ -498,8 +511,32 @@ export class ChapterGenerationRunner {
             ],
           );
         }
+        if (audit.report) {
+          const now = new Date();
+          await tx
+            .insert(qualityReports)
+            .values({
+              workId: generation.workId,
+              branchId: generation.branchId,
+              chapterId: generation.chapterId,
+              generationRequestId: generation.id,
+              draftId: draftId ?? null,
+              report: audit.report,
+              createdAt: now,
+              updatedAt: now,
+            })
+            .onConflictDoUpdate({
+              target: qualityReports.chapterId,
+              set: {
+                generationRequestId: generation.id,
+                draftId: draftId ?? null,
+                report: audit.report,
+                updatedAt: now,
+              },
+            });
+        }
       });
-      const issueCount = bodyStateConflicts.length + tabooIssues.length;
+      const issueCount = audit.issues.length + tabooIssues.length;
       await this.completeStep(
         jobId,
         'verify',
@@ -507,10 +544,14 @@ export class ChapterGenerationRunner {
           issueCount,
           categories: [
             ...new Set([
-              ...bodyStateConflicts.map((issue) => issue.category),
+              ...audit.issues.map((issue) => issue.category),
               ...tabooIssues.map((issue) => issue.category),
             ]),
           ],
+          qualityStatus: audit.report
+            ? audit.report.dimensions.find((dimension) => dimension.key === 'continuity')
+                ?.status ?? null
+            : null,
         },
         99,
       );

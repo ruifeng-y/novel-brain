@@ -215,6 +215,7 @@ export type ContinuityIssue = {
 export type WritingInsights = {
   suggestions: ContinuityIssue[];
   continuity: ContinuityIssue[];
+  qualityReport: ChapterQualityReport | null;
   foreshadows: Array<{
     id: string;
     title: string;
@@ -234,6 +235,31 @@ export type WritingInsights = {
     knowledgeCount: number;
     updatedAt: string;
   }>;
+};
+
+export type ChapterQualityDimensionKey =
+  | 'hook'
+  | 'pacing'
+  | 'information_density'
+  | 'character_voice'
+  | 'prose'
+  | 'continuity';
+
+export type ChapterQualityDimension = {
+  key: ChapterQualityDimensionKey;
+  label: string;
+  status: 'good' | 'watch' | 'weak';
+  statusLabel: string;
+  summary: string;
+  suggestion: string;
+};
+
+export type ChapterQualityReport = {
+  chapterNumber: number;
+  generatedAt: string;
+  summary: string;
+  dimensions: ChapterQualityDimension[];
+  issueCounts: Record<string, number>;
 };
 
 function generationPath(workId: string, branchId: string): string {
@@ -446,6 +472,16 @@ export function loadWritingInsights(
 ): Promise<WritingInsights> {
   return apiRequest<WritingInsights>(
     `${generationPath(workId, branchId)}/chapters/${chapterNumber}/insights`,
+  );
+}
+
+export function loadChapterQuality(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+): Promise<ChapterQualityReport | null> {
+  return apiRequest<ChapterQualityReport | null>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/quality`,
   );
 }
 

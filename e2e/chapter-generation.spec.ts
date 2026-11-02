@@ -295,10 +295,16 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
 
   const continuityPanel = page.getByRole('region', { name: '连续性提示' });
   await expect(continuityPanel).toBeVisible();
-  await expect(continuityPanel.getByText('身体状态冲突')).toBeVisible();
+  await expect(continuityPanel.getByText('身体状态', { exact: true })).toBeVisible();
   await expect(continuityPanel.locator('.continuity-issue-message')).toContainText('左臂');
   await expect(continuityPanel.locator('.continuity-suggestion')).toContainText('右手');
   await expectHighlightOverBodyEditor(page);
+  await page.getByRole('tab', { name: '质量' }).click();
+  const qualityPanel = page.getByRole('region', { name: '本章质量报告' });
+  await expect(qualityPanel).toBeVisible();
+  await expect(qualityPanel.locator('[data-testid^="quality-"]')).toHaveCount(6);
+  await expect(qualityPanel.getByTestId('quality-continuity')).toContainText('连续性');
+  await page.getByRole('tab', { name: '连续性' }).click();
   await page.screenshot({
     fullPage: true,
     path: 'test-results/ticket-9-continuity.png',

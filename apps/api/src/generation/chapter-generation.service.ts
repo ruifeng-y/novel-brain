@@ -3,6 +3,7 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   CHAPTER_ACTION_OUTPUT_KIND,
   CONTINUITY_CATEGORY_LABELS,
+  CONTINUITY_ISSUE_CATEGORIES,
   CONTINUITY_SEVERITY_LABELS,
   CONTINUITY_STATUS_LABELS,
   CHAPTER_STATUS_LABELS,
@@ -10,6 +11,7 @@ import {
   QUALITY_TIER_LABELS,
   countCjkCharacters,
   type ChapterGenerationAction,
+  type ChapterQualityReport,
   type ChapterStatus,
   type ConfirmFactProposalInput,
   type GenerateChapterInput,
@@ -37,6 +39,7 @@ import {
   jobs,
   modelConfigs,
   entities,
+  qualityReports,
   workBranches,
   works,
   type ChapterOutlineRow,
@@ -44,6 +47,7 @@ import {
   type ChapterVersionRow,
   type FactProposalRow,
   type JobRow,
+  type QualityReportRow,
 } from '@novel/db';
 import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, gt, isNotNull, isNull, max, sql } from 'drizzle-orm';
@@ -854,7 +858,7 @@ export class ChapterGenerationService {
     await this.requireOutline(workId, branchId, chapterNumber);
     const chapter = await this.findChapter(workId, branchId, chapterNumber);
 
-    const [annotationRows, foreshadowRows, characterRows] = await Promise.all([
+    const [annotationRows, foreshadowRows, characterRows, qualityRows] = await Promise.all([
       chapter
         ? this.database.db
             .select({
@@ -900,12 +904,29 @@ export class ChapterGenerationService {
           ),
         )
         .orderBy(asc(entities.name)),
+      chapter
+        ? this.database.db
+            .select()
+            .from(qualityReports)
+            .where(
+              and(
+                eq(qualityReports.workId, workId),
+                eq(qualityReports.branchId, branchId),
+                eq(qualityReports.chapterId, chapter.id),
+              ),
+            )
+            .limit(1)
+        : Promise.resolve([] as QualityReportRow[]),
     ]);
 
     const issues = annotationRows.map((row) => this.toContinuityIssueResponse(row));
+    const continuityCategories = new Set<string>(CONTINUITY_ISSUE_CATEGORIES);
     return {
-      suggestions: issues.filter((issue) => issue.category !== 'body_state'),
-      continuity: issues.filter((issue) => issue.category === 'body_state'),
+      suggestions: issues.filter((issue) => !continuityCategories.has(issue.category)),
+      continuity: issues.filter((issue) => continuityCategories.has(issue.category)),
+      qualityReport: qualityRows[0]
+        ? this.toQualityReportResponse(chapterNumber, qualityRows[0])
+        : null,
       foreshadows: foreshadowRows.map((foreshadow) => ({
         id: foreshadow.id,
         title: foreshadow.title,
@@ -926,6 +947,33 @@ export class ChapterGenerationService {
         updatedAt: state.updatedAt.toISOString(),
       })),
     };
+  }
+
+  async getChapterQuality(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+  ): Promise<ChapterQualityReport | null> {
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.findChapter(workId, branchId, chapterNumber);
+    if (!chapter) {
+      return null;
+    }
+
+    const [report] = await this.database.db
+      .select()
+      .from(qualityReports)
+      .where(
+        and(
+          eq(qualityReports.workId, workId),
+          eq(qualityReports.branchId, branchId),
+          eq(qualityReports.chapterId, chapter.id),
+        ),
+      )
+      .limit(1);
+    return report ? this.toQualityReportResponse(chapterNumber, report) : null;
   }
 
   async ignoreContinuityIssue(
@@ -1650,6 +1698,19 @@ export class ChapterGenerationService {
           }
         : null,
       createdAt: annotation.createdAt.toISOString(),
+    };
+  }
+
+  private toQualityReportResponse(
+    chapterNumber: number,
+    row: QualityReportRow,
+  ): ChapterQualityReport {
+    return {
+      chapterNumber,
+      generatedAt: row.updatedAt.toISOString(),
+      summary: row.report.summary,
+      dimensions: row.report.dimensions as ChapterQualityReport['dimensions'],
+      issueCounts: row.report.issueCounts,
     };
   }
 }
