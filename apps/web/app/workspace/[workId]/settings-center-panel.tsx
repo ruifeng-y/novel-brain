@@ -29,6 +29,7 @@ import {
   type Relation,
   type RelationPredicate,
 } from '../../../lib/entities-api';
+import { StructuredSettingsPanel } from './structured-settings-panel';
 
 type SaveState =
   | { status: 'idle' }
@@ -312,6 +313,11 @@ export function SettingsCenterPanel({
       ? relation.fromEntity.id === selectedId || relation.toEntity.id === selectedId
       : true,
   );
+  const structuredEntity = selectedId
+    ? (items.find((entity) => entity.id === selectedId) ??
+      catalog.find((entity) => entity.id === selectedId) ??
+      detail)
+    : null;
 
   return (
     <section className="settings-center-board" aria-labelledby="settings-center-title">
@@ -697,6 +703,15 @@ export function SettingsCenterPanel({
               <p>保存后就能在搜索、关系和被引用清单里找到它。</p>
             </div>
           </form>
+
+          {structuredEntity ? (
+            <StructuredSettingsPanel
+              branchId={branchId}
+              entities={catalog}
+              entity={structuredEntity}
+              workId={workId}
+            />
+          ) : null}
         </div>
 
         <aside className="settings-context" aria-label="关系与引用">

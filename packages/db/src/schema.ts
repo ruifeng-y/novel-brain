@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 export const systemJobStatusEnum = pgEnum('system_job_status', [
@@ -470,6 +471,277 @@ export const entityRelations = pgTable(
 
 export type EntityRelationRow = typeof entityRelations.$inferSelect;
 export type NewEntityRelationRow = typeof entityRelations.$inferInsert;
+
+export type PowerLevelValue = {
+  name: string;
+  order: number;
+  description: string;
+};
+
+export type PowerPathValue = {
+  name: string;
+  description: string;
+  levels: string[];
+};
+
+export type PowerResourceCostValue = {
+  name: string;
+  amount: number;
+};
+
+export type PowerBreakthroughValue = {
+  fromLevel: string;
+  toLevel: string;
+  conditions: string[];
+  costs: string[];
+  bottlenecks: string[];
+  counters: string[];
+  resources: PowerResourceCostValue[];
+};
+
+export const powerSystemProfiles = pgTable(
+  'power_system_profiles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    levels: jsonb('levels')
+      .$type<PowerLevelValue[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    paths: jsonb('paths')
+      .$type<PowerPathValue[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    breakthroughs: jsonb('breakthroughs')
+      .$type<PowerBreakthroughValue[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('power_system_profiles_entity_unique').on(table.entityId),
+    index('power_system_profiles_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type PowerSystemProfileRow = typeof powerSystemProfiles.$inferSelect;
+export type NewPowerSystemProfileRow = typeof powerSystemProfiles.$inferInsert;
+
+export type GoldenFingerGrowthPointValue = {
+  stage: string;
+  description: string;
+};
+
+export const goldenFingers = pgTable(
+  'golden_fingers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    ownerEntityId: uuid('owner_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    rules: jsonb('rules')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    costs: jsonb('costs')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    limits: jsonb('limits')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    growthCurve: jsonb('growth_curve')
+      .$type<GoldenFingerGrowthPointValue[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('golden_fingers_owner_name_unique').on(
+      table.workId,
+      table.branchId,
+      table.ownerEntityId,
+      table.name,
+    ),
+    index('golden_fingers_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type GoldenFingerRow = typeof goldenFingers.$inferSelect;
+export type NewGoldenFingerRow = typeof goldenFingers.$inferInsert;
+
+export type ItemTechniqueKindValue = 'item' | 'technique';
+
+export const itemTechniqueProfiles = pgTable(
+  'item_technique_profiles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    kind: text('kind').$type<ItemTechniqueKindValue>().notNull().default('item'),
+    grade: text('grade').notNull().default(''),
+    effects: jsonb('effects')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    costs: jsonb('costs')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    restrictions: jsonb('restrictions')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('item_technique_profiles_entity_unique').on(table.entityId),
+    index('item_technique_profiles_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type ItemTechniqueProfileRow = typeof itemTechniqueProfiles.$inferSelect;
+export type NewItemTechniqueProfileRow = typeof itemTechniqueProfiles.$inferInsert;
+
+export const itemOwnerships = pgTable(
+  'item_ownerships',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    itemEntityId: uuid('item_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    ownerEntityId: uuid('owner_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    fromTime: text('from_time').notNull().default(''),
+    endedAt: text('ended_at'),
+    source: text('source').notNull().default('作者录入'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('item_ownerships_one_current_unique')
+      .on(table.itemEntityId)
+      .where(sql`${table.endedAt} is null`),
+    index('item_ownerships_item_created_idx').on(table.itemEntityId, table.createdAt),
+  ],
+);
+
+export type ItemOwnershipRow = typeof itemOwnerships.$inferSelect;
+export type NewItemOwnershipRow = typeof itemOwnerships.$inferInsert;
+
+export type StoryAbsoluteDateValue = {
+  year: number;
+  month?: number;
+  day?: number;
+  note: string;
+};
+
+export type StoryDurationValue = {
+  amount: number;
+  unit: 'minute' | 'hour' | 'day' | 'month' | 'year';
+};
+
+export const timelineEras = pgTable(
+  'timeline_eras',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    timelineEntityId: uuid('timeline_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    summary: text('summary').notNull().default(''),
+    startDate: jsonb('start_date').$type<StoryAbsoluteDateValue | null>(),
+    endDate: jsonb('end_date').$type<StoryAbsoluteDateValue | null>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('timeline_eras_timeline_name_unique').on(table.timelineEntityId, table.name),
+    index('timeline_eras_timeline_created_idx').on(table.timelineEntityId, table.createdAt),
+  ],
+);
+
+export type TimelineEraRow = typeof timelineEras.$inferSelect;
+export type NewTimelineEraRow = typeof timelineEras.$inferInsert;
+
+export const timelineEventNodes = pgTable(
+  'timeline_event_nodes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    timelineEntityId: uuid('timeline_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    eraId: uuid('era_id').references(() => timelineEras.id, { onDelete: 'set null' }),
+    title: text('title').notNull(),
+    summary: text('summary').notNull().default(''),
+    absoluteDate: jsonb('absolute_date').$type<StoryAbsoluteDateValue | null>(),
+    relativeTime: text('relative_time').notNull().default(''),
+    relativeToNodeId: uuid('relative_to_node_id').references(
+      (): AnyPgColumn => timelineEventNodes.id,
+      { onDelete: 'set null' },
+    ),
+    duration: jsonb('duration').$type<StoryDurationValue | null>(),
+    orderIndex: integer('order_index').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('timeline_event_nodes_timeline_order_idx').on(
+      table.timelineEntityId,
+      table.orderIndex,
+      table.createdAt,
+    ),
+    index('timeline_event_nodes_era_idx').on(table.eraId),
+  ],
+);
+
+export type TimelineEventNodeRow = typeof timelineEventNodes.$inferSelect;
+export type NewTimelineEventNodeRow = typeof timelineEventNodes.$inferInsert;
 
 export const chapterStatusEnum = pgEnum('chapter_status', [
   'planned',

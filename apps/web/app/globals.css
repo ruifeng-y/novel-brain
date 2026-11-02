@@ -3467,3 +3467,253 @@ textarea {
     align-self: flex-start;
   }
 }
+
+.structured-settings {
+  display: grid;
+  gap: 20px;
+  margin-top: 22px;
+  padding-top: 22px;
+  border-top: 1px solid #d9d8d0;
+}
+
+.structured-settings-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.structured-settings-heading > div {
+  min-width: 0;
+}
+
+.structured-settings-heading h3,
+.structured-settings-heading h4 {
+  margin: 5px 0 0;
+  color: #2f3b33;
+  font-family: Georgia, 'Songti SC', serif;
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+
+.structured-settings-heading p:not(.workspace-step) {
+  max-width: 560px;
+  margin: 5px 0 0;
+  color: #748078;
+  font-size: 0.71rem;
+  line-height: 1.65;
+}
+
+.structured-settings-heading > span {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #e9ece4;
+  color: #657168;
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.structured-form {
+  display: grid;
+  gap: 12px;
+}
+
+.structured-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.structured-form .field input,
+.structured-form .field select,
+.structured-form .field textarea {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid #cfd6cf;
+  border-radius: 6px;
+  background: #fffefa;
+  color: #26332c;
+  outline: none;
+}
+
+.structured-form .field textarea {
+  min-height: 82px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.structured-form .field input:focus,
+.structured-form .field select:focus,
+.structured-form .field textarea:focus {
+  border-color: #8ca696;
+  box-shadow: 0 0 0 3px rgb(47 111 94 / 10%);
+}
+
+.structured-action {
+  justify-self: start;
+}
+
+.structured-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.structured-subsection {
+  display: grid;
+  gap: 14px;
+  padding-top: 18px;
+  border-top: 1px solid #e2e5df;
+}
+
+.structured-record-list,
+.timeline-node-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.structured-record-list li,
+.timeline-node-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 10px 11px;
+  border: 1px solid #dce1da;
+  border-radius: 6px;
+  background: #fafbf7;
+}
+
+.structured-record-list li > div:first-child,
+.timeline-node-list li > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.structured-record-list strong,
+.timeline-node-list strong {
+  overflow-wrap: anywhere;
+  color: #34433a;
+  font-size: 0.78rem;
+}
+
+.structured-record-list span,
+.structured-record-list small,
+.timeline-node-list span,
+.timeline-node-list small {
+  overflow-wrap: anywhere;
+  color: #748077;
+  font-size: 0.66rem;
+  line-height: 1.55;
+}
+
+.timeline-node-list {
+  counter-reset: timeline-node;
+}
+
+.timeline-node-list li {
+  counter-increment: timeline-node;
+  justify-content: flex-start;
+}
+
+.timeline-node-list li::before {
+  content: counter(timeline-node);
+  flex: 0 0 auto;
+  display: grid;
+  width: 23px;
+  height: 23px;
+  place-items: center;
+  border-radius: 999px;
+  background: #20342a;
+  color: #f6f2e8;
+  font-family: Georgia, serif;
+  font-size: 0.65rem;
+}
+
+.breakthrough-result {
+  display: grid;
+  gap: 4px;
+  padding: 11px 12px;
+  border-left: 3px solid #9b6b52;
+  background: #faf1e8;
+}
+
+.breakthrough-result.allowed {
+  border-left-color: var(--jade);
+  background: #e9f0ea;
+}
+
+.breakthrough-result strong {
+  color: #5f4538;
+  font-size: 0.78rem;
+}
+
+.breakthrough-result.allowed strong {
+  color: #245446;
+}
+
+.breakthrough-result p {
+  margin: 0;
+  color: #75685f;
+  font-size: 0.69rem;
+  line-height: 1.55;
+}
+
+.ownership-end {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.ownership-end input {
+  width: 108px;
+  min-height: 32px;
+  padding: 5px 7px;
+  border: 1px solid #cfd6cf;
+  border-radius: 5px;
+  background: #fffefa;
+  font-size: 0.68rem;
+}
+
+.ownership-end .secondary-button {
+  min-height: 32px;
+  padding: 4px 8px;
+  font-size: 0.66rem;
+}
+
+.structured-duration {
+  grid-template-columns: minmax(80px, 0.7fr) minmax(90px, 1fr);
+}
+
+@media (max-width: 560px) {
+  .structured-grid,
+  .structured-duration {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .structured-settings-heading {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .structured-record-list li {
+    flex-direction: column;
+  }
+
+  .ownership-end {
+    width: 100%;
+  }
+
+  .ownership-end input {
+    flex: 1;
+    width: auto;
+  }
+}

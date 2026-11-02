@@ -8,4 +8,5 @@ export * from './model-configs';
 export * from './redis';
 export * from './story-planning';
 export * from './system-job';
+export * from './worldbuilding';
 export * from './works';

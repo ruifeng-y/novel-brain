@@ -127,6 +127,34 @@
       "when": 1793590646480,
       "tag": "0017_lean_exiles",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793593291614,
+      "tag": "0018_cute_vulcan",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793593402424,
+      "tag": "0019_freezing_makkari",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793593462490,
+      "tag": "0020_cold_mephisto",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793593540068,
+      "tag": "0021_loving_warbound",
+      "breakpoints": true
     }
   ]
 }

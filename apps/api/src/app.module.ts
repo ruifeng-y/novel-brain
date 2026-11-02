@@ -17,6 +17,8 @@ import { StoryPlanningController } from './planning/story-planning.controller';
 import { StoryPlanningModule } from './planning/story-planning.module';
 import { WorksController } from './works/works.controller';
 import { WorksModule } from './works/works.module';
+import { WorldbuildingController } from './worldbuilding/worldbuilding.controller';
+import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
 
 @Module({
   imports: [
@@ -31,6 +33,7 @@ import { WorksModule } from './works/works.module';
     WorksModule,
     StoryPlanningModule,
     EntitiesModule,
+    WorldbuildingModule,
     ChapterGenerationModule,
     HealthModule,
   ],
@@ -45,6 +48,7 @@ export class AppModule implements NestModule {
         ModelConfigsController,
         StoryPlanningController,
         EntitiesController,
+        WorldbuildingController,
         ChapterGenerationController,
       );
   }
