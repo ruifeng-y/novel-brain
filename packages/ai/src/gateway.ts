@@ -136,7 +136,9 @@ export class FakeAiGateway implements AiGateway {
       const target = match
         ? Number(match[1]) + Math.floor((Number(match[2]) - Number(match[1])) / 2)
         : 2_500;
-      return buildDeterministicChineseChapter(target);
+      return buildDeterministicChineseChapter(target, {
+        includeLeftArmConflict: input.prompt.includes('[[LEFT_ARM_CONFLICT]]'),
+      });
     }
     return `fake response:${input.prompt}`;
   }
@@ -186,9 +188,15 @@ const CHAPTER_PARAGRAPHS = [
   '这一次，他听清了。那声音是在叫他回家。',
 ];
 
-export function buildDeterministicChineseChapter(targetCharacters = 2_500): string {
+export function buildDeterministicChineseChapter(
+  targetCharacters = 2_500,
+  options: { includeLeftArmConflict?: boolean } = {},
+): string {
   const target = Math.max(1, targetCharacters);
-  let text = CHAPTER_PARAGRAPHS.join('\n\n');
+  const conflictParagraph = options.includeLeftArmConflict
+    ? '沈砚忍着左臂的疼，缓缓抬起手。他双手结印，借残剑之力压住翻涌的碑文。\n\n'
+    : '';
+  let text = `${conflictParagraph}${CHAPTER_PARAGRAPHS.join('\n\n')}`;
   let index = 0;
   while (countCjkCharacters(text) < target) {
     text += `\n\n${CHAPTER_PARAGRAPHS[index % CHAPTER_PARAGRAPHS.length]}`;

@@ -1,15 +1,20 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
+  CONTINUITY_CATEGORY_LABELS,
+  CONTINUITY_SEVERITY_LABELS,
+  CONTINUITY_STATUS_LABELS,
   CHAPTER_STATUS_LABELS,
   FACT_TYPE_LABELS,
   countCjkCharacters,
   type ChapterStatus,
   type ConfirmFactProposalInput,
   type GenerateChapterInput,
+  type IgnoreContinuityIssueInput,
   type SaveChapterVersionInput,
 } from '@novel/contracts';
 import {
+  annotations,
   canonCommits,
   canonSnapshots,
   chapterOutlines,
@@ -45,6 +50,7 @@ const GENERATION_STEPS = [
   'context',
   'draft',
   'extract_facts',
+  'verify',
 ] as const;
 
 type ChapterListItem = {
@@ -625,6 +631,117 @@ export class ChapterGenerationService {
     return {
       items: rows.map((row) => this.toFactProposalResponse(chapterNumber, row)),
     };
+  }
+
+  async listContinuityIssues(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.findChapter(workId, branchId, chapterNumber);
+    if (!chapter) {
+      return { items: [] };
+    }
+
+    const rows = await this.database.db
+      .select({
+        annotation: annotations,
+        fact: facts,
+        factChapterNumber: chapters.chapterNumber,
+      })
+      .from(annotations)
+      .innerJoin(facts, eq(facts.id, annotations.factId))
+      .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+      .where(
+        and(
+          eq(annotations.workId, workId),
+          eq(annotations.branchId, branchId),
+          eq(annotations.chapterId, chapter.id),
+        ),
+      )
+      .orderBy(asc(annotations.createdAt), asc(annotations.startOffset));
+
+    return {
+      items: rows.map((row) => this.toContinuityIssueResponse(row)),
+    };
+  }
+
+  async ignoreContinuityIssue(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    annotationId: string,
+    input: IgnoreContinuityIssueInput,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.findChapter(workId, branchId, chapterNumber);
+    if (!chapter) {
+      throw chapterGenerationError(
+        HttpStatus.NOT_FOUND,
+        'CONTINUITY_ISSUE_NOT_FOUND',
+        'Continuity issue not found',
+      );
+    }
+
+    return this.database.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${annotationId}))`,
+      );
+      const [existing] = await tx
+        .select()
+        .from(annotations)
+        .where(
+          and(
+            eq(annotations.id, annotationId),
+            eq(annotations.workId, workId),
+            eq(annotations.branchId, branchId),
+            eq(annotations.chapterId, chapter.id),
+          ),
+        )
+        .limit(1);
+      if (!existing) {
+        throw chapterGenerationError(
+          HttpStatus.NOT_FOUND,
+          'CONTINUITY_ISSUE_NOT_FOUND',
+          'Continuity issue not found',
+        );
+      }
+
+      const now = new Date();
+      await tx
+        .update(annotations)
+        .set({
+          status: 'ignored',
+          ignoredReason: input.reason,
+          ignoredAt: now,
+        })
+        .where(eq(annotations.id, annotationId));
+
+      const [updated] = await tx
+        .select({
+          annotation: annotations,
+          fact: facts,
+          factChapterNumber: chapters.chapterNumber,
+        })
+        .from(annotations)
+        .innerJoin(facts, eq(facts.id, annotations.factId))
+        .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+        .where(eq(annotations.id, annotationId))
+        .limit(1);
+      if (!updated) {
+        throw chapterGenerationError(
+          HttpStatus.NOT_FOUND,
+          'CONTINUITY_ISSUE_NOT_FOUND',
+          'Continuity issue not found',
+        );
+      }
+      return this.toContinuityIssueResponse(updated);
+    });
   }
 
   async updateFactProposal(
@@ -1255,6 +1372,39 @@ export class ChapterGenerationService {
       statement: row.statement,
       sourceSentence: row.sourceSentence,
       confirmedAt: row.createdAt.toISOString(),
+    };
+  }
+
+  private toContinuityIssueResponse(row: {
+    annotation: typeof annotations.$inferSelect;
+    fact: typeof facts.$inferSelect;
+    factChapterNumber: number;
+  }) {
+    const { annotation, fact, factChapterNumber } = row;
+    return {
+      id: annotation.id,
+      category: annotation.category,
+      categoryLabel:
+        CONTINUITY_CATEGORY_LABELS[annotation.category] ?? '连续性',
+      severity: annotation.severity,
+      severityLabel:
+        CONTINUITY_SEVERITY_LABELS[annotation.severity] ?? '需要确认',
+      message: annotation.message,
+      suggestion: annotation.suggestion,
+      sourceSentence: annotation.sourceSentence,
+      startOffset: annotation.startOffset,
+      endOffset: annotation.endOffset,
+      status: annotation.status,
+      statusLabel: CONTINUITY_STATUS_LABELS[annotation.status],
+      ignoredReason: annotation.ignoredReason,
+      ignoredAt: annotation.ignoredAt?.toISOString() ?? null,
+      confirmedFact: {
+        id: fact.id,
+        statement: fact.statement,
+        chapterNumber: factChapterNumber,
+        typeLabel: FACT_TYPE_LABELS[fact.type],
+      },
+      createdAt: annotation.createdAt.toISOString(),
     };
   }
 }

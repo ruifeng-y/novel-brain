@@ -86,6 +86,13 @@ function chapterForPrompt(prompt: string): string {
   return buildDeterministicChineseChapter(target);
 }
 
+function chapterWithLeftArmConflict(prompt: string): string {
+  return [
+    '沈砚忍着左臂的疼，缓缓抬起手。他双手结印，借残剑之力压住翻涌的碑文。',
+    chapterForPrompt(prompt),
+  ].join('\n\n');
+}
+
 async function saveStoryBible(
   agent: ReturnType<typeof request.agent>,
   workId: string,
@@ -189,6 +196,9 @@ describe('chapter generation API', () => {
           return input.prompt.includes('【篇幅校正】')
             ? chapterForPrompt(input.prompt)
             : buildDeterministicChineseChapter(500);
+        }
+        if (input.prompt.includes('[[LEFT_ARM_CONFLICT]]')) {
+          return chapterWithLeftArmConflict(input.prompt);
         }
         return chapterForPrompt(input.prompt);
       },
@@ -319,6 +329,7 @@ describe('chapter generation API', () => {
       'context',
       'draft',
       'extract_facts',
+      'verify',
     ]);
     expect(job.steps.every((step: { status: string }) => step.status === 'succeeded')).toBe(
       true,
@@ -678,6 +689,252 @@ describe('chapter generation API', () => {
     const serializedContext = JSON.stringify(secondJob.context);
     expect(serializedContext).not.toContain(rejected.statement);
     expect(serializedContext).not.toContain(pending.statement);
+  });
+
+  it('flags a confirmed left-arm injury when the next chapter uses both hands', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '断臂结印');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+
+    const firstStarted = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      firstStarted.body.jobId as string,
+      'completed',
+    );
+
+    const proposals = await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
+      )
+      .expect(200);
+    const bodyState = proposals.body.items.find(
+      (item: { type: string }) => item.type === 'body_state',
+    ) as { id: string };
+    const confirmedStatement = '沈砚的左臂骨折，左手无法用力。';
+    await author.agent
+      .patch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${bodyState.id}`,
+      )
+      .send({ statement: confirmedStatement })
+      .expect(200);
+
+    await saveOutline(author.agent, work.id, work.mainBranchId, 2, {
+      chapterGoal: '沈砚在追兵围困中结印破局。[[LEFT_ARM_CONFLICT]]',
+      sceneBeats: ['追兵封住山道', '沈砚催动残剑', '碑文反噬引来旧敌'],
+      chapterEndHook: '来人的袖口绣着母亲旧宅的家纹。',
+    });
+
+    const pendingStarted = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/generate`)
+      .send({})
+      .expect(202);
+    await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      pendingStarted.body.jobId as string,
+      'completed',
+    );
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toEqual([]);
+      });
+
+    await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${bodyState.id}/confirm`,
+      )
+      .send({})
+      .expect(201);
+
+    const confirmedStarted = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/generate`)
+      .send({})
+      .expect(202);
+    const confirmedJob = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      confirmedStarted.body.jobId as string,
+      'completed',
+    );
+
+    expect(
+      confirmedJob.context.sections.find(
+        (section: { key: string }) => section.key === 'confirmedFacts',
+      ),
+    ).toMatchObject({
+      content: {
+        facts: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'body_state',
+            statement: confirmedStatement,
+            chapterNumber: 1,
+          }),
+        ]),
+      },
+    });
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toHaveLength(1);
+        expect(body.items[0]).toMatchObject({
+          category: 'body_state',
+          severity: 'warning',
+          status: 'open',
+          sourceSentence: expect.stringContaining('双手结印'),
+          message: expect.stringContaining('左臂'),
+          suggestion: expect.stringMatching(/右手|补写/),
+          confirmedFact: {
+            statement: confirmedStatement,
+            chapterNumber: 1,
+          },
+        });
+        const issue = body.items[0] as {
+          sourceSentence: string;
+          startOffset: number;
+          endOffset: number;
+        };
+        expect(confirmedJob.draft.content.slice(issue.startOffset, issue.endOffset)).toBe(
+          issue.sourceSentence,
+        );
+      });
+  });
+
+  it('records an author reason when ignoring a continuity issue and keeps it isolated', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const otherAuthor = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '断续剑印');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+
+    const firstStarted = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      firstStarted.body.jobId as string,
+      'completed',
+    );
+
+    const proposals = await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
+      )
+      .expect(200);
+    const bodyState = proposals.body.items.find(
+      (item: { type: string }) => item.type === 'body_state',
+    ) as { id: string };
+    await author.agent
+      .patch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${bodyState.id}`,
+      )
+      .send({ statement: '沈砚的左臂骨折，左手无法用力。' })
+      .expect(200);
+    await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${bodyState.id}/confirm`,
+      )
+      .send({})
+      .expect(201);
+
+    await saveOutline(author.agent, work.id, work.mainBranchId, 2, {
+      chapterGoal: '沈砚在追兵围困中结印破局。[[LEFT_ARM_CONFLICT]]',
+      sceneBeats: ['追兵封住山道', '沈砚催动残剑', '碑文反噬引来旧敌'],
+      chapterEndHook: '来人的袖口绣着母亲旧宅的家纹。',
+    });
+    const secondStarted = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/generate`)
+      .send({})
+      .expect(202);
+    await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      secondStarted.body.jobId as string,
+      'completed',
+    );
+
+    const issues = await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations`)
+      .expect(200);
+    const issue = issues.body.items[0] as {
+      id: string;
+      status: string;
+    };
+    expect(issue.status).toBe('open');
+
+    await author.agent
+      .patch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations/${issue.id}`,
+      )
+      .send({ reason: '   ' })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('VALIDATION_ERROR');
+      });
+
+    const reason = '这里用的是右手代左手的独门法印，后文会交代左臂已经恢复。';
+    await author.agent
+      .patch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations/${issue.id}`,
+      )
+      .send({ reason })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          id: issue.id,
+          status: 'ignored',
+          statusLabel: '已忽略',
+          ignoredReason: reason,
+          ignoredAt: expect.any(String),
+        });
+      });
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toHaveLength(1);
+        expect(body.items[0]).toMatchObject({
+          id: issue.id,
+          status: 'ignored',
+          ignoredReason: reason,
+        });
+      });
+
+    await otherAuthor.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations`)
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_NOT_FOUND');
+      });
+    await otherAuthor.agent
+      .patch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations/${issue.id}`,
+      )
+      .send({ reason })
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_NOT_FOUND');
+      });
   });
 
   it('keeps the partial draft and reports a recoverable error when generation fails', async () => {

@@ -11,7 +11,9 @@ import {
   DEFAULT_CHAPTER_TARGET_MAX,
   DEFAULT_CHAPTER_TARGET_MIN,
 } from '@novel/contracts';
+import { detectBodyStateConflicts } from '@novel/core';
 import {
+  annotations,
   chapterOutlines,
   chapters,
   contextPacks,
@@ -33,7 +35,13 @@ import { and, asc, eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { GenerationModelConfigResolver } from './generation-model-config.resolver';
 
-type GenerationStepKey = 'readiness' | 'brief' | 'context' | 'draft' | 'extract_facts';
+type GenerationStepKey =
+  | 'readiness'
+  | 'brief'
+  | 'context'
+  | 'draft'
+  | 'extract_facts'
+  | 'verify';
 
 type GenerationErrorInfo = {
   code: string;
@@ -414,6 +422,53 @@ export class ChapterGenerationRunner {
         99,
       );
 
+      await this.beginStep(jobId, 'verify', { draftId }, 99);
+      const bodyStateConflicts = detectBodyStateConflicts(
+        draftContent,
+        confirmedFactRows
+          .filter(({ fact }) => fact.type === 'body_state')
+          .map(({ fact, chapterNumber }) => ({
+            id: fact.id,
+            statement: fact.statement,
+            sourceSentence: fact.sourceSentence,
+            chapterNumber,
+          })),
+      );
+      await this.database.db.transaction(async (tx) => {
+        await tx
+          .delete(annotations)
+          .where(eq(annotations.chapterId, generation.chapterId));
+        if (bodyStateConflicts.length > 0) {
+          await tx.insert(annotations).values(
+            bodyStateConflicts.map((issue) => ({
+              workId: generation.workId,
+              branchId: generation.branchId,
+              chapterId: generation.chapterId,
+              generationRequestId: generation.id,
+              draftId,
+              factId: issue.factId,
+              category: issue.category,
+              severity: issue.severity,
+              message: issue.message,
+              suggestion: issue.suggestion,
+              sourceSentence: issue.sourceSentence,
+              startOffset: issue.startOffset,
+              endOffset: issue.endOffset,
+              status: 'open' as const,
+            })),
+          );
+        }
+      });
+      await this.completeStep(
+        jobId,
+        'verify',
+        {
+          issueCount: bodyStateConflicts.length,
+          categories: [...new Set(bodyStateConflicts.map((issue) => issue.category))],
+        },
+        99,
+      );
+
       const completedAt = new Date();
       await this.appendEvent(jobId, 'job.completed', {
         draftId,
@@ -423,6 +478,7 @@ export class ChapterGenerationRunner {
         targetMaxCharacters,
         attempts,
         proposalCount: extracted.facts.length,
+        continuityIssueCount: bodyStateConflicts.length,
         progress: 100,
       });
       await this.database.db
@@ -430,7 +486,7 @@ export class ChapterGenerationRunner {
         .set({
           status: 'completed',
           progress: 100,
-          checkpoint: { stepKey: 'extract_facts' },
+          checkpoint: { stepKey: 'verify' },
           finishedAt: completedAt,
           updatedAt: completedAt,
         })

@@ -196,6 +196,9 @@ importers:
       '@novel/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@novel/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@novel/db':
         specifier: workspace:*
         version: link:../../packages/db

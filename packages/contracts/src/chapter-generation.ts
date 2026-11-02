@@ -89,6 +89,28 @@ export const jobStepStatusSchema = z.enum([
 
 export const draftStatusSchema = z.enum(['pending', 'streaming', 'ready', 'failed']);
 
+export const continuityIssueStatusSchema = z.enum(['open', 'ignored']);
+
+export const CONTINUITY_CATEGORY_LABELS: Record<string, string> = {
+  body_state: '身体状态',
+};
+
+export const CONTINUITY_SEVERITY_LABELS: Record<string, string> = {
+  warning: '需要确认',
+};
+
+export const CONTINUITY_STATUS_LABELS: Record<
+  z.infer<typeof continuityIssueStatusSchema>,
+  string
+> = {
+  open: '待处理',
+  ignored: '已忽略',
+};
+
+export const ignoreContinuityIssueSchema = z.object({
+  reason: z.string().trim().min(1).max(500),
+});
+
 export type GenerateChapterInput = z.infer<typeof generateChapterSchema>;
 export type SaveChapterVersionInput = z.infer<typeof saveChapterVersionSchema>;
 export type ChapterStatus = z.infer<typeof chapterStatusSchema>;
@@ -96,3 +118,5 @@ export type ChapterGenerationStatus = z.infer<typeof chapterGenerationStatusSche
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 export type JobStepStatus = z.infer<typeof jobStepStatusSchema>;
 export type DraftStatus = z.infer<typeof draftStatusSchema>;
+export type ContinuityIssueStatus = z.infer<typeof continuityIssueStatusSchema>;
+export type IgnoreContinuityIssueInput = z.infer<typeof ignoreContinuityIssueSchema>;

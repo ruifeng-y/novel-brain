@@ -507,6 +507,57 @@ export const facts = pgTable(
 export type FactRow = typeof facts.$inferSelect;
 export type NewFactRow = typeof facts.$inferInsert;
 
+export const annotationStatusEnum = pgEnum('annotation_status', ['open', 'ignored']);
+
+export const annotations = pgTable(
+  'annotations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    chapterId: uuid('chapter_id')
+      .notNull()
+      .references(() => chapters.id, { onDelete: 'cascade' }),
+    generationRequestId: uuid('generation_request_id').references(
+      () => generationRequests.id,
+      { onDelete: 'cascade' },
+    ),
+    draftId: uuid('draft_id').references(() => drafts.id, {
+      onDelete: 'cascade',
+    }),
+    factId: uuid('fact_id').references(() => facts.id, {
+      onDelete: 'set null',
+    }),
+    category: text('category').notNull(),
+    severity: text('severity').notNull().default('warning'),
+    message: text('message').notNull(),
+    suggestion: text('suggestion').notNull(),
+    sourceSentence: text('source_sentence').notNull(),
+    startOffset: integer('start_offset').notNull(),
+    endOffset: integer('end_offset').notNull(),
+    status: annotationStatusEnum('status').notNull().default('open'),
+    ignoredReason: text('ignored_reason'),
+    ignoredAt: timestamp('ignored_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('annotations_work_branch_chapter_status_idx').on(
+      table.workId,
+      table.branchId,
+      table.chapterId,
+      table.status,
+    ),
+    index('annotations_chapter_created_idx').on(table.chapterId, table.createdAt),
+  ],
+);
+
+export type AnnotationRow = typeof annotations.$inferSelect;
+export type NewAnnotationRow = typeof annotations.$inferInsert;
+
 export const canonCommits = pgTable(
   'canon_commits',
   {

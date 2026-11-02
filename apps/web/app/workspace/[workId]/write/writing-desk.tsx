@@ -8,18 +8,22 @@ import { ApiError, apiRequest, friendlyError, type User } from '../../../../lib/
 import {
   generationErrorMessage,
   generationEventsUrl,
+  ignoreContinuityIssue,
   loadChapter,
   loadChapters,
+  loadContinuityIssues,
   loadGenerationJob,
   saveChapterVersion,
   startChapterGeneration,
   type ChapterDetail,
   type ChapterListItem,
+  type ContinuityIssue,
   type GenerationEvent,
   type GenerationJob,
 } from '../../../../lib/chapter-generation-api';
 import { loadStoryBible, type StoryBible } from '../../../../lib/story-planning-api';
 import { GENRE_LABELS, type Work } from '../../../../lib/works-api';
+import { ContinuityReviewPanel } from './continuity-review-panel';
 import { FactReviewPanel } from './fact-review-panel';
 
 type BootState =
@@ -41,6 +45,7 @@ const STEP_MESSAGES: Record<string, string> = {
   brief: '正在整理本章写作任务…',
   context: '正在准备本章参考资料…',
   draft: '正在起草正文…',
+  verify: '正在检查前后设定…',
 };
 
 export function WritingDesk({ workId }: { workId: string }) {
@@ -58,6 +63,11 @@ export function WritingDesk({ workId }: { workId: string }) {
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const [previousContent, setPreviousContent] = useState('');
+  const [continuityIssues, setContinuityIssues] = useState<ContinuityIssue[]>([]);
+  const [continuityLoading, setContinuityLoading] = useState(false);
+  const [continuityBusyId, setContinuityBusyId] = useState<string>();
+  const [continuityError, setContinuityError] = useState('');
+  const [continuityNotice, setContinuityNotice] = useState('');
   const streamRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -116,6 +126,37 @@ export function WritingDesk({ workId }: { workId: string }) {
     };
   }, [router, workId]);
 
+  useEffect(() => {
+    if (boot.status !== 'ready' || !chapterNumber) {
+      setContinuityIssues([]);
+      return;
+    }
+
+    let active = true;
+    setContinuityLoading(true);
+    setContinuityError('');
+    loadContinuityIssues(boot.work.id, boot.branchId, chapterNumber)
+      .then((result) => {
+        if (active) {
+          setContinuityIssues(result.items);
+        }
+      })
+      .catch((loadError: unknown) => {
+        if (active) {
+          setContinuityError(friendlyError(loadError));
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setContinuityLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [boot, chapterNumber, generationState]);
+
   async function openChapter(nextChapterNumber: number) {
     if (!boot || boot.status !== 'ready' || generating) {
       return;
@@ -126,6 +167,8 @@ export function WritingDesk({ workId }: { workId: string }) {
     setNotice('');
     setGenerationState('idle');
     setStatusMessage('');
+    setContinuityNotice('');
+    setContinuityError('');
 
     try {
       const opened = await loadChapter(boot.work.id, boot.branchId, nextChapterNumber);
@@ -370,6 +413,32 @@ export function WritingDesk({ workId }: { workId: string }) {
     setNotice('已恢复生成前的内容。');
   }
 
+  async function ignoreIssue(issue: ContinuityIssue, reason: string) {
+    if (!boot || boot.status !== 'ready' || !chapterNumber) {
+      return;
+    }
+    setContinuityBusyId(issue.id);
+    setContinuityError('');
+    setContinuityNotice('');
+    try {
+      const updated = await ignoreContinuityIssue(
+        boot.work.id,
+        boot.branchId,
+        chapterNumber,
+        issue.id,
+        reason,
+      );
+      setContinuityIssues((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setContinuityNotice('已忽略这条提示，并记录了你填写的原因。');
+    } catch (ignoreError) {
+      setContinuityError(friendlyError(ignoreError));
+    } finally {
+      setContinuityBusyId(undefined);
+    }
+  }
+
   function closeStream() {
     streamRef.current?.close();
     streamRef.current = null;
@@ -553,6 +622,25 @@ export function WritingDesk({ workId }: { workId: string }) {
               value={content}
             />
 
+            {continuityIssues.some((issue) => issue.status === 'open') ? (
+              <section
+                aria-label="正文中的连续性冲突"
+                className="continuity-highlight"
+              >
+                <div>
+                  <span>正文中的冲突</span>
+                  <small>标出的原句需要你确认或修改。</small>
+                </div>
+                {continuityIssues
+                  .filter((issue) => issue.status === 'open')
+                  .map((issue) => (
+                    <p key={issue.id}>
+                      <mark>{issue.sourceSentence}</mark>
+                    </p>
+                  ))}
+              </section>
+            ) : null}
+
             <footer className="writing-editor-footer">
               <span>{countCjkCharacters(content).toLocaleString('zh-CN')} 字</span>
               <span>
@@ -619,6 +707,17 @@ export function WritingDesk({ workId }: { workId: string }) {
                     <p>故事圣经还没有保存，补充后本章参考会更完整。</p>
                   )}
                 </section>
+
+                {chapterNumber ? (
+                  <ContinuityReviewPanel
+                    busyId={continuityBusyId}
+                    error={continuityError}
+                    issues={continuityIssues}
+                    loading={continuityLoading}
+                    notice={continuityNotice}
+                    onIgnore={ignoreIssue}
+                  />
+                ) : null}
 
                 {chapterNumber ? (
                   <FactReviewPanel
