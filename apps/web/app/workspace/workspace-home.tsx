@@ -1,5 +1,6 @@
 'use client';
 
+import { HISTORY_VARIANT_LABELS } from '@novel/contracts';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -24,6 +25,7 @@ export function WorkspaceHome() {
   const [leaving, setLeaving] = useState<'current' | 'all'>();
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+  const [genrePack, setGenrePack] = useState<'xianxia' | 'history' | 'urban'>('xianxia');
 
   useEffect(() => {
     Promise.all([
@@ -66,6 +68,9 @@ export function WorkspaceHome() {
           title: form.get('title'),
           penName: form.get('penName'),
           genrePack: form.get('genrePack'),
+          ...(form.get('genreVariant')
+            ? { genreVariant: form.get('genreVariant') }
+            : {}),
           scale: form.get('scale'),
           targetPlatform: form.get('targetPlatform'),
         }),
@@ -156,6 +161,7 @@ export function WorkspaceHome() {
                       <div>
                         <p className="work-card-genre">
                           {GENRE_LABELS[work.genrePack] ?? work.genrePack}
+                          {work.genreVariantLabel ? ` · ${work.genreVariantLabel}` : ''}
                         </p>
                         <h3>{work.title}</h3>
                       </div>
@@ -221,7 +227,15 @@ export function WorkspaceHome() {
             <div className="create-field-row">
               <label className="field">
                 <span>题材</span>
-                <select defaultValue="xianxia" name="genrePack">
+                <select
+                  name="genrePack"
+                  onChange={(event) =>
+                    setGenrePack(
+                      event.currentTarget.value as 'xianxia' | 'history' | 'urban',
+                    )
+                  }
+                  value={genrePack}
+                >
                   {Object.entries(GENRE_LABELS).map(([value, label]) => (
                     <option key={value} value={value}>
                       {label}
@@ -240,6 +254,18 @@ export function WorkspaceHome() {
                 </select>
               </label>
             </div>
+            {genrePack === 'history' ? (
+              <label className="field">
+                <span>历史方向</span>
+                <select defaultValue="alternate_ancient" name="genreVariant">
+                  {Object.entries(HISTORY_VARIANT_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="field">
               <span>目标平台</span>
               <select defaultValue={TARGET_PLATFORMS[0]} name="targetPlatform">

@@ -1,9 +1,12 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   getGenrePackDefinition,
+  HISTORY_MAIN_TEMPLATE,
+  HISTORY_VARIANT_LABELS,
   WORK_STATUS_LABELS,
   type CreateWorkInput,
   type GenrePackDefinition,
+  type HistoryVariant,
 } from '@novel/contracts';
 import { workBranches, works, type WorkBranchRow, type WorkRow } from '@novel/db';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
@@ -19,6 +22,9 @@ type WorkResponse = {
   genreTemplate: GenrePackDefinition['template'] & {
     subtypes: GenrePackDefinition['subtypes'];
   };
+  genreVariant: string | null;
+  genreVariantLabel: string | null;
+  mainTemplate: string | null;
   scale: string;
   targetPlatform: string;
   status: WorkRow['status'];
@@ -77,6 +83,10 @@ export class WorksService {
           title: input.title,
           penName: input.penName,
           genrePack: input.genrePack,
+          genreVariant:
+            input.genrePack === 'history'
+              ? (input.genreVariant ?? 'alternate_ancient')
+              : null,
           scale: input.scale,
           targetPlatform: input.targetPlatform,
           status: 'preparing',
@@ -122,6 +132,10 @@ export class WorksService {
 
   private toResponse(work: WorkRow, mainBranch: WorkBranchRow | null): WorkResponse {
     const genrePack = getGenrePackDefinition(work.genrePack);
+    const historyVariant =
+      work.genrePack === 'history'
+        ? ((work.genreVariant ?? 'alternate_ancient') as HistoryVariant)
+        : null;
     return {
       id: work.id,
       title: work.title,
@@ -136,6 +150,9 @@ export class WorksService {
         checkCategories: genrePack?.template.checkCategories ?? [],
         subtypes: genrePack?.subtypes ?? [],
       },
+      genreVariant: historyVariant,
+      genreVariantLabel: historyVariant ? HISTORY_VARIANT_LABELS[historyVariant] : null,
+      mainTemplate: work.genrePack === 'history' ? HISTORY_MAIN_TEMPLATE : null,
       scale: work.scale,
       targetPlatform: work.targetPlatform,
       status: work.status,

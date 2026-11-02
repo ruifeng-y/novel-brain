@@ -42,6 +42,10 @@ import { and, asc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { loadChapterAuditInput } from './chapter-audit-context';
 import { GenerationModelConfigResolver } from './generation-model-config.resolver';
+import {
+  loadHistoryGenerationContext,
+  type HistoryGenerationContext,
+} from './history-context';
 
 type GenerationStepKey = 'readiness' | 'brief' | 'context' | 'draft' | 'extract_facts' | 'verify';
 
@@ -284,6 +288,14 @@ export class ChapterGenerationRunner {
         .from(works)
         .where(eq(works.id, generation.workId))
         .limit(1);
+      const historyContext =
+        work?.genrePack === 'history'
+          ? await loadHistoryGenerationContext(
+              this.database,
+              generation.workId,
+              generation.branchId,
+            )
+          : null;
       const urbanSettingRows =
         work?.genrePack === 'urban'
           ? await this.database.db
@@ -333,6 +345,7 @@ export class ChapterGenerationRunner {
           description: setting.description,
           fields: setting.customFields,
         })),
+        historyContext,
       );
       if (shouldRunStep('context')) {
         await this.database.db
@@ -808,6 +821,7 @@ export class ChapterGenerationRunner {
       description: string;
       fields: Record<string, unknown>;
     }>,
+    historyContext: HistoryGenerationContext | null,
   ): {
     sections: ContextSection[];
     sourceRefs: string[];
@@ -874,6 +888,26 @@ export class ChapterGenerationRunner {
             },
           ]
         : []),
+      ...(historyContext
+        ? [
+            {
+              key: 'historyPack',
+              title: '历史题材规则',
+              content: {
+                mainTemplate: historyContext.mainTemplate,
+                variant: historyContext.variant,
+                variantLabel: historyContext.variantLabel,
+                rules: [
+                  '只写架空古代，不绑定真实朝代与真实人物。',
+                  '不得出现现代器物、现代机构或网络词汇。',
+                  '官职高低、隶属关系和调兵权限必须符合设定。',
+                  '军队移动必须经过地图道路，并核算行程与粮草。',
+                ],
+                settings: historyContext.settings,
+              },
+            },
+          ]
+        : []),
       ...(confirmedFacts.length > 0
         ? [
             {
@@ -932,6 +966,12 @@ export class ChapterGenerationRunner {
     const systemPrompt = [
       '你是一位擅长中文长篇网络小说的作者。',
       '请严格依据作者提供的创作资料写作，保持人物、世界规则和前文事实一致。',
+      ...(historyContext
+        ? [
+            '这是一部历史题材小说。故事发生在架空古代，不要写入现代器物、现代制度或网络词汇。',
+            '涉及官制、军队调动、粮草和地理距离时，必须遵守给定的历史题材规则。',
+          ]
+        : []),
       ...(outputKind === 'chapter' || outputKind === 'segment'
         ? [
             `正文必须包含 ${targetMinCharacters} 到 ${targetMaxCharacters} 个汉字；标点、空格和换行不计入汉字数量。`,
@@ -943,6 +983,30 @@ export class ChapterGenerationRunner {
     const sharedMaterials = [
       '【故事圣经】',
       storyBiblePrompt,
+      ...(historyContext
+        ? [
+            '',
+            '【历史题材规则】',
+            `主模板：${historyContext.mainTemplate}`,
+            `作品方向：${historyContext.variantLabel}`,
+            '时代边界：架空古代；不得出现手机、互联网、公司、警察等现代事物与制度。',
+            '官制：官职有明确品级和上下级，调令不能越过应有的官署。',
+            '军制：军队有兵力与随军粮草，行军必须走地图道路并核算天数。',
+            ...(historyContext.settings.length > 0
+              ? [
+                  '【历史设定】',
+                  ...historyContext.settings.map(
+                    (setting) =>
+                      `- ${setting.subtypeLabel}·${setting.name}：${setting.summary || '无摘要'}${
+                        Object.keys(setting.customFields).length > 0
+                          ? `；字段：${JSON.stringify(setting.customFields)}`
+                          : ''
+                      }`,
+                  ),
+                ]
+              : []),
+          ]
+        : []),
       ...(isUrban
         ? [
             '',
@@ -1018,6 +1082,12 @@ export class ChapterGenerationRunner {
         ...referenceChapters.map((chapter) => `chapter:${chapter.chapterNumber}`),
         ...confirmedFacts.map((fact) => `fact:${fact.id}`),
         ...urbanSettings.map((setting) => `entity:${setting.id}`),
+        ...(historyContext
+          ? [
+              `history_pack:${historyContext.variant}`,
+              ...historyContext.settings.map((setting) => `history_setting:${setting.id}`),
+            ]
+          : []),
       ],
       systemPrompt,
       userPrompt,

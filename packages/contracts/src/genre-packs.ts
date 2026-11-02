@@ -1,7 +1,22 @@
 import type { CustomFieldType, EntityType } from './entity-center';
+import {
+  HISTORY_CUSTOM_FIELDS,
+  HISTORY_MAIN_TEMPLATE,
+  HISTORY_SUBTYPE_LABELS,
+  HISTORY_SUBTYPE_SUMMARIES,
+  HISTORY_VARIANT_LABELS,
+  type HistorySubtype,
+} from './history-pack';
 import type { WorkGenrePack } from './works';
 
 export type UrbanCheckCategory = 'real_world' | 'relationship' | 'money' | 'law';
+export type HistoryCheckCategory =
+  | 'anachronism'
+  | 'official_hierarchy'
+  | 'army_movement'
+  | 'provisions'
+  | 'geographic_distance';
+export type GenreCheckCategory = UrbanCheckCategory | HistoryCheckCategory;
 
 export type GenrePackFieldDefinition = {
   key: string;
@@ -23,7 +38,7 @@ export type GenrePackTemplateDefinition = {
   name: string;
   summary: string;
   writingGuide: string[];
-  checkCategories: UrbanCheckCategory[];
+  checkCategories: GenreCheckCategory[];
 };
 
 export type GenrePackDefinition = {
@@ -223,6 +238,31 @@ const URBAN_SUBTYPES: GenrePackSubtypeDefinition[] = [
   },
 ];
 
+const HISTORY_SUBTYPE_ENTITY_TYPES: Record<HistorySubtype, EntityType> = {
+  dynasty: 'world',
+  bureaucracy: 'faction',
+  military: 'faction',
+  geography: 'map',
+  clan: 'faction',
+};
+
+const HISTORY_SUBTYPES: GenrePackSubtypeDefinition[] = (
+  Object.keys(HISTORY_SUBTYPE_LABELS) as HistorySubtype[]
+).map((subtype) => ({
+  key: subtype,
+  label: HISTORY_SUBTYPE_LABELS[subtype],
+  description: HISTORY_SUBTYPE_SUMMARIES[subtype],
+  entityType: HISTORY_SUBTYPE_ENTITY_TYPES[subtype],
+  fields: HISTORY_CUSTOM_FIELDS.filter((field) => field.subtypes.includes(subtype)).map(
+    (field) => ({
+      key: field.key,
+      label: field.label,
+      type: field.type as CustomFieldType,
+      options: field.options,
+    }),
+  ),
+}));
+
 export const GENRE_PACK_DEFINITIONS: Record<WorkGenrePack, GenrePackDefinition> = {
   xianxia: {
     key: 'xianxia',
@@ -238,6 +278,29 @@ export const GENRE_PACK_DEFINITIONS: Record<WorkGenrePack, GenrePackDefinition> 
       checkCategories: [],
     },
     subtypes: [],
+  },
+  history: {
+    key: 'history',
+    label: '历史',
+    template: {
+      key: 'history-alternate-ancient',
+      name: HISTORY_MAIN_TEMPLATE,
+      summary: '在架空古代写朝代更替、官制军制、地理距离和世家争衡。',
+      writingGuide: [
+        '不绑定真实朝代与真实人物，但时代器物、制度和社会关系必须自洽。',
+        '官职有品级和隶属关系，越级调令、军权和官署权限都要写清依据。',
+        '军队移动必须经过地图道路，并核算行程、粮草与到达时间。',
+        `作品方向可选${HISTORY_VARIANT_LABELS.alternate_ancient}或${HISTORY_VARIANT_LABELS.transmigration_hegemony}。`,
+      ],
+      checkCategories: [
+        'anachronism',
+        'official_hierarchy',
+        'army_movement',
+        'provisions',
+        'geographic_distance',
+      ],
+    },
+    subtypes: HISTORY_SUBTYPES,
   },
   urban: {
     key: 'urban',
@@ -260,7 +323,7 @@ export const GENRE_PACK_DEFINITIONS: Record<WorkGenrePack, GenrePackDefinition> 
 export function getGenrePackDefinition(
   key: string | null | undefined,
 ): GenrePackDefinition | undefined {
-  if (key === 'xianxia' || key === 'urban') {
+  if (key === 'xianxia' || key === 'history' || key === 'urban') {
     return GENRE_PACK_DEFINITIONS[key];
   }
   return undefined;

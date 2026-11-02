@@ -16,6 +16,8 @@ import { BatchJobsController } from './generation/batch-jobs.controller';
 import { ChapterGenerationController } from './generation/chapter-generation.controller';
 import { ChapterGenerationModule } from './generation/chapter-generation.module';
 import { HealthModule } from './health/health.module';
+import { HistoryController } from './history/history.controller';
+import { HistoryModule } from './history/history.module';
 import { MapsController } from './maps/maps.controller';
 import { MapsModule } from './maps/maps.module';
 import { OutlineController } from './planning/outline.controller';
@@ -47,6 +49,7 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     CharactersModule,
     ChangesModule,
     ChapterGenerationModule,
+    HistoryModule,
     HealthModule,
   ],
 })
@@ -64,6 +67,7 @@ export class AppModule implements NestModule {
         EntitiesController,
         MapsController,
         WorldbuildingController,
+        HistoryController,
         CharactersController,
         ChangesController,
         ChapterGenerationController,

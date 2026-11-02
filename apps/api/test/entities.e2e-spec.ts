@@ -44,13 +44,19 @@ async function createAuthor(app: INestApplication, passwordHash: string) {
   };
 }
 
-async function createWork(agent: ReturnType<typeof request.agent>, title: string) {
+async function createWork(
+  agent: ReturnType<typeof request.agent>,
+  title: string,
+  genrePack: 'xianxia' | 'history' = 'xianxia',
+  genreVariant?: 'alternate_ancient' | 'transmigration_hegemony',
+) {
   const response = await agent
     .post('/api/v1/works')
     .send({
       title,
       penName: '青云客',
-      genrePack: 'xianxia',
+      genrePack,
+      ...(genreVariant ? { genreVariant } : {}),
       scale: 'long',
       targetPlatform: '起点中文网',
     })
@@ -442,6 +448,159 @@ describe('entity center API', () => {
       .expect(400)
       .expect(({ body }) => {
         expect(body.code).toBe('RELATION_ENTITY_INVALID');
+      });
+  });
+
+  it('provides history subtypes and keeps them isolated from other packs', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(
+      author.agent,
+      '北境争鼎',
+      'history',
+      'alternate_ancient',
+    );
+    const xianxiaWork = await createWork(author.agent, '天门残卷');
+    const centerPath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}`;
+    const xianxiaCenterPath = `/api/v1/works/${xianxiaWork.id}/branches/${xianxiaWork.mainBranchId}`;
+
+    const historyWork = await author.agent.get(`/api/v1/works/${work.id}`).expect(200);
+    expect(historyWork.body.genreTemplate).toMatchObject({
+      name: '架空古代',
+      subtypes: expect.arrayContaining([
+        expect.objectContaining({ key: 'dynasty', label: '朝代', entityType: 'world' }),
+        expect.objectContaining({
+          key: 'bureaucracy',
+          label: '官制',
+          entityType: 'faction',
+          fields: expect.arrayContaining([
+            expect.objectContaining({ key: 'history_rank', label: '官阶', type: 'number' }),
+          ]),
+        }),
+        expect.objectContaining({
+          key: 'military',
+          label: '军制',
+          fields: expect.arrayContaining([
+            expect.objectContaining({ key: 'history_troops', label: '兵力' }),
+            expect.objectContaining({
+              key: 'history_provisions_shi',
+              label: '随军粮草（石）',
+            }),
+          ]),
+        }),
+        expect.objectContaining({ key: 'geography', label: '地理', entityType: 'map' }),
+        expect.objectContaining({
+          key: 'clan',
+          label: '世家',
+          fields: expect.arrayContaining([
+            expect.objectContaining({ key: 'history_influence', label: '门第影响力' }),
+          ]),
+        }),
+      ]),
+    });
+
+    const dynasty = await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '大朔',
+        type: 'world',
+        subtype: 'dynasty',
+        summary: '北境起家的架空王朝。',
+      })
+      .expect(201);
+    expect(dynasty.body).toMatchObject({
+      subtype: 'dynasty',
+      subtypeLabel: '朝代',
+      typeLabel: '世界',
+    });
+
+    const bureaucracy = await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '中书省',
+        type: 'faction',
+        subtype: 'bureaucracy',
+        summary: '总领政务的官署。',
+        customFields: { history_rank: 2 },
+      })
+      .expect(201);
+    const military = await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '朔州军',
+        type: 'faction',
+        subtype: 'military',
+        summary: '驻守北境的边军。',
+        customFields: {
+          history_troops: 3_000,
+          history_provisions_shi: 2_000,
+        },
+      })
+      .expect(201);
+    await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '雁门道',
+        type: 'map',
+        subtype: 'geography',
+        summary: '连接京畿与北境的狭长通道。',
+      })
+      .expect(201);
+    await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '崔氏',
+        type: 'faction',
+        subtype: 'clan',
+        summary: '三代出过两位尚书的北地世家。',
+        customFields: { history_influence: 82 },
+      })
+      .expect(201);
+
+    await author.agent
+      .get(`${centerPath}/entities?subtype=bureaucracy`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toHaveLength(1);
+        expect(body.items[0]).toMatchObject({
+          id: bureaucracy.body.id,
+          subtype: 'bureaucracy',
+          subtypeLabel: '官制',
+        });
+      });
+    await author.agent
+      .get(`${centerPath}/entities?subtype=military`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toEqual([
+          expect.objectContaining({
+            id: military.body.id,
+            subtypeLabel: '军制',
+          }),
+        ]);
+      });
+
+    await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '错误子类型',
+        type: 'faction',
+        subtype: 'sect',
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('SUBTYPE_NOT_ALLOWED');
+      });
+
+    await author.agent
+      .post(`${xianxiaCenterPath}/entities`)
+      .send({
+        name: '仙门官署',
+        type: 'faction',
+        subtype: 'bureaucracy',
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('SUBTYPE_NOT_ALLOWED');
       });
   });
 

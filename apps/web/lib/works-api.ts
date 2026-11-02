@@ -14,6 +14,9 @@ export type Work = {
         subtypes: GenrePackDefinition['subtypes'];
       })
     | null;
+  genreVariant: string | null;
+  genreVariantLabel: string | null;
+  mainTemplate: string | null;
   scale: WorkScale;
   targetPlatform: string;
   status: WorkStatus;
@@ -35,6 +38,7 @@ export type WorkListResponse = {
 
 export const GENRE_LABELS: Record<string, string> = {
   xianxia: '仙侠',
+  history: '历史',
   urban: '都市',
 };
 

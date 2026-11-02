@@ -727,7 +727,7 @@ export class EntitiesService {
     if (!definition || definition.entityType !== type) {
       throw entitiesError(
         HttpStatus.BAD_REQUEST,
-        'URBAN_SUBTYPE_INVALID',
+        genrePack === 'urban' ? 'URBAN_SUBTYPE_INVALID' : 'SUBTYPE_NOT_ALLOWED',
         'Choose a subtype that belongs to this setting category',
       );
     }

@@ -26,6 +26,7 @@ import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../
 import { SettingsCenterPanel } from './settings-center-panel';
 import { MapFactionPanel } from './map-faction-panel';
 import { ChangeRequestPanel } from './change-request-panel';
+import { HistoryRulePanel } from './history-rule-panel';
 import { OutlineWorkspacePanel } from './outline-workspace-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 import { StoryLedgerPanel } from './story-ledger-panel';
@@ -157,9 +158,6 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         </Link>
         <div className="workspace-account">
           <span>{state.user.displayName}</span>
-          <Link className="text-button" href={`/workspace/${work.id}/jobs`}>
-            创作任务
-          </Link>
           <Link className="text-button" href={`/workspace/${work.id}/write`}>
             写作台
           </Link>
@@ -182,7 +180,11 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         <div>
           <p className="workspace-step">
             {work.genrePackLabel ?? GENRE_LABELS[work.genrePack] ?? work.genrePack}
-            {work.genreTemplate ? ` · ${work.genreTemplate.name}` : ''}
+            {work.genreVariantLabel
+              ? ` · ${work.genreVariantLabel}`
+              : work.genreTemplate
+                ? ` · ${work.genreTemplate.name}`
+                : ''}
           </p>
           <h1>{work.title}</h1>
           <p>
@@ -269,6 +271,15 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         <ChangeRequestPanel branchId={work.mainBranch.id} workId={work.id} />
       ) : null}
 
+      {work.mainBranch && work.genrePack === 'history' ? (
+        <HistoryRulePanel
+          branchId={work.mainBranch.id}
+          entities={state.entities}
+          mapOverview={state.mapOverview}
+          workId={work.id}
+        />
+      ) : null}
+
       <div className="work-detail-grid">
         <section className="work-detail-section">
           <p className="workspace-step">作品信息</p>
@@ -280,7 +291,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             </div>
             <div>
               <dt>题材</dt>
-              <dd>{work.genrePackLabel ?? GENRE_LABELS[work.genrePack] ?? work.genrePack}</dd>
+              <dd>
+                {work.genrePackLabel ?? GENRE_LABELS[work.genrePack] ?? work.genrePack}
+                {work.genreVariantLabel ? ` · ${work.genreVariantLabel}` : ''}
+              </dd>
             </div>
             {work.genreTemplate ? (
               <div>

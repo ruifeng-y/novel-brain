@@ -119,7 +119,7 @@ function settingsError(error: unknown): string {
     if (error.code === 'RELATION_ENTITY_INVALID') {
       return '关系两端必须都是当前作品里的设定。';
     }
-    if (error.code === 'URBAN_SUBTYPE_INVALID') {
+    if (error.code === 'URBAN_SUBTYPE_INVALID' || error.code === 'SUBTYPE_NOT_ALLOWED') {
       return '这个题材子类型不属于当前设定栏目，请重新选择。';
     }
   }
