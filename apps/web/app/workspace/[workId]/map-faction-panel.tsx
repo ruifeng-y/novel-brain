@@ -752,7 +752,7 @@ export function MapFactionPanel({
           <section aria-labelledby="map-presence-title">
             <div className="map-section-heading">
               <div>
-                <h3 id="map-presence-title">人物所在地</h3>
+                <h3 id="map-presence-title">人物行踪</h3>
                 <p>按故事时间记录人物位置，系统会找出同一时刻出现在两地的情况。</p>
               </div>
               <span>{map.presences.length}</span>
@@ -807,7 +807,7 @@ export function MapFactionPanel({
                 <label className="field">
                   <span>人物</span>
                   <select
-                    aria-label="所在地人物"
+                    aria-label="行踪人物"
                     onChange={(event) => {
                       const characterEntityId = event.currentTarget.value;
                       setPresenceDraft((current) => ({
@@ -829,7 +829,7 @@ export function MapFactionPanel({
                 <label className="field">
                   <span>地点</span>
                   <select
-                    aria-label="所在地点"
+                    aria-label="行踪地点"
                     onChange={(event) => {
                       const locationNodeId = event.currentTarget.value;
                       setPresenceDraft((current) => ({
@@ -851,7 +851,7 @@ export function MapFactionPanel({
                 <label className="field">
                   <span>故事时间</span>
                   <input
-                    aria-label="所在地故事时间"
+                    aria-label="行踪故事时间"
                     onChange={(event) => {
                       const storyTime = event.currentTarget.value;
                       setPresenceDraft((current) => ({

@@ -143,19 +143,19 @@ test('an author can build a layered map and resolve a two-place conflict', async
   await page.getByLabel('临渊城地图标记区').click({ position: { x: 120, y: 120 } });
   await expect(page.getByRole('button', { name: '断碑古寺标记点' })).toBeVisible();
 
-  await page.getByLabel('所在地人物').selectOption({ label: '沈砚' });
+  await page.getByLabel('行踪人物').selectOption({ label: '沈砚' });
   await page
-    .getByLabel('所在地点')
+    .getByLabel('行踪地点')
     .selectOption({ label: '九洲 / 人间界 / 东荒 / 青岚郡 / 临渊城 · 城市' });
-  await page.getByLabel('所在地故事时间').fill('第三章清晨');
+  await page.getByLabel('行踪故事时间').fill('第三章清晨');
   await page.getByRole('button', { name: '记录所在地' }).click();
   await expect(page.getByText('沈砚 · 临渊城')).toBeVisible();
 
-  await page.getByLabel('所在地人物').selectOption({ label: '沈砚' });
+  await page.getByLabel('行踪人物').selectOption({ label: '沈砚' });
   await page
-    .getByLabel('所在地点')
+    .getByLabel('行踪地点')
     .selectOption({ label: '九洲 / 人间界 / 东荒 / 青岚郡 / 落霞城 · 城市' });
-  await page.getByLabel('所在地故事时间').fill('第三章清晨');
+  await page.getByLabel('行踪故事时间').fill('第三章清晨');
   await page.getByRole('button', { name: '记录所在地' }).click();
   await expect(page.getByText('沈砚 在 第三章清晨 同时出现在 临渊城、落霞城')).toBeVisible();
 
