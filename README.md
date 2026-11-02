@@ -2,6 +2,8 @@
 
 面向个人作者的长篇 AI 创作平台。当前处于 M0 平台底座阶段。
 
+M0 是只供团队内部演示的 walking skeleton，不是对外发布版本。
+
 ## 环境要求
 
 - Node.js 22 或更高
@@ -45,6 +47,9 @@ docker compose up -d --build api worker web
 pnpm test:e2e
 ```
 
+Compose 里的 API 通过 `host.docker.internal` 访问 Playwright 启动的本地模型桩；
+如果 API 直接跑在宿主机上，先设置 `$env:MODEL_PROVIDER_STUB_HOST="127.0.0.1"`。
+
 如果本机 Playwright 浏览器下载不可用，可以通过 `PLAYWRIGHT_EXECUTABLE_PATH`
 指向现有的 Chromium 可执行文件。
 
@@ -56,6 +61,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:e2e
+pnpm demo:m0
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
@@ -81,3 +87,4 @@ pnpm db:seed
 - `docs/specs/v1-spec.md`
 - `GLOSSARY.md`
 - `docs/adr/0001-canon-first-story-state.md`
+- `docs/acceptance/m0/acceptance.md`

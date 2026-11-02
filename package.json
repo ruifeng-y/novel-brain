@@ -5,6 +5,7 @@
   "packageManager": "pnpm@10.20.0",
   "scripts": {
     "dev": "turbo dev",
+    "demo:m0": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/m0-demo.ps1",
     "build": "turbo build",
     "lint": "eslint .",
     "typecheck": "turbo typecheck",

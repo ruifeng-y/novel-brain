@@ -30,6 +30,7 @@ async function readVerificationCode(email: string): Promise<string> {
 }
 
 test('an author can save, test, mask, and delete a model configuration', async ({ page }) => {
+  const providerHost = process.env.MODEL_PROVIDER_STUB_HOST ?? 'host.docker.internal';
   const provider = createServer((request, response) => {
     if (request.url === '/models' && request.headers.authorization === 'Bearer sk-e2e-secret') {
       response.writeHead(200, { 'Content-Type': 'application/json' });
@@ -40,7 +41,7 @@ test('an author can save, test, mask, and delete a model configuration', async (
     response.writeHead(401, { 'Content-Type': 'application/json' });
     response.end(JSON.stringify({ error: { message: 'Invalid key' } }));
   });
-  await new Promise<void>((resolve) => provider.listen(0, '127.0.0.1', resolve));
+  await new Promise<void>((resolve) => provider.listen(0, '0.0.0.0', resolve));
   const address = provider.address();
   if (!address || typeof address === 'string') {
     throw new Error('Could not start the local model provider stub');
@@ -69,7 +70,7 @@ test('an author can save, test, mask, and delete a model configuration', async (
     await expect(page.getByRole('heading', { name: '模型设置' })).toBeVisible();
 
     await page.getByLabel('配置名称').fill('DeepSeek 正文');
-    await page.getByLabel('Base URL').fill(`http://127.0.0.1:${address.port}`);
+    await page.getByLabel('Base URL').fill(`http://${providerHost}:${address.port}`);
     await page.getByLabel('模型名').fill('deepseek-chat');
     await page.getByLabel('API Key').fill('sk-e2e-secret');
     await page.getByLabel('用途', { exact: true }).selectOption('prose');
