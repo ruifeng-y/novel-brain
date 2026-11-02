@@ -3,7 +3,13 @@ import { Test } from '@nestjs/testing';
 import { Algorithm, hash } from '@node-rs/argon2';
 import { AI_GATEWAY, FakeAiGateway, buildDeterministicChineseChapter } from '@novel/ai';
 import { countCjkCharacters } from '@novel/contracts';
-import { createDatabase, users as usersTable } from '@novel/db';
+import {
+  characterStates,
+  createDatabase,
+  entities,
+  foreshadows,
+  users as usersTable,
+} from '@novel/db';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -179,6 +185,34 @@ describe('chapter generation API', () => {
 
     fakeGateway = new FakeAiGateway({
       responseFactory: (input) => {
+        if (input.prompt.includes('【续写要求】')) {
+          return chapterForPrompt(input.prompt);
+        }
+        if (input.prompt.includes('【改写要求】')) {
+          return '他缓缓抬起头，望向雨幕深处，指节仍压在断碑冰凉的字痕上。';
+        }
+        if (input.prompt.includes('【扩写要求】')) {
+          return '他先是停住呼吸，随后缓缓抬起头，望向雨幕深处。风从断碑间穿过，卷走檐下的水声，也把他未说出口的名字压回喉咙里。';
+        }
+        if (input.prompt.includes('【缩写要求】')) {
+          return '他抬头望向雨幕。';
+        }
+        if (input.prompt.includes('【改视角要求】')) {
+          return '苏晚看见他抬起头，雨水顺着下颌落下，断碑却在他掌下亮起一线微光。';
+        }
+        if (input.prompt.includes('【钩子要求】')) {
+          return [
+            '1. 断碑后的黑暗里，有人用他母亲的声音叫了他的名字。',
+            '2. 山门外亮起火光，来人的袖口绣着早已焚毁的家纹。',
+            '3. 他低头时，发现碑上多了一行自己刚刚才写下的字。',
+          ].join('\n');
+        }
+        if (input.prompt.includes('【标题要求】')) {
+          return '断碑问心';
+        }
+        if (input.prompt.includes('【摘要要求】')) {
+          return '沈砚在荒寺断碑前引动残剑，以一段记忆为代价窥见母亲失踪的线索，也在追兵逼近时发现碑文正在回应他的名字。';
+        }
         if (input.prompt.includes('[[ALWAYS_SHORT]]')) {
           return buildDeterministicChineseChapter(500);
         }
@@ -1014,6 +1048,279 @@ describe('chapter generation API', () => {
     const characterCount = countCjkCharacters(job.draft.content);
     expect(characterCount).toBeGreaterThanOrEqual(2_100);
     expect(characterCount).toBeLessThanOrEqual(2_200);
+  });
+
+  it('continues from the cursor with quality, model, constraints, references, and taboo feedback', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '续写控制');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    const model = await saveProseModel(author.agent);
+    const existingContent = '沈砚按住断碑，雨声忽然停了。';
+
+    await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/versions`)
+      .send({ content: existingContent })
+      .expect(201);
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/continue`)
+      .send({
+        content: existingContent,
+        cursorOffset: existingContent.length,
+        qualityTier: 'premium',
+        modelConfigId: model.body.id,
+        targetMinCharacters: 300,
+        targetMaxCharacters: 400,
+        pov: '苏晚',
+        mustInclude: ['断碑'],
+        mustAvoid: ['天降神迹'],
+        referenceChapters: [1],
+        tabooWords: ['血'],
+        instruction: '放慢节奏，保留悬念。',
+      })
+      .expect(202);
+
+    const job = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.jobId as string,
+      'completed',
+    );
+
+    expect(job).toMatchObject({
+      action: 'continue',
+      outputKind: 'segment',
+      modelConfigId: model.body.id,
+      settings: {
+        qualityTier: 'premium',
+        targetMinCharacters: 300,
+        targetMaxCharacters: 400,
+        pov: '苏晚',
+        mustInclude: ['断碑'],
+        mustAvoid: ['天降神迹'],
+        referenceChapters: [1],
+        tabooWords: ['血'],
+        cursorOffset: existingContent.length,
+      },
+    });
+    expect(job.context.sections.map((section: { key: string }) => section.key)).toEqual(
+      expect.arrayContaining(['writingControls', 'referenceChapters']),
+    );
+    expect(
+      job.context.sections.find(
+        (section: { key: string }) => section.key === 'writingControls',
+      ).content,
+    ).toMatchObject({
+      qualityTierLabel: '精品',
+      pov: '苏晚',
+      mustInclude: ['断碑'],
+      mustAvoid: ['天降神迹'],
+      tabooWords: ['血'],
+    });
+    expect(job.draft.content.length).toBeGreaterThan(0);
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/annotations`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              category: 'taboo',
+              message: expect.stringContaining('血'),
+              sourceSentence: expect.stringContaining('血'),
+            }),
+          ]),
+        );
+      });
+  });
+
+  it('supports selection rewrite, expand, condense, perspective change, hooks, title, and summary', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '精细改写');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+    const content = '沈砚按住断碑。他抬起头。山门外传来脚步声。';
+    const selection = '他抬起头。';
+    const selectionStart = content.indexOf(selection);
+    const selectionEnd = selectionStart + selection.length;
+
+    const actions = [
+      { path: 'rewrite', action: 'rewrite', outputKind: 'segment' },
+      { path: 'expand', action: 'expand', outputKind: 'segment' },
+      { path: 'condense', action: 'condense', outputKind: 'segment' },
+      { path: 'change-pov', action: 'change_pov', outputKind: 'segment' },
+      { path: 'hooks', action: 'hooks', outputKind: 'hook_options' },
+      { path: 'title', action: 'title', outputKind: 'title' },
+      { path: 'summary', action: 'summary', outputKind: 'summary' },
+    ] as const;
+
+    for (const item of actions) {
+      const isSegment = item.outputKind === 'segment';
+      const started = await author.agent
+        .post(
+          `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/${item.path}`,
+        )
+        .send({
+          content,
+          ...(isSegment
+            ? {
+                selection,
+                selectionStart,
+                selectionEnd,
+                targetMinCharacters: 1,
+                targetMaxCharacters: 300,
+              }
+            : {}),
+          ...(item.action === 'change_pov' ? { targetPov: '苏晚' } : {}),
+        })
+        .expect(202);
+      const job = await waitForJob(
+        author.agent,
+        work.id,
+        work.mainBranchId,
+        started.body.jobId as string,
+        'completed',
+      );
+      expect(job).toMatchObject({
+        action: item.action,
+        outputKind: item.outputKind,
+      });
+      expect(job.draft.content.trim().length).toBeGreaterThan(0);
+      if (item.action === 'hooks') {
+        expect(job.draft.content.split('\n').filter(Boolean)).toHaveLength(3);
+      }
+    }
+  });
+
+  it('autosaves, keeps version history, restores an older version, and saves chapter metadata', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '版本回廊');
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+
+    const first = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/versions`)
+      .send({ content: '第一版正文。' })
+      .expect(201);
+    const second = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/versions`)
+      .send({ content: '第二版正文，多了一段。' })
+      .expect(201);
+
+    const autosaved = await author.agent
+      .put(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/autosave`)
+      .send({ content: '自动保存中的第三版正文。' })
+      .expect(200);
+    expect(autosaved.body).toMatchObject({
+      content: '自动保存中的第三版正文。',
+      wordCount: 11,
+    });
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.content).toBe('第二版正文，多了一段。');
+        expect(body.autosave).toMatchObject({
+          content: '自动保存中的第三版正文。',
+        });
+        expect(body.versions).toHaveLength(2);
+      });
+
+    const restored = await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/versions/${first.body.id}/restore`,
+      )
+      .send({})
+      .expect(201);
+    expect(restored.body).toMatchObject({
+      version: 3,
+      source: 'restored',
+      content: '第一版正文。',
+    });
+
+    await author.agent
+      .patch(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1`)
+      .send({
+        title: '第一章 断碑问心',
+        summary: '沈砚在断碑前付出记忆代价。',
+        hook: '门外的人叫出了他母亲的名字。',
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          title: '第一章 断碑问心',
+          summary: '沈砚在断碑前付出记忆代价。',
+          hook: '门外的人叫出了他母亲的名字。',
+        });
+      });
+    expect(second.body.version).toBe(2);
+  });
+
+  it('returns editorial suggestions, continuity, foreshadows, and character state for the chapter', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '写作上下文');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+
+    const database = app.get(DatabaseService).db;
+    const [character] = await database
+      .insert(entities)
+      .values({
+        workId: work.id,
+        branchId: work.mainBranchId,
+        name: '沈砚',
+        type: 'character',
+        summary: '边城剑客',
+      })
+      .returning();
+    await database.insert(foreshadows).values({
+      workId: work.id,
+      branchId: work.mainBranchId,
+      title: '母亲留下的旧家纹',
+      description: '追兵袖口会出现同样的纹样。',
+      setupChapter: 1,
+      plannedPayoffChapter: 4,
+      importance: 'must',
+      status: 'planted',
+    });
+    await database.insert(characterStates).values({
+      workId: work.id,
+      branchId: work.mainBranchId,
+      characterId: character.id,
+      body: '左臂骨折',
+      power: '炼气三层',
+      location: '荒寺',
+      possessions: '残剑',
+      disguise: '',
+      updatedBy: author.userId,
+    });
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/insights`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.foreshadows).toEqual([
+          expect.objectContaining({
+            title: '母亲留下的旧家纹',
+            importanceLabel: '必须回收',
+          }),
+        ]);
+        expect(body.characters).toEqual([
+          expect.objectContaining({
+            name: '沈砚',
+            body: '左臂骨折',
+            power: '炼气三层',
+            location: '荒寺',
+            possessions: '残剑',
+          }),
+        ]);
+        expect(body).toHaveProperty('suggestions');
+        expect(body).toHaveProperty('continuity');
+      });
   });
 
   it('rejects target bounds when the minimum exceeds the maximum', async () => {

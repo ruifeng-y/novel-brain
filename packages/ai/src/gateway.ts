@@ -126,6 +126,32 @@ export class FakeAiGateway implements AiGateway {
     if (this.options.response !== undefined) {
       return this.options.response;
     }
+    if (input.prompt.includes('【标题要求】')) {
+      return '断碑问心';
+    }
+    if (input.prompt.includes('【摘要要求】')) {
+      return '沈砚在荒寺断碑前引动残剑，以一段记忆为代价窥见母亲失踪的线索，也在追兵逼近时发现碑文正在回应他的名字。';
+    }
+    if (input.prompt.includes('【钩子要求】')) {
+      return [
+        '1. 断碑后的黑暗里，有人用他母亲的声音叫了他的名字。',
+        '2. 山门外亮起火光，来人的袖口绣着早已焚毁的家纹。',
+        '3. 他低头时，发现碑上多了一行自己刚刚才写下的字。',
+      ].join('\n');
+    }
+    if (
+      input.prompt.includes('【续写要求】') ||
+      input.prompt.includes('【改写要求】') ||
+      input.prompt.includes('【扩写要求】') ||
+      input.prompt.includes('【缩写要求】') ||
+      input.prompt.includes('【改视角要求】')
+    ) {
+      const match = input.prompt.match(/目标汉字数：(\d+)\s*到\s*(\d+)/);
+      const target = match
+        ? Number(match[1]) + Math.floor((Number(match[2]) - Number(match[1])) / 2)
+        : 240;
+      return buildDeterministicChineseChapter(Math.max(1, target));
+    }
     if (this.options.mode === 'chapter') {
       const match = input.prompt.match(/目标汉字数：(\d+)\s*到\s*(\d+)/);
       const target = match

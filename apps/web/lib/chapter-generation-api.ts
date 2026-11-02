@@ -40,10 +40,17 @@ export type ChapterDetail = {
   status: ChapterStatus;
   statusLabel: string;
   wordCount: number;
+  summary: string;
+  hook: string;
   content: string;
   outline: ChapterOutline;
   currentVersion: ChapterVersion | null;
   latestDraft: ChapterDraft | null;
+  autosave: {
+    content: string;
+    wordCount: number;
+    updatedAt: string;
+  } | null;
   versions: ChapterVersion[];
   context: {
     id: string;
@@ -67,13 +74,55 @@ export type GenerationStart = {
   generationRequestId: string;
   jobId: string;
   chapterNumber: number;
+  action: WritingAction;
+  outputKind: WritingOutputKind;
   status: 'queued';
+};
+
+export type WritingQualityTier = 'fast' | 'standard' | 'premium';
+export type WritingAction =
+  | 'chapter'
+  | 'continue'
+  | 'rewrite'
+  | 'expand'
+  | 'condense'
+  | 'change_pov'
+  | 'hooks'
+  | 'title'
+  | 'summary';
+export type WritingOutputKind =
+  | 'chapter'
+  | 'segment'
+  | 'hook_options'
+  | 'title'
+  | 'summary';
+
+export type WritingRequest = {
+  instruction?: string;
+  qualityTier?: WritingQualityTier;
+  modelConfigId?: string;
+  targetMinCharacters?: number;
+  targetMaxCharacters?: number;
+  pov?: string;
+  targetPov?: string;
+  mustInclude?: string[];
+  mustAvoid?: string[];
+  referenceChapters?: number[];
+  tabooWords?: string[];
+  content?: string;
+  selection?: string;
+  selectionStart?: number;
+  selectionEnd?: number;
+  cursorOffset?: number;
 };
 
 export type GenerationJob = {
   id: string;
   generationRequestId: string | null;
   chapterNumber: number;
+  action: WritingAction;
+  outputKind: WritingOutputKind;
+  settings: Record<string, unknown>;
   status:
     | 'queued'
     | 'preparing'
@@ -159,8 +208,32 @@ export type ContinuityIssue = {
     statement: string;
     chapterNumber: number;
     typeLabel: string;
-  };
+  } | null;
   createdAt: string;
+};
+
+export type WritingInsights = {
+  suggestions: ContinuityIssue[];
+  continuity: ContinuityIssue[];
+  foreshadows: Array<{
+    id: string;
+    title: string;
+    description: string;
+    setupChapter: number | null;
+    plannedPayoffChapter: number | null;
+    importanceLabel: string;
+  }>;
+  characters: Array<{
+    id: string;
+    name: string;
+    body: string;
+    power: string;
+    location: string;
+    possessions: string;
+    disguise: string;
+    knowledgeCount: number;
+    updatedAt: string;
+  }>;
 };
 
 function generationPath(workId: string, branchId: string): string {
@@ -192,13 +265,24 @@ export function startChapterGeneration(
   chapterNumber: number,
   instruction?: string,
 ): Promise<GenerationStart> {
+  return startChapterAction(workId, branchId, chapterNumber, 'chapter', {
+    ...(instruction?.trim() ? { instruction: instruction.trim() } : {}),
+  });
+}
+
+export function startChapterAction(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+  action: WritingAction,
+  input: WritingRequest,
+): Promise<GenerationStart> {
+  const path = action === 'chapter' ? 'generate' : action.replace('_', '-');
   return apiRequest<GenerationStart>(
-    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/generate`,
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/${path}`,
     {
       method: 'POST',
-      body: JSON.stringify({
-        ...(instruction?.trim() ? { instruction: instruction.trim() } : {}),
-      }),
+      body: JSON.stringify(input),
     },
   );
 }
@@ -232,6 +316,58 @@ export function saveChapterVersion(
     {
       method: 'POST',
       body: JSON.stringify({ content }),
+    },
+  );
+}
+
+export function saveChapterAutosave(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+  content: string,
+): Promise<{ content: string; wordCount: number; updatedAt: string }> {
+  return apiRequest<{ content: string; wordCount: number; updatedAt: string }>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/autosave`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ content }),
+    },
+  );
+}
+
+export function updateChapterMetadata(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+  input: { title?: string; summary?: string; hook?: string },
+): Promise<{
+  chapterNumber: number;
+  title: string;
+  summary: string;
+  hook: string;
+  status: ChapterStatus;
+  statusLabel: string;
+}> {
+  return apiRequest(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    },
+  );
+}
+
+export function restoreChapterVersion(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+  versionId: string,
+): Promise<ChapterVersion> {
+  return apiRequest<ChapterVersion>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/versions/${versionId}/restore`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
     },
   );
 }
@@ -300,6 +436,16 @@ export function loadContinuityIssues(
 ): Promise<{ items: ContinuityIssue[] }> {
   return apiRequest<{ items: ContinuityIssue[] }>(
     `${generationPath(workId, branchId)}/chapters/${chapterNumber}/annotations`,
+  );
+}
+
+export function loadWritingInsights(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+): Promise<WritingInsights> {
+  return apiRequest<WritingInsights>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/insights`,
   );
 }
 

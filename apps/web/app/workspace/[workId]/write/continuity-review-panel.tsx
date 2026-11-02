@@ -69,13 +69,15 @@ export function ContinuityReviewPanel({
                 </span>
               </div>
               <p className="continuity-issue-message">{issue.message}</p>
-              <div className="continuity-confirmed-fact">
-                <span>已确认设定</span>
-                <p>
-                  第 {issue.confirmedFact.chapterNumber} 章 ·{' '}
-                  {issue.confirmedFact.statement}
-                </p>
-              </div>
+              {issue.confirmedFact ? (
+                <div className="continuity-confirmed-fact">
+                  <span>已确认设定</span>
+                  <p>
+                    第 {issue.confirmedFact.chapterNumber} 章 ·{' '}
+                    {issue.confirmedFact.statement}
+                  </p>
+                </div>
+              ) : null}
               <div className="continuity-suggestion">
                 <span>修改建议</span>
                 <p>{issue.suggestion}</p>

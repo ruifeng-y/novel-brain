@@ -126,6 +126,7 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
   await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/write$/);
   await expect(page.getByRole('heading', { name: '写作进度' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '本章参考' })).toBeVisible();
+  await page.getByRole('tab', { name: '连续性' }).click();
   await expect(page.getByRole('heading', { name: '连续性提示' })).toBeVisible();
 
   await page.getByRole('button', { name: '根据章纲生成' }).click();
@@ -171,6 +172,7 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
   await expect(
     page.getByTestId('fact-proposal-character_knowledge').getByText('已确认'),
   ).toBeVisible();
+  await page.getByRole('tab', { name: '连续性' }).click();
   await expect(page.getByRole('heading', { name: '连续性提示' })).toBeVisible();
 
   await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(0);
