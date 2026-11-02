@@ -26,6 +26,7 @@ import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../
 import { SettingsCenterPanel } from './settings-center-panel';
 import { MapFactionPanel } from './map-faction-panel';
 import { ChangeRequestPanel } from './change-request-panel';
+import { ExportPanel } from './export-panel';
 import { HistoryRulePanel } from './history-rule-panel';
 import { OutlineWorkspacePanel } from './outline-workspace-panel';
 import { ParallelVersionsPanel } from './parallel-versions-panel';
@@ -279,6 +280,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
 
       {work.mainBranch ? (
         <VersionHistoryPanel branchId={work.mainBranch.id} workId={work.id} />
+      ) : null}
+
+      {work.mainBranch ? (
+        <ExportPanel initialBranchId={work.mainBranch.id} workId={work.id} />
       ) : null}
 
       {work.mainBranch && work.genrePack === 'history' ? (

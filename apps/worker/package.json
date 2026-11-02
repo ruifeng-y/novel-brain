@@ -17,6 +17,7 @@
     "@novel/core": "workspace:*",
     "@novel/db": "workspace:*",
     "@novel/ai": "workspace:*",
+    "@novel/storage": "workspace:*",
     "bullmq": "6.5.3",
     "drizzle-orm": "0.45.4",
     "pg": "8.23.1",

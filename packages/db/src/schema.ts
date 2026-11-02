@@ -1644,6 +1644,53 @@ export const jobEvents = pgTable(
 
 export type JobEventRow = typeof jobEvents.$inferSelect;
 
+export const exportFormatEnum = pgEnum('export_format', ['txt', 'markdown', 'docx', 'epub']);
+
+export const exportStatusEnum = pgEnum('export_status', [
+  'queued',
+  'running',
+  'completed',
+  'failed',
+]);
+
+export const exportJobs = pgTable(
+  'export_jobs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    format: exportFormatEnum('format').notNull(),
+    scope: jsonb('scope').$type<Record<string, unknown>>().notNull(),
+    options: jsonb('options').$type<Record<string, unknown>>().notNull(),
+    status: exportStatusEnum('status').notNull().default('queued'),
+    progress: integer('progress').notNull().default(0),
+    chapterCount: integer('chapter_count').notNull().default(0),
+    fileKey: text('file_key'),
+    fileName: text('file_name'),
+    mimeType: text('mime_type'),
+    fileSize: integer('file_size'),
+    error: jsonb('error').$type<Record<string, unknown>>(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('export_jobs_work_branch_created_idx').on(table.workId, table.branchId, table.createdAt),
+    index('export_jobs_user_status_idx').on(table.userId, table.status),
+  ],
+);
+
+export type ExportJobRow = typeof exportJobs.$inferSelect;
+export type NewExportJobRow = typeof exportJobs.$inferInsert;
+
 export const batchChapterStatusEnum = pgEnum('batch_chapter_status', [
   'pending',
   'running',
