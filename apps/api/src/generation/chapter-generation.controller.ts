@@ -6,6 +6,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Patch,
   Post,
   Req,
   Sse,
@@ -14,8 +15,10 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   chapterNumberSchema,
+  confirmFactProposalSchema,
   generateChapterSchema,
   saveChapterVersionSchema,
+  updateFactProposalSchema,
   workIdSchema,
 } from '@novel/contracts';
 import type { AuthenticatedRequest } from '../auth/auth.types';
@@ -101,6 +104,146 @@ export class ChapterGenerationController {
       this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
       this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
       this.parseChapterNumber(chapterNumber),
+    );
+  }
+
+  @Get('chapters/:chapterNumber/fact-proposals')
+  @ApiOperation({ summary: 'List author-reviewable facts extracted from a chapter' })
+  listFactProposals(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.listFactProposals(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+    );
+  }
+
+  @Patch('chapters/:chapterNumber/fact-proposals/:proposalId')
+  @ApiOperation({ summary: 'Edit a fact proposal before author review' })
+  updateFactProposal(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Param('proposalId') proposalId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = updateFactProposalSchema.safeParse(body);
+    if (!parsed.success) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Add a clear statement before saving this fact',
+        parsed.error.flatten(),
+      );
+    }
+
+    return this.chapters.updateFactProposal(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      this.parseId(proposalId, 'FACT_PROPOSAL_NOT_FOUND', 'Fact proposal not found'),
+      parsed.data.statement,
+    );
+  }
+
+  @Post('chapters/:chapterNumber/fact-proposals/:proposalId/reject')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Reject a fact proposal' })
+  rejectFactProposal(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Param('proposalId') proposalId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.rejectFactProposal(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      this.parseId(proposalId, 'FACT_PROPOSAL_NOT_FOUND', 'Fact proposal not found'),
+    );
+  }
+
+  @Post('chapters/:chapterNumber/fact-proposals/:proposalId/confirm')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Confirm a fact proposal into the story world state' })
+  confirmFactProposal(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Param('proposalId') proposalId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = confirmFactProposalSchema.safeParse(body ?? {});
+    if (!parsed.success) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Add a clear statement before confirming this fact',
+        parsed.error.flatten(),
+      );
+    }
+
+    return this.chapters.confirmFactProposal(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+      this.parseId(proposalId, 'FACT_PROPOSAL_NOT_FOUND', 'Fact proposal not found'),
+      parsed.data,
+    );
+  }
+
+  @Get('facts')
+  @ApiOperation({ summary: 'List confirmed facts for the story branch' })
+  listConfirmedFacts(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.listConfirmedFacts(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+    );
+  }
+
+  @Get('canon/commits')
+  @ApiOperation({ summary: 'List canon commits for the story branch' })
+  listCanonCommits(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.listCanonCommits(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+    );
+  }
+
+  @Get('canon/snapshots/:snapshotId')
+  @ApiOperation({ summary: 'Read an immutable canon snapshot' })
+  getCanonSnapshot(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('snapshotId') snapshotId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.getCanonSnapshot(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseId(snapshotId, 'CANON_SNAPSHOT_NOT_FOUND', 'Canon snapshot not found'),
     );
   }
 

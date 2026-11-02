@@ -2,17 +2,22 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   AI_GATEWAY,
   AiGatewayError,
+  extractChapterFacts,
   type AiGateway,
 } from '@novel/ai';
 import {
   countCjkCharacters,
+  FACT_TYPE_LABELS,
   DEFAULT_CHAPTER_TARGET_MAX,
   DEFAULT_CHAPTER_TARGET_MIN,
 } from '@novel/contracts';
 import {
   chapterOutlines,
+  chapters,
   contextPacks,
   drafts,
+  factProposals,
+  facts,
   generationRequests,
   jobCheckpoints,
   jobEvents,
@@ -28,7 +33,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { GenerationModelConfigResolver } from './generation-model-config.resolver';
 
-type GenerationStepKey = 'readiness' | 'brief' | 'context' | 'draft';
+type GenerationStepKey = 'readiness' | 'brief' | 'context' | 'draft' | 'extract_facts';
 
 type GenerationErrorInfo = {
   code: string;
@@ -157,12 +162,34 @@ export class ChapterGenerationRunner {
       await this.completeStep(jobId, 'brief', brief, 30);
 
       await this.beginStep(jobId, 'context', { outlineId: outline.id }, 35);
+      const confirmedFactRows = await this.database.db
+        .select({
+          fact: facts,
+          chapterNumber: chapters.chapterNumber,
+        })
+        .from(facts)
+        .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+        .where(
+          and(
+            eq(facts.workId, generation.workId),
+            eq(facts.branchId, generation.branchId),
+          ),
+        )
+        .orderBy(asc(facts.createdAt));
       const context = this.compileContext(
         bible,
         outline,
         generation,
         targetMinCharacters,
         targetMaxCharacters,
+        confirmedFactRows.map(({ fact, chapterNumber }) => ({
+          id: fact.id,
+          chapterNumber,
+          type: fact.type,
+          typeLabel: FACT_TYPE_LABELS[fact.type],
+          statement: fact.statement,
+          sourceSentence: fact.sourceSentence,
+        })),
       );
       await this.database.db
         .insert(contextPacks)
@@ -343,6 +370,50 @@ export class ChapterGenerationRunner {
         98,
       );
 
+      await this.beginStep(jobId, 'extract_facts', { draftId }, 98);
+      const extracted = await extractChapterFacts(this.gateway, {
+        chapterNumber: Number(jobRow.payload.chapterNumber),
+        chapterText: draftContent,
+        storyBible: {
+          protagonist: bible.protagonist,
+          worldIronLaw: bible.worldIronLaw,
+        },
+      });
+      await this.database.db.transaction(async (tx) => {
+        await tx
+          .delete(factProposals)
+          .where(
+            and(
+              eq(factProposals.chapterId, generation.chapterId),
+              eq(factProposals.status, 'proposed'),
+            ),
+          );
+        const now = new Date();
+        await tx.insert(factProposals).values(
+          extracted.facts.map((fact) => ({
+            workId: generation.workId,
+            branchId: generation.branchId,
+            chapterId: generation.chapterId,
+            generationRequestId: generation.id,
+            type: fact.type,
+            statement: fact.statement,
+            sourceSentence: fact.sourceSentence,
+            status: 'proposed' as const,
+            createdAt: now,
+            updatedAt: now,
+          })),
+        );
+      });
+      await this.completeStep(
+        jobId,
+        'extract_facts',
+        {
+          proposalCount: extracted.facts.length,
+          types: [...new Set(extracted.facts.map((fact) => fact.type))],
+        },
+        99,
+      );
+
       const completedAt = new Date();
       await this.appendEvent(jobId, 'job.completed', {
         draftId,
@@ -351,6 +422,7 @@ export class ChapterGenerationRunner {
         targetMinCharacters,
         targetMaxCharacters,
         attempts,
+        proposalCount: extracted.facts.length,
         progress: 100,
       });
       await this.database.db
@@ -358,7 +430,7 @@ export class ChapterGenerationRunner {
         .set({
           status: 'completed',
           progress: 100,
-          checkpoint: { stepKey: 'draft' },
+          checkpoint: { stepKey: 'extract_facts' },
           finishedAt: completedAt,
           updatedAt: completedAt,
         })
@@ -398,6 +470,14 @@ export class ChapterGenerationRunner {
     generation: GenerationRequestRow,
     targetMinCharacters: number,
     targetMaxCharacters: number,
+    confirmedFacts: Array<{
+      id: string;
+      chapterNumber: number;
+      type: string;
+      typeLabel: string;
+      statement: string;
+      sourceSentence: string;
+    }>,
   ): {
     sections: ContextSection[];
     sourceRefs: string[];
@@ -424,6 +504,17 @@ export class ChapterGenerationRunner {
           chapterEndHook: outline.chapterEndHook,
         },
       },
+      ...(confirmedFacts.length > 0
+        ? [
+            {
+              key: 'confirmedFacts',
+              title: '已确认设定',
+              content: {
+                facts: confirmedFacts,
+              },
+            },
+          ]
+        : []),
       {
         key: 'writingGuidance',
         title: '写作要求',
@@ -457,6 +548,16 @@ export class ChapterGenerationRunner {
       `叙事视角：${outline.pov}`,
       `场景节拍：${outline.sceneBeats.join('；')}`,
       `章末钩子：${outline.chapterEndHook}`,
+      ...(confirmedFacts.length > 0
+        ? [
+            '',
+            '【已确认设定】',
+            ...confirmedFacts.map(
+              (fact) =>
+                `- ${fact.typeLabel}（第 ${fact.chapterNumber} 章）：${fact.statement}`,
+            ),
+          ]
+        : []),
       ...(generation.instruction
         ? ['', '【作者补充要求】', generation.instruction]
         : []),
@@ -466,7 +567,11 @@ export class ChapterGenerationRunner {
 
     return {
       sections,
-      sourceRefs: [`story_bible:${bible.id}`, `chapter_outline:${outline.id}`],
+      sourceRefs: [
+        `story_bible:${bible.id}`,
+        `chapter_outline:${outline.id}`,
+        ...confirmedFacts.map((fact) => `fact:${fact.id}`),
+      ],
       systemPrompt,
       userPrompt,
     };

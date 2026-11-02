@@ -1,4 +1,8 @@
-import { countCjkCharacters, isCjkIdeograph } from '@novel/contracts';
+import {
+  countCjkCharacters,
+  isCjkIdeograph,
+  type ExtractedFact,
+} from '@novel/contracts';
 
 export type AiUsage = {
   promptTokens?: number;
@@ -27,9 +31,23 @@ export type StreamTextChunk = {
   usage?: AiUsage;
 };
 
+export type GenerateObjectInput<T> = GenerateTextInput & {
+  schemaName: string;
+  schemaDescription: string;
+  jsonSchema: Record<string, unknown>;
+  parse: (value: unknown) => T;
+};
+
+export type GenerateObjectResult<T> = {
+  object: T;
+  model: string;
+  usage?: AiUsage;
+};
+
 export interface AiGateway {
   generateText(input: GenerateTextInput): Promise<GenerateTextResult>;
   streamText(input: GenerateTextInput): AsyncIterable<StreamTextChunk>;
+  generateObject<T>(input: GenerateObjectInput<T>): Promise<GenerateObjectResult<T>>;
 }
 
 export const AI_GATEWAY = 'AI_GATEWAY';
@@ -49,6 +67,7 @@ export type FakeAiGatewayOptions = {
   mode?: 'default' | 'chapter';
   response?: string;
   responseFactory?: (input: GenerateTextInput) => string;
+  objectFactory?: (input: GenerateObjectInput<unknown>) => unknown;
   chunkSize?: number;
   delayMs?: number;
   failAfterChunks?: number;
@@ -95,6 +114,16 @@ export class FakeAiGateway implements AiGateway {
     }
   }
 
+  async generateObject<T>(input: GenerateObjectInput<T>): Promise<GenerateObjectResult<T>> {
+    const value = this.options.objectFactory
+      ? this.options.objectFactory(input)
+      : this.defaultObject(input);
+    return {
+      object: input.parse(value),
+      model: input.model ?? 'fake',
+    };
+  }
+
   private resolveText(input: GenerateTextInput): string {
     if (this.options.responseFactory) {
       return this.options.responseFactory(input);
@@ -110,6 +139,37 @@ export class FakeAiGateway implements AiGateway {
       return buildDeterministicChineseChapter(target);
     }
     return `fake response:${input.prompt}`;
+  }
+
+  private defaultObject(input: GenerateObjectInput<unknown>): unknown {
+    if (input.schemaName !== 'chapter_facts') {
+      return {};
+    }
+
+    const chapterText = input.prompt.split('【章节正文】\n')[1] ?? '';
+    const candidates: ExtractedFact[] = [
+      {
+        type: 'event',
+        statement: '沈砚以血触发断碑，碑面浮现陌生文字。',
+        sourceSentence:
+          '沈砚握住剑柄，掌心被锋刃割开，血没有落地，而是逆着雨丝向碑面流去。',
+      },
+      {
+        type: 'body_state',
+        statement: '沈砚的太阳穴剧痛，并吐出一口带着寒意的血。',
+        sourceSentence: '他的太阳穴剧烈跳动，眼前同时闪过边城、雪夜和一道关上的门。',
+      },
+      {
+        type: 'character_knowledge',
+        statement: '沈砚知道自己一旦退开，今夜就再也找不到这块碑。',
+        sourceSentence:
+          '沈砚没有松手。他知道自己一旦退开，今夜便再也找不到这块碑。',
+      },
+    ];
+
+    return {
+      facts: candidates.filter((fact) => chapterText.includes(fact.sourceSentence)),
+    };
   }
 }
 
@@ -268,6 +328,99 @@ export class DeepSeekAiGateway implements AiGateway {
     } finally {
       reader.releaseLock();
     }
+  }
+
+  async generateObject<T>(input: GenerateObjectInput<T>): Promise<GenerateObjectResult<T>> {
+    if (!input.apiKey) {
+      throw new AiGatewayError('MODEL_CONFIG_REQUIRED', 'A model API key is required');
+    }
+    if (!input.model) {
+      throw new AiGatewayError('MODEL_CONFIG_REQUIRED', 'A model name is required');
+    }
+
+    const baseUrl = (input.baseUrl ?? 'https://api.deepseek.com').replace(/\/+$/, '');
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${input.apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: input.model,
+          messages: [
+            {
+              role: 'system',
+              content: [
+                input.system ?? '',
+                '只输出一个 JSON 对象，不要 Markdown 代码块或解释。',
+                `JSON Schema: ${JSON.stringify(input.jsonSchema)}`,
+              ]
+                .filter(Boolean)
+                .join('\n'),
+            },
+            { role: 'user', content: input.prompt },
+          ],
+          response_format: { type: 'json_object' },
+          stream: false,
+          ...(input.maxTokens ? { max_tokens: input.maxTokens } : {}),
+          ...(input.temperature === undefined ? {} : { temperature: input.temperature }),
+        }),
+        signal: input.signal,
+      });
+    } catch (error) {
+      throw new AiGatewayError(
+        'MODEL_NETWORK_ERROR',
+        error instanceof Error ? error.message : 'The model provider could not be reached',
+      );
+    }
+
+    if (!response.ok) {
+      const code =
+        response.status === 401 || response.status === 403
+          ? 'INVALID_MODEL_KEY'
+          : 'MODEL_GENERATION_FAILED';
+      throw new AiGatewayError(code, `The model provider returned HTTP ${response.status}`);
+    }
+
+    const payload = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+      usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+      };
+    };
+    const content = payload.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new AiGatewayError(
+        'MODEL_GENERATION_FAILED',
+        'The model returned an empty structured response',
+      );
+    }
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      throw new AiGatewayError(
+        'MODEL_GENERATION_FAILED',
+        'The model returned invalid JSON',
+      );
+    }
+
+    return {
+      object: input.parse(parsed),
+      model: input.model,
+      ...(payload.usage
+        ? {
+            usage: {
+              promptTokens: payload.usage.prompt_tokens,
+              completionTokens: payload.usage.completion_tokens,
+            },
+          }
+        : {}),
+    };
   }
 }
 

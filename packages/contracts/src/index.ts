@@ -1,6 +1,7 @@
 export * from './auth';
 export * from './chapter-generation';
 export * from './env';
+export * from './fact-extraction';
 export * from './health';
 export * from './model-configs';
 export * from './redis';

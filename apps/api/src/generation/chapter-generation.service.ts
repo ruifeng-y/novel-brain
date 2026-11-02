@@ -2,17 +2,23 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   CHAPTER_STATUS_LABELS,
+  FACT_TYPE_LABELS,
   countCjkCharacters,
   type ChapterStatus,
+  type ConfirmFactProposalInput,
   type GenerateChapterInput,
   type SaveChapterVersionInput,
 } from '@novel/contracts';
 import {
+  canonCommits,
+  canonSnapshots,
   chapterOutlines,
   chapterVersions,
   chapters,
   contextPacks,
   drafts,
+  factProposals,
+  facts,
   generationRequests,
   jobEvents,
   jobSteps,
@@ -23,16 +29,23 @@ import {
   type ChapterOutlineRow,
   type ChapterRow,
   type ChapterVersionRow,
+  type FactProposalRow,
   type JobRow,
 } from '@novel/db';
 import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, gt, isNull, max, sql } from 'drizzle-orm';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
 import { DatabaseService } from '../database/database.service';
 import { chapterGenerationError } from './chapter-generation.errors';
 
-const GENERATION_STEPS = ['readiness', 'brief', 'context', 'draft'] as const;
+const GENERATION_STEPS = [
+  'readiness',
+  'brief',
+  'context',
+  'draft',
+  'extract_facts',
+] as const;
 
 type ChapterListItem = {
   chapterNumber: number;
@@ -584,6 +597,349 @@ export class ChapterGenerationService {
     };
   }
 
+  async listFactProposals(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.findChapter(workId, branchId, chapterNumber);
+    if (!chapter) {
+      return { items: [] };
+    }
+
+    const rows = await this.database.db
+      .select()
+      .from(factProposals)
+      .where(
+        and(
+          eq(factProposals.workId, workId),
+          eq(factProposals.branchId, branchId),
+          eq(factProposals.chapterId, chapter.id),
+        ),
+      )
+      .orderBy(asc(factProposals.createdAt), asc(factProposals.type));
+
+    return {
+      items: rows.map((row) => this.toFactProposalResponse(chapterNumber, row)),
+    };
+  }
+
+  async updateFactProposal(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    proposalId: string,
+    statement: string,
+  ) {
+    const proposal = await this.requireEditableProposal(
+      userId,
+      workId,
+      branchId,
+      chapterNumber,
+      proposalId,
+    );
+    const [updated] = await this.database.db
+      .update(factProposals)
+      .set({ statement, updatedAt: new Date() })
+      .where(eq(factProposals.id, proposal.id))
+      .returning();
+    return this.toFactProposalResponse(chapterNumber, updated);
+  }
+
+  async rejectFactProposal(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    proposalId: string,
+  ) {
+    const proposal = await this.requireEditableProposal(
+      userId,
+      workId,
+      branchId,
+      chapterNumber,
+      proposalId,
+    );
+    const [updated] = await this.database.db
+      .update(factProposals)
+      .set({ status: 'rejected', updatedAt: new Date() })
+      .where(eq(factProposals.id, proposal.id))
+      .returning();
+    return this.toFactProposalResponse(chapterNumber, updated);
+  }
+
+  async listConfirmedFacts(userId: string, workId: string, branchId: string) {
+    await this.requireBranch(userId, workId, branchId);
+    const rows = await this.database.db
+      .select({
+        fact: facts,
+        chapterNumber: chapters.chapterNumber,
+      })
+      .from(facts)
+      .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+      .where(and(eq(facts.workId, workId), eq(facts.branchId, branchId)))
+      .orderBy(asc(facts.createdAt));
+
+    return {
+      items: rows.map(({ fact, chapterNumber }) => ({
+        id: fact.id,
+        chapterNumber,
+        type: fact.type,
+        typeLabel: FACT_TYPE_LABELS[fact.type],
+        statement: fact.statement,
+        sourceSentence: fact.sourceSentence,
+        confirmedAt: fact.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async confirmFactProposal(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    proposalId: string,
+    input: ConfirmFactProposalInput,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+
+    return this.database.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${branchId}))`,
+      );
+      const [proposal] = await tx
+        .select()
+        .from(factProposals)
+        .where(
+          and(
+            eq(factProposals.id, proposalId),
+            eq(factProposals.workId, workId),
+            eq(factProposals.branchId, branchId),
+          ),
+        )
+        .limit(1);
+      if (!proposal) {
+        throw chapterGenerationError(
+          HttpStatus.NOT_FOUND,
+          'FACT_PROPOSAL_NOT_FOUND',
+          'Fact proposal not found',
+        );
+      }
+      if (proposal.status === 'rejected') {
+        throw chapterGenerationError(
+          HttpStatus.CONFLICT,
+          'FACT_PROPOSAL_REJECTED',
+          'A rejected fact proposal cannot be confirmed',
+        );
+      }
+
+      const [chapter] = await tx
+        .select()
+        .from(chapters)
+        .where(
+          and(
+            eq(chapters.id, proposal.chapterId),
+            eq(chapters.workId, workId),
+            eq(chapters.branchId, branchId),
+            eq(chapters.chapterNumber, chapterNumber),
+          ),
+        )
+        .limit(1);
+      if (!chapter) {
+        throw chapterGenerationError(
+          HttpStatus.NOT_FOUND,
+          'CHAPTER_NOT_FOUND',
+          'Chapter not found',
+        );
+      }
+
+      let [fact] =
+        proposal.status === 'confirmed'
+          ? await tx
+              .select()
+              .from(facts)
+              .where(eq(facts.sourceProposalId, proposal.id))
+              .limit(1)
+          : [];
+
+      if (proposal.status === 'confirmed') {
+        const [existingCommit] = fact
+          ? await tx
+              .select()
+              .from(canonCommits)
+              .where(
+                and(
+                  eq(canonCommits.branchId, branchId),
+                  sql`${canonCommits.eventLog} @> ${JSON.stringify([
+                    { factId: fact.id },
+                  ])}::jsonb`,
+                ),
+              )
+              .orderBy(desc(canonCommits.createdAt))
+              .limit(1)
+          : [];
+        return {
+          proposal: this.toFactProposalResponse(chapterNumber, proposal),
+          fact: this.toConfirmedFactResponse(chapterNumber, fact),
+          canonCommit: existingCommit
+            ? {
+                id: existingCommit.id,
+                snapshotId: existingCommit.snapshotId,
+                createdAt: existingCommit.createdAt.toISOString(),
+              }
+            : null,
+        };
+      }
+
+      const statement = input.statement ?? proposal.statement;
+      const now = new Date();
+      const factId = randomUUID();
+      const commitId = randomUUID();
+      const snapshotId = randomUUID();
+      [fact] = await tx
+        .insert(facts)
+        .values({
+          id: factId,
+          workId,
+          branchId,
+          chapterId: chapter.id,
+          sourceProposalId: proposal.id,
+          type: proposal.type,
+          statement,
+          sourceSentence: proposal.sourceSentence,
+          createdAt: now,
+        })
+        .returning();
+
+      await tx.insert(canonCommits).values({
+        id: commitId,
+        workId,
+        branchId,
+        chapterId: chapter.id,
+        snapshotId,
+        message: `确认第 ${chapterNumber} 章事实`,
+        eventLog: [
+          {
+            kind: 'fact_confirmed',
+            proposalId: proposal.id,
+            factId,
+            type: proposal.type,
+            statement,
+            sourceSentence: proposal.sourceSentence,
+          },
+        ],
+        createdBy: userId,
+        createdAt: now,
+      });
+
+      const confirmedRows = await tx
+        .select({
+          fact: facts,
+          chapterNumber: chapters.chapterNumber,
+        })
+        .from(facts)
+        .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+        .where(and(eq(facts.workId, workId), eq(facts.branchId, branchId)))
+        .orderBy(asc(facts.createdAt));
+      await tx.insert(canonSnapshots).values({
+        id: snapshotId,
+        workId,
+        branchId,
+        commitId,
+        snapshot: {
+          facts: confirmedRows.map(({ fact: row, chapterNumber: number }) =>
+            this.toConfirmedFactResponse(number, row),
+          ),
+        },
+        createdAt: now,
+      });
+
+      const [updatedProposal] = await tx
+        .update(factProposals)
+        .set({ statement, status: 'confirmed', updatedAt: now })
+        .where(eq(factProposals.id, proposal.id))
+        .returning();
+      await tx
+        .update(workBranches)
+        .set({ baseCommitId: commitId, updatedAt: now })
+        .where(eq(workBranches.id, branchId));
+
+      return {
+        proposal: this.toFactProposalResponse(chapterNumber, updatedProposal),
+        fact: this.toConfirmedFactResponse(chapterNumber, fact),
+        canonCommit: {
+          id: commitId,
+          snapshotId,
+          createdAt: now.toISOString(),
+        },
+      };
+    });
+  }
+
+  async listCanonCommits(userId: string, workId: string, branchId: string) {
+    await this.requireBranch(userId, workId, branchId);
+    const rows = await this.database.db
+      .select({
+        commit: canonCommits,
+        chapterNumber: chapters.chapterNumber,
+      })
+      .from(canonCommits)
+      .innerJoin(chapters, eq(chapters.id, canonCommits.chapterId))
+      .where(
+        and(eq(canonCommits.workId, workId), eq(canonCommits.branchId, branchId)),
+      )
+      .orderBy(desc(canonCommits.createdAt));
+
+    return {
+      items: rows.map(({ commit, chapterNumber }) => ({
+        id: commit.id,
+        chapterNumber,
+        snapshotId: commit.snapshotId,
+        message: commit.message,
+        eventLog: commit.eventLog,
+        createdAt: commit.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  async getCanonSnapshot(
+    userId: string,
+    workId: string,
+    branchId: string,
+    snapshotId: string,
+  ) {
+    await this.requireBranch(userId, workId, branchId);
+    const [row] = await this.database.db
+      .select()
+      .from(canonSnapshots)
+      .where(
+        and(
+          eq(canonSnapshots.id, snapshotId),
+          eq(canonSnapshots.workId, workId),
+          eq(canonSnapshots.branchId, branchId),
+        ),
+      )
+      .limit(1);
+    if (!row) {
+      throw chapterGenerationError(
+        HttpStatus.NOT_FOUND,
+        'CANON_SNAPSHOT_NOT_FOUND',
+        'Canon snapshot not found',
+      );
+    }
+    return {
+      id: row.id,
+      commitId: row.commitId,
+      facts: row.snapshot.facts ?? [],
+      createdAt: row.createdAt.toISOString(),
+    };
+  }
+
   private async ensureChapter(
     workId: string,
     branchId: string,
@@ -630,6 +986,68 @@ export class ChapterGenerationService {
       );
     }
     return outline;
+  }
+
+  private async requireEditableProposal(
+    userId: string,
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+    proposalId: string,
+  ): Promise<FactProposalRow> {
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+    const chapter = await this.findChapter(workId, branchId, chapterNumber);
+    const proposal = chapter
+      ? (
+          await this.database.db
+            .select()
+            .from(factProposals)
+            .where(
+              and(
+                eq(factProposals.id, proposalId),
+                eq(factProposals.workId, workId),
+                eq(factProposals.branchId, branchId),
+                eq(factProposals.chapterId, chapter.id),
+              ),
+            )
+            .limit(1)
+        )[0]
+      : undefined;
+    if (!proposal) {
+      throw chapterGenerationError(
+        HttpStatus.NOT_FOUND,
+        'FACT_PROPOSAL_NOT_FOUND',
+        'Fact proposal not found',
+      );
+    }
+    if (proposal.status !== 'proposed') {
+      throw chapterGenerationError(
+        HttpStatus.CONFLICT,
+        'FACT_PROPOSAL_NOT_EDITABLE',
+        'This fact proposal has already been reviewed',
+      );
+    }
+    return proposal;
+  }
+
+  private async findChapter(
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+  ): Promise<ChapterRow | undefined> {
+    const [chapter] = await this.database.db
+      .select()
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, branchId),
+          eq(chapters.chapterNumber, chapterNumber),
+        ),
+      )
+      .limit(1);
+    return chapter;
   }
 
   private async selectProseModelConfig(userId: string) {
@@ -732,6 +1150,41 @@ export class ChapterGenerationService {
       source: row.source,
       modelConfigId: row.modelConfigId,
       createdAt: row.createdAt.toISOString(),
+    };
+  }
+
+  private toFactProposalResponse(chapterNumber: number, row: FactProposalRow) {
+    return {
+      id: row.id,
+      chapterNumber,
+      type: row.type,
+      typeLabel: FACT_TYPE_LABELS[row.type],
+      statement: row.statement,
+      sourceSentence: row.sourceSentence,
+      status: row.status,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
+    };
+  }
+
+  private toConfirmedFactResponse(
+    chapterNumber: number,
+    row: {
+      id: string;
+      type: (typeof facts.$inferSelect)['type'];
+      statement: string;
+      sourceSentence: string;
+      createdAt: Date;
+    },
+  ) {
+    return {
+      id: row.id,
+      chapterNumber,
+      type: row.type,
+      typeLabel: FACT_TYPE_LABELS[row.type],
+      statement: row.statement,
+      sourceSentence: row.sourceSentence,
+      confirmedAt: row.createdAt.toISOString(),
     };
   }
 }
