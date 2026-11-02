@@ -239,6 +239,13 @@
       "when": 1793619000000,
       "tag": "0033_tenant-isolation",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793622024739,
+      "tag": "0034_confused_captain_midlands",
+      "breakpoints": true
     }
   ]
 }

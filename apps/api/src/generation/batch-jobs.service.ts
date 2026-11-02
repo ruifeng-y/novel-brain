@@ -31,8 +31,8 @@ import {
 import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
-import { BranchStateService } from '../branches/branch-state.service';
 import { DatabaseService } from '../database/database.service';
+import { VersionGraphService } from '../versions/version-graph.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { chapterGenerationError } from './chapter-generation.errors';
 
@@ -43,7 +43,7 @@ export class BatchJobsService {
   constructor(
     private readonly database: DatabaseService,
     private readonly rateLimits: RateLimitService,
-    private readonly branchState: BranchStateService,
+    private readonly versions: VersionGraphService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
@@ -750,7 +750,7 @@ export class BatchJobsService {
       await tx.update(works).set({ updatedAt: new Date() }).where(eq(works.id, job.workId));
       return created;
     });
-    await this.branchState.snapshotVersion(job.userId, job.workId, item.branchId, created.id);
+    await this.versions.recordChapterVersion(job.userId, job.workId, item.branchId, created.id);
   }
 
   private async ignoreChapterIssues(job: JobRow, item: JobChapterRow, reason: string) {

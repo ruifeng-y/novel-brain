@@ -186,6 +186,7 @@ describe('security boundaries', () => {
       'change_requests',
       'change_impact_reports',
       'change_validations',
+      'audit_logs',
       'map_nodes',
       'map_connections',
       'map_images',
@@ -248,9 +249,7 @@ describe('security boundaries', () => {
         expect(body.items.map((item: { id: string }) => item.id)).toEqual([created.body.id]);
       });
     await alice.agent
-      .get(
-        `/api/v1/works/${created.body.id}/branches/${created.body.mainBranch.id}/version-points`,
-      )
+      .get(`/api/v1/works/${created.body.id}/branches/${created.body.mainBranch.id}/version-points`)
       .expect(200);
 
     await bob.agent
@@ -262,9 +261,7 @@ describe('security boundaries', () => {
 
     await bob.agent.get(`/api/v1/works/${created.body.id}`).expect(404);
     await bob.agent
-      .get(
-        `/api/v1/works/${created.body.id}/branches/${created.body.mainBranch.id}/version-points`,
-      )
+      .get(`/api/v1/works/${created.body.id}/branches/${created.body.mainBranch.id}/version-points`)
       .expect(404);
   });
 
@@ -355,9 +352,7 @@ describe('security boundaries', () => {
     }
 
     await agent
-      .post(
-        `/api/v1/works/${work.body.id}/branches/${work.body.mainBranch.id}/chapters/1/generate`,
-      )
+      .post(`/api/v1/works/${work.body.id}/branches/${work.body.mainBranch.id}/chapters/1/generate`)
       .expect(429)
       .expect(({ body }) => {
         expect(body.code).toBe('RATE_LIMITED');

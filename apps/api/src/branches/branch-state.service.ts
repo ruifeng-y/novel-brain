@@ -12,7 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import { branchesError } from './branches.errors';
 
-type BranchDatabase = Parameters<Parameters<DatabaseService['db']['transaction']>[0]>[0];
+export type BranchDatabase = Parameters<Parameters<DatabaseService['db']['transaction']>[0]>[0];
 
 const CLONE_TABLES = [
   'story_bibles',
@@ -144,9 +144,29 @@ export class BranchStateService {
     if (!branch) {
       return branchId;
     }
+    if (branch.stateBranchId) {
+      return branch.stateBranchId;
+    }
     return branch.baselineBranchId && !branch.baselineMaterializedAt
       ? branch.baselineBranchId
       : branch.id;
+  }
+
+  async logicalBranchId(branchId: string): Promise<string> {
+    const [owner] = await this.database.db
+      .select({ id: workBranches.id })
+      .from(workBranches)
+      .where(eq(workBranches.stateBranchId, branchId))
+      .limit(1);
+    if (owner) {
+      return owner.id;
+    }
+    const [branch] = await this.database.db
+      .select({ id: workBranches.id })
+      .from(workBranches)
+      .where(eq(workBranches.id, branchId))
+      .limit(1);
+    return branch?.id ?? branchId;
   }
 
   async resolveRequestBranch(
@@ -162,7 +182,21 @@ export class BranchStateService {
       .where(and(eq(workBranches.id, branchId), eq(works.userId, userId)))
       .limit(1);
     const branch = row?.branch;
-    if (!branch || !branch.baselineBranchId || branch.baselineMaterializedAt) {
+    if (!branch) {
+      return {
+        branchId,
+        forkBranchId: branchId,
+        idMap: await this.loadIdMap(branchId),
+      };
+    }
+    if (branch.stateBranchId) {
+      return {
+        branchId: branch.stateBranchId,
+        forkBranchId: branch.id,
+        idMap: await this.loadIdMap(branch.stateBranchId),
+      };
+    }
+    if (!branch.baselineBranchId || branch.baselineMaterializedAt) {
       return {
         branchId,
         forkBranchId: branchId,
@@ -241,7 +275,7 @@ export class BranchStateService {
     return value;
   }
 
-  private async cloneBranchRows(
+  async cloneBranchRows(
     tx: BranchDatabase,
     workId: string,
     sourceBranchId: string,

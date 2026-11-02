@@ -17,5 +17,6 @@ export * from './redis';
 export * from './story-planning';
 export * from './story-ledger';
 export * from './system-job';
+export * from './versions';
 export * from './worldbuilding';
 export * from './works';

@@ -53,9 +53,9 @@ import type { Queue } from 'bullmq';
 import { and, asc, desc, eq, gt, isNotNull, isNull, max, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
-import { BranchStateService } from '../branches/branch-state.service';
 import { DatabaseService } from '../database/database.service';
 import { RateLimitService } from '../security/rate-limit.service';
+import { VersionGraphService } from '../versions/version-graph.service';
 import { chapterGenerationError } from './chapter-generation.errors';
 
 const GENERATION_STEPS = [
@@ -101,7 +101,7 @@ export class ChapterGenerationService {
   constructor(
     private readonly database: DatabaseService,
     private readonly rateLimits: RateLimitService,
-    private readonly branchState: BranchStateService,
+    private readonly versions: VersionGraphService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
@@ -647,7 +647,7 @@ export class ChapterGenerationService {
       await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
       return created;
     });
-    await this.branchState.snapshotVersion(userId, workId, branchId, saved.id);
+    await this.versions.recordChapterVersion(userId, workId, branchId, saved.id);
 
     return this.toVersionResponse(chapterNumber, saved);
   }
@@ -773,7 +773,7 @@ export class ChapterGenerationService {
       await tx.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
       return created;
     });
-    await this.branchState.snapshotVersion(userId, workId, branchId, restored.id);
+    await this.versions.recordChapterVersion(userId, workId, branchId, restored.id);
 
     return this.toVersionResponse(chapterNumber, restored);
   }

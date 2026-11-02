@@ -12,6 +12,7 @@ import {
   ignoreFalsePositive,
   loadChanges,
   loadChangeTargets,
+  undoChange,
   type ChangeAffected,
   type ChangeCheck,
   type ChangeRequest,
@@ -138,6 +139,9 @@ function statusClass(status: ChangeRequest['status']): string {
   if (status === 'canceled' || status === 'rejected') {
     return 'settled';
   }
+  if (status === 'undone') {
+    return 'settled';
+  }
   return 'waiting';
 }
 
@@ -168,6 +172,7 @@ export function ChangeRequestPanel({ workId, branchId }: { workId: string; branc
   const [repairNotes, setRepairNotes] = useState('');
   const [branchName, setBranchName] = useState('');
   const [cancelReason, setCancelReason] = useState('');
+  const [undoReason, setUndoReason] = useState('');
   const [ignoreCheckId, setIgnoreCheckId] = useState<string | null>(null);
   const [ignoreReason, setIgnoreReason] = useState('');
 
@@ -316,6 +321,21 @@ export function ChangeRequestPanel({ workId, branchId }: { workId: string; branc
       updateInList(next);
       setNotice({ status: 'saved', message: '修改请求已取消。' });
       setCancelReason('');
+    } catch (error) {
+      setNotice({ status: 'error', message: friendlyError(error) });
+    }
+  }
+
+  async function runUndo() {
+    if (!selected) {
+      return;
+    }
+    setNotice({ status: 'working', message: '正在撤销这次修改…' });
+    try {
+      const next = await undoChange(workId, branchId, selected.id, undoReason.trim() || undefined);
+      updateInList(next);
+      setNotice({ status: 'saved', message: '修改已撤销，撤销记录已保留。' });
+      setUndoReason('');
     } catch (error) {
       setNotice({ status: 'error', message: friendlyError(error) });
     }
@@ -764,6 +784,31 @@ export function ChangeRequestPanel({ workId, branchId }: { workId: string; branc
                       创建平行版本
                     </button>
                   </div>
+                </section>
+              ) : null}
+
+              {selected.status === 'applied' ? (
+                <section className="change-decision undo" aria-labelledby="change-undo-title">
+                  <h4 id="change-undo-title">撤销这次修改</h4>
+                  <p>撤销会恢复修改前的内容，同时把这次撤销保存为新的版本记录。</p>
+                  <label className="field">
+                    <span>撤销原因（可选）</span>
+                    <textarea
+                      maxLength={2_000}
+                      onChange={(event) => setUndoReason(event.currentTarget.value)}
+                      placeholder="例如：先保留原来的写法。"
+                      rows={2}
+                      value={undoReason}
+                    />
+                  </label>
+                  <button
+                    className="secondary-button"
+                    disabled={notice.status === 'working'}
+                    onClick={() => void runUndo()}
+                    type="button"
+                  >
+                    撤销这次修改
+                  </button>
                 </section>
               ) : null}
 

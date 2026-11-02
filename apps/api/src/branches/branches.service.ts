@@ -26,6 +26,7 @@ import { createHash } from 'node:crypto';
 import { BranchStateService } from './branch-state.service';
 import { ChangesService } from '../changes/changes.service';
 import { DatabaseService } from '../database/database.service';
+import { AuditService } from '../versions/audit.service';
 import { branchesError } from './branches.errors';
 
 type VersionPoint = {
@@ -121,6 +122,7 @@ export class BranchesService {
     private readonly database: DatabaseService,
     private readonly changes: ChangesService,
     private readonly branchState: BranchStateService,
+    private readonly audit: AuditService,
   ) {}
 
   async list(userId: string, workId: string): Promise<{ items: BranchResponse[] }> {
@@ -139,7 +141,8 @@ export class BranchesService {
     workId: string,
     branchId: string,
   ): Promise<{ items: VersionPoint[] }> {
-    await this.requireBranch(userId, workId, branchId);
+    const logicalBranchId = await this.branchState.logicalBranchId(branchId);
+    await this.requireBranch(userId, workId, logicalBranchId);
     const versionRows = await this.database.db
       .select({
         chapter: chapters,
@@ -158,7 +161,9 @@ export class BranchesService {
           eq(chapterOutlines.level, 'chapter'),
         ),
       )
-      .where(and(eq(branchCommits.workId, workId), eq(branchCommits.sourceBranchId, branchId)))
+      .where(
+        and(eq(branchCommits.workId, workId), eq(branchCommits.sourceBranchId, logicalBranchId)),
+      )
       .orderBy(asc(chapters.chapterNumber), desc(chapterVersions.version));
 
     return {
@@ -197,7 +202,8 @@ export class BranchesService {
     workId: string,
     input: CreateParallelVersionInput,
   ): Promise<BranchResponse> {
-    const source = await this.requireBranch(userId, workId, input.sourceBranchId);
+    const sourceBranchId = await this.branchState.logicalBranchId(input.sourceBranchId);
+    const source = await this.requireBranch(userId, workId, sourceBranchId);
     const versionPoint = await this.resolveVersionPoint(
       workId,
       source.branch.id,
@@ -241,6 +247,20 @@ export class BranchesService {
       })
       .returning();
     await this.database.db.update(works).set({ updatedAt: now }).where(eq(works.id, workId));
+    await this.audit.record({
+      userId,
+      workId,
+      branchId: source.branch.id,
+      action: 'branch_created',
+      targetType: 'branch',
+      targetId: created.id,
+      title: `创建平行版本：${created.name}`,
+      detail: input.reason,
+      metadata: {
+        branchId: created.id,
+        forkChapterVersionId: versionPoint.chapterVersionId,
+      },
+    });
 
     return this.toResponse(created, new Map([[source.branch.id, source.branch.name]]));
   }
@@ -251,8 +271,10 @@ export class BranchesService {
     branchId: string,
     input: CompareParallelVersionInput,
   ): Promise<CompareResponse> {
-    const source = await this.requireBranch(userId, workId, branchId);
-    const compared = await this.requireBranch(userId, workId, input.withBranchId);
+    const sourceBranchId = await this.branchState.logicalBranchId(branchId);
+    const comparedBranchId = await this.branchState.logicalBranchId(input.withBranchId);
+    const source = await this.requireBranch(userId, workId, sourceBranchId);
+    const compared = await this.requireBranch(userId, workId, comparedBranchId);
     const sourceReadId = await this.branchState.effectiveReadBranchId(source.branch.id);
     const comparedReadId = await this.branchState.effectiveReadBranchId(compared.branch.id);
 
@@ -421,8 +443,10 @@ export class BranchesService {
     sourceBranchId: string,
     input: CherryPickInput,
   ): Promise<CherryPickResult> {
-    const source = await this.requireBranch(userId, workId, sourceBranchId);
-    const target = await this.requireBranch(userId, workId, input.targetBranchId);
+    const logicalSourceBranchId = await this.branchState.logicalBranchId(sourceBranchId);
+    const logicalTargetBranchId = await this.branchState.logicalBranchId(input.targetBranchId);
+    const source = await this.requireBranch(userId, workId, logicalSourceBranchId);
+    const target = await this.requireBranch(userId, workId, logicalTargetBranchId);
     if (!target.branch.isMain) {
       throw branchesError(
         HttpStatus.BAD_REQUEST,
@@ -647,6 +671,7 @@ export class BranchesService {
     return this.applySelectedChange(
       userId,
       workId,
+      sourceBranch,
       targetBranch.id,
       'chapter',
       targetChapter.id,
@@ -710,6 +735,7 @@ export class BranchesService {
     return this.applySelectedChange(
       userId,
       workId,
+      sourceBranch,
       targetBranch.id,
       this.changeTargetForEntity(sourceEntity.type),
       targetEntity.id,
@@ -766,6 +792,7 @@ export class BranchesService {
     return this.applySelectedChange(
       userId,
       workId,
+      sourceBranch,
       targetBranch.id,
       'outline',
       targetOutline.id,
@@ -780,6 +807,7 @@ export class BranchesService {
   private async applySelectedChange(
     userId: string,
     workId: string,
+    sourceBranch: WorkBranchRow,
     targetBranchId: string,
     targetType: 'chapter' | 'outline' | 'entity' | 'map' | 'faction' | 'power_item',
     targetId: string,
@@ -804,12 +832,27 @@ export class BranchesService {
       analyzed.impact?.classification === 'safe' ||
       analyzed.impact?.classification === 'repairable'
     ) {
-      const applied = await this.changes.apply(userId, workId, targetBranchId, created.id, {
-        mode: analyzed.impact.classification === 'repairable' ? 'repair' : 'apply',
-        ...(analyzed.impact.classification === 'repairable'
-          ? { repairNotes: '作者明确选择只摘取这一项，影响范围已记录在修改请求中。' }
-          : {}),
-      });
+      const applied = await this.changes.apply(
+        userId,
+        workId,
+        targetBranchId,
+        created.id,
+        {
+          mode: analyzed.impact.classification === 'repairable' ? 'repair' : 'apply',
+          ...(analyzed.impact.classification === 'repairable'
+            ? { repairNotes: '作者明确选择只摘取这一项，影响范围已记录在修改请求中。' }
+            : {}),
+        },
+        {
+          kind: 'merge',
+          title: title,
+          reason: reason,
+          metadata: {
+            sourceBranchId: sourceBranch.id,
+            sourceBranchName: sourceBranch.name,
+          },
+        },
+      );
       return {
         type:
           targetType === 'chapter' ? 'chapter' : targetType === 'outline' ? 'outline' : 'setting',
