@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../lib/auth-api';
 import {
+  loadEntityCenter,
+  type CustomFieldDefinition,
+  type Entity,
+  type Relation,
+} from '../../../lib/entities-api';
+import {
   loadChapterOutline,
   loadStoryBibleInsights,
   loadStoryBible,
@@ -13,6 +19,7 @@ import {
   type StoryBibleInsights,
 } from '../../../lib/story-planning-api';
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
+import { SettingsCenterPanel } from './settings-center-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 
 type LoadState =
@@ -24,6 +31,9 @@ type LoadState =
       storyBible: StoryBible | null;
       chapterOutline: ChapterOutline | null;
       storyBibleInsights: StoryBibleInsights | null;
+      entities: Entity[];
+      customFields: CustomFieldDefinition[];
+      relations: Relation[];
     }
   | { status: 'error'; message: string; notFound: boolean };
 
@@ -42,14 +52,18 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             storyBible: null,
             chapterOutline: null,
             storyBibleInsights: null,
+            entities: [],
+            customFields: [],
+            relations: [],
           });
           return;
         }
 
-        const [storyBible, chapterOutline, storyBibleInsights] = await Promise.all([
+        const [storyBible, chapterOutline, storyBibleInsights, entityCenter] = await Promise.all([
           loadStoryBible(work.id, work.mainBranch.id),
           loadChapterOutline(work.id, work.mainBranch.id, 1),
           loadStoryBibleInsights(work.id, work.mainBranch.id),
+          loadEntityCenter(work.id, work.mainBranch.id),
         ]);
         setState({
           status: 'ready',
@@ -58,6 +72,9 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           storyBible,
           chapterOutline,
           storyBibleInsights,
+          entities: entityCenter.entities,
+          customFields: entityCenter.customFields,
+          relations: entityCenter.relations,
         });
       })
       .catch((error: unknown) => {
@@ -170,6 +187,16 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           <p className="planning-unavailable">这个故事暂时还没有可编辑的创作线。</p>
         )}
       </section>
+
+      {work.mainBranch ? (
+        <SettingsCenterPanel
+          branchId={work.mainBranch.id}
+          initialCustomFields={state.customFields}
+          initialEntities={state.entities}
+          initialRelations={state.relations}
+          workId={work.id}
+        />
+      ) : null}
 
       <div className="work-detail-grid">
         <section className="work-detail-section">

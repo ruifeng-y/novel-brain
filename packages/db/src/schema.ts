@@ -350,6 +350,127 @@ export const chapterOutlines = pgTable(
 export type ChapterOutlineRow = typeof chapterOutlines.$inferSelect;
 export type NewChapterOutlineRow = typeof chapterOutlines.$inferInsert;
 
+export type EntityCustomFieldValue = string | number | boolean | string[] | null;
+
+export const entityCustomFields = pgTable(
+  'entity_custom_fields',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    key: text('key').notNull(),
+    label: text('label').notNull(),
+    type: text('type').notNull(),
+    options: jsonb('options')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('entity_custom_fields_work_branch_key_unique').on(
+      table.workId,
+      table.branchId,
+      table.key,
+    ),
+    index('entity_custom_fields_work_branch_idx').on(table.workId, table.branchId),
+  ],
+);
+
+export type EntityCustomFieldRow = typeof entityCustomFields.$inferSelect;
+export type NewEntityCustomFieldRow = typeof entityCustomFields.$inferInsert;
+
+export const entities = pgTable(
+  'entities',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    aliases: jsonb('aliases')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    type: text('type').notNull(),
+    summary: text('summary').notNull().default(''),
+    description: text('description').notNull().default(''),
+    tags: jsonb('tags')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    scope: text('scope').notNull().default('work'),
+    status: text('status').notNull().default('draft'),
+    source: text('source').notNull().default('作者录入'),
+    customFields: jsonb('custom_fields')
+      .$type<Record<string, EntityCustomFieldValue>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('entities_work_branch_type_name_unique')
+      .on(table.workId, table.branchId, table.type, table.name)
+      .where(sql`${table.deletedAt} is null`),
+    index('entities_work_branch_type_status_idx').on(
+      table.workId,
+      table.branchId,
+      table.type,
+      table.status,
+    ),
+  ],
+);
+
+export type EntityRow = typeof entities.$inferSelect;
+export type NewEntityRow = typeof entities.$inferInsert;
+
+export const entityRelations = pgTable(
+  'entity_relations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    fromEntityId: uuid('from_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    predicate: text('predicate').notNull(),
+    toEntityId: uuid('to_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    validFrom: text('valid_from'),
+    validTo: text('valid_to'),
+    source: text('source').notNull().default('作者录入'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('entity_relations_work_branch_predicate_idx').on(
+      table.workId,
+      table.branchId,
+      table.predicate,
+    ),
+    index('entity_relations_from_idx').on(table.fromEntityId),
+    index('entity_relations_to_idx').on(table.toEntityId),
+  ],
+);
+
+export type EntityRelationRow = typeof entityRelations.$inferSelect;
+export type NewEntityRelationRow = typeof entityRelations.$inferInsert;
+
 export const chapterStatusEnum = pgEnum('chapter_status', [
   'planned',
   'writing',

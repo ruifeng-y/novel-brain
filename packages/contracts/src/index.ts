@@ -1,5 +1,6 @@
 export * from './auth';
 export * from './chapter-generation';
+export * from './entity-center';
 export * from './env';
 export * from './fact-extraction';
 export * from './health';
