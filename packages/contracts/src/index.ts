@@ -2,6 +2,7 @@ export * from './auth';
 export * from './batch-jobs';
 export * from './character-state';
 export * from './chapter-generation';
+export * from './changes';
 export * from './entity-center';
 export * from './env';
 export * from './fact-extraction';
