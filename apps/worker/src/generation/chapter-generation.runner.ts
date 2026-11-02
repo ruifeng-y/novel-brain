@@ -1,15 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  AI_GATEWAY,
-  AiGatewayError,
-  extractChapterFacts,
-  type AiGateway,
-} from '@novel/ai';
+import { AI_GATEWAY, AiGatewayError, extractChapterFacts, type AiGateway } from '@novel/ai';
 import {
   countCjkCharacters,
   FACT_TYPE_LABELS,
   DEFAULT_CHAPTER_TARGET_MAX,
   DEFAULT_CHAPTER_TARGET_MIN,
+  normalizeStoryBibleCards,
 } from '@novel/contracts';
 import { detectBodyStateConflicts } from '@novel/core';
 import {
@@ -35,13 +31,7 @@ import { and, asc, eq } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { GenerationModelConfigResolver } from './generation-model-config.resolver';
 
-type GenerationStepKey =
-  | 'readiness'
-  | 'brief'
-  | 'context'
-  | 'draft'
-  | 'extract_facts'
-  | 'verify';
+type GenerationStepKey = 'readiness' | 'brief' | 'context' | 'draft' | 'extract_facts' | 'verify';
 
 type GenerationErrorInfo = {
   code: string;
@@ -65,11 +55,7 @@ export class ChapterGenerationRunner {
   ) {}
 
   async run(jobId: string): Promise<{ ok: boolean }> {
-    const [jobRow] = await this.database.db
-      .select()
-      .from(jobs)
-      .where(eq(jobs.id, jobId))
-      .limit(1);
+    const [jobRow] = await this.database.db.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
     if (!jobRow) {
       throw new Error(`Generation job ${jobId} was not found`);
     }
@@ -177,12 +163,7 @@ export class ChapterGenerationRunner {
         })
         .from(facts)
         .innerJoin(chapters, eq(chapters.id, facts.chapterId))
-        .where(
-          and(
-            eq(facts.workId, generation.workId),
-            eq(facts.branchId, generation.branchId),
-          ),
-        )
+        .where(and(eq(facts.workId, generation.workId), eq(facts.branchId, generation.branchId)))
         .orderBy(asc(facts.createdAt));
       const context = this.compileContext(
         bible,
@@ -329,10 +310,7 @@ export class ChapterGenerationRunner {
         }
 
         characterCount = countCjkCharacters(draftContent);
-        if (
-          characterCount >= targetMinCharacters &&
-          characterCount <= targetMaxCharacters
-        ) {
+        if (characterCount >= targetMinCharacters && characterCount <= targetMaxCharacters) {
           accepted = true;
           break;
         }
@@ -435,9 +413,7 @@ export class ChapterGenerationRunner {
           })),
       );
       await this.database.db.transaction(async (tx) => {
-        await tx
-          .delete(annotations)
-          .where(eq(annotations.chapterId, generation.chapterId));
+        await tx.delete(annotations).where(eq(annotations.chapterId, generation.chapterId));
         if (bodyStateConflicts.length > 0) {
           await tx.insert(annotations).values(
             bodyStateConflicts.map((issue) => ({
@@ -540,11 +516,21 @@ export class ChapterGenerationRunner {
     systemPrompt: string;
     userPrompt: string;
   } {
+    const storyBibleCards = normalizeStoryBibleCards(bible.cards, bible).filter(
+      (card) => card.summary || card.details,
+    );
+    const storyBiblePrompt = storyBibleCards
+      .map(
+        (card) =>
+          `${card.title}：${card.summary}${card.details ? `\n详细设定：${card.details}` : ''}`,
+      )
+      .join('\n');
     const sections: ContextSection[] = [
       {
         key: 'storyBible',
         title: '故事圣经',
         content: {
+          cards: storyBibleCards,
           oneSentenceStory: bible.oneSentenceStory,
           protagonist: bible.protagonist,
           worldIronLaw: bible.worldIronLaw,
@@ -595,9 +581,7 @@ export class ChapterGenerationRunner {
       '只统计汉字，标点、空格和换行不计入。',
       '',
       '【故事圣经】',
-      `一句话故事：${bible.oneSentenceStory}`,
-      `主角：${bible.protagonist}`,
-      `世界铁律：${bible.worldIronLaw}`,
+      storyBiblePrompt,
       '',
       '【本章章纲】',
       `章目标：${outline.chapterGoal}`,
@@ -609,14 +593,11 @@ export class ChapterGenerationRunner {
             '',
             '【已确认设定】',
             ...confirmedFacts.map(
-              (fact) =>
-                `- ${fact.typeLabel}（第 ${fact.chapterNumber} 章）：${fact.statement}`,
+              (fact) => `- ${fact.typeLabel}（第 ${fact.chapterNumber} 章）：${fact.statement}`,
             ),
           ]
         : []),
-      ...(generation.instruction
-        ? ['', '【作者补充要求】', generation.instruction]
-        : []),
+      ...(generation.instruction ? ['', '【作者补充要求】', generation.instruction] : []),
       '',
       '正文要有清楚的动作、对话和场景推进，结尾落在章末钩子上。',
     ].join('\n');

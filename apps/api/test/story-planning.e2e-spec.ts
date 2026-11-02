@@ -86,6 +86,63 @@ function storyBiblePayload(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function completeStoryBibleCards(
+  overrides: Record<string, { summary?: string; details?: string }> = {},
+) {
+  const cards = [
+    {
+      key: 'oneSentence',
+      summary: '守碑少年为找回被天门吞掉的母亲，带着残剑踏遍九州。',
+      details: '故事从边城荒寺起笔，以母亲留下的半句剑诀贯穿全书。',
+    },
+    {
+      key: 'sellingPoints',
+      summary: '记忆作剑、师门反目、每卷推开一座天门。',
+      details: '每卷都要兑现一次记忆代价，并在卷末揭开一层身世真相。',
+    },
+    {
+      key: 'protagonist',
+      summary: '沈砚，外冷内热的边城剑客。',
+      details: '他嘴上不信任何人，却总会替陌生人挡下最后一剑。',
+    },
+    {
+      key: 'goldenFinger',
+      summary: '残剑能借来亡者的最后一剑，但每借一次就会忘掉一个活人的名字。',
+      details: '借剑只持续九息；同一个人不能连续借剑两次；忘记的名字无法用纸笔补回。',
+    },
+    {
+      key: 'worldIronLaws',
+      summary: '天门只认记忆，不认血脉。',
+      details: '任何人想越过天门，都必须留下真实经历，伪造的记忆会被原样反噬。',
+    },
+    {
+      key: 'mainPlot',
+      summary: '沈砚沿九座天门追查母亲下落，并阻止仙门献祭人间记忆。',
+      details: '主线按九卷推进，每卷解决一座天门，同时付出一个无法挽回的代价。',
+    },
+    {
+      key: 'subplots',
+      summary: '守碑人旧案、同门师姐的背叛、边城百姓的存亡。',
+      details: '三条支线分别对应真相、情感和家园，必须在天门全开前收束。',
+    },
+    {
+      key: 'ending',
+      summary: '沈砚守住最后一道天门，却主动忘记母亲，让边城所有人记住彼此。',
+      details: '结局不再以成仙收尾，而是让沈砚选择做一个仍会遗忘、也仍会牵挂的人。',
+    },
+    {
+      key: 'readerPromise',
+      summary: '每章有明确推进，每卷有一座天门和一次记忆代价，绝不用失忆拖延感情线。',
+      details: '爽点来自破局与兑现承诺，情感克制，不写无意义后宫和重复打脸。',
+    },
+  ];
+
+  return cards.map((card) => ({
+    ...card,
+    ...(overrides[card.key] ?? {}),
+  }));
+}
+
 function chapterOutlinePayload(overrides: Record<string, unknown> = {}) {
   return {
     chapterGoal: '沈砚在断碑前第一次引动残剑。',
@@ -155,6 +212,20 @@ describe('story planning API', () => {
     await request(app.getHttpServer())
       .put(`/api/v1/works/${workId}/branches/${branchId}/chapter-outlines/1`)
       .send(chapterOutlinePayload())
+      .expect(401)
+      .expect(({ body }) => {
+        expect(body.code).toBe('UNAUTHENTICATED');
+      });
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/works/${workId}/branches/${branchId}/story-bible/lock`)
+      .expect(401)
+      .expect(({ body }) => {
+        expect(body.code).toBe('UNAUTHENTICATED');
+      });
+
+    await request(app.getHttpServer())
+      .get(`/api/v1/works/${workId}/branches/${branchId}/story-bible/insights`)
       .expect(401)
       .expect(({ body }) => {
         expect(body.code).toBe('UNAUTHENTICATED');
@@ -249,6 +320,262 @@ describe('story planning API', () => {
       .put(`/api/v1/works/${firstWork.id}/branches/${firstWork.mainBranchId}/story-bible`)
       .send(storyBiblePayload({ oneSentenceStory: '不该保存' }))
       .expect(404);
+  });
+
+  it('reads and edits every story bible card with expanded details', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '天门残卷');
+    const biblePath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}/story-bible`;
+
+    await author.agent
+      .get(biblePath)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.cards.map((card: { title: string }) => card.title)).toEqual([
+          '一句话故事',
+          '核心卖点',
+          '主角',
+          '金手指',
+          '世界铁律',
+          '主线',
+          '支线',
+          '结局方向',
+          '读者承诺',
+        ]);
+        expect(body.cards.every((card: { summary: string }) => card.summary === '')).toBe(true);
+        expect(body.locked).toBe(false);
+        expect(body.completion).toEqual({
+          complete: false,
+          filledCards: 0,
+          totalCards: 9,
+          missingCardTitles: [
+            '一句话故事',
+            '核心卖点',
+            '主角',
+            '金手指',
+            '世界铁律',
+            '主线',
+            '支线',
+            '结局方向',
+            '读者承诺',
+          ],
+        });
+      });
+
+    const cards = completeStoryBibleCards();
+    await author.agent.put(biblePath).send({ cards }).expect(200);
+
+    await author.agent
+      .get(biblePath)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.cards).toEqual(
+          expect.arrayContaining(cards.map((card) => expect.objectContaining(card))),
+        );
+        expect(body.completion).toEqual({
+          complete: true,
+          filledCards: 9,
+          totalCards: 9,
+          missingCardTitles: [],
+        });
+        expect(body).toMatchObject({
+          oneSentenceStory: cards[0].summary,
+          protagonist: cards[2].summary,
+          worldIronLaw: cards[4].summary,
+        });
+      });
+  });
+
+  it('locks a complete story bible and records confirmed changes', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '天门残卷');
+    const biblePath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}/story-bible`;
+    const cards = completeStoryBibleCards();
+
+    await author.agent.put(biblePath).send({ cards }).expect(200);
+
+    await author.agent
+      .post(`${biblePath}/lock`)
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body.locked).toBe(true);
+        expect(body.lockedAt).toEqual(expect.any(String));
+        expect(body.version).toBe(2);
+      });
+
+    const lockedEdit = completeStoryBibleCards({
+      ending: {
+        summary: '沈砚守住最后一道天门，却把成仙的机会留给边城百姓。',
+      },
+    });
+
+    await author.agent
+      .put(biblePath)
+      .send({ cards: lockedEdit })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.code).toBe('STORY_BIBLE_LOCKED');
+        expect(body.details).toMatchObject({
+          requiresConfirmation: true,
+          reasonRequired: true,
+        });
+      });
+
+    await author.agent
+      .get(biblePath)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.cards.find((card: { key: string }) => card.key === 'ending').summary).toBe(
+          cards[7].summary,
+        );
+      });
+
+    await author.agent
+      .put(biblePath)
+      .send({ cards: lockedEdit, confirmLockedChange: true })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('VALIDATION_ERROR');
+      });
+
+    const changeReason = '结局与第 12 章已写内容对齐，保留边城百姓记得彼此的落点。';
+    await author.agent
+      .put(biblePath)
+      .send({
+        cards: lockedEdit,
+        confirmLockedChange: true,
+        changeReason,
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.locked).toBe(true);
+        expect(body.version).toBe(3);
+        expect(body.cards.find((card: { key: string }) => card.key === 'ending').summary).toBe(
+          lockedEdit[7].summary,
+        );
+      });
+
+    await author.agent
+      .get(`${biblePath}/insights`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.recentChanges).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              actionLabel: '锁定故事圣经',
+              reason: '锁定故事圣经',
+            }),
+            expect.objectContaining({
+              actionLabel: '确认后修改',
+              reason: changeReason,
+              changedCardTitles: ['结局方向'],
+            }),
+          ]),
+        );
+      });
+  });
+
+  it('will not lock a story bible until every card has a summary', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '天门残卷');
+    const biblePath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}/story-bible`;
+
+    await author.agent.put(biblePath).send(storyBiblePayload()).expect(200);
+
+    await author.agent
+      .post(`${biblePath}/lock`)
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('STORY_BIBLE_INCOMPLETE');
+        expect(body.details.missingCardTitles).toContain('核心卖点');
+      });
+  });
+
+  it('shows isolated continuity reminders, unresolved foreshadows, and recent changes', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const otherAuthor = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '天门残卷');
+    const otherWork = await createWork(author.agent, '雾海孤灯');
+    const parallelBranch = await createParallelBranch(app, work.id, author.userId, 'what-if');
+    const database = app.get(DatabaseService);
+    const biblePath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}/story-bible`;
+
+    const chapter = await database.pool.query<{ id: string }>(
+      `insert into chapters (work_id, branch_id, chapter_number, title, status)
+       values ($1, $2, 2, '断碑', 'review')
+       returning id`,
+      [work.id, work.mainBranchId],
+    );
+    await database.pool.query(
+      `insert into annotations
+         (work_id, branch_id, chapter_id, category, severity, message, suggestion,
+          source_sentence, start_offset, end_offset, status)
+       values ($1, $2, $3, 'body_state', 'warning', $4, $5, $6, 0, 8, 'open'),
+              ($1, $2, $3, 'body_state', 'warning', $7, $5, $6, 0, 8, 'ignored')`,
+      [
+        work.id,
+        work.mainBranchId,
+        chapter.rows[0].id,
+        '沈砚左臂骨折，却仍双手结印。',
+        '改成右手单掌结印，或补写左臂恢复原因。',
+        '沈砚左臂骨折，却仍双手结印。',
+        '这条提醒已经处理。',
+      ],
+    );
+    await database.pool.query(
+      `insert into foreshadows
+         (work_id, branch_id, title, description, setup_chapter, planned_payoff_chapter,
+          status, importance)
+       values ($1, $2, '母亲留下的半句剑诀', '剑诀缺失的后半句指向天门真正代价。',
+               2, 18, 'planted', 'must'),
+              ($1, $2, '已经兑现的旧信', '这封信已经在第 3 章读完。',
+               1, 3, 'paid_off', 'optional'),
+              ($1, $3, '另一条创作线里的伏笔', '不应出现在主创作线。',
+               1, 4, 'planted', 'must'),
+              ($4, $5, '另一部作品的伏笔', '不应出现在这部作品。',
+               1, 4, 'planted', 'must')`,
+      [work.id, work.mainBranchId, parallelBranch, otherWork.id, otherWork.mainBranchId],
+    );
+
+    await author.agent.put(biblePath).send({ cards: completeStoryBibleCards() }).expect(200);
+
+    await author.agent
+      .get(`${biblePath}/insights`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.continuityReminders).toEqual([
+          expect.objectContaining({
+            chapterNumber: 2,
+            categoryLabel: '身体状态',
+            severityLabel: '需要确认',
+            message: '沈砚左臂骨折，却仍双手结印。',
+            suggestion: '改成右手单掌结印，或补写左臂恢复原因。',
+          }),
+        ]);
+        expect(body.unresolvedForeshadows).toEqual([
+          expect.objectContaining({
+            title: '母亲留下的半句剑诀',
+            setupChapter: 2,
+            plannedPayoffChapter: 18,
+            importanceLabel: '必须回收',
+          }),
+        ]);
+        expect(body.recentChanges).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              actionLabel: '保存故事圣经',
+              changedCardTitles: expect.arrayContaining(['一句话故事', '结局方向']),
+            }),
+          ]),
+        );
+      });
+
+    await otherAuthor.agent
+      .get(`${biblePath}/insights`)
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_NOT_FOUND');
+      });
   });
 
   it('saves and reloads a chapter outline by work, branch, and chapter', async () => {
