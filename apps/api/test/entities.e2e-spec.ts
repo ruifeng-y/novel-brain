@@ -483,6 +483,19 @@ describe('entity center API', () => {
         status: 'draft',
       })
       .expect(201);
+    const shortAlias = await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '天意',
+        aliases: ['天'],
+        type: 'world',
+        summary: '一个只用于验证短别名不会误报的概念。',
+        description: '',
+        tags: [],
+        scope: 'work',
+        status: 'draft',
+      })
+      .expect(201);
 
     await author.agent
       .put(`${centerPath}/chapter-outlines/1`)
@@ -573,6 +586,13 @@ describe('entity center API', () => {
             matchedFields: ['章目标', '叙事视角', '场景节拍'],
           }),
         ]);
+      });
+    await author.agent
+      .get(`${centerPath}/entities/${shortAlias.body.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.references.chapters).toEqual([]);
+        expect(body.references.outlines).toEqual([]);
       });
   });
 

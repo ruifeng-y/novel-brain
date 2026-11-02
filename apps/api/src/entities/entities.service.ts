@@ -553,7 +553,8 @@ export class EntitiesService {
 
   private async findReferences(entity: EntityRow): Promise<EntityDetailResponse['references']> {
     const identifiers = [entity.name, ...entity.aliases].filter(
-      (value, index, all) => value.length > 0 && all.indexOf(value) === index,
+      (value, index, all) =>
+        Array.from(value.trim()).length >= 2 && all.indexOf(value) === index,
     );
     if (identifiers.length === 0) {
       return { chapters: [], outlines: [] };
