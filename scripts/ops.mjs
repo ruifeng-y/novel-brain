@@ -18,8 +18,15 @@ import {
   backupTimestamp,
   isBackupExpired,
   resolveInside,
+  safeBucketName,
   safeDatabaseName,
 } from './ops-lib.mjs';
+import {
+  createObjectBackup,
+  createObjectClient,
+  removeBucket,
+  restoreObjectBackup,
+} from './object-backup.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_BACKUP_DIR = path.join(ROOT, 'backups');
@@ -51,6 +58,8 @@ function parseArgs(values) {
 }
 
 function config(options) {
+  const objectBucket = options['object-bucket'] ?? process.env.MINIO_BUCKET ?? 'novel-brain';
+  safeBucketName(objectBucket);
   return {
     composeFile: path.resolve(options['compose-file'] ?? DEFAULT_COMPOSE_FILE),
     postgresService: options['postgres-service'] ?? 'postgres',
@@ -58,6 +67,11 @@ function config(options) {
     postgresDb: options['postgres-db'] ?? 'novel',
     backupDir: path.resolve(options['backup-dir'] ?? DEFAULT_BACKUP_DIR),
     retentionDays: Number(options['retention-days'] ?? DEFAULT_RETENTION_DAYS),
+    objectEndpoint: options['object-endpoint'] ?? process.env.MINIO_ENDPOINT ?? 'http://localhost:9000',
+    objectAccessKey: process.env.MINIO_ACCESS_KEY ?? 'minio',
+    objectSecretKey: process.env.MINIO_SECRET_KEY ?? 'minio123',
+    objectBucket,
+    objectPrefix: options['object-prefix'] ?? process.env.MINIO_PREFIX ?? '',
   };
 }
 
@@ -281,48 +295,63 @@ async function createBackup(options) {
   const directory = backupDirectory(settings.backupDir, createdAt);
   await mkdir(directory, { recursive: true });
 
-  const snapshotSession = await exportSnapshot(settings);
-  let counts;
-  let dump;
   try {
-    dump = await dockerCompose(settings, [
-      'pg_dump',
-      '-U',
-      settings.postgresUser,
-      '-d',
-      settings.postgresDb,
-      '--format=custom',
-      '--no-owner',
-      '--no-acl',
-      `--snapshot=${snapshotSession.snapshot}`,
-    ]);
-    counts = await queryCountsAtSnapshot(settings, snapshotSession.snapshot);
-  } finally {
-    await snapshotSession.close();
-  }
-  const dumpPath = path.join(directory, 'database.pgcustom');
-  await writeFile(dumpPath, dump.output);
-  const sha256 = createHash('sha256').update(dump.output).digest('hex');
-  const manifest = {
-    createdAt: createdAt.toISOString(),
-    sourceDatabase: settings.postgresDb,
-    format: 'pg_dump-custom',
-    file: 'database.pgcustom',
-    sizeBytes: dump.output.length,
-    sha256,
-    rowCounts: counts,
-    retentionDays: settings.retentionDays,
-    rpoSeconds: RPO_SECONDS,
-    rtoSeconds: RTO_SECONDS,
-  };
-  await writeFile(path.join(directory, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-  const removed = await pruneBackups(settings);
+    const snapshotSession = await exportSnapshot(settings);
+    let counts;
+    let dump;
+    try {
+      dump = await dockerCompose(settings, [
+        'pg_dump',
+        '-U',
+        settings.postgresUser,
+        '-d',
+        settings.postgresDb,
+        '--format=custom',
+        '--no-owner',
+        '--no-acl',
+        `--snapshot=${snapshotSession.snapshot}`,
+      ]);
+      counts = await queryCountsAtSnapshot(settings, snapshotSession.snapshot);
+    } finally {
+      await snapshotSession.close();
+    }
+    const dumpPath = path.join(directory, 'database.pgcustom');
+    await writeFile(dumpPath, dump.output);
+    const sha256 = createHash('sha256').update(dump.output).digest('hex');
+    const objectStore = await createObjectBackup(settings, directory);
+    const manifest = {
+      createdAt: createdAt.toISOString(),
+      sourceDatabase: settings.postgresDb,
+      format: 'pg_dump-custom',
+      file: 'database.pgcustom',
+      sizeBytes: dump.output.length,
+      sha256,
+      rowCounts: counts,
+      objectStore: {
+        directory: objectStore.directory,
+        manifestFile: objectStore.manifestFile,
+        bucket: objectStore.bucket,
+        prefix: objectStore.prefix,
+        objectCount: objectStore.objectCount,
+        totalBytes: objectStore.totalBytes,
+        checksum: objectStore.checksum,
+      },
+      retentionDays: settings.retentionDays,
+      rpoSeconds: RPO_SECONDS,
+      rtoSeconds: RTO_SECONDS,
+    };
+    await writeFile(path.join(directory, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    const removed = await pruneBackups(settings);
 
-  return {
-    backupDirectory: directory,
-    manifest,
-    pruned: removed.map((item) => path.relative(settings.backupDir, item)),
-  };
+    return {
+      backupDirectory: directory,
+      manifest,
+      pruned: removed.map((item) => path.relative(settings.backupDir, item)),
+    };
+  } catch (error) {
+    await rm(directory, { recursive: true, force: true });
+    throw error;
+  }
 }
 
 async function loadBackup(settings, backupPath) {
@@ -333,6 +362,9 @@ async function loadBackup(settings, backupPath) {
     throw new Error('Backup manifest.json was not found');
   }
   const manifest = JSON.parse(await readFile(manifestPath, 'utf8'));
+  if (!manifest.objectStore) {
+    throw new Error('Backup does not contain an object storage manifest');
+  }
   const dumpPath = path.join(directory, manifest.file ?? 'database.pgcustom');
   if (!existsSync(dumpPath)) {
     throw new Error('Backup database dump was not found');
@@ -388,6 +420,16 @@ async function restoreDrill(options) {
   const targetDatabase =
     options['target-db'] ?? `novel_restore_drill_${backupTimestamp().replace(/\D/g, '')}`;
   safeDatabaseName(targetDatabase);
+  const targetObjectBucket =
+    options['target-object-bucket'] ??
+    `novel-brain-restore-drill-${backupTimestamp().replace(/\D/g, '')}`;
+  safeBucketName(targetObjectBucket);
+  if (targetObjectBucket === backup.manifest.objectStore.bucket) {
+    throw new Error('Restore drill requires a scratch object storage bucket');
+  }
+  if (backup.manifest.objectStore.objectCount === 0) {
+    throw new Error('Restore drill requires at least one object in the backup');
+  }
   const startedAt = Date.now();
   const backupAgeSeconds = Math.max(
     0,
@@ -395,14 +437,28 @@ async function restoreDrill(options) {
   );
 
   let restoredCounts;
+  let restoredObjects;
   try {
     restoredCounts = await restoreDatabase(settings, backup, targetDatabase, true);
+    restoredObjects = await restoreObjectBackup(
+      settings,
+      backup.directory,
+      targetObjectBucket,
+      options['verify-key'],
+    );
     const mismatches = Object.entries(backup.manifest.rowCounts).filter(
       ([key, value]) => restoredCounts[key] !== value,
     );
     const durationSeconds = Math.round((Date.now() - startedAt) / 1000);
     if (mismatches.length > 0) {
       throw new Error(`Restored row counts did not match: ${JSON.stringify(mismatches)}`);
+    }
+    if (
+      restoredObjects.objectCount !== backup.manifest.objectStore.objectCount ||
+      restoredObjects.verifiedObjects !== backup.manifest.objectStore.objectCount ||
+      restoredObjects.checksum !== backup.manifest.objectStore.checksum
+    ) {
+      throw new Error('Restored objects did not match the backup manifest');
     }
     if (backupAgeSeconds > RPO_SECONDS) {
       throw new Error('Backup is older than the 24 hour recovery point objective');
@@ -412,7 +468,7 @@ async function restoreDrill(options) {
     }
 
     const evidence = {
-      drill: 'postgres-restore',
+      drill: 'postgres-and-object-store-restore',
       status: 'passed',
       startedAt: new Date(startedAt).toISOString(),
       finishedAt: new Date().toISOString(),
@@ -425,6 +481,17 @@ async function restoreDrill(options) {
       rtoSeconds: RTO_SECONDS,
       sourceRowCounts: backup.manifest.rowCounts,
       restoredRowCounts: restoredCounts,
+      objectStore: {
+        sourceBucket: backup.manifest.objectStore.bucket,
+        sourcePrefix: backup.manifest.objectStore.prefix,
+        targetBucket: restoredObjects.bucket,
+        objectCount: backup.manifest.objectStore.objectCount,
+        totalBytes: backup.manifest.objectStore.totalBytes,
+        checksum: backup.manifest.objectStore.checksum,
+        verifiedObjects: restoredObjects.verifiedObjects,
+        sample: restoredObjects.sample,
+        verifiedKey: restoredObjects.verifiedKey,
+      },
     };
     const evidenceDirectory = path.join(ROOT, 'docs', 'acceptance', 'm3', 'restore-drill');
     await mkdir(evidenceDirectory, { recursive: true });
@@ -437,6 +504,8 @@ async function restoreDrill(options) {
   } finally {
     if (!options.keep) {
       await dropDatabase(settings, targetDatabase).catch(() => undefined);
+      const objectClient = createObjectClient(settings);
+      await removeBucket(objectClient, targetObjectBucket).catch(() => undefined);
     }
   }
 }
@@ -445,15 +514,18 @@ function printHelp() {
   process.stdout.write(`NovelBrain operations CLI
 
 Usage:
-  node scripts/ops.mjs backup [--backup-dir <dir>] [--retention-days 30]
-  node scripts/ops.mjs restore --backup <snapshot> --target-db <scratch-db> [--drop-existing]
-  node scripts/ops.mjs restore-drill --backup <snapshot> [--target-db <scratch-db>] [--keep]
+  node scripts/ops.mjs backup [--backup-dir <dir>] [--retention-days 30] [--object-prefix <prefix>]
+  node scripts/ops.mjs restore --backup <snapshot> --target-db <scratch-db> [--object-bucket <bucket>] [--drop-existing]
+  node scripts/ops.mjs restore-drill --backup <snapshot> [--target-db <scratch-db>] [--target-object-bucket <bucket>] [--verify-key <object-key>] [--keep]
 
 Options:
   --compose-file <path>   Docker Compose file (default: ./docker-compose.yml)
   --postgres-service      Compose service name (default: postgres)
   --postgres-user         Database owner user (default: novel)
   --postgres-db           Source database (default: novel)
+  --object-bucket         Object storage bucket (default: MINIO_BUCKET or novel-brain)
+  --object-prefix         Object key prefix for backup (default: whole bucket)
+  --object-endpoint       S3-compatible endpoint (default: MINIO_ENDPOINT)
 
 Restore targets must start with "novel_restore_drill_" and cannot be "novel".
 The CLI never prints or exports model API keys.
@@ -484,7 +556,17 @@ async function main() {
       options['target-db'],
       Boolean(options['drop-existing']),
     );
-    process.stdout.write(`${JSON.stringify({ restored: options['target-db'], counts }, null, 2)}\n`);
+    const objectBucket = options['object-bucket'] ?? settings.objectBucket;
+    safeBucketName(objectBucket);
+    const objects = await restoreObjectBackup(
+      settings,
+      backup.directory,
+      objectBucket,
+      options['verify-key'],
+    );
+    process.stdout.write(
+      `${JSON.stringify({ restored: options['target-db'], counts, objects }, null, 2)}\n`,
+    );
     return;
   }
   if (command === 'restore-drill') {

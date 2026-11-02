@@ -7,6 +7,10 @@ export const envSchema = z.object({
   API_INTERNAL_URL: z.string().url().optional(),
   DATABASE_URL: z.string().min(1),
   DATABASE_ADMIN_URL: z.string().min(1).optional(),
+  ALLOW_DEFAULT_DB_PASSWORD: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   REDIS_URL: z.string().min(1).default('redis://localhost:6379'),
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().int().positive().default(6379),
@@ -26,3 +30,25 @@ export const envSchema = z.object({
 });
 
 export type Env = z.infer<typeof envSchema>;
+
+export const DEFAULT_APP_DATABASE_PASSWORD = 'novel_app';
+
+export function assertSecureEnv(env: Env): Env {
+  if (env.NODE_ENV === 'development' || env.NODE_ENV === 'test') {
+    return env;
+  }
+
+  const databaseUrl = new URL(env.DATABASE_URL);
+  if (databaseUrl.password === DEFAULT_APP_DATABASE_PASSWORD) {
+    if (env.ALLOW_DEFAULT_DB_PASSWORD === true) {
+      console.warn(
+        'WARNING: the default novel_app database password is enabled for this deployment. Rotate it before production use.',
+      );
+      return env;
+    }
+    throw new Error(
+      'Refusing to start with the default novel_app database password. Rotate the role password, update DATABASE_URL, and remove ALLOW_DEFAULT_DB_PASSWORD.',
+    );
+  }
+  return env;
+}

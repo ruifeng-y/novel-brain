@@ -25,6 +25,17 @@ export function safeDatabaseName(name) {
   return name;
 }
 
+export function safeBucketName(name) {
+  if (
+    !/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/.test(name) ||
+    name.includes('..') ||
+    name.length > 63
+  ) {
+    throw new Error('Invalid object storage bucket name');
+  }
+  return name;
+}
+
 export function backupTimestamp(date = new Date()) {
   return date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, 'Z');
 }

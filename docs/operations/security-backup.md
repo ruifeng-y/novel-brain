@@ -9,6 +9,9 @@
 - `DATABASE_ADMIN_URL`：只用于迁移、种子和备份恢复。
 - `DATABASE_URL`：API 与 Worker 使用受限角色 `novel_app`，所有业务查询受行级安全策略约束。
 - `MODEL_KEY_ENCRYPTION_KEY`：模型 Key 的主密钥。只放在密钥管理系统或受限环境变量中，不写进备份目录、日志或工单。
+- `MINIO_*`：对象存储端点、凭证、桶和可选前缀。备份和恢复通过 S3 兼容 API 访问，MinIO、S3、R2 和 OSS 使用同一套流程。
+
+非开发环境仍使用 `novel_app` 默认密码时，API 和 Worker 会拒绝启动。只在本机 Docker Compose 中允许显式设置 `ALLOW_DEFAULT_DB_PASSWORD=true`。
 
 如果轮换 `novel_app` 密码：
 
@@ -17,6 +20,7 @@ alter role novel_app password '<new-password>';
 ```
 
 然后同步更新 API 和 Worker 的 `DATABASE_URL`。不要改成数据库所有者角色，否则行级安全会被绕过。
+轮换完成后删除 `ALLOW_DEFAULT_DB_PASSWORD`，再重启 API 和 Worker。
 
 ## 隔离边界
 
@@ -61,8 +65,10 @@ node scripts/ops.mjs backup
 
 - 通过 Docker Compose 的 `postgres` 服务执行 `pg_dump`。
 - 使用一个导出的 Postgres 快照同时生成备份和行数清单，避免备份过程中并发写入造成校验偏差。
-- 输出到 `backups/postgres/<UTC 时间>/`，包含 `database.pgcustom` 和 `manifest.json`。
-- `manifest.json` 记录创建时间、SHA-256、字节数和作者、作品、章节、任务行数。
+- 通过 S3 兼容 API 同步应用桶，默认全桶，也可用 `--object-prefix <author-or-app-prefix>` 只备份指定前缀。
+- 输出到 `backups/postgres/<UTC 时间>/`，包含 `database.pgcustom`、`manifest.json`、`objects-manifest.json` 和 `objects/`。
+- `manifest.json` 记录数据库 SHA-256、对象数量、对象总字节数和对象集合校验和。
+- `objects-manifest.json` 记录每个对象的原始键、内容类型、大小、ETag 和 SHA-256。
 - 自动删除超过 30 天的备份，保留窗口可通过 `--retention-days` 调整。
 - 备份目录已加入 `.gitignore`，不得提交到仓库。
 
@@ -78,7 +84,7 @@ Windows 计划任务只运行：
 node D:\AI\Codex\novel-brain\scripts\ops.mjs backup
 ```
 
-将 `backups/` 同步到独立磁盘、NAS 或启用版本控制的对象存储。只保留主机本地副本不满足容灾要求。
+将 `backups/` 同步到独立磁盘、NAS 或启用版本控制的对象存储。备份目录已经同时包含数据库和对象文件，只保留主机本地副本不满足容灾要求。
 
 备份目标：
 
@@ -92,28 +98,42 @@ node D:\AI\Codex\novel-brain\scripts\ops.mjs backup
 
 ```bash
 node scripts/ops.mjs restore \
-  --backup backups/postgres/20261102T110239Z \
-  --target-db novel_restore_drill_20261102110244 \
+  --backup backups/postgres/20261102T120621Z \
+  --target-db novel_restore_drill_20261102120627 \
   --drop-existing
 ```
 
 CLI 会先校验 `manifest.json` 中的 SHA-256，再创建空数据库并执行 `pg_restore`。恢复目标必须匹配 `novel_restore_drill_*`，且不能是 `novel`。
+
+对象存储恢复默认写回源桶，也可以指定隔离桶：
+
+```bash
+node scripts/ops.mjs restore \
+  --backup backups/postgres/20261102T120621Z \
+  --target-db novel_restore_drill_20261102120627 \
+  --object-bucket novel-brain-restore-drill-20261102120627 \
+  --drop-existing
+```
+
+恢复时会逐个校验对象文件的大小和 SHA-256，再上传到目标桶，并从目标桶重新读取全部对象比对校验和。任一对象缺失或被篡改都会让恢复失败。
 
 正式切换前：
 
 1. 在临时库完成恢复和行数核对。
 2. 运行迁移，确认 `drizzle.__drizzle_migrations` 与发布版本一致。
 3. 停止 API 与 Worker，保留原库快照。
-4. 将 `DATABASE_URL` 和 `DATABASE_ADMIN_URL` 指向恢复库。
-5. 启动服务并执行健康检查、登录、作品读取和单章生成冒烟测试。
-6. 失败时切回原库，不删除原库。
+4. 将 `DATABASE_URL` 和 `DATABASE_ADMIN_URL` 指向恢复库，将 `MINIO_*` 指向恢复桶。
+5. 启动服务并执行健康检查、登录、作品读取、地图图片读取和单章生成冒烟测试。
+6. 失败时切回原库和原桶，不删除原数据。
 
 在新集群恢复时，先执行数据库迁移以创建 `novel_app` 角色、策略和授权，再恢复数据。
 
 ## 恢复演练
 
 ```bash
-node scripts/ops.mjs restore-drill --backup backups/postgres/20261102T110239Z
+node scripts/ops.mjs restore-drill \
+  --backup backups/postgres/20261102T120621Z \
+  --verify-key <uploaded-object-key>
 ```
 
 演练会：
@@ -121,8 +141,10 @@ node scripts/ops.mjs restore-drill --backup backups/postgres/20261102T110239Z
 - 校验备份校验和。
 - 创建隔离数据库并完整恢复。
 - 比较源快照和恢复库的账号、作品、章节、章节版本和任务行数。
+- 创建隔离对象桶，恢复全部对象并逐个比对 SHA-256；备份中没有对象时演练直接失败。
+- `--verify-key` 可指定必须存在并逐字节核对的已上传对象键；缺失或校验不一致时演练失败。
 - 检查备份年龄不超过 24 小时、恢复耗时不超过 4 小时。
 - 写入 `docs/acceptance/m3/restore-drill/<时间>.json`，不包含正文、邮箱、Key 或密文。
-- 默认删除临时库；排查时加 `--keep`。
+- 默认删除临时库和临时桶；排查时加 `--keep`。
 
 演练失败时不要删除旧备份，也不要执行正式切换。

@@ -25,6 +25,7 @@
     "@types/pg": "8.23.1",
     "eslint": "9.39.5",
     "eslint-config-prettier": "10.1.8",
+    "minio": "8.0.7",
     "prettier": "3.9.10",
     "turbo": "2.11.10",
     "typescript": "5.9.3",
