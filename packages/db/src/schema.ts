@@ -1294,6 +1294,49 @@ export const annotations = pgTable(
 export type AnnotationRow = typeof annotations.$inferSelect;
 export type NewAnnotationRow = typeof annotations.$inferInsert;
 
+export type QualityReportValue = {
+  summary: string;
+  dimensions: Array<Record<string, unknown>>;
+  issueCounts: Record<string, number>;
+};
+
+export const qualityReports = pgTable(
+  'quality_reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    chapterId: uuid('chapter_id')
+      .notNull()
+      .references(() => chapters.id, { onDelete: 'cascade' }),
+    generationRequestId: uuid('generation_request_id').references(
+      () => generationRequests.id,
+      { onDelete: 'set null' },
+    ),
+    draftId: uuid('draft_id').references(() => drafts.id, {
+      onDelete: 'set null',
+    }),
+    report: jsonb('report').$type<QualityReportValue>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('quality_reports_chapter_unique').on(table.chapterId),
+    index('quality_reports_work_branch_updated_idx').on(
+      table.workId,
+      table.branchId,
+      table.updatedAt,
+    ),
+  ],
+);
+
+export type QualityReportRow = typeof qualityReports.$inferSelect;
+export type NewQualityReportRow = typeof qualityReports.$inferInsert;
+
 export const canonCommits = pgTable(
   'canon_commits',
   {

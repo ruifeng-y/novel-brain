@@ -159,7 +159,7 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
 
   const continuityPanel = page.getByRole('region', { name: '连续性提示' });
   await expect(continuityPanel).toBeVisible();
-  await expect(continuityPanel.getByText('这一章暂时没有发现身体状态冲突。')).toBeVisible();
+  await expect(continuityPanel.getByText('这一章暂时没有发现前后设定冲突。')).toBeVisible();
   await expect(page.getByText('已确认设定', { exact: true })).toHaveCount(0);
   await continuityPanel.screenshot({
     path: `${SCREENSHOT_DIR}/05-continuity-state.png`,

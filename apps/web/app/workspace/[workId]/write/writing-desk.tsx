@@ -9,7 +9,7 @@ import {
   type ReactNode,
   type UIEvent,
 } from 'react';
-import { countCjkCharacters } from '@novel/contracts';
+import { CONTINUITY_ISSUE_CATEGORIES, countCjkCharacters } from '@novel/contracts';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../../lib/auth-api';
 import {
   generationErrorMessage,
@@ -48,6 +48,7 @@ import { FactReviewPanel } from './fact-review-panel';
 import {
   CharacterStatePanel,
   ForeshadowPanel,
+  QualityReportPanel,
   SuggestionsPanel,
   VersionHistoryPanel,
   type AssistantOutput,
@@ -68,7 +69,13 @@ type BootState =
 
 type GenerationState = 'idle' | 'preparing' | 'streaming' | 'completed' | 'failed';
 type AutosaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
-type InsightTab = 'suggestions' | 'continuity' | 'foreshadows' | 'characters' | 'versions';
+type InsightTab =
+  | 'suggestions'
+  | 'continuity'
+  | 'quality'
+  | 'foreshadows'
+  | 'characters'
+  | 'versions';
 
 type WritingControls = {
   qualityTier: WritingQualityTier;
@@ -174,9 +181,10 @@ export function WritingDesk({ workId }: { workId: string }) {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const highlightBackdropRef = useRef<HTMLDivElement | null>(null);
-  const bodyStateIssues = continuityIssues.filter(
-    (issue) => issue.category === 'body_state',
-  );
+  const continuityCategories = new Set<string>(CONTINUITY_ISSUE_CATEGORIES);
+  const continuityPanelIssues =
+    insights?.continuity ??
+    continuityIssues.filter((issue) => continuityCategories.has(issue.category));
   const openHighlights = continuityIssues.filter((issue) => issue.status === 'open');
   const bodyHighlightRanges = buildBodyHighlightRanges(content, openHighlights);
   const hasBodyHighlights = bodyHighlightRanges.length > 0;
@@ -286,7 +294,7 @@ export function WritingDesk({ workId }: { workId: string }) {
         setInsights(insightResult);
         if (
           issueResult.items.some(
-            (issue) => issue.category === 'body_state',
+            (issue) => continuityCategories.has(issue.category),
           ) &&
           insightResult.suggestions.length === 0
         ) {
@@ -933,7 +941,9 @@ export function WritingDesk({ workId }: { workId: string }) {
     textarea.focus();
     textarea.setSelectionRange(start, end);
     setSelection({ start, end });
-    setActivePanel(issue.category === 'body_state' ? 'continuity' : 'suggestions');
+    setActivePanel(
+      continuityCategories.has(issue.category) ? 'continuity' : 'suggestions',
+    );
   }
 
   async function applyTitle(title: string) {
@@ -1361,6 +1371,7 @@ export function WritingDesk({ workId }: { workId: string }) {
                   {[
                     ['suggestions', '建议'],
                     ['continuity', '连续性'],
+                    ['quality', '质量'],
                     ['foreshadows', '伏笔'],
                     ['characters', '人物'],
                     ['versions', '版本'],
@@ -1397,10 +1408,16 @@ export function WritingDesk({ workId }: { workId: string }) {
                   <ContinuityReviewPanel
                     busyId={continuityBusyId}
                     error={continuityError}
-                    issues={bodyStateIssues}
+                    issues={continuityPanelIssues}
                     loading={continuityLoading}
                     notice={continuityNotice}
                     onIgnore={ignoreIssue}
+                  />
+                ) : null}
+                {activePanel === 'quality' ? (
+                  <QualityReportPanel
+                    loading={insightsLoading}
+                    report={insights?.qualityReport ?? null}
                   />
                 ) : null}
                 {activePanel === 'foreshadows' ? (

@@ -318,6 +318,22 @@ export class ChapterGenerationController {
     );
   }
 
+  @Get('chapters/:chapterNumber/quality')
+  @ApiOperation({ summary: 'Read the latest chapter quality report' })
+  getChapterQuality(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('chapterNumber') chapterNumber: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.chapters.getChapterQuality(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      this.parseChapterNumber(chapterNumber),
+    );
+  }
+
   @Get('chapters/:chapterNumber/insights')
   @ApiOperation({ summary: 'Read review panels for the current chapter' })
   getWritingInsights(

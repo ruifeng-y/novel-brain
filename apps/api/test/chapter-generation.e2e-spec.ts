@@ -8,7 +8,9 @@ import {
   createDatabase,
   entities,
   foreshadows,
+  itemOwnerships,
   users as usersTable,
+  workBranches,
 } from '@novel/db';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { randomUUID } from 'node:crypto';
@@ -91,6 +93,15 @@ function chapterForPrompt(prompt: string): string {
 function chapterWithLeftArmConflict(prompt: string): string {
   return [
     '沈砚忍着左臂的疼，缓缓抬起手。他双手结印，借残剑之力压住翻涌的碑文。',
+    chapterForPrompt(prompt),
+  ].join('\n\n');
+}
+
+function chapterWithQualityAuditConflicts(prompt: string): string {
+  return [
+    '沈砚忍着左臂的疼，双手结印压住碑文。',
+    '沈砚知道父母是被仇家所杀的。',
+    '沈砚握住残剑，催动剑上的寒光。',
     chapterForPrompt(prompt),
   ].join('\n\n');
 }
@@ -223,6 +234,9 @@ describe('chapter generation API', () => {
         }
         if (input.prompt.includes('[[LEFT_ARM_CONFLICT]]')) {
           return chapterWithLeftArmConflict(input.prompt);
+        }
+        if (input.prompt.includes('[[QUALITY_AUDIT]]')) {
+          return chapterWithQualityAuditConflicts(input.prompt);
         }
         return chapterForPrompt(input.prompt);
       },
@@ -940,6 +954,183 @@ describe('chapter generation API', () => {
         `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/annotations/${issue.id}`,
       )
       .send({ reason })
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe('WORK_NOT_FOUND');
+      });
+  });
+
+  it('persists multiple continuity classes and a six-part quality report for one branch', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const otherAuthor = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '群像校验');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId, {
+      chapterGoal: '沈砚在断碑前引动残剑，并面对旧日真相。[[QUALITY_AUDIT]]',
+    });
+    await saveProseModel(author.agent);
+
+    const database = app.get(DatabaseService).db;
+    const [shen] = await database
+      .insert(entities)
+      .values({
+        workId: work.id,
+        branchId: work.mainBranchId,
+        name: '沈砚',
+        type: 'character',
+        summary: '边城剑客',
+      })
+      .returning();
+    const [su] = await database
+      .insert(entities)
+      .values({
+        workId: work.id,
+        branchId: work.mainBranchId,
+        name: '苏晚',
+        type: 'character',
+        summary: '持剑人',
+      })
+      .returning();
+    const [sword] = await database
+      .insert(entities)
+      .values({
+        workId: work.id,
+        branchId: work.mainBranchId,
+        name: '残剑',
+        type: 'item_technique',
+        summary: '会吞噬记忆的旧剑',
+      })
+      .returning();
+    await database.insert(characterStates).values({
+      workId: work.id,
+      branchId: work.mainBranchId,
+      characterId: shen.id,
+      body: '左臂骨折',
+      power: '炼气三层',
+      location: '荒寺',
+      possessions: '',
+      disguise: '',
+      knowledge: [
+        {
+          id: randomUUID(),
+          title: '父母之死',
+          objectiveTruth: '父母是被仇家所杀的',
+          characterBelief: '父母是自尽',
+          validFrom: '第一章',
+          validTo: null,
+          source: '作者录入',
+        },
+      ],
+      updatedBy: author.userId,
+    });
+    await database.insert(itemOwnerships).values({
+      workId: work.id,
+      branchId: work.mainBranchId,
+      itemEntityId: sword.id,
+      ownerEntityId: su.id,
+      fromTime: '第一章',
+      source: '作者录入',
+    });
+    const [parallelBranch] = await database
+      .insert(workBranches)
+      .values({
+        workId: work.id,
+        name: '校验支线',
+        isMain: false,
+        status: 'active',
+        createdBy: author.userId,
+      })
+      .returning();
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    const job = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.jobId as string,
+      'completed',
+    );
+
+    const annotations = await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/annotations`)
+      .expect(200);
+    expect(annotations.body.items.map((item: { category: string }) => item.category)).toEqual(
+      expect.arrayContaining(['body_state', 'knowledge', 'item']),
+    );
+    for (const issue of annotations.body.items as Array<{
+      sourceSentence: string;
+      suggestion: string;
+    }>) {
+      expect(job.draft.content).toContain(issue.sourceSentence);
+      expect(issue.suggestion.length).toBeGreaterThan(0);
+    }
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/quality`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.chapterNumber).toBe(1);
+        expect(body.generatedAt).toEqual(expect.any(String));
+        expect(body.dimensions.map((item: { key: string }) => item.key)).toEqual([
+          'hook',
+          'pacing',
+          'information_density',
+          'character_voice',
+          'prose',
+          'continuity',
+        ]);
+        expect(body.issueCounts).toMatchObject({
+          body_state: expect.any(Number),
+          knowledge: expect.any(Number),
+          item: expect.any(Number),
+        });
+      });
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/insights`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.qualityReport.dimensions).toHaveLength(6);
+        expect(body.continuity).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ category: 'body_state' }),
+            expect.objectContaining({ category: 'knowledge' }),
+            expect.objectContaining({ category: 'item' }),
+          ]),
+        );
+      });
+
+    const knowledgeIssue = (
+      annotations.body.items as Array<{ id: string; category: string }>
+    ).find((item) => item.category === 'knowledge');
+    expect(knowledgeIssue).toBeDefined();
+    const reason = '这是主角误信旧案的梦境，下一章会明确写出认知反转。';
+    await author.agent
+      .patch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/annotations/${knowledgeIssue?.id}`,
+      )
+      .send({ reason })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          status: 'ignored',
+          ignoredReason: reason,
+        });
+      });
+
+    await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${parallelBranch.id}/chapters/1/quality`,
+      )
+      .expect(404)
+      .expect(({ body }) => {
+        expect(body.code).toBe('CHAPTER_OUTLINE_NOT_FOUND');
+      });
+    await otherAuthor.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/quality`)
       .expect(404)
       .expect(({ body }) => {
         expect(body.code).toBe('WORK_NOT_FOUND');

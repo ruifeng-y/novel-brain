@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import type {
+  ChapterQualityReport,
   ChapterVersion,
   ContinuityIssue,
   WritingInsights,
@@ -231,6 +232,53 @@ export function ForeshadowPanel({
           </article>
         ))}
       </div>
+    </section>
+  );
+}
+
+export function QualityReportPanel({
+  report,
+  loading,
+}: {
+  report: ChapterQualityReport | null;
+  loading: boolean;
+}) {
+  return (
+    <section
+      aria-labelledby="chapter-quality-title"
+      className="writing-context-section quality-report"
+    >
+      <div className="writing-insight-heading">
+        <div>
+          <h3 id="chapter-quality-title">本章质量报告</h3>
+          <p>从钩子、节奏、信息密度、人物声纹、文笔和连续性看这一章。</p>
+        </div>
+      </div>
+      {loading ? <p className="writing-context-loading">正在整理质量报告…</p> : null}
+      {!loading && !report ? (
+        <p className="writing-insight-empty">生成整章后，这里会显示六项质量报告。</p>
+      ) : null}
+      {report ? (
+        <>
+          <p className="quality-report-summary">{report.summary}</p>
+          <div className="quality-report-grid">
+            {report.dimensions.map((dimension) => (
+              <article
+                className={`quality-dimension quality-dimension-${dimension.status}`}
+                data-testid={`quality-${dimension.key}`}
+                key={dimension.key}
+              >
+                <div>
+                  <strong>{dimension.label}</strong>
+                  <span>{dimension.statusLabel}</span>
+                </div>
+                <p>{dimension.summary}</p>
+                <small>{dimension.suggestion}</small>
+              </article>
+            ))}
+          </div>
+        </>
+      ) : null}
     </section>
   );
 }

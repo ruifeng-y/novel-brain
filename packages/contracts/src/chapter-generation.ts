@@ -183,15 +183,40 @@ export const draftStatusSchema = z.enum(['pending', 'streaming', 'ready', 'faile
 export const continuityIssueStatusSchema = z.enum(['open', 'ignored']);
 
 export const CONTINUITY_CATEGORY_LABELS: Record<string, string> = {
+  outline: '大纲贴合',
+  confirmed_fact: '已确认设定',
+  timeline: '时间线',
   body_state: '身体状态',
+  knowledge: '人物认知',
+  power: '力量层级',
+  location: '地图位置',
+  faction: '势力归属',
+  item: '物品归属',
+  pov: '叙事视角',
+  repetition: '重复表达',
+  ai_tone: '行文腔调',
   taboo: '禁忌词',
   intent: '写作要求',
   voice: '人物声纹',
   rhythm: '节奏',
-  repetition: '重复',
   logic: '逻辑',
   style: '文风',
 };
+
+export const CONTINUITY_ISSUE_CATEGORIES = [
+  'outline',
+  'confirmed_fact',
+  'timeline',
+  'body_state',
+  'knowledge',
+  'power',
+  'location',
+  'faction',
+  'item',
+  'pov',
+  'repetition',
+  'ai_tone',
+] as const;
 
 export const CONTINUITY_SEVERITY_LABELS: Record<string, string> = {
   warning: '需要确认',
@@ -208,6 +233,35 @@ export const CONTINUITY_STATUS_LABELS: Record<
 export const ignoreContinuityIssueSchema = z.object({
   reason: z.string().trim().min(1).max(500),
 });
+
+export const CHAPTER_QUALITY_DIMENSION_KEYS = [
+  'hook',
+  'pacing',
+  'information_density',
+  'character_voice',
+  'prose',
+  'continuity',
+] as const;
+
+export type ChapterQualityDimensionKey =
+  (typeof CHAPTER_QUALITY_DIMENSION_KEYS)[number];
+
+export type ChapterQualityDimension = {
+  key: ChapterQualityDimensionKey;
+  label: string;
+  status: 'good' | 'watch' | 'weak';
+  statusLabel: string;
+  summary: string;
+  suggestion: string;
+};
+
+export type ChapterQualityReport = {
+  chapterNumber: number;
+  generatedAt: string;
+  summary: string;
+  dimensions: ChapterQualityDimension[];
+  issueCounts: Record<string, number>;
+};
 
 export type GenerateChapterInput = z.infer<typeof generateChapterSchema>;
 export type WritingQualityTier = z.infer<typeof writingQualityTierSchema>;
