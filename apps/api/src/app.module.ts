@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { AuthController } from './auth/auth.controller';
 import { CharactersController } from './characters/characters.controller';
 import { CharactersModule } from './characters/characters.module';
+import { ChangesController } from './changes/changes.controller';
+import { ChangesModule } from './changes/changes.module';
 import { DatabaseModule } from './database/database.module';
 import { EntitiesController } from './entities/entities.controller';
 import { EntitiesModule } from './entities/entities.module';
@@ -45,6 +47,7 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     MapsModule,
     WorldbuildingModule,
     CharactersModule,
+    ChangesModule,
     ChapterGenerationModule,
     HistoryModule,
     HealthModule,
@@ -66,6 +69,7 @@ export class AppModule implements NestModule {
         WorldbuildingController,
         HistoryController,
         CharactersController,
+        ChangesController,
         ChapterGenerationController,
         BatchJobsController,
       );

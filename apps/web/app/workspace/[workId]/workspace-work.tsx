@@ -24,8 +24,9 @@ import {
 import { loadStoryLedger, type StoryLedger } from '../../../lib/story-ledger-api';
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
 import { SettingsCenterPanel } from './settings-center-panel';
-import { HistoryRulePanel } from './history-rule-panel';
 import { MapFactionPanel } from './map-faction-panel';
+import { ChangeRequestPanel } from './change-request-panel';
+import { HistoryRulePanel } from './history-rule-panel';
 import { OutlineWorkspacePanel } from './outline-workspace-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 import { StoryLedgerPanel } from './story-ledger-panel';
@@ -157,9 +158,6 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         </Link>
         <div className="workspace-account">
           <span>{state.user.displayName}</span>
-          <Link className="text-button" href={`/workspace/${work.id}/jobs`}>
-            创作任务
-          </Link>
           <Link className="text-button" href={`/workspace/${work.id}/write`}>
             写作台
           </Link>
@@ -267,6 +265,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           initialOverview={state.mapOverview}
           workId={work.id}
         />
+      ) : null}
+
+      {work.mainBranch ? (
+        <ChangeRequestPanel branchId={work.mainBranch.id} workId={work.id} />
       ) : null}
 
       {work.mainBranch && work.genrePack === 'history' ? (
