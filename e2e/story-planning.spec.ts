@@ -69,12 +69,28 @@ test('an author can save and reopen a story bible and chapter outline', async ({
   await page.getByRole('button', { name: '保存故事圣经' }).click();
   await expect(page.getByText('故事圣经已保存')).toBeVisible();
 
-  await page.getByLabel('章目标').fill(chapterOutline.chapterGoal);
-  await page.getByLabel('叙事视角').fill(chapterOutline.pov);
-  await page.getByLabel('场景节拍').fill(chapterOutline.sceneBeats);
-  await page.getByLabel('章末钩子').fill(chapterOutline.chapterEndHook);
-  await page.getByRole('button', { name: '保存章纲' }).click();
-  await expect(page.getByText('章纲已保存')).toBeVisible();
+  const outline = page.getByRole('region', { name: '完整大纲' });
+  await outline.getByRole('button', { name: '创建全书总纲' }).click();
+  await outline.getByLabel('节点标题').fill('九门总纲');
+  await outline.getByLabel('节点摘要').fill('沈砚沿九座天门追查母亲失踪的真相。');
+  await outline.getByRole('button', { name: '保存节点' }).click();
+  await outline.getByRole('button', { name: '为《九门总纲》添加卷' }).click();
+  await outline.getByLabel('节点标题').fill('第一卷 天门初开');
+  await outline.getByLabel('节点摘要').fill('沈砚从边城进入荒寺。');
+  await outline.getByRole('button', { name: '保存节点' }).click();
+  await outline.getByRole('button', { name: '为《第一卷 天门初开》添加幕' }).click();
+  await outline.getByLabel('节点标题').fill('第一幕 断碑雨夜');
+  await outline.getByLabel('节点摘要').fill('沈砚在追兵围堵下触发断碑。');
+  await outline.getByRole('button', { name: '保存节点' }).click();
+  await outline.getByRole('button', { name: '为《第一幕 断碑雨夜》添加章' }).click();
+  await outline.getByLabel('节点标题').fill('第一章 断碑');
+  await outline.getByLabel('节点摘要').fill(chapterOutline.chapterGoal);
+  await outline.getByLabel('章目标').fill(chapterOutline.chapterGoal);
+  await outline.getByLabel('叙事视角').fill(chapterOutline.pov);
+  await outline.getByLabel('场景节拍').fill(chapterOutline.sceneBeats);
+  await outline.getByLabel('章末钩子').fill(chapterOutline.chapterEndHook);
+  await outline.getByRole('button', { name: '保存节点' }).click();
+  await expect(outline.getByText('第一章 断碑')).toBeVisible();
 
   await page.getByRole('link', { name: '返回作品列表' }).click();
   await page.getByRole('link', { name: `打开《${title}》` }).click();
@@ -82,6 +98,7 @@ test('an author can save and reopen a story bible and chapter outline', async ({
   await expect(page.getByLabel('一句话故事')).toHaveValue(storyBible.oneSentenceStory);
   await expect(page.getByLabel('主角')).toHaveValue(storyBible.protagonist);
   await expect(page.getByLabel('世界铁律')).toHaveValue(storyBible.worldIronLaw);
+  await page.getByRole('button', { name: '编辑《第一章 断碑》' }).click();
   await expect(page.getByLabel('章目标')).toHaveValue(chapterOutline.chapterGoal);
   await expect(page.getByLabel('叙事视角')).toHaveValue(chapterOutline.pov);
   await expect(page.getByLabel('场景节拍')).toHaveValue(chapterOutline.sceneBeats);

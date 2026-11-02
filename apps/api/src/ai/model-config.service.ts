@@ -5,11 +5,7 @@ import {
   type ModelPurpose,
   type UpdateModelConfigInput,
 } from '@novel/contracts';
-import {
-  modelConfigs,
-  type ModelConfigRow,
-  type NewModelConfigRow,
-} from '@novel/db';
+import { modelConfigs, type ModelConfigRow, type NewModelConfigRow } from '@novel/db';
 import { and, desc, eq, ne, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import {
@@ -52,6 +48,14 @@ type ConnectionTestResponse = {
   status: ModelConnectionTestStatus;
   message: string;
   latencyMs?: number;
+};
+
+export type ModelPurposeCredentials = {
+  configId: string;
+  name: string;
+  model: string;
+  baseUrl: string;
+  apiKey: string;
 };
 
 const CONNECTION_MESSAGES: Record<ModelConnectionTestStatus, string> = {
@@ -268,6 +272,33 @@ export class ModelConfigService {
     };
   }
 
+  async purposeCredentials(
+    userId: string,
+    purpose: ModelPurpose,
+  ): Promise<ModelPurposeCredentials | null> {
+    const rows = await this.database.db
+      .select()
+      .from(modelConfigs)
+      .where(eq(modelConfigs.userId, userId))
+      .orderBy(desc(modelConfigs.isDefault), modelConfigs.createdAt);
+    const row =
+      rows.find((candidate) => candidate.purpose === purpose) ??
+      rows.find((candidate) => candidate.purpose === 'prose') ??
+      rows.find((candidate) => candidate.isDefault) ??
+      rows[0];
+    if (!row) {
+      return null;
+    }
+
+    return {
+      configId: row.id,
+      name: row.name,
+      model: row.model,
+      baseUrl: row.baseUrl,
+      apiKey: this.cipher.decrypt(row.encryptedApiKey),
+    };
+  }
+
   private async findOwned(userId: string, configId: string): Promise<ModelConfigRow> {
     const [row] = await this.database.db
       .select()
@@ -310,7 +341,10 @@ export class ModelConfigService {
     };
   }
 
-  private toEffectivePurpose(row: ModelConfigRow, source: EffectivePurposeSource): EffectivePurpose {
+  private toEffectivePurpose(
+    row: ModelConfigRow,
+    source: EffectivePurposeSource,
+  ): EffectivePurpose {
     return {
       configId: row.id,
       name: row.name,

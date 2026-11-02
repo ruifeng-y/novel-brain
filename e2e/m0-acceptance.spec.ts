@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { useIsolatedClientIp } from './support';
+import { createFirstChapterOutline, currentWorkAndBranch, useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -116,12 +116,10 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
   await page.getByRole('button', { name: '保存故事圣经' }).click();
   await expect(page.getByText('故事圣经已保存')).toBeVisible();
 
-  await page.getByLabel('章目标').fill(chapterOutline.chapterGoal);
-  await page.getByLabel('叙事视角').fill(chapterOutline.pov);
-  await page.getByLabel('场景节拍').fill(chapterOutline.sceneBeats);
-  await page.getByLabel('章末钩子').fill(chapterOutline.chapterEndHook);
-  await page.getByRole('button', { name: '保存章纲' }).click();
-  await expect(page.getByText('章纲已保存')).toBeVisible();
+  const work = await currentWorkAndBranch(page);
+  await createFirstChapterOutline(page, work.workId, work.branchId, chapterOutline);
+  await page.reload();
+  await expect(page.getByRole('heading', { name: '完整大纲' })).toBeVisible();
   await capture(page, '02-story-bible-and-outline.png');
 
   await page.getByRole('link', { name: '写作台', exact: true }).click();

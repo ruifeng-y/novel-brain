@@ -322,6 +322,14 @@ export const foreshadows = pgTable(
 export type ForeshadowRow = typeof foreshadows.$inferSelect;
 export type NewForeshadowRow = typeof foreshadows.$inferInsert;
 
+export const outlineLevelEnum = pgEnum('outline_level', [
+  'book',
+  'volume',
+  'act',
+  'chapter',
+  'scene',
+]);
+
 export const chapterOutlines = pgTable(
   'chapter_outlines',
   {
@@ -332,19 +340,40 @@ export const chapterOutlines = pgTable(
     branchId: uuid('branch_id')
       .notNull()
       .references(() => workBranches.id, { onDelete: 'cascade' }),
-    chapterNumber: integer('chapter_number').notNull(),
-    chapterGoal: text('chapter_goal').notNull(),
-    pov: text('pov').notNull(),
-    sceneBeats: jsonb('scene_beats').$type<string[]>().notNull(),
-    chapterEndHook: text('chapter_end_hook').notNull(),
+    level: outlineLevelEnum('level').notNull().default('chapter'),
+    parentId: uuid('parent_id').references((): AnyPgColumn => chapterOutlines.id, {
+      onDelete: 'cascade',
+    }),
+    orderIndex: integer('order_index').notNull().default(0),
+    title: text('title').notNull().default(''),
+    summary: text('summary').notNull().default(''),
+    details: text('details').notNull().default(''),
+    chapterNumber: integer('chapter_number'),
+    chapterGoal: text('chapter_goal').notNull().default(''),
+    pov: text('pov').notNull().default(''),
+    sceneBeats: jsonb('scene_beats')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    chapterEndHook: text('chapter_end_hook').notNull().default(''),
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    lockedBy: uuid('locked_by').references(() => users.id, { onDelete: 'set null' }),
+    version: integer('version').notNull().default(1),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    uniqueIndex('chapter_outlines_work_branch_chapter_unique').on(
+    uniqueIndex('chapter_outlines_work_branch_chapter_unique')
+      .on(table.workId, table.branchId, table.chapterNumber)
+      .where(sql`${table.chapterNumber} is not null`),
+    uniqueIndex('chapter_outlines_one_book_unique')
+      .on(table.workId, table.branchId)
+      .where(sql`${table.level} = 'book'`),
+    index('chapter_outlines_work_branch_parent_order_idx').on(
       table.workId,
       table.branchId,
-      table.chapterNumber,
+      table.parentId,
+      table.orderIndex,
     ),
   ],
 );

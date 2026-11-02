@@ -1,8 +1,4 @@
-import {
-  countCjkCharacters,
-  isCjkIdeograph,
-  type ExtractedFact,
-} from '@novel/contracts';
+import { countCjkCharacters, isCjkIdeograph, type ExtractedFact } from '@novel/contracts';
 
 export type AiUsage = {
   promptTokens?: number;
@@ -92,9 +88,8 @@ export class FakeAiGateway implements AiGateway {
   async *streamText(input: GenerateTextInput): AsyncIterable<StreamTextChunk> {
     const text = this.resolveText(input);
     const chunkSize = Math.max(1, this.options.chunkSize ?? 120);
-    const chunks = Array.from(
-      { length: Math.ceil(text.length / chunkSize) },
-      (_, index) => text.slice(index * chunkSize, (index + 1) * chunkSize),
+    const chunks = Array.from({ length: Math.ceil(text.length / chunkSize) }, (_, index) =>
+      text.slice(index * chunkSize, (index + 1) * chunkSize),
     );
     const failAfterChunks = input.prompt.includes(FAILURE_MARKER)
       ? (this.options.failAfterChunks ?? 4)
@@ -144,6 +139,20 @@ export class FakeAiGateway implements AiGateway {
   }
 
   private defaultObject(input: GenerateObjectInput<unknown>): unknown {
+    if (input.schemaName === 'outline_node') {
+      const currentTitle = input.prompt.match(/当前标题：(.+)/)?.[1]?.trim() ?? '大纲节点';
+      const level = input.prompt.match(/节点层级：(.+)/)?.[1]?.trim() ?? '章';
+      return {
+        title: `重生成 · ${currentTitle}`,
+        summary: `重生成后的${level}安排：冲突更集中，节点结束时留有新的悬念。`,
+        details: '本节点只更新自身内容，保留同层顺序和其他大纲节点。',
+        chapterGoal: '让本章冲突更集中，并在结尾留下新的选择。',
+        pov: '沈砚',
+        sceneBeats: ['旧线索被推翻', '主角做出更残酷的选择', '新的疑问浮出水面'],
+        chapterEndHook: '他以为自己赢了，却听见门外有人叫出了他被遗忘的名字。',
+      };
+    }
+
     if (input.schemaName !== 'chapter_facts') {
       return {};
     }
@@ -153,8 +162,7 @@ export class FakeAiGateway implements AiGateway {
       {
         type: 'event',
         statement: '沈砚以血触发断碑，碑面浮现陌生文字。',
-        sourceSentence:
-          '沈砚握住剑柄，掌心被锋刃割开，血没有落地，而是逆着雨丝向碑面流去。',
+        sourceSentence: '沈砚握住剑柄，掌心被锋刃割开，血没有落地，而是逆着雨丝向碑面流去。',
       },
       {
         type: 'body_state',
@@ -164,8 +172,7 @@ export class FakeAiGateway implements AiGateway {
       {
         type: 'character_knowledge',
         statement: '沈砚知道自己一旦退开，今夜就再也找不到这块碑。',
-        sourceSentence:
-          '沈砚没有松手。他知道自己一旦退开，今夜便再也找不到这块碑。',
+        sourceSentence: '沈砚没有松手。他知道自己一旦退开，今夜便再也找不到这块碑。',
       },
     ];
 
@@ -411,10 +418,7 @@ export class DeepSeekAiGateway implements AiGateway {
     try {
       parsed = JSON.parse(content);
     } catch {
-      throw new AiGatewayError(
-        'MODEL_GENERATION_FAILED',
-        'The model returned invalid JSON',
-      );
+      throw new AiGatewayError('MODEL_GENERATION_FAILED', 'The model returned invalid JSON');
     }
 
     return {
@@ -431,4 +435,3 @@ export class DeepSeekAiGateway implements AiGateway {
     };
   }
 }
-

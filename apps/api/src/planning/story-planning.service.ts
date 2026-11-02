@@ -51,6 +51,11 @@ type ChapterOutlineResponse = {
   workId: string;
   branchId: string;
   chapterNumber: number;
+  title: string;
+  summary: string;
+  details: string;
+  locked: boolean;
+  version: number;
   chapterGoal: string;
   pov: string;
   sceneBeats: string[];
@@ -370,6 +375,7 @@ export class StoryPlanningService {
           eq(chapterOutlines.workId, workId),
           eq(chapterOutlines.branchId, branchId),
           eq(chapterOutlines.chapterNumber, chapterNumber),
+          eq(chapterOutlines.level, 'chapter'),
         ),
       )
       .limit(1);
@@ -381,6 +387,11 @@ export class StoryPlanningService {
           workId,
           branchId,
           chapterNumber,
+          title: '',
+          summary: '',
+          details: '',
+          locked: false,
+          version: 0,
           chapterGoal: '',
           pov: '',
           sceneBeats: [],
@@ -399,30 +410,62 @@ export class StoryPlanningService {
   ): Promise<ChapterOutlineResponse> {
     await this.requireBranch(userId, workId, branchId);
     const now = new Date();
-    const [row] = await this.database.db
-      .insert(chapterOutlines)
-      .values({
-        workId,
-        branchId,
-        chapterNumber,
-        chapterGoal: input.chapterGoal,
-        pov: input.pov,
-        sceneBeats: input.sceneBeats,
-        chapterEndHook: input.chapterEndHook,
-        createdAt: now,
-        updatedAt: now,
-      })
-      .onConflictDoUpdate({
-        target: [chapterOutlines.workId, chapterOutlines.branchId, chapterOutlines.chapterNumber],
-        set: {
+    const row = await this.database.db.transaction(async (tx) => {
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`${workId}:${branchId}:outline`}))`,
+      );
+      const [existing] = await tx
+        .select()
+        .from(chapterOutlines)
+        .where(
+          and(
+            eq(chapterOutlines.workId, workId),
+            eq(chapterOutlines.branchId, branchId),
+            eq(chapterOutlines.chapterNumber, chapterNumber),
+            eq(chapterOutlines.level, 'chapter'),
+          ),
+        )
+        .limit(1);
+      if (existing) {
+        const [updated] = await tx
+          .update(chapterOutlines)
+          .set({
+            title: `第 ${chapterNumber} 章`,
+            summary: input.chapterGoal,
+            chapterGoal: input.chapterGoal,
+            pov: input.pov,
+            sceneBeats: input.sceneBeats,
+            chapterEndHook: input.chapterEndHook,
+            version: existing.version + 1,
+            updatedAt: now,
+          })
+          .where(eq(chapterOutlines.id, existing.id))
+          .returning();
+        return updated;
+      }
+
+      const [created] = await tx
+        .insert(chapterOutlines)
+        .values({
+          workId,
+          branchId,
+          level: 'chapter',
+          chapterNumber,
+          title: `第 ${chapterNumber} 章`,
+          summary: input.chapterGoal,
+          details: '',
+          orderIndex: chapterNumber - 1,
           chapterGoal: input.chapterGoal,
           pov: input.pov,
           sceneBeats: input.sceneBeats,
           chapterEndHook: input.chapterEndHook,
+          version: 1,
+          createdAt: now,
           updatedAt: now,
-        },
-      })
-      .returning();
+        })
+        .returning();
+      return created;
+    });
 
     await this.database.db
       .update(works)
@@ -512,7 +555,12 @@ export class StoryPlanningService {
       id: row.id,
       workId: row.workId,
       branchId: row.branchId,
-      chapterNumber: row.chapterNumber,
+      chapterNumber: row.chapterNumber ?? 0,
+      title: row.title,
+      summary: row.summary,
+      details: row.details,
+      locked: row.lockedAt !== null,
+      version: row.version,
       chapterGoal: row.chapterGoal,
       pov: row.pov,
       sceneBeats: row.sceneBeats,

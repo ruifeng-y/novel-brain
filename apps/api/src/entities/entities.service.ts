@@ -553,8 +553,7 @@ export class EntitiesService {
 
   private async findReferences(entity: EntityRow): Promise<EntityDetailResponse['references']> {
     const identifiers = [entity.name, ...entity.aliases].filter(
-      (value, index, all) =>
-        Array.from(value.trim()).length >= 2 && all.indexOf(value) === index,
+      (value, index, all) => Array.from(value.trim()).length >= 2 && all.indexOf(value) === index,
     );
     if (identifiers.length === 0) {
       return { chapters: [], outlines: [] };
@@ -594,6 +593,7 @@ export class EntitiesService {
           and(
             eq(chapterOutlines.workId, entity.workId),
             eq(chapterOutlines.branchId, entity.branchId),
+            eq(chapterOutlines.level, 'chapter'),
             or(...outlineConditions),
           ),
         )
@@ -623,7 +623,7 @@ export class EntitiesService {
           matchedFields.push('章末钩子');
         }
         return {
-          chapterNumber: outline.chapterNumber,
+          chapterNumber: outline.chapterNumber ?? 0,
           chapterGoal: outline.chapterGoal,
           matchedFields,
         };

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { useIsolatedClientIp } from './support';
+import { createFirstChapterOutline, currentWorkAndBranch, useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -30,10 +30,7 @@ async function readVerificationCode(email: string): Promise<string> {
 }
 
 function countCjkCharacters(text: string): number {
-  return (
-    text.match(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{323AF}]/gu)
-      ?.length ?? 0
-  );
+  return text.match(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{323AF}]/gu)?.length ?? 0;
 }
 
 async function expectHighlightOverBodyEditor(page: Page): Promise<void> {
@@ -63,9 +60,7 @@ async function expectHighlightOverBodyEditor(page: Page): Promise<void> {
   const tolerance = 2;
   expect(markBox.x).toBeGreaterThanOrEqual(editorBox.x - tolerance);
   expect(markBox.y).toBeGreaterThanOrEqual(editorBox.y - tolerance);
-  expect(markBox.x + markBox.width).toBeLessThanOrEqual(
-    editorBox.x + editorBox.width + tolerance,
-  );
+  expect(markBox.x + markBox.width).toBeLessThanOrEqual(editorBox.x + editorBox.width + tolerance);
   expect(markBox.y + markBox.height).toBeLessThanOrEqual(
     editorBox.y + editorBox.height + tolerance,
   );
@@ -129,19 +124,15 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
   await page.getByRole('button', { name: '保存故事圣经' }).click();
   await expect(page.getByText('故事圣经已保存')).toBeVisible();
 
-  await page.getByLabel('章目标').fill(chapterOutline.chapterGoal);
-  await page.getByLabel('叙事视角').fill(chapterOutline.pov);
-  await page.getByLabel('场景节拍').fill(chapterOutline.sceneBeats);
-  await page.getByLabel('章末钩子').fill(chapterOutline.chapterEndHook);
-  await page.getByRole('button', { name: '保存章纲' }).click();
-  await expect(page.getByText('章纲已保存')).toBeVisible();
+  const firstWork = await currentWorkAndBranch(page);
+  await createFirstChapterOutline(page, firstWork.workId, firstWork.branchId, chapterOutline);
 
   await page.getByRole('link', { name: '写作台', exact: true }).click();
   await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/write$/);
   await expect(page.getByRole('heading', { name: '写作进度' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '本章参考' })).toBeVisible();
   await expect(page.getByLabel('章节正文')).toBeVisible();
-  await expect(page.getByText('第 1 章').first()).toBeVisible();
+  await expect(page.getByText('第一章 断碑').first()).toBeVisible();
 
   await page.getByRole('button', { name: '根据章纲生成' }).click();
   await expect(page.getByText('初稿已生成', { exact: true })).toBeVisible({
@@ -175,35 +166,35 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
     .getByTestId('fact-proposal-event')
     .getByRole('button', { name: '确认采用' })
     .click();
-  await expect(
-    factPanel.getByTestId('fact-proposal-event').getByText('已确认'),
-  ).toBeVisible();
+  await expect(factPanel.getByTestId('fact-proposal-event').getByText('已确认')).toBeVisible();
   await expect(factPanel.getByText(editedFact)).toBeVisible();
 
   await factPanel
     .getByTestId('fact-proposal-body_state')
     .getByRole('button', { name: '驳回' })
     .click();
-  await expect(
-    factPanel.getByTestId('fact-proposal-body_state').getByText('已驳回'),
-  ).toBeVisible();
+  await expect(factPanel.getByTestId('fact-proposal-body_state').getByText('已驳回')).toBeVisible();
 
   await page.reload();
   await expect(page.getByLabel('章节正文')).toHaveValue(savedContent);
   await expect(page.getByRole('heading', { name: '写作进度' })).toBeVisible();
-  await expect(
-    page.getByTestId('fact-proposal-event').getByText('已确认'),
-  ).toBeVisible();
-  await expect(
-    page.getByTestId('fact-proposal-body_state').getByText('已驳回'),
-  ).toBeVisible();
+  await expect(page.getByTestId('fact-proposal-event').getByText('已确认')).toBeVisible();
+  await expect(page.getByTestId('fact-proposal-body_state').getByText('已驳回')).toBeVisible();
 
   await page.getByRole('link', { name: '作品与章纲' }).click();
-  await page
-    .getByLabel('章目标')
-    .fill(`${chapterOutline.chapterGoal} [[FAIL_AFTER_PARTIAL]]`);
-  await page.getByRole('button', { name: '保存章纲' }).click();
-  await expect(page.getByText('章纲已保存')).toBeVisible();
+  await page.request.put(
+    `/api/v1/works/${firstWork.workId}/branches/${firstWork.branchId}/chapter-outlines/1`,
+    {
+      data: {
+        ...chapterOutline,
+        sceneBeats: chapterOutline.sceneBeats
+          .split(/\r?\n/)
+          .map((beat) => beat.trim())
+          .filter(Boolean),
+        chapterGoal: `${chapterOutline.chapterGoal} [[FAIL_AFTER_PARTIAL]]`,
+      },
+    },
+  );
   await page.getByRole('link', { name: '写作台', exact: true }).click();
 
   await page.getByRole('button', { name: '根据章纲生成' }).click();
@@ -216,9 +207,7 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
   await page.getByRole('button', { name: '恢复生成前内容' }).click();
   await expect(page.getByLabel('章节正文')).toHaveValue(savedContent);
 
-  await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(
-    0,
-  );
+  await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(0);
 });
 
 test('an author sees and can ignore a left-arm continuity conflict in the writing desk', async ({
@@ -260,22 +249,14 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
   const workId = new URL(page.url()).pathname.split('/').at(-1) as string;
 
-  await page.getByLabel('一句话故事').fill(
-    '边城少年以残剑问仙，最终守住人间最后一道天门。',
-  );
+  await page.getByLabel('一句话故事').fill('边城少年以残剑问仙，最终守住人间最后一道天门。');
   await page.getByLabel('主角').fill('沈砚，外冷内热的边城剑客');
-  await page.getByLabel('世界铁律').fill(
-    '任何人借天门之力，都必须以一段真实记忆作为代价。',
-  );
+  await page.getByLabel('世界铁律').fill('任何人借天门之力，都必须以一段真实记忆作为代价。');
   await page.getByRole('button', { name: '保存故事圣经' }).click();
   await expect(page.getByText('故事圣经已保存')).toBeVisible();
 
-  await page.getByLabel('章目标').fill(chapterOneOutline.chapterGoal);
-  await page.getByLabel('叙事视角').fill(chapterOneOutline.pov);
-  await page.getByLabel('场景节拍').fill(chapterOneOutline.sceneBeats);
-  await page.getByLabel('章末钩子').fill(chapterOneOutline.chapterEndHook);
-  await page.getByRole('button', { name: '保存章纲' }).click();
-  await expect(page.getByText('章纲已保存')).toBeVisible();
+  const secondWork = await currentWorkAndBranch(page);
+  await createFirstChapterOutline(page, secondWork.workId, secondWork.branchId, chapterOneOutline);
 
   await page.getByRole('link', { name: '写作台', exact: true }).click();
   await page.getByRole('button', { name: '根据章纲生成' }).click();
@@ -285,20 +266,13 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
 
   const factPanel = page.getByRole('region', { name: '本章事实' });
   const bodyStateFact = factPanel.getByTestId('fact-proposal-body_state');
-  await bodyStateFact
-    .getByLabel('事实内容：身体状况')
-    .fill('沈砚的左臂骨折，左手无法用力。');
+  await bodyStateFact.getByLabel('事实内容：身体状况').fill('沈砚的左臂骨折，左手无法用力。');
   await bodyStateFact.getByRole('button', { name: '保存修改' }).click();
   await expect(factPanel.getByText('事实修改已保存')).toBeVisible();
   await bodyStateFact.getByRole('button', { name: '确认采用' }).click();
   await expect(bodyStateFact.getByText('已确认')).toBeVisible();
 
-  const workResponse = await page.request.get(`/api/v1/works/${workId}`);
-  expect(workResponse.ok()).toBeTruthy();
-  const work = (await workResponse.json()) as {
-    mainBranch: { id: string };
-  };
-  const branchId = work.mainBranch.id;
+  const { branchId } = secondWork;
   const outlineResponse = await page.request.put(
     `/api/v1/works/${workId}/branches/${branchId}/chapter-outlines/2`,
     {
@@ -313,10 +287,7 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   expect(outlineResponse.ok()).toBeTruthy();
 
   await page.reload();
-  await page
-    .getByRole('button')
-    .filter({ hasText: '第 2 章' })
-    .click();
+  await page.getByRole('button').filter({ hasText: '第 2 章' }).click();
   await page.getByRole('button', { name: '根据章纲生成' }).click();
   await expect(page.getByText('初稿已生成', { exact: true })).toBeVisible({
     timeout: 15_000,
@@ -325,12 +296,8 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   const continuityPanel = page.getByRole('region', { name: '连续性提示' });
   await expect(continuityPanel).toBeVisible();
   await expect(continuityPanel.getByText('身体状态冲突')).toBeVisible();
-  await expect(continuityPanel.locator('.continuity-issue-message')).toContainText(
-    '左臂',
-  );
-  await expect(continuityPanel.locator('.continuity-suggestion')).toContainText(
-    '右手',
-  );
+  await expect(continuityPanel.locator('.continuity-issue-message')).toContainText('左臂');
+  await expect(continuityPanel.locator('.continuity-suggestion')).toContainText('右手');
   await expectHighlightOverBodyEditor(page);
   await page.screenshot({
     fullPage: true,
@@ -378,26 +345,19 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   await expect(continuityPanel.getByText(ignoreReason)).toBeVisible();
 
   await page.reload();
-  await page
-    .getByRole('button')
-    .filter({ hasText: '第 2 章' })
-    .click();
+  await page.getByRole('button').filter({ hasText: '第 2 章' }).click();
   const reloadedPanel = page.getByRole('region', { name: '连续性提示' });
   await expect(reloadedPanel.getByText('已忽略', { exact: true })).toBeVisible();
   await expect(reloadedPanel.getByText(ignoreReason)).toBeVisible();
 
   await expect(reloadedPanel).toBeVisible();
   expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth + 1,
-    ),
+    await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),
   ).toBe(true);
   expect(
-    await reloadedPanel.locator('.continuity-issue').evaluate(
-      (element) => element.scrollWidth <= element.clientWidth + 1,
-    ),
+    await reloadedPanel
+      .locator('.continuity-issue')
+      .evaluate((element) => element.scrollWidth <= element.clientWidth + 1),
   ).toBe(true);
-  await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(
-    0,
-  );
+  await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(0);
 });

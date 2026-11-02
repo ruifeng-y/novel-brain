@@ -7,6 +7,7 @@ export * from './fact-extraction';
 export * from './health';
 export * from './map-faction';
 export * from './model-configs';
+export * from './outline';
 export * from './redis';
 export * from './story-planning';
 export * from './system-job';
