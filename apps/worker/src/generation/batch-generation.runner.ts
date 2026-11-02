@@ -15,7 +15,7 @@ import {
   type JobChapterRow,
   type JobRow,
 } from '@novel/db';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, lt } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { ChapterGenerationRunner } from './chapter-generation.runner';
 
@@ -58,9 +58,14 @@ export class BatchGenerationRunner {
       chapterNumbers: job.payload.chapterNumbers ?? [],
     });
 
-    await this.beginBatchStep(job.id, 'generate', {
-      chapterNumbers: job.payload.chapterNumbers ?? [],
-    });
+    if (
+      !(await this.beginBatchStep(job.id, 'generate', {
+        chapterNumbers: job.payload.chapterNumbers ?? [],
+      }))
+    ) {
+      await this.writeReport(job.id);
+      return { ok: false };
+    }
     try {
       let items = await this.listItems(job.id);
       for (const item of items) {
@@ -74,7 +79,10 @@ export class BatchGenerationRunner {
         }
         await this.generateChapter(latestJob, item);
         items = await this.listItems(job.id);
-        await this.updateProgress(job.id, items);
+        if (!(await this.updateProgress(job.id, items))) {
+          await this.writeReport(job.id);
+          return { ok: false };
+        }
       }
 
       const latestJob = await this.requireJob(job.id);
@@ -89,7 +97,10 @@ export class BatchGenerationRunner {
         waitingReview: items.filter((item) => item.status === 'waiting_review').length,
         failed: items.filter((item) => item.status === 'failed').length,
       });
-      await this.beginBatchStep(job.id, 'report', {});
+      if (!(await this.beginBatchStep(job.id, 'report', {}))) {
+        await this.writeReport(job.id);
+        return { ok: false };
+      }
       const report = await this.writeReport(job.id);
       await this.completeBatchStep(job.id, 'report', {
         totalChapters: report.totalChapters,
@@ -102,7 +113,7 @@ export class BatchGenerationRunner {
           ? 'failed'
           : 'completed';
       const finishedAt = new Date();
-      await this.database.db
+      const [finishedJob] = await this.database.db
         .update(jobs)
         .set({
           status: finalStatus,
@@ -111,7 +122,12 @@ export class BatchGenerationRunner {
           finishedAt: finalStatus === 'completed' || finalStatus === 'failed' ? finishedAt : null,
           updatedAt: finishedAt,
         })
-        .where(eq(jobs.id, job.id));
+        .where(and(eq(jobs.id, job.id), inArray(jobs.status, ['preparing', 'running'])))
+        .returning({ id: jobs.id });
+      if (!finishedJob) {
+        await this.writeReport(job.id);
+        return { ok: false };
+      }
       await this.appendEvent(job.id, `job.${finalStatus}`, {
         progress: 100,
         report,
@@ -120,7 +136,7 @@ export class BatchGenerationRunner {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'The batch task could not finish';
       const failedAt = new Date();
-      await this.database.db
+      const [failedJob] = await this.database.db
         .update(jobs)
         .set({
           status: 'failed',
@@ -132,7 +148,12 @@ export class BatchGenerationRunner {
           finishedAt: failedAt,
           updatedAt: failedAt,
         })
-        .where(eq(jobs.id, job.id));
+        .where(and(eq(jobs.id, job.id), inArray(jobs.status, ['preparing', 'running'])))
+        .returning({ id: jobs.id });
+      if (!failedJob) {
+        await this.writeReport(job.id);
+        return { ok: false };
+      }
       await this.appendEvent(job.id, 'job.failed', {
         code: 'BATCH_GENERATION_FAILED',
         message,
@@ -145,13 +166,17 @@ export class BatchGenerationRunner {
 
   private async generateChapter(job: JobRow, item: JobChapterRow) {
     const now = new Date();
-    await this.database.db
+    const [claimed] = await this.database.db
       .update(jobChapters)
       .set({
         status: 'running',
         updatedAt: now,
       })
-      .where(eq(jobChapters.id, item.id));
+      .where(and(eq(jobChapters.id, item.id), eq(jobChapters.status, 'pending')))
+      .returning({ id: jobChapters.id });
+    if (!claimed) {
+      return;
+    }
     await this.appendEvent(job.id, 'job.chapter.started', {
       chapterNumber: item.chapterNumber,
     });
@@ -175,7 +200,7 @@ export class BatchGenerationRunner {
       const completionTokens = item.completionTokens + (result.completionTokens ?? 0);
       const cost = estimateModelCost(promptTokens, completionTokens);
       const completed = generationJob?.status === 'completed';
-      await this.database.db
+      const [updatedItem] = await this.database.db
         .update(jobChapters)
         .set({
           status: completed ? 'waiting_review' : 'failed',
@@ -194,7 +219,16 @@ export class BatchGenerationRunner {
               }),
           updatedAt: new Date(),
         })
-        .where(eq(jobChapters.id, item.id));
+        .where(and(eq(jobChapters.id, item.id), eq(jobChapters.status, 'running')))
+        .returning({ id: jobChapters.id });
+      if (!updatedItem) {
+        await this.appendEvent(job.id, 'job.chapter.discarded', {
+          chapterNumber: item.chapterNumber,
+          reason: 'paused_or_canceled',
+          draftId: draft?.id ?? null,
+        });
+        return;
+      }
       await this.appendEvent(job.id, 'job.chapter.finished', {
         chapterNumber: item.chapterNumber,
         status: completed ? 'waiting_review' : 'failed',
@@ -207,7 +241,7 @@ export class BatchGenerationRunner {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : '这一章没有完成';
-      await this.database.db
+      const [failedItem] = await this.database.db
         .update(jobChapters)
         .set({
           status: 'failed',
@@ -217,7 +251,15 @@ export class BatchGenerationRunner {
           },
           updatedAt: new Date(),
         })
-        .where(eq(jobChapters.id, item.id));
+        .where(and(eq(jobChapters.id, item.id), eq(jobChapters.status, 'running')))
+        .returning({ id: jobChapters.id });
+      if (!failedItem) {
+        await this.appendEvent(job.id, 'job.chapter.discarded', {
+          chapterNumber: item.chapterNumber,
+          reason: 'paused_or_canceled',
+        });
+        return;
+      }
       await this.appendEvent(job.id, 'job.chapter.finished', {
         chapterNumber: item.chapterNumber,
         status: 'failed',
@@ -279,7 +321,15 @@ export class BatchGenerationRunner {
       })
       .returning();
 
-    const settings = this.record(job.payload.settings);
+    const rawSettings = this.record(job.payload.settings);
+    const settings: Record<string, unknown> = {
+      ...rawSettings,
+      referenceChapters: await this.referenceChaptersFor(
+        job,
+        item.chapterNumber,
+        rawSettings.referenceChapters,
+      ),
+    };
     const created = await this.database.db.transaction(async (tx) => {
       const now = new Date();
       const [generation] = await tx
@@ -356,20 +406,62 @@ export class BatchGenerationRunner {
     };
   }
 
-  private async updateProgress(jobId: string, items: JobChapterRow[]) {
+  private async updateProgress(jobId: string, items: JobChapterRow[]): Promise<boolean> {
     const finished = items.filter((item) =>
       ['waiting_review', 'completed', 'failed', 'canceled'].includes(item.status),
     ).length;
     const progress = Math.min(95, Math.round((finished / items.length) * 95));
-    await this.database.db
+    const [updated] = await this.database.db
       .update(jobs)
       .set({ status: 'running', progress, updatedAt: new Date() })
-      .where(eq(jobs.id, jobId));
+      .where(and(eq(jobs.id, jobId), inArray(jobs.status, ['preparing', 'running'])))
+      .returning({ id: jobs.id });
+    if (!updated) {
+      await this.appendEvent(jobId, 'job.progress.skipped', {
+        progress,
+        reason: 'job_not_active',
+      });
+      return false;
+    }
     await this.appendEvent(jobId, 'job.progress', {
       progress,
       finished,
       total: items.length,
     });
+    return true;
+  }
+
+  private async referenceChaptersFor(
+    job: JobRow,
+    chapterNumber: number,
+    configuredValue: unknown,
+  ): Promise<number[]> {
+    const configured = Array.isArray(configuredValue)
+      ? configuredValue.filter(
+          (value): value is number =>
+            typeof value === 'number' &&
+            Number.isInteger(value) &&
+            value > 0 &&
+            value < chapterNumber,
+        )
+      : [];
+    const previous = await this.database.db
+      .select({ chapterNumber: chapters.chapterNumber })
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.workId, job.workId),
+          eq(chapters.branchId, job.branchId),
+          lt(chapters.chapterNumber, chapterNumber),
+          isNotNull(chapters.currentVersionId),
+          inArray(chapters.status, ['locked', 'published']),
+        ),
+      )
+      .orderBy(desc(chapters.chapterNumber))
+      .limit(3);
+    return [
+      ...new Set([...configured, ...previous.map((chapter) => chapter.chapterNumber).reverse()]),
+    ].slice(0, 20);
   }
 
   private async writeReport(jobId: string) {
@@ -478,17 +570,26 @@ export class BatchGenerationRunner {
     jobId: string,
     stepKey: 'generate' | 'report',
     input: Record<string, unknown>,
-  ) {
+  ): Promise<boolean> {
     const now = new Date();
+    const [activeJob] = await this.database.db
+      .update(jobs)
+      .set({ status: 'running', updatedAt: now })
+      .where(and(eq(jobs.id, jobId), inArray(jobs.status, ['preparing', 'running'])))
+      .returning({ id: jobs.id });
+    if (!activeJob) {
+      await this.appendEvent(jobId, 'job.step.skipped', {
+        stepKey,
+        reason: 'job_not_active',
+      });
+      return false;
+    }
     await this.database.db
       .update(jobSteps)
       .set({ status: 'running', input, startedAt: now })
       .where(and(eq(jobSteps.jobId, jobId), eq(jobSteps.stepKey, stepKey)));
-    await this.database.db
-      .update(jobs)
-      .set({ status: 'running', updatedAt: now })
-      .where(eq(jobs.id, jobId));
     await this.appendEvent(jobId, 'job.step.started', { stepKey });
+    return true;
   }
 
   private async completeBatchStep(
