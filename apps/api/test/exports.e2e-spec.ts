@@ -339,6 +339,37 @@ describe('export API', () => {
       });
   });
 
+  it('issues short-lived signed download links that work without a session and reject tampering', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '天门残卷');
+    await seedExportBook(app, work.id, work.mainBranchId, author.userId);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranchId}`;
+    await author.agent
+      .post(`${base}/exports`)
+      .send({ format: 'txt', scope: { type: 'chapter', chapterNumber: 1 } })
+      .expect(202);
+
+    const history = await author.agent.get(`${base}/exports`).expect(200);
+    const downloadUrl = history.body.items[0].downloadUrl as string;
+    expect(downloadUrl).toMatch(/^\/api\/v1\/downloads\/[A-Za-z0-9._~-]+$/);
+
+    const downloaded = await request(app.getHttpServer())
+      .get(downloadUrl)
+      .buffer(true)
+      .parse(binaryParser)
+      .expect(200);
+    expect(downloaded.headers['cache-control']).toBe('no-store');
+    expect(downloaded.body.toString('utf8')).toContain('沈砚听见剑鸣。');
+
+    const tampered = `${downloadUrl.slice(0, -1)}${downloadUrl.endsWith('A') ? 'B' : 'A'}`;
+    await request(app.getHttpServer())
+      .get(tampered)
+      .expect(403)
+      .expect(({ body }) => {
+        expect(body.code).toBe('DOWNLOAD_LINK_INVALID');
+      });
+  });
+
   it('hands a large export to the background queue', async () => {
     const author = await createAuthor(app, passwordHash);
     const work = await createWork(author.agent, '长篇天门残卷');
