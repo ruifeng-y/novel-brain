@@ -1,9 +1,11 @@
 # M3-05 安全测试与审计记录
 
-> V1 总验收复跑（2026-11-02 15:45 UTC）：在干净
-> `novel-brain-v1-acceptance` Compose 项目上执行安全专项，5 files / 18 tests
-> 通过；`pnpm audit --prod --audit-level high` 为 0 high、0 critical、3 moderate。
-> 账号级登录/Key/导出/删除审计、生产 TLS、静态加密和 30 天日志保留仍未闭环。
+> V1 总验收复跑（2026-11-03 02:33 Asia/Shanghai）：在干净
+> `novel-brain-v1-acceptance-808a16b` Compose 项目上执行安全/部署专项，
+> 12 files / 43 tests 通过；`pnpm audit --prod --audit-level high` 为 0 high、
+> 0 critical、3 moderate。账号级审计、签名下载、吊销会话、生产 TLS/Caddy、
+> 脱敏日志和部署配置检查通过；真实 ACME/KMS/SMTP/集中日志/异地灾备证据仍需
+> 部署确认。
 
 ## 2026-11-02
 

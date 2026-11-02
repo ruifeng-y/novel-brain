@@ -1,7 +1,7 @@
 # NovelBrain V1 迁移、备份与回滚 Runbook
 
-> 适用版本：V1.0.0-rc.1 / 代码基线 `c424aed`  
-> 当前迁移：`0000` 到 `0036`，共 37 条  
+> 适用版本：V1.0.0-rc.2 / 代码基线 `808a16b`
+> 当前迁移：`0000` 到 `0049`，共 50 条
 > 目标：RPO 24 小时，RTO 4 小时  
 > 注意：本 runbook 不替代生产变更审批；公网发布前还必须完成 TLS、静态加密、
 > 日志保留和法务确认。
@@ -58,7 +58,7 @@ docker compose -p <project> exec -T postgres `
   psql -U novel -d novel -tAc "select count(*) from drizzle.__drizzle_migrations;"
 ```
 
-本版本期望 `37`。
+本版本期望 `50`。
 
 ## 3. 备份
 
@@ -137,13 +137,49 @@ Invoke-RestMethod http://<host>/api/v1/health/ready
 至少验证：
 
 - 登录和退出。
+- 找回密码、修改密码、账号资料和多笔名。
 - 打开作品列表和工作台。
+- 导入一部旧稿，归档/恢复/复制一部作品。
 - 打开一章正文和版本历史。
 - 读取地图图片。
 - 导出一个小范围文件并下载。
+- 发起并下载一次账号完整导出。
+- 搜索账号审计，确认登录、Key 和导出动作可见。
 - 单章生成（若使用真实 Key，确认供应商可用；若使用 fake，仅验证链路）。
 
 记录结果、时间、版本、迁移数和操作人。
+
+### 5.1 后台生命周期任务
+
+账号和作品永久清理依赖 `DATABASE_ADMIN_URL`。先 dry-run：
+
+```bash
+docker compose -p <project> exec worker \
+  pnpm --filter @novel/worker purge:accounts -- --dry-run --limit=10
+
+docker compose -p <project> exec worker \
+  pnpm --filter @novel/worker purge:works -- --dry-run --limit=10
+```
+
+确认候选数量和备份保留后执行：
+
+```bash
+docker compose -p <project> exec worker \
+  pnpm --filter @novel/worker purge:accounts -- --limit=25
+
+docker compose -p <project> exec worker \
+  pnpm --filter @novel/worker purge:works -- --limit=25
+```
+
+永久删除不可撤销。执行前必须确认 30 天窗口、备份保留和法定保留范围。
+
+### 5.2 审计与签名下载
+
+- 登录/退出、Key 变更、导出、删除、生成和事实决策写入账号级审计。
+- 账号审计可通过 `GET /api/v1/users/me/audit` 和 `/audit/export` 查询/导出。
+- 账号完整导出和作品导出使用短时 HMAC 签名链接；生产必须配置
+  `DOWNLOAD_SIGNING_SECRET`。
+- 导出文件保留 7 天；过期后重新导出。
 
 ## 6. 回滚
 
@@ -229,12 +265,12 @@ node scripts/ops.mjs restore-drill `
 - 对象数量、集合校验和和逐对象 SHA-256 一致。
 - 证据写入 `docs/acceptance/m3/restore-drill/<timestamp>.json`。
 
-2026-11-02 V1 验收证据：
+2026-11-03 V1 复验证据：
 
-- `docs/acceptance/m3/restore-drill/20261102T154620Z.json`
-- 数据库恢复 3 秒，备份年龄 12 秒。
-- 28 个账号、28 部作品、1,169 章、1,182 个章节版本、27 个任务行数一致。
-- 3/3 对象逐字节校验。
+- `docs/acceptance/m3/restore-drill/20261102T183431Z.json`
+- 数据库恢复 3 秒，备份年龄 2 秒。
+- 38 个账号、33 部作品、1,173 章、1,186 个章节版本、27 个任务行数一致。
+- 10/10 对象逐字节校验。
 
 演练失败时不要删除旧备份，也不要执行正式切换。
 
@@ -242,13 +278,16 @@ node scripts/ops.mjs restore-drill `
 
 - 观察 API 5xx、健康检查、生成失败率、SSE 延迟、导出失败和恢复任务。
 - 确认日志不包含正文、密码、模型 Key 或密文。
-- 确认审计记录覆盖登录、Key 变更、导出和删除。**当前版本尚未实现账号级审计，
-  因此该项在公开发布前必须关闭。**
+- 确认审计记录覆盖登录、Key 变更、导出和删除；本轮已实现并验证账号级审计。
 - 确认备份任务按时完成并复制到异地。
+- 确认账号/作品清理任务和删除回执按计划执行。
 
 ## 9. 当前环境限制
 
 - 本 runbook 已在 Windows Docker Compose + fake provider 环境演练；生产 Linux
-  集群、云数据库、生产 SMTP、TLS 和对象存储加密仍需单独验证。
+  集群、云数据库、生产 SMTP、真实 TLS/ACME 和 KMS 静态加密仍需单独验证。
 - 当前 Compose 的默认密码和密钥仅用于本地开发；生产必须替换。
 - 外部监控链未随仓库交付，发布负责人必须单独确认。
+- 生产覆盖文件：`docker-compose.production.yml`、`infra/caddy/Caddyfile.production`、
+  `.env.production.example`。发布前运行 `pnpm deploy:check` 和
+  `pnpm deploy:verify --env-file <production.env>`。
