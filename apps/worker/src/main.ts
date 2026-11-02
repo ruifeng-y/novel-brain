@@ -1,10 +1,16 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import { RedactingLogger } from '@novel/core';
 import { WorkerModule } from './worker.module';
+
+const logger = new RedactingLogger('worker', {
+  format:
+    process.env.LOG_FORMAT === 'json' || process.env.NODE_ENV === 'production' ? 'json' : 'text',
+});
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(WorkerModule, {
-    logger: ['log', 'warn', 'error'],
+    logger,
   });
 
   const shutdown = async (): Promise<void> => {
@@ -14,10 +20,10 @@ async function bootstrap(): Promise<void> {
 
   process.once('SIGTERM', () => void shutdown());
   process.once('SIGINT', () => void shutdown());
-  console.log('NovelBrain worker started');
+  logger.log('NovelBrain worker started');
 }
 
 bootstrap().catch((error: unknown) => {
-  console.error(error);
+  logger.error(error);
   process.exit(1);
 });

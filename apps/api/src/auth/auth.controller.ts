@@ -22,7 +22,8 @@ import {
   sendCodeSchema,
 } from '@novel/contracts';
 import type { Request, Response } from 'express';
-import { SESSION_COOKIE_NAME, SESSION_TTL_DAYS } from './auth.constants';
+import { SESSION_COOKIE_NAME } from './auth.constants';
+import { clearSessionCookieOptions, createSessionCookieOptions } from './session-cookie';
 import { SessionAuthGuard } from './session-auth.guard';
 import { AuthService } from './auth.service';
 import { authError } from './auth.errors';
@@ -247,21 +248,17 @@ export class AuthController {
   }
 
   private setSessionCookie(response: Response, token: string): void {
-    response.cookie(SESSION_COOKIE_NAME, token, {
-      httpOnly: true,
-      secure: this.config.get<string>('COOKIE_SECURE') === 'true',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_TTL_DAYS * 24 * 60 * 60 * 1000,
-    });
+    response.cookie(
+      SESSION_COOKIE_NAME,
+      token,
+      createSessionCookieOptions(this.config.get<boolean>('COOKIE_SECURE') === true),
+    );
   }
 
   private clearSessionCookie(response: Response): void {
-    response.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: this.config.get<string>('COOKIE_SECURE') === 'true',
-      sameSite: 'lax',
-      path: '/',
-    });
+    response.clearCookie(
+      SESSION_COOKIE_NAME,
+      clearSessionCookieOptions(this.config.get<boolean>('COOKIE_SECURE') === true),
+    );
   }
 }
