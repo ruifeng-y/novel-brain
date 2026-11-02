@@ -49,7 +49,9 @@ test('an author exports every data area and searches the account audit trail', a
   await page.goto('/workspace/settings/privacy');
   await expect(page.getByRole('heading', { name: '导出与审计' })).toBeVisible();
   const audit = page.locator('.account-audit-tool');
-  await expect(audit.getByText('登录', { exact: true })).toBeVisible();
+  await expect(
+    audit.locator('.account-audit-item').getByText('登录', { exact: true }).first(),
+  ).toBeVisible();
 
   await page.getByRole('button', { name: '导出全部数据' }).click();
   await expect(page.getByText('正在后台整理全部数据')).toBeVisible();

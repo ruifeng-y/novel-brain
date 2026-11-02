@@ -63,7 +63,7 @@
 - [x] 对象存储写入、读取和删除都先校验作者前缀。
 - [x] 备份清单不含正文、邮箱、Key 或密文，恢复演练校验 SHA-256 和对象逐字节一致性。
 
-证据：`apps/api/src/users/users.service.ts`、`apps/api/src/storage/object-storage.service.ts`、`docs/operations/security-backup.md`、`docs/acceptance/m3/restore-drill/20261102T120716Z.json`。
+证据：`apps/api/src/users/account-exports.service.ts`、`apps/worker/src/exports/account-export.runner.ts`、`apps/api/src/storage/object-storage.service.ts`、`docs/operations/account-audit-export.md`、`docs/operations/security-backup.md`、`docs/acceptance/m3/restore-drill/20261102T120716Z.json`。
 
 ## 备份与恢复
 
@@ -82,9 +82,9 @@
 | --- | --- | --- | --- |
 | 公网 TLS、证书管理和 HSTS | 待部署确认，当前 Caddyfile 仅提供 HTTP | 安全与运维负责人 | 公开访问必须全站 HTTPS，HTTP 重定向到 HTTPS |
 | 数据库磁盘、备份介质和对象存储静态加密 | 待部署确认 | 安全与运维负责人 | 生产环境启用磁盘/桶加密并记录密钥轮换方案 |
-| 操作审计日志（登录、Key 变更、导出、删除） | 待工程实现或确认 | 工程负责人 | 必须能按作者、动作、目标、时间追溯，日志不含正文和 Key |
+| 操作审计日志（登录、Key 变更、导出、删除） | 应用层已实现；生产日志 30 天保留待部署确认 | 工程负责人 / 安全与运维负责人 | 必须能按作者、动作、目标、时间追溯，日志不含正文和 Key |
 | 日志 30 天保留与访问控制 | 待部署确认 | 安全与运维负责人 | 生产日志平台配置保留期、访问审计和脱敏验证 |
-| 对象下载签名链接 | 当前由 API 校验作者后读取，未使用签名链接 | 工程负责人 | 若改为直连对象存储，必须使用短时签名链接并限制作者前缀 |
+| 对象下载签名链接 | 账号完整导出已使用 10 分钟签名链接并校验作者会话；直连对象存储方案仍待部署确认 | 工程负责人 | 若改为直连对象存储，必须使用短时签名链接并限制作者前缀 |
 | 生产环境默认数据库密码 | 已由启动检查阻止，开发 Compose 显式允许 | 安全与运维负责人 | 生产设置强密码并删除 `ALLOW_DEFAULT_DB_PASSWORD` |
 | MinIO 旧版 `stream-json` 的 3 个 moderate 告警 | 当前产品未调用桶通知解析路径；强制升级会破坏 MinIO 8.0.7 的旧 API | 工程负责人 | 跟踪 MinIO 上游修复；启用桶通知前必须清除 |
 
