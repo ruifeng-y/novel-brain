@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import http from 'node:http';
 import https from 'node:https';
 import net from 'node:net';
@@ -193,18 +193,27 @@ function requestHttp(requestPath) {
 }
 
 async function readAccessLog() {
-  const files = await readdir(logDirectory);
-  const logFiles = files.filter((file) => file.startsWith('access'));
-  if (logFiles.length === 0) {
+  const contents = await dockerCapture([
+    'run',
+    '--rm',
+    '-v',
+    `${logDirectory}:/logs:ro`,
+    'caddy:2-alpine',
+    'sh',
+    '-c',
+    'cat /logs/access*.log',
+  ]);
+  if (!contents.trim()) {
     throw new Error('Caddy access log file was not created');
   }
-  const contents = await Promise.all(
-    logFiles.map((file) => readFile(path.join(logDirectory, file), 'utf8')),
-  );
-  return contents.join('\n');
+  return contents;
 }
 
 function docker(args, allowFailure = false) {
+  return dockerCapture(args, allowFailure).then(() => undefined);
+}
+
+function dockerCapture(args, allowFailure = false) {
   return new Promise((resolve, reject) => {
     const child = spawn('docker', args, {
       cwd: ROOT,
@@ -224,7 +233,7 @@ function docker(args, allowFailure = false) {
         reject(new Error(`docker ${args[0]} exited with code ${code}: ${detail}`));
         return;
       }
-      resolve();
+      resolve(Buffer.concat(stdout).toString('utf8'));
     });
   });
 }
