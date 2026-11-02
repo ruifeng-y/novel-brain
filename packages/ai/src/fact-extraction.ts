@@ -33,6 +33,9 @@ const CHAPTER_FACTS_JSON_SCHEMA = {
 export type ChapterFactExtractionInput = {
   chapterNumber: number;
   chapterText: string;
+  model?: string;
+  apiKey?: string;
+  baseUrl?: string;
   storyBible?: {
     protagonist: string;
     worldIronLaw: string;
@@ -68,6 +71,9 @@ export async function extractChapterFacts(
       .join('\n'),
     maxTokens: 1_800,
     temperature: 0.1,
+    ...(input.model ? { model: input.model } : {}),
+    ...(input.apiKey ? { apiKey: input.apiKey } : {}),
+    ...(input.baseUrl ? { baseUrl: input.baseUrl } : {}),
     parse: (value) => {
       const parsed = chapterFactExtractionResultSchema.safeParse(value);
       if (!parsed.success) {
