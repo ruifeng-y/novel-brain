@@ -1,0 +1,46 @@
+{
+  "drill": "postgres-and-object-store-restore",
+  "status": "passed",
+  "startedAt": "2026-11-02T15:46:16.971Z",
+  "finishedAt": "2026-11-02T15:46:20.006Z",
+  "backupCreatedAt": "2026-11-02T15:46:05.204Z",
+  "backupSha256": "6fb40b58200dd6df05e3efcd4a1e76682733e9faeda04fd1c4648a45579e7b3c",
+  "targetDatabase": "novel_restore_drill_20261102154616",
+  "durationSeconds": 3,
+  "backupAgeSeconds": 12,
+  "rpoSeconds": 86400,
+  "rtoSeconds": 14400,
+  "sourceRowCounts": {
+    "users": 28,
+    "works": 28,
+    "chapters": 1169,
+    "chapterVersions": 1182,
+    "jobs": 27
+  },
+  "restoredRowCounts": {
+    "users": 28,
+    "works": 28,
+    "chapters": 1169,
+    "chapterVersions": 1182,
+    "jobs": 27
+  },
+  "objectStore": {
+    "sourceBucket": "novel-brain",
+    "sourcePrefix": "",
+    "targetBucket": "novel-brain-restore-drill-20261102154616",
+    "objectCount": 3,
+    "totalBytes": 2602,
+    "checksum": "ae199c6c6233b39b6be72c8420d07becc5fae29d6ea4339b770eac44f79341a0",
+    "verifiedObjects": 3,
+    "sample": {
+      "keyHash": "5dfd00c3f9950f2e3cff3195f5bf8b568729a8718243ac66e24941fef986ca49",
+      "sha256": "e68bb6828d842a6c845223b2966aef7c28134491c003f940020e17ee8b06391d",
+      "sizeBytes": 44
+    },
+    "verifiedKey": {
+      "keyHash": "5dfd00c3f9950f2e3cff3195f5bf8b568729a8718243ac66e24941fef986ca49",
+      "sha256": "e68bb6828d842a6c845223b2966aef7c28134491c003f940020e17ee8b06391d",
+      "sizeBytes": 44
+    }
+  }
+}

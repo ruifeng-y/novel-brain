@@ -1,5 +1,10 @@
 # M3-05 安全测试与审计记录
 
+> V1 总验收复跑（2026-11-02 15:45 UTC）：在干净
+> `novel-brain-v1-acceptance` Compose 项目上执行安全专项，5 files / 18 tests
+> 通过；`pnpm audit --prod --audit-level high` 为 0 high、0 critical、3 moderate。
+> 账号级登录/Key/导出/删除审计、生产 TLS、静态加密和 30 天日志保留仍未闭环。
+
 ## 2026-11-02
 
 检查对象：`codex/ticket-32-compliance`，基线提交 `9a4e76d`。

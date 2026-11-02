@@ -1,10 +1,12 @@
 # NovelBrain
 
-面向个人作者的长篇 AI 创作平台。当前处于 M2 扩大 beta 阶段。
+面向个人作者的长篇 AI 创作平台。当前处于 V1 发布候选验收阶段，**尚未批准公开发布**。
 
-M2 把内部验证从仙侠扩展到仙侠、历史、都市三种题材，并加入批量生产、审核队列、
-修改请求、影响分析、平行版本、版本图和回滚。它仍是内部扩大 beta，不是 V1 公开发布
-版本；导出发布、合规、备份恢复和 V1 总验收仍由 M3 负责。
+M0 到 M2 的创作闭环、批量生产、修改版本和安全能力已回归通过；M3 的导出、发布
+检查、性能、安全、备份恢复和合规文档也已完成本地验收。V1 总验收结论是
+**NO-GO**：质量盲评、真实 DeepSeek、账号生命周期、完整审计/导出、作品生命周期、
+TLS/静态加密/日志保留和法务事项仍未闭环。详见
+`docs/acceptance/m3/acceptance.md` 和 `docs/release/v1-known-limitations.md`。
 
 ## 环境要求
 
@@ -67,6 +69,7 @@ pnpm test:e2e
 pnpm demo:m0
 pnpm demo:m1
 pnpm demo:m2
+pnpm demo:m3
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
@@ -100,6 +103,24 @@ pnpm db:seed
 - 版本图支持不可删除的历史、单次修改撤销、完整回滚和审计导出。
 - M2 验收使用确定性 fake provider，不调用真实 DeepSeek，也不代表公开发布质量。
 
+## V1 发布候选范围
+
+- 导出 TXT、Markdown、DOCX、EPUB，支持通用网文、起点和番茄预设。
+- 发布建议、读者预览、六项发布检查、复制/下载检查报告。
+- 数据隔离、Key 信封加密、限流、每日备份、30 天保留和恢复演练。
+- 3,000,000 字 / 1,000 章性能门禁、SSE、并发和安全专项。
+- 隐私政策、用户协议、AI 内容标识、内容审核和安全检查清单。
+
+V1 正式公开发布前仍必须关闭：
+
+- 账号找回/修改/注销/30 天恢复/永久删除。
+- 登录、Key 变更、导出和删除的账号级审计。
+- 一键导出全部作品数据。
+- 导入旧稿、作品归档/软删除/恢复/复制和完本只读。
+- 目标读者盲评、人工质量量表和真实 DeepSeek 证据。
+- TLS/HSTS、静态加密、日志 30 天保留、生产监控和异地备份。
+- L-01 到 L-12 法务/运营确认。
+
 ## 文档
 
 - `docs/requirements/v1-requirements.md`
@@ -110,6 +131,8 @@ pnpm db:seed
 - `docs/acceptance/m0/acceptance.md`
 - `docs/acceptance/m1/acceptance.md`
 - `docs/acceptance/m2/acceptance.md`
+- `docs/acceptance/m3/acceptance.md`
+- `docs/acceptance/m3/demo.md`
 - `docs/operations/security-backup.md`
 - `docs/operations/content-moderation.md`
 - `docs/operations/security-checklist.md`
@@ -117,3 +140,7 @@ pnpm db:seed
 - `docs/compliance/m3-05-acceptance.md`
 - `docs/acceptance/m3/restore-drill.md`
 - `docs/acceptance/m3/security-audit.md`
+- `docs/release/v1-release-notes.md`
+- `docs/release/v1-migration-rollback-runbook.md`
+- `docs/release/v1-known-limitations.md`
+- `docs/release/v1-release-checklist.md`

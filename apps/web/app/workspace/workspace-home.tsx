@@ -129,11 +129,11 @@ export function WorkspaceHome() {
         <div>
           <div className="workspace-scope-line">
             <p className="workspace-step">作品书架</p>
-            <span className="workspace-beta-badge">M2 扩大 beta</span>
+            <span className="workspace-beta-badge">V1 验收候选</span>
           </div>
           <h1>你的作品</h1>
           <p className="workspace-beta-note">
-            仙侠、历史与都市已开放，批量创作和修改版本可用于内部扩大测试。
+            M3 功能验收中，当前不对外发布；质量、真实模型和账号生命周期仍待闭环。
           </p>
         </div>
         <p className="workspace-email">共 {state.works.length} 部作品</p>

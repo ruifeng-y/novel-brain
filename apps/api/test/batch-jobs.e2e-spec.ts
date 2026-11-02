@@ -368,7 +368,9 @@ describe('batch jobs API', () => {
     if (workerApp) {
       await workerApp.close();
     }
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   beforeEach(async () => {
