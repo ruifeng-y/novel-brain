@@ -3,14 +3,7 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import {
-  mkdir,
-  readFile,
-  readdir,
-  rm,
-  stat,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -27,6 +20,7 @@ import {
   removeBucket,
   restoreObjectBackup,
 } from './object-backup.mjs';
+import { copyBackupOffsite } from './offsite-backup.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_BACKUP_DIR = path.join(ROOT, 'backups');
@@ -67,7 +61,8 @@ function config(options) {
     postgresDb: options['postgres-db'] ?? 'novel',
     backupDir: path.resolve(options['backup-dir'] ?? DEFAULT_BACKUP_DIR),
     retentionDays: Number(options['retention-days'] ?? DEFAULT_RETENTION_DAYS),
-    objectEndpoint: options['object-endpoint'] ?? process.env.MINIO_ENDPOINT ?? 'http://localhost:9000',
+    objectEndpoint:
+      options['object-endpoint'] ?? process.env.MINIO_ENDPOINT ?? 'http://localhost:9000',
     objectAccessKey: process.env.MINIO_ACCESS_KEY ?? 'minio',
     objectSecretKey: process.env.MINIO_SECRET_KEY ?? 'minio123',
     objectBucket,
@@ -154,11 +149,7 @@ async function queryCountsAtSnapshot(settings, snapshot) {
     '-c',
     sql,
   ]);
-  const lines = result.output
-    .toString('utf8')
-    .trim()
-    .split(/\r?\n/)
-    .filter(Boolean);
+  const lines = result.output.toString('utf8').trim().split(/\r?\n/).filter(Boolean);
   const jsonLine = lines.findLast((line) => line.startsWith('{'));
   if (!jsonLine) {
     throw new Error('Could not read row counts from the backup snapshot');
@@ -340,7 +331,10 @@ async function createBackup(options) {
       rpoSeconds: RPO_SECONDS,
       rtoSeconds: RTO_SECONDS,
     };
-    await writeFile(path.join(directory, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    await writeFile(
+      path.join(directory, 'manifest.json'),
+      `${JSON.stringify(manifest, null, 2)}\n`,
+    );
     const removed = await pruneBackups(settings);
 
     return {
@@ -515,6 +509,7 @@ function printHelp() {
 
 Usage:
   node scripts/ops.mjs backup [--backup-dir <dir>] [--retention-days 30] [--object-prefix <prefix>]
+  node scripts/ops.mjs offsite --backup <snapshot> --target <offsite-root>
   node scripts/ops.mjs restore --backup <snapshot> --target-db <scratch-db> [--object-bucket <bucket>] [--drop-existing]
   node scripts/ops.mjs restore-drill --backup <snapshot> [--target-db <scratch-db>] [--target-object-bucket <bucket>] [--verify-key <object-key>] [--keep]
 
@@ -542,6 +537,22 @@ async function main() {
 
   if (command === 'backup') {
     process.stdout.write(`${JSON.stringify(await createBackup(options), null, 2)}\n`);
+    return;
+  }
+  if (command === 'offsite') {
+    if (!options.backup || !options.target) {
+      throw new Error('--backup and --target are required for offsite');
+    }
+    process.stdout.write(
+      `${JSON.stringify(
+        await copyBackupOffsite({
+          backupDir: options.backup,
+          targetRoot: options.target,
+        }),
+        null,
+        2,
+      )}\n`,
+    );
     return;
   }
   if (command === 'restore') {

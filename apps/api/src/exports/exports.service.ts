@@ -24,6 +24,7 @@ import { and, desc, eq, gte, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { ObjectStorageService } from '../storage/object-storage.service';
+import { DownloadTokenService } from './download-token.service';
 import { exportsError } from './exports.errors';
 
 const EXPORT_RETENTION_DAYS = 7;
@@ -36,6 +37,7 @@ export class ExportsService {
     private readonly database: DatabaseService,
     private readonly storage: ObjectStorageService,
     private readonly rateLimits: RateLimitService,
+    private readonly downloadTokens: DownloadTokenService,
     @InjectQueue('export') private readonly exportQueue: Queue,
   ) {}
 
@@ -213,6 +215,24 @@ export class ExportsService {
     };
   }
 
+  async downloadSignedToken(token: string): Promise<{
+    data: Buffer;
+    fileName: string;
+    mimeType: string;
+  }> {
+    const claims = this.downloadTokens.verify(token);
+    if (!claims) {
+      throw exportsError(
+        HttpStatus.FORBIDDEN,
+        'DOWNLOAD_LINK_INVALID',
+        'This download link is invalid or has expired',
+      );
+    }
+    return this.database.withUserContext(claims.userId, () =>
+      this.download(claims.userId, claims.workId, claims.branchId, claims.exportId),
+    );
+  }
+
   private async loadSource(userId: string, workId: string, branchId: string) {
     const [work] = await this.database.db
       .select({ id: works.id })
@@ -326,7 +346,12 @@ export class ExportsService {
       error: typeof row.error?.message === 'string' ? row.error.message : null,
       downloadUrl:
         row.status === 'completed' && !expired
-          ? `/api/v1/works/${row.workId}/branches/${row.branchId}/exports/${row.id}/download`
+          ? `/api/v1/downloads/${this.downloadTokens.sign({
+              exportId: row.id,
+              userId: row.userId,
+              workId: row.workId,
+              branchId: row.branchId,
+            })}`
           : null,
       branch: { id: row.branchId, name: branchName },
       createdAt: row.createdAt.toISOString(),
