@@ -63,6 +63,11 @@ export default function HomePage() {
 
       <footer className="home-footer">
         <span>NovelBrain</span>
+        <nav aria-label="法律文件" className="home-legal">
+          <Link href="/legal/privacy">隐私政策</Link>
+          <Link href="/legal/terms">用户协议</Link>
+          <Link href="/legal/ai-content">AI 生成内容标识</Link>
+        </nav>
         <span>为长篇创作留出足够的空间</span>
       </footer>
     </main>

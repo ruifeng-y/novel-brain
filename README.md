@@ -97,4 +97,9 @@ pnpm db:seed
 - `docs/acceptance/m0/acceptance.md`
 - `docs/acceptance/m1/acceptance.md`
 - `docs/operations/security-backup.md`
+- `docs/operations/content-moderation.md`
+- `docs/operations/security-checklist.md`
+- `docs/compliance/legal-pending-items.md`
+- `docs/compliance/m3-05-acceptance.md`
 - `docs/acceptance/m3/restore-drill.md`
+- `docs/acceptance/m3/security-audit.md`

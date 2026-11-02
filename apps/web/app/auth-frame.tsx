@@ -35,6 +35,12 @@ export function AuthFrame({
           <h1>{title}</h1>
           <p className="auth-intro">{intro}</p>
           {children}
+          <div className="auth-legal-links" aria-label="法律文件">
+            <span>使用前请阅读</span>
+            <Link href="/legal/privacy">隐私政策</Link>
+            <Link href="/legal/terms">用户协议</Link>
+            <Link href="/legal/ai-content">AI 生成内容标识</Link>
+          </div>
         </div>
       </section>
     </main>

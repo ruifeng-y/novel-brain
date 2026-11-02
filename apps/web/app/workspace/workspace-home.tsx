@@ -114,6 +114,7 @@ export function WorkspaceHome() {
         <span className="workspace-brand">NovelBrain</span>
         <div className="workspace-account">
           <Link href="/workspace/settings">模型设置</Link>
+          <Link href="/workspace/settings/privacy">隐私与合规</Link>
           <span>{state.user.displayName}</span>
           <button
             className="text-button"
