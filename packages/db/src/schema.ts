@@ -208,6 +208,12 @@ export type NewWorkRow = typeof works.$inferInsert;
 export type WorkBranchRow = typeof workBranches.$inferSelect;
 export type NewWorkBranchRow = typeof workBranches.$inferInsert;
 
+export type StoryBibleCardValue = {
+  key: string;
+  summary: string;
+  details: string;
+};
+
 export const storyBibles = pgTable(
   'story_bibles',
   {
@@ -221,6 +227,13 @@ export const storyBibles = pgTable(
     oneSentenceStory: text('one_sentence_story').notNull(),
     protagonist: text('protagonist').notNull(),
     worldIronLaw: text('world_iron_law').notNull(),
+    cards: jsonb('cards')
+      .$type<StoryBibleCardValue[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    version: integer('version').notNull().default(1),
+    lockedAt: timestamp('locked_at', { withTimezone: true }),
+    lockedBy: uuid('locked_by').references(() => users.id, { onDelete: 'set null' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
@@ -229,6 +242,83 @@ export const storyBibles = pgTable(
 
 export type StoryBibleRow = typeof storyBibles.$inferSelect;
 export type NewStoryBibleRow = typeof storyBibles.$inferInsert;
+
+export const storyBibleChangeKindEnum = pgEnum('story_bible_change_kind', [
+  'saved',
+  'locked',
+  'locked_change',
+]);
+
+export const storyBibleRevisions = pgTable(
+  'story_bible_revisions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    storyBibleId: uuid('story_bible_id')
+      .notNull()
+      .references(() => storyBibles.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: storyBibleChangeKindEnum('kind').notNull(),
+    reason: text('reason').notNull(),
+    changedCards: jsonb('changed_cards').$type<string[]>().notNull(),
+    beforeCards: jsonb('before_cards').$type<StoryBibleCardValue[]>().notNull(),
+    afterCards: jsonb('after_cards').$type<StoryBibleCardValue[]>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('story_bible_revisions_branch_created_idx').on(
+      table.workId,
+      table.branchId,
+      table.createdAt,
+    ),
+    index('story_bible_revisions_bible_created_idx').on(table.storyBibleId, table.createdAt),
+  ],
+);
+
+export type StoryBibleRevisionRow = typeof storyBibleRevisions.$inferSelect;
+export type NewStoryBibleRevisionRow = typeof storyBibleRevisions.$inferInsert;
+
+export const foreshadowStatusEnum = pgEnum('foreshadow_status', [
+  'planted',
+  'paid_off',
+  'abandoned',
+]);
+
+export const foreshadowImportanceEnum = pgEnum('foreshadow_importance', ['must', 'optional']);
+
+export const foreshadows = pgTable(
+  'foreshadows',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    description: text('description').notNull(),
+    setupChapter: integer('setup_chapter'),
+    plannedPayoffChapter: integer('planned_payoff_chapter'),
+    status: foreshadowStatusEnum('status').notNull().default('planted'),
+    importance: foreshadowImportanceEnum('importance').notNull().default('optional'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('foreshadows_work_branch_status_idx').on(table.workId, table.branchId, table.status),
+  ],
+);
+
+export type ForeshadowRow = typeof foreshadows.$inferSelect;
+export type NewForeshadowRow = typeof foreshadows.$inferInsert;
 
 export const chapterOutlines = pgTable(
   'chapter_outlines',
@@ -393,20 +483,13 @@ export const contextPacks = pgTable(
     sourceRefs: jsonb('source_refs').$type<string[]>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [
-    uniqueIndex('context_packs_generation_request_unique').on(table.generationRequestId),
-  ],
+  (table) => [uniqueIndex('context_packs_generation_request_unique').on(table.generationRequestId)],
 );
 
 export type ContextPackRow = typeof contextPacks.$inferSelect;
 export type NewContextPackRow = typeof contextPacks.$inferInsert;
 
-export const draftStatusEnum = pgEnum('draft_status', [
-  'pending',
-  'streaming',
-  'ready',
-  'failed',
-]);
+export const draftStatusEnum = pgEnum('draft_status', ['pending', 'streaming', 'ready', 'failed']);
 
 export const drafts = pgTable(
   'drafts',
@@ -432,11 +515,7 @@ export const drafts = pgTable(
 export type DraftRow = typeof drafts.$inferSelect;
 export type NewDraftRow = typeof drafts.$inferInsert;
 
-export const factTypeEnum = pgEnum('fact_type', [
-  'event',
-  'body_state',
-  'character_knowledge',
-]);
+export const factTypeEnum = pgEnum('fact_type', ['event', 'body_state', 'character_knowledge']);
 
 export const factProposalStatusEnum = pgEnum('fact_proposal_status', [
   'proposed',
@@ -457,10 +536,9 @@ export const factProposals = pgTable(
     chapterId: uuid('chapter_id')
       .notNull()
       .references(() => chapters.id, { onDelete: 'cascade' }),
-    generationRequestId: uuid('generation_request_id').references(
-      () => generationRequests.id,
-      { onDelete: 'set null' },
-    ),
+    generationRequestId: uuid('generation_request_id').references(() => generationRequests.id, {
+      onDelete: 'set null',
+    }),
     type: factTypeEnum('type').notNull(),
     statement: text('statement').notNull(),
     sourceSentence: text('source_sentence').notNull(),
@@ -522,10 +600,9 @@ export const annotations = pgTable(
     chapterId: uuid('chapter_id')
       .notNull()
       .references(() => chapters.id, { onDelete: 'cascade' }),
-    generationRequestId: uuid('generation_request_id').references(
-      () => generationRequests.id,
-      { onDelete: 'cascade' },
-    ),
+    generationRequestId: uuid('generation_request_id').references(() => generationRequests.id, {
+      onDelete: 'cascade',
+    }),
     draftId: uuid('draft_id').references(() => drafts.id, {
       onDelete: 'cascade',
     }),
@@ -579,9 +656,7 @@ export const canonCommits = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [
-    index('canon_commits_branch_created_idx').on(table.branchId, table.createdAt),
-  ],
+  (table) => [index('canon_commits_branch_created_idx').on(table.branchId, table.createdAt)],
 );
 
 export const canonSnapshots = pgTable(
@@ -698,9 +773,7 @@ export const jobCheckpoints = pgTable(
     state: jsonb('state').$type<Record<string, unknown>>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [
-    index('job_checkpoints_job_created_idx').on(table.jobId, table.createdAt),
-  ],
+  (table) => [index('job_checkpoints_job_created_idx').on(table.jobId, table.createdAt)],
 );
 
 export type JobCheckpointRow = typeof jobCheckpoints.$inferSelect;

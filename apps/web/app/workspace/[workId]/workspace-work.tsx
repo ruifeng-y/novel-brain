@@ -6,9 +6,11 @@ import { useEffect, useState } from 'react';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../lib/auth-api';
 import {
   loadChapterOutline,
+  loadStoryBibleInsights,
   loadStoryBible,
   type ChapterOutline,
   type StoryBible,
+  type StoryBibleInsights,
 } from '../../../lib/story-planning-api';
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
 import { StoryPlanningPanel } from './story-planning-panel';
@@ -21,6 +23,7 @@ type LoadState =
       work: Work;
       storyBible: StoryBible | null;
       chapterOutline: ChapterOutline | null;
+      storyBibleInsights: StoryBibleInsights | null;
     }
   | { status: 'error'; message: string; notFound: boolean };
 
@@ -32,15 +35,30 @@ export function WorkspaceWork({ workId }: { workId: string }) {
     Promise.all([apiRequest<User>('/api/v1/auth/me'), apiRequest<Work>(`/api/v1/works/${workId}`)])
       .then(async ([user, work]) => {
         if (!work.mainBranch) {
-          setState({ status: 'ready', user, work, storyBible: null, chapterOutline: null });
+          setState({
+            status: 'ready',
+            user,
+            work,
+            storyBible: null,
+            chapterOutline: null,
+            storyBibleInsights: null,
+          });
           return;
         }
 
-        const [storyBible, chapterOutline] = await Promise.all([
+        const [storyBible, chapterOutline, storyBibleInsights] = await Promise.all([
           loadStoryBible(work.id, work.mainBranch.id),
           loadChapterOutline(work.id, work.mainBranch.id, 1),
+          loadStoryBibleInsights(work.id, work.mainBranch.id),
         ]);
-        setState({ status: 'ready', user, work, storyBible, chapterOutline });
+        setState({
+          status: 'ready',
+          user,
+          work,
+          storyBible,
+          chapterOutline,
+          storyBibleInsights,
+        });
       })
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
@@ -140,10 +158,11 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           <p>故事圣经定方向，第一章章纲定落点。保存后随时回来接着写。</p>
         </div>
 
-        {state.storyBible && state.chapterOutline && work.mainBranch ? (
+        {state.storyBible && state.chapterOutline && state.storyBibleInsights && work.mainBranch ? (
           <StoryPlanningPanel
             branchId={work.mainBranch.id}
             chapterOutline={state.chapterOutline}
+            initialInsights={state.storyBibleInsights}
             storyBible={state.storyBible}
             workId={work.id}
           />

@@ -1,9 +1,19 @@
-import { Body, Controller, Get, HttpStatus, Param, Put, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Post,
+  Put,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   chapterNumberSchema,
   chapterOutlineSchema,
-  storyBibleSchema,
+  storyBibleSaveSchema,
   workIdSchema,
 } from '@novel/contracts';
 import type { AuthenticatedRequest } from '../auth/auth.types';
@@ -39,7 +49,7 @@ export class StoryPlanningController {
     @Body() body: unknown,
     @Req() request: AuthenticatedRequest,
   ) {
-    const parsed = storyBibleSchema.safeParse(body);
+    const parsed = storyBibleSaveSchema.safeParse(body);
     if (!parsed.success) {
       throw storyPlanningError(
         HttpStatus.BAD_REQUEST,
@@ -54,6 +64,34 @@ export class StoryPlanningController {
       this.parseId(workId),
       this.parseId(branchId),
       parsed.data,
+    );
+  }
+
+  @Post('story-bible/lock')
+  @ApiOperation({ summary: 'Lock a complete story bible for stable generation' })
+  lockStoryBible(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.storyPlanning.lockStoryBible(
+      this.requireUserId(request),
+      this.parseId(workId),
+      this.parseId(branchId),
+    );
+  }
+
+  @Get('story-bible/insights')
+  @ApiOperation({ summary: 'Read continuity, foreshadow, and recent-change reminders' })
+  getStoryBibleInsights(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.storyPlanning.getStoryBibleInsights(
+      this.requireUserId(request),
+      this.parseId(workId),
+      this.parseId(branchId),
     );
   }
 
