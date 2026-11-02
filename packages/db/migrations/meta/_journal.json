@@ -141,6 +141,13 @@
       "when": 1793593310177,
       "tag": "0019_harsh_slapstick",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793594342215,
+      "tag": "0020_loud_obadiah_stane",
+      "breakpoints": true
     }
   ]
 }

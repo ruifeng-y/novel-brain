@@ -30,6 +30,7 @@ import {
   type RelationPredicate,
 } from '../../../lib/entities-api';
 import { CharacterPanel } from './character-panel';
+import { StructuredSettingsPanel } from './structured-settings-panel';
 
 type SaveState =
   | { status: 'idle' }
@@ -313,6 +314,11 @@ export function SettingsCenterPanel({
       ? relation.fromEntity.id === selectedId || relation.toEntity.id === selectedId
       : true,
   );
+  const structuredEntity = selectedId
+    ? (items.find((entity) => entity.id === selectedId) ??
+      catalog.find((entity) => entity.id === selectedId) ??
+      detail)
+    : null;
 
   return (
     <section className="settings-center-board" aria-labelledby="settings-center-title">
@@ -701,6 +707,15 @@ export function SettingsCenterPanel({
 
           {selectedId && draft.type === 'character' ? (
             <CharacterPanel branchId={branchId} characterId={selectedId} workId={workId} />
+          ) : null}
+
+          {structuredEntity ? (
+            <StructuredSettingsPanel
+              branchId={branchId}
+              entities={catalog}
+              entity={structuredEntity}
+              workId={workId}
+            />
           ) : null}
         </div>
 
