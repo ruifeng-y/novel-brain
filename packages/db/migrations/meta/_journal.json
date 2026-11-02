@@ -201,8 +201,15 @@
     {
       "idx": 28,
       "version": "7",
+      "when": 1793612081038,
+      "tag": "0028_bumpy_captain_marvel",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
       "when": 1793610863641,
-      "tag": "0028_elite_expediter",
+      "tag": "0029_elite_expediter",
       "breakpoints": true
     }
   ]
