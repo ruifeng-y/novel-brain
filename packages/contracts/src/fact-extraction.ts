@@ -5,7 +5,7 @@ export const factTypeSchema = z.enum(['event', 'body_state', 'character_knowledg
 export const FACT_TYPE_LABELS: Record<z.infer<typeof factTypeSchema>, string> = {
   event: '事件',
   body_state: '身体状况',
-  character_knowledge: '人物认知',
+  character_knowledge: '角色认知',
 };
 
 export const extractedFactSchema = z.object({

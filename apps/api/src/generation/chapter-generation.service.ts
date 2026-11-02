@@ -635,19 +635,62 @@ export class ChapterGenerationService {
     proposalId: string,
     statement: string,
   ) {
-    const proposal = await this.requireEditableProposal(
-      userId,
-      workId,
-      branchId,
-      chapterNumber,
-      proposalId,
-    );
-    const [updated] = await this.database.db
-      .update(factProposals)
-      .set({ statement, updatedAt: new Date() })
-      .where(eq(factProposals.id, proposal.id))
-      .returning();
-    return this.toFactProposalResponse(chapterNumber, updated);
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+
+    return this.database.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${branchId}))`);
+      const [proposal] = await tx
+        .select()
+        .from(factProposals)
+        .where(
+          and(
+            eq(factProposals.id, proposalId),
+            eq(factProposals.workId, workId),
+            eq(factProposals.branchId, branchId),
+          ),
+        )
+        .limit(1);
+      if (!proposal) {
+        throw chapterGenerationError(
+          HttpStatus.NOT_FOUND,
+          'FACT_PROPOSAL_NOT_FOUND',
+          'Fact proposal not found',
+        );
+      }
+      await this.requireProposalChapter(
+        proposal.chapterId,
+        workId,
+        branchId,
+        chapterNumber,
+      );
+      if (proposal.status !== 'proposed') {
+        throw chapterGenerationError(
+          HttpStatus.CONFLICT,
+          'FACT_PROPOSAL_NOT_EDITABLE',
+          'This fact proposal has already been reviewed',
+        );
+      }
+
+      const [updated] = await tx
+        .update(factProposals)
+        .set({ statement, updatedAt: new Date() })
+        .where(
+          and(
+            eq(factProposals.id, proposal.id),
+            eq(factProposals.status, 'proposed'),
+          ),
+        )
+        .returning();
+      if (!updated) {
+        throw chapterGenerationError(
+          HttpStatus.CONFLICT,
+          'FACT_PROPOSAL_NOT_EDITABLE',
+          'This fact proposal has already been reviewed',
+        );
+      }
+      return this.toFactProposalResponse(chapterNumber, updated);
+    });
   }
 
   async rejectFactProposal(
@@ -657,19 +700,62 @@ export class ChapterGenerationService {
     chapterNumber: number,
     proposalId: string,
   ) {
-    const proposal = await this.requireEditableProposal(
-      userId,
-      workId,
-      branchId,
-      chapterNumber,
-      proposalId,
-    );
-    const [updated] = await this.database.db
-      .update(factProposals)
-      .set({ status: 'rejected', updatedAt: new Date() })
-      .where(eq(factProposals.id, proposal.id))
-      .returning();
-    return this.toFactProposalResponse(chapterNumber, updated);
+    await this.requireBranch(userId, workId, branchId);
+    await this.requireOutline(workId, branchId, chapterNumber);
+
+    return this.database.db.transaction(async (tx) => {
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${branchId}))`);
+      const [proposal] = await tx
+        .select()
+        .from(factProposals)
+        .where(
+          and(
+            eq(factProposals.id, proposalId),
+            eq(factProposals.workId, workId),
+            eq(factProposals.branchId, branchId),
+          ),
+        )
+        .limit(1);
+      if (!proposal) {
+        throw chapterGenerationError(
+          HttpStatus.NOT_FOUND,
+          'FACT_PROPOSAL_NOT_FOUND',
+          'Fact proposal not found',
+        );
+      }
+      await this.requireProposalChapter(
+        proposal.chapterId,
+        workId,
+        branchId,
+        chapterNumber,
+      );
+      if (proposal.status !== 'proposed') {
+        throw chapterGenerationError(
+          HttpStatus.CONFLICT,
+          'FACT_PROPOSAL_NOT_EDITABLE',
+          'This fact proposal has already been reviewed',
+        );
+      }
+
+      const [updated] = await tx
+        .update(factProposals)
+        .set({ status: 'rejected', updatedAt: new Date() })
+        .where(
+          and(
+            eq(factProposals.id, proposal.id),
+            eq(factProposals.status, 'proposed'),
+          ),
+        )
+        .returning();
+      if (!updated) {
+        throw chapterGenerationError(
+          HttpStatus.CONFLICT,
+          'FACT_PROPOSAL_NOT_EDITABLE',
+          'This fact proposal has already been reviewed',
+        );
+      }
+      return this.toFactProposalResponse(chapterNumber, updated);
+    });
   }
 
   async listConfirmedFacts(userId: string, workId: string, branchId: string) {
@@ -988,47 +1074,31 @@ export class ChapterGenerationService {
     return outline;
   }
 
-  private async requireEditableProposal(
-    userId: string,
+  private async requireProposalChapter(
+    chapterId: string,
     workId: string,
     branchId: string,
     chapterNumber: number,
-    proposalId: string,
-  ): Promise<FactProposalRow> {
-    await this.requireBranch(userId, workId, branchId);
-    await this.requireOutline(workId, branchId, chapterNumber);
-    const chapter = await this.findChapter(workId, branchId, chapterNumber);
-    const proposal = chapter
-      ? (
-          await this.database.db
-            .select()
-            .from(factProposals)
-            .where(
-              and(
-                eq(factProposals.id, proposalId),
-                eq(factProposals.workId, workId),
-                eq(factProposals.branchId, branchId),
-                eq(factProposals.chapterId, chapter.id),
-              ),
-            )
-            .limit(1)
-        )[0]
-      : undefined;
-    if (!proposal) {
+  ) {
+    const [chapter] = await this.database.db
+      .select()
+      .from(chapters)
+      .where(
+        and(
+          eq(chapters.id, chapterId),
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, branchId),
+          eq(chapters.chapterNumber, chapterNumber),
+        ),
+      )
+      .limit(1);
+    if (!chapter) {
       throw chapterGenerationError(
         HttpStatus.NOT_FOUND,
-        'FACT_PROPOSAL_NOT_FOUND',
-        'Fact proposal not found',
+        'CHAPTER_NOT_FOUND',
+        'Chapter not found',
       );
     }
-    if (proposal.status !== 'proposed') {
-      throw chapterGenerationError(
-        HttpStatus.CONFLICT,
-        'FACT_PROPOSAL_NOT_EDITABLE',
-        'This fact proposal has already been reviewed',
-      );
-    }
-    return proposal;
   }
 
   private async findChapter(
