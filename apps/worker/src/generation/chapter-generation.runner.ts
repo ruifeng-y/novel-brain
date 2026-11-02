@@ -593,6 +593,9 @@ export class ChapterGenerationRunner {
         extracted = await extractChapterFacts(this.gateway, {
           chapterNumber: Number(jobRow.payload.chapterNumber),
           chapterText: draftContent,
+          model: model.model,
+          apiKey: model.apiKey,
+          baseUrl: model.baseUrl,
           storyBible: {
             protagonist: bible.protagonist,
             worldIronLaw: bible.worldIronLaw,
