@@ -145,6 +145,7 @@ describe('security boundaries', () => {
     const tenantTables = [
       'users',
       'sessions',
+      'pen_names',
       'model_configs',
       'works',
       'work_branches',

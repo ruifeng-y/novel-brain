@@ -8,7 +8,14 @@ import {
   type GenrePackDefinition,
   type HistoryVariant,
 } from '@novel/contracts';
-import { chapters, workBranches, works, type WorkBranchRow, type WorkRow } from '@novel/db';
+import {
+  chapters,
+  penNames,
+  workBranches,
+  works,
+  type WorkBranchRow,
+  type WorkRow,
+} from '@novel/db';
 import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { worksError } from './works.errors';
@@ -27,6 +34,7 @@ type WorkResponse = {
   id: string;
   title: string;
   penName: string;
+  penNameId: string | null;
   genrePack: string;
   genrePackLabel: string;
   genreTemplate: GenrePackDefinition['template'] & {
@@ -94,12 +102,38 @@ export class WorksService {
 
   async create(userId: string, input: CreateWorkInput): Promise<WorkResponse> {
     const created = await this.database.db.transaction(async (tx) => {
+      let penNameText = input.penName;
+      let penNameId = input.penNameId;
+      if (penNameId) {
+        const [selected] = await tx
+          .select()
+          .from(penNames)
+          .where(and(eq(penNames.id, penNameId), eq(penNames.userId, userId)))
+          .limit(1);
+        if (!selected) {
+          throw worksError(
+            HttpStatus.BAD_REQUEST,
+            'PEN_NAME_NOT_FOUND',
+            'Choose one of your saved pen names',
+          );
+        }
+        penNameText = selected.name;
+      } else if (penNameText) {
+        const [matching] = await tx
+          .select({ id: penNames.id })
+          .from(penNames)
+          .where(and(eq(penNames.userId, userId), eq(penNames.name, penNameText)))
+          .limit(1);
+        penNameId = matching?.id;
+      }
+
       const [work] = await tx
         .insert(works)
         .values({
           userId,
           title: input.title,
-          penName: input.penName,
+          penName: penNameText as string,
+          penNameId,
           genrePack: input.genrePack,
           genreVariant:
             input.genrePack === 'history' ? (input.genreVariant ?? 'alternate_ancient') : null,
@@ -192,6 +226,7 @@ export class WorksService {
       id: work.id,
       title: work.title,
       penName: work.penName,
+      penNameId: work.penNameId,
       genrePack: work.genrePack,
       genrePackLabel: genrePack?.label ?? work.genrePack,
       genreTemplate: {
