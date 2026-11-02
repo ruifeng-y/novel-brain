@@ -337,38 +337,45 @@ export class VersionGraphService {
         .orderBy(desc(branchCommits.createdAt))
         .limit(1);
       const now = new Date();
-      const [snapshotBranch] = await tx
-        .insert(workBranches)
-        .values({
-          workId: input.workId,
-          name: `snapshot-${randomUUID()}`,
-          isMain: false,
-          isSnapshot: true,
-          parentBranchId: logicalBranchId,
-          kind: logicalBranch.kind,
-          reason: input.title,
-          forkPointKind: 'current',
-          baselineMaterializedAt: now,
-          status: 'active',
-          createdBy: input.userId,
-          createdAt: now,
-          updatedAt: now,
-        })
-        .returning();
-      await this.branchState.cloneBranchRows(
-        tx,
-        input.workId,
-        stateSourceId,
-        snapshotBranch.id,
-        false,
-      );
+      const requiresFullSnapshot =
+        Boolean(input.chapterVersionId) ||
+        ['change', 'undo', 'rollback', 'merge'].includes(input.kind);
+      let snapshotBranchId = stateSourceId;
+      if (requiresFullSnapshot) {
+        const [snapshotBranch] = await tx
+          .insert(workBranches)
+          .values({
+            workId: input.workId,
+            name: `snapshot-${randomUUID()}`,
+            isMain: false,
+            isSnapshot: true,
+            parentBranchId: logicalBranchId,
+            kind: logicalBranch.kind,
+            reason: input.title,
+            forkPointKind: 'current',
+            baselineMaterializedAt: now,
+            status: 'active',
+            createdBy: input.userId,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+        await this.branchState.cloneBranchRows(
+          tx,
+          input.workId,
+          stateSourceId,
+          snapshotBranch.id,
+          false,
+        );
+        snapshotBranchId = snapshotBranch.id;
+      }
 
       const [commit] = await tx
         .insert(branchCommits)
         .values({
           workId: input.workId,
           sourceBranchId: logicalBranchId,
-          snapshotBranchId: snapshotBranch.id,
+          snapshotBranchId,
           chapterVersionId: input.chapterVersionId ?? null,
           parentCommitId: parent?.id ?? null,
           changeRequestId: input.changeRequestId ?? null,
@@ -450,6 +457,10 @@ export class VersionGraphService {
         .orderBy(desc(branchCommits.createdAt))
         .limit(1);
       const now = new Date();
+      const snapshotBranchId = await this.branchState.resolveSnapshotBranchId(
+        target.id,
+        target.snapshotBranchId,
+      );
       const [restoredState] = await tx
         .insert(workBranches)
         .values({
@@ -471,7 +482,7 @@ export class VersionGraphService {
       await this.branchState.cloneBranchRows(
         tx,
         workId,
-        target.snapshotBranchId,
+        snapshotBranchId,
         restoredState.id,
         true,
       );

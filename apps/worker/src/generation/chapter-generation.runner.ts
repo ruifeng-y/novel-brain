@@ -47,6 +47,7 @@ import {
 import { and, asc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { loadChapterAuditInput } from './chapter-audit-context';
+import { selectContextFacts } from './context-fact-selection';
 import { GenerationModelConfigResolver } from './generation-model-config.resolver';
 import {
   loadHistoryGenerationContext,
@@ -314,6 +315,27 @@ export class ChapterGenerationRunner {
               )
               .orderBy(asc(entities.name))
           : [];
+      const contextFacts = selectContextFacts(
+        confirmedFactRows.map(({ fact, chapterNumber }) => ({
+          id: fact.id,
+          chapterNumber,
+          type: fact.type,
+          typeLabel: FACT_TYPE_LABELS[fact.type],
+          statement: fact.statement,
+          sourceSentence: fact.sourceSentence,
+        })),
+        {
+          chapterNumber: outline.chapterNumber ?? Number(jobRow.payload.chapterNumber ?? 0),
+          chapterGoal: outline.chapterGoal,
+          pov: outline.pov,
+          sceneBeats: outline.sceneBeats,
+          chapterEndHook: outline.chapterEndHook,
+        },
+        {
+          mustInclude: settings.mustInclude,
+          mustAvoid: settings.mustAvoid,
+        },
+      );
       const context = this.compileContext(
         bible,
         outline,
@@ -329,14 +351,7 @@ export class ChapterGenerationRunner {
           settings.referenceChapters,
         ),
         jobRow.payload,
-        confirmedFactRows.map(({ fact, chapterNumber }) => ({
-          id: fact.id,
-          chapterNumber,
-          type: fact.type,
-          typeLabel: FACT_TYPE_LABELS[fact.type],
-          statement: fact.statement,
-          sourceSentence: fact.sourceSentence,
-        })),
+        contextFacts,
         work?.genrePack ?? '',
         urbanSettingRows.map((setting) => ({
           id: setting.id,

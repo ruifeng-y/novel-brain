@@ -764,6 +764,7 @@ export function WritingDesk({
               wordCount: saved.wordCount,
               content,
               currentVersion: saved,
+              versionCount: current.versionCount + 1,
               versions: [saved, ...current.versions.filter((version) => version.id !== saved.id)],
             }
           : current,
@@ -818,6 +819,7 @@ export function WritingDesk({
               wordCount: restored.wordCount,
               content: restored.content,
               currentVersion: restored,
+              versionCount: current.versionCount + 1,
               versions: [restored, ...current.versions.filter((item) => item.id !== restored.id)],
               autosave: null,
             }
@@ -1293,8 +1295,8 @@ export function WritingDesk({
                 </span>
               ) : null}
               <span>
-                {detail?.versions.length
-                  ? `已保存 ${detail.versions.length} 个版本`
+              {detail?.versionCount
+                ? `已保存 ${detail.versionCount} 个版本`
                   : '尚未保存版本'}
               </span>
             </footer>

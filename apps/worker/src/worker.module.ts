@@ -11,6 +11,7 @@ import { BatchGenerationRunner } from './generation/batch-generation.runner';
 import { ChapterGenerationProcessor } from './generation/chapter-generation.processor';
 import { ChapterGenerationRunner } from './generation/chapter-generation.runner';
 import { GenerationModelConfigResolver } from './generation/generation-model-config.resolver';
+import { GenerationConcurrencyGate } from './generation/generation-concurrency.gate';
 import { SYSTEM_JOB_STORE, DrizzleSystemJobStore } from './system-job.store';
 import { SystemProcessor } from './system.processor';
 import { StorageModule } from './storage/storage.module';
@@ -45,6 +46,16 @@ import { WorkerBootstrapService } from './worker-bootstrap.service';
     ExportProcessor,
     ExportRunner,
     GenerationModelConfigResolver,
+    {
+      provide: GenerationConcurrencyGate,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) =>
+        new GenerationConcurrencyGate({
+          global: config.getOrThrow<number>('GENERATION_GLOBAL_CONCURRENCY'),
+          perUser: config.getOrThrow<number>('GENERATION_USER_CONCURRENCY'),
+          perWork: config.getOrThrow<number>('GENERATION_WORK_CONCURRENCY'),
+        }),
+    },
     {
       provide: AI_GATEWAY,
       inject: [ConfigService],

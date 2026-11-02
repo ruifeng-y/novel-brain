@@ -111,7 +111,7 @@ export class BatchJobsService {
       return job;
     });
 
-    await this.enqueue(created.id, 'initial', userId);
+    await this.enqueue(created.id, 'initial', userId, workId);
     return this.getJob(userId, workId, branchId, created.id);
   }
 
@@ -149,7 +149,7 @@ export class BatchJobsService {
   async resume(userId: string, workId: string, branchId: string, jobId: string) {
     const job = await this.requireJob(userId, workId, branchId, jobId);
     await this.transition(job, 'resume');
-    await this.enqueue(job.id, 'resume', userId);
+    await this.enqueue(job.id, 'resume', userId, workId);
     return this.getJob(userId, workId, branchId, jobId);
   }
 
@@ -183,7 +183,7 @@ export class BatchJobsService {
     await this.appendEvent(job.id, 'job.retry', {
       message: '从失败步骤继续',
     });
-    await this.enqueue(job.id, 'retry', userId);
+    await this.enqueue(job.id, 'retry', userId, workId);
     return this.getJob(userId, workId, branchId, jobId);
   }
 
@@ -287,7 +287,7 @@ export class BatchJobsService {
           updatedAt: now,
         })
         .where(eq(jobs.id, job.id));
-      await this.enqueue(job.id, 'review-reject', userId);
+      await this.enqueue(job.id, 'review-reject', userId, workId);
     }
 
     await this.appendEvent(job.id, 'job.review.decided', {
@@ -424,14 +424,15 @@ export class BatchJobsService {
     });
   }
 
-  private async enqueue(jobId: string, reason: string, userId: string) {
+  private async enqueue(jobId: string, reason: string, userId: string, workId: string) {
     try {
       await this.generationQueue.add(
         'generate-batch',
-        { jobId, userId },
+        { jobId, userId, workId },
         {
           jobId: `batch-${jobId}-${reason}-${Date.now()}`,
           attempts: 1,
+          priority: 10,
           removeOnComplete: 1_000,
           removeOnFail: 1_000,
         },

@@ -50,7 +50,7 @@ import {
   type QualityReportRow,
 } from '@novel/db';
 import type { Queue } from 'bullmq';
-import { and, asc, desc, eq, gt, isNotNull, isNull, max, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gt, isNotNull, isNull, max, sql } from 'drizzle-orm';
 import { createHash, randomUUID } from 'node:crypto';
 import { Observable } from 'rxjs';
 import { DatabaseService } from '../database/database.service';
@@ -66,6 +66,8 @@ const GENERATION_STEPS = [
   'extract_facts',
   'verify',
 ] as const;
+
+const CHAPTER_VERSION_PAGE_SIZE = 50;
 
 type ChapterListItem = {
   chapterNumber: number;
@@ -113,8 +115,13 @@ export class ChapterGenerationService {
     await this.requireBranch(userId, workId, branchId);
     const rows = await this.database.db
       .select({
-        outline: chapterOutlines,
-        chapter: chapters,
+        outlineChapterNumber: chapterOutlines.chapterNumber,
+        outlineTitle: chapterOutlines.title,
+        outlineGoal: chapterOutlines.chapterGoal,
+        chapterTitle: chapters.title,
+        chapterStatus: chapters.status,
+        chapterWordCount: chapters.wordCount,
+        chapterCurrentVersionId: chapters.currentVersionId,
       })
       .from(chapterOutlines)
       .leftJoin(
@@ -136,16 +143,16 @@ export class ChapterGenerationService {
       .orderBy(chapterOutlines.chapterNumber);
 
     return {
-      items: rows.map(({ outline, chapter }) => ({
-        chapterNumber: outline.chapterNumber ?? 0,
+      items: rows.map((row) => ({
+        chapterNumber: row.outlineChapterNumber ?? 0,
         title:
-          chapter?.title ??
-          (outline.title.trim() || this.defaultChapterTitle(outline.chapterNumber ?? 0)),
-        goal: outline.chapterGoal,
-        status: chapter?.status ?? 'planned',
-        statusLabel: CHAPTER_STATUS_LABELS[chapter?.status ?? 'planned'],
-        wordCount: chapter?.wordCount ?? 0,
-        hasContent: Boolean(chapter?.currentVersionId),
+          row.chapterTitle ??
+          (row.outlineTitle.trim() || this.defaultChapterTitle(row.outlineChapterNumber ?? 0)),
+        goal: row.outlineGoal,
+        status: row.chapterStatus ?? 'planned',
+        statusLabel: CHAPTER_STATUS_LABELS[row.chapterStatus ?? 'planned'],
+        wordCount: row.chapterWordCount ?? 0,
+        hasContent: Boolean(row.chapterCurrentVersionId),
       })),
     };
   }
@@ -165,14 +172,21 @@ export class ChapterGenerationService {
       )
       .limit(1);
 
-    const [versionRows, latestGeneration] = await Promise.all([
+    const [versionRows, versionCountRows, latestGeneration] = await Promise.all([
       chapter
         ? this.database.db
             .select()
             .from(chapterVersions)
             .where(eq(chapterVersions.chapterId, chapter.id))
             .orderBy(desc(chapterVersions.version))
+            .limit(CHAPTER_VERSION_PAGE_SIZE)
         : Promise.resolve([] as ChapterVersionRow[]),
+      chapter
+        ? this.database.db
+            .select({ value: count() })
+            .from(chapterVersions)
+            .where(eq(chapterVersions.chapterId, chapter.id))
+        : Promise.resolve([{ value: 0 }]),
       chapter
         ? this.database.db
             .select()
@@ -187,34 +201,32 @@ export class ChapterGenerationService {
     const currentVersion = chapter?.currentVersionId
       ? (versionRows.find((version) => version.id === chapter.currentVersionId) ?? null)
       : null;
-    const latestDraft = latestGeneration
-      ? (
-          await this.database.db
+    const [latestDraft, latestContext, latestJob] = await Promise.all([
+      latestGeneration
+        ? this.database.db
             .select()
             .from(drafts)
             .where(eq(drafts.generationRequestId, latestGeneration.id))
             .limit(1)
-        )[0]
-      : undefined;
-    const latestContext = latestGeneration
-      ? (
-          await this.database.db
+            .then((rows) => rows[0])
+        : Promise.resolve(undefined),
+      latestGeneration
+        ? this.database.db
             .select()
             .from(contextPacks)
             .where(eq(contextPacks.generationRequestId, latestGeneration.id))
             .limit(1)
-        )[0]
-      : undefined;
-    const latestJob =
-      latestGeneration?.jobId !== undefined && latestGeneration?.jobId !== null
-        ? (
-            await this.database.db
-              .select()
-              .from(jobs)
-              .where(eq(jobs.id, latestGeneration.jobId))
-              .limit(1)
-          )[0]
-        : undefined;
+            .then((rows) => rows[0])
+        : Promise.resolve(undefined),
+      latestGeneration?.jobId
+        ? this.database.db
+            .select()
+            .from(jobs)
+            .where(eq(jobs.id, latestGeneration.jobId))
+            .limit(1)
+            .then((rows) => rows[0])
+        : Promise.resolve(undefined),
+    ]);
 
     return {
       chapterNumber,
@@ -245,6 +257,7 @@ export class ChapterGenerationService {
               updatedAt: chapter.autosaveUpdatedAt.toISOString(),
             }
           : null,
+      versionCount: Number(versionCountRows[0]?.value ?? 0),
       versions: versionRows.map((version) => this.toVersionResponse(chapterNumber, version)),
       context: latestContext
         ? {
@@ -398,10 +411,11 @@ export class ChapterGenerationService {
     try {
       await this.generationQueue.add(
         'generate-chapter',
-        { jobId: created.job.id, userId },
+        { jobId: created.job.id, userId, workId },
         {
           jobId: created.job.id,
           attempts: 1,
+          priority: 1,
           removeOnComplete: 1_000,
           removeOnFail: 1_000,
         },
@@ -547,7 +561,8 @@ export class ChapterGenerationService {
             .select()
             .from(jobEvents)
             .where(and(eq(jobEvents.jobId, jobId), gt(jobEvents.sequence, cursor)))
-            .orderBy(asc(jobEvents.sequence));
+            .orderBy(asc(jobEvents.sequence))
+            .limit(500);
           for (const event of events) {
             if (closed) {
               return;

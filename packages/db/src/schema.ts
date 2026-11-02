@@ -531,6 +531,31 @@ export const chapterOutlines = pgTable(
       table.parentId,
       table.orderIndex,
     ),
+    index('chapter_outlines_title_trgm_idx').using(
+      'gin',
+      sql`${table.title} gin_trgm_ops`,
+    ),
+    index('chapter_outlines_summary_trgm_idx').using(
+      'gin',
+      sql`${table.summary} gin_trgm_ops`,
+    ),
+    index('chapter_outlines_details_trgm_idx').using(
+      'gin',
+      sql`${table.details} gin_trgm_ops`,
+    ),
+    index('chapter_outlines_goal_trgm_idx').using(
+      'gin',
+      sql`${table.chapterGoal} gin_trgm_ops`,
+    ),
+    index('chapter_outlines_pov_trgm_idx').using('gin', sql`${table.pov} gin_trgm_ops`),
+    index('chapter_outlines_hook_trgm_idx').using(
+      'gin',
+      sql`${table.chapterEndHook} gin_trgm_ops`,
+    ),
+    index('chapter_outlines_beats_trgm_idx').using(
+      'gin',
+      sql`((${table.sceneBeats})::text) gin_trgm_ops`,
+    ),
   ],
 );
 
@@ -617,6 +642,24 @@ export const entities = pgTable(
       table.status,
     ),
     index('entities_work_branch_subtype_idx').on(table.workId, table.branchId, table.subtype),
+    index('entities_name_trgm_idx').using('gin', sql`${table.name} gin_trgm_ops`),
+    index('entities_summary_trgm_idx').using('gin', sql`${table.summary} gin_trgm_ops`),
+    index('entities_description_trgm_idx').using(
+      'gin',
+      sql`${table.description} gin_trgm_ops`,
+    ),
+    index('entities_aliases_trgm_idx').using(
+      'gin',
+      sql`((${table.aliases})::text) gin_trgm_ops`,
+    ),
+    index('entities_tags_trgm_idx').using(
+      'gin',
+      sql`((${table.tags})::text) gin_trgm_ops`,
+    ),
+    index('entities_custom_fields_trgm_idx').using(
+      'gin',
+      sql`((${table.customFields})::text) gin_trgm_ops`,
+    ),
   ],
 );
 
@@ -1091,6 +1134,13 @@ export const chapters = pgTable(
       table.chapterNumber,
     ),
     index('chapters_work_branch_status_idx').on(table.workId, table.branchId, table.status),
+    index('chapters_title_trgm_idx').using('gin', sql`${table.title} gin_trgm_ops`),
+    index('chapters_summary_trgm_idx').using('gin', sql`${table.summary} gin_trgm_ops`),
+    index('chapters_hook_trgm_idx').using('gin', sql`${table.hook} gin_trgm_ops`),
+    index('chapters_autosave_trgm_idx').using(
+      'gin',
+      sql`${table.autosaveContent} gin_trgm_ops`,
+    ),
   ],
 );
 
@@ -1126,6 +1176,10 @@ export const chapterVersions = pgTable(
   (table) => [
     uniqueIndex('chapter_versions_chapter_version_unique').on(table.chapterId, table.version),
     index('chapter_versions_chapter_created_idx').on(table.chapterId, table.createdAt),
+    index('chapter_versions_content_trgm_idx').using(
+      'gin',
+      sql`${table.content} gin_trgm_ops`,
+    ),
   ],
 );
 
@@ -1202,6 +1256,10 @@ export const auditLogs = pgTable(
   (table) => [
     index('audit_logs_work_branch_created_idx').on(table.workId, table.branchId, table.createdAt),
     index('audit_logs_action_idx').on(table.workId, table.action, table.createdAt),
+    index('audit_logs_search_trgm_idx').using(
+      'gin',
+      sql`((${table.title} || ' ' || ${table.detail})) gin_trgm_ops`,
+    ),
   ],
 );
 
@@ -1269,6 +1327,7 @@ export const generationRequests = pgTable(
       table.chapterId,
       table.status,
     ),
+    index('generation_requests_chapter_created_idx').on(table.chapterId, table.createdAt),
   ],
 );
 
@@ -1383,6 +1442,7 @@ export const facts = pgTable(
   (table) => [
     uniqueIndex('facts_source_proposal_unique').on(table.sourceProposalId),
     index('facts_branch_created_idx').on(table.branchId, table.createdAt),
+    index('facts_work_branch_created_idx').on(table.workId, table.branchId, table.createdAt),
   ],
 );
 

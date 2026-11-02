@@ -152,6 +152,36 @@ export class BranchStateService {
       : branch.id;
   }
 
+  async resolveSnapshotBranchId(commitId: string, initialBranchId: string): Promise<string> {
+    let branchId = initialBranchId;
+    let cursor = commitId;
+    for (let attempt = 0; attempt < 200; attempt += 1) {
+      const [branch] = await this.database.db
+        .select({ isSnapshot: workBranches.isSnapshot })
+        .from(workBranches)
+        .where(eq(workBranches.id, branchId))
+        .limit(1);
+      if (branch?.isSnapshot) {
+        return branchId;
+      }
+
+      const [commit] = await this.database.db
+        .select({
+          parentCommitId: branchCommits.parentCommitId,
+          snapshotBranchId: branchCommits.snapshotBranchId,
+        })
+        .from(branchCommits)
+        .where(eq(branchCommits.id, cursor))
+        .limit(1);
+      if (!commit?.parentCommitId) {
+        return branchId;
+      }
+      cursor = commit.parentCommitId;
+      branchId = commit.snapshotBranchId;
+    }
+    return branchId;
+  }
+
   async logicalBranchId(branchId: string): Promise<string> {
     const [owner] = await this.database.db
       .select({ id: workBranches.id })
