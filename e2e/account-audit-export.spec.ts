@@ -76,7 +76,7 @@ test('an author exports every data area and searches the account audit trail', a
 
   await audit.getByLabel('搜索审计记录').fill('登录');
   await audit.getByRole('button', { name: '搜索' }).click();
-  await expect(audit.getByText('登录账号')).toBeVisible();
+  await expect(audit.locator('.account-audit-item strong').first()).toContainText('登录账号');
 
   const csvHref = await audit.getByRole('link', { name: '导出 CSV' }).getAttribute('href');
   const csv = await page.request.get(csvHref as string);

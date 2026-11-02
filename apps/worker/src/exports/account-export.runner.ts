@@ -49,7 +49,7 @@ export class AccountExportRunner {
       );
       const archive = await buildAccountExportArchive({ data, assets });
       const fileKey = userStorageKey(job.userId, 'account-exports', `${job.id}.zip`);
-      const fileName = `novel-brain-account-${new Date().toISOString().slice(0, 10)}.zip`;
+      const fileName = `novelbrain-account-${new Date().toISOString().slice(0, 10)}.zip`;
       await this.storage.putObject(
         job.userId,
         fileKey,

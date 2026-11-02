@@ -1353,6 +1353,8 @@ export const auditLogs = pgTable(
   (table) => [
     index('audit_logs_work_branch_created_idx').on(table.workId, table.branchId, table.createdAt),
     index('audit_logs_action_idx').on(table.workId, table.action, table.createdAt),
+    index('audit_logs_user_created_idx').on(table.userId, table.createdAt),
+    index('audit_logs_user_action_created_idx').on(table.userId, table.action, table.createdAt),
     index('audit_logs_search_trgm_idx').using(
       'gin',
       sql`((${table.title} || ' ' || ${table.detail})) gin_trgm_ops`,

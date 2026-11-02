@@ -323,6 +323,20 @@
       "when": 1793638100000,
       "tag": "0045_pen-name-auth-policy",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793640108984,
+      "tag": "0046_special_captain_universe",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793640123863,
+      "tag": "0047_slippery_domino",
+      "breakpoints": true
     }
   ]
 }

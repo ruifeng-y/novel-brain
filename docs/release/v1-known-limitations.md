@@ -9,9 +9,9 @@
 
 ## 已实测通过
 
-- 干净 Compose 项目启动 8/8 服务，37 条迁移和 seed 成功。
-- 43 个 Vitest 文件、208/208 测试。
-- 35/35 Playwright（Chromium 桌面 + 390px 移动视口）。
+- 从空 schema 应用 48 条迁移成功（`0000`–`0047`）。
+- 53 个 Vitest 文件、242/242 测试。
+- 37/37 Playwright（Chromium 桌面 + 390px 移动视口）。
 - lint、typecheck、生产构建。
 - 3,000,000 字 / 1,000 章夹具的打开、列表、单章、自动保存、设定 CRUD、搜索、
   首 token、SSE 和 4 任务并发。

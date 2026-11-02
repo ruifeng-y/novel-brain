@@ -146,6 +146,7 @@ describe('security boundaries', () => {
       'users',
       'sessions',
       'pen_names',
+      'account_export_jobs',
       'model_configs',
       'works',
       'work_branches',

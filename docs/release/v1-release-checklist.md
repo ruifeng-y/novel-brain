@@ -9,10 +9,10 @@
 - [x] `pnpm install --frozen-lockfile` 通过。
 - [x] `pnpm lint` 通过。
 - [x] `pnpm typecheck --force` 通过（13/13 tasks）。
-- [x] `pnpm test` 通过（43 files / 208 tests）。
+- [x] `pnpm test` 通过（53 files / 242 tests）。
 - [x] `pnpm build --force` 通过（8/8 tasks）。
-- [x] 干净 Compose 启动 8/8 healthy，37 条迁移和 seed 成功。
-- [x] 全量 Playwright 35/35 通过（Chromium）。
+- [x] 从空 schema 应用 48 条迁移成功（`0000`–`0047`）。
+- [x] 全量 Playwright 37/37 通过（Chromium）。
 - [x] 作品字数/进度聚合回归测试通过。
 
 ## 功能

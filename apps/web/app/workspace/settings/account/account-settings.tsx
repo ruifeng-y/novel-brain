@@ -14,6 +14,7 @@ import {
   type PenName,
   type PenNameListResponse,
 } from '../../../../lib/account-api';
+import { loadAccountExport, startAccountExport } from '../../../../lib/account-data-api';
 
 type LoadState =
   | { status: 'loading' }
@@ -265,9 +266,19 @@ export function AccountSettings() {
     setExporting(true);
     setNotice(null);
     try {
-      const response = await fetch('/api/v1/users/me/export', {
-        credentials: 'same-origin',
-      });
+      const created = await startAccountExport();
+      let job = created;
+      for (let attempt = 0; attempt < 120 && job.status !== 'completed'; attempt += 1) {
+        if (job.status === 'failed') {
+          throw new ApiError(500, 'ACCOUNT_EXPORT_FAILED', job.error ?? '账号数据导出失败');
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        job = await loadAccountExport(job.id);
+      }
+      if (job.status !== 'completed' || !job.downloadUrl) {
+        throw new ApiError(504, 'ACCOUNT_EXPORT_TIMEOUT', '账号数据仍在打包，请稍后重试');
+      }
+      const response = await fetch(job.downloadUrl, { credentials: 'same-origin' });
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as {
           code?: string;
@@ -279,7 +290,7 @@ export function AccountSettings() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `novelbrain-account-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.download = job.fileName ?? `novelbrain-account-${new Date().toISOString().slice(0, 10)}.zip`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
