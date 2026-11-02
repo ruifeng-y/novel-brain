@@ -210,61 +210,74 @@ export class FakeAiGateway implements AiGateway {
     }
 
     const chapterText = input.prompt.split('【章节正文】\n')[1] ?? '';
-    const candidates: ExtractedFact[] = chapterText.includes('陈默从城东开车到城西')
-      ? [
-          {
-            type: 'event',
-            statement: '陈默把五万元转给供应商。',
-            sourceSentence: '陈默把 50000 元转给供应商，心里松了一口气。',
-          },
-          {
-            type: 'body_state',
-            statement: '陈默的太阳穴隐隐作痛。',
-            sourceSentence: '陈默的太阳穴还在隐隐作痛。',
-          },
-          {
-            type: 'character_knowledge',
-            statement: '陈默知道这笔钱转出后必须留下完整凭证。',
-            sourceSentence: '陈默知道这笔钱一旦转出，就必须留下完整凭证。',
-          },
-        ]
-      : chapterText.includes('顾行舟站在校场边')
-        ? [
-            {
-              type: 'event',
-              statement: '顾行舟扣下调令，并禁止两营私自拔营。',
-              sourceSentence:
-                '顾行舟把算筹收进袖中，先让人去请军中掌书记，又把两名传令兵分到左右营，禁止任何人私自拔营。',
-            },
-            {
-              type: 'body_state',
-              statement: '顾行舟连夜核对文书，眉心和右手都因疲累发僵。',
-              sourceSentence: '他连夜未睡，眉心发胀，右手也因握笔太久有些发僵。',
-            },
-            {
-              type: 'character_knowledge',
-              statement: '顾行舟判断调令可能越权，或有人借此试探边军听命于谁。',
-              sourceSentence:
-                '顾行舟把两道手续并在一起看，心里已经有了判断：这份调令要么是京城里有人越权，要么是有人借监军使的名义试探边军听谁的号令。',
-            },
-          ]
-      : [
-          {
-            type: 'event',
-            statement: '沈砚以血触发断碑，碑面浮现陌生文字。',
-            sourceSentence: '沈砚握住剑柄，掌心被锋刃割开，血没有落地，而是逆着雨丝向碑面流去。',
-          },
-          {
-            type: 'body_state',
-            statement: '沈砚的太阳穴剧痛，并吐出一口带着寒意的血。',
-            sourceSentence: '他的太阳穴剧烈跳动，眼前同时闪过边城、雪夜和一道关上的门。',
-          },
-          {
-            type: 'character_knowledge',
-            statement: '沈砚知道自己一旦退开，今夜就再也找不到这块碑。',
-            sourceSentence: '沈砚没有松手。他知道自己一旦退开，今夜便再也找不到这块碑。',
-          },
-        ];
+    const conflictUrbanFacts: ExtractedFact[] = [
+      {
+        type: 'event',
+        statement: '陈默把五万元转给供应商。',
+        sourceSentence: '陈默把 50000 元转给供应商，心里松了一口气。',
+      },
+    ];
+    const urbanCandidates: ExtractedFact[] = [
+      {
+        type: 'event',
+        statement: '陈默决定先核实账目，再与旧城商会接洽。',
+        sourceSentence:
+          '陈默把供应商名单折好，提醒自己先处理眼前能核实的账目，再决定要不要去见旧城商会的人。',
+      },
+      {
+        type: 'body_state',
+        statement: '陈默的太阳穴隐隐发胀。',
+        sourceSentence: '陈默的太阳穴隐隐发胀。',
+      },
+      {
+        type: 'character_knowledge',
+        statement: '陈默知道每一笔付款都必须留下完整凭证。',
+        sourceSentence:
+          '他知道每一笔付款都必须留下完整凭证，于是把合同、授权单和银行流水并排放在桌上。',
+      },
+      ...(chapterText.includes('陈默从城东开车到城西') ? conflictUrbanFacts : []),
+    ];
+    const candidates: ExtractedFact[] =
+      chapterText.includes('陈默') && chapterText.includes('南城')
+        ? urbanCandidates
+        : chapterText.includes('顾行舟站在校场边')
+          ? [
+              {
+                type: 'event',
+                statement: '顾行舟扣下调令，并禁止两营私自拔营。',
+                sourceSentence:
+                  '顾行舟把算筹收进袖中，先让人去请军中掌书记，又把两名传令兵分到左右营，禁止任何人私自拔营。',
+              },
+              {
+                type: 'body_state',
+                statement: '顾行舟连夜核对文书，眉心和右手都因疲累发僵。',
+                sourceSentence: '他连夜未睡，眉心发胀，右手也因握笔太久有些发僵。',
+              },
+              {
+                type: 'character_knowledge',
+                statement: '顾行舟判断调令可能越权，或有人借此试探边军听命于谁。',
+                sourceSentence:
+                  '顾行舟把两道手续并在一起看，心里已经有了判断：这份调令要么是京城里有人越权，要么是有人借监军使的名义试探边军听谁的号令。',
+              },
+            ]
+          : [
+              {
+                type: 'event',
+                statement: '沈砚以血触发断碑，碑面浮现陌生文字。',
+                sourceSentence:
+                  '沈砚握住剑柄，掌心被锋刃割开，血没有落地，而是逆着雨丝向碑面流去。',
+              },
+              {
+                type: 'body_state',
+                statement: '沈砚的太阳穴剧痛，并吐出一口带着寒意的血。',
+                sourceSentence: '他的太阳穴剧烈跳动，眼前同时闪过边城、雪夜和一道关上的门。',
+              },
+              {
+                type: 'character_knowledge',
+                statement: '沈砚知道自己一旦退开，今夜就再也找不到这块碑。',
+                sourceSentence: '沈砚没有松手。他知道自己一旦退开，今夜便再也找不到这块碑。',
+              },
+            ];
 
     return {
       facts: candidates.filter((fact) => chapterText.includes(fact.sourceSentence)),
@@ -289,6 +302,7 @@ const URBAN_PARAGRAPHS = [
   '南城的早高峰像一条缓慢移动的河。陈默站在写字楼三十七层的窗边，看见高架上的车灯一盏接一盏亮起来，手机里供应商的未接来电已经排到屏幕最下方。',
   '远山资本的会议室里还留着昨夜会议的咖啡味。财务总监把现金流表推到他面前，提醒他本周必须付清第一笔货款，否则旧城仓库的货就会被对方扣下。',
   '陈默没有立刻回答。他翻开项目合同，逐页核对授权签字和付款节点。桌上的座机响了两次，都是前台在问楼下的人有没有预约。',
+  '陈默的太阳穴隐隐发胀。他知道每一笔付款都必须留下完整凭证，于是把合同、授权单和银行流水并排放在桌上。',
   '苏晚来得很准时。她把风衣搭在椅背上，先看了一眼墙上的城市地图，又看向陈默手边的文件。两个人之间隔着一张长桌，也隔着董事会还没有解决的控制权争议。',
   '窗外的云压得很低，中央空调把会议室吹得有些冷。陈默把供应商名单折好，提醒自己先处理眼前能核实的账目，再决定要不要去见旧城商会的人。',
   '楼下的便利店刚开始换午间盒饭。前台发来消息，说周警官在会客区等十分钟，只谈公开案件流程，不接受任何没有凭据的请求。',

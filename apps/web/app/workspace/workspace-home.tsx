@@ -68,9 +68,7 @@ export function WorkspaceHome() {
           title: form.get('title'),
           penName: form.get('penName'),
           genrePack: form.get('genrePack'),
-          ...(form.get('genreVariant')
-            ? { genreVariant: form.get('genreVariant') }
-            : {}),
+          ...(form.get('genreVariant') ? { genreVariant: form.get('genreVariant') } : {}),
           scale: form.get('scale'),
           targetPlatform: form.get('targetPlatform'),
         }),
@@ -129,8 +127,14 @@ export function WorkspaceHome() {
 
       <section className="workspace-intro">
         <div>
-          <p className="workspace-step">作品书架</p>
+          <div className="workspace-scope-line">
+            <p className="workspace-step">作品书架</p>
+            <span className="workspace-beta-badge">M2 扩大 beta</span>
+          </div>
           <h1>你的作品</h1>
+          <p className="workspace-beta-note">
+            仙侠、历史与都市已开放，批量创作和修改版本可用于内部扩大测试。
+          </p>
         </div>
         <p className="workspace-email">共 {state.works.length} 部作品</p>
       </section>
@@ -231,9 +235,7 @@ export function WorkspaceHome() {
                 <select
                   name="genrePack"
                   onChange={(event) =>
-                    setGenrePack(
-                      event.currentTarget.value as 'xianxia' | 'history' | 'urban',
-                    )
+                    setGenrePack(event.currentTarget.value as 'xianxia' | 'history' | 'urban')
                   }
                   value={genrePack}
                 >

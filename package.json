@@ -15,7 +15,8 @@
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @novel/db db:generate",
     "db:migrate": "pnpm --filter @novel/db db:migrate",
-    "db:seed": "pnpm --filter @novel/db db:seed"
+    "db:seed": "pnpm --filter @novel/db db:seed",
+    "demo:m2": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/m2-demo.ps1"
   },
   "pnpm": {
     "overrides": {
