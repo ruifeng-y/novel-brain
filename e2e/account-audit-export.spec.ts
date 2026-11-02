@@ -50,7 +50,7 @@ test('an author exports every data area and searches the account audit trail', a
   await expect(page.getByRole('heading', { name: '导出与审计' })).toBeVisible();
   const audit = page.locator('.account-audit-tool');
   await expect(
-    audit.locator('.account-audit-item').getByText('登录', { exact: true }).first(),
+    audit.locator('.account-audit-item').getByText('登录账号', { exact: true }).first(),
   ).toBeVisible();
 
   await page.getByRole('button', { name: '导出全部数据' }).click();

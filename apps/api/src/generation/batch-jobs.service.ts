@@ -116,7 +116,7 @@ export class BatchJobsService {
 
     await this.accountAudit.record({
       userId,
-      action: 'generation.requested',
+      action: 'generation_requested',
       targetType: 'batch_job',
       targetId: created.id,
       title: '发起批量生成',
@@ -325,7 +325,7 @@ export class BatchJobsService {
       .limit(1);
     await this.accountAudit.record({
       userId,
-      action: 'generation.reviewed',
+      action: 'generation_reviewed',
       targetType: 'batch_review_item',
       targetId: item.id,
       title: '确认生成结果',
@@ -980,12 +980,12 @@ export class BatchJobsService {
   ): Promise<void> {
     const auditAction: AccountAuditAction =
       action === 'paused'
-        ? 'generation.paused'
+        ? 'generation_paused'
         : action === 'resumed'
-          ? 'generation.resumed'
+          ? 'generation_resumed'
           : action === 'canceled'
-            ? 'generation.canceled'
-            : 'generation.retried';
+            ? 'generation_canceled'
+            : 'generation_retried';
     await this.accountAudit.record({
       userId,
       action: auditAction,

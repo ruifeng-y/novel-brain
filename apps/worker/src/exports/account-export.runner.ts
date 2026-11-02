@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import type { AccountExportAsset } from '@novel/core';
 import { buildAccountExportArchive, userStorageKey } from '@novel/core';
 import {
-  accountAuditLogs,
   accountExportJobs,
+  auditLogs,
   loadAccountExportData,
   type AccountExportJobRow,
 } from '@novel/db';
@@ -74,7 +74,7 @@ export class AccountExportRunner {
           updatedAt: completedAt,
         })
         .where(eq(accountExportJobs.id, job.id));
-      await this.recordAudit(job.userId, 'export.completed', job.id, {
+      await this.recordAudit(job.userId, 'account_export_completed', job.id, {
         fileName,
         fileSize: archive.data.length,
         counts: archive.manifest.counts,
@@ -90,7 +90,7 @@ export class AccountExportRunner {
           updatedAt: new Date(),
         })
         .where(eq(accountExportJobs.id, job.id));
-      await this.recordAudit(job.userId, 'export.failed', job.id, { message });
+      await this.recordAudit(job.userId, 'account_export_failed', job.id, { message });
       return { ok: false };
     }
   }
@@ -134,18 +134,20 @@ export class AccountExportRunner {
 
   private async recordAudit(
     userId: string,
-    action: 'export.completed' | 'export.failed',
+    action: 'account_export_completed' | 'account_export_failed',
     exportId: string,
     metadata: Record<string, unknown>,
   ): Promise<void> {
-    await this.database.db.insert(accountAuditLogs).values({
+    await this.database.db.insert(auditLogs).values({
       userId,
+      workId: null,
+      branchId: null,
       action,
       targetType: 'account_export',
       targetId: exportId,
-      title: action === 'export.completed' ? '完整数据导出完成' : '完整数据导出失败',
+      title: action === 'account_export_completed' ? '完整数据导出完成' : '完整数据导出失败',
       detail:
-        action === 'export.completed'
+        action === 'account_export_completed'
           ? '账号数据压缩包已经生成，可在有效期内下载'
           : '账号数据打包没有完成',
       metadata: { kind: 'account', ...metadata },

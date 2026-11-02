@@ -5,8 +5,8 @@ import {
   type AccountAuditItem,
   type AccountAuditSearchInput,
 } from '@novel/contracts';
-import { accountAuditLogs, users } from '@novel/db';
-import { and, desc, eq, ilike, or, type SQL } from 'drizzle-orm';
+import { auditLogs, users } from '@novel/db';
+import { and, desc, eq, ilike, isNull, or, type SQL } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 
 type AccountAuditRecordInput = {
@@ -28,8 +28,10 @@ export class AccountAuditService {
   constructor(private readonly database: DatabaseService) {}
 
   async record(input: AccountAuditRecordInput): Promise<void> {
-    await this.database.db.insert(accountAuditLogs).values({
+    await this.database.db.insert(auditLogs).values({
       userId: input.userId,
+      workId: null,
+      branchId: null,
       action: input.action,
       targetType: input.targetType,
       targetId: input.targetId ?? null,
@@ -45,22 +47,22 @@ export class AccountAuditService {
     userId: string,
     input: AccountAuditSearchInput,
   ): Promise<{ items: AccountAuditItem[] }> {
-    const filters: SQL[] = [eq(accountAuditLogs.userId, userId)];
+    const filters: SQL[] = [eq(auditLogs.userId, userId), isNull(auditLogs.workId)];
     if (input.action) {
-      filters.push(eq(accountAuditLogs.action, input.action));
+      filters.push(eq(auditLogs.action, input.action));
     }
     if (input.q) {
       const labelActions = Object.entries(ACCOUNT_AUDIT_ACTION_LABELS)
         .filter(([, label]) => label.includes(input.q))
         .map(([action]) => action as AccountAuditAction);
       const textMatch = or(
-        ilike(accountAuditLogs.title, `%${input.q}%`),
-        ilike(accountAuditLogs.detail, `%${input.q}%`),
-        ilike(accountAuditLogs.action, `%${input.q}%`),
+        ilike(auditLogs.title, `%${input.q}%`),
+        ilike(auditLogs.detail, `%${input.q}%`),
+        ilike(auditLogs.action, `%${input.q}%`),
       );
       const queryMatch =
         labelActions.length > 0
-          ? or(textMatch, ...labelActions.map((action) => eq(accountAuditLogs.action, action)))
+          ? or(textMatch, ...labelActions.map((action) => eq(auditLogs.action, action)))
           : textMatch;
       if (queryMatch) {
         filters.push(queryMatch);
@@ -68,11 +70,11 @@ export class AccountAuditService {
     }
 
     const rows = await this.database.db
-      .select({ log: accountAuditLogs, actorName: users.displayName })
-      .from(accountAuditLogs)
-      .innerJoin(users, eq(users.id, accountAuditLogs.userId))
+      .select({ log: auditLogs, actorName: users.displayName })
+      .from(auditLogs)
+      .innerJoin(users, eq(users.id, auditLogs.userId))
       .where(and(...filters))
-      .orderBy(desc(accountAuditLogs.createdAt))
+      .orderBy(desc(auditLogs.createdAt))
       .limit(input.limit);
 
     return {

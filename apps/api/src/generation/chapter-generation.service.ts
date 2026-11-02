@@ -412,7 +412,7 @@ export class ChapterGenerationService {
 
     await this.accountAudit.record({
       userId,
-      action: 'generation.requested',
+      action: 'generation_requested',
       targetType: 'generation_request',
       targetId: created.generation.id,
       title: '发起生成',
@@ -1208,7 +1208,7 @@ export class ChapterGenerationService {
     });
     await this.accountAudit.record({
       userId,
-      action: 'fact.rejected',
+      action: 'fact_rejected',
       targetType: 'fact_proposal',
       targetId: proposalId,
       title: '驳回事实',
@@ -1419,7 +1419,7 @@ export class ChapterGenerationService {
     });
     await this.accountAudit.record({
       userId,
-      action: 'fact.confirmed',
+      action: 'fact_confirmed',
       targetType: 'fact_proposal',
       targetId: proposalId,
       title: '确认事实',

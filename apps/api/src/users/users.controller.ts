@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Header,
   HttpCode,
   HttpStatus,
   Param,
@@ -31,6 +32,7 @@ export class UsersController {
   ) {}
 
   @Get('me/audit')
+  @Header('Cache-Control', 'no-store')
   @ApiOperation({ summary: 'Search the signed-in author account audit trail' })
   async audit(@Query() query: unknown, @Req() request: AuthenticatedRequest) {
     const parsed = accountAuditSearchSchema.safeParse(query);
@@ -79,12 +81,14 @@ export class UsersController {
   }
 
   @Get('me/export')
+  @Header('Cache-Control', 'no-store')
   @ApiOperation({ summary: 'List recent complete account exports' })
   listExports(@Req() request: AuthenticatedRequest) {
     return this.accountExports.list(this.requireUserId(request));
   }
 
   @Get('me/export/:exportId')
+  @Header('Cache-Control', 'no-store')
   @ApiOperation({ summary: 'Read a complete account export job' })
   getExport(
     @Param('exportId') exportId: string,

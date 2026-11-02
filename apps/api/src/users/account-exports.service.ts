@@ -55,7 +55,7 @@ export class AccountExportsService {
 
     await this.accountAudit.record({
       userId,
-      action: 'export.requested',
+      action: 'account_export_requested',
       targetType: 'account_export',
       targetId: created.id,
       title: '发起完整数据导出',
@@ -114,7 +114,7 @@ export class AccountExportsService {
     const data = await this.storage.getObject(userId, row.fileKey);
     await this.accountAudit.record({
       userId,
-      action: 'export.downloaded',
+      action: 'account_export_downloaded',
       targetType: 'account_export',
       targetId: row.id,
       title: '下载完整数据导出',

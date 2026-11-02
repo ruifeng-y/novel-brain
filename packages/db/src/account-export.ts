@@ -1,7 +1,6 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import type { Database } from './client';
 import {
-  accountAuditLogs,
   accountExportJobs,
   annotations,
   auditLogs,
@@ -91,7 +90,10 @@ export async function loadAccountExportData(database: Database, userId: string) 
       .from(modelConfigs)
       .where(eq(modelConfigs.userId, userId)),
     database.select().from(works).where(eq(works.userId, userId)),
-    database.select().from(accountAuditLogs).where(eq(accountAuditLogs.userId, userId)),
+    database
+      .select()
+      .from(auditLogs)
+      .where(and(eq(auditLogs.userId, userId), isNull(auditLogs.workId))),
     database.select().from(accountExportJobs).where(eq(accountExportJobs.userId, userId)),
   ]);
 

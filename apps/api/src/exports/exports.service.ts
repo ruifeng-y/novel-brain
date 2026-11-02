@@ -111,7 +111,7 @@ export class ExportsService {
       .returning();
     await this.accountAudit.record({
       userId,
-      action: 'export.requested',
+      action: 'work_export_requested',
       targetType: 'work_export',
       targetId: created.id,
       title: '发起作品导出',
@@ -228,7 +228,7 @@ export class ExportsService {
     }
     await this.accountAudit.record({
       userId,
-      action: 'export.downloaded',
+      action: 'work_export_downloaded',
       targetType: 'work_export',
       targetId: row.id,
       title: '下载作品导出',

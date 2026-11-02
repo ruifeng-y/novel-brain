@@ -126,12 +126,12 @@ describe('account audit and complete data export', () => {
 
     const login = await alice.agent
       .get('/api/v1/users/me/audit')
-      .query({ action: 'auth.login_succeeded', limit: 20 })
+      .query({ action: 'account_login', limit: 20 })
       .expect(200);
     expect(login.body.items).toHaveLength(2);
     expect(login.body.items[0]).toMatchObject({
-      action: 'auth.login_succeeded',
-      actionLabel: '登录',
+      action: 'account_login',
+      actionLabel: '登录账号',
       actorName: email.slice(0, email.indexOf('@')),
     });
     expect(login.body.items[0].metadata).toMatchObject({ email });
@@ -141,7 +141,7 @@ describe('account audit and complete data export', () => {
       .query({ q: '退出', limit: 20 })
       .expect(200);
     expect(logout.body.items.map((item: { action: string }) => item.action)).toContain(
-      'auth.logout',
+      'account_logout',
     );
 
     const bobAudit = await bob.agent.get('/api/v1/users/me/audit').expect(200);
@@ -229,9 +229,9 @@ describe('account audit and complete data export', () => {
       .expect(200);
     expect(audit.body.items.map((item: { action: string }) => item.action)).toEqual(
       expect.arrayContaining([
-        'model_key.created',
-        'model_key.updated',
-        'model_key.deleted',
+        'account_model_key_created',
+        'account_model_key_updated',
+        'account_model_key_deleted',
       ]),
     );
     expect(JSON.stringify(audit.body)).not.toContain(key);
@@ -241,10 +241,10 @@ describe('account audit and complete data export', () => {
       .query({ limit: 100 })
       .expect(200);
     expect(all.body.items.map((item: { action: string }) => item.action)).toEqual(
-      expect.arrayContaining(['generation.requested', 'fact.rejected']),
+      expect.arrayContaining(['generation_requested', 'fact_rejected']),
     );
     const generation = all.body.items.find(
-      (item: { action: string }) => item.action === 'generation.requested',
+      (item: { action: string }) => item.action === 'generation_requested',
     );
     expect(generation.metadata).toMatchObject({ workId, branchId, chapterNumber: 1 });
     expect(JSON.stringify(all.body)).not.toContain(key);
@@ -408,6 +408,9 @@ describe('account audit and complete data export', () => {
     expect(job.downloadUrl).toContain('expires=');
     expect(job.downloadUrl).toContain('signature=');
     expect(job.downloadExpiresAt).toBeTruthy();
+    expect(new Date(job.expiresAt).getTime()).toBeGreaterThan(
+      Date.now() + 6.9 * 24 * 60 * 60 * 1_000,
+    );
 
     const downloaded = await alice.agent
       .get(job.downloadUrl as string)
@@ -461,7 +464,7 @@ describe('account audit and complete data export', () => {
       expect.arrayContaining(['保存版本']),
     );
     expect((audit.account as Array<{ action: string }>).map((item) => item.action)).toEqual(
-      expect.arrayContaining(['auth.login_succeeded', 'export.requested']),
+      expect.arrayContaining(['account_login', 'account_export_requested']),
     );
     expect(JSON.stringify(await readJson('works.json'))).toContain('完整导出的书');
     expect(JSON.stringify(await readJson('model-configs.json'))).not.toContain(key);

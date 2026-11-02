@@ -183,7 +183,7 @@ export class AuthService {
         if (user) {
           await this.accountAudit.record({
             userId: user.id,
-            action: 'auth.login_failed',
+            action: 'account_login_failed',
             targetType: 'session',
             title: '登录失败',
             detail: '密码不正确',
@@ -219,7 +219,7 @@ export class AuthService {
 
       await this.accountAudit.record({
         userId: user.id,
-        action: 'auth.login_succeeded',
+        action: 'account_login',
         targetType: 'session',
         title: '登录账号',
         detail: '邮箱和密码登录成功',
@@ -282,7 +282,7 @@ export class AuthService {
       .where(and(eq(sessions.id, sessionId), isNull(sessions.revokedAt)));
     await this.accountAudit.record({
       userId,
-      action: 'auth.logout',
+      action: 'account_logout',
       targetType: 'session',
       targetId: sessionId,
       title: '退出当前设备',
@@ -303,7 +303,7 @@ export class AuthService {
       .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
     await this.accountAudit.record({
       userId,
-      action: 'auth.logout_all',
+      action: 'account_logout_all',
       targetType: 'account',
       targetId: userId,
       title: '退出所有设备',

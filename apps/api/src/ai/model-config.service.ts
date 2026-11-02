@@ -149,7 +149,7 @@ export class ModelConfigService {
 
     await this.accountAudit.record({
       userId,
-      action: 'model_key.created',
+      action: 'account_model_key_created',
       targetType: 'model_config',
       targetId: row.id,
       title: '添加模型 Key',
@@ -241,7 +241,7 @@ export class ModelConfigService {
     if (input.apiKey !== undefined) {
       await this.accountAudit.record({
         userId,
-        action: 'model_key.updated',
+        action: 'account_model_key_updated',
         targetType: 'model_config',
         targetId: row.id,
         title: '更新模型 Key',
@@ -305,7 +305,7 @@ export class ModelConfigService {
     if (removed) {
       await this.accountAudit.record({
         userId,
-        action: 'model_key.deleted',
+        action: 'account_model_key_deleted',
         targetType: 'model_config',
         targetId: configId,
         title: '删除模型 Key',
