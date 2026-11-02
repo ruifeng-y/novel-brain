@@ -14,6 +14,7 @@ const logger = new RedactingLogger('api', {
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger });
   const config = app.get(ConfigService);
+  app.useBodyParser('json', { limit: '30mb' });
   app.set('trust proxy', config.get<number>('TRUST_PROXY_HOPS') ?? 1);
   app.setGlobalPrefix('api/v1');
 

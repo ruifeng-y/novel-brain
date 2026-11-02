@@ -96,6 +96,25 @@ export function friendlyError(error: unknown): string {
     if (error.code === 'WORK_NOT_FOUND') {
       return '没有找到这部作品，它可能已被删除。';
     }
+    if (error.code === 'WORK_COMPLETED_READ_ONLY') {
+      return '已完本作品默认只读。可以恢复连载，或到平行版本里继续修改。';
+    }
+    if (error.code === 'WORK_RESTORE_EXPIRED') {
+      return '这部作品已超过 30 天恢复期，无法再恢复。';
+    }
+    if (error.code === 'WORK_RESTORE_REQUIRED') {
+      return '请先恢复这部作品，再继续修改。';
+    }
+    if (error.code === 'WORK_STATUS_TRANSITION_INVALID') {
+      return '当前状态不能这样切换，请先恢复或重新开启作品。';
+    }
+    if (
+      error.code === 'UNSUPPORTED_MANUSCRIPT_FORMAT' ||
+      error.code === 'MANUSCRIPT_EMPTY' ||
+      error.code === 'DOCX_CONTENT_INVALID'
+    ) {
+      return '旧稿无法读取，请选择可用的 TXT、Markdown 或 Word 文件。';
+    }
   }
 
   return error instanceof Error ? error.message : '请求失败，请稍后再试。';

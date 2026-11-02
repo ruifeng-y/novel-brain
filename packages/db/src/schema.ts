@@ -67,6 +67,32 @@ export const accountPurgeReceipts = pgTable(
 export type AccountPurgeReceiptRow = typeof accountPurgeReceipts.$inferSelect;
 export type NewAccountPurgeReceiptRow = typeof accountPurgeReceipts.$inferInsert;
 
+export const workPurgeReceipts = pgTable(
+  'work_purge_receipts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    titleHash: text('title_hash').notNull(),
+    status: text('status').notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }).notNull(),
+    purgedAt: timestamp('purged_at', { withTimezone: true }).notNull(),
+    summary: jsonb('summary')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('work_purge_receipts_work_unique').on(table.workId),
+    index('work_purge_receipts_user_purged_idx').on(table.userId, table.purgedAt),
+    index('work_purge_receipts_purged_idx').on(table.purgedAt),
+  ],
+);
+
+export type WorkPurgeReceiptRow = typeof workPurgeReceipts.$inferSelect;
+export type NewWorkPurgeReceiptRow = typeof workPurgeReceipts.$inferInsert;
+
 export const emailCodePurposeEnum = pgEnum('email_code_purpose', ['register']);
 
 export const emailCodes = pgTable(
@@ -300,6 +326,8 @@ export const works = pgTable(
     scale: text('scale').notNull(),
     targetPlatform: text('target_platform').notNull(),
     status: workStatusEnum('status').notNull().default('preparing'),
+    archivedFromStatus: workStatusEnum('archived_from_status'),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -632,27 +660,12 @@ export const chapterOutlines = pgTable(
       table.parentId,
       table.orderIndex,
     ),
-    index('chapter_outlines_title_trgm_idx').using(
-      'gin',
-      sql`${table.title} gin_trgm_ops`,
-    ),
-    index('chapter_outlines_summary_trgm_idx').using(
-      'gin',
-      sql`${table.summary} gin_trgm_ops`,
-    ),
-    index('chapter_outlines_details_trgm_idx').using(
-      'gin',
-      sql`${table.details} gin_trgm_ops`,
-    ),
-    index('chapter_outlines_goal_trgm_idx').using(
-      'gin',
-      sql`${table.chapterGoal} gin_trgm_ops`,
-    ),
+    index('chapter_outlines_title_trgm_idx').using('gin', sql`${table.title} gin_trgm_ops`),
+    index('chapter_outlines_summary_trgm_idx').using('gin', sql`${table.summary} gin_trgm_ops`),
+    index('chapter_outlines_details_trgm_idx').using('gin', sql`${table.details} gin_trgm_ops`),
+    index('chapter_outlines_goal_trgm_idx').using('gin', sql`${table.chapterGoal} gin_trgm_ops`),
     index('chapter_outlines_pov_trgm_idx').using('gin', sql`${table.pov} gin_trgm_ops`),
-    index('chapter_outlines_hook_trgm_idx').using(
-      'gin',
-      sql`${table.chapterEndHook} gin_trgm_ops`,
-    ),
+    index('chapter_outlines_hook_trgm_idx').using('gin', sql`${table.chapterEndHook} gin_trgm_ops`),
     index('chapter_outlines_beats_trgm_idx').using(
       'gin',
       sql`((${table.sceneBeats})::text) gin_trgm_ops`,
@@ -745,18 +758,9 @@ export const entities = pgTable(
     index('entities_work_branch_subtype_idx').on(table.workId, table.branchId, table.subtype),
     index('entities_name_trgm_idx').using('gin', sql`${table.name} gin_trgm_ops`),
     index('entities_summary_trgm_idx').using('gin', sql`${table.summary} gin_trgm_ops`),
-    index('entities_description_trgm_idx').using(
-      'gin',
-      sql`${table.description} gin_trgm_ops`,
-    ),
-    index('entities_aliases_trgm_idx').using(
-      'gin',
-      sql`((${table.aliases})::text) gin_trgm_ops`,
-    ),
-    index('entities_tags_trgm_idx').using(
-      'gin',
-      sql`((${table.tags})::text) gin_trgm_ops`,
-    ),
+    index('entities_description_trgm_idx').using('gin', sql`${table.description} gin_trgm_ops`),
+    index('entities_aliases_trgm_idx').using('gin', sql`((${table.aliases})::text) gin_trgm_ops`),
+    index('entities_tags_trgm_idx').using('gin', sql`((${table.tags})::text) gin_trgm_ops`),
     index('entities_custom_fields_trgm_idx').using(
       'gin',
       sql`((${table.customFields})::text) gin_trgm_ops`,
@@ -1238,10 +1242,7 @@ export const chapters = pgTable(
     index('chapters_title_trgm_idx').using('gin', sql`${table.title} gin_trgm_ops`),
     index('chapters_summary_trgm_idx').using('gin', sql`${table.summary} gin_trgm_ops`),
     index('chapters_hook_trgm_idx').using('gin', sql`${table.hook} gin_trgm_ops`),
-    index('chapters_autosave_trgm_idx').using(
-      'gin',
-      sql`${table.autosaveContent} gin_trgm_ops`,
-    ),
+    index('chapters_autosave_trgm_idx').using('gin', sql`${table.autosaveContent} gin_trgm_ops`),
   ],
 );
 
@@ -1277,10 +1278,7 @@ export const chapterVersions = pgTable(
   (table) => [
     uniqueIndex('chapter_versions_chapter_version_unique').on(table.chapterId, table.version),
     index('chapter_versions_chapter_created_idx').on(table.chapterId, table.createdAt),
-    index('chapter_versions_content_trgm_idx').using(
-      'gin',
-      sql`${table.content} gin_trgm_ops`,
-    ),
+    index('chapter_versions_content_trgm_idx').using('gin', sql`${table.content} gin_trgm_ops`),
   ],
 );
 

@@ -41,6 +41,15 @@ export const auditSearchSchema = z.object({
 export type AuditSearchInput = z.infer<typeof auditSearchSchema>;
 
 export const AUDIT_ACTION_LABELS = {
+  work_created: '创建作品',
+  work_imported: '导入旧稿',
+  work_duplicated: '复制作品',
+  work_archived: '归档作品',
+  work_restored: '恢复作品',
+  work_deleted: '移入回收站',
+  work_status_changed: '更新作品状态',
+  work_updated: '更新作品信息',
+  work_purged: '永久删除作品',
   version_created: '保存版本',
   change_applied: '应用修改',
   change_undone: '撤销修改',

@@ -23,6 +23,10 @@ export class ObjectStorageService {
     return this.client.getObject(userId, key);
   }
 
+  removeObject(userId: string, key: string): Promise<void> {
+    return this.client.removeObject(userId, key);
+  }
+
   removeUserObjects(userId: string): Promise<void> {
     return this.client.removeUserObjects(userId);
   }

@@ -337,6 +337,20 @@
       "when": 1793640123863,
       "tag": "0047_slippery_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793641983349,
+      "tag": "0048_stiff_gargoyle",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1793642977787,
+      "tag": "0049_sticky_dark_beast",
+      "breakpoints": true
     }
   ]
 }

@@ -19,6 +19,7 @@ import { SYSTEM_JOB_STORE, DrizzleSystemJobStore } from './system-job.store';
 import { SystemProcessor } from './system.processor';
 import { StorageModule } from './storage/storage.module';
 import { WorkerBootstrapService } from './worker-bootstrap.service';
+import { WorkPurgeRunner } from './works/work-purge.runner';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { WorkerBootstrapService } from './worker-bootstrap.service';
   providers: [
     SystemProcessor,
     AccountPurgeRunner,
+    WorkPurgeRunner,
     WorkerBootstrapService,
     ChapterGenerationProcessor,
     BatchGenerationRunner,
