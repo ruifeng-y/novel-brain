@@ -77,7 +77,8 @@ try {
   Write-Host ''
   Write-Host 'LAN/internal release candidate: GO.'
   Write-Host 'Public release: NO-GO until B-05 human quality, B-06 real DeepSeek,'
-  Write-Host 'B-08 legal sign-off, B-07 real deployment evidence, and B-12/B-13 scope close.'
+  Write-Host 'B-08 legal sign-off, and B-07 live cloud deployment evidence close.'
+  Write-Host 'B-12/B-13 engineering scope is closed; remaining risks are documented P2 items.'
   Write-Host 'See docs/acceptance/m3/acceptance.md and docs/release/v1-known-limitations.md.'
 } finally {
   Pop-Location

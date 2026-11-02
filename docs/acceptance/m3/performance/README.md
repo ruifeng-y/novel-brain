@@ -3,6 +3,7 @@
 - `metrics.json`：本 ticket 在 3,000,000 字、1,000 章夹具上的原始测量结果。
 - `v1-acceptance-metrics.json`：第一次 V1 总验收复跑。
 - `v1-acceptance-808a16b-metrics.json`：`808a16b` 集成 tip 的 V1 复验结果。
+- `v1-acceptance-8f376a5-metrics.json`：`8f376a5` 最终 V1 复验结果。
 - 完整报告：`docs/acceptance/m3/performance.md`。
 
 复现：
@@ -33,3 +34,7 @@ $env:PERF_SESSION_SECRET = 'development-session-secret'
 $env:PERF_OUTPUT = 'docs/acceptance/m3/performance/v1-acceptance-808a16b-metrics.json'
 pnpm benchmark:performance
 ```
+
+`8f376a5` 最终复验使用同一命令，输出文件为
+`docs/acceptance/m3/performance/v1-acceptance-8f376a5-metrics.json`，Compose 项目为
+`novel-brain-v1-acceptance-8f376a5`。

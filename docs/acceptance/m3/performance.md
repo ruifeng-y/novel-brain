@@ -1,10 +1,10 @@
 # Ticket #31 性能与压测验收记录
 
-> V1 总验收复跑（2026-11-03 02:33 Asia/Shanghai）：在干净
-> `novel-brain-v1-acceptance-808a16b` Compose 项目上重新执行同一基准，原始数据见
-> `docs/acceptance/m3/performance/v1-acceptance-808a16b-metrics.json`。本轮结果为
-> 打开 p95 20.0ms、1,000 章列表 p95 32.1ms、单章 p95 18.2ms、自动保存 p95
-> 22.1ms、搜索 p95 151.9ms、首 token p95 146ms、SSE p95 100ms，4 任务并发
+> V1 最终复跑（2026-11-03 03:58 Asia/Shanghai）：在干净
+> `novel-brain-v1-acceptance-8f376a5` Compose 项目上重新执行同一基准，原始数据见
+> `docs/acceptance/m3/performance/v1-acceptance-8f376a5-metrics.json`。本轮结果为
+> 打开 p95 16.7ms、1,000 章列表 p95 35.1ms、单章 p95 16.5ms、自动保存 p95
+> 24.7ms、搜索 p95 156.3ms、首 token p95 145ms、SSE p95 100ms，4 任务并发
 > 4/2/2。真实 DeepSeek 和 30/1,000 章墙钟仍未验证。
 
 - 执行时间：2026-11-02（Asia/Shanghai）

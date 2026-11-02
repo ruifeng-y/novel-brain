@@ -6,7 +6,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 基线提交 | `808a16b` |
+| 基线提交 | `8f376a5` |
 | 检查日期 | 2026-11-03 |
 | 环境 | Windows、Node.js 24.22.1、pnpm 10.20.0、Docker Compose、Postgres 16、Redis 7、Minio、fake AI provider |
 | 账号责任人 | 安全与运维负责人 |
@@ -53,7 +53,7 @@
 - [x] MinIO 在 override 后可以正常加载，API、Worker 和对象存储健康检查通过。
 - [ ] `stream-json@1.9.1` 仍有 3 个 moderate 告警，位于未调用的桶通知解析路径。
 
-证据：`docs/acceptance/m3/security-audit.md`、`docs/acceptance/m3/security-audit/2026-11-03-v1-rerun.json`、`package.json`、`pnpm-lock.yaml`。
+证据：`docs/acceptance/m3/security-audit.md`、`docs/acceptance/m3/security-audit/2026-11-03-v1-rerun-8f376a5.json`、`package.json`、`pnpm-lock.yaml`。
 
 ## 导出、日志与对象存储
 
@@ -63,7 +63,7 @@
 - [x] 对象存储写入、读取和删除都先校验作者前缀。
 - [x] 备份清单不含正文、邮箱、Key 或密文，恢复演练校验 SHA-256 和对象逐字节一致性。
 
-证据：`apps/api/src/users/account-exports.service.ts`、`apps/worker/src/exports/account-export.runner.ts`、`apps/api/src/storage/object-storage.service.ts`、`docs/operations/account-audit-export.md`、`docs/operations/security-backup.md`、`docs/acceptance/m3/restore-drill/20261102T183431Z.json`。
+证据：`apps/api/src/users/account-exports.service.ts`、`apps/worker/src/exports/account-export.runner.ts`、`apps/api/src/storage/object-storage.service.ts`、`docs/operations/account-audit-export.md`、`docs/operations/security-backup.md`、`docs/acceptance/m3/restore-drill/20261102T195913Z.json`。
 
 ## 备份与恢复
 
@@ -72,7 +72,7 @@
 - [x] 2026-11-03 恢复演练通过，数据库和对象均恢复并校验。
 - [x] 演练记录数据库恢复 3 秒，低于 4 小时 RTO；备份年龄 2 秒，低于 24 小时 RPO。
 
-证据：`docs/acceptance/m3/restore-drill.md`、`docs/acceptance/m3/restore-drill/20261102T183431Z.json`、`apps/api/test/security-backup.spec.ts`。
+证据：`docs/acceptance/m3/restore-drill.md`、`docs/acceptance/m3/restore-drill/20261102T195913Z.json`、`apps/api/test/security-backup.spec.ts`。
 
 ## 发布前仍需闭环
 
