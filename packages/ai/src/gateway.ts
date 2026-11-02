@@ -106,6 +106,15 @@ export class FakeAiGateway implements AiGateway {
         await new Promise((resolve) => setTimeout(resolve, this.options.delayMs));
       }
       yield { text: chunks[index] };
+      if (index === chunks.length - 1) {
+        yield {
+          text: '',
+          usage: {
+            promptTokens: Math.max(1, Math.ceil(`${input.system ?? ''}${input.prompt}`.length / 2)),
+            completionTokens: Math.max(1, Math.ceil(text.length / 2)),
+          },
+        };
+      }
     }
   }
 
