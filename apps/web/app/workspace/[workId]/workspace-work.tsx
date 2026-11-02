@@ -25,6 +25,7 @@ import { loadStoryLedger, type StoryLedger } from '../../../lib/story-ledger-api
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
 import { SettingsCenterPanel } from './settings-center-panel';
 import { MapFactionPanel } from './map-faction-panel';
+import { ChangeRequestPanel } from './change-request-panel';
 import { OutlineWorkspacePanel } from './outline-workspace-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 import { StoryLedgerPanel } from './story-ledger-panel';
@@ -255,6 +256,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           initialOverview={state.mapOverview}
           workId={work.id}
         />
+      ) : null}
+
+      {work.mainBranch ? (
+        <ChangeRequestPanel branchId={work.mainBranch.id} workId={work.id} />
       ) : null}
 
       <div className="work-detail-grid">

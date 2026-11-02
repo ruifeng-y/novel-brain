@@ -1313,10 +1313,9 @@ export const qualityReports = pgTable(
     chapterId: uuid('chapter_id')
       .notNull()
       .references(() => chapters.id, { onDelete: 'cascade' }),
-    generationRequestId: uuid('generation_request_id').references(
-      () => generationRequests.id,
-      { onDelete: 'set null' },
-    ),
+    generationRequestId: uuid('generation_request_id').references(() => generationRequests.id, {
+      onDelete: 'set null',
+    }),
     draftId: uuid('draft_id').references(() => drafts.id, {
       onDelete: 'set null',
     }),
@@ -1499,6 +1498,160 @@ export const jobEvents = pgTable(
 );
 
 export type JobEventRow = typeof jobEvents.$inferSelect;
+
+export const changeTargetTypeEnum = pgEnum('change_target_type', [
+  'entity',
+  'outline',
+  'chapter',
+  'fact',
+  'knowledge',
+  'plot_line',
+  'map',
+  'faction',
+  'power_item',
+  'timeline',
+  'story_bible',
+  'work',
+]);
+
+export const changeSourceEnum = pgEnum('change_source', ['author', 'ai', 'import', 'batch']);
+
+export const changeRiskEnum = pgEnum('change_risk', ['low', 'medium', 'high']);
+
+export const changeRequestStatusEnum = pgEnum('change_request_status', [
+  'draft',
+  'analyzing',
+  'waiting_confirmation',
+  'applying',
+  'applied',
+  'rejected',
+  'canceled',
+  'failed',
+  'branched',
+]);
+
+export const changeClassificationEnum = pgEnum('change_classification', [
+  'safe',
+  'repairable',
+  'structural',
+]);
+
+export const changeCheckStepEnum = pgEnum('change_check_step', [
+  'structure',
+  'hard_rules',
+  'fact_diff',
+  'knowledge_pov',
+  'narrative',
+  'downstream',
+]);
+
+export const changeCheckStatusEnum = pgEnum('change_check_status', [
+  'passed',
+  'warning',
+  'conflict',
+]);
+
+export type ChangeDiffEntry = {
+  field: string;
+  before: unknown;
+  after: unknown;
+};
+
+export const changeRequests = pgTable(
+  'change_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    targetType: changeTargetTypeEnum('target_type').notNull(),
+    targetId: uuid('target_id'),
+    title: text('title').notNull(),
+    reason: text('reason').notNull(),
+    oldValue: jsonb('old_value').$type<Record<string, unknown>>().notNull(),
+    newValue: jsonb('new_value').$type<Record<string, unknown>>().notNull(),
+    diff: jsonb('diff').$type<ChangeDiffEntry[]>().notNull(),
+    source: changeSourceEnum('source').notNull(),
+    risk: changeRiskEnum('risk').notNull(),
+    status: changeRequestStatusEnum('status').notNull().default('draft'),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    branchedBranchId: uuid('branched_branch_id').references(() => workBranches.id, {
+      onDelete: 'set null',
+    }),
+    appliedAt: timestamp('applied_at', { withTimezone: true }),
+    canceledAt: timestamp('canceled_at', { withTimezone: true }),
+    rejectedAt: timestamp('rejected_at', { withTimezone: true }),
+    decisionReason: text('decision_reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('change_requests_work_branch_status_idx').on(
+      table.workId,
+      table.branchId,
+      table.status,
+      table.targetType,
+    ),
+    index('change_requests_work_branch_created_idx').on(
+      table.workId,
+      table.branchId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export type ChangeRequestRow = typeof changeRequests.$inferSelect;
+export type NewChangeRequestRow = typeof changeRequests.$inferInsert;
+
+export const changeImpactReports = pgTable(
+  'change_impact_reports',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    changeRequestId: uuid('change_request_id')
+      .notNull()
+      .references(() => changeRequests.id, { onDelete: 'cascade' }),
+    affected: jsonb('affected').$type<Record<string, unknown>>().notNull(),
+    classification: changeClassificationEnum('classification').notNull(),
+    confidence: real('confidence').notNull(),
+    summary: text('summary').notNull(),
+    suggestions: jsonb('suggestions').$type<string[]>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('change_impact_reports_change_unique').on(table.changeRequestId)],
+);
+
+export type ChangeImpactReportRow = typeof changeImpactReports.$inferSelect;
+
+export const changeValidations = pgTable(
+  'change_validations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    changeRequestId: uuid('change_request_id')
+      .notNull()
+      .references(() => changeRequests.id, { onDelete: 'cascade' }),
+    step: changeCheckStepEnum('step').notNull(),
+    status: changeCheckStatusEnum('status').notNull(),
+    summary: text('summary').notNull(),
+    suggestion: text('suggestion').notNull(),
+    confidence: real('confidence').notNull(),
+    ignored: boolean('ignored').notNull().default(false),
+    ignoredReason: text('ignored_reason'),
+    ignoredAt: timestamp('ignored_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('change_validations_change_step_unique').on(table.changeRequestId, table.step),
+  ],
+);
+
+export type ChangeValidationRow = typeof changeValidations.$inferSelect;
 
 export const mapLevelEnum = pgEnum('map_level', [
   'world',
