@@ -4583,6 +4583,26 @@ textarea {
   background: #fbfcf9;
 }
 
+.outline-tree-node.drag-over {
+  border-color: #b23a2b;
+  box-shadow: 0 0 0 2px rgba(178, 58, 43, 0.12);
+}
+
+.outline-drag-handle {
+  padding: 2px 6px;
+  cursor: grab;
+  border: 1px solid #cbd5ce;
+  border-radius: 4px;
+  background: #fff;
+  color: #6b796f;
+  font-size: 0.68rem;
+  user-select: none;
+}
+
+.outline-drag-handle:active {
+  cursor: grabbing;
+}
+
 .outline-tree-book {
   border-left-color: #b23a2b;
   background: #fbf8f5;

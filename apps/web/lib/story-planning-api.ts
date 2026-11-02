@@ -264,12 +264,13 @@ export function reorderOutlineNodes(
   branchId: string,
   parentId: string | null,
   orderedIds: string[],
+  input?: { confirmLockedChange?: boolean; changeReason?: string },
 ): Promise<{ items: OutlineNode[] }> {
   return apiRequest<{ items: OutlineNode[] }>(
     `${planningPath(workId, branchId)}/outlines/reorder`,
     {
       method: 'POST',
-      body: JSON.stringify({ parentId, orderedIds }),
+      body: JSON.stringify({ parentId, orderedIds, ...(input ?? {}) }),
     },
   );
 }

@@ -456,6 +456,84 @@ describe('full outline API', () => {
         expect(body.locked).toBe(true);
       });
 
+    const legacyPath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapter-outlines/1`;
+    await author.agent
+      .put(legacyPath)
+      .send({
+        chapterGoal: '绕过锁定直接覆盖章纲。',
+        pov: '沈砚',
+        sceneBeats: ['绕过锁定'],
+        chapterEndHook: '这次覆盖不该成功。',
+      })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.code).toBe('OUTLINE_LOCKED');
+      });
+    await author.agent
+      .get(chapterPath)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.chapterGoal).toBe(tree.chapter.chapterGoal);
+      });
+    await author.agent
+      .put(legacyPath)
+      .send({
+        chapterGoal: '确认后通过旧入口修改章纲。',
+        pov: '沈砚',
+        sceneBeats: ['确认修改'],
+        chapterEndHook: '这次修改已经确认。',
+        confirmLockedChange: true,
+      })
+      .expect(400);
+    await author.agent
+      .put(legacyPath)
+      .send({
+        chapterGoal: '确认后通过旧入口修改章纲。',
+        pov: '沈砚',
+        sceneBeats: ['确认修改'],
+        chapterEndHook: '这次修改已经确认。',
+        confirmLockedChange: true,
+        changeReason: '旧入口也需要说明修改原因。',
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.chapterGoal).toBe('确认后通过旧入口修改章纲。');
+        expect(body.locked).toBe(true);
+      });
+    await author.agent
+      .post(outlinePath(work.id, work.mainBranchId, `/${tree.chapter.id}/regenerate`))
+      .send({ instruction: '锁定节点不能用重生成绕过确认。' })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.code).toBe('OUTLINE_LOCKED');
+      });
+    await author.agent
+      .post(outlinePath(work.id, work.mainBranchId, '/reorder'))
+      .send({
+        parentId: tree.act.id,
+        orderedIds: [tree.chapter.id, tree.scene.id],
+      })
+      .expect(400);
+    await author.agent
+      .post(outlinePath(work.id, work.mainBranchId, '/reorder'))
+      .send({
+        parentId: tree.act.id,
+        orderedIds: [tree.chapter.id],
+      })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.code).toBe('OUTLINE_LOCKED');
+      });
+    await author.agent
+      .post(outlinePath(work.id, work.mainBranchId, '/reorder'))
+      .send({
+        parentId: tree.act.id,
+        orderedIds: [tree.chapter.id],
+        confirmLockedChange: true,
+        changeReason: '确认锁定节点可以保留原顺序。',
+      })
+      .expect(201);
+
     await author.agent
       .post(`${chapterPath}/unlock`)
       .expect(201)
@@ -629,6 +707,103 @@ describe('full outline API', () => {
           ready: true,
           detail: '已有 1 条已确认设定。',
         });
+      });
+  });
+
+  it('flags orphan outline nodes and accepts reparenting to restore a connected path', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '天门残卷');
+    const tree = await createCompleteTree(author.agent, work.id, work.mainBranchId);
+    const readinessPath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}/outline/readiness`;
+
+    const orphan = await author.agent
+      .put(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapter-outlines/9`)
+      .send({
+        chapterGoal: '这是旧数据里没有上级节点的孤章。',
+        pov: '沈砚',
+        sceneBeats: ['孤章场景'],
+        chapterEndHook: '孤章需要被挂回大纲树。',
+      })
+      .expect(200);
+
+    await author.agent
+      .get(`${readinessPath}?chapterNumber=9`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.checks.outline.ready).toBe(false);
+        expect(body.checks.outline.missing).toEqual(
+          expect.arrayContaining([expect.stringContaining('第 9 章')]),
+        );
+      });
+
+    await author.agent
+      .patch(outlinePath(work.id, work.mainBranchId, `/${orphan.body.id}`))
+      .send({
+        parentId: tree.act.id,
+      })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.parentId).toBe(tree.act.id);
+      });
+
+    await author.agent
+      .get(`${readinessPath}?chapterNumber=9`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.checks.outline).toMatchObject({
+          ready: true,
+          missing: [],
+        });
+      });
+  });
+
+  it('reorders more than one thousand sibling chapters', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '天门残卷');
+    const book = await createNode(author.agent, work.id, work.mainBranchId, {
+      level: 'book',
+      title: '九门总纲',
+      summary: '验证超大卷纲。',
+      details: '',
+    });
+    const volume = await createNode(author.agent, work.id, work.mainBranchId, {
+      level: 'volume',
+      parentId: book.id,
+      title: '第一卷 千章',
+      summary: '这一卷需要容纳一千章以上。',
+      details: '',
+    });
+    const act = await createNode(author.agent, work.id, work.mainBranchId, {
+      level: 'act',
+      parentId: volume.id,
+      title: '第一幕 长线',
+      summary: '验证超长幕纲。',
+      details: '',
+    });
+    const inserted = await app.get(DatabaseService).pool.query<{ id: string }>(
+      `insert into chapter_outlines
+         (work_id, branch_id, level, parent_id, order_index, title, summary, details,
+          chapter_number, chapter_goal, pov, scene_beats, chapter_end_hook, version,
+          created_at, updated_at)
+       select $1, $2, 'chapter', $3, gs - 1, '第 ' || gs || ' 章',
+              '边界章节', '', gs, '推进长线', '沈砚', '[]'::jsonb, '', 1, now(), now()
+       from generate_series(1, 1001) as gs
+       returning id`,
+      [work.id, work.mainBranchId, act.id],
+    );
+    expect(inserted.rows).toHaveLength(1001);
+
+    await author.agent
+      .post(outlinePath(work.id, work.mainBranchId, '/reorder'))
+      .send({
+        parentId: act.id,
+        orderedIds: inserted.rows.map((row) => row.id).reverse(),
+      })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body.items).toHaveLength(1001);
+        expect(body.items[0].chapterNumber).toBe(1001);
+        expect(body.items[1000].chapterNumber).toBe(1);
       });
   });
 });

@@ -213,12 +213,24 @@ export function storyBibleLegacyFields(cards: StoryBibleCard[]) {
   };
 }
 
-export const chapterOutlineSchema = z.object({
-  chapterGoal: z.string().trim().min(1).max(1_000),
-  pov: z.string().trim().min(1).max(120),
-  sceneBeats: z.array(z.string().trim().min(1).max(500)).min(1).max(30),
-  chapterEndHook: z.string().trim().min(1).max(500),
-});
+export const chapterOutlineSchema = z
+  .object({
+    chapterGoal: z.string().trim().min(1).max(1_000),
+    pov: z.string().trim().min(1).max(120),
+    sceneBeats: z.array(z.string().trim().min(1).max(500)).min(1).max(30),
+    chapterEndHook: z.string().trim().min(1).max(500),
+    confirmLockedChange: z.boolean().optional(),
+    changeReason: z.string().trim().min(1).max(500).optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.confirmLockedChange && !value.changeReason) {
+      context.addIssue({
+        code: 'custom',
+        path: ['changeReason'],
+        message: 'Explain why the locked outline node needs to change',
+      });
+    }
+  });
 
 export const chapterNumberSchema = z.coerce.number().int().min(1).max(100_000);
 
