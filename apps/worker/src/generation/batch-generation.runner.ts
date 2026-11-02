@@ -58,9 +58,14 @@ export class BatchGenerationRunner {
       chapterNumbers: job.payload.chapterNumbers ?? [],
     });
 
-    await this.beginBatchStep(job.id, 'generate', {
-      chapterNumbers: job.payload.chapterNumbers ?? [],
-    });
+    if (
+      !(await this.beginBatchStep(job.id, 'generate', {
+        chapterNumbers: job.payload.chapterNumbers ?? [],
+      }))
+    ) {
+      await this.writeReport(job.id);
+      return { ok: false };
+    }
     try {
       let items = await this.listItems(job.id);
       for (const item of items) {
@@ -92,7 +97,10 @@ export class BatchGenerationRunner {
         waitingReview: items.filter((item) => item.status === 'waiting_review').length,
         failed: items.filter((item) => item.status === 'failed').length,
       });
-      await this.beginBatchStep(job.id, 'report', {});
+      if (!(await this.beginBatchStep(job.id, 'report', {}))) {
+        await this.writeReport(job.id);
+        return { ok: false };
+      }
       const report = await this.writeReport(job.id);
       await this.completeBatchStep(job.id, 'report', {
         totalChapters: report.totalChapters,
@@ -562,17 +570,26 @@ export class BatchGenerationRunner {
     jobId: string,
     stepKey: 'generate' | 'report',
     input: Record<string, unknown>,
-  ) {
+  ): Promise<boolean> {
     const now = new Date();
+    const [activeJob] = await this.database.db
+      .update(jobs)
+      .set({ status: 'running', updatedAt: now })
+      .where(and(eq(jobs.id, jobId), inArray(jobs.status, ['preparing', 'running'])))
+      .returning({ id: jobs.id });
+    if (!activeJob) {
+      await this.appendEvent(jobId, 'job.step.skipped', {
+        stepKey,
+        reason: 'job_not_active',
+      });
+      return false;
+    }
     await this.database.db
       .update(jobSteps)
       .set({ status: 'running', input, startedAt: now })
       .where(and(eq(jobSteps.jobId, jobId), eq(jobSteps.stepKey, stepKey)));
-    await this.database.db
-      .update(jobs)
-      .set({ status: 'running', updatedAt: now })
-      .where(eq(jobs.id, jobId));
     await this.appendEvent(jobId, 'job.step.started', { stepKey });
+    return true;
   }
 
   private async completeBatchStep(
