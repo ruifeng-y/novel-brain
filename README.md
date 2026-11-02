@@ -71,6 +71,7 @@ pnpm db:seed
 - Drizzle 迁移和 seed 可执行。
 - Worker 有一个 BullMQ 示例任务，写入 `system_jobs`。
 - 作者可从章纲生成整章，在写作台流式查看、编辑并保存章节版本；失败时保留草稿。
+- 作者可确认、修改或驳回本章事实；确认后写入已确认设定，并在下一章生成时作为上下文使用。
 - Vitest、Playwright、lint、typecheck 和 CI 可用。
 
 ## 文档

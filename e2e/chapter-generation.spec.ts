@@ -116,9 +116,44 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
   await expect(page.getByText('版本 1 已保存')).toBeVisible();
   const savedContent = await page.getByLabel('章节正文').inputValue();
 
+  const factPanel = page.getByRole('region', { name: '本章事实' });
+  await expect(factPanel).toBeVisible();
+  await expect(factPanel.getByText('来源原句')).toHaveCount(3);
+
+  const editedFact = '沈砚用掌中血触发断碑，碑上浮出从未见过的文字。';
+  await factPanel.getByLabel('事实内容：事件').fill(editedFact);
+  await factPanel
+    .getByTestId('fact-proposal-event')
+    .getByRole('button', { name: '保存修改' })
+    .click();
+  await expect(factPanel.getByText('事实修改已保存')).toBeVisible();
+
+  await factPanel
+    .getByTestId('fact-proposal-event')
+    .getByRole('button', { name: '确认采用' })
+    .click();
+  await expect(
+    factPanel.getByTestId('fact-proposal-event').getByText('已确认'),
+  ).toBeVisible();
+  await expect(factPanel.getByText(editedFact)).toBeVisible();
+
+  await factPanel
+    .getByTestId('fact-proposal-body_state')
+    .getByRole('button', { name: '驳回' })
+    .click();
+  await expect(
+    factPanel.getByTestId('fact-proposal-body_state').getByText('已驳回'),
+  ).toBeVisible();
+
   await page.reload();
   await expect(page.getByLabel('章节正文')).toHaveValue(savedContent);
   await expect(page.getByRole('heading', { name: '写作进度' })).toBeVisible();
+  await expect(
+    page.getByTestId('fact-proposal-event').getByText('已确认'),
+  ).toBeVisible();
+  await expect(
+    page.getByTestId('fact-proposal-body_state').getByText('已驳回'),
+  ).toBeVisible();
 
   await page.getByRole('link', { name: '作品与章纲' }).click();
   await page

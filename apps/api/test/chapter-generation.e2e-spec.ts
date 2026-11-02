@@ -105,11 +105,18 @@ async function saveOutline(
   agent: ReturnType<typeof request.agent>,
   workId: string,
   branchId: string,
+  chapterNumberOrOverrides: number | Record<string, unknown> = 1,
   overrides: Record<string, unknown> = {},
 ) {
+  const chapterNumber =
+    typeof chapterNumberOrOverrides === 'number' ? chapterNumberOrOverrides : 1;
+  const payloadOverrides =
+    typeof chapterNumberOrOverrides === 'number' ? overrides : chapterNumberOrOverrides;
   await agent
-    .put(`/api/v1/works/${workId}/branches/${branchId}/chapter-outlines/1`)
-    .send(chapterOutlinePayload(overrides))
+    .put(
+      `/api/v1/works/${workId}/branches/${branchId}/chapter-outlines/${chapterNumber}`,
+    )
+    .send(chapterOutlinePayload(payloadOverrides))
     .expect(200);
 }
 
@@ -311,6 +318,7 @@ describe('chapter generation API', () => {
       'brief',
       'context',
       'draft',
+      'extract_facts',
     ]);
     expect(job.steps.every((step: { status: string }) => step.status === 'succeeded')).toBe(
       true,
@@ -375,6 +383,301 @@ describe('chapter generation API', () => {
         });
         expect(body.versions).toHaveLength(1);
       });
+  });
+
+  it('extracts event, body-state, and character-knowledge proposals with exact source sentences after generation', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '本章事实');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    const job = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.jobId as string,
+      'completed',
+    );
+
+    const proposals = await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
+      )
+      .expect(200);
+
+    expect(proposals.body.items).toHaveLength(3);
+    expect(proposals.body.items.map((item: { type: string }) => item.type)).toEqual(
+      expect.arrayContaining(['event', 'body_state', 'character_knowledge']),
+    );
+    for (const proposal of proposals.body.items as Array<{
+      status: string;
+      sourceSentence: string;
+    }>) {
+      expect(proposal.status).toBe('proposed');
+      expect(job.draft.content).toContain(proposal.sourceSentence);
+    }
+  });
+
+  it('lets the author edit or reject fact proposals without adding them to confirmed facts', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '筛选本章事实');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.jobId as string,
+      'completed',
+    );
+
+    const proposals = await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
+      )
+      .expect(200);
+    const event = proposals.body.items.find(
+      (item: { type: string }) => item.type === 'event',
+    ) as { id: string };
+    const bodyState = proposals.body.items.find(
+      (item: { type: string }) => item.type === 'body_state',
+    ) as { id: string };
+
+    await author.agent
+      .patch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${event.id}`,
+      )
+      .send({ statement: '沈砚以掌中血触发断碑，碑面浮出陌生文字。' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          id: event.id,
+          statement: '沈砚以掌中血触发断碑，碑面浮出陌生文字。',
+          status: 'proposed',
+        });
+      });
+
+    await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${bodyState.id}/reject`,
+      )
+      .send({})
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          id: bodyState.id,
+          status: 'rejected',
+        });
+      });
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/facts`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toEqual([]);
+      });
+  });
+
+  it('confirms an edited proposal and records it in a canon commit and snapshot', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '确认本章事实');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+
+    const started = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.jobId as string,
+      'completed',
+    );
+
+    const proposals = await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
+      )
+      .expect(200);
+    const event = proposals.body.items.find(
+      (item: { type: string }) => item.type === 'event',
+    ) as { id: string; sourceSentence: string };
+    const editedStatement = '沈砚用掌中血触发断碑，碑上出现从未见过的文字。';
+
+    await author.agent
+      .patch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${event.id}`,
+      )
+      .send({ statement: editedStatement })
+      .expect(200);
+
+    const confirmed = await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${event.id}/confirm`,
+      )
+      .send({})
+      .expect(201);
+    expect(confirmed.body).toMatchObject({
+      proposal: {
+        id: event.id,
+        status: 'confirmed',
+        statement: editedStatement,
+      },
+      fact: {
+        type: 'event',
+        statement: editedStatement,
+        sourceSentence: event.sourceSentence,
+      },
+      canonCommit: {
+        id: expect.any(String),
+        snapshotId: expect.any(String),
+      },
+    });
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/facts`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.items).toHaveLength(1);
+        expect(body.items[0]).toMatchObject({
+          type: 'event',
+          statement: editedStatement,
+          sourceSentence: event.sourceSentence,
+          chapterNumber: 1,
+        });
+      });
+
+    const commits = await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/canon/commits`)
+      .expect(200);
+    expect(commits.body.items).toHaveLength(1);
+    expect(commits.body.items[0]).toMatchObject({
+      id: confirmed.body.canonCommit.id,
+      chapterNumber: 1,
+      snapshotId: confirmed.body.canonCommit.snapshotId,
+    });
+
+    await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/canon/snapshots/${confirmed.body.canonCommit.snapshotId}`,
+      )
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body).toMatchObject({
+          id: confirmed.body.canonCommit.snapshotId,
+          commitId: confirmed.body.canonCommit.id,
+          facts: [
+            {
+              type: 'event',
+              statement: editedStatement,
+              sourceSentence: event.sourceSentence,
+              chapterNumber: 1,
+            },
+          ],
+        });
+      });
+  });
+
+  it('includes only confirmed facts in the next chapter generation context', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '续写只认已确认事实');
+    await saveStoryBible(author.agent, work.id, work.mainBranchId);
+    await saveOutline(author.agent, work.id, work.mainBranchId);
+    await saveProseModel(author.agent);
+
+    const firstStarted = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
+      .send({})
+      .expect(202);
+    await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      firstStarted.body.jobId as string,
+      'completed',
+    );
+
+    const proposals = await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
+      )
+      .expect(200);
+    const event = proposals.body.items.find(
+      (item: { type: string }) => item.type === 'event',
+    ) as { id: string; statement: string };
+    const rejected = proposals.body.items.find(
+      (item: { type: string }) => item.type === 'body_state',
+    ) as { id: string; statement: string };
+    const pending = proposals.body.items.find(
+      (item: { type: string }) => item.type === 'character_knowledge',
+    ) as { id: string; statement: string };
+
+    const confirmed = await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${event.id}/confirm`,
+      )
+      .send({})
+      .expect(201);
+    await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${rejected.id}/reject`,
+      )
+      .send({})
+      .expect(201);
+
+    await saveOutline(author.agent, work.id, work.mainBranchId, 2, {
+      chapterGoal: '沈砚带着断碑上的文字继续赶路。',
+      sceneBeats: ['沈砚离开荒寺', '他在山道上核对碑文', '追兵赶到'],
+      chapterEndHook: '追兵首领叫出了他母亲的名字。',
+    });
+    const secondStarted = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/2/generate`)
+      .send({})
+      .expect(202);
+    const secondJob = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      secondStarted.body.jobId as string,
+      'completed',
+    );
+
+    const confirmedFacts = secondJob.context.sections.find(
+      (section: { key: string }) => section.key === 'confirmedFacts',
+    );
+    expect(confirmedFacts).toMatchObject({
+      title: '已确认设定',
+      content: {
+        facts: [
+          {
+            type: 'event',
+            statement: event.statement,
+            chapterNumber: 1,
+          },
+        ],
+      },
+    });
+    expect(secondJob.context.sourceRefs).toContain(
+      `fact:${confirmed.body.fact.id}`,
+    );
+
+    const serializedContext = JSON.stringify(secondJob.context);
+    expect(serializedContext).not.toContain(rejected.statement);
+    expect(serializedContext).not.toContain(pending.statement);
   });
 
   it('keeps the partial draft and reports a recoverable error when generation fails', async () => {

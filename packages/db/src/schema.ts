@@ -432,6 +432,132 @@ export const drafts = pgTable(
 export type DraftRow = typeof drafts.$inferSelect;
 export type NewDraftRow = typeof drafts.$inferInsert;
 
+export const factTypeEnum = pgEnum('fact_type', [
+  'event',
+  'body_state',
+  'character_knowledge',
+]);
+
+export const factProposalStatusEnum = pgEnum('fact_proposal_status', [
+  'proposed',
+  'confirmed',
+  'rejected',
+]);
+
+export const factProposals = pgTable(
+  'fact_proposals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    chapterId: uuid('chapter_id')
+      .notNull()
+      .references(() => chapters.id, { onDelete: 'cascade' }),
+    generationRequestId: uuid('generation_request_id').references(
+      () => generationRequests.id,
+      { onDelete: 'set null' },
+    ),
+    type: factTypeEnum('type').notNull(),
+    statement: text('statement').notNull(),
+    sourceSentence: text('source_sentence').notNull(),
+    status: factProposalStatusEnum('status').notNull().default('proposed'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('fact_proposals_chapter_status_idx').on(table.chapterId, table.status),
+    index('fact_proposals_branch_created_idx').on(table.branchId, table.createdAt),
+  ],
+);
+
+export type FactProposalRow = typeof factProposals.$inferSelect;
+export type NewFactProposalRow = typeof factProposals.$inferInsert;
+
+export const facts = pgTable(
+  'facts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    chapterId: uuid('chapter_id')
+      .notNull()
+      .references(() => chapters.id, { onDelete: 'cascade' }),
+    sourceProposalId: uuid('source_proposal_id')
+      .notNull()
+      .references(() => factProposals.id, { onDelete: 'restrict' }),
+    type: factTypeEnum('type').notNull(),
+    statement: text('statement').notNull(),
+    sourceSentence: text('source_sentence').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('facts_source_proposal_unique').on(table.sourceProposalId),
+    index('facts_branch_created_idx').on(table.branchId, table.createdAt),
+  ],
+);
+
+export type FactRow = typeof facts.$inferSelect;
+export type NewFactRow = typeof facts.$inferInsert;
+
+export const canonCommits = pgTable(
+  'canon_commits',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    chapterId: uuid('chapter_id')
+      .notNull()
+      .references(() => chapters.id, { onDelete: 'cascade' }),
+    snapshotId: uuid('snapshot_id').notNull(),
+    message: text('message').notNull(),
+    eventLog: jsonb('event_log').$type<Array<Record<string, unknown>>>().notNull(),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('canon_commits_branch_created_idx').on(table.branchId, table.createdAt),
+  ],
+);
+
+export const canonSnapshots = pgTable(
+  'canon_snapshots',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    commitId: uuid('commit_id')
+      .notNull()
+      .references(() => canonCommits.id, { onDelete: 'restrict' }),
+    snapshot: jsonb('snapshot').$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('canon_snapshots_commit_unique').on(table.commitId),
+    index('canon_snapshots_branch_created_idx').on(table.branchId, table.createdAt),
+  ],
+);
+
+export type CanonCommitRow = typeof canonCommits.$inferSelect;
+export type CanonSnapshotRow = typeof canonSnapshots.$inferSelect;
+
 export const jobStatusEnum = pgEnum('job_status', [
   'queued',
   'preparing',

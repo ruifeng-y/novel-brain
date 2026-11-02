@@ -20,6 +20,7 @@ import {
 } from '../../../../lib/chapter-generation-api';
 import { loadStoryBible, type StoryBible } from '../../../../lib/story-planning-api';
 import { GENRE_LABELS, type Work } from '../../../../lib/works-api';
+import { FactReviewPanel } from './fact-review-panel';
 
 type BootState =
   | { status: 'loading' }
@@ -618,6 +619,15 @@ export function WritingDesk({ workId }: { workId: string }) {
                     <p>故事圣经还没有保存，补充后本章参考会更完整。</p>
                   )}
                 </section>
+
+                {chapterNumber ? (
+                  <FactReviewPanel
+                    branchId={boot.branchId}
+                    chapterNumber={chapterNumber}
+                    refreshKey={generationState}
+                    workId={boot.work.id}
+                  />
+                ) : null}
 
                 <section className="writing-context-section">
                   <h3>写作要求</h3>

@@ -105,6 +105,39 @@ export type GenerationEvent = {
   data: Record<string, unknown>;
 };
 
+export type FactType = 'event' | 'body_state' | 'character_knowledge';
+export type FactProposalStatus = 'proposed' | 'confirmed' | 'rejected';
+
+export type FactProposal = {
+  id: string;
+  chapterNumber: number;
+  type: FactType;
+  typeLabel: string;
+  statement: string;
+  sourceSentence: string;
+  status: FactProposalStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ConfirmFactProposalResult = {
+  proposal: FactProposal;
+  fact: {
+    id: string;
+    chapterNumber: number;
+    type: FactType;
+    typeLabel: string;
+    statement: string;
+    sourceSentence: string;
+    confirmedAt: string;
+  };
+  canonCommit: {
+    id: string;
+    snapshotId: string;
+    createdAt: string;
+  } | null;
+};
+
 function generationPath(workId: string, branchId: string): string {
   return `/api/v1/works/${encodeURIComponent(workId)}/branches/${encodeURIComponent(branchId)}`;
 }
@@ -174,6 +207,63 @@ export function saveChapterVersion(
     {
       method: 'POST',
       body: JSON.stringify({ content }),
+    },
+  );
+}
+
+export function loadFactProposals(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+): Promise<{ items: FactProposal[] }> {
+  return apiRequest<{ items: FactProposal[] }>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/fact-proposals`,
+  );
+}
+
+export function updateFactProposal(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+  proposalId: string,
+  statement: string,
+): Promise<FactProposal> {
+  return apiRequest<FactProposal>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/fact-proposals/${proposalId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ statement }),
+    },
+  );
+}
+
+export function confirmFactProposal(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+  proposalId: string,
+  statement: string,
+): Promise<ConfirmFactProposalResult> {
+  return apiRequest<ConfirmFactProposalResult>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/fact-proposals/${proposalId}/confirm`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ statement }),
+    },
+  );
+}
+
+export function rejectFactProposal(
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+  proposalId: string,
+): Promise<FactProposal> {
+  return apiRequest<FactProposal>(
+    `${generationPath(workId, branchId)}/chapters/${chapterNumber}/fact-proposals/${proposalId}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify({}),
     },
   );
 }
