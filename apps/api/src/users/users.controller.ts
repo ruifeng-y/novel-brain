@@ -14,6 +14,7 @@ import {
   Res,
   UseGuards,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   accountAuditSearchSchema,
@@ -30,6 +31,7 @@ import type { Response } from 'express';
 import { AccountAuditService } from '../account-audit/account-audit.service';
 import { SESSION_COOKIE_NAME } from '../auth/auth.constants';
 import type { AuthenticatedRequest } from '../auth/auth.types';
+import { clearSessionCookieOptions } from '../auth/session-cookie';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import { AccountExportDownloadSigner } from './account-export-download.signer';
 import { AccountExportsService } from './account-exports.service';
@@ -45,6 +47,7 @@ export class UsersController {
     private readonly accountExports: AccountExportsService,
     private readonly accountAudit: AccountAuditService,
     private readonly downloadSigner: AccountExportDownloadSigner,
+    private readonly config: ConfigService,
   ) {}
 
   @Get('me/audit')
@@ -88,7 +91,6 @@ export class UsersController {
     response.setHeader('Cache-Control', 'no-store');
     return exported.csv;
   }
-
   @Get('me')
   @ApiOperation({ summary: 'Return the signed-in author account profile' })
   getProfile(@Req() request: AuthenticatedRequest) {
@@ -288,12 +290,10 @@ export class UsersController {
       request.ip ?? request.socket.remoteAddress ?? null,
       request.get('user-agent') ?? null,
     );
-    response.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: process.env.COOKIE_SECURE === 'true',
-      sameSite: 'lax',
-      path: '/',
-    });
+    response.clearCookie(
+      SESSION_COOKIE_NAME,
+      clearSessionCookieOptions(this.config.get<boolean>('COOKIE_SECURE') === true),
+    );
   }
 
   @Post('me/delete')
@@ -319,12 +319,10 @@ export class UsersController {
       request.ip ?? request.socket.remoteAddress ?? null,
       request.get('user-agent') ?? null,
     );
-    response.clearCookie(SESSION_COOKIE_NAME, {
-      httpOnly: true,
-      secure: process.env.COOKIE_SECURE === 'true',
-      sameSite: 'lax',
-      path: '/',
-    });
+    response.clearCookie(
+      SESSION_COOKIE_NAME,
+      clearSessionCookieOptions(this.config.get<boolean>('COOKIE_SECURE') === true),
+    );
     return result;
   }
 
