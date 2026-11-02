@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../../lib/auth-api';
 import {
+  chapterOptionsFromOutlines,
   controlBatchJob,
   createBatchJob,
   decideReviewItem,
@@ -15,10 +16,10 @@ import {
   type BatchJobDetail,
   type BatchJobReport,
   type BatchJobSummary,
+  type BatchChapterOption,
   type BatchScope,
   type ReviewQueueItem,
 } from '../../../../lib/batch-jobs-api';
-import { loadChapters, type ChapterListItem } from '../../../../lib/chapter-generation-api';
 import { loadOutlineNodes, type OutlineNode } from '../../../../lib/story-planning-api';
 import { GENRE_LABELS, type Work } from '../../../../lib/works-api';
 
@@ -31,7 +32,7 @@ type BootState =
       user: User;
       work: Work;
       branchId: string;
-      chapters: ChapterListItem[];
+      chapters: BatchChapterOption[];
       volumes: OutlineNode[];
     }
   | { status: 'error'; message: string; notFound: boolean };
@@ -82,8 +83,7 @@ export function TaskCenter({ workId }: { workId: string }) {
         if (!work.mainBranch) {
           throw new Error('这部作品还没有可用的创作线。');
         }
-        const [chapterList, outlineList, jobList, queue] = await Promise.all([
-          loadChapters(work.id, work.mainBranch.id),
+        const [outlineList, jobList, queue] = await Promise.all([
           loadOutlineNodes(work.id, work.mainBranch.id),
           loadBatchJobs(work.id, work.mainBranch.id),
           loadReviewQueue(work.id, work.mainBranch.id),
@@ -91,13 +91,14 @@ export function TaskCenter({ workId }: { workId: string }) {
         if (!active) {
           return;
         }
-        const chapterNumbers = chapterList.items.map((item) => item.chapterNumber);
+        const chapters = chapterOptionsFromOutlines(outlineList.items);
+        const chapterNumbers = chapters.map((item) => item.chapterNumber);
         setBoot({
           status: 'ready',
           user,
           work,
           branchId: work.mainBranch.id,
-          chapters: chapterList.items,
+          chapters,
           volumes: outlineList.items.filter((node) => node.level === 'volume'),
         });
         setJobs(jobList.items);
@@ -847,9 +848,7 @@ function TaskReportPanel({ report }: { report: BatchJobReport }) {
               ? report.failedChapters
                   .map(
                     (chapter) =>
-                      `第 ${chapter.chapterNumber} 章：${chapterFailureMessage(
-                        chapter.message,
-                      )}`,
+                      `第 ${chapter.chapterNumber} 章：${chapterFailureMessage(chapter.message)}`,
                   )
                   .join('；')
               : '没有失败章节'}

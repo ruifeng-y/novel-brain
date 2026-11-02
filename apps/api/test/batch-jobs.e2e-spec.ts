@@ -1,9 +1,16 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Algorithm, hash } from '@node-rs/argon2';
-import { AI_GATEWAY, FakeAiGateway, buildDeterministicChineseChapter } from '@novel/ai';
+import {
+  AI_GATEWAY,
+  FakeAiGateway,
+  buildDeterministicChineseChapter,
+  type GenerateTextInput,
+  type StreamTextChunk,
+} from '@novel/ai';
 import { countCjkCharacters } from '@novel/contracts';
-import { createDatabase, users as usersTable } from '@novel/db';
+import { createDatabase, jobs as jobsTable, users as usersTable } from '@novel/db';
+import { and, eq } from 'drizzle-orm';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { randomUUID } from 'node:crypto';
 import path from 'node:path';
@@ -15,6 +22,37 @@ import { RedisService } from '../src/redis/redis.service';
 
 function uniqueEmail(): string {
   return `batch-jobs-${randomUUID()}@example.com`;
+}
+
+class BlockingFakeAiGateway extends FakeAiGateway {
+  started: Promise<void> = Promise.resolve();
+  private shouldBlock = false;
+  private startedResolve: (() => void) | undefined;
+  private releaseGate: Promise<void> = Promise.resolve();
+  private releaseResolve: (() => void) | undefined;
+
+  blockNextStream(): void {
+    this.shouldBlock = true;
+    this.started = new Promise((resolve) => {
+      this.startedResolve = resolve;
+    });
+    this.releaseGate = new Promise((resolve) => {
+      this.releaseResolve = resolve;
+    });
+  }
+
+  release(): void {
+    this.releaseResolve?.();
+  }
+
+  async *streamText(input: GenerateTextInput): AsyncIterable<StreamTextChunk> {
+    if (this.shouldBlock) {
+      this.shouldBlock = false;
+      this.startedResolve?.();
+      await this.releaseGate;
+    }
+    yield* super.streamText(input);
+  }
 }
 
 async function clearAuthRateLimits(app: INestApplication): Promise<void> {
@@ -222,10 +260,37 @@ async function waitForReviewItem(
   throw new Error(`Chapter ${chapterNumber} did not enter review`);
 }
 
+async function waitForCondition(check: () => Promise<boolean>, message: string): Promise<void> {
+  for (let attempt = 0; attempt < 300; attempt += 1) {
+    if (await check()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 40));
+  }
+  throw new Error(message);
+}
+
+async function generationJobsForChapter(
+  app: INestApplication,
+  workId: string,
+  branchId: string,
+  chapterNumber: number,
+) {
+  const rows = await app
+    .get(DatabaseService)
+    .db.select()
+    .from(jobsTable)
+    .where(and(eq(jobsTable.workId, workId), eq(jobsTable.branchId, branchId)));
+  return rows.filter(
+    (job) => job.type === 'generate_chapter' && Number(job.payload.chapterNumber) === chapterNumber,
+  );
+}
+
 describe('batch jobs API', () => {
   let app: INestApplication;
   let workerApp: INestApplication;
   let passwordHash: string;
+  let gateway: BlockingFakeAiGateway;
 
   beforeAll(async () => {
     process.env.NODE_ENV = 'test';
@@ -277,7 +342,7 @@ describe('batch jobs API', () => {
       await redis.del(...queueKeys);
     }
 
-    const gateway = new FakeAiGateway({
+    gateway = new BlockingFakeAiGateway({
       responseFactory: (input) => {
         const match = input.prompt.match(/目标汉字数：(\d+)\s*到\s*(\d+)/);
         const target = match
@@ -313,6 +378,16 @@ describe('batch jobs API', () => {
   it('creates batch jobs for one chapter, a volume, a custom range, and the whole book', async () => {
     const author = await createAuthor(app, passwordHash);
     const work = await prepareWork(author.agent, '批量范围', [1, 2, 3, 4, 5]);
+    const outlineOnly = await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters`)
+      .expect(200);
+    expect(outlineOnly.body.items).toHaveLength(5);
+    expect(
+      outlineOnly.body.items.every(
+        (item: { status: string; hasContent: boolean }) =>
+          item.status === 'planned' && item.hasContent === false,
+      ),
+    ).toBe(true);
 
     const chapter = await createJob(author.agent, work.id, work.mainBranchId, {
       type: 'chapter',
@@ -349,6 +424,74 @@ describe('batch jobs API', () => {
         .send({})
         .expect(201);
     }
+  }, 30_000);
+
+  it('keeps a paused batch paused after the in-flight chapter finishes', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await prepareWork(author.agent, '暂停覆盖检查', [1, 2]);
+    gateway.blockNextStream();
+    const started = await createJob(author.agent, work.id, work.mainBranchId, {
+      type: 'range',
+      startChapter: 1,
+      endChapter: 2,
+    }).expect(202);
+
+    await gateway.started;
+    await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.id}/pause`)
+      .send({})
+      .expect(201);
+    gateway.release();
+
+    await waitForCondition(async () => {
+      const detail = await author.agent
+        .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.id}`)
+        .expect(200);
+      const [firstChapter] = await generationJobsForChapter(app, work.id, work.mainBranchId, 1);
+      return (
+        firstChapter?.status === 'completed' &&
+        detail.body.status === 'paused' &&
+        detail.body.items[0].status === 'waiting_review' &&
+        detail.body.items[1].generationJobId === null
+      );
+    }, 'Paused batch did not settle after the in-flight chapter');
+
+    expect(await generationJobsForChapter(app, work.id, work.mainBranchId, 2)).toHaveLength(0);
+  }, 30_000);
+
+  it('keeps a canceled batch canceled after the in-flight chapter finishes', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await prepareWork(author.agent, '取消覆盖检查', [1, 2]);
+    gateway.blockNextStream();
+    const started = await createJob(author.agent, work.id, work.mainBranchId, {
+      type: 'range',
+      startChapter: 1,
+      endChapter: 2,
+    }).expect(202);
+
+    await gateway.started;
+    await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.id}/cancel`)
+      .send({})
+      .expect(201);
+    gateway.release();
+
+    await waitForCondition(async () => {
+      const [firstChapter] = await generationJobsForChapter(app, work.id, work.mainBranchId, 1);
+      return firstChapter?.status === 'completed';
+    }, 'Canceled in-flight chapter did not finish');
+
+    await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.id}`)
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.status).toBe('canceled');
+        expect(body.items.map((item: { status: string }) => item.status)).toEqual([
+          'canceled',
+          'canceled',
+        ]);
+      });
+    expect(await generationJobsForChapter(app, work.id, work.mainBranchId, 2)).toHaveLength(0);
   }, 30_000);
 
   it('pauses, resumes, cancels, and retries a failed chapter from its failed step', async () => {
@@ -440,6 +583,47 @@ describe('batch jobs API', () => {
       .expect(({ body }) => {
         expect(body.status).toBe('canceled');
       });
+  }, 30_000);
+
+  it('carries an earlier approved chapter into the next batch chapter context', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await prepareWork(author.agent, '批次上下文', [1, 2]);
+    const firstBatch = await createJob(author.agent, work.id, work.mainBranchId, {
+      type: 'chapter',
+      chapterNumber: 1,
+    }).expect(202);
+    const firstReview = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      firstBatch.body.id,
+      'waiting_review',
+    );
+    await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${firstBatch.body.id}/review/${firstReview.items[0].id}`,
+      )
+      .send({ action: 'approve' })
+      .expect(201);
+
+    const secondBatch = await createJob(author.agent, work.id, work.mainBranchId, {
+      type: 'chapter',
+      chapterNumber: 2,
+    }).expect(202);
+    const secondReview = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      secondBatch.body.id,
+      'waiting_review',
+    );
+    const generationJob = await author.agent
+      .get(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${secondReview.items[0].generationJobId}`,
+      )
+      .expect(200);
+    expect(generationJob.body.settings.referenceChapters).toContain(1);
+    expect(generationJob.body.context.sourceRefs).toContain('chapter:1');
   }, 30_000);
 
   it('reviews generated chapters and reports completed and failed chapters with usage', async () => {

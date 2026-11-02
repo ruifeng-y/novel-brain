@@ -21,6 +21,11 @@ export type BatchScope =
   | { type: 'range'; startChapter: number; endChapter: number }
   | { type: 'book' };
 
+export type BatchChapterOption = {
+  chapterNumber: number;
+  title: string;
+};
+
 export type BatchJobSummary = {
   id: string;
   status: BatchJobStatus;
@@ -128,6 +133,27 @@ export type BatchReviewDecision =
 
 function jobsPath(workId: string, branchId: string): string {
   return `/api/v1/works/${encodeURIComponent(workId)}/branches/${encodeURIComponent(branchId)}`;
+}
+
+export function chapterOptionsFromOutlines(
+  outlines: Array<{
+    level: string;
+    chapterNumber: number | null;
+    title: string;
+  }>,
+): BatchChapterOption[] {
+  return outlines
+    .filter(
+      (outline): outline is { level: string; chapterNumber: number; title: string } =>
+        outline.level === 'chapter' &&
+        outline.chapterNumber !== null &&
+        Number.isInteger(outline.chapterNumber),
+    )
+    .map((outline) => ({
+      chapterNumber: outline.chapterNumber,
+      title: outline.title.trim() || `第 ${outline.chapterNumber} 章`,
+    }))
+    .sort((left, right) => left.chapterNumber - right.chapterNumber);
 }
 
 export function loadBatchJobs(
