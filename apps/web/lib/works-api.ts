@@ -1,3 +1,5 @@
+import type { GenrePackDefinition, WorkGenrePack } from '@novel/contracts';
+
 export type WorkStatus = 'preparing' | 'serializing' | 'paused' | 'completed' | 'archived';
 export type WorkScale = 'short' | 'medium' | 'long' | 'epic';
 
@@ -5,7 +7,13 @@ export type Work = {
   id: string;
   title: string;
   penName: string;
-  genrePack: string;
+  genrePack: WorkGenrePack;
+  genrePackLabel: string;
+  genreTemplate:
+    | (GenrePackDefinition['template'] & {
+        subtypes: GenrePackDefinition['subtypes'];
+      })
+    | null;
   scale: WorkScale;
   targetPlatform: string;
   status: WorkStatus;
@@ -27,6 +35,7 @@ export type WorkListResponse = {
 
 export const GENRE_LABELS: Record<string, string> = {
   xianxia: '仙侠',
+  urban: '都市',
 };
 
 export const SCALE_LABELS: Record<WorkScale, string> = {

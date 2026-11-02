@@ -3535,6 +3535,17 @@ textarea {
   color: #f6f2e8;
 }
 
+.settings-subtype-nav {
+  margin-top: -10px;
+  padding-top: 10px;
+  border-top: 0;
+}
+
+.settings-subtype-nav button[aria-pressed='true'] {
+  border-color: #9ba78e;
+  background: #4e5f45;
+}
+
 .settings-new-button {
   width: 100%;
   min-height: 38px;

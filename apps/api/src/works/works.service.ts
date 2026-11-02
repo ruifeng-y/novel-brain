@@ -1,5 +1,10 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { WORK_STATUS_LABELS, type CreateWorkInput } from '@novel/contracts';
+import {
+  getGenrePackDefinition,
+  WORK_STATUS_LABELS,
+  type CreateWorkInput,
+  type GenrePackDefinition,
+} from '@novel/contracts';
 import { workBranches, works, type WorkBranchRow, type WorkRow } from '@novel/db';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
@@ -10,6 +15,10 @@ type WorkResponse = {
   title: string;
   penName: string;
   genrePack: string;
+  genrePackLabel: string;
+  genreTemplate: GenrePackDefinition['template'] & {
+    subtypes: GenrePackDefinition['subtypes'];
+  };
   scale: string;
   targetPlatform: string;
   status: WorkRow['status'];
@@ -112,11 +121,21 @@ export class WorksService {
   }
 
   private toResponse(work: WorkRow, mainBranch: WorkBranchRow | null): WorkResponse {
+    const genrePack = getGenrePackDefinition(work.genrePack);
     return {
       id: work.id,
       title: work.title,
       penName: work.penName,
       genrePack: work.genrePack,
+      genrePackLabel: genrePack?.label ?? work.genrePack,
+      genreTemplate: {
+        key: genrePack?.template.key ?? work.genrePack,
+        name: genrePack?.template.name ?? '题材主模板',
+        summary: genrePack?.template.summary ?? '',
+        writingGuide: genrePack?.template.writingGuide ?? [],
+        checkCategories: genrePack?.template.checkCategories ?? [],
+        subtypes: genrePack?.subtypes ?? [],
+      },
       scale: work.scale,
       targetPlatform: work.targetPlatform,
       status: work.status,
