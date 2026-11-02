@@ -5,6 +5,7 @@ import {
   ENTITY_SCOPE_LABELS,
   ENTITY_STATUS_LABELS,
   ENTITY_TYPE_LABELS,
+  HISTORY_SUBTYPE_LABELS,
   RELATION_PREDICATE_LABELS,
   type CustomFieldDefinitionInput,
   type CustomFieldValue,
@@ -51,6 +52,8 @@ type EntityResponse = {
   aliases: string[];
   type: string;
   typeLabel: string;
+  subtype: string | null;
+  subtypeLabel: string | null;
   summary: string;
   description: string;
   tags: string[];
@@ -170,6 +173,9 @@ export class EntitiesService {
     if (input.type) {
       conditions.push(eq(entities.type, input.type));
     }
+    if (input.subtype) {
+      conditions.push(eq(entities.subtype, input.subtype));
+    }
     if (input.status) {
       conditions.push(eq(entities.status, input.status));
     }
@@ -220,7 +226,8 @@ export class EntitiesService {
     branchId: string,
     input: EntityCreateInput,
   ): Promise<EntityResponse> {
-    await this.requireBranch(userId, workId, branchId);
+    const work = await this.requireBranch(userId, workId, branchId);
+    this.validateSubtype(work.genrePack, input.subtype);
     const customFields = await this.validateCustomFields(workId, branchId, input.customFields);
     const now = new Date();
 
@@ -233,6 +240,7 @@ export class EntitiesService {
           name: input.name,
           aliases: input.aliases,
           type: input.type,
+          subtype: input.subtype ?? '',
           summary: input.summary,
           description: input.description,
           tags: input.tags,
@@ -264,8 +272,9 @@ export class EntitiesService {
     entityId: string,
     input: EntityUpdateInput,
   ): Promise<EntityResponse> {
-    await this.requireBranch(userId, workId, branchId);
+    const work = await this.requireBranch(userId, workId, branchId);
     const existing = await this.requireEntity(workId, branchId, entityId);
+    this.validateSubtype(work.genrePack, input.subtype ?? existing.subtype);
     const customFields = await this.validateCustomFields(workId, branchId, {
       ...existing.customFields,
       ...(input.customFields ?? {}),
@@ -279,6 +288,7 @@ export class EntitiesService {
           ...(input.name === undefined ? {} : { name: input.name }),
           ...(input.aliases === undefined ? {} : { aliases: input.aliases }),
           ...(input.type === undefined ? {} : { type: input.type }),
+          ...(input.subtype === undefined ? {} : { subtype: input.subtype ?? '' }),
           ...(input.summary === undefined ? {} : { summary: input.summary }),
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.tags === undefined ? {} : { tags: input.tags }),
@@ -401,9 +411,13 @@ export class EntitiesService {
     });
   }
 
-  private async requireBranch(userId: string, workId: string, branchId: string): Promise<void> {
+  private async requireBranch(
+    userId: string,
+    workId: string,
+    branchId: string,
+  ): Promise<{ genrePack: string }> {
     const [work] = await this.database.db
-      .select({ id: works.id })
+      .select({ id: works.id, genrePack: works.genrePack })
       .from(works)
       .where(and(eq(works.id, workId), eq(works.userId, userId), isNull(works.deletedAt)))
       .limit(1);
@@ -418,6 +432,20 @@ export class EntitiesService {
       .limit(1);
     if (!branch) {
       throw entitiesError(HttpStatus.NOT_FOUND, 'BRANCH_NOT_FOUND', 'Story branch not found');
+    }
+    return { genrePack: work.genrePack };
+  }
+
+  private validateSubtype(genrePack: string, subtype: string | null): void {
+    if (!subtype) {
+      return;
+    }
+    if (genrePack !== 'history') {
+      throw entitiesError(
+        HttpStatus.BAD_REQUEST,
+        'SUBTYPE_NOT_ALLOWED',
+        'This setting subtype belongs to another genre pack',
+      );
     }
   }
 
@@ -677,6 +705,12 @@ export class EntitiesService {
       aliases: row.aliases,
       type: row.type,
       typeLabel: ENTITY_TYPE_LABELS[row.type as keyof typeof ENTITY_TYPE_LABELS] ?? row.type,
+      subtype: row.subtype || null,
+      subtypeLabel: row.subtype
+        ? (HISTORY_SUBTYPE_LABELS[
+            row.subtype as keyof typeof HISTORY_SUBTYPE_LABELS
+          ] ?? row.subtype)
+        : null,
       summary: row.summary,
       description: row.description,
       tags: row.tags,

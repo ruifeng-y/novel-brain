@@ -199,6 +199,64 @@ describe('works API', () => {
       });
   });
 
+  it('creates a history work with the alternate-ancient main template', async () => {
+    const author = await createAuthor(app, passwordHash);
+
+    const created = await author.agent
+      .post('/api/v1/works')
+      .send({
+        title: '北境争鼎',
+        penName: '朔风客',
+        genrePack: 'history',
+        genreVariant: 'transmigration_hegemony',
+        scale: 'long',
+        targetPlatform: '起点中文网',
+      })
+      .expect(201);
+
+    expect(created.body).toMatchObject({
+      title: '北境争鼎',
+      genrePack: 'history',
+      genrePackLabel: '历史',
+      genreVariant: 'transmigration_hegemony',
+      genreVariantLabel: '穿越争霸',
+      mainTemplate: '架空古代',
+      status: 'preparing',
+      mainBranch: {
+        name: 'main',
+        isMain: true,
+      },
+    });
+
+    const stored = await app
+      .get(DatabaseService)
+      .pool.query<{ genre_pack: string; genre_variant: string }>(
+        'select genre_pack, genre_variant from works where id = $1',
+        [created.body.id],
+      );
+    expect(stored.rows).toEqual([
+      {
+        genre_pack: 'history',
+        genre_variant: 'transmigration_hegemony',
+      },
+    ]);
+
+    await author.agent
+      .post('/api/v1/works')
+      .send({
+        title: '错配题材',
+        penName: '朔风客',
+        genrePack: 'xianxia',
+        genreVariant: 'alternate_ancient',
+        scale: 'long',
+        targetPlatform: '起点中文网',
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('VALIDATION_ERROR');
+      });
+  });
+
   it('rejects incomplete work details without creating a branch', async () => {
     const author = await createAuthor(app, passwordHash);
 

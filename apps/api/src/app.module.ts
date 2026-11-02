@@ -13,6 +13,8 @@ import { EntitiesModule } from './entities/entities.module';
 import { ChapterGenerationController } from './generation/chapter-generation.controller';
 import { ChapterGenerationModule } from './generation/chapter-generation.module';
 import { HealthModule } from './health/health.module';
+import { HistoryController } from './history/history.controller';
+import { HistoryModule } from './history/history.module';
 import { MapsController } from './maps/maps.controller';
 import { MapsModule } from './maps/maps.module';
 import { OutlineController } from './planning/outline.controller';
@@ -43,6 +45,7 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     WorldbuildingModule,
     CharactersModule,
     ChapterGenerationModule,
+    HistoryModule,
     HealthModule,
   ],
 })
@@ -60,6 +63,7 @@ export class AppModule implements NestModule {
         EntitiesController,
         MapsController,
         WorldbuildingController,
+        HistoryController,
         CharactersController,
         ChapterGenerationController,
       );

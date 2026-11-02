@@ -6,6 +6,10 @@ export type Work = {
   title: string;
   penName: string;
   genrePack: string;
+  genrePackLabel: string;
+  genreVariant: string | null;
+  genreVariantLabel: string | null;
+  mainTemplate: string | null;
   scale: WorkScale;
   targetPlatform: string;
   status: WorkStatus;
@@ -27,6 +31,7 @@ export type WorkListResponse = {
 
 export const GENRE_LABELS: Record<string, string> = {
   xianxia: '仙侠',
+  history: '历史',
 };
 
 export const SCALE_LABELS: Record<WorkScale, string> = {

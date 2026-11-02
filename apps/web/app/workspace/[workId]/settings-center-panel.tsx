@@ -5,8 +5,13 @@ import {
   ENTITY_SCOPE_LABELS,
   ENTITY_STATUS_LABELS,
   ENTITY_TYPE_LABELS,
+  HISTORY_CUSTOM_FIELDS,
+  HISTORY_SUBTYPE_ENTITY_TYPES,
+  HISTORY_SUBTYPE_LABELS,
+  HISTORY_SUBTYPE_SUMMARIES,
   RELATION_PREDICATE_LABELS,
   type CustomFieldValue,
+  type HistorySubtype,
 } from '@novel/contracts';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError, friendlyError } from '../../../lib/auth-api';
@@ -54,11 +59,15 @@ const RELATION_PREDICATES = Object.entries(RELATION_PREDICATE_LABELS) as Array<
   [RelationPredicate, string]
 >;
 
-function emptyEntity(type: EntityType = 'character'): EntityInput {
+function emptyEntity(
+  type: EntityType = 'character',
+  subtype: HistorySubtype | null = null,
+): EntityInput {
   return {
     name: '',
     aliases: [],
     type,
+    subtype,
     summary: '',
     description: '',
     tags: [],
@@ -73,6 +82,7 @@ function entityDraft(entity: Entity): EntityInput {
     name: entity.name,
     aliases: entity.aliases,
     type: entity.type,
+    subtype: entity.subtype,
     summary: entity.summary,
     description: entity.description,
     tags: entity.tags,
@@ -97,6 +107,7 @@ function sameFilters(left: EntitySearchFilters, right: EntitySearchFilters): boo
   return (
     left.q === right.q &&
     left.type === right.type &&
+    left.subtype === right.subtype &&
     left.tag === right.tag &&
     left.status === right.status
   );
@@ -131,12 +142,14 @@ export function SettingsCenterPanel({
   initialEntities,
   initialCustomFields,
   initialRelations,
+  genrePack,
 }: {
   workId: string;
   branchId: string;
   initialEntities: Entity[];
   initialCustomFields: CustomFieldDefinition[];
   initialRelations: Relation[];
+  genrePack: string;
 }) {
   const [catalog, setCatalog] = useState(initialEntities);
   const [items, setItems] = useState(initialEntities);
@@ -215,6 +228,7 @@ export function SettingsCenterPanel({
     void applyFilters({
       ...(searchQuery.trim() ? { q: searchQuery.trim() } : {}),
       ...(activeFilters.type ? { type: activeFilters.type } : {}),
+      ...(activeFilters.subtype ? { subtype: activeFilters.subtype } : {}),
       ...(tagQuery.trim() ? { tag: tagQuery.trim() } : {}),
       ...(statusQuery ? { status: statusQuery } : {}),
     });
@@ -224,6 +238,16 @@ export function SettingsCenterPanel({
     void applyFilters({
       ...(searchQuery.trim() ? { q: searchQuery.trim() } : {}),
       ...(type ? { type } : {}),
+      ...(activeFilters.subtype ? { subtype: activeFilters.subtype } : {}),
+      ...(tagQuery.trim() ? { tag: tagQuery.trim() } : {}),
+      ...(statusQuery ? { status: statusQuery } : {}),
+    });
+  }
+
+  function chooseSubtype(subtype: HistorySubtype | undefined) {
+    void applyFilters({
+      ...(searchQuery.trim() ? { q: searchQuery.trim() } : {}),
+      ...(subtype ? { subtype } : {}),
       ...(tagQuery.trim() ? { tag: tagQuery.trim() } : {}),
       ...(statusQuery ? { status: statusQuery } : {}),
     });
@@ -233,7 +257,13 @@ export function SettingsCenterPanel({
     editIntentRef.current += 1;
     setSelectedId(null);
     setDetail(null);
-    setDraft(emptyEntity(activeFilters.type));
+    const subtype = activeFilters.subtype ?? null;
+    setDraft(
+      emptyEntity(
+        subtype ? HISTORY_SUBTYPE_ENTITY_TYPES[subtype] : activeFilters.type,
+        subtype,
+      ),
+    );
     setSaveState({ status: 'idle' });
   }
 
@@ -347,6 +377,10 @@ export function SettingsCenterPanel({
       catalog.find((entity) => entity.id === selectedId) ??
       detail)
     : null;
+  const visibleCustomFields = customFields.filter((field) => {
+    const packField = HISTORY_CUSTOM_FIELDS.find((candidate) => candidate.key === field.key);
+    return !packField || !draft.subtype || packField.subtypes.includes(draft.subtype);
+  });
 
   return (
     <section className="settings-center-board" aria-labelledby="settings-center-title">
@@ -431,6 +465,31 @@ export function SettingsCenterPanel({
             ))}
           </nav>
 
+          {genrePack === 'history' ? (
+            <nav className="settings-subtype-nav" aria-label="历史设定子类型">
+              <button
+                aria-pressed={activeFilters.subtype === undefined}
+                onClick={() => chooseSubtype(undefined)}
+                type="button"
+              >
+                全部历史设定
+              </button>
+              {(Object.entries(HISTORY_SUBTYPE_LABELS) as Array<
+                [HistorySubtype, string]
+              >).map(([subtype, label]) => (
+                <button
+                  aria-pressed={activeFilters.subtype === subtype}
+                  key={subtype}
+                  onClick={() => chooseSubtype(subtype)}
+                  title={HISTORY_SUBTYPE_SUMMARIES[subtype]}
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          ) : null}
+
           <button
             className="primary-button settings-new-button"
             onClick={startNewEntity}
@@ -466,7 +525,7 @@ export function SettingsCenterPanel({
                       </span>
                       <span>{entity.summary || '还没有一句话摘要'}</span>
                       <small>
-                        {entity.typeLabel}
+                        {entity.subtypeLabel ?? entity.typeLabel}
                         {entity.tags.length > 0 ? ` · ${entity.tags.join('、')}` : ''}
                       </small>
                     </span>
@@ -617,7 +676,13 @@ export function SettingsCenterPanel({
                 <span>类型</span>
                 <select
                   aria-label="类型"
-                  onChange={(event) => updateDraft('type', event.currentTarget.value as EntityType)}
+                  onChange={(event) => {
+                    const type = event.currentTarget.value as EntityType;
+                    updateDraft('type', type);
+                    if (genrePack !== 'history') {
+                      updateDraft('subtype', null);
+                    }
+                  }}
                   value={draft.type}
                 >
                   {ENTITY_TYPES.map(([value, label]) => (
@@ -627,6 +692,31 @@ export function SettingsCenterPanel({
                   ))}
                 </select>
               </label>
+              {genrePack === 'history' ? (
+                <label className="field">
+                  <span>历史子类型</span>
+                  <select
+                    aria-label="历史子类型"
+                    onChange={(event) => {
+                      const subtype = (event.currentTarget.value || null) as HistorySubtype | null;
+                      updateDraft('subtype', subtype);
+                      if (subtype) {
+                        updateDraft('type', HISTORY_SUBTYPE_ENTITY_TYPES[subtype]);
+                      }
+                    }}
+                    value={draft.subtype ?? ''}
+                  >
+                    <option value="">未分类</option>
+                    {(Object.entries(HISTORY_SUBTYPE_LABELS) as Array<
+                      [HistorySubtype, string]
+                    >).map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <label className="field">
                 <span>作用域</span>
                 <select
@@ -693,11 +783,11 @@ export function SettingsCenterPanel({
               />
             </label>
 
-            {customFields.length > 0 ? (
+            {visibleCustomFields.length > 0 ? (
               <fieldset className="settings-custom-fields">
                 <legend>题材字段</legend>
                 <div className="settings-form-grid">
-                  {customFields.map((field) => (
+                  {visibleCustomFields.map((field) => (
                     <CustomFieldControl
                       entities={catalog}
                       field={field}

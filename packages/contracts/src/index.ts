@@ -5,6 +5,7 @@ export * from './entity-center';
 export * from './env';
 export * from './fact-extraction';
 export * from './health';
+export * from './history-pack';
 export * from './map-faction';
 export * from './model-configs';
 export * from './outline';

@@ -1,6 +1,20 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
-import { WORK_STATUS_LABELS, type CreateWorkInput } from '@novel/contracts';
-import { workBranches, works, type WorkBranchRow, type WorkRow } from '@novel/db';
+import {
+  GENRE_PACK_LABELS,
+  HISTORY_CUSTOM_FIELDS,
+  HISTORY_MAIN_TEMPLATE,
+  HISTORY_VARIANT_LABELS,
+  WORK_STATUS_LABELS,
+  type CreateWorkInput,
+  type HistoryVariant,
+} from '@novel/contracts';
+import {
+  entityCustomFields,
+  workBranches,
+  works,
+  type WorkBranchRow,
+  type WorkRow,
+} from '@novel/db';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { worksError } from './works.errors';
@@ -10,6 +24,10 @@ type WorkResponse = {
   title: string;
   penName: string;
   genrePack: string;
+  genrePackLabel: string;
+  genreVariant: string | null;
+  genreVariantLabel: string | null;
+  mainTemplate: string | null;
   scale: string;
   targetPlatform: string;
   status: WorkRow['status'];
@@ -68,6 +86,10 @@ export class WorksService {
           title: input.title,
           penName: input.penName,
           genrePack: input.genrePack,
+          genreVariant:
+            input.genrePack === 'history'
+              ? (input.genreVariant ?? 'alternate_ancient')
+              : null,
           scale: input.scale,
           targetPlatform: input.targetPlatform,
           status: 'preparing',
@@ -84,6 +106,22 @@ export class WorksService {
           createdBy: userId,
         })
         .returning();
+
+      if (input.genrePack === 'history') {
+        const now = new Date();
+        await tx.insert(entityCustomFields).values(
+          HISTORY_CUSTOM_FIELDS.map((field) => ({
+            workId: work.id,
+            branchId: mainBranch.id,
+            key: field.key,
+            label: field.label,
+            type: field.type,
+            options: field.options,
+            createdAt: now,
+            updatedAt: now,
+          })),
+        );
+      }
 
       return { work, mainBranch };
     });
@@ -112,11 +150,21 @@ export class WorksService {
   }
 
   private toResponse(work: WorkRow, mainBranch: WorkBranchRow | null): WorkResponse {
+    const historyVariant =
+      work.genrePack === 'history'
+        ? ((work.genreVariant ?? 'alternate_ancient') as HistoryVariant)
+        : null;
     return {
       id: work.id,
       title: work.title,
       penName: work.penName,
       genrePack: work.genrePack,
+      genrePackLabel:
+        GENRE_PACK_LABELS[work.genrePack as keyof typeof GENRE_PACK_LABELS] ??
+        work.genrePack,
+      genreVariant: historyVariant,
+      genreVariantLabel: historyVariant ? HISTORY_VARIANT_LABELS[historyVariant] : null,
+      mainTemplate: work.genrePack === 'history' ? HISTORY_MAIN_TEMPLATE : null,
       scale: work.scale,
       targetPlatform: work.targetPlatform,
       status: work.status,

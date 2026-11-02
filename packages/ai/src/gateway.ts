@@ -132,6 +132,13 @@ export class FakeAiGateway implements AiGateway {
     if (input.prompt.includes('【摘要要求】')) {
       return '沈砚在荒寺断碑前引动残剑，以一段记忆为代价窥见母亲失踪的线索，也在追兵逼近时发现碑文正在回应他的名字。';
     }
+    if (input.prompt.includes('【历史题材规则】')) {
+      const match = input.prompt.match(/目标汉字数：(\d+)\s*到\s*(\d+)/);
+      const target = match
+        ? Number(match[1]) + Math.floor((Number(match[2]) - Number(match[1])) / 2)
+        : 2_500;
+      return buildDeterministicHistoryChapter(target);
+    }
     if (input.prompt.includes('【钩子要求】')) {
       return [
         '1. 断碑后的黑暗里，有人用他母亲的声音叫了他的名字。',
@@ -200,6 +207,21 @@ export class FakeAiGateway implements AiGateway {
         statement: '沈砚知道自己一旦退开，今夜就再也找不到这块碑。',
         sourceSentence: '沈砚没有松手。他知道自己一旦退开，今夜便再也找不到这块碑。',
       },
+      {
+        type: 'event',
+        statement: '顾行舟扣下调令，并禁止两营私自拔营。',
+        sourceSentence: '顾行舟把算筹收进袖中，先让人去请军中掌书记，又把两名传令兵分到左右营，禁止任何人私自拔营。',
+      },
+      {
+        type: 'body_state',
+        statement: '顾行舟连夜核对文书，眉心和右手都因疲累发僵。',
+        sourceSentence: '他连夜未睡，眉心发胀，右手也因握笔太久有些发僵。',
+      },
+      {
+        type: 'character_knowledge',
+        statement: '顾行舟判断调令可能越权，或有人借此试探边军听命于谁。',
+        sourceSentence: '顾行舟把两道手续并在一起看，心里已经有了判断：这份调令要么是京城里有人越权，要么是有人借监军使的名义试探边军听谁的号令。',
+      },
     ];
 
     return {
@@ -233,6 +255,42 @@ export function buildDeterministicChineseChapter(
   let index = 0;
   while (countCjkCharacters(text) < target) {
     text += `\n\n${CHAPTER_PARAGRAPHS[index % CHAPTER_PARAGRAPHS.length]}`;
+    index += 1;
+  }
+
+  let count = 0;
+  const characters = Array.from(text);
+  let end = 0;
+  for (; end < characters.length; end += 1) {
+    if (isCjkIdeograph(characters[end])) {
+      count += 1;
+      if (count === target) {
+        end += 1;
+        break;
+      }
+    }
+  }
+  return characters.slice(0, end).join('');
+}
+
+const HISTORY_CHAPTER_PARAGRAPHS = [
+  '朔州的雪落了一夜，城墙上的火把被风吹得东倒西歪。顾行舟站在校场边，把军册摊在木案上，就着昏黄的灯火逐行核对。营中三千兵马，今夜能披甲出营的不到两千七百，余下的不是旧伤未愈，就是被派去押运粮车。',
+  '值夜校尉催他尽快点卯，说监军使的调令已经进了城。顾行舟没有急着应声，只把调令接过来反复看。纸上写的是三日内赶到雁门关，落款却有中书省的官印，越过了朔州都督府与兵部两道签发。放在现代军校里，这等同于一份来路不明的越级命令，绝不能只凭一枚大印就调动整支边军。',
+  '他唤来押粮的老什长，问清随军粮草。车上还剩两千石，按每人每日二升计算，三千人走二十天便要一千二百石，看似足够，可若临时加派民夫、战马和守城余部，数目立刻紧起来。顾行舟把算筹收进袖中，先让人去请军中掌书记，又把两名传令兵分到左右营，禁止任何人私自拔营。',
+  '雪更深时，掌书记带着官制表赶来。表上写明，朔州军受都督府节制，兵部调兵须有都督副署；若遇边警，监军使可以先发令，但必须在次日补交兵部文书。顾行舟把两道手续并在一起看，心里已经有了判断：这份调令要么是京城里有人越权，要么是有人借监军使的名义试探边军听谁的号令。',
+  '他连夜未睡，眉心发胀，右手也因握笔太久有些发僵。亲兵端来一碗冷掉的粟米粥，他只用两口便放下，又把营中可用的民夫、战马和箭矢逐项记下。若天亮前不能拿出一个稳妥办法，三千人的性命就会被一张纸拖进雪地里。',
+  '营门外忽然响起马蹄声。一个披黑氅的使者踏雪而入，手中捧着第二道圣旨。顾行舟没有跪得太快，只让掌书记先验印、验封、验日期。使者脸色发白，却仍高声催军。四周将士都看向顾行舟，雪粒打在甲片上，像无数细小的铁钉。',
+  '顾行舟终于起身，把粮册、官制表和第一道调令一并摊开。他说话不快，却字字清楚：没有都督副署，朔州军不能全军出境；粮草只够十日急行，也不能按三日期限赶到雁门关。若圣旨真意是守关，他愿先派三百轻骑探路；若是要全营送死，他请使者留下姓名，与这份调令一同送京核验。',
+  '校场上一时无人出声。老什长先跪下称是，接着是掌书记，再接着是两营都尉。黑氅使者握紧圣旨，指节被寒风吹得发青，最终只冷笑一声，说监军使就在城外，明日要亲自入营问罪。',
+  '顾行舟望着城门方向，知道自己今夜拖住的不是一纸调令，而是一整条从京城伸到北境的权力线。他把残雪从军册上拂去，吩咐亲兵备马。真正的监军使既然来了，明日这一营兵马究竟听谁的命令，就会在所有人面前见分晓。',
+] as const;
+
+export function buildDeterministicHistoryChapter(targetCharacters = 2_500): string {
+  const target = Math.max(1, targetCharacters);
+  let text = HISTORY_CHAPTER_PARAGRAPHS.join('\n\n');
+  let index = 0;
+  while (countCjkCharacters(text) < target) {
+    text += `\n\n${HISTORY_CHAPTER_PARAGRAPHS[index % HISTORY_CHAPTER_PARAGRAPHS.length]}`;
     index += 1;
   }
 

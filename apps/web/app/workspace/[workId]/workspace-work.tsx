@@ -24,6 +24,7 @@ import {
 import { loadStoryLedger, type StoryLedger } from '../../../lib/story-ledger-api';
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
 import { SettingsCenterPanel } from './settings-center-panel';
+import { HistoryRulePanel } from './history-rule-panel';
 import { MapFactionPanel } from './map-faction-panel';
 import { OutlineWorkspacePanel } from './outline-workspace-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
@@ -176,7 +177,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
 
       <section className="work-detail-hero">
         <div>
-          <p className="workspace-step">{GENRE_LABELS[work.genrePack] ?? work.genrePack}</p>
+          <p className="workspace-step">
+            {GENRE_LABELS[work.genrePack] ?? work.genrePack}
+            {work.genreVariantLabel ? ` · ${work.genreVariantLabel}` : ''}
+          </p>
           <h1>{work.title}</h1>
           <p>
             {work.penName} · {SCALE_LABELS[work.scale] ?? work.scale} · {work.targetPlatform}
@@ -241,6 +245,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
       {work.mainBranch ? (
         <SettingsCenterPanel
           branchId={work.mainBranch.id}
+          genrePack={work.genrePack}
           initialCustomFields={state.customFields}
           initialEntities={state.entities}
           initialRelations={state.relations}
@@ -257,6 +262,15 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         />
       ) : null}
 
+      {work.mainBranch && work.genrePack === 'history' ? (
+        <HistoryRulePanel
+          branchId={work.mainBranch.id}
+          entities={state.entities}
+          mapOverview={state.mapOverview}
+          workId={work.id}
+        />
+      ) : null}
+
       <div className="work-detail-grid">
         <section className="work-detail-section">
           <p className="workspace-step">作品信息</p>
@@ -268,7 +282,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             </div>
             <div>
               <dt>题材</dt>
-              <dd>{GENRE_LABELS[work.genrePack] ?? work.genrePack}</dd>
+              <dd>
+                {GENRE_LABELS[work.genrePack] ?? work.genrePack}
+                {work.genreVariantLabel ? ` · ${work.genreVariantLabel}` : ''}
+              </dd>
             </div>
             <div>
               <dt>规模</dt>

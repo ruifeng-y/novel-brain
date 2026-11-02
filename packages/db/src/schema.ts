@@ -165,6 +165,7 @@ export const works = pgTable(
     title: text('title').notNull(),
     penName: text('pen_name').notNull(),
     genrePack: text('genre_pack').notNull(),
+    genreVariant: text('genre_variant'),
     scale: text('scale').notNull(),
     targetPlatform: text('target_platform').notNull(),
     status: workStatusEnum('status').notNull().default('preparing'),
@@ -541,6 +542,7 @@ export const entities = pgTable(
       .notNull()
       .default(sql`'[]'::jsonb`),
     type: text('type').notNull(),
+    subtype: text('subtype'),
     summary: text('summary').notNull().default(''),
     description: text('description').notNull().default(''),
     tags: jsonb('tags')
@@ -567,6 +569,11 @@ export const entities = pgTable(
       table.branchId,
       table.type,
       table.status,
+    ),
+    index('entities_work_branch_subtype_idx').on(
+      table.workId,
+      table.branchId,
+      table.subtype,
     ),
   ],
 );
