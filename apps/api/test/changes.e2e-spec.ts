@@ -455,15 +455,17 @@ describe('change request and impact analysis API', () => {
       branchedBranchId: expect.any(String),
     });
 
-    const branch = await app
-      .get(DatabaseService)
-      .pool.query<{ parent_branch_id: string; is_main: boolean }>(
-        `select parent_branch_id, is_main from work_branches where id = $1`,
-        [branched.body.branchedBranchId],
-      );
+    const branch = await app.get(DatabaseService).pool.query<{
+      parent_branch_id: string;
+      is_main: boolean;
+      reason: string;
+      kind: string;
+    }>(`select parent_branch_id, is_main, reason, kind from work_branches where id = $1`, [branched.body.branchedBranchId]);
     expect(branch.rows[0]).toEqual({
       parent_branch_id: work.mainBranchId,
       is_main: false,
+      reason: '新设定要求借剑必须忘掉一个名字。',
+      kind: 'rewrite',
     });
   });
 

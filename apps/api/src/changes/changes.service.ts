@@ -614,6 +614,8 @@ export class ChangesService {
           name: input.name,
           isMain: false,
           parentBranchId: branchId,
+          kind: 'rewrite',
+          reason: row.reason,
           status: 'active',
           createdBy: userId,
           createdAt: now,
