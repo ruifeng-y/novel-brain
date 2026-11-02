@@ -673,6 +673,38 @@ textarea {
   font-weight: 600;
 }
 
+.workspace-scope-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.workspace-scope-line .workspace-step {
+  margin: 0;
+}
+
+.workspace-beta-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 2px 9px;
+  border: 1px solid #c9b98f;
+  border-radius: 999px;
+  background: #f6f0df;
+  color: #66542e;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.workspace-beta-note {
+  max-width: 680px;
+  margin: 12px 0 0;
+  color: #68736a;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
 .workspace-email {
   margin: 0;
   color: #68736a;

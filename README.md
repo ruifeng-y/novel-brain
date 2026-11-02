@@ -1,10 +1,10 @@
 # NovelBrain
 
-面向个人作者的长篇 AI 创作平台。当前处于 M1 仙侠内部 beta 阶段。
+面向个人作者的长篇 AI 创作平台。当前处于 M2 扩大 beta 阶段。
 
-M1 只面向内部 beta，验证仙侠题材从故事圣经、设定、大纲到多章连写和连续性检查
-的完整闭环。它不是 V1 公开发布版本；历史/都市、批量生产、修改版本、导出、合规、
-备份恢复和 V1 总验收仍由后续里程碑负责。
+M2 把内部验证从仙侠扩展到仙侠、历史、都市三种题材，并加入批量生产、审核队列、
+修改请求、影响分析、平行版本、版本图和回滚。它仍是内部扩大 beta，不是 V1 公开发布
+版本；导出发布、合规、备份恢复和 V1 总验收仍由 M3 负责。
 
 ## 环境要求
 
@@ -66,6 +66,7 @@ pnpm test
 pnpm test:e2e
 pnpm demo:m0
 pnpm demo:m1
+pnpm demo:m2
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
@@ -87,6 +88,18 @@ pnpm db:seed
 - 写作台提供连续性提示、六项质量报告、伏笔、人物状态和版本历史。
 - Vitest、Playwright、lint、typecheck 和 CI 可用。
 
+## M2 扩大 beta 范围
+
+- 仙侠、历史和都市作品都能创建，并用各自题材包生成章节。
+- 历史题材提供架空古代、穿越争霸、朝代官制、军制地理和时代错置检查。
+- 都市题材提供城市、公司、家族、阶层、法律、金钱和人脉规则检查。
+- 批量创作支持按章、按卷、自定义区间和全本，支持暂停、恢复、取消和失败重试。
+- 审核队列支持批准、送写作台、驳回和记录原因后忽略。
+- 修改请求提供差异、原因、来源、风险、影响分析和六项一致性检查。
+- 平行版本支持从已保存版本分叉、并排比较和选择性摘取。
+- 版本图支持不可删除的历史、单次修改撤销、完整回滚和审计导出。
+- M2 验收使用确定性 fake provider，不调用真实 DeepSeek，也不代表公开发布质量。
+
 ## 文档
 
 - `docs/requirements/v1-requirements.md`
@@ -96,6 +109,7 @@ pnpm db:seed
 - `docs/adr/0001-canon-first-story-state.md`
 - `docs/acceptance/m0/acceptance.md`
 - `docs/acceptance/m1/acceptance.md`
+- `docs/acceptance/m2/acceptance.md`
 - `docs/operations/security-backup.md`
 - `docs/operations/content-moderation.md`
 - `docs/operations/security-checklist.md`
