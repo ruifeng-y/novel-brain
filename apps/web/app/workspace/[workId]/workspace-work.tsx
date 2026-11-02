@@ -28,6 +28,7 @@ import { MapFactionPanel } from './map-faction-panel';
 import { ChangeRequestPanel } from './change-request-panel';
 import { HistoryRulePanel } from './history-rule-panel';
 import { OutlineWorkspacePanel } from './outline-workspace-panel';
+import { ParallelVersionsPanel } from './parallel-versions-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 import { StoryLedgerPanel } from './story-ledger-panel';
 
@@ -269,6 +270,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
 
       {work.mainBranch ? (
         <ChangeRequestPanel branchId={work.mainBranch.id} workId={work.id} />
+      ) : null}
+
+      {work.mainBranch ? (
+        <ParallelVersionsPanel branchId={work.mainBranch.id} workId={work.id} />
       ) : null}
 
       {work.mainBranch && work.genrePack === 'history' ? (

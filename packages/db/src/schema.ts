@@ -155,6 +155,24 @@ export const workStatusEnum = pgEnum('work_status', [
 
 export const workBranchStatusEnum = pgEnum('work_branch_status', ['active', 'archived']);
 
+export const workBranchKindEnum = pgEnum('work_branch_kind', [
+  'rewrite',
+  'what_if',
+  'alternate_ending',
+  'experiment',
+]);
+
+export const workBranchForkPointKindEnum = pgEnum('work_branch_fork_point_kind', [
+  'current',
+  'chapter_version',
+]);
+
+export type WorkBranchForkSnapshotValue = {
+  settings?: Record<string, string>;
+  outlines?: Record<string, string>;
+  chapters?: Record<string, string>;
+};
+
 export const works = pgTable(
   'works',
   {
@@ -189,6 +207,16 @@ export const workBranches = pgTable(
     isMain: boolean('is_main').notNull().default(false),
     parentBranchId: uuid('parent_branch_id'),
     baseCommitId: uuid('base_commit_id'),
+    kind: workBranchKindEnum('kind').notNull().default('experiment'),
+    reason: text('reason').notNull().default(''),
+    forkPointKind: workBranchForkPointKindEnum('fork_point_kind').notNull().default('current'),
+    forkChapterId: uuid('fork_chapter_id'),
+    forkChapterVersionId: uuid('fork_chapter_version_id'),
+    forkChapterNumber: integer('fork_chapter_number'),
+    forkSnapshot: jsonb('fork_snapshot')
+      .$type<WorkBranchForkSnapshotValue>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     status: workBranchStatusEnum('status').notNull().default('active'),
     createdBy: uuid('created_by')
       .notNull()
@@ -570,11 +598,7 @@ export const entities = pgTable(
       table.type,
       table.status,
     ),
-    index('entities_work_branch_subtype_idx').on(
-      table.workId,
-      table.branchId,
-      table.subtype,
-    ),
+    index('entities_work_branch_subtype_idx').on(table.workId, table.branchId, table.subtype),
   ],
 );
 

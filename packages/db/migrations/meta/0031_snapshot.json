@@ -1,5 +1,5 @@
 {
-  "id": "3686a305-db9f-46bd-bae4-fad9334dd259",
+  "id": "48a09802-2873-48e5-bbd0-e1e62925e565",
   "prevId": "2bde9ecd-a119-4850-b955-d738709c7c54",
   "version": "7",
   "dialect": "postgresql",
@@ -152,9 +152,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "annotations_chapter_created_idx": {
           "name": "annotations_chapter_created_idx",
@@ -173,89 +173,89 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "annotations_work_id_works_id_fk": {
           "name": "annotations_work_id_works_id_fk",
           "tableFrom": "annotations",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "annotations_branch_id_work_branches_id_fk": {
           "name": "annotations_branch_id_work_branches_id_fk",
           "tableFrom": "annotations",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "annotations_chapter_id_chapters_id_fk": {
           "name": "annotations_chapter_id_chapters_id_fk",
           "tableFrom": "annotations",
+          "tableTo": "chapters",
           "columnsFrom": [
             "chapter_id"
           ],
-          "tableTo": "chapters",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "annotations_generation_request_id_generation_requests_id_fk": {
           "name": "annotations_generation_request_id_generation_requests_id_fk",
           "tableFrom": "annotations",
+          "tableTo": "generation_requests",
           "columnsFrom": [
             "generation_request_id"
           ],
-          "tableTo": "generation_requests",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "annotations_draft_id_drafts_id_fk": {
           "name": "annotations_draft_id_drafts_id_fk",
           "tableFrom": "annotations",
+          "tableTo": "drafts",
           "columnsFrom": [
             "draft_id"
           ],
-          "tableTo": "drafts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "annotations_fact_id_facts_id_fk": {
           "name": "annotations_fact_id_facts_id_fk",
           "tableFrom": "annotations",
+          "tableTo": "facts",
           "columnsFrom": [
             "fact_id"
           ],
-          "tableTo": "facts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -343,63 +343,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "canon_commits_work_id_works_id_fk": {
           "name": "canon_commits_work_id_works_id_fk",
           "tableFrom": "canon_commits",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "canon_commits_branch_id_work_branches_id_fk": {
           "name": "canon_commits_branch_id_work_branches_id_fk",
           "tableFrom": "canon_commits",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "canon_commits_chapter_id_chapters_id_fk": {
           "name": "canon_commits_chapter_id_chapters_id_fk",
           "tableFrom": "canon_commits",
+          "tableTo": "chapters",
           "columnsFrom": [
             "chapter_id"
           ],
-          "tableTo": "chapters",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "canon_commits_created_by_users_id_fk": {
           "name": "canon_commits_created_by_users_id_fk",
           "tableFrom": "canon_commits",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -463,9 +463,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "canon_snapshots_branch_created_idx": {
           "name": "canon_snapshots_branch_created_idx",
@@ -484,50 +484,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "canon_snapshots_work_id_works_id_fk": {
           "name": "canon_snapshots_work_id_works_id_fk",
           "tableFrom": "canon_snapshots",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "canon_snapshots_branch_id_work_branches_id_fk": {
           "name": "canon_snapshots_branch_id_work_branches_id_fk",
           "tableFrom": "canon_snapshots",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "canon_snapshots_commit_id_canon_commits_id_fk": {
           "name": "canon_snapshots_commit_id_canon_commits_id_fk",
           "tableFrom": "canon_snapshots",
+          "tableTo": "canon_commits",
           "columnsFrom": [
             "commit_id"
           ],
-          "tableTo": "canon_commits",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -611,24 +611,24 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "change_impact_reports_change_request_id_change_requests_id_fk": {
           "name": "change_impact_reports_change_request_id_change_requests_id_fk",
           "tableFrom": "change_impact_reports",
+          "tableTo": "change_requests",
           "columnsFrom": [
             "change_request_id"
           ],
-          "tableTo": "change_requests",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -806,9 +806,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "change_requests_work_branch_created_idx": {
           "name": "change_requests_work_branch_created_idx",
@@ -833,63 +833,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "change_requests_work_id_works_id_fk": {
           "name": "change_requests_work_id_works_id_fk",
           "tableFrom": "change_requests",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "change_requests_branch_id_work_branches_id_fk": {
           "name": "change_requests_branch_id_work_branches_id_fk",
           "tableFrom": "change_requests",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "change_requests_created_by_users_id_fk": {
           "name": "change_requests_created_by_users_id_fk",
           "tableFrom": "change_requests",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "change_requests_branched_branch_id_work_branches_id_fk": {
           "name": "change_requests_branched_branch_id_work_branches_id_fk",
           "tableFrom": "change_requests",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branched_branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -999,24 +999,24 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "change_validations_change_request_id_change_requests_id_fk": {
           "name": "change_validations_change_request_id_change_requests_id_fk",
           "tableFrom": "change_validations",
+          "tableTo": "change_requests",
           "columnsFrom": [
             "change_request_id"
           ],
-          "tableTo": "change_requests",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1182,10 +1182,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"chapter_outlines\".\"chapter_number\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "chapter_outlines_one_book_unique": {
           "name": "chapter_outlines_one_book_unique",
@@ -1204,10 +1204,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"chapter_outlines\".\"level\" = 'book'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "chapter_outlines_work_branch_parent_order_idx": {
           "name": "chapter_outlines_work_branch_parent_order_idx",
@@ -1238,63 +1238,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "chapter_outlines_work_id_works_id_fk": {
           "name": "chapter_outlines_work_id_works_id_fk",
           "tableFrom": "chapter_outlines",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "chapter_outlines_branch_id_work_branches_id_fk": {
           "name": "chapter_outlines_branch_id_work_branches_id_fk",
           "tableFrom": "chapter_outlines",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "chapter_outlines_parent_id_chapter_outlines_id_fk": {
           "name": "chapter_outlines_parent_id_chapter_outlines_id_fk",
           "tableFrom": "chapter_outlines",
+          "tableTo": "chapter_outlines",
           "columnsFrom": [
             "parent_id"
           ],
-          "tableTo": "chapter_outlines",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "chapter_outlines_locked_by_users_id_fk": {
           "name": "chapter_outlines_locked_by_users_id_fk",
           "tableFrom": "chapter_outlines",
+          "tableTo": "users",
           "columnsFrom": [
             "locked_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1389,9 +1389,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "chapter_versions_chapter_created_idx": {
           "name": "chapter_versions_chapter_created_idx",
@@ -1410,50 +1410,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "chapter_versions_chapter_id_chapters_id_fk": {
           "name": "chapter_versions_chapter_id_chapters_id_fk",
           "tableFrom": "chapter_versions",
+          "tableTo": "chapters",
           "columnsFrom": [
             "chapter_id"
           ],
-          "tableTo": "chapters",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "chapter_versions_model_config_id_model_configs_id_fk": {
           "name": "chapter_versions_model_config_id_model_configs_id_fk",
           "tableFrom": "chapter_versions",
+          "tableTo": "model_configs",
           "columnsFrom": [
             "model_config_id"
           ],
-          "tableTo": "model_configs",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "chapter_versions_created_by_users_id_fk": {
           "name": "chapter_versions_created_by_users_id_fk",
           "tableFrom": "chapter_versions",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1584,9 +1584,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "chapters_work_branch_status_idx": {
           "name": "chapters_work_branch_status_idx",
@@ -1611,37 +1611,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "chapters_work_id_works_id_fk": {
           "name": "chapters_work_id_works_id_fk",
           "tableFrom": "chapters",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "chapters_branch_id_work_branches_id_fk": {
           "name": "chapters_branch_id_work_branches_id_fk",
           "tableFrom": "chapters",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1775,9 +1775,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "character_arcs_work_branch_status_idx": {
           "name": "character_arcs_work_branch_status_idx",
@@ -1802,50 +1802,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "character_arcs_work_id_works_id_fk": {
           "name": "character_arcs_work_id_works_id_fk",
           "tableFrom": "character_arcs",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_arcs_branch_id_work_branches_id_fk": {
           "name": "character_arcs_branch_id_work_branches_id_fk",
           "tableFrom": "character_arcs",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_arcs_character_id_entities_id_fk": {
           "name": "character_arcs_character_id_entities_id_fk",
           "tableFrom": "character_arcs",
+          "tableTo": "entities",
           "columnsFrom": [
             "character_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -1953,9 +1953,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "character_presences_branch_character_time_idx": {
           "name": "character_presences_branch_character_time_idx",
@@ -1986,63 +1986,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "character_presences_work_id_works_id_fk": {
           "name": "character_presences_work_id_works_id_fk",
           "tableFrom": "character_presences",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_presences_branch_id_work_branches_id_fk": {
           "name": "character_presences_branch_id_work_branches_id_fk",
           "tableFrom": "character_presences",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_presences_character_entity_id_entities_id_fk": {
           "name": "character_presences_character_entity_id_entities_id_fk",
           "tableFrom": "character_presences",
+          "tableTo": "entities",
           "columnsFrom": [
             "character_entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_presences_location_node_id_map_nodes_id_fk": {
           "name": "character_presences_location_node_id_map_nodes_id_fk",
           "tableFrom": "character_presences",
+          "tableTo": "map_nodes",
           "columnsFrom": [
             "location_node_id"
           ],
-          "tableTo": "map_nodes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2142,9 +2142,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "character_profiles_work_branch_idx": {
           "name": "character_profiles_work_branch_idx",
@@ -2163,50 +2163,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "character_profiles_work_id_works_id_fk": {
           "name": "character_profiles_work_id_works_id_fk",
           "tableFrom": "character_profiles",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_profiles_branch_id_work_branches_id_fk": {
           "name": "character_profiles_branch_id_work_branches_id_fk",
           "tableFrom": "character_profiles",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_profiles_entity_id_entities_id_fk": {
           "name": "character_profiles_entity_id_entities_id_fk",
           "tableFrom": "character_profiles",
+          "tableTo": "entities",
           "columnsFrom": [
             "entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2313,9 +2313,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "character_state_revisions_character_created_idx": {
           "name": "character_state_revisions_character_created_idx",
@@ -2334,63 +2334,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "character_state_revisions_work_id_works_id_fk": {
           "name": "character_state_revisions_work_id_works_id_fk",
           "tableFrom": "character_state_revisions",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_state_revisions_branch_id_work_branches_id_fk": {
           "name": "character_state_revisions_branch_id_work_branches_id_fk",
           "tableFrom": "character_state_revisions",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_state_revisions_character_id_entities_id_fk": {
           "name": "character_state_revisions_character_id_entities_id_fk",
           "tableFrom": "character_state_revisions",
+          "tableTo": "entities",
           "columnsFrom": [
             "character_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_state_revisions_user_id_users_id_fk": {
           "name": "character_state_revisions_user_id_users_id_fk",
           "tableFrom": "character_state_revisions",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2510,9 +2510,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "character_states_work_branch_idx": {
           "name": "character_states_work_branch_idx",
@@ -2531,63 +2531,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "character_states_work_id_works_id_fk": {
           "name": "character_states_work_id_works_id_fk",
           "tableFrom": "character_states",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_states_branch_id_work_branches_id_fk": {
           "name": "character_states_branch_id_work_branches_id_fk",
           "tableFrom": "character_states",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_states_character_id_entities_id_fk": {
           "name": "character_states_character_id_entities_id_fk",
           "tableFrom": "character_states",
+          "tableTo": "entities",
           "columnsFrom": [
             "character_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "character_states_updated_by_users_id_fk": {
           "name": "character_states_updated_by_users_id_fk",
           "tableFrom": "character_states",
+          "tableTo": "users",
           "columnsFrom": [
             "updated_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2651,24 +2651,24 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "context_packs_generation_request_id_generation_requests_id_fk": {
           "name": "context_packs_generation_request_id_generation_requests_id_fk",
           "tableFrom": "context_packs",
+          "tableTo": "generation_requests",
           "columnsFrom": [
             "generation_request_id"
           ],
-          "tableTo": "generation_requests",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2742,9 +2742,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "drafts_chapter_updated_idx": {
           "name": "drafts_chapter_updated_idx",
@@ -2763,37 +2763,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "drafts_generation_request_id_generation_requests_id_fk": {
           "name": "drafts_generation_request_id_generation_requests_id_fk",
           "tableFrom": "drafts",
+          "tableTo": "generation_requests",
           "columnsFrom": [
             "generation_request_id"
           ],
-          "tableTo": "generation_requests",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "drafts_chapter_id_chapters_id_fk": {
           "name": "drafts_chapter_id_chapters_id_fk",
           "tableFrom": "drafts",
+          "tableTo": "chapters",
           "columnsFrom": [
             "chapter_id"
           ],
-          "tableTo": "chapters",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2883,9 +2883,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -3044,10 +3044,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"entities\".\"deleted_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "entities_work_branch_type_status_idx": {
           "name": "entities_work_branch_type_status_idx",
@@ -3078,9 +3078,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "entities_work_branch_subtype_idx": {
           "name": "entities_work_branch_subtype_idx",
@@ -3105,37 +3105,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "entities_work_id_works_id_fk": {
           "name": "entities_work_id_works_id_fk",
           "tableFrom": "entities",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "entities_branch_id_work_branches_id_fk": {
           "name": "entities_branch_id_work_branches_id_fk",
           "tableFrom": "entities",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3231,9 +3231,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "entity_custom_fields_work_branch_idx": {
           "name": "entity_custom_fields_work_branch_idx",
@@ -3252,37 +3252,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "entity_custom_fields_work_id_works_id_fk": {
           "name": "entity_custom_fields_work_id_works_id_fk",
           "tableFrom": "entity_custom_fields",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "entity_custom_fields_branch_id_work_branches_id_fk": {
           "name": "entity_custom_fields_branch_id_work_branches_id_fk",
           "tableFrom": "entity_custom_fields",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3390,9 +3390,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "entity_relations_from_idx": {
           "name": "entity_relations_from_idx",
@@ -3405,9 +3405,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "entity_relations_to_idx": {
           "name": "entity_relations_to_idx",
@@ -3420,63 +3420,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "entity_relations_work_id_works_id_fk": {
           "name": "entity_relations_work_id_works_id_fk",
           "tableFrom": "entity_relations",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "entity_relations_branch_id_work_branches_id_fk": {
           "name": "entity_relations_branch_id_work_branches_id_fk",
           "tableFrom": "entity_relations",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "entity_relations_from_entity_id_entities_id_fk": {
           "name": "entity_relations_from_entity_id_entities_id_fk",
           "tableFrom": "entity_relations",
+          "tableTo": "entities",
           "columnsFrom": [
             "from_entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "entity_relations_to_entity_id_entities_id_fk": {
           "name": "entity_relations_to_entity_id_entities_id_fk",
           "tableFrom": "entity_relations",
+          "tableTo": "entities",
           "columnsFrom": [
             "to_entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3580,9 +3580,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "fact_proposals_branch_created_idx": {
           "name": "fact_proposals_branch_created_idx",
@@ -3601,63 +3601,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "fact_proposals_work_id_works_id_fk": {
           "name": "fact_proposals_work_id_works_id_fk",
           "tableFrom": "fact_proposals",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "fact_proposals_branch_id_work_branches_id_fk": {
           "name": "fact_proposals_branch_id_work_branches_id_fk",
           "tableFrom": "fact_proposals",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "fact_proposals_chapter_id_chapters_id_fk": {
           "name": "fact_proposals_chapter_id_chapters_id_fk",
           "tableFrom": "fact_proposals",
+          "tableTo": "chapters",
           "columnsFrom": [
             "chapter_id"
           ],
-          "tableTo": "chapters",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "fact_proposals_generation_request_id_generation_requests_id_fk": {
           "name": "fact_proposals_generation_request_id_generation_requests_id_fk",
           "tableFrom": "fact_proposals",
+          "tableTo": "generation_requests",
           "columnsFrom": [
             "generation_request_id"
           ],
-          "tableTo": "generation_requests",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3740,9 +3740,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "facts_branch_created_idx": {
           "name": "facts_branch_created_idx",
@@ -3761,63 +3761,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "facts_work_id_works_id_fk": {
           "name": "facts_work_id_works_id_fk",
           "tableFrom": "facts",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "facts_branch_id_work_branches_id_fk": {
           "name": "facts_branch_id_work_branches_id_fk",
           "tableFrom": "facts",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "facts_chapter_id_chapters_id_fk": {
           "name": "facts_chapter_id_chapters_id_fk",
           "tableFrom": "facts",
+          "tableTo": "chapters",
           "columnsFrom": [
             "chapter_id"
           ],
-          "tableTo": "chapters",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "facts_source_proposal_id_fact_proposals_id_fk": {
           "name": "facts_source_proposal_id_fact_proposals_id_fk",
           "tableFrom": "facts",
+          "tableTo": "fact_proposals",
           "columnsFrom": [
             "source_proposal_id"
           ],
-          "tableTo": "fact_proposals",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3928,37 +3928,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "foreshadows_work_id_works_id_fk": {
           "name": "foreshadows_work_id_works_id_fk",
           "tableFrom": "foreshadows",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "foreshadows_branch_id_work_branches_id_fk": {
           "name": "foreshadows_branch_id_work_branches_id_fk",
           "tableFrom": "foreshadows",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4085,76 +4085,76 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "generation_requests_work_id_works_id_fk": {
           "name": "generation_requests_work_id_works_id_fk",
           "tableFrom": "generation_requests",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "generation_requests_branch_id_work_branches_id_fk": {
           "name": "generation_requests_branch_id_work_branches_id_fk",
           "tableFrom": "generation_requests",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "generation_requests_chapter_id_chapters_id_fk": {
           "name": "generation_requests_chapter_id_chapters_id_fk",
           "tableFrom": "generation_requests",
+          "tableTo": "chapters",
           "columnsFrom": [
             "chapter_id"
           ],
-          "tableTo": "chapters",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "generation_requests_model_config_id_model_configs_id_fk": {
           "name": "generation_requests_model_config_id_model_configs_id_fk",
           "tableFrom": "generation_requests",
+          "tableTo": "model_configs",
           "columnsFrom": [
             "model_config_id"
           ],
-          "tableTo": "model_configs",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "generation_requests_created_by_users_id_fk": {
           "name": "generation_requests_created_by_users_id_fk",
           "tableFrom": "generation_requests",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4271,9 +4271,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "golden_fingers_work_branch_idx": {
           "name": "golden_fingers_work_branch_idx",
@@ -4292,50 +4292,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "golden_fingers_work_id_works_id_fk": {
           "name": "golden_fingers_work_id_works_id_fk",
           "tableFrom": "golden_fingers",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "golden_fingers_branch_id_work_branches_id_fk": {
           "name": "golden_fingers_branch_id_work_branches_id_fk",
           "tableFrom": "golden_fingers",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "golden_fingers_owner_entity_id_entities_id_fk": {
           "name": "golden_fingers_owner_entity_id_entities_id_fk",
           "tableFrom": "golden_fingers",
+          "tableTo": "entities",
           "columnsFrom": [
             "owner_entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4426,10 +4426,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"item_ownerships\".\"ended_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "item_ownerships_item_created_idx": {
           "name": "item_ownerships_item_created_idx",
@@ -4448,63 +4448,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "item_ownerships_work_id_works_id_fk": {
           "name": "item_ownerships_work_id_works_id_fk",
           "tableFrom": "item_ownerships",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "item_ownerships_branch_id_work_branches_id_fk": {
           "name": "item_ownerships_branch_id_work_branches_id_fk",
           "tableFrom": "item_ownerships",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "item_ownerships_item_entity_id_entities_id_fk": {
           "name": "item_ownerships_item_entity_id_entities_id_fk",
           "tableFrom": "item_ownerships",
+          "tableTo": "entities",
           "columnsFrom": [
             "item_entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "item_ownerships_owner_entity_id_entities_id_fk": {
           "name": "item_ownerships_owner_entity_id_entities_id_fk",
           "tableFrom": "item_ownerships",
+          "tableTo": "entities",
           "columnsFrom": [
             "owner_entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4604,9 +4604,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "item_technique_profiles_work_branch_idx": {
           "name": "item_technique_profiles_work_branch_idx",
@@ -4625,50 +4625,311 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "item_technique_profiles_work_id_works_id_fk": {
           "name": "item_technique_profiles_work_id_works_id_fk",
           "tableFrom": "item_technique_profiles",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "item_technique_profiles_branch_id_work_branches_id_fk": {
           "name": "item_technique_profiles_branch_id_work_branches_id_fk",
           "tableFrom": "item_technique_profiles",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "item_technique_profiles_entity_id_entities_id_fk": {
           "name": "item_technique_profiles_entity_id_entities_id_fk",
           "tableFrom": "item_technique_profiles",
+          "tableTo": "entities",
           "columnsFrom": [
             "entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.job_chapters": {
+      "name": "job_chapters",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter_number": {
+          "name": "chapter_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "batch_chapter_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "review_status": {
+          "name": "review_status",
+          "type": "batch_review_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "generation_job_id": {
+          "name": "generation_job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "draft_id": {
+          "name": "draft_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "prompt_tokens": {
+          "name": "prompt_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "completion_tokens": {
+          "name": "completion_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "cost": {
+          "name": "cost",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "error": {
+          "name": "error",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "review_note": {
+          "name": "review_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "job_chapters_job_chapter_unique": {
+          "name": "job_chapters_job_chapter_unique",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chapter_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "job_chapters_work_branch_status_idx": {
+          "name": "job_chapters_work_branch_status_idx",
+          "columns": [
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "job_chapters_job_position_idx": {
+          "name": "job_chapters_job_position_idx",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "chapter_number",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "job_chapters_job_id_jobs_id_fk": {
+          "name": "job_chapters_job_id_jobs_id_fk",
+          "tableFrom": "job_chapters",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_chapters_work_id_works_id_fk": {
+          "name": "job_chapters_work_id_works_id_fk",
+          "tableFrom": "job_chapters",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_chapters_branch_id_work_branches_id_fk": {
+          "name": "job_chapters_branch_id_work_branches_id_fk",
+          "tableFrom": "job_chapters",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "job_chapters_generation_job_id_jobs_id_fk": {
+          "name": "job_chapters_generation_job_id_jobs_id_fk",
+          "tableFrom": "job_chapters",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "generation_job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "job_chapters_draft_id_drafts_id_fk": {
+          "name": "job_chapters_draft_id_drafts_id_fk",
+          "tableFrom": "job_chapters",
+          "tableTo": "drafts",
+          "columnsFrom": [
+            "draft_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4732,24 +4993,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "job_checkpoints_job_id_jobs_id_fk": {
           "name": "job_checkpoints_job_id_jobs_id_fk",
           "tableFrom": "job_checkpoints",
+          "tableTo": "jobs",
           "columnsFrom": [
             "job_id"
           ],
-          "tableTo": "jobs",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4813,9 +5074,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "job_events_job_sequence_idx": {
           "name": "job_events_job_sequence_idx",
@@ -4834,24 +5095,93 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "job_events_job_id_jobs_id_fk": {
           "name": "job_events_job_id_jobs_id_fk",
           "tableFrom": "job_events",
+          "tableTo": "jobs",
           "columnsFrom": [
             "job_id"
           ],
-          "tableTo": "jobs",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.job_reports": {
+      "name": "job_reports",
+      "schema": "",
+      "columns": {
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "report": {
+          "name": "report",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "job_reports_updated_idx": {
+          "name": "job_reports_updated_idx",
+          "columns": [
+            {
+              "expression": "updated_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "job_reports_job_id_jobs_id_fk": {
+          "name": "job_reports_job_id_jobs_id_fk",
+          "tableFrom": "job_reports",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4954,24 +5284,24 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "job_steps_job_id_jobs_id_fk": {
           "name": "job_steps_job_id_jobs_id_fk",
           "tableFrom": "job_steps",
+          "tableTo": "jobs",
           "columnsFrom": [
             "job_id"
           ],
-          "tableTo": "jobs",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5120,9 +5450,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "jobs_user_created_idx": {
           "name": "jobs_user_created_idx",
@@ -5141,50 +5471,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "jobs_work_id_works_id_fk": {
           "name": "jobs_work_id_works_id_fk",
           "tableFrom": "jobs",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "jobs_branch_id_work_branches_id_fk": {
           "name": "jobs_branch_id_work_branches_id_fk",
           "tableFrom": "jobs",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "jobs_user_id_users_id_fk": {
           "name": "jobs_user_id_users_id_fk",
           "tableFrom": "jobs",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5286,9 +5616,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "map_connections_work_branch_idx": {
           "name": "map_connections_work_branch_idx",
@@ -5307,63 +5637,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "map_connections_work_id_works_id_fk": {
           "name": "map_connections_work_id_works_id_fk",
           "tableFrom": "map_connections",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_connections_branch_id_work_branches_id_fk": {
           "name": "map_connections_branch_id_work_branches_id_fk",
           "tableFrom": "map_connections",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_connections_from_node_id_map_nodes_id_fk": {
           "name": "map_connections_from_node_id_map_nodes_id_fk",
           "tableFrom": "map_connections",
+          "tableTo": "map_nodes",
           "columnsFrom": [
             "from_node_id"
           ],
-          "tableTo": "map_nodes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_connections_to_node_id_map_nodes_id_fk": {
           "name": "map_connections_to_node_id_map_nodes_id_fk",
           "tableFrom": "map_connections",
+          "tableTo": "map_nodes",
           "columnsFrom": [
             "to_node_id"
           ],
-          "tableTo": "map_nodes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5464,9 +5794,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "map_images_work_branch_idx": {
           "name": "map_images_work_branch_idx",
@@ -5485,63 +5815,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "map_images_work_id_works_id_fk": {
           "name": "map_images_work_id_works_id_fk",
           "tableFrom": "map_images",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_images_branch_id_work_branches_id_fk": {
           "name": "map_images_branch_id_work_branches_id_fk",
           "tableFrom": "map_images",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_images_node_id_map_nodes_id_fk": {
           "name": "map_images_node_id_map_nodes_id_fk",
           "tableFrom": "map_images",
+          "tableTo": "map_nodes",
           "columnsFrom": [
             "node_id"
           ],
-          "tableTo": "map_nodes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_images_created_by_users_id_fk": {
           "name": "map_images_created_by_users_id_fk",
           "tableFrom": "map_images",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5630,9 +5960,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "map_markers_work_branch_idx": {
           "name": "map_markers_work_branch_idx",
@@ -5651,63 +5981,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "map_markers_work_id_works_id_fk": {
           "name": "map_markers_work_id_works_id_fk",
           "tableFrom": "map_markers",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_markers_branch_id_work_branches_id_fk": {
           "name": "map_markers_branch_id_work_branches_id_fk",
           "tableFrom": "map_markers",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_markers_image_id_map_images_id_fk": {
           "name": "map_markers_image_id_map_images_id_fk",
           "tableFrom": "map_markers",
+          "tableTo": "map_images",
           "columnsFrom": [
             "image_id"
           ],
-          "tableTo": "map_images",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_markers_node_id_map_nodes_id_fk": {
           "name": "map_markers_node_id_map_nodes_id_fk",
           "tableFrom": "map_markers",
+          "tableTo": "map_nodes",
           "columnsFrom": [
             "node_id"
           ],
-          "tableTo": "map_nodes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -5785,9 +6115,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "map_nodes_one_world_per_branch": {
           "name": "map_nodes_one_world_per_branch",
@@ -5806,10 +6136,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"map_nodes\".\"level\" = 'world'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "map_nodes_work_branch_level_idx": {
           "name": "map_nodes_work_branch_level_idx",
@@ -5834,9 +6164,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "map_nodes_parent_idx": {
           "name": "map_nodes_parent_idx",
@@ -5849,63 +6179,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "map_nodes_work_id_works_id_fk": {
           "name": "map_nodes_work_id_works_id_fk",
           "tableFrom": "map_nodes",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_nodes_branch_id_work_branches_id_fk": {
           "name": "map_nodes_branch_id_work_branches_id_fk",
           "tableFrom": "map_nodes",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_nodes_entity_id_entities_id_fk": {
           "name": "map_nodes_entity_id_entities_id_fk",
           "tableFrom": "map_nodes",
+          "tableTo": "entities",
           "columnsFrom": [
             "entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "map_nodes_parent_node_id_map_nodes_id_fk": {
           "name": "map_nodes_parent_node_id_map_nodes_id_fk",
           "tableFrom": "map_nodes",
+          "tableTo": "map_nodes",
           "columnsFrom": [
             "parent_node_id"
           ],
-          "tableTo": "map_nodes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6010,9 +6340,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "model_configs_user_purpose_unique": {
           "name": "model_configs_user_purpose_unique",
@@ -6031,9 +6361,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "model_configs_one_default_unique": {
           "name": "model_configs_one_default_unique",
@@ -6046,25 +6376,25 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"model_configs\".\"is_default\" = true",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "model_configs_user_id_users_id_fk": {
           "name": "model_configs_user_id_users_id_fk",
           "tableFrom": "model_configs",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6150,9 +6480,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "power_system_profiles_work_branch_idx": {
           "name": "power_system_profiles_work_branch_idx",
@@ -6171,50 +6501,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "power_system_profiles_work_id_works_id_fk": {
           "name": "power_system_profiles_work_id_works_id_fk",
           "tableFrom": "power_system_profiles",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "power_system_profiles_branch_id_work_branches_id_fk": {
           "name": "power_system_profiles_branch_id_work_branches_id_fk",
           "tableFrom": "power_system_profiles",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "power_system_profiles_entity_id_entities_id_fk": {
           "name": "power_system_profiles_entity_id_entities_id_fk",
           "tableFrom": "power_system_profiles",
+          "tableTo": "entities",
           "columnsFrom": [
             "entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6297,9 +6627,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "quality_reports_work_branch_updated_idx": {
           "name": "quality_reports_work_branch_updated_idx",
@@ -6324,76 +6654,76 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "quality_reports_work_id_works_id_fk": {
           "name": "quality_reports_work_id_works_id_fk",
           "tableFrom": "quality_reports",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "quality_reports_branch_id_work_branches_id_fk": {
           "name": "quality_reports_branch_id_work_branches_id_fk",
           "tableFrom": "quality_reports",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "quality_reports_chapter_id_chapters_id_fk": {
           "name": "quality_reports_chapter_id_chapters_id_fk",
           "tableFrom": "quality_reports",
+          "tableTo": "chapters",
           "columnsFrom": [
             "chapter_id"
           ],
-          "tableTo": "chapters",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "quality_reports_generation_request_id_generation_requests_id_fk": {
           "name": "quality_reports_generation_request_id_generation_requests_id_fk",
           "tableFrom": "quality_reports",
+          "tableTo": "generation_requests",
           "columnsFrom": [
             "generation_request_id"
           ],
-          "tableTo": "generation_requests",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "quality_reports_draft_id_drafts_id_fk": {
           "name": "quality_reports_draft_id_drafts_id_fk",
           "tableFrom": "quality_reports",
+          "tableTo": "drafts",
           "columnsFrom": [
             "draft_id"
           ],
-          "tableTo": "drafts",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6476,9 +6806,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "sessions_user_idx": {
           "name": "sessions_user_idx",
@@ -6491,24 +6821,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "sessions_user_id_users_id_fk": {
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6615,9 +6945,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "story_bible_revisions_bible_created_idx": {
           "name": "story_bible_revisions_bible_created_idx",
@@ -6636,63 +6966,63 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "story_bible_revisions_work_id_works_id_fk": {
           "name": "story_bible_revisions_work_id_works_id_fk",
           "tableFrom": "story_bible_revisions",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "story_bible_revisions_branch_id_work_branches_id_fk": {
           "name": "story_bible_revisions_branch_id_work_branches_id_fk",
           "tableFrom": "story_bible_revisions",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "story_bible_revisions_story_bible_id_story_bibles_id_fk": {
           "name": "story_bible_revisions_story_bible_id_story_bibles_id_fk",
           "tableFrom": "story_bible_revisions",
+          "tableTo": "story_bibles",
           "columnsFrom": [
             "story_bible_id"
           ],
-          "tableTo": "story_bibles",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "story_bible_revisions_user_id_users_id_fk": {
           "name": "story_bible_revisions_user_id_users_id_fk",
           "tableFrom": "story_bible_revisions",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6801,50 +7131,50 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "story_bibles_work_id_works_id_fk": {
           "name": "story_bibles_work_id_works_id_fk",
           "tableFrom": "story_bibles",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "story_bibles_branch_id_work_branches_id_fk": {
           "name": "story_bibles_branch_id_work_branches_id_fk",
           "tableFrom": "story_bibles",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "story_bibles_locked_by_users_id_fk": {
           "name": "story_bibles_locked_by_users_id_fk",
           "tableFrom": "story_bibles",
+          "tableTo": "users",
           "columnsFrom": [
             "locked_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -6982,9 +7312,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "threads_work_branch_name_unique": {
           "name": "threads_work_branch_name_unique",
@@ -7009,37 +7339,37 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "threads_work_id_works_id_fk": {
           "name": "threads_work_id_works_id_fk",
           "tableFrom": "threads",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "threads_branch_id_work_branches_id_fk": {
           "name": "threads_branch_id_work_branches_id_fk",
           "tableFrom": "threads",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7112,9 +7442,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "system_jobs_status_idx": {
           "name": "system_jobs_status_idx",
@@ -7127,9 +7457,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -7226,9 +7556,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "timeline_eras_timeline_created_idx": {
           "name": "timeline_eras_timeline_created_idx",
@@ -7247,50 +7577,50 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "timeline_eras_work_id_works_id_fk": {
           "name": "timeline_eras_work_id_works_id_fk",
           "tableFrom": "timeline_eras",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "timeline_eras_branch_id_work_branches_id_fk": {
           "name": "timeline_eras_branch_id_work_branches_id_fk",
           "tableFrom": "timeline_eras",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "timeline_eras_timeline_entity_id_entities_id_fk": {
           "name": "timeline_eras_timeline_entity_id_entities_id_fk",
           "tableFrom": "timeline_eras",
+          "tableTo": "entities",
           "columnsFrom": [
             "timeline_entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7418,9 +7748,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "timeline_event_nodes_era_idx": {
           "name": "timeline_event_nodes_era_idx",
@@ -7433,76 +7763,76 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "timeline_event_nodes_work_id_works_id_fk": {
           "name": "timeline_event_nodes_work_id_works_id_fk",
           "tableFrom": "timeline_event_nodes",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "timeline_event_nodes_branch_id_work_branches_id_fk": {
           "name": "timeline_event_nodes_branch_id_work_branches_id_fk",
           "tableFrom": "timeline_event_nodes",
+          "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
           ],
-          "tableTo": "work_branches",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "timeline_event_nodes_timeline_entity_id_entities_id_fk": {
           "name": "timeline_event_nodes_timeline_entity_id_entities_id_fk",
           "tableFrom": "timeline_event_nodes",
+          "tableTo": "entities",
           "columnsFrom": [
             "timeline_entity_id"
           ],
-          "tableTo": "entities",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "timeline_event_nodes_era_id_timeline_eras_id_fk": {
           "name": "timeline_event_nodes_era_id_timeline_eras_id_fk",
           "tableFrom": "timeline_event_nodes",
+          "tableTo": "timeline_eras",
           "columnsFrom": [
             "era_id"
           ],
-          "tableTo": "timeline_eras",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "timeline_event_nodes_relative_to_node_id_timeline_event_nodes_id_fk": {
           "name": "timeline_event_nodes_relative_to_node_id_timeline_event_nodes_id_fk",
           "tableFrom": "timeline_event_nodes",
+          "tableTo": "timeline_event_nodes",
           "columnsFrom": [
             "relative_to_node_id"
           ],
-          "tableTo": "timeline_event_nodes",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7581,15 +7911,15 @@
           "columns": [
             {
               "expression": "lower(\"email\")",
-              "isExpression": true,
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "users_status_idx": {
           "name": "users_status_idx",
@@ -7602,9 +7932,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -7655,6 +7985,54 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "work_branch_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'experiment'"
+        },
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "fork_point_kind": {
+          "name": "fork_point_kind",
+          "type": "work_branch_fork_point_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'current'"
+        },
+        "fork_chapter_id": {
+          "name": "fork_chapter_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fork_chapter_version_id": {
+          "name": "fork_chapter_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fork_chapter_number": {
+          "name": "fork_chapter_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fork_snapshot": {
+          "name": "fork_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
         },
         "status": {
           "name": "status",
@@ -7709,9 +8087,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "work_branches_one_main_unique": {
           "name": "work_branches_one_main_unique",
@@ -7724,10 +8102,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"work_branches\".\"is_main\" = true",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "work_branches_work_status_idx": {
           "name": "work_branches_work_status_idx",
@@ -7746,37 +8124,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "work_branches_work_id_works_id_fk": {
           "name": "work_branches_work_id_works_id_fk",
           "tableFrom": "work_branches",
+          "tableTo": "works",
           "columnsFrom": [
             "work_id"
           ],
-          "tableTo": "works",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "work_branches_created_by_users_id_fk": {
           "name": "work_branches_created_by_users_id_fk",
           "tableFrom": "work_branches",
+          "tableTo": "users",
           "columnsFrom": [
             "created_by"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -7891,354 +8269,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "works_user_id_users_id_fk": {
           "name": "works_user_id_users_id_fk",
           "tableFrom": "works",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.job_chapters": {
-      "name": "job_chapters",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "job_id": {
-          "name": "job_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "chapter_number": {
-          "name": "chapter_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "batch_chapter_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "review_status": {
-          "name": "review_status",
-          "type": "batch_review_status",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "generation_job_id": {
-          "name": "generation_job_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "draft_id": {
-          "name": "draft_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prompt_tokens": {
-          "name": "prompt_tokens",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "completion_tokens": {
-          "name": "completion_tokens",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "cost": {
-          "name": "cost",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "error": {
-          "name": "error",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "review_note": {
-          "name": "review_note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewed_at": {
-          "name": "reviewed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "job_chapters_job_chapter_unique": {
-          "name": "job_chapters_job_chapter_unique",
-          "columns": [
-            {
-              "expression": "job_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "chapter_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        },
-        "job_chapters_work_branch_status_idx": {
-          "name": "job_chapters_work_branch_status_idx",
-          "columns": [
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        },
-        "job_chapters_job_position_idx": {
-          "name": "job_chapters_job_position_idx",
-          "columns": [
-            {
-              "expression": "job_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "chapter_number",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "job_chapters_job_id_jobs_id_fk": {
-          "name": "job_chapters_job_id_jobs_id_fk",
-          "tableFrom": "job_chapters",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "tableTo": "jobs",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
-        },
-        "job_chapters_work_id_works_id_fk": {
-          "name": "job_chapters_work_id_works_id_fk",
-          "tableFrom": "job_chapters",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "tableTo": "works",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
-        },
-        "job_chapters_branch_id_work_branches_id_fk": {
-          "name": "job_chapters_branch_id_work_branches_id_fk",
-          "tableFrom": "job_chapters",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "tableTo": "work_branches",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
-        },
-        "job_chapters_generation_job_id_jobs_id_fk": {
-          "name": "job_chapters_generation_job_id_jobs_id_fk",
-          "tableFrom": "job_chapters",
-          "columnsFrom": [
-            "generation_job_id"
-          ],
-          "tableTo": "jobs",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
-        },
-        "job_chapters_draft_id_drafts_id_fk": {
-          "name": "job_chapters_draft_id_drafts_id_fk",
-          "tableFrom": "job_chapters",
-          "columnsFrom": [
-            "draft_id"
-          ],
-          "tableTo": "drafts",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.job_reports": {
-      "name": "job_reports",
-      "schema": "",
-      "columns": {
-        "job_id": {
-          "name": "job_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "report": {
-          "name": "report",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "job_reports_updated_idx": {
-          "name": "job_reports_updated_idx",
-          "columns": [
-            {
-              "expression": "updated_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "with": {},
-          "method": "btree",
-          "concurrently": false
-        }
-      },
-      "foreignKeys": {
-        "job_reports_job_id_jobs_id_fk": {
-          "name": "job_reports_job_id_jobs_id_fk",
-          "tableFrom": "job_reports",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "tableTo": "jobs",
-          "columnsTo": [
-            "id"
-          ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -8254,6 +8302,29 @@
       "schema": "public",
       "values": [
         "open",
+        "ignored"
+      ]
+    },
+    "public.batch_chapter_status": {
+      "name": "batch_chapter_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "running",
+        "waiting_review",
+        "completed",
+        "failed",
+        "canceled"
+      ]
+    },
+    "public.batch_review_status": {
+      "name": "batch_review_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "approved",
+        "sent_to_desk",
+        "rejected",
         "ignored"
       ]
     },
@@ -8537,6 +8608,24 @@
         "deleted"
       ]
     },
+    "public.work_branch_fork_point_kind": {
+      "name": "work_branch_fork_point_kind",
+      "schema": "public",
+      "values": [
+        "current",
+        "chapter_version"
+      ]
+    },
+    "public.work_branch_kind": {
+      "name": "work_branch_kind",
+      "schema": "public",
+      "values": [
+        "rewrite",
+        "what_if",
+        "alternate_ending",
+        "experiment"
+      ]
+    },
     "public.work_branch_status": {
       "name": "work_branch_status",
       "schema": "public",
@@ -8555,36 +8644,13 @@
         "completed",
         "archived"
       ]
-    },
-    "public.batch_chapter_status": {
-      "name": "batch_chapter_status",
-      "schema": "public",
-      "values": [
-        "pending",
-        "running",
-        "waiting_review",
-        "completed",
-        "failed",
-        "canceled"
-      ]
-    },
-    "public.batch_review_status": {
-      "name": "batch_review_status",
-      "schema": "public",
-      "values": [
-        "pending",
-        "approved",
-        "sent_to_desk",
-        "rejected",
-        "ignored"
-      ]
     }
   },
   "schemas": {},
-  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},
