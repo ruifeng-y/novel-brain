@@ -281,6 +281,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@novel/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       jszip:
         specifier: 3.10.1
         version: 3.10.1

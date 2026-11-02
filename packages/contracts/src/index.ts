@@ -14,6 +14,7 @@ export * from './history-pack';
 export * from './map-faction';
 export * from './model-configs';
 export * from './outline';
+export * from './publish';
 export * from './redis';
 export * from './search';
 export * from './story-planning';

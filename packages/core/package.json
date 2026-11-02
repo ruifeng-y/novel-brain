@@ -18,6 +18,7 @@
     "typescript": "5.9.3"
   },
   "dependencies": {
+    "@novel/contracts": "workspace:*",
     "jszip": "3.10.1"
   }
 }

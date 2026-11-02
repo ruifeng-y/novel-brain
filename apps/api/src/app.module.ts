@@ -28,6 +28,8 @@ import { HistoryModule } from './history/history.module';
 import { MapsController } from './maps/maps.controller';
 import { MapsModule } from './maps/maps.module';
 import { OutlineController } from './planning/outline.controller';
+import { PublishController } from './publish/publish.controller';
+import { PublishModule } from './publish/publish.module';
 import { RedisModule } from './redis/redis.module';
 import { SearchController } from './search/search.controller';
 import { SearchModule } from './search/search.module';
@@ -70,6 +72,7 @@ import { VersionsModule } from './versions/versions.module';
     ChangesModule,
     ChapterGenerationModule,
     ExportsModule,
+    PublishModule,
     HistoryModule,
     UsersModule,
     SearchModule,
@@ -113,6 +116,7 @@ export class AppModule implements NestModule {
         ChapterGenerationController,
         BatchJobsController,
         ExportsController,
+        PublishController,
         SearchController,
       );
   }
