@@ -1,5 +1,5 @@
 {
-  "id": "efe0e212-41ae-4e8e-9a6e-362d7a2c4f59",
+  "id": "04dc155d-1a04-43cd-9ccf-5a4dd1978852",
   "prevId": "d2f3a6e5-23bc-42bf-99fc-04a96a03606e",
   "version": "7",
   "dialect": "postgresql",
@@ -987,8 +987,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.character_presences": {
-      "name": "character_presences",
+    "public.character_profiles": {
+      "name": "character_profiles",
       "schema": "",
       "columns": {
         "id": {
@@ -1010,30 +1010,46 @@
           "primaryKey": false,
           "notNull": true
         },
-        "character_entity_id": {
-          "name": "character_entity_id",
+        "entity_id": {
+          "name": "entity_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "location_node_id": {
-          "name": "location_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "story_time": {
-          "name": "story_time",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
+        "desire": {
+          "name": "desire",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'作者录入'"
+          "default": "''"
+        },
+        "fear": {
+          "name": "fear",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "secret": {
+          "name": "secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "voice": {
+          "name": "voice",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "arc": {
+          "name": "arc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
         },
         "created_at": {
           "name": "created_at",
@@ -1051,35 +1067,11 @@
         }
       },
       "indexes": {
-        "character_presences_branch_character_location_time_unique": {
-          "name": "character_presences_branch_character_location_time_unique",
+        "character_profiles_entity_unique": {
+          "name": "character_profiles_entity_unique",
           "columns": [
             {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "character_entity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "location_node_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "story_time",
+              "expression": "entity_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1090,8 +1082,8 @@
           "method": "btree",
           "with": {}
         },
-        "character_presences_branch_character_time_idx": {
-          "name": "character_presences_branch_character_time_idx",
+        "character_profiles_work_branch_idx": {
+          "name": "character_profiles_work_branch_idx",
           "columns": [
             {
               "expression": "work_id",
@@ -1101,18 +1093,6 @@
             },
             {
               "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "character_entity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "story_time",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1125,9 +1105,9 @@
         }
       },
       "foreignKeys": {
-        "character_presences_work_id_works_id_fk": {
-          "name": "character_presences_work_id_works_id_fk",
-          "tableFrom": "character_presences",
+        "character_profiles_work_id_works_id_fk": {
+          "name": "character_profiles_work_id_works_id_fk",
+          "tableFrom": "character_profiles",
           "tableTo": "works",
           "columnsFrom": [
             "work_id"
@@ -1138,9 +1118,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "character_presences_branch_id_work_branches_id_fk": {
-          "name": "character_presences_branch_id_work_branches_id_fk",
-          "tableFrom": "character_presences",
+        "character_profiles_branch_id_work_branches_id_fk": {
+          "name": "character_profiles_branch_id_work_branches_id_fk",
+          "tableFrom": "character_profiles",
           "tableTo": "work_branches",
           "columnsFrom": [
             "branch_id"
@@ -1151,25 +1131,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "character_presences_character_entity_id_entities_id_fk": {
-          "name": "character_presences_character_entity_id_entities_id_fk",
-          "tableFrom": "character_presences",
+        "character_profiles_entity_id_entities_id_fk": {
+          "name": "character_profiles_entity_id_entities_id_fk",
+          "tableFrom": "character_profiles",
           "tableTo": "entities",
           "columnsFrom": [
-            "character_entity_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "character_presences_location_node_id_map_nodes_id_fk": {
-          "name": "character_presences_location_node_id_map_nodes_id_fk",
-          "tableFrom": "character_presences",
-          "tableTo": "map_nodes",
-          "columnsFrom": [
-            "location_node_id"
+            "entity_id"
           ],
           "columnsTo": [
             "id"
@@ -3233,727 +3200,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.map_connections": {
-      "name": "map_connections",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "from_node_id": {
-          "name": "from_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "to_node_id": {
-          "name": "to_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "travel_minutes": {
-          "name": "travel_minutes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "map_connections_work_branch_pair_unique": {
-          "name": "map_connections_work_branch_pair_unique",
-          "columns": [
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "from_node_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "to_node_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "map_connections_work_branch_idx": {
-          "name": "map_connections_work_branch_idx",
-          "columns": [
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "map_connections_work_id_works_id_fk": {
-          "name": "map_connections_work_id_works_id_fk",
-          "tableFrom": "map_connections",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_connections_branch_id_work_branches_id_fk": {
-          "name": "map_connections_branch_id_work_branches_id_fk",
-          "tableFrom": "map_connections",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_connections_from_node_id_map_nodes_id_fk": {
-          "name": "map_connections_from_node_id_map_nodes_id_fk",
-          "tableFrom": "map_connections",
-          "tableTo": "map_nodes",
-          "columnsFrom": [
-            "from_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_connections_to_node_id_map_nodes_id_fk": {
-          "name": "map_connections_to_node_id_map_nodes_id_fk",
-          "tableFrom": "map_connections",
-          "tableTo": "map_nodes",
-          "columnsFrom": [
-            "to_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.map_images": {
-      "name": "map_images",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "node_id": {
-          "name": "node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "storage_key": {
-          "name": "storage_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "mime_type": {
-          "name": "mime_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "width": {
-          "name": "width",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "height": {
-          "name": "height",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "size": {
-          "name": "size",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "map_images_node_unique": {
-          "name": "map_images_node_unique",
-          "columns": [
-            {
-              "expression": "node_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "map_images_work_branch_idx": {
-          "name": "map_images_work_branch_idx",
-          "columns": [
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "map_images_work_id_works_id_fk": {
-          "name": "map_images_work_id_works_id_fk",
-          "tableFrom": "map_images",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_images_branch_id_work_branches_id_fk": {
-          "name": "map_images_branch_id_work_branches_id_fk",
-          "tableFrom": "map_images",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_images_node_id_map_nodes_id_fk": {
-          "name": "map_images_node_id_map_nodes_id_fk",
-          "tableFrom": "map_images",
-          "tableTo": "map_nodes",
-          "columnsFrom": [
-            "node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_images_created_by_users_id_fk": {
-          "name": "map_images_created_by_users_id_fk",
-          "tableFrom": "map_images",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.map_markers": {
-      "name": "map_markers",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "image_id": {
-          "name": "image_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "node_id": {
-          "name": "node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "x_percent": {
-          "name": "x_percent",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "y_percent": {
-          "name": "y_percent",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "map_markers_image_node_unique": {
-          "name": "map_markers_image_node_unique",
-          "columns": [
-            {
-              "expression": "image_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "node_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "map_markers_work_branch_idx": {
-          "name": "map_markers_work_branch_idx",
-          "columns": [
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "map_markers_work_id_works_id_fk": {
-          "name": "map_markers_work_id_works_id_fk",
-          "tableFrom": "map_markers",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_markers_branch_id_work_branches_id_fk": {
-          "name": "map_markers_branch_id_work_branches_id_fk",
-          "tableFrom": "map_markers",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_markers_image_id_map_images_id_fk": {
-          "name": "map_markers_image_id_map_images_id_fk",
-          "tableFrom": "map_markers",
-          "tableTo": "map_images",
-          "columnsFrom": [
-            "image_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_markers_node_id_map_nodes_id_fk": {
-          "name": "map_markers_node_id_map_nodes_id_fk",
-          "tableFrom": "map_markers",
-          "tableTo": "map_nodes",
-          "columnsFrom": [
-            "node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.map_nodes": {
-      "name": "map_nodes",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entity_id": {
-          "name": "entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "parent_node_id": {
-          "name": "parent_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "level": {
-          "name": "level",
-          "type": "map_level",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "map_nodes_entity_unique": {
-          "name": "map_nodes_entity_unique",
-          "columns": [
-            {
-              "expression": "entity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "map_nodes_one_world_per_branch": {
-          "name": "map_nodes_one_world_per_branch",
-          "columns": [
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"map_nodes\".\"level\" = 'world'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "map_nodes_work_branch_level_idx": {
-          "name": "map_nodes_work_branch_level_idx",
-          "columns": [
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "level",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "map_nodes_parent_idx": {
-          "name": "map_nodes_parent_idx",
-          "columns": [
-            {
-              "expression": "parent_node_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "map_nodes_work_id_works_id_fk": {
-          "name": "map_nodes_work_id_works_id_fk",
-          "tableFrom": "map_nodes",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_nodes_branch_id_work_branches_id_fk": {
-          "name": "map_nodes_branch_id_work_branches_id_fk",
-          "tableFrom": "map_nodes",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_nodes_entity_id_entities_id_fk": {
-          "name": "map_nodes_entity_id_entities_id_fk",
-          "tableFrom": "map_nodes",
-          "tableTo": "entities",
-          "columnsFrom": [
-            "entity_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "map_nodes_parent_node_id_map_nodes_id_fk": {
-          "name": "map_nodes_parent_node_id_map_nodes_id_fk",
-          "tableFrom": "map_nodes",
-          "tableTo": "map_nodes",
-          "columnsFrom": [
-            "parent_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.model_configs": {
       "name": "model_configs",
       "schema": "",
@@ -5170,18 +4416,6 @@
         "succeeded",
         "failed",
         "skipped"
-      ]
-    },
-    "public.map_level": {
-      "name": "map_level",
-      "schema": "public",
-      "values": [
-        "world",
-        "realm",
-        "continent",
-        "region",
-        "city",
-        "location"
       ]
     },
     "public.model_purpose": {
