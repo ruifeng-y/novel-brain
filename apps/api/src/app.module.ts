@@ -20,6 +20,7 @@ import { RedisModule } from './redis/redis.module';
 import { validateEnv } from './config/env';
 import { StoryPlanningController } from './planning/story-planning.controller';
 import { StoryPlanningModule } from './planning/story-planning.module';
+import { StoryLedgerController } from './planning/story-ledger.controller';
 import { WorksController } from './works/works.controller';
 import { WorksModule } from './works/works.module';
 import { WorldbuildingController } from './worldbuilding/worldbuilding.controller';
@@ -55,6 +56,7 @@ export class AppModule implements NestModule {
         ModelConfigsController,
         OutlineController,
         StoryPlanningController,
+        StoryLedgerController,
         EntitiesController,
         MapsController,
         WorldbuildingController,
