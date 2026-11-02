@@ -4,9 +4,10 @@ import { historyVariantSchema } from './history-pack';
 export const GENRE_PACK_LABELS = {
   xianxia: '仙侠',
   history: '历史',
+  urban: '都市',
 } as const;
 
-export const workGenrePackSchema = z.enum(['xianxia', 'history']);
+export const workGenrePackSchema = z.enum(['xianxia', 'history', 'urban']);
 export const workScaleSchema = z.enum(['short', 'medium', 'long', 'epic']);
 export const workStatusSchema = z.enum([
   'preparing',

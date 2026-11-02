@@ -463,18 +463,40 @@ describe('entity center API', () => {
     const centerPath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}`;
     const xianxiaCenterPath = `/api/v1/works/${xianxiaWork.id}/branches/${xianxiaWork.mainBranchId}`;
 
-    const fields = await author.agent.get(`${centerPath}/custom-fields`).expect(200);
-    expect(fields.body.items).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ key: 'history_rank', label: '官阶', type: 'number' }),
-        expect.objectContaining({ key: 'history_troops', label: '兵力', type: 'number' }),
+    const historyWork = await author.agent.get(`/api/v1/works/${work.id}`).expect(200);
+    expect(historyWork.body.genreTemplate).toMatchObject({
+      name: '架空古代',
+      subtypes: expect.arrayContaining([
+        expect.objectContaining({ key: 'dynasty', label: '朝代', entityType: 'world' }),
         expect.objectContaining({
-          key: 'history_provisions_shi',
-          label: '随军粮草（石）',
-          type: 'number',
+          key: 'bureaucracy',
+          label: '官制',
+          entityType: 'faction',
+          fields: expect.arrayContaining([
+            expect.objectContaining({ key: 'history_rank', label: '官阶', type: 'number' }),
+          ]),
+        }),
+        expect.objectContaining({
+          key: 'military',
+          label: '军制',
+          fields: expect.arrayContaining([
+            expect.objectContaining({ key: 'history_troops', label: '兵力' }),
+            expect.objectContaining({
+              key: 'history_provisions_shi',
+              label: '随军粮草（石）',
+            }),
+          ]),
+        }),
+        expect.objectContaining({ key: 'geography', label: '地理', entityType: 'map' }),
+        expect.objectContaining({
+          key: 'clan',
+          label: '世家',
+          fields: expect.arrayContaining([
+            expect.objectContaining({ key: 'history_influence', label: '门第影响力' }),
+          ]),
         }),
       ]),
-    );
+    });
 
     const dynasty = await author.agent
       .post(`${centerPath}/entities`)
@@ -566,7 +588,7 @@ describe('entity center API', () => {
       })
       .expect(400)
       .expect(({ body }) => {
-        expect(body.code).toBe('VALIDATION_ERROR');
+        expect(body.code).toBe('SUBTYPE_NOT_ALLOWED');
       });
 
     await author.agent

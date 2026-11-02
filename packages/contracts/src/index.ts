@@ -4,6 +4,7 @@ export * from './chapter-generation';
 export * from './entity-center';
 export * from './env';
 export * from './fact-extraction';
+export * from './genre-packs';
 export * from './health';
 export * from './history-pack';
 export * from './map-faction';

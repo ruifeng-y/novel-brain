@@ -3,31 +3,19 @@ import { z } from 'zod';
 export const DEFAULT_CHAPTER_TARGET_MIN = 2_000;
 export const DEFAULT_CHAPTER_TARGET_MAX = 3_000;
 
-const CJK_IDEOGRAPH_PATTERN =
-  /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{323AF}]/gu;
+const CJK_IDEOGRAPH_PATTERN = /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{323AF}]/gu;
 
 export function isCjkIdeograph(character: string): boolean {
-  return /^[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{323AF}]$/u.test(
-    character,
-  );
+  return /^[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{323AF}]$/u.test(character);
 }
 
 export function countCjkCharacters(text: string): number {
   return text.match(CJK_IDEOGRAPH_PATTERN)?.length ?? 0;
 }
 
-export const chapterStatusSchema = z.enum([
-  'planned',
-  'writing',
-  'review',
-  'locked',
-  'published',
-]);
+export const chapterStatusSchema = z.enum(['planned', 'writing', 'review', 'locked', 'published']);
 
-export const CHAPTER_STATUS_LABELS: Record<
-  z.infer<typeof chapterStatusSchema>,
-  string
-> = {
+export const CHAPTER_STATUS_LABELS: Record<z.infer<typeof chapterStatusSchema>, string> = {
   planned: '已规划',
   writing: '写作中',
   review: '待审',
@@ -37,10 +25,7 @@ export const CHAPTER_STATUS_LABELS: Record<
 
 export const writingQualityTierSchema = z.enum(['fast', 'standard', 'premium']);
 
-export const QUALITY_TIER_LABELS: Record<
-  z.infer<typeof writingQualityTierSchema>,
-  string
-> = {
+export const QUALITY_TIER_LABELS: Record<z.infer<typeof writingQualityTierSchema>, string> = {
   fast: '快速',
   standard: '标准',
   premium: '精品',
@@ -81,10 +66,7 @@ export const CHAPTER_ACTION_OUTPUT_KIND: Record<
   summary: 'summary',
 };
 
-const writingListSchema = z
-  .array(z.string().trim().min(1).max(200))
-  .max(40)
-  .default([]);
+const writingListSchema = z.array(z.string().trim().min(1).max(200)).max(40).default([]);
 
 export const generateChapterSchema = z
   .object({
@@ -107,10 +89,7 @@ export const generateChapterSchema = z
     targetPov: z.string().trim().max(120).optional(),
     mustInclude: writingListSchema,
     mustAvoid: writingListSchema,
-    referenceChapters: z
-      .array(z.coerce.number().int().min(1).max(10_000))
-      .max(20)
-      .default([]),
+    referenceChapters: z.array(z.coerce.number().int().min(1).max(10_000)).max(20).default([]),
     tabooWords: writingListSchema,
     content: z.string().max(200_000).optional(),
     selection: z.string().max(50_000).optional(),
@@ -152,12 +131,7 @@ export const saveChapterVersionSchema = z.object({
   title: z.string().trim().min(1).max(120).optional(),
 });
 
-export const chapterGenerationStatusSchema = z.enum([
-  'queued',
-  'running',
-  'completed',
-  'failed',
-]);
+export const chapterGenerationStatusSchema = z.enum(['queued', 'running', 'completed', 'failed']);
 
 export const jobStatusSchema = z.enum([
   'queued',
@@ -170,19 +144,17 @@ export const jobStatusSchema = z.enum([
   'paused',
 ]);
 
-export const jobStepStatusSchema = z.enum([
-  'pending',
-  'running',
-  'succeeded',
-  'failed',
-  'skipped',
-]);
+export const jobStepStatusSchema = z.enum(['pending', 'running', 'succeeded', 'failed', 'skipped']);
 
 export const draftStatusSchema = z.enum(['pending', 'streaming', 'ready', 'failed']);
 
 export const continuityIssueStatusSchema = z.enum(['open', 'ignored']);
 
 export const CONTINUITY_CATEGORY_LABELS: Record<string, string> = {
+  real_world: '现实逻辑',
+  relationship: '社会关系',
+  money: '金钱约束',
+  law: '法律约束',
   outline: '大纲贴合',
   confirmed_fact: '已确认设定',
   timeline: '时间线',
@@ -204,6 +176,10 @@ export const CONTINUITY_CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const CONTINUITY_ISSUE_CATEGORIES = [
+  'real_world',
+  'relationship',
+  'money',
+  'law',
   'outline',
   'confirmed_fact',
   'timeline',
@@ -243,8 +219,7 @@ export const CHAPTER_QUALITY_DIMENSION_KEYS = [
   'continuity',
 ] as const;
 
-export type ChapterQualityDimensionKey =
-  (typeof CHAPTER_QUALITY_DIMENSION_KEYS)[number];
+export type ChapterQualityDimensionKey = (typeof CHAPTER_QUALITY_DIMENSION_KEYS)[number];
 
 export type ChapterQualityDimension = {
   key: ChapterQualityDimensionKey;
@@ -266,9 +241,7 @@ export type ChapterQualityReport = {
 export type GenerateChapterInput = z.infer<typeof generateChapterSchema>;
 export type WritingQualityTier = z.infer<typeof writingQualityTierSchema>;
 export type ChapterGenerationAction = z.infer<typeof chapterGenerationActionSchema>;
-export type ChapterGenerationOutputKind = z.infer<
-  typeof chapterGenerationOutputKindSchema
->;
+export type ChapterGenerationOutputKind = z.infer<typeof chapterGenerationOutputKindSchema>;
 export type SaveChapterAutosaveInput = z.infer<typeof saveChapterAutosaveSchema>;
 export type UpdateChapterMetadataInput = z.infer<typeof updateChapterMetadataSchema>;
 export type SaveChapterVersionInput = z.infer<typeof saveChapterVersionSchema>;

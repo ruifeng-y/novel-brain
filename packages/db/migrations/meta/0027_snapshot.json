@@ -1,5 +1,5 @@
 {
-  "id": "4bc2d4d6-1efe-44be-972e-16b4728457ea",
+  "id": "4648ce16-f8c7-487a-8d03-81190353192c",
   "prevId": "d6c575e1-3c92-40fe-a19f-a84245d2aeb7",
   "version": "7",
   "dialect": "postgresql",
@@ -2452,7 +2452,8 @@
           "name": "subtype",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "''"
         },
         "summary": {
           "name": "summary",
@@ -2582,33 +2583,6 @@
             },
             {
               "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "entities_work_branch_subtype_idx": {
-          "name": "entities_work_branch_subtype_idx",
-          "columns": [
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "subtype",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7329,12 +7303,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "genre_variant": {
-          "name": "genre_variant",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "scale": {
           "name": "scale",

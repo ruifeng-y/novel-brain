@@ -25,10 +25,13 @@ export function WorkspaceHome() {
   const [leaving, setLeaving] = useState<'current' | 'all'>();
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
-  const [genrePack, setGenrePack] = useState<'xianxia' | 'history'>('xianxia');
+  const [genrePack, setGenrePack] = useState<'xianxia' | 'history' | 'urban'>('xianxia');
 
   useEffect(() => {
-    Promise.all([apiRequest<User>('/api/v1/auth/me'), apiRequest<WorkListResponse>('/api/v1/works')])
+    Promise.all([
+      apiRequest<User>('/api/v1/auth/me'),
+      apiRequest<WorkListResponse>('/api/v1/works'),
+    ])
       .then(([user, works]) => setState({ status: 'ready', user, works: works.items }))
       .catch((error: unknown) => {
         if (error instanceof ApiError && error.status === 401) {
@@ -227,12 +230,17 @@ export function WorkspaceHome() {
                 <select
                   name="genrePack"
                   onChange={(event) =>
-                    setGenrePack(event.currentTarget.value as 'xianxia' | 'history')
+                    setGenrePack(
+                      event.currentTarget.value as 'xianxia' | 'history' | 'urban',
+                    )
                   }
                   value={genrePack}
                 >
-                  <option value="xianxia">仙侠</option>
-                  <option value="history">历史</option>
+                  {Object.entries(GENRE_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </label>
               <label className="field">

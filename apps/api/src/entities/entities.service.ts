@@ -5,8 +5,9 @@ import {
   ENTITY_SCOPE_LABELS,
   ENTITY_STATUS_LABELS,
   ENTITY_TYPE_LABELS,
-  HISTORY_SUBTYPE_LABELS,
   RELATION_PREDICATE_LABELS,
+  getGenreFieldDefinitions,
+  getGenreSubtypeDefinition,
   type CustomFieldDefinitionInput,
   type CustomFieldValue,
   type EntityCreateInput,
@@ -52,8 +53,8 @@ type EntityResponse = {
   aliases: string[];
   type: string;
   typeLabel: string;
-  subtype: string | null;
-  subtypeLabel: string | null;
+  subtype: string;
+  subtypeLabel: string;
   summary: string;
   description: string;
   tags: string[];
@@ -163,7 +164,7 @@ export class EntitiesService {
     branchId: string,
     input: EntitySearchInput,
   ): Promise<{ items: EntityResponse[] }> {
-    await this.requireBranch(userId, workId, branchId);
+    const { genrePack } = await this.requireBranch(userId, workId, branchId);
     const conditions = [
       eq(entities.workId, workId),
       eq(entities.branchId, branchId),
@@ -203,7 +204,7 @@ export class EntitiesService {
       .where(and(...conditions))
       .orderBy(desc(entities.updatedAt), entities.name);
 
-    return { items: rows.map((row) => this.toEntityResponse(row)) };
+    return { items: rows.map((row) => this.toEntityResponse(row, genrePack)) };
   }
 
   async getEntity(
@@ -212,10 +213,10 @@ export class EntitiesService {
     branchId: string,
     entityId: string,
   ): Promise<EntityDetailResponse> {
-    await this.requireBranch(userId, workId, branchId);
+    const { genrePack } = await this.requireBranch(userId, workId, branchId);
     const row = await this.requireEntity(workId, branchId, entityId);
     return {
-      ...this.toEntityResponse(row),
+      ...this.toEntityResponse(row, genrePack),
       references: await this.findReferences(row),
     };
   }
@@ -226,9 +227,15 @@ export class EntitiesService {
     branchId: string,
     input: EntityCreateInput,
   ): Promise<EntityResponse> {
-    const work = await this.requireBranch(userId, workId, branchId);
-    this.validateSubtype(work.genrePack, input.subtype);
-    const customFields = await this.validateCustomFields(workId, branchId, input.customFields);
+    const { genrePack } = await this.requireBranch(userId, workId, branchId);
+    const subtype = this.resolveSubtype(genrePack, input.type, input.subtype);
+    const customFields = await this.validateCustomFields(
+      workId,
+      branchId,
+      genrePack,
+      subtype,
+      input.customFields,
+    );
     const now = new Date();
 
     try {
@@ -240,7 +247,7 @@ export class EntitiesService {
           name: input.name,
           aliases: input.aliases,
           type: input.type,
-          subtype: input.subtype ?? '',
+          subtype,
           summary: input.summary,
           description: input.description,
           tags: input.tags,
@@ -252,7 +259,7 @@ export class EntitiesService {
         })
         .returning();
       await this.touchWork(workId, now);
-      return this.toEntityResponse(created);
+      return this.toEntityResponse(created, genrePack);
     } catch (error) {
       if (this.isUniqueViolation(error)) {
         throw entitiesError(
@@ -272,10 +279,15 @@ export class EntitiesService {
     entityId: string,
     input: EntityUpdateInput,
   ): Promise<EntityResponse> {
-    const work = await this.requireBranch(userId, workId, branchId);
+    const { genrePack } = await this.requireBranch(userId, workId, branchId);
     const existing = await this.requireEntity(workId, branchId, entityId);
-    this.validateSubtype(work.genrePack, input.subtype ?? existing.subtype);
-    const customFields = await this.validateCustomFields(workId, branchId, {
+    const nextType = input.type ?? (existing.type as EntityCreateInput['type']);
+    const nextSubtype = this.resolveSubtype(
+      genrePack,
+      nextType,
+      input.subtype === undefined ? existing.subtype : input.subtype,
+    );
+    const customFields = await this.validateCustomFields(workId, branchId, genrePack, nextSubtype, {
       ...existing.customFields,
       ...(input.customFields ?? {}),
     });
@@ -288,7 +300,7 @@ export class EntitiesService {
           ...(input.name === undefined ? {} : { name: input.name }),
           ...(input.aliases === undefined ? {} : { aliases: input.aliases }),
           ...(input.type === undefined ? {} : { type: input.type }),
-          ...(input.subtype === undefined ? {} : { subtype: input.subtype ?? '' }),
+          subtype: nextSubtype,
           ...(input.summary === undefined ? {} : { summary: input.summary }),
           ...(input.description === undefined ? {} : { description: input.description }),
           ...(input.tags === undefined ? {} : { tags: input.tags }),
@@ -300,7 +312,7 @@ export class EntitiesService {
         .where(eq(entities.id, existing.id))
         .returning();
       await this.touchWork(workId, now);
-      return this.toEntityResponse(updated);
+      return this.toEntityResponse(updated, genrePack);
     } catch (error) {
       if (this.isUniqueViolation(error)) {
         throw entitiesError(
@@ -436,19 +448,6 @@ export class EntitiesService {
     return { genrePack: work.genrePack };
   }
 
-  private validateSubtype(genrePack: string, subtype: string | null): void {
-    if (!subtype) {
-      return;
-    }
-    if (genrePack !== 'history') {
-      throw entitiesError(
-        HttpStatus.BAD_REQUEST,
-        'SUBTYPE_NOT_ALLOWED',
-        'This setting subtype belongs to another genre pack',
-      );
-    }
-  }
-
   private async requireEntity(
     workId: string,
     branchId: string,
@@ -495,13 +494,32 @@ export class EntitiesService {
   private async validateCustomFields(
     workId: string,
     branchId: string,
+    genrePack: string,
+    subtype: string,
     values: Record<string, CustomFieldValue>,
   ): Promise<Record<string, EntityCustomFieldValue>> {
     const definitions = await this.database.db
       .select()
       .from(entityCustomFields)
       .where(and(eq(entityCustomFields.workId, workId), eq(entityCustomFields.branchId, branchId)));
-    const byKey = new Map(definitions.map((definition) => [definition.key, definition]));
+    const packDefinitions = getGenreFieldDefinitions(genrePack, subtype);
+    const byKey = new Map<string, { label: string; type: string; options: string[] }>(
+      definitions.map((definition) => [
+        definition.key,
+        {
+          label: definition.label,
+          type: definition.type,
+          options: definition.options,
+        },
+      ]),
+    );
+    for (const definition of packDefinitions) {
+      byKey.set(definition.key, {
+        label: definition.label,
+        type: definition.type,
+        options: definition.options ?? [],
+      });
+    }
     const errors: Array<{ field: string; message: string }> = [];
 
     for (const [key, rawValue] of Object.entries(values)) {
@@ -696,7 +714,27 @@ export class EntitiesService {
     };
   }
 
-  private toEntityResponse(row: EntityRow): EntityResponse {
+  private resolveSubtype(
+    genrePack: string,
+    type: EntityCreateInput['type'],
+    subtype: string | null | undefined,
+  ): string {
+    const value = subtype?.trim() ?? '';
+    if (!value) {
+      return '';
+    }
+    const definition = getGenreSubtypeDefinition(genrePack, value);
+    if (!definition || definition.entityType !== type) {
+      throw entitiesError(
+        HttpStatus.BAD_REQUEST,
+        genrePack === 'urban' ? 'URBAN_SUBTYPE_INVALID' : 'SUBTYPE_NOT_ALLOWED',
+        'Choose a subtype that belongs to this setting category',
+      );
+    }
+    return definition.key;
+  }
+
+  private toEntityResponse(row: EntityRow, genrePack: string): EntityResponse {
     return {
       id: row.id,
       workId: row.workId,
@@ -705,12 +743,8 @@ export class EntitiesService {
       aliases: row.aliases,
       type: row.type,
       typeLabel: ENTITY_TYPE_LABELS[row.type as keyof typeof ENTITY_TYPE_LABELS] ?? row.type,
-      subtype: row.subtype || null,
-      subtypeLabel: row.subtype
-        ? (HISTORY_SUBTYPE_LABELS[
-            row.subtype as keyof typeof HISTORY_SUBTYPE_LABELS
-          ] ?? row.subtype)
-        : null,
+      subtype: row.subtype,
+      subtypeLabel: getGenreSubtypeDefinition(genrePack, row.subtype)?.label ?? row.subtype,
       summary: row.summary,
       description: row.description,
       tags: row.tags,

@@ -4,7 +4,6 @@ import {
   ENTITY_TYPE_LABELS,
   RELATION_PREDICATE_LABELS,
   type CustomFieldValue,
-  type HistorySubtype,
 } from '@novel/contracts';
 import { apiRequest } from './auth-api';
 
@@ -34,8 +33,8 @@ export type Entity = {
   aliases: string[];
   type: EntityType;
   typeLabel: string;
-  subtype: HistorySubtype | null;
-  subtypeLabel: string | null;
+  subtype: string;
+  subtypeLabel: string;
   summary: string;
   description: string;
   tags: string[];
@@ -97,7 +96,7 @@ export type EntityInput = {
   name: string;
   aliases: string[];
   type: EntityType;
-  subtype: HistorySubtype | null;
+  subtype: string;
   summary: string;
   description: string;
   tags: string[];
@@ -109,7 +108,7 @@ export type EntityInput = {
 export type EntitySearchFilters = {
   q?: string;
   type?: EntityType;
-  subtype?: HistorySubtype;
+  subtype?: string;
   tag?: string;
   status?: EntityStatus;
 };

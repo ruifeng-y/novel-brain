@@ -178,8 +178,12 @@ export function WorkspaceWork({ workId }: { workId: string }) {
       <section className="work-detail-hero">
         <div>
           <p className="workspace-step">
-            {GENRE_LABELS[work.genrePack] ?? work.genrePack}
-            {work.genreVariantLabel ? ` · ${work.genreVariantLabel}` : ''}
+            {work.genrePackLabel ?? GENRE_LABELS[work.genrePack] ?? work.genrePack}
+            {work.genreVariantLabel
+              ? ` · ${work.genreVariantLabel}`
+              : work.genreTemplate
+                ? ` · ${work.genreTemplate.name}`
+                : ''}
           </p>
           <h1>{work.title}</h1>
           <p>
@@ -283,10 +287,16 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             <div>
               <dt>题材</dt>
               <dd>
-                {GENRE_LABELS[work.genrePack] ?? work.genrePack}
+                {work.genrePackLabel ?? GENRE_LABELS[work.genrePack] ?? work.genrePack}
                 {work.genreVariantLabel ? ` · ${work.genreVariantLabel}` : ''}
               </dd>
             </div>
+            {work.genreTemplate ? (
+              <div>
+                <dt>主模板</dt>
+                <dd>{work.genreTemplate.name}</dd>
+              </div>
+            ) : null}
             <div>
               <dt>规模</dt>
               <dd>{SCALE_LABELS[work.scale] ?? work.scale}</dd>
