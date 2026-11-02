@@ -29,6 +29,7 @@ import type { AuthenticatedRequest } from '../auth/auth.types';
 import { SessionAuthGuard } from '../auth/session-auth.guard';
 import { chapterGenerationError } from './chapter-generation.errors';
 import { ChapterGenerationService } from './chapter-generation.service';
+import { GenerationJobAccessGuard } from './generation-job-access.guard';
 
 @ApiTags('chapter-generation')
 @Controller('works/:workId/branches/:branchId')
@@ -553,6 +554,7 @@ export class ChapterGenerationController {
   }
 
   @Sse('jobs/:jobId/events')
+  @UseGuards(GenerationJobAccessGuard)
   @ApiOperation({ summary: 'Stream chapter generation progress and text deltas' })
   async streamJobEvents(
     @Param('workId') workId: string,
