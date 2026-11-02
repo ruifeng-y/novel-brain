@@ -5,6 +5,11 @@ import {
   type AiGateway,
 } from '@novel/ai';
 import {
+  countCjkCharacters,
+  DEFAULT_CHAPTER_TARGET_MAX,
+  DEFAULT_CHAPTER_TARGET_MIN,
+} from '@novel/contracts';
+import {
   chapterOutlines,
   contextPacks,
   drafts,
@@ -29,6 +34,7 @@ type GenerationErrorInfo = {
   code: string;
   message: string;
   recoverable: true;
+  details?: Record<string, unknown>;
 };
 
 type ContextSection = {
@@ -99,7 +105,17 @@ export class ChapterGenerationRunner {
       .where(eq(jobs.id, jobId));
     await this.appendEvent(jobId, 'job.preparing', { progress: 5 });
 
+    const targetMinCharacters = this.targetValue(
+      jobRow.payload.targetMinCharacters,
+      DEFAULT_CHAPTER_TARGET_MIN,
+    );
+    const targetMaxCharacters = this.targetValue(
+      jobRow.payload.targetMaxCharacters,
+      DEFAULT_CHAPTER_TARGET_MAX,
+    );
     let draftId: string | undefined;
+    let draftContent = '';
+    let lastPersistedContent = '';
     try {
       const [bible] = await this.database.db
         .select()
@@ -141,7 +157,13 @@ export class ChapterGenerationRunner {
       await this.completeStep(jobId, 'brief', brief, 30);
 
       await this.beginStep(jobId, 'context', { outlineId: outline.id }, 35);
-      const context = this.compileContext(bible, outline, generation);
+      const context = this.compileContext(
+        bible,
+        outline,
+        generation,
+        targetMinCharacters,
+        targetMaxCharacters,
+      );
       await this.database.db
         .insert(contextPacks)
         .values({
@@ -197,59 +219,126 @@ export class ChapterGenerationRunner {
         })
         .where(eq(generationRequests.id, generation.id));
 
-      let content = '';
-      let chunkCount = 0;
-      for await (const chunk of this.gateway.streamText({
-        system: context.systemPrompt,
-        prompt: context.userPrompt,
-        model: model.model,
-        apiKey: model.apiKey,
-        baseUrl: model.baseUrl,
-        maxTokens: 4_000,
-        temperature: 0.75,
-      })) {
-        if (!chunk.text) {
-          continue;
-        }
-        content += chunk.text;
-        chunkCount += 1;
-        await this.database.db
-          .update(drafts)
-          .set({ content, updatedAt: new Date() })
-          .where(eq(drafts.id, draftId));
-        await this.appendEvent(jobId, 'job.draft.delta', {
-          delta: chunk.text,
-          contentLength: content.length,
-        });
-        if (chunkCount % 4 === 0) {
+      const maxAttempts = 2;
+      let attempts = 0;
+      let characterCount = 0;
+      let accepted = false;
+
+      while (attempts < maxAttempts && !accepted) {
+        attempts += 1;
+        if (attempts > 1) {
+          lastPersistedContent = draftContent;
+          draftContent = '';
           await this.database.db
-            .update(jobs)
-            .set({
-              status: 'running',
-              progress: Math.min(95, 50 + Math.floor(chunkCount / 2)),
-              updatedAt: new Date(),
-            })
-            .where(eq(jobs.id, jobId));
+            .update(drafts)
+            .set({ content: '', status: 'streaming', updatedAt: new Date() })
+            .where(eq(drafts.id, draftId));
+          await this.appendEvent(jobId, 'job.draft.reset', {
+            reason: 'length_bounds',
+            attempt: attempts,
+            previousCharacterCount: characterCount,
+            targetMinCharacters,
+            targetMaxCharacters,
+          });
+        }
+
+        const prompt =
+          attempts === 1
+            ? context.userPrompt
+            : this.correctionPrompt(
+                context.userPrompt,
+                characterCount,
+                targetMinCharacters,
+                targetMaxCharacters,
+              );
+        let chunkCount = 0;
+        for await (const chunk of this.gateway.streamText({
+          system: context.systemPrompt,
+          prompt,
+          model: model.model,
+          apiKey: model.apiKey,
+          baseUrl: model.baseUrl,
+          maxTokens: 4_000,
+          temperature: 0.75,
+        })) {
+          if (!chunk.text) {
+            continue;
+          }
+          draftContent += chunk.text;
+          chunkCount += 1;
+          await this.database.db
+            .update(drafts)
+            .set({ content: draftContent, updatedAt: new Date() })
+            .where(eq(drafts.id, draftId));
+          await this.appendEvent(jobId, 'job.draft.delta', {
+            delta: chunk.text,
+            characterCount: countCjkCharacters(draftContent),
+          });
+          if (chunkCount % 4 === 0) {
+            await this.database.db
+              .update(jobs)
+              .set({
+                status: 'running',
+                progress: Math.min(95, 50 + Math.floor(chunkCount / 2)),
+                updatedAt: new Date(),
+              })
+              .where(eq(jobs.id, jobId));
+          }
+        }
+
+        if (!draftContent.trim()) {
+          throw new InvalidGenerationInput(
+            'EMPTY_GENERATION',
+            'The model did not return any chapter text',
+          );
+        }
+
+        characterCount = countCjkCharacters(draftContent);
+        if (
+          characterCount >= targetMinCharacters &&
+          characterCount <= targetMaxCharacters
+        ) {
+          accepted = true;
+          break;
+        }
+
+        if (attempts < maxAttempts) {
+          await this.appendEvent(jobId, 'job.draft.correcting', {
+            characterCount,
+            targetMinCharacters,
+            targetMaxCharacters,
+            nextAttempt: attempts + 1,
+          });
         }
       }
 
-      if (!content.trim()) {
+      if (!accepted) {
         throw new InvalidGenerationInput(
-          'EMPTY_GENERATION',
-          'The model did not return any chapter text',
+          'DRAFT_LENGTH_OUT_OF_BOUNDS',
+          'The chapter did not meet the requested length bounds',
+          {
+            characterCount,
+            targetMinCharacters,
+            targetMaxCharacters,
+            attempts,
+          },
         );
       }
 
       await this.database.db
         .update(drafts)
-        .set({ content, status: 'ready', updatedAt: new Date() })
+        .set({ content: draftContent, status: 'ready', updatedAt: new Date() })
         .where(eq(drafts.id, draftId));
       await this.completeStep(
         jobId,
         'draft',
         {
           draftId,
-          wordCount: content.length,
+          wordCount: characterCount,
+          characterCount,
+          targetMinCharacters,
+          targetMaxCharacters,
+          attempts,
         },
         98,
       );
@@ -257,7 +346,11 @@ export class ChapterGenerationRunner {
       const completedAt = new Date();
       await this.appendEvent(jobId, 'job.completed', {
         draftId,
-        wordCount: content.length,
+        wordCount: characterCount,
+        characterCount,
+        targetMinCharacters,
+        targetMaxCharacters,
+        attempts,
         progress: 100,
       });
       await this.database.db
@@ -283,9 +376,15 @@ export class ChapterGenerationRunner {
     } catch (error) {
       const errorInfo = this.toErrorInfo(error);
       if (draftId) {
+        const preservedContent =
+          draftContent.trim().length > 0 ? draftContent : lastPersistedContent;
         await this.database.db
           .update(drafts)
-          .set({ status: 'failed', updatedAt: new Date() })
+          .set({
+            ...(preservedContent ? { content: preservedContent } : {}),
+            status: 'failed',
+            updatedAt: new Date(),
+          })
           .where(eq(drafts.id, draftId));
       }
       await this.fail(jobRow, generation, draftId, errorInfo);
@@ -297,6 +396,8 @@ export class ChapterGenerationRunner {
     bible: StoryBibleRow,
     outline: ChapterOutlineRow,
     generation: GenerationRequestRow,
+    targetMinCharacters: number,
+    targetMaxCharacters: number,
   ): {
     sections: ContextSection[];
     sourceRefs: string[];
@@ -327,7 +428,9 @@ export class ChapterGenerationRunner {
         key: 'writingGuidance',
         title: '写作要求',
         content: {
-          targetCharacters: '2000 到 3000 个中文字符',
+          targetMinCharacters,
+          targetMaxCharacters,
+          targetCharacters: `${targetMinCharacters} 到 ${targetMaxCharacters} 个汉字`,
           instruction: generation.instruction ?? '',
           output: '只输出章节正文，不解释创作过程。',
         },
@@ -337,10 +440,12 @@ export class ChapterGenerationRunner {
     const systemPrompt = [
       '你是一位擅长中文长篇网络小说的作者。',
       '请严格依据作者提供的创作资料写作，保持人物、世界规则和前文事实一致。',
+      `正文必须包含 ${targetMinCharacters} 到 ${targetMaxCharacters} 个汉字；标点、空格和换行不计入汉字数量。`,
       '只输出可以直接进入编辑器的章节正文，不要标题、说明、Markdown 代码块或创作分析。',
     ].join('\n');
     const userPrompt = [
-      '请写出这一章的完整正文，长度控制在 2000 到 3000 个中文字符之间。',
+      `请写出这一章的完整正文，目标汉字数：${targetMinCharacters} 到 ${targetMaxCharacters}。`,
+      '只统计汉字，标点、空格和换行不计入。',
       '',
       '【故事圣经】',
       `一句话故事：${bible.oneSentenceStory}`,
@@ -365,6 +470,26 @@ export class ChapterGenerationRunner {
       systemPrompt,
       userPrompt,
     };
+  }
+
+  private correctionPrompt(
+    originalPrompt: string,
+    characterCount: number,
+    targetMinCharacters: number,
+    targetMaxCharacters: number,
+  ): string {
+    return [
+      originalPrompt,
+      '',
+      '【篇幅校正】',
+      `上一版只有 ${characterCount} 个汉字，不在 ${targetMinCharacters} 到 ${targetMaxCharacters} 个汉字的要求内。`,
+      `请重写完整正文，目标汉字数：${targetMinCharacters} 到 ${targetMaxCharacters}。`,
+      '不要只补一段，也不要解释修改过程，只输出完整章节正文。',
+    ].join('\n');
+  }
+
+  private targetValue(value: unknown, fallback: number): number {
+    return typeof value === 'number' && Number.isInteger(value) ? value : fallback;
   }
 
   private async beginStep(
@@ -493,6 +618,7 @@ export class ChapterGenerationRunner {
         code: error.code,
         message: error.message,
         recoverable: true,
+        ...(error.details ? { details: error.details } : {}),
       };
     }
     if (error instanceof Error && error.message === 'MODEL_CONFIG_REQUIRED') {
@@ -514,6 +640,7 @@ class InvalidGenerationInput extends Error {
   constructor(
     readonly code: string,
     message: string,
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
   }

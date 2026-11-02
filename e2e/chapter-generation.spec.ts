@@ -28,6 +28,13 @@ async function readVerificationCode(email: string): Promise<string> {
   throw new Error(`No verification email arrived for ${email}`);
 }
 
+function countCjkCharacters(text: string): number {
+  return (
+    text.match(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{323AF}]/gu)
+      ?.length ?? 0
+  );
+}
+
 test('an author can generate, edit, save, and recover a chapter in the writing desk', async ({
   page,
 }) => {
@@ -98,12 +105,12 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
     timeout: 15_000,
   });
   await expect
-    .poll(async () => (await page.getByLabel('章节正文').inputValue()).length)
+    .poll(async () => countCjkCharacters(await page.getByLabel('章节正文').inputValue()))
     .toBeGreaterThanOrEqual(2000);
   await expect
-    .poll(async () => (await page.getByLabel('章节正文').inputValue()).length)
+    .poll(async () => countCjkCharacters(await page.getByLabel('章节正文').inputValue()))
     .toBeLessThanOrEqual(3000);
-  await expect(page.getByText('2,400 字', { exact: true })).toBeVisible();
+  await expect(page.getByText('2,500 字', { exact: true })).toBeVisible();
 
   await page.getByRole('button', { name: '保存版本' }).click();
   await expect(page.getByText('版本 1 已保存')).toBeVisible();
@@ -124,8 +131,8 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
   await page.getByRole('button', { name: '根据章纲生成' }).click();
   await expect(page.locator('.writing-error[role="alert"]')).toContainText('已经写出的内容');
   const partialDraft = await page.getByLabel('章节正文').inputValue();
-  expect(partialDraft.length).toBeGreaterThan(0);
-  expect(partialDraft.length).toBeLessThan(savedContent.length);
+  expect(countCjkCharacters(partialDraft)).toBeGreaterThan(0);
+  expect(countCjkCharacters(partialDraft)).toBeLessThan(countCjkCharacters(savedContent));
   await expect(page.getByRole('button', { name: '恢复生成前内容' })).toBeVisible();
 
   await page.getByRole('button', { name: '恢复生成前内容' }).click();

@@ -2,6 +2,7 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   CHAPTER_STATUS_LABELS,
+  countCjkCharacters,
   type ChapterStatus,
   type GenerateChapterInput,
   type SaveChapterVersionInput,
@@ -390,6 +391,8 @@ export class ChapterGenerationService {
       id: job.id,
       generationRequestId: generation?.id ?? null,
       chapterNumber: Number(job.payload.chapterNumber ?? 0),
+      targetMinCharacters: Number(job.payload.targetMinCharacters ?? 0),
+      targetMaxCharacters: Number(job.payload.targetMaxCharacters ?? 0),
       status: job.status,
       progress: job.progress,
       modelConfigId: generation?.modelConfigId ?? null,
@@ -504,7 +507,7 @@ export class ChapterGenerationService {
     await this.requireOutline(workId, branchId, chapterNumber);
     const chapter = await this.ensureChapter(workId, branchId, chapterNumber);
     const contentHash = createHash('sha256').update(input.content).digest('hex');
-    const wordCount = input.content.length;
+    const wordCount = countCjkCharacters(input.content);
 
     const saved = await this.database.db.transaction(async (tx) => {
       await tx.execute(
