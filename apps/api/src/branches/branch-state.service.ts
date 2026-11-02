@@ -46,6 +46,8 @@ const CLONE_TABLES = [
   'character_presences',
 ] as const;
 
+export type BranchStateCloneTable = (typeof CLONE_TABLES)[number];
+
 const EXTERNAL_REFERENCE_TABLES = new Set(['users', 'model_configs', 'works']);
 const SELF_REFERENCING_TABLES = new Set(['timeline_event_nodes', 'chapter_outlines', 'map_nodes']);
 
@@ -311,12 +313,13 @@ export class BranchStateService {
     sourceBranchId: string,
     targetBranchId: string,
     recordMappings: boolean,
+    tables: readonly BranchStateCloneTable[] = CLONE_TABLES,
   ): Promise<void> {
     const foreignKeys = await this.loadForeignKeys();
     const sourceRows = new Map<string, CloneRow[]>();
     const idMaps = new Map<string, Map<string, string>>();
 
-    for (const table of CLONE_TABLES) {
+    for (const table of tables) {
       const result =
         table === 'chapter_versions'
           ? await tx.execute(
@@ -333,7 +336,7 @@ export class BranchStateService {
       idMaps.set(table, new Map(rows.map((row) => [row.id, randomUUID()])));
     }
 
-    for (const table of CLONE_TABLES) {
+    for (const table of tables) {
       const rows = sourceRows.get(table) ?? [];
       if (rows.length === 0) {
         continue;
@@ -361,7 +364,7 @@ export class BranchStateService {
             row[foreignKey.columnName] = null;
             continue;
           }
-          if (CLONE_TABLES.includes(foreignKey.referenceTable as (typeof CLONE_TABLES)[number])) {
+          if (tables.includes(foreignKey.referenceTable as BranchStateCloneTable)) {
             row[foreignKey.columnName] = idMaps.get(foreignKey.referenceTable)?.get(value) ?? null;
             continue;
           }
@@ -391,6 +394,9 @@ export class BranchStateService {
     }
 
     for (const table of SELF_REFERENCING_TABLES) {
+      if (!tables.includes(table as BranchStateCloneTable)) {
+        continue;
+      }
       const rows = sourceRows.get(table) ?? [];
       const tableForeignKeys = (foreignKeys.get(table) ?? []).filter(
         (foreignKey) => foreignKey.referenceTable === table,
@@ -414,7 +420,7 @@ export class BranchStateService {
     }
 
     if (recordMappings) {
-      for (const table of CLONE_TABLES) {
+      for (const table of tables) {
         const rows = sourceRows.get(table) ?? [];
         for (const sourceRow of rows) {
           const targetId = idMaps.get(table)?.get(sourceRow.id);

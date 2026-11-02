@@ -388,6 +388,10 @@ export function WritingDesk({
     if (boot.status !== 'ready' || !chapterNumber || generating) {
       return;
     }
+    if (boot.work.readOnly) {
+      setError('已完本作品默认只读。请先恢复连载，或到平行版本里继续修改。');
+      return;
+    }
 
     const segmentActions: WritingAction[] = ['rewrite', 'expand', 'condense', 'change_pov'];
     const textarea = bodyTextareaRef.current;
@@ -703,6 +707,9 @@ export function WritingDesk({
     if (boot.status !== 'ready' || !chapterNumber) {
       return;
     }
+    if (boot.work.readOnly) {
+      return;
+    }
     cancelAutosave();
     setAutosaveError('');
     setAutosaveState('pending');
@@ -742,6 +749,10 @@ export function WritingDesk({
 
   async function saveVersion() {
     if (boot.status !== 'ready' || !chapterNumber) {
+      return;
+    }
+    if (boot.work.readOnly) {
+      setError('已完本作品默认只读。请先恢复连载，或到平行版本里继续修改。');
       return;
     }
     if (!content.trim()) {
@@ -793,6 +804,10 @@ export function WritingDesk({
   }
 
   async function restoreVersion(version: ChapterVersion) {
+    if (boot.status === 'ready' && boot.work.readOnly) {
+      setError('已完本作品默认只读。请先恢复连载，或到平行版本里继续修改。');
+      return;
+    }
     if (boot.status !== 'ready' || !chapterNumber) {
       return;
     }
@@ -862,6 +877,10 @@ export function WritingDesk({
     if (boot.status !== 'ready' || !chapterNumber) {
       return;
     }
+    if (boot.work.readOnly) {
+      setError('已完本作品默认只读。请先恢复连载，或到平行版本里继续修改。');
+      return;
+    }
     setContinuityBusyId(issue.id);
     setContinuityError('');
     setContinuityNotice('');
@@ -923,6 +942,10 @@ export function WritingDesk({
     if (boot.status !== 'ready' || !chapterNumber) {
       return;
     }
+    if (boot.work.readOnly) {
+      setError('已完本作品默认只读。请先恢复连载，或到平行版本里继续修改。');
+      return;
+    }
     try {
       const updated = await updateChapterMetadata(boot.work.id, boot.branchId, chapterNumber, {
         title,
@@ -943,6 +966,10 @@ export function WritingDesk({
     if (boot.status !== 'ready' || !chapterNumber) {
       return;
     }
+    if (boot.work.readOnly) {
+      setError('已完本作品默认只读。请先恢复连载，或到平行版本里继续修改。');
+      return;
+    }
     try {
       const updated = await updateChapterMetadata(boot.work.id, boot.branchId, chapterNumber, {
         summary,
@@ -955,6 +982,10 @@ export function WritingDesk({
   }
 
   function appendHook(hook: string) {
+    if (boot.status === 'ready' && boot.work.readOnly) {
+      setError('已完本作品默认只读。请先恢复连载，或到平行版本里继续修改。');
+      return;
+    }
     const nextContent = `${content.trimEnd()}\n\n${hook}`;
     setContent(nextContent);
     scheduleAutosave(nextContent);
@@ -1005,8 +1036,10 @@ export function WritingDesk({
     );
   }
 
+  const workReadOnly = boot.work.readOnly;
+
   return (
-    <main className="writing-shell">
+    <main className={`writing-shell${workReadOnly ? ' writing-shell-readonly' : ''}`}>
       <header className="writing-header">
         <div className="writing-header-main">
           <Link className="workspace-brand" href="/workspace">
@@ -1024,6 +1057,18 @@ export function WritingDesk({
           <Link href="/workspace/settings">模型设置</Link>
         </nav>
       </header>
+
+      {workReadOnly ? (
+        <section className="writing-readonly-banner" aria-label="已完本作品只读">
+          <div>
+            <strong>已完本作品当前为只读状态</strong>
+            <span>正文、设定和大纲都保留查看；要继续修改，请先恢复连载或打开平行版本。</span>
+          </div>
+          <Link className="secondary-button" href={`/workspace/${boot.work.id}`}>
+            查看作品状态
+          </Link>
+        </section>
+      ) : null}
 
       {chapters.length === 0 ? (
         <section className="writing-empty">
@@ -1276,6 +1321,7 @@ export function WritingDesk({
                 onScroll={syncHighlightScroll}
                 onSelect={(event) => updateSelectionFromTextarea(event.currentTarget)}
                 placeholder="正文会在这里出现，也可以直接开始写。"
+                readOnly={workReadOnly}
                 ref={bodyTextareaRef}
                 spellCheck={false}
                 value={content}
@@ -1295,9 +1341,7 @@ export function WritingDesk({
                 </span>
               ) : null}
               <span>
-              {detail?.versionCount
-                ? `已保存 ${detail.versionCount} 个版本`
-                  : '尚未保存版本'}
+                {detail?.versionCount ? `已保存 ${detail.versionCount} 个版本` : '尚未保存版本'}
               </span>
             </footer>
           </section>

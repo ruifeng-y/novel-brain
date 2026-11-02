@@ -7,6 +7,7 @@ import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  app.useBodyParser('json', { limit: '30mb' });
   app.set('trust proxy', 1);
   app.setGlobalPrefix('api/v1');
 

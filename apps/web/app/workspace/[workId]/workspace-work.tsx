@@ -57,6 +57,8 @@ type LoadState =
 export function WorkspaceWork({ workId }: { workId: string }) {
   const router = useRouter();
   const [state, setState] = useState<LoadState>({ status: 'loading' });
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [lifecycleError, setLifecycleError] = useState('');
 
   useEffect(() => {
     Promise.all([apiRequest<User>('/api/v1/auth/me'), apiRequest<Work>(`/api/v1/works/${workId}`)])
@@ -155,6 +157,22 @@ export function WorkspaceWork({ workId }: { workId: string }) {
 
   const { work } = state;
 
+  async function reopenCompletedWork() {
+    setLifecycleBusy(true);
+    setLifecycleError('');
+    try {
+      const updated = await apiRequest<Work>(`/api/v1/works/${work.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: 'serializing' }),
+      });
+      setState((current) => (current.status === 'ready' ? { ...current, work: updated } : current));
+    } catch (error) {
+      setLifecycleError(friendlyError(error));
+    } finally {
+      setLifecycleBusy(false);
+    }
+  }
+
   return (
     <main className="workspace-shell work-detail-shell">
       <header className="workspace-header">
@@ -163,9 +181,13 @@ export function WorkspaceWork({ workId }: { workId: string }) {
         </Link>
         <div className="workspace-account">
           <span>{state.user.displayName}</span>
-          <Link className="text-button" href={`/workspace/${work.id}/write`}>
-            写作台
-          </Link>
+          {work.readOnly ? (
+            <span className="text-button work-readonly-link">写作台只读</span>
+          ) : (
+            <Link className="text-button" href={`/workspace/${work.id}/write`}>
+              写作台
+            </Link>
+          )}
           <Link className="text-button" href="/workspace/settings">
             模型设置
           </Link>
@@ -212,11 +234,40 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           <span>最近编辑</span>
           <strong>{formatWorkDate(work.lastEditedAt)}</strong>
         </div>
+        <div>
+          <span>质量分</span>
+          <strong>{work.qualityScore === null ? '暂无' : work.qualityScore}</strong>
+        </div>
+        <div>
+          <span>未回收伏笔</span>
+          <strong>{work.unresolvedForeshadowCount}</strong>
+        </div>
       </section>
 
-      {work.mainBranch ? (
-        <WorkSearchPanel branchId={work.mainBranch.id} workId={work.id} />
+      {work.readOnly ? (
+        <section className="completed-readonly-notice" aria-labelledby="completed-readonly-title">
+          <div>
+            <p className="workspace-step">已完本</p>
+            <h2 id="completed-readonly-title">这本书默认只读</h2>
+            <p>已发布内容不会被悄悄修改。要接着写，可以恢复连载，或从平行版本继续。</p>
+          </div>
+          <button
+            className="secondary-button"
+            disabled={lifecycleBusy}
+            onClick={() => void reopenCompletedWork()}
+            type="button"
+          >
+            {lifecycleBusy ? '正在恢复…' : '恢复连载'}
+          </button>
+        </section>
       ) : null}
+      {lifecycleError ? (
+        <p className="form-message form-message-error" role="alert">
+          {lifecycleError}
+        </p>
+      ) : null}
+
+      {work.mainBranch ? <WorkSearchPanel branchId={work.mainBranch.id} workId={work.id} /> : null}
 
       <section className="planning-board" aria-labelledby="planning-board-title">
         <div className="planning-board-heading">
@@ -340,11 +391,26 @@ export function WorkspaceWork({ workId }: { workId: string }) {
 
         <section className="work-readiness">
           <p className="workspace-step">当前状态</p>
-          <h2>主创作线已就绪</h2>
-          <p>作品已经建立。故事圣经和完整大纲准备好后，就可以继续准备正文。</p>
-          <Link className="secondary-button back-button" href={`/workspace/${work.id}/write`}>
-            进入写作台
-          </Link>
+          <h2>{work.readOnly ? '已完本，默认只读' : '主创作线已就绪'}</h2>
+          <p>
+            {work.readOnly
+              ? '需要继续写时，先恢复连载，或从平行版本开始新的尝试。'
+              : '作品已经建立。故事圣经和完整大纲准备好后，就可以继续准备正文。'}
+          </p>
+          {work.readOnly ? (
+            <button
+              className="secondary-button back-button"
+              disabled={lifecycleBusy}
+              onClick={() => void reopenCompletedWork()}
+              type="button"
+            >
+              {lifecycleBusy ? '正在恢复…' : '恢复连载'}
+            </button>
+          ) : (
+            <Link className="secondary-button back-button" href={`/workspace/${work.id}/write`}>
+              进入写作台
+            </Link>
+          )}
         </section>
       </div>
     </main>

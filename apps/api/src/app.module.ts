@@ -43,6 +43,7 @@ import { UsersController } from './users/users.controller';
 import { UsersModule } from './users/users.module';
 import { WorksController } from './works/works.controller';
 import { WorksModule } from './works/works.module';
+import { WorkReadOnlyInterceptor } from './works/work-read-only.interceptor';
 import { WorldbuildingController } from './worldbuilding/worldbuilding.controller';
 import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
 import { VersionCaptureInterceptor } from './versions/version-capture.interceptor';
@@ -86,6 +87,10 @@ import { VersionsModule } from './versions/versions.module';
     {
       provide: APP_INTERCEPTOR,
       useClass: BranchBaselineInterceptor,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: WorkReadOnlyInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,
