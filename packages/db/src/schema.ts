@@ -322,6 +322,115 @@ export const foreshadows = pgTable(
 export type ForeshadowRow = typeof foreshadows.$inferSelect;
 export type NewForeshadowRow = typeof foreshadows.$inferInsert;
 
+export const storyThreadTypeEnum = pgEnum('story_thread_type', [
+  'main',
+  'sub',
+  'character',
+  'faction',
+  'mystery',
+  'romance',
+]);
+
+export const storyThreadStatusEnum = pgEnum('story_thread_status', [
+  'active',
+  'resolved',
+  'abandoned',
+]);
+
+export type StoryThreadMilestone = {
+  chapterNumber: number;
+  description: string;
+};
+
+export type StoryThreadTensionPoint = {
+  chapterNumber: number;
+  tension: number;
+};
+
+export const storyThreads = pgTable(
+  'threads',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    type: storyThreadTypeEnum('type').notNull(),
+    summary: text('summary').notNull().default(''),
+    stakes: text('stakes').notNull(),
+    participantIds: jsonb('participant_ids')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    plannedPayoffChapter: integer('planned_payoff_chapter'),
+    status: storyThreadStatusEnum('status').notNull().default('active'),
+    milestones: jsonb('milestones')
+      .$type<StoryThreadMilestone[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    tensionCurve: jsonb('tension_curve')
+      .$type<StoryThreadTensionPoint[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index('threads_work_branch_type_status_idx').on(
+      table.workId,
+      table.branchId,
+      table.type,
+      table.status,
+    ),
+    uniqueIndex('threads_work_branch_name_unique').on(table.workId, table.branchId, table.name),
+  ],
+);
+
+export type StoryThreadRow = typeof storyThreads.$inferSelect;
+export type NewStoryThreadRow = typeof storyThreads.$inferInsert;
+
+export const storyArcStatusEnum = pgEnum('story_arc_status', ['active', 'completed', 'abandoned']);
+
+export const characterArcs = pgTable(
+  'character_arcs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id')
+      .notNull()
+      .references(() => works.id, { onDelete: 'cascade' }),
+    branchId: uuid('branch_id')
+      .notNull()
+      .references(() => workBranches.id, { onDelete: 'cascade' }),
+    characterId: uuid('character_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    startState: text('start_state').notNull().default(''),
+    desire: text('desire').notNull().default(''),
+    fear: text('fear').notNull().default(''),
+    lie: text('lie').notNull().default(''),
+    truth: text('truth').notNull().default(''),
+    turn: text('turn').notNull().default(''),
+    endState: text('end_state').notNull().default(''),
+    status: storyArcStatusEnum('status').notNull().default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('character_arcs_work_branch_character_unique').on(
+      table.workId,
+      table.branchId,
+      table.characterId,
+    ),
+    index('character_arcs_work_branch_status_idx').on(table.workId, table.branchId, table.status),
+  ],
+);
+
+export type CharacterArcRow = typeof characterArcs.$inferSelect;
+export type NewCharacterArcRow = typeof characterArcs.$inferInsert;
+
 export const outlineLevelEnum = pgEnum('outline_level', [
   'book',
   'volume',
