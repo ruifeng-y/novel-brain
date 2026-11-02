@@ -143,3 +143,55 @@ test('an author can build and search a linked settings center', async ({ page })
     fullPage: true,
   });
 });
+
+test('an author can start another setting while the previous save finishes refreshing', async ({
+  page,
+}) => {
+  const email = `entity-save-race-${Date.now()}@example.com`;
+  const password = 'correct horse battery staple';
+  const title = `九门设定快速录入${Date.now()}`;
+
+  await useIsolatedClientIp(page);
+  await page.route('**/api/v1/works/*/branches/*/entities/*', async (route) => {
+    if (route.request().method() === 'GET') {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+    await route.continue().catch(() => undefined);
+  });
+
+  await page.goto('/register');
+  await page.getByLabel('邮箱').fill(email);
+  await page.getByRole('button', { name: '发送验证码' }).click();
+  await expect(page.getByText('验证码已发送')).toBeVisible({ timeout: 15_000 });
+  await page.getByLabel('验证码').fill(await readVerificationCode(email));
+  await page.getByLabel('密码').fill(password);
+  await page.getByRole('button', { name: '创建账号' }).click();
+  await expect(page).toHaveURL(/\/workspace$/);
+
+  await page.getByLabel('书名').fill(title);
+  await page.getByLabel('笔名').fill('青云客');
+  await page.getByRole('button', { name: '创建并开始' }).click();
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+
+  const settings = page.getByRole('region', { name: '设定中心' });
+  await settings.getByRole('button', { name: '新建设定' }).click();
+  await settings.getByLabel('名称', { exact: true }).fill('无宗');
+  await settings.getByLabel('类型', { exact: true }).selectOption({ label: '势力' });
+  await settings.getByLabel('一句话摘要').fill('盘踞东荒的宗门。');
+  await settings.getByRole('button', { name: '保存设定' }).click();
+  await expect(settings.getByRole('button', { name: /无宗/ })).toBeVisible();
+
+  await settings.getByRole('button', { name: '新建设定' }).click();
+  await settings.getByLabel('名称', { exact: true }).fill('沈砚');
+  await settings.getByLabel('类型', { exact: true }).selectOption({ label: '人物' });
+  await settings.getByLabel('一句话摘要').fill('外冷内热的边城剑客。');
+  await page.waitForTimeout(800);
+
+  await expect(settings.getByLabel('名称', { exact: true })).toHaveValue('沈砚');
+  await expect(settings.getByLabel('类型', { exact: true })).toHaveValue('character');
+  await expect(settings.getByLabel('一句话摘要')).toHaveValue('外冷内热的边城剑客。');
+
+  await settings.getByRole('button', { name: '保存设定' }).click();
+  await expect(settings.getByRole('button', { name: /沈砚/ })).toBeVisible();
+  await expect(settings.getByText('Internal server error')).toHaveCount(0);
+});

@@ -1,8 +1,10 @@
 # NovelBrain
 
-面向个人作者的长篇 AI 创作平台。当前处于 M0 平台底座阶段。
+面向个人作者的长篇 AI 创作平台。当前处于 M1 仙侠内部 beta 阶段。
 
-M0 是只供团队内部演示的 walking skeleton，不是对外发布版本。
+M1 只面向内部 beta，验证仙侠题材从故事圣经、设定、大纲到多章连写和连续性检查
+的完整闭环。它不是 V1 公开发布版本；历史/都市、批量生产、修改版本、导出、合规、
+备份恢复和 V1 总验收仍由后续里程碑负责。
 
 ## 环境要求
 
@@ -62,12 +64,13 @@ pnpm typecheck
 pnpm test
 pnpm test:e2e
 pnpm demo:m0
+pnpm demo:m1
 pnpm db:generate
 pnpm db:migrate
 pnpm db:seed
 ```
 
-## M0 范围
+## M1 内部 beta 范围
 
 - Web、API、Worker、Postgres、Redis、MinIO 可启动。
 - API 有存活和就绪检查。
@@ -76,8 +79,11 @@ pnpm db:seed
 - 本地验证码邮件会进入 Mailpit。
 - Drizzle 迁移和 seed 可执行。
 - Worker 有一个 BullMQ 示例任务，写入 `system_jobs`。
-- 作者可从章纲生成整章，在写作台流式查看、编辑并保存章节版本；失败时保留草稿。
+- 作者可完成完整故事圣经、结构化设定中心、地图与势力、力量体系、物品功法、
+  时间线、五层大纲和剧情账本。
+- 作者可从章纲连续生成多章，在写作台流式查看、编辑并保存章节版本；失败时保留草稿。
 - 作者可确认、修改或驳回本章事实；确认后写入已确认设定，并在下一章生成时作为上下文使用。
+- 写作台提供连续性提示、六项质量报告、伏笔、人物状态和版本历史。
 - Vitest、Playwright、lint、typecheck 和 CI 可用。
 
 ## 文档
@@ -88,3 +94,4 @@ pnpm db:seed
 - `GLOSSARY.md`
 - `docs/adr/0001-canon-first-story-state.md`
 - `docs/acceptance/m0/acceptance.md`
+- `docs/acceptance/m1/acceptance.md`
