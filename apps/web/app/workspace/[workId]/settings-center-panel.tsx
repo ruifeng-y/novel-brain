@@ -6,7 +6,10 @@ import {
   ENTITY_STATUS_LABELS,
   ENTITY_TYPE_LABELS,
   RELATION_PREDICATE_LABELS,
+  getGenreFieldDefinitions,
+  getGenrePackDefinition,
   type CustomFieldValue,
+  type GenrePackFieldDefinition,
 } from '@novel/contracts';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError, friendlyError } from '../../../lib/auth-api';
@@ -54,11 +57,12 @@ const RELATION_PREDICATES = Object.entries(RELATION_PREDICATE_LABELS) as Array<
   [RelationPredicate, string]
 >;
 
-function emptyEntity(type: EntityType = 'character'): EntityInput {
+function emptyEntity(type: EntityType = 'character', subtype = ''): EntityInput {
   return {
     name: '',
     aliases: [],
     type,
+    subtype,
     summary: '',
     description: '',
     tags: [],
@@ -73,6 +77,7 @@ function entityDraft(entity: Entity): EntityInput {
     name: entity.name,
     aliases: entity.aliases,
     type: entity.type,
+    subtype: entity.subtype,
     summary: entity.summary,
     description: entity.description,
     tags: entity.tags,
@@ -97,6 +102,7 @@ function sameFilters(left: EntitySearchFilters, right: EntitySearchFilters): boo
   return (
     left.q === right.q &&
     left.type === right.type &&
+    left.subtype === right.subtype &&
     left.tag === right.tag &&
     left.status === right.status
   );
@@ -113,6 +119,9 @@ function settingsError(error: unknown): string {
     if (error.code === 'RELATION_ENTITY_INVALID') {
       return '关系两端必须都是当前作品里的设定。';
     }
+    if (error.code === 'URBAN_SUBTYPE_INVALID') {
+      return '这个题材子类型不属于当前设定栏目，请重新选择。';
+    }
   }
   return friendlyError(error);
 }
@@ -128,16 +137,20 @@ function upsertEntity(items: Entity[], saved: Entity): Entity[] {
 export function SettingsCenterPanel({
   workId,
   branchId,
+  genrePack,
   initialEntities,
   initialCustomFields,
   initialRelations,
 }: {
   workId: string;
   branchId: string;
+  genrePack: string;
   initialEntities: Entity[];
   initialCustomFields: CustomFieldDefinition[];
   initialRelations: Relation[];
 }) {
+  const genreDefinition = getGenrePackDefinition(genrePack);
+  const genreSubtypes = genreDefinition?.subtypes ?? [];
   const [catalog, setCatalog] = useState(initialEntities);
   const [items, setItems] = useState(initialEntities);
   const [customFields, setCustomFields] = useState(initialCustomFields);
@@ -215,6 +228,7 @@ export function SettingsCenterPanel({
     void applyFilters({
       ...(searchQuery.trim() ? { q: searchQuery.trim() } : {}),
       ...(activeFilters.type ? { type: activeFilters.type } : {}),
+      ...(activeFilters.subtype ? { subtype: activeFilters.subtype } : {}),
       ...(tagQuery.trim() ? { tag: tagQuery.trim() } : {}),
       ...(statusQuery ? { status: statusQuery } : {}),
     });
@@ -229,11 +243,46 @@ export function SettingsCenterPanel({
     });
   }
 
+  function chooseSubtype(subtype: string | undefined) {
+    const definition = genreSubtypes.find((item) => item.key === subtype);
+    if (subtype && !definition) {
+      return;
+    }
+    void applyFilters({
+      ...(searchQuery.trim() ? { q: searchQuery.trim() } : {}),
+      ...(definition
+        ? { type: definition.entityType }
+        : activeFilters.type
+          ? { type: activeFilters.type }
+          : {}),
+      ...(subtype ? { subtype } : {}),
+      ...(tagQuery.trim() ? { tag: tagQuery.trim() } : {}),
+      ...(statusQuery ? { status: statusQuery } : {}),
+    });
+  }
+
+  function changeEntityClass(nextType: EntityType, nextSubtype: string) {
+    const projectKeys = new Set(customFields.map((field) => field.key));
+    const nextPackKeys = new Set(
+      getGenreFieldDefinitions(genrePack, nextSubtype).map((field) => field.key),
+    );
+    setDraft((current) => ({
+      ...current,
+      type: nextType,
+      subtype: nextSubtype,
+      customFields: Object.fromEntries(
+        Object.entries(current.customFields).filter(
+          ([key]) => projectKeys.has(key) || nextPackKeys.has(key),
+        ),
+      ),
+    }));
+  }
+
   function startNewEntity() {
     editIntentRef.current += 1;
     setSelectedId(null);
     setDetail(null);
-    setDraft(emptyEntity(activeFilters.type));
+    setDraft(emptyEntity(activeFilters.type, activeFilters.subtype));
     setSaveState({ status: 'idle' });
   }
 
@@ -347,6 +396,8 @@ export function SettingsCenterPanel({
       catalog.find((entity) => entity.id === selectedId) ??
       detail)
     : null;
+  const draftSubtypes = genreSubtypes.filter((subtype) => subtype.entityType === draft.type);
+  const templateFields = getGenreFieldDefinitions(genrePack, draft.subtype);
 
   return (
     <section className="settings-center-board" aria-labelledby="settings-center-title">
@@ -431,6 +482,33 @@ export function SettingsCenterPanel({
             ))}
           </nav>
 
+          {genreSubtypes.length > 0 ? (
+            <nav className="settings-type-nav settings-subtype-nav" aria-label="题材子类型">
+              <button
+                aria-pressed={activeFilters.subtype === undefined}
+                onClick={() => chooseSubtype(undefined)}
+                type="button"
+              >
+                全部子类
+              </button>
+              {genreSubtypes
+                .filter(
+                  (subtype) =>
+                    activeFilters.type === undefined || subtype.entityType === activeFilters.type,
+                )
+                .map((subtype) => (
+                  <button
+                    aria-pressed={activeFilters.subtype === subtype.key}
+                    key={subtype.key}
+                    onClick={() => chooseSubtype(subtype.key)}
+                    type="button"
+                  >
+                    {subtype.label}
+                  </button>
+                ))}
+            </nav>
+          ) : null}
+
           <button
             className="primary-button settings-new-button"
             onClick={startNewEntity}
@@ -467,6 +545,7 @@ export function SettingsCenterPanel({
                       <span>{entity.summary || '还没有一句话摘要'}</span>
                       <small>
                         {entity.typeLabel}
+                        {entity.subtypeLabel ? ` · ${entity.subtypeLabel}` : ''}
                         {entity.tags.length > 0 ? ` · ${entity.tags.join('、')}` : ''}
                       </small>
                     </span>
@@ -617,7 +696,15 @@ export function SettingsCenterPanel({
                 <span>类型</span>
                 <select
                   aria-label="类型"
-                  onChange={(event) => updateDraft('type', event.currentTarget.value as EntityType)}
+                  onChange={(event) => {
+                    const nextType = event.currentTarget.value as EntityType;
+                    const nextSubtype = genreSubtypes.some(
+                      (subtype) => subtype.entityType === nextType && subtype.key === draft.subtype,
+                    )
+                      ? draft.subtype
+                      : '';
+                    changeEntityClass(nextType, nextSubtype);
+                  }}
                   value={draft.type}
                 >
                   {ENTITY_TYPES.map(([value, label]) => (
@@ -627,6 +714,27 @@ export function SettingsCenterPanel({
                   ))}
                 </select>
               </label>
+              {draftSubtypes.length > 0 ? (
+                <label className="field">
+                  <span>题材子类型</span>
+                  <select
+                    aria-label="题材子类型"
+                    onChange={(event) => {
+                      const subtype = event.currentTarget.value;
+                      const definition = draftSubtypes.find((item) => item.key === subtype);
+                      changeEntityClass(definition?.entityType ?? draft.type, subtype);
+                    }}
+                    value={draft.subtype}
+                  >
+                    <option value="">暂不选择</option>
+                    {draftSubtypes.map((subtype) => (
+                      <option key={subtype.key} value={subtype.key}>
+                        {subtype.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
               <label className="field">
                 <span>作用域</span>
                 <select
@@ -693,9 +801,26 @@ export function SettingsCenterPanel({
               />
             </label>
 
-            {customFields.length > 0 ? (
+            {templateFields.length > 0 ? (
               <fieldset className="settings-custom-fields">
                 <legend>题材字段</legend>
+                <div className="settings-form-grid">
+                  {templateFields.map((field) => (
+                    <CustomFieldControl
+                      entities={catalog}
+                      field={field}
+                      key={field.key}
+                      onChange={(value) => updateCustomField(field.key, value)}
+                      value={draft.customFields[field.key] ?? null}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+            ) : null}
+
+            {customFields.length > 0 ? (
+              <fieldset className="settings-custom-fields">
+                <legend>项目字段</legend>
                 <div className="settings-form-grid">
                   {customFields.map((field) => (
                     <CustomFieldControl
@@ -934,7 +1059,8 @@ function CustomFieldControl({
   entities,
   onChange,
 }: {
-  field: CustomFieldDefinition;
+  field: Pick<CustomFieldDefinition, 'key' | 'label' | 'type'> &
+    Partial<Pick<GenrePackFieldDefinition, 'options'>>;
   value: CustomFieldValue | undefined;
   entities: Entity[];
   onChange: (value: CustomFieldValue) => void;
@@ -989,7 +1115,7 @@ function CustomFieldControl({
           value={typeof value === 'string' ? value : ''}
         >
           <option value="">暂不选择</option>
-          {field.options.map((option) => (
+          {(field.options ?? []).map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -1003,7 +1129,7 @@ function CustomFieldControl({
     return (
       <fieldset className="settings-choice-field">
         <legend>{field.label}</legend>
-        {field.options.map((option) => (
+        {(field.options ?? []).map((option) => (
           <label key={option}>
             <input
               checked={selected.includes(option)}

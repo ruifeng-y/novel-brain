@@ -4,6 +4,8 @@ import {
   CHAPTER_ACTION_OUTPUT_KIND,
   countCjkCharacters,
   FACT_TYPE_LABELS,
+  getGenrePackDefinition,
+  getGenreSubtypeDefinition,
   DEFAULT_CHAPTER_TARGET_MAX,
   DEFAULT_CHAPTER_TARGET_MIN,
   QUALITY_TIER_LABELS,
@@ -20,6 +22,7 @@ import {
   chapters,
   contextPacks,
   drafts,
+  entities,
   factProposals,
   facts,
   generationRequests,
@@ -29,12 +32,13 @@ import {
   jobs,
   qualityReports,
   storyBibles,
+  works,
   type ChapterOutlineRow,
   type GenerationRequestRow,
   type JobRow,
   type StoryBibleRow,
 } from '@novel/db';
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { loadChapterAuditInput } from './chapter-audit-context';
 import { GenerationModelConfigResolver } from './generation-model-config.resolver';
@@ -199,6 +203,26 @@ export class ChapterGenerationRunner {
         .innerJoin(chapters, eq(chapters.id, facts.chapterId))
         .where(and(eq(facts.workId, generation.workId), eq(facts.branchId, generation.branchId)))
         .orderBy(asc(facts.createdAt));
+      const [work] = await this.database.db
+        .select({ genrePack: works.genrePack, title: works.title })
+        .from(works)
+        .where(eq(works.id, generation.workId))
+        .limit(1);
+      const urbanSettingRows =
+        work?.genrePack === 'urban'
+          ? await this.database.db
+              .select()
+              .from(entities)
+              .where(
+                and(
+                  eq(entities.workId, generation.workId),
+                  eq(entities.branchId, generation.branchId),
+                  ne(entities.subtype, ''),
+                  isNull(entities.deletedAt),
+                ),
+              )
+              .orderBy(asc(entities.name))
+          : [];
       const context = this.compileContext(
         bible,
         outline,
@@ -221,6 +245,17 @@ export class ChapterGenerationRunner {
           typeLabel: FACT_TYPE_LABELS[fact.type],
           statement: fact.statement,
           sourceSentence: fact.sourceSentence,
+        })),
+        work?.genrePack ?? '',
+        urbanSettingRows.map((setting) => ({
+          id: setting.id,
+          name: setting.name,
+          subtype: setting.subtype,
+          subtypeLabel:
+            getGenreSubtypeDefinition('urban', setting.subtype)?.label ?? setting.subtype,
+          summary: setting.summary,
+          description: setting.description,
+          fields: setting.customFields,
         })),
       );
       await this.database.db
@@ -477,6 +512,7 @@ export class ChapterGenerationRunner {
                   statement: fact.statement,
                   sourceSentence: fact.sourceSentence,
                 })),
+                work?.genrePack ?? '',
               ),
             )
           : { issues: [], report: null as ChapterQualityReport | null };
@@ -489,27 +525,25 @@ export class ChapterGenerationRunner {
       await this.database.db.transaction(async (tx) => {
         await tx.delete(annotations).where(eq(annotations.chapterId, generation.chapterId));
         if (audit.issues.length > 0 || tabooIssues.length > 0) {
-          await tx.insert(annotations).values(
-            [
-              ...audit.issues.map((issue) => ({
-                workId: generation.workId,
-                branchId: generation.branchId,
-                chapterId: generation.chapterId,
-                generationRequestId: generation.id,
-                draftId,
-                factId: issue.factId,
-                category: issue.category,
-                severity: issue.severity,
-                message: issue.message,
-                suggestion: issue.suggestion,
-                sourceSentence: issue.sourceSentence,
-                startOffset: issue.startOffset,
-                endOffset: issue.endOffset,
-                status: 'open' as const,
-              })),
-              ...tabooIssues,
-            ],
-          );
+          await tx.insert(annotations).values([
+            ...audit.issues.map((issue) => ({
+              workId: generation.workId,
+              branchId: generation.branchId,
+              chapterId: generation.chapterId,
+              generationRequestId: generation.id,
+              draftId,
+              factId: issue.factId,
+              category: issue.category,
+              severity: issue.severity,
+              message: issue.message,
+              suggestion: issue.suggestion,
+              sourceSentence: issue.sourceSentence,
+              startOffset: issue.startOffset,
+              endOffset: issue.endOffset,
+              status: 'open' as const,
+            })),
+            ...tabooIssues,
+          ]);
         }
         if (audit.report) {
           const now = new Date();
@@ -549,8 +583,8 @@ export class ChapterGenerationRunner {
             ]),
           ],
           qualityStatus: audit.report
-            ? audit.report.dimensions.find((dimension) => dimension.key === 'continuity')
-                ?.status ?? null
+            ? (audit.report.dimensions.find((dimension) => dimension.key === 'continuity')
+                ?.status ?? null)
             : null,
         },
         99,
@@ -633,6 +667,16 @@ export class ChapterGenerationRunner {
       statement: string;
       sourceSentence: string;
     }>,
+    genrePack: string,
+    urbanSettings: Array<{
+      id: string;
+      name: string;
+      subtype: string;
+      subtypeLabel: string;
+      summary: string;
+      description: string;
+      fields: Record<string, unknown>;
+    }>,
   ): {
     sections: ContextSection[];
     sourceRefs: string[];
@@ -648,6 +692,8 @@ export class ChapterGenerationRunner {
           `${card.title}：${card.summary}${card.details ? `\n详细设定：${card.details}` : ''}`,
       )
       .join('\n');
+    const genreDefinition = getGenrePackDefinition(genrePack);
+    const isUrban = genreDefinition?.key === 'urban';
     const sections: ContextSection[] = [
       {
         key: 'storyBible',
@@ -669,6 +715,34 @@ export class ChapterGenerationRunner {
           chapterEndHook: outline.chapterEndHook,
         },
       },
+      ...(genreDefinition
+        ? [
+            {
+              key: 'genrePack',
+              title: '题材模板',
+              content: {
+                key: genreDefinition.key,
+                label: genreDefinition.label,
+                templateKey: genreDefinition.template.key,
+                templateName: genreDefinition.template.name,
+                summary: genreDefinition.template.summary,
+                writingGuide: genreDefinition.template.writingGuide,
+                checkCategories: genreDefinition.template.checkCategories,
+              },
+            },
+          ]
+        : []),
+      ...(urbanSettings.length > 0
+        ? [
+            {
+              key: 'urbanSettings',
+              title: '都市相关设定',
+              content: {
+                settings: urbanSettings,
+              },
+            },
+          ]
+        : []),
       ...(confirmedFacts.length > 0
         ? [
             {
@@ -738,6 +812,28 @@ export class ChapterGenerationRunner {
     const sharedMaterials = [
       '【故事圣经】',
       storyBiblePrompt,
+      ...(isUrban
+        ? [
+            '',
+            '【都市题材创作要求】',
+            ...(genreDefinition?.template.writingGuide.map((guide) => `- ${guide}`) ?? []),
+            '- 检查现实逻辑、社会关系、金钱约束和法律约束；涉及通勤、付款、合同和冲突时写清条件和后果。',
+            ...(urbanSettings.length > 0
+              ? [
+                  '',
+                  '【都市相关设定】',
+                  ...urbanSettings.map(
+                    (setting) =>
+                      `- ${setting.subtypeLabel}｜${setting.name}：${setting.summary || '无摘要'}${
+                        Object.keys(setting.fields).length > 0
+                          ? `\n  字段：${JSON.stringify(setting.fields)}`
+                          : ''
+                      }`,
+                  ),
+                ]
+              : []),
+          ]
+        : []),
       '',
       '【本章章纲】',
       `章目标：${outline.chapterGoal}`,
@@ -756,15 +852,9 @@ export class ChapterGenerationRunner {
       '',
       '【写作控制】',
       `质量档位：${QUALITY_TIER_LABELS[settings.qualityTier]}`,
-      ...(settings.mustInclude.length > 0
-        ? [`必须包含：${settings.mustInclude.join('、')}`]
-        : []),
-      ...(settings.mustAvoid.length > 0
-        ? [`必须避免：${settings.mustAvoid.join('、')}`]
-        : []),
-      ...(settings.tabooWords.length > 0
-        ? [`禁忌词：${settings.tabooWords.join('、')}`]
-        : []),
+      ...(settings.mustInclude.length > 0 ? [`必须包含：${settings.mustInclude.join('、')}`] : []),
+      ...(settings.mustAvoid.length > 0 ? [`必须避免：${settings.mustAvoid.join('、')}`] : []),
+      ...(settings.tabooWords.length > 0 ? [`禁忌词：${settings.tabooWords.join('、')}`] : []),
       ...(referenceChapters.length > 0
         ? [
             '',
@@ -794,10 +884,9 @@ export class ChapterGenerationRunner {
       sourceRefs: [
         `story_bible:${bible.id}`,
         `chapter_outline:${outline.id}`,
-        ...referenceChapters.map(
-          (chapter) => `chapter:${chapter.chapterNumber}`,
-        ),
+        ...referenceChapters.map((chapter) => `chapter:${chapter.chapterNumber}`),
         ...confirmedFacts.map((fact) => `fact:${fact.id}`),
+        ...urbanSettings.map((setting) => `entity:${setting.id}`),
       ],
       systemPrompt,
       userPrompt,
@@ -892,9 +981,7 @@ export class ChapterGenerationRunner {
     workId: string,
     branchId: string,
     chapterNumbers: number[],
-  ): Promise<
-    Array<{ chapterNumber: number; title: string; summary: string; content: string }>
-  > {
+  ): Promise<Array<{ chapterNumber: number; title: string; summary: string; content: string }>> {
     if (chapterNumbers.length === 0) {
       return [];
     }
@@ -937,17 +1024,14 @@ export class ChapterGenerationRunner {
     fallback: { targetMinCharacters: number; targetMaxCharacters: number },
   ): WritingSettings {
     const value =
-      raw && typeof raw === 'object' && !Array.isArray(raw)
-        ? (raw as Record<string, unknown>)
-        : {};
+      raw && typeof raw === 'object' && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
     const qualityTier: WritingQualityTier =
       value.qualityTier === 'fast' || value.qualityTier === 'premium'
         ? value.qualityTier
         : 'standard';
     return {
       qualityTier,
-      modelConfigId:
-        typeof value.modelConfigId === 'string' ? value.modelConfigId : null,
+      modelConfigId: typeof value.modelConfigId === 'string' ? value.modelConfigId : null,
       targetMinCharacters: this.targetValue(
         value.targetMinCharacters,
         fallback.targetMinCharacters,
@@ -970,12 +1054,9 @@ export class ChapterGenerationRunner {
           )
         : [],
       tabooWords: this.stringList(value.tabooWords),
-      cursorOffset:
-        typeof value.cursorOffset === 'number' ? value.cursorOffset : null,
-      selectionStart:
-        typeof value.selectionStart === 'number' ? value.selectionStart : null,
-      selectionEnd:
-        typeof value.selectionEnd === 'number' ? value.selectionEnd : null,
+      cursorOffset: typeof value.cursorOffset === 'number' ? value.cursorOffset : null,
+      selectionStart: typeof value.selectionStart === 'number' ? value.selectionStart : null,
+      selectionEnd: typeof value.selectionEnd === 'number' ? value.selectionEnd : null,
     };
   }
 

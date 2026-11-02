@@ -33,6 +33,8 @@ export type Entity = {
   aliases: string[];
   type: EntityType;
   typeLabel: string;
+  subtype: string;
+  subtypeLabel: string;
   summary: string;
   description: string;
   tags: string[];
@@ -94,6 +96,7 @@ export type EntityInput = {
   name: string;
   aliases: string[];
   type: EntityType;
+  subtype: string;
   summary: string;
   description: string;
   tags: string[];
@@ -105,6 +108,7 @@ export type EntityInput = {
 export type EntitySearchFilters = {
   q?: string;
   type?: EntityType;
+  subtype?: string;
   tag?: string;
   status?: EntityStatus;
 };
@@ -153,6 +157,9 @@ export function searchEntities(
   }
   if (filters.type) {
     query.set('type', filters.type);
+  }
+  if (filters.subtype) {
+    query.set('subtype', filters.subtype);
   }
   if (filters.tag) {
     query.set('tag', filters.tag);

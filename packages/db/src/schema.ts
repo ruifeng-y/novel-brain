@@ -541,6 +541,7 @@ export const entities = pgTable(
       .notNull()
       .default(sql`'[]'::jsonb`),
     type: text('type').notNull(),
+    subtype: text('subtype').notNull().default(''),
     summary: text('summary').notNull().default(''),
     description: text('description').notNull().default(''),
     tags: jsonb('tags')
@@ -1313,10 +1314,9 @@ export const qualityReports = pgTable(
     chapterId: uuid('chapter_id')
       .notNull()
       .references(() => chapters.id, { onDelete: 'cascade' }),
-    generationRequestId: uuid('generation_request_id').references(
-      () => generationRequests.id,
-      { onDelete: 'set null' },
-    ),
+    generationRequestId: uuid('generation_request_id').references(() => generationRequests.id, {
+      onDelete: 'set null',
+    }),
     draftId: uuid('draft_id').references(() => drafts.id, {
       onDelete: 'set null',
     }),
