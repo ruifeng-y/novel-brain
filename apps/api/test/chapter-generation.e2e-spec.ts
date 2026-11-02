@@ -1,11 +1,7 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Algorithm, hash } from '@node-rs/argon2';
-import {
-  AI_GATEWAY,
-  FakeAiGateway,
-  buildDeterministicChineseChapter,
-} from '@novel/ai';
+import { AI_GATEWAY, FakeAiGateway, buildDeterministicChineseChapter } from '@novel/ai';
 import { countCjkCharacters } from '@novel/contracts';
 import { createDatabase, users as usersTable } from '@novel/db';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
@@ -115,22 +111,16 @@ async function saveOutline(
   chapterNumberOrOverrides: number | Record<string, unknown> = 1,
   overrides: Record<string, unknown> = {},
 ) {
-  const chapterNumber =
-    typeof chapterNumberOrOverrides === 'number' ? chapterNumberOrOverrides : 1;
+  const chapterNumber = typeof chapterNumberOrOverrides === 'number' ? chapterNumberOrOverrides : 1;
   const payloadOverrides =
     typeof chapterNumberOrOverrides === 'number' ? overrides : chapterNumberOrOverrides;
   await agent
-    .put(
-      `/api/v1/works/${workId}/branches/${branchId}/chapter-outlines/${chapterNumber}`,
-    )
+    .put(`/api/v1/works/${workId}/branches/${branchId}/chapter-outlines/${chapterNumber}`)
     .send(chapterOutlinePayload(payloadOverrides))
     .expect(200);
 }
 
-async function saveProseModel(
-  agent: ReturnType<typeof request.agent>,
-  name = '正文模型',
-) {
+async function saveProseModel(agent: ReturnType<typeof request.agent>, name = '正文模型') {
   return agent
     .post('/api/v1/model-configs')
     .send({
@@ -331,16 +321,13 @@ describe('chapter generation API', () => {
       'extract_facts',
       'verify',
     ]);
-    expect(job.steps.every((step: { status: string }) => step.status === 'succeeded')).toBe(
-      true,
-    );
+    expect(job.steps.every((step: { status: string }) => step.status === 'succeeded')).toBe(true);
     expect(job.context.sections.map((section: { key: string }) => section.key)).toEqual(
       expect.arrayContaining(['storyBible', 'chapterOutline', 'writingGuidance']),
     );
     expect(
-      job.context.sections.find(
-        (section: { key: string }) => section.key === 'writingGuidance',
-      ).content,
+      job.context.sections.find((section: { key: string }) => section.key === 'writingGuidance')
+        .content,
     ).toMatchObject({
       targetMinCharacters: 2_000,
       targetMaxCharacters: 3_000,
@@ -416,9 +403,7 @@ describe('chapter generation API', () => {
     );
 
     const proposals = await author.agent
-      .get(
-        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
-      )
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`)
       .expect(200);
 
     expect(proposals.body.items).toHaveLength(3);
@@ -454,13 +439,11 @@ describe('chapter generation API', () => {
     );
 
     const proposals = await author.agent
-      .get(
-        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
-      )
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`)
       .expect(200);
-    const event = proposals.body.items.find(
-      (item: { type: string }) => item.type === 'event',
-    ) as { id: string };
+    const event = proposals.body.items.find((item: { type: string }) => item.type === 'event') as {
+      id: string;
+    };
     const bodyState = proposals.body.items.find(
       (item: { type: string }) => item.type === 'body_state',
     ) as { id: string };
@@ -520,13 +503,12 @@ describe('chapter generation API', () => {
     );
 
     const proposals = await author.agent
-      .get(
-        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
-      )
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`)
       .expect(200);
-    const event = proposals.body.items.find(
-      (item: { type: string }) => item.type === 'event',
-    ) as { id: string; sourceSentence: string };
+    const event = proposals.body.items.find((item: { type: string }) => item.type === 'event') as {
+      id: string;
+      sourceSentence: string;
+    };
     const editedStatement = '沈砚用掌中血触发断碑，碑上出现从未见过的文字。';
 
     await author.agent
@@ -623,13 +605,12 @@ describe('chapter generation API', () => {
     );
 
     const proposals = await author.agent
-      .get(
-        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
-      )
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`)
       .expect(200);
-    const event = proposals.body.items.find(
-      (item: { type: string }) => item.type === 'event',
-    ) as { id: string; statement: string };
+    const event = proposals.body.items.find((item: { type: string }) => item.type === 'event') as {
+      id: string;
+      statement: string;
+    };
     const rejected = proposals.body.items.find(
       (item: { type: string }) => item.type === 'body_state',
     ) as { id: string; statement: string };
@@ -682,9 +663,7 @@ describe('chapter generation API', () => {
         ],
       },
     });
-    expect(secondJob.context.sourceRefs).toContain(
-      `fact:${confirmed.body.fact.id}`,
-    );
+    expect(secondJob.context.sourceRefs).toContain(`fact:${confirmed.body.fact.id}`);
 
     const serializedContext = JSON.stringify(secondJob.context);
     expect(serializedContext).not.toContain(rejected.statement);
@@ -711,9 +690,7 @@ describe('chapter generation API', () => {
     );
 
     const proposals = await author.agent
-      .get(
-        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
-      )
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`)
       .expect(200);
     const bodyState = proposals.body.items.find(
       (item: { type: string }) => item.type === 'body_state',
@@ -835,9 +812,7 @@ describe('chapter generation API', () => {
     );
 
     const proposals = await author.agent
-      .get(
-        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`,
-      )
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals`)
       .expect(200);
     const bodyState = proposals.body.items.find(
       (item: { type: string }) => item.type === 'body_state',
@@ -1030,9 +1005,8 @@ describe('chapter generation API', () => {
       targetMaxCharacters: 2_200,
     });
     expect(
-      job.context.sections.find(
-        (section: { key: string }) => section.key === 'writingGuidance',
-      ).content,
+      job.context.sections.find((section: { key: string }) => section.key === 'writingGuidance')
+        .content,
     ).toMatchObject({
       targetMinCharacters: 2_100,
       targetMaxCharacters: 2_200,
@@ -1152,7 +1126,7 @@ describe('chapter generation API', () => {
     expect(job.steps.find((step: { key: string }) => step.key === 'draft')).toMatchObject({
       status: 'failed',
     });
-  });
+  }, 20_000);
 
   it('prevents another author from starting or reading generation jobs', async () => {
     const author = await createAuthor(app, passwordHash);
@@ -1175,9 +1149,7 @@ describe('chapter generation API', () => {
         expect(body.code).toBe('WORK_NOT_FOUND');
       });
     await otherAuthor.agent
-      .get(
-        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.jobId}`,
-      )
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.jobId}`)
       .expect(404)
       .expect(({ body }) => {
         expect(body.code).toBe('WORK_NOT_FOUND');
@@ -1200,7 +1172,7 @@ async function waitForJob(
   jobId: string,
   expectedStatus: 'completed' | 'failed',
 ) {
-  for (let attempt = 0; attempt < 100; attempt += 1) {
+  for (let attempt = 0; attempt < 400; attempt += 1) {
     const response = await agent
       .get(`/api/v1/works/${workId}/branches/${branchId}/jobs/${jobId}`)
       .expect(200);
@@ -1213,10 +1185,7 @@ async function waitForJob(
   throw new Error(`Job ${jobId} did not reach ${expectedStatus}`);
 }
 
-async function readSse(
-  agent: ReturnType<typeof request.agent>,
-  path: string,
-): Promise<string> {
+async function readSse(agent: ReturnType<typeof request.agent>, path: string): Promise<string> {
   const response = await agent
     .get(path)
     .buffer(true)

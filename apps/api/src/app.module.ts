@@ -13,6 +13,8 @@ import { EntitiesModule } from './entities/entities.module';
 import { ChapterGenerationController } from './generation/chapter-generation.controller';
 import { ChapterGenerationModule } from './generation/chapter-generation.module';
 import { HealthModule } from './health/health.module';
+import { MapsController } from './maps/maps.controller';
+import { MapsModule } from './maps/maps.module';
 import { RedisModule } from './redis/redis.module';
 import { validateEnv } from './config/env';
 import { StoryPlanningController } from './planning/story-planning.controller';
@@ -35,6 +37,7 @@ import { WorldbuildingModule } from './worldbuilding/worldbuilding.module';
     WorksModule,
     StoryPlanningModule,
     EntitiesModule,
+    MapsModule,
     WorldbuildingModule,
     CharactersModule,
     ChapterGenerationModule,
@@ -51,6 +54,7 @@ export class AppModule implements NestModule {
         ModelConfigsController,
         StoryPlanningController,
         EntitiesController,
+        MapsController,
         WorldbuildingController,
         CharactersController,
         ChapterGenerationController,

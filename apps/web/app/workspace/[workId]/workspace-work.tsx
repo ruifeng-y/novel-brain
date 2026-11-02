@@ -10,6 +10,7 @@ import {
   type Entity,
   type Relation,
 } from '../../../lib/entities-api';
+import { loadMapOverview, type MapOverview } from '../../../lib/maps-api';
 import {
   loadChapterOutline,
   loadStoryBibleInsights,
@@ -20,6 +21,7 @@ import {
 } from '../../../lib/story-planning-api';
 import { GENRE_LABELS, SCALE_LABELS, formatWorkDate, type Work } from '../../../lib/works-api';
 import { SettingsCenterPanel } from './settings-center-panel';
+import { MapFactionPanel } from './map-faction-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 
 type LoadState =
@@ -34,6 +36,7 @@ type LoadState =
       entities: Entity[];
       customFields: CustomFieldDefinition[];
       relations: Relation[];
+      mapOverview: MapOverview;
     }
   | { status: 'error'; message: string; notFound: boolean };
 
@@ -55,16 +58,26 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             entities: [],
             customFields: [],
             relations: [],
+            mapOverview: {
+              nodes: [],
+              connections: [],
+              factionControls: [],
+              images: [],
+              presences: [],
+              conflicts: [],
+            },
           });
           return;
         }
 
-        const [storyBible, chapterOutline, storyBibleInsights, entityCenter] = await Promise.all([
-          loadStoryBible(work.id, work.mainBranch.id),
-          loadChapterOutline(work.id, work.mainBranch.id, 1),
-          loadStoryBibleInsights(work.id, work.mainBranch.id),
-          loadEntityCenter(work.id, work.mainBranch.id),
-        ]);
+        const [storyBible, chapterOutline, storyBibleInsights, entityCenter, mapOverview] =
+          await Promise.all([
+            loadStoryBible(work.id, work.mainBranch.id),
+            loadChapterOutline(work.id, work.mainBranch.id, 1),
+            loadStoryBibleInsights(work.id, work.mainBranch.id),
+            loadEntityCenter(work.id, work.mainBranch.id),
+            loadMapOverview(work.id, work.mainBranch.id),
+          ]);
         setState({
           status: 'ready',
           user,
@@ -75,6 +88,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           entities: entityCenter.entities,
           customFields: entityCenter.customFields,
           relations: entityCenter.relations,
+          mapOverview,
         });
       })
       .catch((error: unknown) => {
@@ -194,6 +208,15 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           initialCustomFields={state.customFields}
           initialEntities={state.entities}
           initialRelations={state.relations}
+          workId={work.id}
+        />
+      ) : null}
+
+      {work.mainBranch ? (
+        <MapFactionPanel
+          branchId={work.mainBranch.id}
+          entities={state.entities}
+          initialOverview={state.mapOverview}
           workId={work.id}
         />
       ) : null}
