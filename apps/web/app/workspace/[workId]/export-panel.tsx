@@ -3,20 +3,28 @@
 import {
   EXPORT_FORMAT_LABELS,
   EXPORT_PRESET_LABELS,
-  type ExportFormat,
   type ExportHistoryItem,
+  type ManuscriptExportFormat,
+  type ManuscriptExportScope,
+  type OutlineExportFormat,
   type ExportPreview,
   type ExportPreset,
-  type ExportScope,
 } from '@novel/contracts';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { friendlyError } from '../../../lib/auth-api';
 import { loadBranches, type ParallelVersion } from '../../../lib/branches-api';
 import { loadChapters, type ChapterListItem } from '../../../lib/chapter-generation-api';
-import { createExport, loadExports, previewExport } from '../../../lib/exports-api';
+import {
+  createExport,
+  exportOutline,
+  loadExports,
+  previewExport,
+} from '../../../lib/exports-api';
 import { loadOutlineNodes, type OutlineNode } from '../../../lib/story-planning-api';
 
-type ScopeType = ExportScope['type'];
+type ScopeType = ManuscriptExportScope['type'];
+
+const MANUSCRIPT_FORMATS: ManuscriptExportFormat[] = ['txt', 'markdown', 'docx', 'epub'];
 
 const SCOPE_OPTIONS: Array<{ type: ScopeType; label: string }> = [
   { type: 'chapter', label: '当前章' },
@@ -38,7 +46,8 @@ export function ExportPanel({
   const [chapters, setChapters] = useState<ChapterListItem[]>([]);
   const [outlines, setOutlines] = useState<OutlineNode[]>([]);
   const [history, setHistory] = useState<ExportHistoryItem[]>([]);
-  const [format, setFormat] = useState<ExportFormat>('txt');
+  const [format, setFormat] = useState<ManuscriptExportFormat>('txt');
+  const [outlineFormat, setOutlineFormat] = useState<OutlineExportFormat>('markdown');
   const [preset, setPreset] = useState<ExportPreset>('generic');
   const [scopeType, setScopeType] = useState<ScopeType>('chapter');
   const [currentChapter, setCurrentChapter] = useState(1);
@@ -50,6 +59,7 @@ export function ExportPanel({
   const [loading, setLoading] = useState(true);
   const [previewing, setPreviewing] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [outlineExporting, setOutlineExporting] = useState(false);
   const [notice, setNotice] = useState<{ kind: 'error' | 'success'; message: string } | null>(null);
 
   const volumes = useMemo(
@@ -129,7 +139,7 @@ export function ExportPanel({
     return () => window.clearInterval(timer);
   }, [hasPendingExport, refreshHistory]);
 
-  function scopeInput(): ExportScope | null {
+  function scopeInput(): ManuscriptExportScope | null {
     if (scopeType === 'chapter') {
       return { type: 'chapter', chapterNumber: currentChapter };
     }
@@ -199,6 +209,20 @@ export function ExportPanel({
     }
   }
 
+  async function handleOutlineExport() {
+    setOutlineExporting(true);
+    setNotice(null);
+    try {
+      await exportOutline(workId, branchId, outlineFormat);
+      await refreshHistory();
+      setNotice({ kind: 'success', message: '大纲已导出，可以下载了。' });
+    } catch (error) {
+      setNotice({ kind: 'error', message: friendlyError(error) });
+    } finally {
+      setOutlineExporting(false);
+    }
+  }
+
   function toggleChapter(chapterNumber: number) {
     setSelectedChapterNumbers((current) =>
       current.includes(chapterNumber)
@@ -240,11 +264,11 @@ export function ExportPanel({
               <span>导出格式</span>
               <select
                 value={format}
-                onChange={(event) => setFormat(event.target.value as ExportFormat)}
+                onChange={(event) => setFormat(event.target.value as ManuscriptExportFormat)}
               >
-                {Object.entries(EXPORT_FORMAT_LABELS).map(([value, label]) => (
+                {MANUSCRIPT_FORMATS.map((value) => (
                   <option key={value} value={value}>
-                    {label}
+                    {EXPORT_FORMAT_LABELS[value]}
                   </option>
                 ))}
               </select>
@@ -279,6 +303,31 @@ export function ExportPanel({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="export-outline-tool">
+            <div>
+              <strong>独立大纲</strong>
+              <span>把当前创作线的全书、卷、幕、章和场景单独导出。</span>
+            </div>
+            <label className="field">
+              <span>大纲格式</span>
+              <select
+                value={outlineFormat}
+                onChange={(event) => setOutlineFormat(event.target.value as OutlineExportFormat)}
+              >
+                <option value="markdown">Markdown</option>
+                <option value="json">JSON</option>
+              </select>
+            </label>
+            <button
+              className="secondary-button"
+              disabled={loading || outlineExporting}
+              onClick={() => void handleOutlineExport()}
+              type="button"
+            >
+              {outlineExporting ? '正在导出…' : '导出大纲'}
+            </button>
           </div>
 
           <div className="export-scope-detail">
@@ -437,7 +486,7 @@ export function ExportPanel({
                 <div className="export-history-main">
                   <strong>{item.fileName ?? `${EXPORT_FORMAT_LABELS[item.format]} 文件`}</strong>
                   <p>
-                    {item.scopeLabel} · {item.chapterCount} 章 · {item.presetLabel}
+                    {exportSummary(item)}
                   </p>
                   <small>
                     {formatDate(item.createdAt)} · {item.branch.name}
@@ -466,6 +515,16 @@ export function ExportPanel({
       </div>
     </section>
   );
+}
+
+function exportSummary(item: ExportHistoryItem): string {
+  if (item.kind === 'outline') {
+    return `${item.scopeLabel} · ${item.chapterCount} 个节点 · ${item.formatLabel}`;
+  }
+  if (item.kind === 'version') {
+    return `${item.scopeLabel} · ${item.version?.title ?? ''} · ${item.chapterCount} 章`;
+  }
+  return `${item.scopeLabel} · ${item.chapterCount} 章 · ${item.presetLabel}`;
 }
 
 function formatDate(value: string): string {

@@ -2,27 +2,47 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
   EXPORT_FORMAT_LABELS,
+  EXPORT_KIND_LABELS,
   EXPORT_PRESET_LABELS,
   EXPORT_SCOPE_LABELS,
   EXPORT_STATUS_LABELS,
+  VERSION_KIND_LABELS,
+  type CreateHistoricalVersionExportRequest,
   type CreateExportRequest,
+  type CreateOutlineExportRequest,
   type ExportHistoryItem,
   type ExportPreview,
   type ExportPreviewRequest,
   type ExportScope,
+  type ManuscriptExportScope,
 } from '@novel/contracts';
 import {
   ExportSelectionError,
   buildExportFileName,
+  buildHistoricalVersionExport,
   renderExportFile,
+  renderOutlineExport,
   selectExportChapters,
   userStorageKey,
+  type OutlineExportNode,
 } from '@novel/core';
-import { exportJobs, loadExportSource, works, type ExportJobRow } from '@novel/db';
+import {
+  exportJobs,
+  findHistoricalVersionCommit,
+  loadBranchOutlineExportSource,
+  loadBranchSnapshotExportSource,
+  loadExportSource,
+  loadHistoricalVersionList,
+  loadWorkBranchIdentity,
+  works,
+  type ChapterOutlineRow,
+  type ExportJobRow,
+} from '@novel/db';
 import type { Queue } from 'bullmq';
 import { and, desc, eq, gte, isNull } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { AccountAuditService } from '../account-audit/account-audit.service';
+import { BranchStateService } from '../branches/branch-state.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { ObjectStorageService } from '../storage/object-storage.service';
 import { DownloadTokenService } from './download-token.service';
@@ -40,6 +60,7 @@ export class ExportsService {
     private readonly rateLimits: RateLimitService,
     private readonly accountAudit: AccountAuditService,
     private readonly downloadTokens: DownloadTokenService,
+    private readonly branchState: BranchStateService,
     @InjectQueue('export') private readonly exportQueue: Queue,
   ) {}
 
@@ -78,6 +99,198 @@ export class ExportsService {
       })),
       sample: sampleFile.data.toString('utf8').slice(0, 2_400),
     };
+  }
+
+  async createOutline(
+    userId: string,
+    workId: string,
+    branchId: string,
+    input: CreateOutlineExportRequest,
+  ) {
+    if (!(await this.rateLimits.consume('work-export', userId, 30, 60))) {
+      throw exportsError(
+        HttpStatus.TOO_MANY_REQUESTS,
+        'RATE_LIMITED',
+        '导出请求过于频繁，请稍后再试',
+      );
+    }
+    const logicalBranchId = await this.branchState.logicalBranchId(branchId);
+    const identity = await this.loadOwnedBranchIdentity(userId, workId, logicalBranchId);
+    const source = await loadBranchOutlineExportSource(this.database.db, workId, branchId);
+    if (!source) {
+      throw exportsError(HttpStatus.NOT_FOUND, 'BRANCH_NOT_FOUND', 'Story branch not found');
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + EXPORT_RETENTION_DAYS * 24 * 60 * 60 * 1_000);
+    const [created] = await this.database.db
+      .insert(exportJobs)
+      .values({
+        userId,
+        workId,
+        branchId,
+        kind: 'outline',
+        format: input.format,
+        scope: { type: 'outline' },
+        options: { preset: 'generic', encoding: 'utf-8' },
+        status: 'queued',
+        progress: 0,
+        chapterCount: source.outlines.length,
+        expiresAt,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    await this.recordExportRequest(userId, created.id, workId, branchId, input.format, {
+      kind: 'outline',
+      outlineNodeCount: source.outlines.length,
+    });
+
+    try {
+      const rendered = await renderOutlineExport(
+        {
+          work: identity.work,
+          branch: identity.branch,
+          nodes: source.outlines.map(toOutlineExportNode),
+        },
+        input.format,
+      );
+      const fileName = artifactFileName(identity.work.title, identity.branch.name, '大纲', rendered.extension);
+      const completed = await this.saveArtifact(created, rendered, fileName);
+      return this.toHistoryItem(completed, identity.branch.name);
+    } catch (error) {
+      await this.markFailed(created.id, error);
+      throw exportsError(
+        HttpStatus.BAD_GATEWAY,
+        'EXPORT_RENDER_FAILED',
+        '大纲文件生成失败，请稍后重试',
+      );
+    }
+  }
+
+  async createHistoricalVersion(
+    userId: string,
+    workId: string,
+    branchId: string,
+    input: CreateHistoricalVersionExportRequest,
+  ) {
+    if (!(await this.rateLimits.consume('work-export', userId, 30, 60))) {
+      throw exportsError(
+        HttpStatus.TOO_MANY_REQUESTS,
+        'RATE_LIMITED',
+        '导出请求过于频繁，请稍后再试',
+      );
+    }
+    const logicalBranchId = await this.branchState.logicalBranchId(branchId);
+    const identity = await this.loadOwnedBranchIdentity(userId, workId, logicalBranchId);
+    const commit = await findHistoricalVersionCommit(
+      this.database.db,
+      workId,
+      logicalBranchId,
+      input.versionCommitId,
+    );
+    if (!commit) {
+      throw exportsError(
+        HttpStatus.NOT_FOUND,
+        'VERSION_NOT_FOUND',
+        '这个历史版本不在当前创作线上',
+      );
+    }
+    const snapshotBranchId = await this.branchState.resolveSnapshotBranchId(
+      commit.id,
+      commit.snapshotBranchId,
+    );
+    const snapshot = await loadBranchSnapshotExportSource(
+      this.database.db,
+      workId,
+      snapshotBranchId,
+    );
+    if (!snapshot) {
+      throw exportsError(
+        HttpStatus.CONFLICT,
+        'VERSION_SNAPSHOT_UNAVAILABLE',
+        '这个历史版本暂时无法读取',
+      );
+    }
+    const versions = await loadHistoricalVersionList(
+      this.database.db,
+      workId,
+      logicalBranchId,
+    );
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + EXPORT_RETENTION_DAYS * 24 * 60 * 60 * 1_000);
+    const versionLabel = commit.title || commit.message;
+    const [created] = await this.database.db
+      .insert(exportJobs)
+      .values({
+        userId,
+        workId,
+        branchId,
+        kind: 'version',
+        versionCommitId: commit.id,
+        format: 'zip',
+        scope: { type: 'version', versionCommitId: commit.id },
+        options: {
+          preset: 'generic',
+          encoding: 'utf-8',
+          versionTitle: versionLabel,
+        },
+        status: 'queued',
+        progress: 0,
+        chapterCount: snapshot.chapters.length,
+        expiresAt,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .returning();
+    await this.recordExportRequest(userId, created.id, workId, branchId, 'zip', {
+      kind: 'version',
+      versionCommitId: commit.id,
+      versionTitle: versionLabel,
+    });
+
+    try {
+      const rendered = await buildHistoricalVersionExport({
+        work: identity.work,
+        branch: identity.branch,
+        version: {
+          id: commit.id,
+          kind: commit.kind,
+          kindLabel: VERSION_KIND_LABELS[commit.kind],
+          title: versionLabel,
+          reason: commit.reason,
+          parentVersionId: commit.parentCommitId,
+          createdAt: commit.createdAt.toISOString(),
+        },
+        versions: versions.map((version) => ({
+          id: version.id,
+          kind: version.kind,
+          kindLabel: VERSION_KIND_LABELS[version.kind],
+          title: version.title || version.message,
+          reason: version.reason,
+          createdAt: version.createdAt.toISOString(),
+        })),
+        outline: snapshot.outlines.map(toOutlineExportNode),
+        chapters: snapshot.chapters,
+        data: snapshot.data,
+      });
+      const fileName = artifactFileName(
+        identity.work.title,
+        identity.branch.name,
+        '历史版本',
+        rendered.extension,
+      );
+      const completed = await this.saveArtifact(created, rendered, fileName);
+      return this.toHistoryItem(completed, identity.branch.name);
+    } catch (error) {
+      await this.markFailed(created.id, error);
+      throw exportsError(
+        HttpStatus.BAD_GATEWAY,
+        'EXPORT_RENDER_FAILED',
+        '历史版本文件生成失败，请稍后重试',
+      );
+    }
   }
 
   async create(userId: string, workId: string, branchId: string, input: CreateExportRequest) {
@@ -283,7 +496,7 @@ export class ExportsService {
 
   private select(
     source: Awaited<ReturnType<typeof loadExportSource>> & object,
-    scope: ExportScope,
+    scope: ManuscriptExportScope,
   ) {
     try {
       return selectExportChapters(scope, source.outlines, source.chapters);
@@ -317,6 +530,79 @@ export class ExportsService {
       throw exportsError(HttpStatus.NOT_FOUND, 'EXPORT_NOT_FOUND', 'Export not found');
     }
     return row;
+  }
+
+  private async loadOwnedBranchIdentity(userId: string, workId: string, branchId: string) {
+    const [work] = await this.database.db
+      .select({ id: works.id })
+      .from(works)
+      .where(and(eq(works.id, workId), eq(works.userId, userId), isNull(works.deletedAt)))
+      .limit(1);
+    if (!work) {
+      throw exportsError(HttpStatus.NOT_FOUND, 'WORK_NOT_FOUND', 'Work not found');
+    }
+    const identity = await loadWorkBranchIdentity(this.database.db, workId, branchId);
+    if (!identity) {
+      throw exportsError(HttpStatus.NOT_FOUND, 'BRANCH_NOT_FOUND', 'Story branch not found');
+    }
+    return identity;
+  }
+
+  private async recordExportRequest(
+    userId: string,
+    exportId: string,
+    workId: string,
+    branchId: string,
+    format: string,
+    metadata: Record<string, unknown>,
+  ): Promise<void> {
+    await this.accountAudit.record({
+      userId,
+      action: 'work_export_requested',
+      targetType: 'work_export',
+      targetId: exportId,
+      title: '发起作品导出',
+      detail: `${EXPORT_KIND_LABELS[metadata.kind as keyof typeof EXPORT_KIND_LABELS]} · ${format}`,
+      metadata: {
+        kind: 'work',
+        workId,
+        branchId,
+        format,
+        ...metadata,
+      },
+    });
+  }
+
+  private async saveArtifact(
+    job: ExportJobRow,
+    rendered: { data: Buffer; extension: string; mimeType: string },
+    fileName: string,
+  ): Promise<ExportJobRow> {
+    const fileKey = userStorageKey(
+      job.userId,
+      job.workId,
+      job.branchId,
+      'exports',
+      `${job.id}.${rendered.extension}`,
+    );
+    await this.storage.putObject(job.userId, fileKey, rendered.data, rendered.mimeType);
+    const completedAt = new Date();
+    const [completed] = await this.database.db
+      .update(exportJobs)
+      .set({
+        status: 'completed',
+        progress: 100,
+        fileKey,
+        fileName,
+        mimeType: rendered.mimeType,
+        fileSize: rendered.data.length,
+        error: null,
+        completedAt,
+        updatedAt: completedAt,
+      })
+      .where(eq(exportJobs.id, job.id))
+      .returning();
+    return completed;
   }
 
   private async enqueue(exportId: string, userId: string) {
@@ -360,9 +646,15 @@ export class ExportsService {
     const expired = row.expiresAt.getTime() <= Date.now();
     const status = expired && row.status === 'completed' ? 'expired' : row.status;
     const scope = row.scope as ExportScope;
-    const options = row.options as { preset?: keyof typeof EXPORT_PRESET_LABELS };
+    const options = row.options as {
+      preset?: keyof typeof EXPORT_PRESET_LABELS;
+      versionTitle?: string;
+    };
+    const kind = row.kind ?? 'manuscript';
     return {
       id: row.id,
+      kind,
+      kindLabel: EXPORT_KIND_LABELS[kind],
       format: row.format,
       formatLabel: EXPORT_FORMAT_LABELS[row.format],
       preset: options.preset ?? 'generic',
@@ -389,6 +681,12 @@ export class ExportsService {
       createdAt: row.createdAt.toISOString(),
       expiresAt: row.expiresAt.toISOString(),
       completedAt: row.completedAt?.toISOString() ?? null,
+      version: row.versionCommitId
+        ? {
+            id: row.versionCommitId,
+            title: options.versionTitle ?? '历史版本',
+          }
+        : null,
     };
   }
 
@@ -401,6 +699,12 @@ export class ExportsService {
     }
     if (scope.type === 'range') {
       return `${EXPORT_SCOPE_LABELS.range} · 第 ${scope.startChapter}-${scope.endChapter} 章`;
+    }
+    if (scope.type === 'outline') {
+      return EXPORT_SCOPE_LABELS.outline;
+    }
+    if (scope.type === 'version') {
+      return EXPORT_SCOPE_LABELS.version;
     }
     return EXPORT_SCOPE_LABELS[scope.type];
   }
@@ -427,4 +731,36 @@ export class ExportsService {
     const normalized = content.replace(/\s+/g, ' ').trim();
     return normalized.length > 180 ? `${normalized.slice(0, 180)}…` : normalized;
   }
+}
+
+function toOutlineExportNode(row: ChapterOutlineRow): OutlineExportNode {
+  return {
+    id: row.id,
+    parentId: row.parentId,
+    level: row.level,
+    orderIndex: row.orderIndex,
+    title: row.title,
+    summary: row.summary,
+    details: row.details,
+    chapterNumber: row.chapterNumber,
+    chapterGoal: row.chapterGoal,
+    pov: row.pov,
+    sceneBeats: row.sceneBeats,
+    chapterEndHook: row.chapterEndHook,
+    locked: row.lockedAt !== null,
+    version: row.version,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+function artifactFileName(title: string, branchName: string, label: string, extension: string): string {
+  const safe = (value: string, fallback: string) =>
+    value
+      .trim()
+      .replace(/[\\/:*?"<>|]/g, '_')
+      .replace(/\s+/g, ' ')
+      .slice(0, 80) || fallback;
+  const stamp = new Date().toISOString().slice(0, 10).replaceAll('-', '');
+  return `${safe(title, 'NovelBrain')}-${safe(branchName, '创作线')}-${label}-${stamp}.${extension}`;
 }

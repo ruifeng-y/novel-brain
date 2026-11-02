@@ -9,6 +9,7 @@ export * from './export';
 export * from './history-rules';
 export * from './job-state-machine';
 export * from './logging';
+export * from './outline-export';
 export * from './publish-check';
 export * from './quality-audit';
 export * from './storage-key';

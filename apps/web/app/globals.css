@@ -8665,6 +8665,19 @@ textarea {
   white-space: nowrap;
 }
 
+.version-list-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.version-list-actions .text-button {
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
 .version-kind {
   display: inline-block;
   padding: 2px 7px;
@@ -8871,6 +8884,42 @@ textarea {
 
 .export-scope-group {
   margin-top: 18px;
+}
+
+.export-outline-tool {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 132px auto;
+  align-items: end;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 11px 12px;
+  border: 1px solid #dcd8cb;
+  border-radius: 6px;
+  background: #f8f5ec;
+}
+
+.export-outline-tool > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.export-outline-tool strong {
+  color: #354238;
+  font-size: 0.74rem;
+}
+
+.export-outline-tool span {
+  color: #6e786f;
+  font-size: 0.65rem;
+  line-height: 1.5;
+}
+
+.export-outline-tool .secondary-button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 0.67rem;
+  white-space: nowrap;
 }
 
 .export-group-label {
@@ -9212,6 +9261,7 @@ textarea {
   }
 
   .export-select-row,
+  .export-outline-tool,
   .export-chapter-picker > div {
     grid-template-columns: minmax(0, 1fr);
   }

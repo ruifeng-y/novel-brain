@@ -2,8 +2,10 @@ import type {
   ExportHistoryItem,
   ExportOptions,
   ExportPreview,
-  ExportScope,
   CreateExportRequest,
+  ManuscriptExportFormat,
+  ManuscriptExportScope,
+  OutlineExportFormat,
 } from '@novel/contracts';
 import { apiRequest } from './auth-api';
 
@@ -24,8 +26,8 @@ export function previewExport(
   workId: string,
   branchId: string,
   input: {
-    format: CreateExportRequest['format'];
-    scope: ExportScope;
+    format: ManuscriptExportFormat;
+    scope: ManuscriptExportScope;
     options: ExportOptions;
     previewChapterCount?: number;
   },
@@ -40,8 +42,8 @@ export function createExport(
   workId: string,
   branchId: string,
   input: {
-    format: CreateExportRequest['format'];
-    scope: ExportScope;
+    format: ManuscriptExportFormat;
+    scope: ManuscriptExportScope;
     options: ExportOptions;
   },
 ): Promise<ExportHistoryItem> {
@@ -59,4 +61,26 @@ export function loadExport(
   return apiRequest<ExportHistoryItem>(
     `${exportsPath(workId, branchId)}/${encodeURIComponent(exportId)}`,
   );
+}
+
+export function exportOutline(
+  workId: string,
+  branchId: string,
+  format: OutlineExportFormat,
+): Promise<ExportHistoryItem> {
+  return apiRequest<ExportHistoryItem>(`${exportsPath(workId, branchId)}/outline`, {
+    method: 'POST',
+    body: JSON.stringify({ format }),
+  });
+}
+
+export function exportHistoricalVersion(
+  workId: string,
+  branchId: string,
+  versionCommitId: string,
+): Promise<ExportHistoryItem> {
+  return apiRequest<ExportHistoryItem>(`${exportsPath(workId, branchId)}/version`, {
+    method: 'POST',
+    body: JSON.stringify({ versionCommitId }),
+  });
 }

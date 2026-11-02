@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   EXPORT_FORMAT_LABELS,
   EXPORT_PRESET_LABELS,
+  createHistoricalVersionExportRequestSchema,
   createExportRequestSchema,
+  createOutlineExportRequestSchema,
   exportPreviewRequestSchema,
 } from './export';
 
@@ -78,12 +80,31 @@ describe('export API contract', () => {
     ).toThrow();
   });
 
+  it('keeps standalone outline and historical-version requests separate from manuscript exports', () => {
+    expect(createOutlineExportRequestSchema.parse({ format: 'json' })).toEqual({
+      format: 'json',
+    });
+    expect(createHistoricalVersionExportRequestSchema.parse({
+      versionId: '11111111-1111-4111-8111-111111111111',
+    })).toEqual({
+      versionCommitId: '11111111-1111-4111-8111-111111111111',
+    });
+    expect(() =>
+      createExportRequestSchema.parse({
+        format: 'json',
+        scope: { type: 'book' },
+      }),
+    ).toThrow();
+  });
+
   it('uses author-facing Chinese labels without implementation terms', () => {
     expect(EXPORT_FORMAT_LABELS).toEqual({
       txt: 'TXT',
       markdown: 'Markdown',
       docx: 'Word 文档',
       epub: 'EPUB 电子书',
+      json: 'JSON 文件',
+      zip: 'ZIP 压缩包',
     });
     expect(EXPORT_PRESET_LABELS).toEqual({
       generic: '通用网文',
