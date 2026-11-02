@@ -33,6 +33,7 @@ import { ParallelVersionsPanel } from './parallel-versions-panel';
 import { StoryPlanningPanel } from './story-planning-panel';
 import { StoryLedgerPanel } from './story-ledger-panel';
 import { VersionHistoryPanel } from './version-history-panel';
+import { WorkSearchPanel } from './work-search-panel';
 
 type LoadState =
   | { status: 'loading' }
@@ -211,6 +212,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           <strong>{formatWorkDate(work.lastEditedAt)}</strong>
         </div>
       </section>
+
+      {work.mainBranch ? (
+        <WorkSearchPanel branchId={work.mainBranch.id} workId={work.id} />
+      ) : null}
 
       <section className="planning-board" aria-labelledby="planning-board-title">
         <div className="planning-board-heading">

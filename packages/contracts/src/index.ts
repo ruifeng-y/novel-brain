@@ -15,6 +15,7 @@ export * from './map-faction';
 export * from './model-configs';
 export * from './outline';
 export * from './redis';
+export * from './search';
 export * from './story-planning';
 export * from './story-ledger';
 export * from './system-job';

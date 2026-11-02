@@ -116,7 +116,10 @@ test('an author can build and search a linked settings center', async ({ page })
   await expect(page.getByText('沈砚 敌对 裴照')).toBeVisible();
 
   await page.getByLabel('搜索设定').fill('守碑少年');
-  await page.getByRole('button', { name: '搜索' }).click();
+  await page
+    .getByRole('complementary', { name: '设定目录' })
+    .getByRole('button', { name: '搜索', exact: true })
+    .click();
   await expect(page.getByRole('button', { name: /沈砚/ })).toBeVisible();
   await expect(page.getByRole('button', { name: /裴照/ })).toHaveCount(0);
 

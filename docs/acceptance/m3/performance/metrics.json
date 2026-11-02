@@ -1,0 +1,224 @@
+{
+  "schemaVersion": 1,
+  "ticket": 31,
+  "measuredAt": "2026-11-02T14:23:24.717Z",
+  "environment": {
+    "runtime": "Windows Docker Compose, deterministic fake AI provider",
+    "apiBaseUrl": "http://127.0.0.1:13001",
+    "database": "PostgreSQL 16 + pgvector image",
+    "workerConcurrency": 4,
+    "globalGenerationConcurrency": 4,
+    "perUserGenerationConcurrency": 2,
+    "perWorkGenerationConcurrency": 2,
+    "interactiveQueuePriority": 1,
+    "batchQueuePriority": 10
+  },
+  "fixture": {
+    "workId": "91d22d57-ed3a-42fb-a7ff-b12aaad9f118",
+    "branchId": "bc6e67e2-2fb0-4e8f-9f66-59c50ac8d455",
+    "chapters": 1000,
+    "targetCharactersPerChapter": 3000,
+    "totalCharacters": 3000000,
+    "settings": 200,
+    "confirmedFacts": 2000,
+    "concurrentWorkId": "49898153-a351-4196-b0d4-c401eae033d9"
+  },
+  "measured": {
+    "openWork": {
+      "samples": 30,
+      "minMs": 9.8,
+      "p50Ms": 11.2,
+      "p95Ms": 15.1,
+      "maxMs": 17.1,
+      "meanMs": 11.7
+    },
+    "workspaceBoot": {
+      "samples": 30,
+      "minMs": 66.8,
+      "p50Ms": 83.7,
+      "p95Ms": 107.6,
+      "maxMs": 109.8,
+      "meanMs": 84.9
+    },
+    "chapterList": {
+      "samples": 30,
+      "minMs": 20.1,
+      "p50Ms": 25.4,
+      "p95Ms": 35.7,
+      "maxMs": 39.5,
+      "meanMs": 26.8
+    },
+    "chapterOpen": {
+      "samples": 30,
+      "minMs": 11.9,
+      "p50Ms": 14.5,
+      "p95Ms": 20.3,
+      "maxMs": 24,
+      "meanMs": 14.9
+    },
+    "autosave": {
+      "samples": 30,
+      "minMs": 13.4,
+      "p50Ms": 15.5,
+      "p95Ms": 19.4,
+      "maxMs": 19.4,
+      "meanMs": 15.8
+    },
+    "chapterMetadata": {
+      "samples": 30,
+      "minMs": 19,
+      "p50Ms": 20.5,
+      "p95Ms": 25,
+      "maxMs": 27,
+      "meanMs": 21.5
+    },
+    "settingCreate": {
+      "samples": 30,
+      "minMs": 16.9,
+      "p50Ms": 20.7,
+      "p95Ms": 32.9,
+      "maxMs": 33.4,
+      "meanMs": 22
+    },
+    "settingRead": {
+      "samples": 30,
+      "minMs": 139.9,
+      "p50Ms": 146.8,
+      "p95Ms": 162.3,
+      "maxMs": 163.1,
+      "meanMs": 149
+    },
+    "settingUpdate": {
+      "samples": 30,
+      "minMs": 17.6,
+      "p50Ms": 21.2,
+      "p95Ms": 31.7,
+      "maxMs": 32.2,
+      "meanMs": 22.5
+    },
+    "settingDelete": {
+      "samples": 30,
+      "minMs": 16.7,
+      "p50Ms": 20,
+      "p95Ms": 26.9,
+      "maxMs": 29.3,
+      "meanMs": 20.7
+    },
+    "globalSearchMarker": {
+      "samples": 30,
+      "minMs": 111.4,
+      "p50Ms": 115.6,
+      "p95Ms": 127.9,
+      "maxMs": 137.8,
+      "meanMs": 117.6
+    },
+    "globalSearchCommon": {
+      "samples": 30,
+      "minMs": 105.8,
+      "p50Ms": 111.4,
+      "p95Ms": 128.9,
+      "maxMs": 140.9,
+      "meanMs": 114.3
+    },
+    "settingSearch": {
+      "samples": 30,
+      "minMs": 15.2,
+      "p50Ms": 17.8,
+      "p95Ms": 26,
+      "maxMs": 30.7,
+      "meanMs": 18.8
+    },
+    "firstToken": {
+      "samples": 3,
+      "minMs": 241,
+      "p50Ms": 245,
+      "p95Ms": 245,
+      "maxMs": 245,
+      "meanMs": 243.7
+    },
+    "generationWall": {
+      "samples": 3,
+      "minMs": 945,
+      "p50Ms": 945,
+      "p95Ms": 1047,
+      "maxMs": 1047,
+      "meanMs": 979
+    },
+    "sseEventLatency": {
+      "samples": 150,
+      "minMs": 5,
+      "p50Ms": 61,
+      "p95Ms": 101,
+      "maxMs": 108,
+      "meanMs": 58
+    },
+    "concurrency": {
+      "jobs": 4,
+      "wallMs": 1163,
+      "maxGlobalOverlap": 4,
+      "maxPerUserOverlap": 2,
+      "maxPerWorkOverlap": 2
+    }
+  },
+  "modeled": {
+    "generationThroughput": {
+      "assumptions": {
+        "standardChapterMinutes": [
+          6,
+          8,
+          10
+        ],
+        "concurrencyPerWork": 2,
+        "retryAuditReviewOverheadFactor": 1.25,
+        "note": "Modeled from the §12 baseline: 6-10 minutes per 3,000-character chapter, two chapters concurrently per work, and 25% overhead for retries, continuity checks, and human review."
+      },
+      "volume30HoursRange": [
+        1.9,
+        3.1
+      ],
+      "chapters1000DaysRange": [
+        2.6,
+        4.3
+      ],
+      "targets": {
+        "volume30Hours": [
+          2,
+          4
+        ],
+        "chapters1000Days": [
+          3,
+          5
+        ]
+      }
+    },
+    "caveat": "The latency and SSE numbers above are measured with the deterministic fake AI provider. The 30-chapter and 1000-chapter durations are modeled from the requirements baseline and are not wall-clock measurements."
+  },
+  "searchIndexes": [
+    "audit_logs_search_trgm_idx",
+    "chapter_outlines_beats_trgm_idx",
+    "chapter_outlines_details_trgm_idx",
+    "chapter_outlines_goal_trgm_idx",
+    "chapter_outlines_hook_trgm_idx",
+    "chapter_outlines_pov_trgm_idx",
+    "chapter_outlines_summary_trgm_idx",
+    "chapter_outlines_title_trgm_idx",
+    "chapter_versions_content_trgm_idx",
+    "chapters_autosave_trgm_idx",
+    "chapters_hook_trgm_idx",
+    "chapters_summary_trgm_idx",
+    "chapters_title_trgm_idx",
+    "entities_aliases_trgm_idx",
+    "entities_custom_fields_trgm_idx",
+    "entities_description_trgm_idx",
+    "entities_name_trgm_idx",
+    "entities_summary_trgm_idx",
+    "entities_tags_trgm_idx"
+  ],
+  "bottlenecks": [
+    "Chapter opening used to return every historical version body. It now returns the newest 50 versions plus versionCount, while autosave and current text stay separate.",
+    "Global search previously did not exist, and setting/entity search used unindexed ILIKE scans. pg_trgm GIN indexes now cover settings, outlines, autosave, current chapter text, aliases, tags, and custom fields.",
+    "Chapter context previously embedded every confirmed fact. The compiler now keeps recent canon plus outline-relevant facts within 240 facts and 16k characters.",
+    "Generation previously ran at BullMQ default concurrency. The worker now runs 4 jobs globally with per-user and per-work limits of 2, and interactive chapter jobs are prioritized above batch jobs.",
+    "SSE still uses indexed database polling at 100 ms, which stays under the 1 s target without adding a second event transport. Remaining latency is dominated by the model provider in production."
+  ]
+}

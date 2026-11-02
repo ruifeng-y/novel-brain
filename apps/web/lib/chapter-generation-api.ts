@@ -51,6 +51,7 @@ export type ChapterDetail = {
     wordCount: number;
     updatedAt: string;
   } | null;
+  versionCount: number;
   versions: ChapterVersion[];
   context: {
     id: string;

@@ -29,6 +29,8 @@ import { MapsController } from './maps/maps.controller';
 import { MapsModule } from './maps/maps.module';
 import { OutlineController } from './planning/outline.controller';
 import { RedisModule } from './redis/redis.module';
+import { SearchController } from './search/search.controller';
+import { SearchModule } from './search/search.module';
 import { validateEnv } from './config/env';
 import { StoryPlanningController } from './planning/story-planning.controller';
 import { StoryPlanningModule } from './planning/story-planning.module';
@@ -70,6 +72,7 @@ import { VersionsModule } from './versions/versions.module';
     ExportsModule,
     HistoryModule,
     UsersModule,
+    SearchModule,
     HealthModule,
   ],
   providers: [
@@ -110,6 +113,7 @@ export class AppModule implements NestModule {
         ChapterGenerationController,
         BatchJobsController,
         ExportsController,
+        SearchController,
       );
   }
 }

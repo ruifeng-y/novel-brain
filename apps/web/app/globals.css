@@ -1031,6 +1031,128 @@ textarea {
   border-bottom: 1px solid #d9d8d0;
 }
 
+.work-search-panel {
+  margin: 30px 0 6px;
+  padding: 24px;
+  border: 1px solid #d9d8d0;
+  border-radius: 8px;
+  background: #fbfaf5;
+}
+
+.work-search-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 16px;
+}
+
+.work-search-heading h2 {
+  margin: 4px 0 0;
+  font-family: Georgia, 'Songti SC', serif;
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.work-search-heading > p {
+  max-width: 420px;
+  margin: 0;
+  color: #68736a;
+  font-size: 0.86rem;
+  line-height: 1.7;
+}
+
+.work-search-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.work-search-results {
+  display: grid;
+  gap: 2px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid #e3e1d8;
+}
+
+.work-search-results li {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid #e3e1d8;
+}
+
+.work-search-results strong,
+.work-search-results a {
+  color: #263630;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.work-search-results a:hover {
+  color: #8a4f2b;
+}
+
+.work-search-results p {
+  margin: 4px 0 0;
+  color: #68736a;
+  font-size: 0.84rem;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.work-search-type {
+  display: inline-flex;
+  justify-content: center;
+  padding: 3px 7px;
+  border-radius: 4px;
+  background: #e8ece5;
+  color: #425046;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.work-search-type-outline {
+  background: #f1e8d9;
+  color: #76502f;
+}
+
+.work-search-type-chapter {
+  background: #e5ece8;
+  color: #355c49;
+}
+
+.work-search-empty {
+  margin: 16px 0 0;
+  color: #68736a;
+  font-size: 0.86rem;
+}
+
+@media (max-width: 720px) {
+  .work-search-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .work-search-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .work-search-form .primary-button {
+    justify-self: start;
+  }
+
+  .work-search-results li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .work-stat-strip > div {
   display: grid;
   gap: 6px;
