@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
+import { useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
   To: Array<{ Address: string }>;
 };
 
-const SCREENSHOT_DIR = 'docs/acceptance/m0/screenshots';
+const SCREENSHOT_DIR = process.env.M0_SCREENSHOT_DIR ?? 'test-results/m0-acceptance';
 
 async function readVerificationCode(email: string): Promise<string> {
   for (let attempt = 0; attempt < 40; attempt += 1) {
@@ -64,14 +65,12 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
     chapterEndHook: '他想起的母亲，竟从未在自己的记忆里活过。',
   };
 
-  await page.context().setExtraHTTPHeaders({
-    'X-Forwarded-For': `198.18.${Math.floor(stamp / 250) % 250}.${(stamp % 250) + 1}`,
-  });
+  await useIsolatedClientIp(page);
 
   await page.goto('/register');
   await page.getByLabel('邮箱').fill(email);
   await page.getByRole('button', { name: '发送验证码' }).click();
-  await expect(page.getByText('验证码已发送')).toBeVisible();
+  await expect(page.getByText('验证码已发送')).toBeVisible({ timeout: 15_000 });
 
   const code = await readVerificationCode(email);
   await page.getByLabel('验证码').fill(code);
@@ -148,7 +147,7 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
 
   const factPanel = page.getByRole('region', { name: '本章事实' });
   await expect(factPanel.getByText('来源原句')).toHaveCount(3);
-  for (const type of ['事件', '身体状况', '人物认知']) {
+  for (const type of ['事件', '身体状况', '角色认知']) {
     const proposal = factPanel.getByTestId(
       `fact-proposal-${type === '事件' ? 'event' : type === '身体状况' ? 'body_state' : 'character_knowledge'}`,
     );

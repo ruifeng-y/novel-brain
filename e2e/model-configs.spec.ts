@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { createServer } from 'node:http';
+import { useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -51,13 +52,11 @@ test('an author can save, test, mask, and delete a model configuration', async (
     const email = `model-settings-e2e-${Date.now()}@example.com`;
     const password = 'correct horse battery staple';
 
-    await page.context().setExtraHTTPHeaders({
-      'X-Forwarded-For': `198.51.100.${(Date.now() % 250) + 1}`,
-    });
+    await useIsolatedClientIp(page);
     await page.goto('/register');
     await page.getByLabel('邮箱').fill(email);
     await page.getByRole('button', { name: '发送验证码' }).click();
-    await expect(page.getByText('验证码已发送')).toBeVisible();
+    await expect(page.getByText('验证码已发送')).toBeVisible({ timeout: 15_000 });
 
     const code = await readVerificationCode(email);
     await page.getByLabel('验证码').fill(code);

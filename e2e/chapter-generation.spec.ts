@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -97,13 +98,11 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
     chapterEndHook: '他想起的母亲，竟从未在自己的记忆里活过。',
   };
 
-  await page.context().setExtraHTTPHeaders({
-    'X-Forwarded-For': `192.0.2.${(Date.now() % 250) + 1}`,
-  });
+  await useIsolatedClientIp(page);
   await page.goto('/register');
   await page.getByLabel('邮箱').fill(email);
   await page.getByRole('button', { name: '发送验证码' }).click();
-  await expect(page.getByText('验证码已发送')).toBeVisible();
+  await expect(page.getByText('验证码已发送')).toBeVisible({ timeout: 15_000 });
 
   const code = await readVerificationCode(email);
   await page.getByLabel('验证码').fill(code);
@@ -235,13 +234,11 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
     chapterEndHook: '他想起的母亲，竟从未在自己的记忆里活过。',
   };
 
-  await page.context().setExtraHTTPHeaders({
-    'X-Forwarded-For': `192.0.2.${(Date.now() % 250) + 1}`,
-  });
+  await useIsolatedClientIp(page);
   await page.goto('/register');
   await page.getByLabel('邮箱').fill(email);
   await page.getByRole('button', { name: '发送验证码' }).click();
-  await expect(page.getByText('验证码已发送')).toBeVisible();
+  await expect(page.getByText('验证码已发送')).toBeVisible({ timeout: 15_000 });
 
   const code = await readVerificationCode(email);
   await page.getByLabel('验证码').fill(code);

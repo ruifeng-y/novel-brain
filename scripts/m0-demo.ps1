@@ -30,13 +30,19 @@ try {
     throw 'M0 acceptance Playwright failed.'
   }
 
+  $screenshotSource = Join-Path $repoRoot 'test-results\m0-acceptance'
+  $screenshotTarget = Join-Path $repoRoot 'docs\acceptance\m0\screenshots'
+  New-Item -ItemType Directory -Force -Path $screenshotTarget | Out-Null
+  Copy-Item -Path (Join-Path $screenshotSource '*.png') -Destination $screenshotTarget -Force
+
   Write-Host ''
   Write-Host 'M0 acceptance passed. Screenshots:'
-  Write-Host '  docs/acceptance/m0/screenshots/01-model-settings.png'
-  Write-Host '  docs/acceptance/m0/screenshots/02-story-bible-and-outline.png'
-  Write-Host '  docs/acceptance/m0/screenshots/03-streaming-chapter.png'
-  Write-Host '  docs/acceptance/m0/screenshots/04-confirmed-facts.png'
-  Write-Host '  docs/acceptance/m0/screenshots/05-continuity-state.png'
+  Write-Host '  test-results/m0-acceptance/01-model-settings.png'
+  Write-Host '  test-results/m0-acceptance/02-story-bible-and-outline.png'
+  Write-Host '  test-results/m0-acceptance/03-streaming-chapter.png'
+  Write-Host '  test-results/m0-acceptance/04-confirmed-facts.png'
+  Write-Host '  test-results/m0-acceptance/05-continuity-state.png'
+  Write-Host '  Docs copy: docs/acceptance/m0/screenshots/'
   Write-Host ''
   Write-Host 'Reminder: M0 is an internal walking skeleton, not a public release.'
 } finally {

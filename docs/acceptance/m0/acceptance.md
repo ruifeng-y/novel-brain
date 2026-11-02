@@ -12,7 +12,7 @@
 3. 保存 OpenAI 兼容格式的本地验收模型配置。
 4. 保存最小故事圣经和第一章章纲。
 5. 从章纲流式生成整章并保存版本。
-6. 确认事件、身体状况和人物认知事实。
+6. 确认事件、身体状况和角色认知事实。
 7. 在写作台看到连续性提示和已确认事实状态。
 8. Docker Compose 在全新项目名和全新数据卷下启动、迁移、seed 和冒烟。
 
@@ -105,6 +105,9 @@ pnpm test:e2e
 `e2e/m0-acceptance.spec.ts` 用一条浏览器旅程完成全部 M0 主路径。
 这组环境变量复现 CI 路径：浏览器直接连接已经健康的 Compose Web，不再另起 dev server。
 
+同一套 Compose 环境连续执行两轮完整 Playwright，结果均为 9/9 通过。每个浏览器
+用例使用独立 `X-Forwarded-For`，避免注册验证码的按 IP 限流在重跑时造成假失败。
+
 ```powershell
 $env:M0_COMPOSE_PROJECT = 'novel-brain-m0-acceptance'
 pnpm demo:m0 -- -SkipBuild
@@ -131,7 +134,7 @@ Worker 运行环境确认包含 `AI_PROVIDER=fake`。
 | Playwright happy path 从注册走到事实确认 | `e2e/m0-acceptance.spec.ts`；注册、登录、建作品、配模型、故事圣经、章纲、流式生成、保存版本、三类事实确认、刷新后仍可见 |
 | 所有 M0 验收标准通过，没有 P0 或 P1 缺陷 | lint、typecheck、40 个 Vitest、7 包构建、9 个 Playwright 全部通过；未发现 M0 产品缺陷 |
 | 内部演示脚本和截图完成 | `docs/acceptance/m0/demo.md`、`scripts/m0-demo.ps1`、`docs/acceptance/m0/screenshots/` |
-| Docker Compose 和测试在干净环境可重复 | 全新项目 `novel-brain-m0-acceptance`、全新数据卷、健康检查、HTTP 冒烟和完整 Playwright 通过 |
+| Docker Compose 和测试在干净环境可重复 | 全新项目 `novel-brain-m0-acceptance`、全新数据卷、健康检查、HTTP 冒烟通过；同一套环境连续两轮完整 Playwright 均为 9/9 |
 | 明确记录 M0 不对外发布 | 本目录 README、演示脚本、验收记录和根 README 均明确 M0 是内部 walking skeleton |
 
 ## 截图
@@ -155,6 +158,8 @@ Worker 运行环境确认包含 `AI_PROVIDER=fake`。
 
 - 旧 Compose web 镜像早于编辑器高亮修复，导致首次全量 Playwright 出现假失败；
   从当前源码重建镜像后通过。
+- 同一套环境连续重跑时，注册验证码的按 IP 限流会误伤不同用例；Playwright 用例
+  改为为每个浏览器上下文生成独立客户端 IP 后，连续两轮均稳定通过。
 - 模型连接测试原先把容器内 API 指向测试进程的 `127.0.0.1`；改为本地桩监听
   `0.0.0.0`，Compose API 通过 `host.docker.internal` 访问，并在 compose 中声明
   `host-gateway`。宿主机直接运行 API 时可用

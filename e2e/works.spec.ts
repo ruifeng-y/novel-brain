@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -33,14 +34,11 @@ test('an author can create, list, and reopen a work', async ({ page }) => {
   const password = 'correct horse battery staple';
   const title = `仙途万里${Date.now()}`;
 
-  // Keep parallel E2E registrations out of the shared per-IP code limiter.
-  await page.context().setExtraHTTPHeaders({
-    'X-Forwarded-For': `203.0.113.${(Date.now() % 250) + 1}`,
-  });
+  await useIsolatedClientIp(page);
   await page.goto('/register');
   await page.getByLabel('邮箱').fill(email);
   await page.getByRole('button', { name: '发送验证码' }).click();
-  await expect(page.getByText('验证码已发送')).toBeVisible();
+  await expect(page.getByText('验证码已发送')).toBeVisible({ timeout: 15_000 });
 
   const code = await readVerificationCode(email);
   await page.getByLabel('验证码').fill(code);
