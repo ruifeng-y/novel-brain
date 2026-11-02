@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { countCjkCharacters } from '@novel/contracts';
 import { ApiError, apiRequest, friendlyError, type User } from '../../../../lib/auth-api';
 import {
@@ -68,7 +68,18 @@ export function WritingDesk({ workId }: { workId: string }) {
   const [continuityBusyId, setContinuityBusyId] = useState<string>();
   const [continuityError, setContinuityError] = useState('');
   const [continuityNotice, setContinuityNotice] = useState('');
+  const [highlightScrollbarWidth, setHighlightScrollbarWidth] = useState(0);
   const streamRef = useRef<EventSource | null>(null);
+  const bodyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const highlightBackdropRef = useRef<HTMLDivElement | null>(null);
+  const openContinuityIssues = continuityIssues.filter(
+    (issue) => issue.status === 'open',
+  );
+  const bodyHighlightRanges = buildBodyHighlightRanges(
+    content,
+    openContinuityIssues,
+  );
+  const hasBodyHighlights = bodyHighlightRanges.length > 0;
 
   useEffect(() => {
     let active = true;
@@ -156,6 +167,43 @@ export function WritingDesk({ workId }: { workId: string }) {
       active = false;
     };
   }, [boot, chapterNumber, generationState]);
+
+  useEffect(() => {
+    if (!hasBodyHighlights) {
+      setHighlightScrollbarWidth(0);
+      return;
+    }
+
+    const textarea = bodyTextareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    const measure = () => {
+      const styles = window.getComputedStyle(textarea);
+      const borderWidth =
+        Number.parseFloat(styles.borderLeftWidth) +
+        Number.parseFloat(styles.borderRightWidth);
+      setHighlightScrollbarWidth(
+        Math.max(0, Math.round(textarea.offsetWidth - textarea.clientWidth - borderWidth)),
+      );
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  }, [hasBodyHighlights]);
+
+  useEffect(() => {
+    const textarea = bodyTextareaRef.current;
+    const backdrop = highlightBackdropRef.current;
+    if (!textarea || !backdrop) {
+      return;
+    }
+    backdrop.scrollTop = textarea.scrollTop;
+    backdrop.scrollLeft = textarea.scrollLeft;
+  }, [content, hasBodyHighlights]);
 
   async function openChapter(nextChapterNumber: number) {
     if (!boot || boot.status !== 'ready' || generating) {
@@ -444,6 +492,15 @@ export function WritingDesk({ workId }: { workId: string }) {
     streamRef.current = null;
   }
 
+  function syncHighlightScroll(event: React.UIEvent<HTMLTextAreaElement>) {
+    const backdrop = highlightBackdropRef.current;
+    if (!backdrop) {
+      return;
+    }
+    backdrop.scrollTop = event.currentTarget.scrollTop;
+    backdrop.scrollLeft = event.currentTarget.scrollLeft;
+  }
+
   if (boot.status === 'loading') {
     return (
       <main className="writing-shell">
@@ -607,39 +664,42 @@ export function WritingDesk({ workId }: { workId: string }) {
             <label className="writing-editor-label" htmlFor="chapter-content">
               正文
             </label>
-            <textarea
-              aria-label="章节正文"
-              className="writing-textarea"
-              id="chapter-content"
-              onChange={(event) => {
-                setContent(event.target.value);
-                if (notice) {
-                  setNotice('');
-                }
-              }}
-              placeholder="正文会在这里出现，也可以直接开始写。"
-              spellCheck={false}
-              value={content}
-            />
-
-            {continuityIssues.some((issue) => issue.status === 'open') ? (
-              <section
-                aria-label="正文中的连续性冲突"
-                className="continuity-highlight"
-              >
-                <div>
-                  <span>正文中的冲突</span>
-                  <small>标出的原句需要你确认或修改。</small>
+            <div
+              className={`writing-editor-surface${
+                hasBodyHighlights ? ' writing-editor-surface-highlighted' : ''
+              }`}
+            >
+              {hasBodyHighlights ? (
+                <div
+                  aria-hidden="true"
+                  className="writing-highlight-backdrop"
+                  ref={highlightBackdropRef}
+                  style={{ right: `${highlightScrollbarWidth}px` }}
+                >
+                  <div className="writing-highlight-content">
+                    {renderBodyWithHighlights(content, bodyHighlightRanges)}
+                  </div>
                 </div>
-                {continuityIssues
-                  .filter((issue) => issue.status === 'open')
-                  .map((issue) => (
-                    <p key={issue.id}>
-                      <mark>{issue.sourceSentence}</mark>
-                    </p>
-                  ))}
-              </section>
-            ) : null}
+              ) : null}
+              <textarea
+                aria-label="章节正文"
+                className={`writing-textarea${
+                  hasBodyHighlights ? ' writing-textarea-highlighted' : ''
+                }`}
+                id="chapter-content"
+                onChange={(event) => {
+                  setContent(event.target.value);
+                  if (notice) {
+                    setNotice('');
+                  }
+                }}
+                onScroll={syncHighlightScroll}
+                placeholder="正文会在这里出现，也可以直接开始写。"
+                ref={bodyTextareaRef}
+                spellCheck={false}
+                value={content}
+              />
+            </div>
 
             <footer className="writing-editor-footer">
               <span>{countCjkCharacters(content).toLocaleString('zh-CN')} 字</span>
@@ -744,6 +804,79 @@ export function WritingDesk({ workId }: { workId: string }) {
       )}
     </main>
   );
+}
+
+type BodyHighlightRange = {
+  issueId: string;
+  start: number;
+  end: number;
+};
+
+function buildBodyHighlightRanges(
+  content: string,
+  issues: ContinuityIssue[],
+): BodyHighlightRange[] {
+  const ranges = issues
+    .map((issue) => {
+      let start = issue.startOffset;
+      let end = issue.endOffset;
+      if (content.slice(start, end) !== issue.sourceSentence) {
+        const sourceIndex = content.indexOf(issue.sourceSentence);
+        if (sourceIndex < 0) {
+          return null;
+        }
+        start = sourceIndex;
+        end = sourceIndex + issue.sourceSentence.length;
+      }
+      if (start < 0 || end <= start || end > content.length) {
+        return null;
+      }
+      return {
+        issueId: issue.id,
+        start,
+        end,
+      };
+    })
+    .filter((range): range is BodyHighlightRange => range !== null)
+    .sort((left, right) => left.start - right.start);
+
+  const nonOverlapping: BodyHighlightRange[] = [];
+  for (const range of ranges) {
+    const previous = nonOverlapping.at(-1);
+    if (!previous || range.start >= previous.end) {
+      nonOverlapping.push(range);
+    }
+  }
+  return nonOverlapping;
+}
+
+function renderBodyWithHighlights(
+  content: string,
+  ranges: BodyHighlightRange[],
+): ReactNode[] {
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+
+  for (const range of ranges) {
+    if (range.start > cursor) {
+      parts.push(content.slice(cursor, range.start));
+    }
+    parts.push(
+      <mark
+        data-continuity-issue-id={range.issueId}
+        data-testid="inline-continuity-mark"
+        key={range.issueId}
+      >
+        {content.slice(range.start, range.end)}
+      </mark>,
+    );
+    cursor = range.end;
+  }
+
+  if (cursor < content.length) {
+    parts.push(content.slice(cursor));
+  }
+  return parts;
 }
 
 function initialChapterContent(detail: ChapterDetail): string {

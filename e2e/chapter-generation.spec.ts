@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 type MailpitMessage = {
   ID: string;
@@ -32,6 +32,50 @@ function countCjkCharacters(text: string): number {
   return (
     text.match(/[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\u{20000}-\u{323AF}]/gu)
       ?.length ?? 0
+  );
+}
+
+async function expectHighlightOverBodyEditor(page: Page): Promise<void> {
+  const editor = page.locator('.writing-editor-surface');
+  const textarea = page.getByLabel('章节正文');
+  const mark = editor
+    .locator('[data-testid="inline-continuity-mark"]')
+    .filter({ hasText: '双手结印' })
+    .first();
+
+  await expect(editor).toBeVisible();
+  await expect(textarea).toBeVisible();
+  await expect(mark).toBeVisible();
+
+  const [editorBox, textareaBox, markBox] = await Promise.all([
+    editor.boundingBox(),
+    textarea.boundingBox(),
+    mark.boundingBox(),
+  ]);
+  expect(editorBox).not.toBeNull();
+  expect(textareaBox).not.toBeNull();
+  expect(markBox).not.toBeNull();
+  if (!editorBox || !textareaBox || !markBox) {
+    throw new Error('Expected the editor, textarea, and inline mark to have bounding boxes');
+  }
+
+  const tolerance = 2;
+  expect(markBox.x).toBeGreaterThanOrEqual(editorBox.x - tolerance);
+  expect(markBox.y).toBeGreaterThanOrEqual(editorBox.y - tolerance);
+  expect(markBox.x + markBox.width).toBeLessThanOrEqual(
+    editorBox.x + editorBox.width + tolerance,
+  );
+  expect(markBox.y + markBox.height).toBeLessThanOrEqual(
+    editorBox.y + editorBox.height + tolerance,
+  );
+
+  expect(markBox.x).toBeGreaterThanOrEqual(textareaBox.x - tolerance);
+  expect(markBox.x + markBox.width).toBeLessThanOrEqual(
+    textareaBox.x + textareaBox.width + tolerance,
+  );
+  expect(markBox.y).toBeGreaterThanOrEqual(textareaBox.y - tolerance);
+  expect(markBox.y + markBox.height).toBeLessThanOrEqual(
+    textareaBox.y + textareaBox.height + tolerance,
   );
 }
 
@@ -290,12 +334,44 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   await expect(continuityPanel.locator('.continuity-suggestion')).toContainText(
     '右手',
   );
-  await expect(
-    page.locator('.continuity-highlight mark').getByText(/双手结印/),
-  ).toBeVisible();
+  await expectHighlightOverBodyEditor(page);
   await page.screenshot({
     fullPage: true,
     path: 'test-results/ticket-9-continuity.png',
+  });
+
+  const bodyEditor = page.getByLabel('章节正文');
+  await bodyEditor.evaluate((element) => {
+    element.scrollTop = 240;
+    element.dispatchEvent(new Event('scroll', { bubbles: true }));
+  });
+  await expect
+    .poll(async () =>
+      page.locator('.writing-highlight-backdrop').evaluate((element) => element.scrollTop),
+    )
+    .toBe(240);
+  await bodyEditor.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event('scroll', { bubbles: true }));
+  });
+  await expectHighlightOverBodyEditor(page);
+
+  const beforeEdit = await bodyEditor.inputValue();
+  await bodyEditor.click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type('补');
+  await expect.poll(async () => bodyEditor.inputValue()).not.toBe(beforeEdit);
+  await bodyEditor.evaluate((element) => {
+    element.scrollTop = 0;
+    element.dispatchEvent(new Event('scroll', { bubbles: true }));
+  });
+  await expectHighlightOverBodyEditor(page);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectHighlightOverBodyEditor(page);
+  await page.screenshot({
+    fullPage: true,
+    path: 'test-results/ticket-9-continuity-mobile.png',
   });
 
   const ignoreReason = '这里用右手代替左手结印，后文会解释左臂已经恢复。';
@@ -313,7 +389,6 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   await expect(reloadedPanel.getByText('已忽略', { exact: true })).toBeVisible();
   await expect(reloadedPanel.getByText(ignoreReason)).toBeVisible();
 
-  await page.setViewportSize({ width: 390, height: 844 });
   await expect(reloadedPanel).toBeVisible();
   expect(
     await page.evaluate(
@@ -325,11 +400,6 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
       (element) => element.scrollWidth <= element.clientWidth + 1,
     ),
   ).toBe(true);
-  await page.screenshot({
-    fullPage: true,
-    path: 'test-results/ticket-9-continuity-mobile.png',
-  });
-
   await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(
     0,
   );

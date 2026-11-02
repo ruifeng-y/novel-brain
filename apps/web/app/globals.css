@@ -1812,73 +1812,78 @@ textarea {
   font-weight: 700;
 }
 
-.writing-textarea {
-  width: 100%;
+.writing-editor-surface {
+  position: relative;
   min-height: 52vh;
   flex: 1;
-  padding: 24px clamp(18px, 3vw, 34px);
+  overflow: hidden;
   resize: vertical;
   border: 1px solid #d9dfd8;
   border-radius: 6px;
   background:
     linear-gradient(90deg, rgb(216 225 217 / 14%) 1px, transparent 1px) 0 0 / 42px 100%,
     #fffef9;
-  color: #26332b;
-  font-family: 'Songti SC', 'STSong', 'SimSun', Georgia, serif;
-  font-size: 1.04rem;
-  line-height: 2;
-  outline: none;
-  tab-size: 2;
 }
 
-.writing-textarea:focus {
+.writing-editor-surface:focus-within {
   border-color: #91aa99;
   box-shadow: 0 0 0 3px rgb(47 111 94 / 10%);
 }
 
+.writing-highlight-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.writing-highlight-content {
+  min-height: 100%;
+  color: #26332b;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.writing-highlight-content mark {
+  border-radius: 2px;
+  background: #f4c7b5;
+  color: inherit;
+  box-shadow: inset 0 -1px 0 #c3644b;
+}
+
+.writing-textarea,
+.writing-highlight-content {
+  width: 100%;
+  padding: 24px clamp(18px, 3vw, 34px);
+  font-family: 'Songti SC', 'STSong', 'SimSun', Georgia, serif;
+  font-size: 1.04rem;
+  line-height: 2;
+  tab-size: 2;
+}
+
+.writing-textarea {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  resize: none;
+  border: 0;
+  border-radius: inherit;
+  background: transparent;
+  color: #26332b;
+  outline: none;
+}
+
+.writing-textarea-highlighted {
+  color: transparent;
+  caret-color: #26332b;
+  -webkit-text-fill-color: transparent;
+}
+
 .writing-textarea::placeholder {
   color: #a4ada5;
-}
-
-.continuity-highlight {
-  margin-top: 10px;
-  padding: 11px 13px;
-  border: 1px solid #e2b9a9;
-  border-left: 3px solid var(--cinnabar);
-  border-radius: 6px;
-  background: #fff8f3;
-}
-
-.continuity-highlight > div {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.continuity-highlight span {
-  color: #853a2b;
-  font-size: 0.7rem;
-  font-weight: 800;
-}
-
-.continuity-highlight small {
-  color: #8a776d;
-  font-size: 0.65rem;
-}
-
-.continuity-highlight p {
-  margin: 8px 0 0;
-  color: #5c514b;
-  font-family: 'Songti SC', 'STSong', 'SimSun', Georgia, serif;
-  font-size: 0.78rem;
-  line-height: 1.75;
-}
-
-.continuity-highlight mark {
-  padding: 1px 3px;
-  background: #f5d7c8;
-  color: #6e2d22;
+  -webkit-text-fill-color: #a4ada5;
 }
 
 .writing-editor-footer {
@@ -2380,8 +2385,12 @@ textarea {
     gap: 12px;
   }
 
-  .writing-textarea {
+  .writing-editor-surface {
     min-height: 46vh;
+  }
+
+  .writing-textarea,
+  .writing-highlight-content {
     padding: 18px;
     font-size: 1rem;
   }
