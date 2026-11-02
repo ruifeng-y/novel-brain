@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AccountPurgeRunner } from './accounts/account-purge.runner';
 import { SystemProcessor } from './system.processor';
 import type { SystemJobStore } from './system-job.store';
+import { WorkPurgeRunner } from './works/work-purge.runner';
 
 describe('SystemProcessor', () => {
   it('records a completed bootstrap ping', async () => {
@@ -12,6 +13,7 @@ describe('SystemProcessor', () => {
     const processor = new SystemProcessor(
       store,
       { run: vi.fn() } as unknown as AccountPurgeRunner,
+      { run: vi.fn() } as unknown as WorkPurgeRunner,
     );
 
     const result = await processor.process({
@@ -30,12 +32,36 @@ describe('SystemProcessor', () => {
       completeBootstrapPing: vi.fn().mockResolvedValue(undefined),
     };
     const run = vi.fn().mockResolvedValue({});
-    const processor = new SystemProcessor(store, {
-      run,
-    } as unknown as AccountPurgeRunner);
+    const processor = new SystemProcessor(
+      store,
+      {
+        run,
+      } as unknown as AccountPurgeRunner,
+      { run: vi.fn() } as unknown as WorkPurgeRunner,
+    );
 
     const result = await processor.process({
       name: 'account-purge',
+      data: {},
+    } as Job<Record<string, never>>);
+
+    expect(result).toEqual({ ok: true });
+    expect(run).toHaveBeenCalledWith({ limit: 100 });
+  });
+
+  it('dispatches the scheduled work purge', async () => {
+    const store: SystemJobStore = {
+      completeBootstrapPing: vi.fn().mockResolvedValue(undefined),
+    };
+    const run = vi.fn().mockResolvedValue({});
+    const processor = new SystemProcessor(
+      store,
+      { run: vi.fn() } as unknown as AccountPurgeRunner,
+      { run } as unknown as WorkPurgeRunner,
+    );
+
+    const result = await processor.process({
+      name: 'work-purge',
       data: {},
     } as Job<Record<string, never>>);
 

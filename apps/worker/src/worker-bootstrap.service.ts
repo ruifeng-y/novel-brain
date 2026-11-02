@@ -28,5 +28,17 @@ export class WorkerBootstrapService implements OnApplicationBootstrap {
         },
       },
     );
+    await this.queue.upsertJobScheduler(
+      'work-purge-daily',
+      { pattern: '15 3 * * *' },
+      {
+        name: 'work-purge',
+        data: {},
+        opts: {
+          removeOnComplete: 10,
+          removeOnFail: 10,
+        },
+      },
+    );
   }
 }

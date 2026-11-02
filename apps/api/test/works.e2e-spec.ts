@@ -10,6 +10,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { DatabaseService } from '../src/database/database.service';
 import { RedisService } from '../src/redis/redis.service';
+import { ObjectStorageService } from '../src/storage/object-storage.service';
 
 function uniqueEmail(): string {
   return `works-${randomUUID()}@example.com`;
@@ -656,6 +657,69 @@ describe('works API', () => {
       [work.id],
     );
     expect(audit.rows.map((row) => row.action)).toContain('work_duplicated');
+  });
+
+  it('copies map image assets to independent object keys without breaking either work', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, { title: '地图副本原书' });
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const node = await author.agent
+      .post(`${base}/maps/nodes`)
+      .send({
+        name: '临渊城',
+        summary: '东荒边境的小城。',
+        description: '',
+        level: 'world',
+      })
+      .expect(201);
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+      'base64',
+    );
+    await author.agent
+      .post(`${base}/maps/images`)
+      .field('nodeId', node.body.id)
+      .attach('image', png, { filename: 'world.png', contentType: 'image/png' })
+      .expect(201);
+
+    const database = app.get(DatabaseService);
+    const sourceImage = await database.pool.query<{ id: string; storage_key: string }>(
+      'select id, storage_key from map_images where work_id = $1',
+      [work.id],
+    );
+    expect(sourceImage.rows).toHaveLength(1);
+
+    const copied = await author.agent
+      .post(`/api/v1/works/${work.id}/duplicate`)
+      .send({ title: '地图副本新书' })
+      .expect(201);
+    const targetImage = await database.pool.query<{ id: string; storage_key: string }>(
+      'select id, storage_key from map_images where work_id = $1',
+      [copied.body.id],
+    );
+    expect(targetImage.rows).toHaveLength(1);
+    expect(targetImage.rows[0].storage_key).not.toBe(sourceImage.rows[0].storage_key);
+    expect(targetImage.rows[0].storage_key).toMatch(
+      new RegExp(
+        `^${author.userId}/${copied.body.id}/${copied.body.mainBranch.id}/maps/.+\\.webp$`,
+      ),
+    );
+
+    const storage = app.get(ObjectStorageService);
+    const sourceBytes = await storage.getObject(author.userId, sourceImage.rows[0].storage_key);
+    const targetBytes = await storage.getObject(author.userId, targetImage.rows[0].storage_key);
+    expect(targetBytes).toEqual(sourceBytes);
+
+    await storage.removeObject(author.userId, sourceImage.rows[0].storage_key);
+    await author.agent
+      .get(
+        `/api/v1/works/${copied.body.id}/branches/${copied.body.mainBranch.id}/maps/images/${targetImage.rows[0].id}/content`,
+      )
+      .expect(200)
+      .expect(({ body }) => {
+        expect(Buffer.isBuffer(body)).toBe(true);
+        expect((body as Buffer).equals(sourceBytes)).toBe(true);
+      });
   });
 
   it('imports markdown and Word manuscripts into preserved chapter versions', async () => {

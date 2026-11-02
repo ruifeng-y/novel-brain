@@ -67,6 +67,32 @@ export const accountPurgeReceipts = pgTable(
 export type AccountPurgeReceiptRow = typeof accountPurgeReceipts.$inferSelect;
 export type NewAccountPurgeReceiptRow = typeof accountPurgeReceipts.$inferInsert;
 
+export const workPurgeReceipts = pgTable(
+  'work_purge_receipts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    workId: uuid('work_id').notNull(),
+    userId: uuid('user_id').notNull(),
+    titleHash: text('title_hash').notNull(),
+    status: text('status').notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }).notNull(),
+    purgedAt: timestamp('purged_at', { withTimezone: true }).notNull(),
+    summary: jsonb('summary')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('work_purge_receipts_work_unique').on(table.workId),
+    index('work_purge_receipts_user_purged_idx').on(table.userId, table.purgedAt),
+    index('work_purge_receipts_purged_idx').on(table.purgedAt),
+  ],
+);
+
+export type WorkPurgeReceiptRow = typeof workPurgeReceipts.$inferSelect;
+export type NewWorkPurgeReceiptRow = typeof workPurgeReceipts.$inferInsert;
+
 export const emailCodePurposeEnum = pgEnum('email_code_purpose', ['register']);
 
 export const emailCodes = pgTable(

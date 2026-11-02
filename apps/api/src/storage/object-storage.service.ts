@@ -15,12 +15,7 @@ export class ObjectStorageService {
     });
   }
 
-  async putObject(
-    userId: string,
-    key: string,
-    data: Buffer,
-    contentType: string,
-  ): Promise<void> {
+  async putObject(userId: string, key: string, data: Buffer, contentType: string): Promise<void> {
     await this.client.putObject(userId, key, data, contentType);
   }
 
@@ -30,5 +25,15 @@ export class ObjectStorageService {
 
   async removeObject(userId: string, key: string): Promise<void> {
     await this.client.removeObject(userId, key);
+  }
+
+  async copyObject(
+    userId: string,
+    sourceKey: string,
+    targetKey: string,
+    contentType: string,
+  ): Promise<void> {
+    const data = await this.client.getObject(userId, sourceKey);
+    await this.client.putObject(userId, targetKey, data, contentType);
   }
 }

@@ -14,12 +14,18 @@ import {
   type WorkImportInput,
   type WorkListQuery,
 } from '@novel/contracts';
-import { ManuscriptImportError, parseManuscript, qualityScoreFromDimensions } from '@novel/core';
+import {
+  ManuscriptImportError,
+  parseManuscript,
+  qualityScoreFromDimensions,
+  userStorageKey,
+} from '@novel/core';
 import {
   chapterOutlines,
   chapters,
   chapterVersions,
   foreshadows,
+  mapImages,
   penNames,
   qualityReports,
   workBranches,
@@ -41,9 +47,10 @@ import {
   or,
   sql,
 } from 'drizzle-orm';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { BranchStateService, type BranchStateCloneTable } from '../branches/branch-state.service';
 import { DatabaseService } from '../database/database.service';
+import { ObjectStorageService } from '../storage/object-storage.service';
 import { AuditService } from '../versions/audit.service';
 import { worksError } from './works.errors';
 
@@ -146,6 +153,7 @@ export class WorksService {
     private readonly database: DatabaseService,
     private readonly branchState: BranchStateService,
     private readonly audit: AuditService,
+    private readonly storage: ObjectStorageService,
   ) {}
 
   async list(userId: string, query: WorkListQuery): Promise<{ items: WorkResponse[] }> {
@@ -531,64 +539,89 @@ export class WorksService {
     const title = input.title ?? `${source.title}副本`;
     const penName = input.penName ?? source.penName;
 
-    const created = await this.database.db.transaction(async (tx) => {
-      const [work] = await tx
-        .insert(works)
-        .values({
-          userId,
-          title,
-          penName,
-          penNameId: input.penName === undefined ? source.penNameId : undefined,
-          genrePack: source.genrePack,
-          genreVariant: source.genreVariant,
-          scale: source.scale,
-          targetPlatform: source.targetPlatform,
-          status: 'preparing',
-        })
-        .returning();
-      const [branch] = await tx
-        .insert(workBranches)
-        .values({
-          workId: work.id,
-          name: 'main',
-          isMain: true,
-          status: 'active',
-          createdBy: userId,
-        })
-        .returning();
-      const sourceReadBranchId = await this.branchState.effectiveReadBranchId(sourceBranch.id);
-      await this.branchState.cloneBranchRows(
-        tx,
-        work.id,
-        sourceReadBranchId,
-        branch.id,
-        false,
-        COPY_BRANCH_TABLES,
-      );
-      return { work, branch };
-    });
+    const copiedObjectKeys: string[] = [];
+    try {
+      const created = await this.database.db.transaction(async (tx) => {
+        const [work] = await tx
+          .insert(works)
+          .values({
+            userId,
+            title,
+            penName,
+            penNameId: input.penName === undefined ? source.penNameId : undefined,
+            genrePack: source.genrePack,
+            genreVariant: source.genreVariant,
+            scale: source.scale,
+            targetPlatform: source.targetPlatform,
+            status: 'preparing',
+          })
+          .returning();
+        const [branch] = await tx
+          .insert(workBranches)
+          .values({
+            workId: work.id,
+            name: 'main',
+            isMain: true,
+            status: 'active',
+            createdBy: userId,
+          })
+          .returning();
+        const sourceReadBranchId = await this.branchState.effectiveReadBranchId(sourceBranch.id);
+        await this.branchState.cloneBranchRows(
+          tx,
+          work.id,
+          sourceReadBranchId,
+          branch.id,
+          false,
+          COPY_BRANCH_TABLES,
+        );
 
-    await this.audit.record({
-      userId,
-      workId,
-      branchId: sourceBranch.id,
-      action: 'work_duplicated',
-      targetType: 'work',
-      targetId: created.work.id,
-      title: `复制作品：${source.title} → ${title}`,
-      metadata: { sourceWorkId: workId, copiedWorkId: created.work.id },
-    });
-    await this.audit.record({
-      userId,
-      workId: created.work.id,
-      branchId: created.branch.id,
-      action: 'work_created',
-      targetType: 'work',
-      targetId: created.work.id,
-      title: `从《${source.title}》复制新作品`,
-      metadata: { sourceWorkId: workId },
-    });
-    return this.toResponse(created.work, created.branch);
+        const images = await tx.select().from(mapImages).where(eq(mapImages.workId, work.id));
+        for (const image of images) {
+          const targetKey = userStorageKey(
+            userId,
+            work.id,
+            branch.id,
+            'maps',
+            `${randomUUID()}.webp`,
+          );
+          await this.storage.copyObject(userId, image.storageKey, targetKey, image.mimeType);
+          copiedObjectKeys.push(targetKey);
+          await tx
+            .update(mapImages)
+            .set({ storageKey: targetKey, updatedAt: new Date() })
+            .where(eq(mapImages.id, image.id));
+        }
+        return { work, branch };
+      });
+
+      await this.audit.record({
+        userId,
+        workId,
+        branchId: sourceBranch.id,
+        action: 'work_duplicated',
+        targetType: 'work',
+        targetId: created.work.id,
+        title: `复制作品：${source.title} → ${title}`,
+        metadata: { sourceWorkId: workId, copiedWorkId: created.work.id },
+      });
+      await this.audit.record({
+        userId,
+        workId: created.work.id,
+        branchId: created.branch.id,
+        action: 'work_created',
+        targetType: 'work',
+        targetId: created.work.id,
+        title: `从《${source.title}》复制新作品`,
+        metadata: { sourceWorkId: workId },
+      });
+      return this.toResponse(created.work, created.branch);
+    } catch (error) {
+      await Promise.allSettled(
+        copiedObjectKeys.map((key) => this.storage.removeObject(userId, key)),
+      );
+      throw error;
+    }
   }
 
   async importManuscript(

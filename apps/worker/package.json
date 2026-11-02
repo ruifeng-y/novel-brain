@@ -7,6 +7,7 @@
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "purge:accounts": "tsc -p tsconfig.build.json && node dist/purge-accounts.js",
+    "purge:works": "tsc -p tsconfig.build.json && node dist/purge-works.js",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
