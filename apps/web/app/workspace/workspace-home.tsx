@@ -390,23 +390,43 @@ export function WorkspaceHome() {
 
         <section className="studio-stat-grid" aria-label="创作概览">
           <article className="studio-stat-card">
-            <span className="studio-stat-label">进行中的作品</span>
-            <strong>{dashboardWorks.length}</strong>
+            <span className="studio-stat-icon jade">
+              <StudioStatIcon kind="book" />
+            </span>
+            <div>
+              <strong>{dashboardWorks.length}</strong>
+              <span>进行中的作品</span>
+            </div>
             <small>{dashboardWorks.filter((work) => work.status === 'serializing').length} 部正在连载</small>
           </article>
           <article className="studio-stat-card">
-            <span className="studio-stat-label">累计字数</span>
-            <strong>{totalWords.toLocaleString('zh-CN')}</strong>
+            <span className="studio-stat-icon cinnabar">
+              <StudioStatIcon kind="pen" />
+            </span>
+            <div>
+              <strong>{totalWords.toLocaleString('zh-CN')}</strong>
+              <span>累计字数</span>
+            </div>
             <small>全部进行中的作品</small>
           </article>
           <article className="studio-stat-card">
-            <span className="studio-stat-label">待处理建议</span>
-            <strong>{unresolvedForeshadows}</strong>
+            <span className="studio-stat-icon gold">
+              <StudioStatIcon kind="scan" />
+            </span>
+            <div>
+              <strong>{unresolvedForeshadows}</strong>
+              <span>待处理建议</span>
+            </div>
             <small>未回收伏笔与连续性提醒</small>
           </article>
           <article className="studio-stat-card">
-            <span className="studio-stat-label">平均质量分</span>
-            <strong>{averageQuality ?? '暂无'}</strong>
+            <span className="studio-stat-icon blue">
+              <StudioStatIcon kind="gauge" />
+            </span>
+            <div>
+              <strong>{averageQuality ?? '暂无'}</strong>
+              <span>平均质量分</span>
+            </div>
             <small>来自已生成章节的质量报告</small>
           </article>
         </section>
@@ -712,7 +732,16 @@ export function WorkspaceHome() {
           ) : (
             <div className="work-list">
               {works.map((work) => (
-                <article className="work-card" key={work.id}>
+                <article
+                  className={`work-card work-cover-${work.genrePack}`}
+                  key={work.id}
+                >
+                  <div className="work-card-cover-block">
+                    <span>{GENRE_LABELS[work.genrePack] ?? work.genrePack}</span>
+                    <strong>{work.title.slice(0, 4)}</strong>
+                    <em>{work.statusLabel}</em>
+                  </div>
+                  <div className="work-card-content">
                   <div className="work-card-heading">
                     <div className="work-card-heading-main">
                       {work.coverUrl && view !== 'trash' ? (
@@ -746,7 +775,7 @@ export function WorkspaceHome() {
                   </div>
                   <p className="work-card-meta">
                     {work.penName} · {SCALE_LABELS[work.scale] ?? work.scale} ·{' '}
-                    {work.targetPlatform}
+                    {work.targetPlatform} · 最近编辑 {formatWorkDate(work.lastEditedAt)}
                   </p>
                   {work.tags.length > 0 ? (
                     <ul className="work-card-tags" aria-label="作品标签">
@@ -774,10 +803,6 @@ export function WorkspaceHome() {
                     <div className="work-stat">
                       <span>未回收</span>
                       <strong>{work.unresolvedForeshadowCount}</strong>
-                    </div>
-                    <div className="work-stat work-stat-date">
-                      <span>最近编辑</span>
-                      <strong>{formatWorkDate(work.lastEditedAt)}</strong>
                     </div>
                   </div>
 
@@ -870,6 +895,7 @@ export function WorkspaceHome() {
                       </div>
                     </div>
                   ) : null}
+                  </div>
                 </article>
               ))}
             </div>
@@ -994,6 +1020,40 @@ export function WorkspaceHome() {
       </div>
       </main>
     </AccountShell>
+  );
+}
+
+function StudioStatIcon({ kind }: { kind: 'book' | 'pen' | 'scan' | 'gauge' }) {
+  if (kind === 'book') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21V5.5Z" />
+        <path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20" />
+      </svg>
+    );
+  }
+  if (kind === 'pen') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20Z" />
+        <path d="m13.5 7.5 3 3" />
+      </svg>
+    );
+  }
+  if (kind === 'scan') {
+    return (
+      <svg aria-hidden="true" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="6" />
+        <path d="m16 16 4 4" />
+      </svg>
+    );
+  }
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M4 14a8 8 0 1 1 16 0" />
+      <path d="m12 14 4-4" />
+      <path d="M4 14h2M18 14h2" />
+    </svg>
   );
 }
 
