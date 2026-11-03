@@ -349,6 +349,70 @@ export class AuthService {
     });
   }
 
+  async listSessions(userId: string, currentSessionId: string) {
+    const rows = await this.database.db
+      .select({
+        id: sessions.id,
+        userAgent: sessions.userAgent,
+        ip: sessions.ip,
+        createdAt: sessions.createdAt,
+        lastSeenAt: sessions.lastSeenAt,
+        expiresAt: sessions.expiresAt,
+      })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.userId, userId),
+          isNull(sessions.revokedAt),
+          gt(sessions.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(sessions.lastSeenAt))
+      .limit(20);
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        current: row.id === currentSessionId,
+        device: this.describeSessionDevice(row.userAgent),
+        ip: this.maskIp(row.ip),
+        createdAt: row.createdAt.toISOString(),
+        lastSeenAt: row.lastSeenAt.toISOString(),
+        expiresAt: row.expiresAt.toISOString(),
+      })),
+    };
+  }
+
+  private describeSessionDevice(userAgent: string | null): string {
+    const value = userAgent ?? '';
+    if (/Edg\//.test(value)) {
+      return 'Microsoft Edge';
+    }
+    if (/Chrome\//.test(value)) {
+      return 'Chrome';
+    }
+    if (/Firefox\//.test(value)) {
+      return 'Firefox';
+    }
+    if (/Safari\//.test(value)) {
+      return 'Safari';
+    }
+    if (/curl\//i.test(value)) {
+      return '命令行客户端';
+    }
+    return value ? '浏览器' : '未知设备';
+  }
+
+  private maskIp(ip: string | null): string {
+    if (!ip) {
+      return '未知地址';
+    }
+    const parts = ip.split('.');
+    if (parts.length === 4) {
+      return `${parts[0]}.${parts[1]}.*.*`;
+    }
+    return ip.includes(':') ? '本地网络' : ip;
+  }
+
   async changePassword(
     userId: string,
     currentPassword: string,

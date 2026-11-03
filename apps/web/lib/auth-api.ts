@@ -9,6 +9,16 @@ export type User = {
   createdAt: string;
 };
 
+export type AccountSession = {
+  id: string;
+  current: boolean;
+  device: string;
+  ip: string;
+  createdAt: string;
+  lastSeenAt: string;
+  expiresAt: string;
+};
+
 type ErrorPayload = {
   code?: string;
   message?: string;
@@ -94,7 +104,7 @@ export function friendlyError(error: unknown): string {
       return '邮件暂时无法发送，请稍后再试。';
     }
     if (error.code === 'VALIDATION_ERROR') {
-      return '请补全作品信息后再试。';
+      return '请检查填写内容后再试。';
     }
     if (error.code === 'WORK_NOT_FOUND') {
       return '没有找到这部作品，它可能已被删除。';
@@ -121,4 +131,15 @@ export function friendlyError(error: unknown): string {
   }
 
   return error instanceof Error ? error.message : '请求失败，请稍后再试。';
+}
+
+export function loadAccountSessions(): Promise<{ items: AccountSession[] }> {
+  return apiRequest<{ items: AccountSession[] }>('/api/v1/auth/sessions');
+}
+
+export function logoutAllDevices(): Promise<void> {
+  return apiRequest<void>('/api/v1/auth/logout-all', {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 }

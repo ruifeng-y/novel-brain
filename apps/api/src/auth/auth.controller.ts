@@ -127,6 +127,16 @@ export class AuthController {
     this.clearSessionCookie(response);
   }
 
+  @Get('sessions')
+  @UseGuards(SessionAuthGuard)
+  @ApiOperation({ summary: 'List active sessions for the signed-in author' })
+  sessions(@Req() request: AuthenticatedRequest) {
+    if (!request.auth) {
+      throw authError(HttpStatus.UNAUTHORIZED, 'UNAUTHENTICATED', 'Sign in to continue');
+    }
+    return this.authService.listSessions(request.auth.user.id, request.auth.sessionId);
+  }
+
   @Post('logout-all')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(SessionAuthGuard)

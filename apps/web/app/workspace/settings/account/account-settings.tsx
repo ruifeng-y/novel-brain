@@ -7,6 +7,9 @@ import {
   ApiError,
   apiRequest,
   friendlyError,
+  loadAccountSessions,
+  logoutAllDevices,
+  type AccountSession,
   type User,
 } from '../../../../lib/auth-api';
 import {
@@ -72,18 +75,21 @@ export function AccountSettings() {
   const [exported, setExported] = useState(false);
   const [deletion, setDeletion] = useState({ password: '', confirmation: '' });
   const [requestingDeletion, setRequestingDeletion] = useState(false);
+  const [sessions, setSessions] = useState<AccountSession[]>([]);
 
   useEffect(() => {
     let active = true;
     Promise.all([
       apiRequest<User>('/api/v1/users/me'),
       apiRequest<PenNameListResponse>('/api/v1/users/me/pen-names'),
+      loadAccountSessions(),
     ])
-      .then(([user, penNames]) => {
+      .then(([user, penNames, sessionList]) => {
         if (!active) {
           return;
         }
         setState({ status: 'ready', user, penNames: penNames.items });
+        setSessions(sessionList.items);
         setProfile({
           displayName: user.displayName,
           bio: user.bio,
@@ -110,6 +116,19 @@ export function AccountSettings() {
     setState((current) =>
       current.status === 'ready' ? { ...current, penNames: response.items } : current,
     );
+  }
+
+  async function signOutEverywhere() {
+    if (!window.confirm('退出所有设备？当前页面也会退出，需要重新登录。')) {
+      return;
+    }
+    setNotice(null);
+    try {
+      await logoutAllDevices();
+      router.replace('/login');
+    } catch (error) {
+      setNotice({ kind: 'error', text: friendlyError(error) });
+    }
   }
 
   async function saveProfile(event: React.FormEvent<HTMLFormElement>) {
@@ -558,6 +577,42 @@ export function AccountSettings() {
               {changingPassword ? '正在修改…' : '修改密码'}
             </button>
           </form>
+        </section>
+
+        <section className="account-section account-section-wide" aria-labelledby="sessions-title">
+          <div className="account-section-heading">
+            <div>
+              <p className="workspace-step">登录状态</p>
+              <h2 id="sessions-title">登录会话</h2>
+            </div>
+            <span>{sessions.length} 个有效会话</span>
+          </div>
+          <p className="account-session-note">
+            凭据修改后旧会话会失效。发现不认识的设备时，立即退出所有设备并更换密码。
+          </p>
+          <ul className="account-session-list">
+            {sessions.map((session) => (
+              <li key={session.id}>
+                <div>
+                  <strong>
+                    {session.device}
+                    {session.current ? <em>当前设备</em> : null}
+                  </strong>
+                  <small>
+                    {session.ip} · 最近活跃 {formatAccountDate(session.lastSeenAt)}
+                  </small>
+                </div>
+                <span>{formatAccountDate(session.expiresAt)} 到期</span>
+              </li>
+            ))}
+          </ul>
+          <button
+            className="secondary-button"
+            onClick={() => void signOutEverywhere()}
+            type="button"
+          >
+            退出所有设备
+          </button>
         </section>
 
         <section className="account-section account-section-wide" aria-labelledby="pen-names-title">

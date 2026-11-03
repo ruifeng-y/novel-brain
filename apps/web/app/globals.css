@@ -13321,3 +13321,65 @@ textarea {
     flex-direction: column;
   }
 }
+
+.account-session-note {
+  margin: 0 0 12px;
+  color: #69756d;
+  font-size: 0.78rem;
+  line-height: 1.65;
+}
+
+.account-session-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.account-session-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 11px 12px;
+  border: 1px solid #e0e4de;
+  border-radius: 10px;
+  background: #fbfcfa;
+}
+
+.account-session-list li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.account-session-list strong {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.82rem;
+}
+
+.account-session-list strong em {
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #e8f2ec;
+  color: #2f6f5e;
+  font-size: 0.62rem;
+  font-style: normal;
+}
+
+.account-session-list small,
+.account-session-list > li > span {
+  color: #69756d;
+  font-size: 0.7rem;
+}
+
+@media (max-width: 640px) {
+  .account-session-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

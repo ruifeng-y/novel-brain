@@ -84,6 +84,8 @@ test('an author can manage every account lifecycle step through the Chinese UI',
   await page.getByRole('link', { name: '账号设置' }).click();
   await expect(page).toHaveURL(/\/workspace\/settings\/account$/);
   await expect(page.getByRole('heading', { name: '你的写作身份' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '登录会话' })).toBeVisible();
+  await expect(page.getByText('当前设备')).toBeVisible();
 
   const profileForm = page.getByRole('form', { name: '显示资料表单' });
   await profileForm.getByLabel('显示名').fill('青云客');

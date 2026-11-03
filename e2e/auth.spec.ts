@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { useIsolatedClientIp } from './support';
+import { registerAuthor, useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -56,4 +56,28 @@ test('an author can register, sign out everywhere, and sign back in', async ({ p
 
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByText(email)).toBeVisible();
+});
+
+test('login failures and expired reset links show clear errors', async ({ page }) => {
+  const email = `auth-errors-${Date.now()}@example.com`;
+  const password = 'correct horse battery staple';
+
+  await useIsolatedClientIp(page);
+  await registerAuthor(page, email, password);
+  await page.getByRole('button', { name: '退出所有设备' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+
+  await page.getByLabel('邮箱').fill(email);
+  for (let attempt = 0; attempt < 7; attempt += 1) {
+    await page.getByLabel('密码').fill('wrong password');
+    await page.getByRole('button', { name: '登录' }).click();
+    await expect(page.getByRole('alert')).toBeVisible();
+  }
+  await expect(page.getByText('操作太频繁，请稍后再试。')).toBeVisible();
+
+  await page.goto('/reset-password?token=00000000-0000-4000-8000-000000000000');
+  await page.getByLabel('新密码', { exact: true }).fill('another long password');
+  await page.getByLabel('再次输入新密码').fill('another long password');
+  await page.getByRole('button', { name: '保存新密码' }).click();
+  await expect(page.getByText('重置链接无效或已过期，请重新获取。')).toBeVisible();
 });
