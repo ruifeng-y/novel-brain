@@ -36,6 +36,7 @@ import { StoryLedgerPanel } from './story-ledger-panel';
 import { VersionHistoryPanel } from './version-history-panel';
 import { WorkSearchPanel } from './work-search-panel';
 import { WorkProfilePanel } from './work-profile-panel';
+import { WorkShell } from '../../_components/app-shell';
 
 type LoadState =
   | { status: 'loading' }
@@ -175,35 +176,8 @@ export function WorkspaceWork({ workId }: { workId: string }) {
   }
 
   return (
-    <main className="workspace-shell work-detail-shell">
-      <header className="workspace-header">
-        <Link className="workspace-brand" href="/workspace">
-          NovelBrain
-        </Link>
-        <div className="workspace-account">
-          <span>{state.user.displayName}</span>
-          {work.readOnly ? (
-            <span className="text-button work-readonly-link">写作台只读</span>
-          ) : (
-            <Link className="text-button" href={`/workspace/${work.id}/write`}>
-              写作台
-            </Link>
-          )}
-          <Link className="text-button" href="/workspace/settings">
-            模型设置
-          </Link>
-          <Link className="text-button" href="/workspace">
-            返回作品列表
-          </Link>
-        </div>
-      </header>
-
-      <nav className="work-breadcrumb" aria-label="作品导航">
-        <Link href="/workspace">作品</Link>
-        <span>/</span>
-        <span>{work.title}</span>
-      </nav>
-
+    <WorkShell active="overview" user={state.user} work={work} workId={work.id}>
+      <main className="workspace-shell work-detail-shell">
       <section className="work-detail-hero">
         <div className="work-detail-hero-main">
           {work.coverUrl ? (
@@ -232,7 +206,10 @@ export function WorkspaceWork({ workId }: { workId: string }) {
             ) : null}
           </div>
         </div>
-        <span className={`work-status work-status-${work.status}`}>{work.statusLabel}</span>
+        <div className="work-detail-hero-status">
+          {work.readOnly ? <span className="work-readonly-link">写作台只读</span> : null}
+          <span className={`work-status work-status-${work.status}`}>{work.statusLabel}</span>
+        </div>
       </section>
 
       <section className="work-stat-strip" aria-label="作品数据">
@@ -448,6 +425,7 @@ export function WorkspaceWork({ workId }: { workId: string }) {
           )}
         </section>
       </div>
-    </main>
+      </main>
+    </WorkShell>
   );
 }

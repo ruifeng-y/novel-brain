@@ -19,6 +19,7 @@ import {
   type WorkListFilters,
   type WorkStatus,
 } from '../../lib/works-api';
+import { AccountShell } from '../_components/app-shell';
 
 type UserState =
   { status: 'loading' } | { status: 'ready'; user: User } | { status: 'error'; message: string };
@@ -319,25 +320,8 @@ export function WorkspaceHome() {
   }
 
   return (
-    <main className="workspace-shell">
-      <header className="workspace-header">
-        <span className="workspace-brand">NovelBrain</span>
-        <div className="workspace-account">
-          <Link href="/workspace/settings">模型设置</Link>
-          <Link href="/workspace/settings/account">账号设置</Link>
-          <Link href="/workspace/settings/privacy">隐私与合规</Link>
-          <span>{userState.user.displayName}</span>
-          <button
-            className="text-button"
-            disabled={Boolean(leaving)}
-            onClick={() => signOut(false)}
-            type="button"
-          >
-            {leaving === 'current' ? '正在退出…' : '退出登录'}
-          </button>
-        </div>
-      </header>
-
+    <AccountShell active="dashboard" user={userState.user}>
+      <main className="workspace-shell">
       <section className="workspace-intro">
         <div>
           <div className="workspace-scope-line">
@@ -793,7 +777,8 @@ export function WorkspaceHome() {
           </div>
         </aside>
       </div>
-    </main>
+      </main>
+    </AccountShell>
   );
 }
 

@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ApiError, apiRequest, type User } from '../../../lib/auth-api';
+import { AccountShell } from '../../_components/app-shell';
 import {
   PURPOSE_DESCRIPTIONS,
   PURPOSE_LABELS,
@@ -286,22 +286,8 @@ export function ModelSettings() {
   );
 
   return (
-    <main className="workspace-shell settings-shell">
-      <header className="workspace-header">
-        <Link className="workspace-brand" href="/workspace">
-          NovelBrain
-        </Link>
-        <nav className="workspace-nav" aria-label="账号导航">
-          <Link href="/workspace">作品书架</Link>
-          <Link aria-current="page" href="/workspace/settings">
-            模型设置
-          </Link>
-          <Link href="/workspace/settings/account">账号设置</Link>
-          <Link href="/workspace/settings/privacy">隐私与合规</Link>
-          <span>{state.user.displayName}</span>
-        </nav>
-      </header>
-
+    <AccountShell active="settings" user={state.user}>
+      <main className="workspace-shell settings-shell">
       <section className="settings-hero">
         <div>
           <p className="workspace-step">账号设置</p>
@@ -506,6 +492,7 @@ export function ModelSettings() {
           </form>
         </aside>
       </div>
-    </main>
+      </main>
+    </AccountShell>
   );
 }
