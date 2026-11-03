@@ -11901,3 +11901,151 @@ textarea {
     flex-direction: column;
   }
 }
+
+.outline-board-view,
+.golden-three-panel {
+  margin-top: 18px;
+  padding: 20px;
+  border: 1px solid #d9d8d0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.outline-board-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.outline-board-column {
+  padding: 14px;
+  border: 1px solid #e0e3dc;
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.outline-board-column > h3 {
+  margin: 0;
+  font-family: Georgia, 'Songti SC', serif;
+  font-size: 1.1rem;
+}
+
+.outline-board-column > p {
+  margin: 5px 0 12px;
+  color: #7b847c;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.outline-board-act {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.outline-board-act > h4 {
+  margin: 0;
+  color: #5f6962;
+  font-size: 0.78rem;
+}
+
+.outline-board-card {
+  display: grid;
+  gap: 3px;
+  padding: 9px 10px;
+  border: 1px solid #e0e3dc;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.outline-board-card:hover {
+  border-color: #cbd3cc;
+  background: #f8f9f6;
+}
+
+.outline-board-card > span {
+  color: var(--cinnabar);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.outline-board-card > strong {
+  font-size: 0.8rem;
+}
+
+.outline-board-card > small {
+  overflow: hidden;
+  color: #7b847c;
+  font-size: 0.7rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.golden-three-intro {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: #68736a;
+  font-size: 0.82rem;
+  line-height: 1.65;
+}
+
+.golden-three-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.golden-three-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e0e3dc;
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.golden-three-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+
+.golden-three-heading > span {
+  color: var(--cinnabar);
+  font-family: 'DIN Alternate', 'Bahnschrift', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.golden-three-heading > div {
+  display: grid;
+  gap: 2px;
+}
+
+.golden-three-heading strong {
+  font-size: 0.82rem;
+}
+
+.golden-three-heading small {
+  color: #7b847c;
+  font-size: 0.68rem;
+}
+
+@media (max-width: 1120px) {
+  .golden-three-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .outline-board-view,
+  .golden-three-panel {
+    padding: 16px;
+  }
+
+  .outline-board-columns {
+    grid-template-columns: 1fr;
+  }
+}
