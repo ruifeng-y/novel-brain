@@ -256,6 +256,9 @@ function ShellFrame({
           </div>
 
           <div className="app-topbar-actions">
+            <Link className="app-new-work" href="/workspace/new-project">
+              新建作品
+            </Link>
             <button
               aria-expanded={searchOpen}
               aria-label="全局搜索"
@@ -353,10 +356,12 @@ function ShellFrame({
 export function AccountShell({
   user,
   active,
+  breadcrumbLabel,
   children,
 }: {
   user: ShellUser;
   active: AccountNavKey;
+  breadcrumbLabel?: string;
   children: ReactNode;
 }) {
   const logout = useShellLogout();
@@ -366,7 +371,9 @@ export function AccountShell({
       crumbs={
         active === 'settings'
           ? [{ label: '工作台', href: '/workspace' }, { label: '设置' }]
-          : [{ label: '工作台' }]
+          : breadcrumbLabel
+            ? [{ label: '工作台', href: '/workspace' }, { label: breadcrumbLabel }]
+            : [{ label: '工作台' }]
       }
       mode="account"
       onLogout={logout}
