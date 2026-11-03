@@ -11,5 +11,6 @@ import { BranchesService } from './branches.service';
   imports: [DatabaseModule, AuthModule, ChangesModule, BranchStateModule, VersionsModule],
   controllers: [BranchesController],
   providers: [BranchesService],
+  exports: [BranchesService],
 })
 export class BranchesModule {}

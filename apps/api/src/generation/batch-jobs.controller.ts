@@ -67,6 +67,32 @@ export class BatchJobsController {
     );
   }
 
+  @Post('jobs/estimate')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Estimate tokens, cost, and time for a batch scope' })
+  estimate(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    const parsed = createBatchJobSchema.safeParse(body);
+    if (!parsed.success) {
+      throw chapterGenerationError(
+        HttpStatus.BAD_REQUEST,
+        'VALIDATION_ERROR',
+        'Check the batch task range and writing settings',
+        parsed.error.flatten(),
+      );
+    }
+    return this.batchJobs.estimate(
+      this.requireUserId(request),
+      this.parseId(workId, 'WORK_NOT_FOUND', 'Work not found'),
+      this.parseId(branchId, 'BRANCH_NOT_FOUND', 'Story branch not found'),
+      parsed.data,
+    );
+  }
+
   @Get('jobs/:jobId')
   @ApiOperation({ summary: 'Read a chapter production task' })
   async get(

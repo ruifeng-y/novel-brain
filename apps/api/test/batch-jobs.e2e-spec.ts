@@ -176,8 +176,9 @@ async function prepareWork(
     })
     .expect(201);
 
+  const chapterOutlineIds = new Map<number, string>();
   for (const chapterNumber of chapterNumbers) {
-    await agent
+    const chapter = await agent
       .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/outlines`)
       .send({
         level: 'chapter',
@@ -193,11 +194,13 @@ async function prepareWork(
         chapterEndHook: '天门后传来一个熟悉的声音。',
       })
       .expect(201);
+    chapterOutlineIds.set(chapterNumber, chapter.body.id as string);
   }
 
   return {
     ...work,
     firstVolumeId: firstVolume.body.id as string,
+    chapterOutlineIds,
   };
 }
 
@@ -210,6 +213,7 @@ function createJob(
   return agent.post(`/api/v1/works/${workId}/branches/${branchId}/jobs`).send({
     scope,
     settings: {
+      approvalMode: 'chapter',
       targetMinCharacters: 1_200,
       targetMaxCharacters: 1_400,
     },
@@ -653,6 +657,10 @@ describe('batch jobs API', () => {
     expect(queue.body.items.map((item: { chapterNumber: number }) => item.chapterNumber)).toEqual([
       1, 2, 3,
     ]);
+    expect(queue.body.items.every((item: { riskLevel: string }) =>
+      ['low', 'medium', 'high'].includes(item.riskLevel),
+    )).toBe(true);
+    expect(queue.body.items[0].riskReasons.length).toBeGreaterThan(0);
 
     const first = queue.body.items.find(
       (item: { chapterNumber: number }) => item.chapterNumber === 1,
@@ -744,6 +752,119 @@ describe('batch jobs API', () => {
       ignoredIssueCount: expect.any(Number),
       summary: expect.any(String),
     });
+    expect(report.body.quality).toMatchObject({
+      averageScore: expect.any(Number),
+      summary: expect.any(String),
+      dimensions: expect.any(Array),
+    });
+    expect(report.body.foreshadows).toMatchObject({
+      totalOpen: expect.any(Number),
+      items: expect.any(Array),
+    });
+    expect(report.body.nextActions.length).toBeGreaterThan(0);
+  }, 30_000);
+
+  it('estimates a batch and blocks auto approval until outlines are locked', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await prepareWork(author.agent, '批量预估', [1, 2]);
+    const scope = {
+      type: 'range',
+      startChapter: 1,
+      endChapter: 2,
+    };
+
+    const estimate = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/estimate`)
+      .send({
+        scope,
+        settings: { approvalMode: 'auto', qualityTier: 'standard' },
+      })
+      .expect(200);
+    expect(estimate.body).toMatchObject({
+      chapterCount: 2,
+      chapterNumbers: [1, 2],
+      estimatedPromptTokens: expect.any(Number),
+      estimatedCompletionTokens: expect.any(Number),
+      estimatedTotalTokens: expect.any(Number),
+      estimatedCost: expect.any(Number),
+      estimatedMinutes: expect.any(Number),
+    });
+    expect(estimate.body.estimatedTotalTokens).toBeGreaterThan(0);
+
+    await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs`)
+      .send({
+        scope,
+        settings: { approvalMode: 'auto', qualityTier: 'standard' },
+      })
+      .expect(409)
+      .expect(({ body }) => {
+        expect(body.code).toBe('BATCH_AUTO_APPROVAL_REQUIRES_LOCKED_OUTLINES');
+      });
+
+    for (const chapterNumber of [1, 2]) {
+      await author.agent
+        .post(
+          `/api/v1/works/${work.id}/branches/${work.mainBranchId}/outlines/${
+            work.chapterOutlineIds.get(chapterNumber) as string
+          }/lock`,
+        )
+        .send({})
+        .expect(201);
+    }
+
+    const created = await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs`)
+      .send({
+        scope,
+        settings: { approvalMode: 'auto', qualityTier: 'standard' },
+      })
+      .expect(202);
+    expect(created.body.chapterNumbers).toEqual([1, 2]);
+    await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${created.body.id}/cancel`,
+      )
+      .send({})
+      .expect(201);
+  }, 30_000);
+
+  it('sends a generated chapter to a parallel version without writing the main line', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await prepareWork(author.agent, '批量平行版本', [1]);
+    const started = await createJob(author.agent, work.id, work.mainBranchId, {
+      type: 'chapter',
+      chapterNumber: 1,
+    }).expect(202);
+    const waiting = await waitForJob(
+      author.agent,
+      work.id,
+      work.mainBranchId,
+      started.body.id,
+      'waiting_review',
+    );
+
+    await author.agent
+      .post(
+        `/api/v1/works/${work.id}/branches/${work.mainBranchId}/jobs/${started.body.id}/review/${waiting.items[0].id}`,
+      )
+      .send({ action: 'send_to_parallel' })
+      .expect(201)
+      .expect(({ body }) => {
+        expect(body.reviewStatus).toBe('sent_to_parallel');
+      });
+
+    const branches = await author.agent
+      .get(`/api/v1/works/${work.id}/branches`)
+      .expect(200);
+    expect(branches.body.items).toHaveLength(2);
+    expect(branches.body.items.some((branch: { isMain: boolean }) => !branch.isMain)).toBe(true);
+
+    const mainChapter = await author.agent
+      .get(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1`)
+      .expect(200);
+    expect(mainChapter.body.status).toBe('planned');
+    expect(mainChapter.body.currentVersion).toBeNull();
   }, 30_000);
 
   it('keeps batch jobs, review items, controls, and reports isolated between authors', async () => {

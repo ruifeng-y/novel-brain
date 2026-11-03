@@ -9,11 +9,14 @@ import {
   controlBatchJob,
   createBatchJob,
   decideReviewItem,
+  estimateBatchJob,
   loadBatchJob,
   loadBatchJobs,
   loadBatchReport,
   loadReviewQueue,
+  type BatchApprovalMode,
   type BatchJobDetail,
+  type BatchJobEstimate,
   type BatchJobReport,
   type BatchJobSummary,
   type BatchChapterOption,
@@ -24,6 +27,8 @@ import { loadOutlineNodes, type OutlineNode } from '../../../../lib/story-planni
 import { GENRE_LABELS, type Work } from '../../../../lib/works-api';
 
 type ScopeMode = 'chapter' | 'volume' | 'range' | 'book';
+type TaskView = 'tasks' | 'review' | 'report';
+type RiskFilter = 'all' | 'high' | 'medium' | 'low';
 
 type BootState =
   | { status: 'loading' }
@@ -33,6 +38,7 @@ type BootState =
       work: Work;
       branchId: string;
       chapters: BatchChapterOption[];
+      outlines: OutlineNode[];
       volumes: OutlineNode[];
     }
   | { status: 'error'; message: string; notFound: boolean };
@@ -45,10 +51,23 @@ const SCOPE_LABELS: Record<ScopeMode, string> = {
 };
 
 const QUALITY_LABELS = {
-  fast: '快速',
-  standard: '标准',
-  premium: '精品',
+  fast: '快速 · 先出草稿，后统一润色',
+  standard: '标准 · 日常章节稳定产出',
+  premium: '精品 · 重点章节多轮打磨',
 } as const;
+
+const APPROVAL_LABELS: Record<BatchApprovalMode, { label: string; hint: string }> = {
+  chapter: { label: '逐章审批', hint: '质量优先，每章都要作者确认' },
+  volume: { label: '逐卷审批', hint: '推荐，卷末必须人工确认' },
+  auto: { label: '自动通过', hint: '仅限已锁定章纲、标准质量且无高风险' },
+};
+
+const RISK_LABELS: Record<RiskFilter, string> = {
+  all: '全部风险',
+  high: '高风险',
+  medium: '中风险',
+  low: '低风险',
+};
 
 export function TaskCenter({
   workId,
@@ -64,21 +83,26 @@ export function TaskCenter({
   const [detail, setDetail] = useState<BatchJobDetail | null>(null);
   const [report, setReport] = useState<BatchJobReport | null>(null);
   const [reviewItems, setReviewItems] = useState<ReviewQueueItem[]>([]);
+  const [view, setView] = useState<TaskView>('tasks');
   const [scopeMode, setScopeMode] = useState<ScopeMode>('book');
   const [chapterNumber, setChapterNumber] = useState('');
   const [volumeId, setVolumeId] = useState('');
   const [startChapter, setStartChapter] = useState('1');
   const [endChapter, setEndChapter] = useState('');
   const [qualityTier, setQualityTier] = useState<keyof typeof QUALITY_LABELS>('standard');
+  const [approvalMode, setApprovalMode] = useState<BatchApprovalMode>('volume');
   const [targetMinCharacters, setTargetMinCharacters] = useState('2000');
   const [targetMaxCharacters, setTargetMaxCharacters] = useState('3000');
+  const [estimate, setEstimate] = useState<BatchJobEstimate | null>(null);
   const [creating, setCreating] = useState(false);
   const [busyAction, setBusyAction] = useState('');
   const [ignoreItemId, setIgnoreItemId] = useState('');
   const [ignoreReason, setIgnoreReason] = useState('');
+  const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
   const selectedJobRef = useRef<string | undefined>(undefined);
+  const formRef = useRef<HTMLElement | null>(null);
 
   selectedJobRef.current = selectedJobId;
 
@@ -105,6 +129,7 @@ export function TaskCenter({
           work,
           branchId: work.mainBranch.id,
           chapters,
+          outlines: outlineList.items,
           volumes: outlineList.items.filter((node) => node.level === 'volume'),
         });
         setJobs(jobList.items);
@@ -188,26 +213,86 @@ export function TaskCenter({
     };
   }, [boot.status, selectedJobId]);
 
+  useEffect(() => {
+    if (boot.status !== 'ready') {
+      return;
+    }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      estimateBatchJob(boot.work.id, boot.branchId, {
+        scope: buildScope({
+          mode: scopeMode,
+          chapterNumber,
+          volumeId,
+          startChapter,
+          endChapter,
+        }),
+        settings: {
+          qualityTier,
+          approvalMode,
+          targetMinCharacters: Number(targetMinCharacters),
+          targetMaxCharacters: Number(targetMaxCharacters),
+        },
+      })
+        .then((result) => {
+          if (active) {
+            setEstimate(result);
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setEstimate(null);
+          }
+        });
+    }, 300);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [
+    approvalMode,
+    boot,
+    chapterNumber,
+    endChapter,
+    qualityTier,
+    scopeMode,
+    startChapter,
+    targetMaxCharacters,
+    targetMinCharacters,
+    volumeId,
+  ]);
+
   function selectJob(jobId: string) {
     setSelectedJobId(jobId);
     setError('');
     setNotice('');
   }
 
+  function focusForm() {
+    setView('tasks');
+    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
   async function refreshSelected() {
-    if (boot.status !== 'ready' || !selectedJobId) {
+    if (boot.status !== 'ready') {
       return;
     }
-    const [jobDetail, jobReport, jobList, queue] = await Promise.all([
-      loadBatchJob(boot.work.id, boot.branchId, selectedJobId),
-      loadBatchReport(boot.work.id, boot.branchId, selectedJobId),
+    const jobId = selectedJobId;
+    const [jobList, queue] = await Promise.all([
       loadBatchJobs(boot.work.id, boot.branchId),
       loadReviewQueue(boot.work.id, boot.branchId),
     ]);
-    setDetail(jobDetail);
-    setReport(jobReport);
     setJobs(jobList.items);
     setReviewItems(queue.items);
+    if (!jobId) {
+      return;
+    }
+    const [jobDetail, jobReport] = await Promise.all([
+      loadBatchJob(boot.work.id, boot.branchId, jobId),
+      loadBatchReport(boot.work.id, boot.branchId, jobId),
+    ]);
+    setDetail(jobDetail);
+    setReport(jobReport);
   }
 
   async function handleCreate() {
@@ -229,6 +314,7 @@ export function TaskCenter({
         scope,
         settings: {
           qualityTier,
+          approvalMode,
           targetMinCharacters: Number(targetMinCharacters),
           targetMaxCharacters: Number(targetMaxCharacters),
         },
@@ -270,7 +356,7 @@ export function TaskCenter({
 
   async function handleDecision(
     item: ReviewQueueItem,
-    action: 'approve' | 'send_to_desk' | 'reject',
+    action: 'approve' | 'send_to_desk' | 'reject' | 'send_to_parallel',
   ) {
     if (boot.status !== 'ready') {
       return;
@@ -285,6 +371,33 @@ export function TaskCenter({
         return;
       }
       setNotice(reviewNotice(action));
+      await refreshSelected();
+    } catch (decisionError) {
+      setError(batchErrorMessage(decisionError));
+    } finally {
+      setBusyAction('');
+    }
+  }
+
+  async function handleApproveLowRisk() {
+    if (boot.status !== 'ready') {
+      return;
+    }
+    const targets = reviewItems.filter((item) => item.riskLevel === 'low');
+    if (targets.length === 0) {
+      setNotice('当前没有低风险章节可以批量批准。');
+      return;
+    }
+    setBusyAction('bulk-approve');
+    setError('');
+    setNotice('');
+    try {
+      for (const item of targets) {
+        await decideReviewItem(boot.work.id, boot.branchId, item.jobId, item.id, {
+          action: 'approve',
+        });
+      }
+      setNotice(`已批准 ${targets.length} 章低风险内容并锁定。`);
       await refreshSelected();
     } catch (decisionError) {
       setError(batchErrorMessage(decisionError));
@@ -338,6 +451,39 @@ export function TaskCenter({
     );
   }
 
+  const selectedChapterNumbers = selectedNumbers(scopeMode, {
+    chapterNumber,
+    volumeId,
+    startChapter,
+    endChapter,
+    chapters: boot.chapters,
+    outlines: boot.outlines,
+  });
+  const outlineByChapter = new Map(
+    boot.outlines
+      .filter((node) => node.level === 'chapter' && node.chapterNumber !== null)
+      .map((node) => [node.chapterNumber as number, node]),
+  );
+  const selectedOutlines = selectedChapterNumbers
+    .map((number) => outlineByChapter.get(number))
+    .filter((node): node is OutlineNode => Boolean(node));
+  const completeOutlineCount = selectedOutlines.filter(
+    (node) =>
+      node.chapterGoal.trim() &&
+      node.pov.trim() &&
+      node.sceneBeats.length > 0 &&
+      node.chapterEndHook.trim(),
+  ).length;
+  const lockedOutlineCount = selectedOutlines.filter((node) => node.lockedAt).length;
+  const autoBlockedReasons = [
+    qualityTier !== 'standard' ? '自动通过只允许标准质量档位' : '',
+    selectedChapterNumbers.length === 0 ? '当前范围没有章节' : '',
+    lockedOutlineCount < selectedChapterNumbers.length ? '还有章纲没有锁定' : '',
+  ].filter(Boolean);
+  const waitingReviewCount = reviewItems.length;
+  const visibleReviewItems = reviewItems.filter(
+    (item) => riskFilter === 'all' || item.riskLevel === riskFilter,
+  );
   const activeJobs = jobs.filter((job) =>
     ['queued', 'preparing', 'running'].includes(job.status),
   ).length;
@@ -366,152 +512,55 @@ export function TaskCenter({
 
       <section className="task-hero">
         <div>
-          <p className="workspace-step">批量创作</p>
-          <h1>把连续章节交给创作任务</h1>
-          <p>
-            按章、按卷、连续区间或全本安排一次创作。任务运行中可以暂停、继续或取消，失败时只补跑没完成的那一步。
-          </p>
+          <p className="workspace-step">批量生产</p>
+          <h1>把长跑拆成可管理的段落</h1>
+          <p>按章、按卷、按自定义区间或全本生成。每一步都可暂停、审批、回滚。</p>
         </div>
-        <dl className="task-hero-stats">
-          <div>
-            <dt>正在运行</dt>
-            <dd>{activeJobs}</dd>
-          </div>
-          <div>
-            <dt>待我确认</dt>
-            <dd>{reviewItems.length}</dd>
-          </div>
-          <div>
-            <dt>历史任务</dt>
-            <dd>{jobs.length}</dd>
-          </div>
-        </dl>
+        <div className="task-hero-actions">
+          <button className="secondary-button" onClick={() => void refreshSelected()} type="button">
+            刷新
+          </button>
+          <button className="primary-button" onClick={focusForm} type="button">
+            新建任务
+          </button>
+        </div>
       </section>
 
-      <section className="task-create" aria-labelledby="task-create-title">
-        <div className="task-section-heading">
-          <div>
-            <p className="workspace-step">新建</p>
-            <h2 id="task-create-title">安排下一批章节</h2>
-          </div>
-          <p>系统会按章节顺序创作，遇到失败时保留已完成的内容。</p>
+      <dl className="task-hero-stats" aria-label="任务概览">
+        <div>
+          <dt>运行中</dt>
+          <dd>{activeJobs}</dd>
         </div>
-        <div className="task-scope-tabs" role="tablist" aria-label="创作范围">
-          {(Object.keys(SCOPE_LABELS) as ScopeMode[]).map((mode) => (
-            <button
-              aria-selected={scopeMode === mode}
-              className={scopeMode === mode ? 'active' : ''}
-              disabled={mode === 'volume' && boot.volumes.length === 0}
-              key={mode}
-              onClick={() => setScopeMode(mode)}
-              role="tab"
-              type="button"
-            >
-              {SCOPE_LABELS[mode]}
-            </button>
-          ))}
+        <div>
+          <dt>待我确认</dt>
+          <dd>{waitingReviewCount}</dd>
         </div>
-        <div className="task-create-grid">
-          {scopeMode === 'chapter' ? (
-            <label className="field">
-              <span>从哪一章开始</span>
-              <select
-                onChange={(event) => setChapterNumber(event.target.value)}
-                value={chapterNumber}
-              >
-                {boot.chapters.map((chapter) => (
-                  <option key={chapter.chapterNumber} value={chapter.chapterNumber}>
-                    第 {chapter.chapterNumber} 章 · {chapter.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {scopeMode === 'volume' ? (
-            <label className="field">
-              <span>选择一卷</span>
-              <select onChange={(event) => setVolumeId(event.target.value)} value={volumeId}>
-                {boot.volumes.map((volume) => (
-                  <option key={volume.id} value={volume.id}>
-                    {volume.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
-          {scopeMode === 'range' ? (
-            <>
-              <label className="field">
-                <span>起始章</span>
-                <input
-                  min="1"
-                  onChange={(event) => setStartChapter(event.target.value)}
-                  type="number"
-                  value={startChapter}
-                />
-              </label>
-              <label className="field">
-                <span>结束章</span>
-                <input
-                  min="1"
-                  onChange={(event) => setEndChapter(event.target.value)}
-                  type="number"
-                  value={endChapter}
-                />
-              </label>
-            </>
-          ) : null}
-          {scopeMode === 'book' ? (
-            <div className="task-book-scope">
-              <strong>{boot.chapters.length} 章</strong>
-              <span>从第一章按顺序创作到最后一章</span>
-            </div>
-          ) : null}
-          <label className="field">
-            <span>质量档位</span>
-            <select
-              onChange={(event) =>
-                setQualityTier(event.target.value as keyof typeof QUALITY_LABELS)
-              }
-              value={qualityTier}
-            >
-              {Object.entries(QUALITY_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="field">
-            <span>单章最少字数</span>
-            <input
-              min="1"
-              onChange={(event) => setTargetMinCharacters(event.target.value)}
-              type="number"
-              value={targetMinCharacters}
-            />
-          </label>
-          <label className="field">
-            <span>单章最多字数</span>
-            <input
-              min="1"
-              onChange={(event) => setTargetMaxCharacters(event.target.value)}
-              type="number"
-              value={targetMaxCharacters}
-            />
-          </label>
-          <div className="task-create-action">
-            <button
-              className="primary-button"
-              disabled={creating}
-              onClick={() => void handleCreate()}
-              type="button"
-            >
-              {creating ? '正在创建…' : '创建创作任务'}
-            </button>
-          </div>
+        <div>
+          <dt>历史任务</dt>
+          <dd>{jobs.length}</dd>
         </div>
-      </section>
+      </dl>
+
+      <div className="task-view-tabs" role="tablist" aria-label="批量生产视图">
+        {(
+          [
+            ['tasks', '任务列表'],
+            ['review', `审核队列${waitingReviewCount > 0 ? ` ${waitingReviewCount}` : ''}`],
+            ['report', '任务报告'],
+          ] as Array<[TaskView, string]>
+        ).map(([value, label]) => (
+          <button
+            aria-selected={view === value}
+            className={view === value ? 'active' : ''}
+            key={value}
+            onClick={() => setView(value)}
+            role="tab"
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
 
       {notice ? (
         <p className="form-message form-message-success task-message" role="status">
@@ -524,297 +573,590 @@ export function TaskCenter({
         </p>
       ) : null}
 
-      <div className="task-layout">
-        <aside className="task-history" aria-labelledby="task-history-title">
-          <div className="task-section-heading">
-            <div>
-              <p className="workspace-step">历史</p>
-              <h2 id="task-history-title">创作任务</h2>
+      {view === 'tasks' ? (
+        <>
+          <section className="task-create" aria-labelledby="task-create-title" ref={formRef}>
+            <div className="task-section-heading">
+              <div>
+                <p className="workspace-step">新建生产任务</p>
+                <h2 id="task-create-title">安排下一批章节</h2>
+              </div>
+              <p>系统会按章节顺序创作，遇到失败时保留已完成的内容。</p>
             </div>
-            <span>{jobs.length} 条</span>
-          </div>
-          {jobs.length === 0 ? (
-            <p className="task-empty">还没有创建过批量创作任务。</p>
-          ) : (
-            <div className="task-history-list">
-              {jobs.map((job) => (
+            <div className="task-scope-tabs" role="tablist" aria-label="创作范围">
+              {(Object.keys(SCOPE_LABELS) as ScopeMode[]).map((mode) => (
                 <button
-                  aria-current={job.id === selectedJobId ? 'true' : undefined}
-                  className="task-history-item"
-                  key={job.id}
-                  onClick={() => selectJob(job.id)}
+                  aria-selected={scopeMode === mode}
+                  className={scopeMode === mode ? 'active' : ''}
+                  disabled={mode === 'volume' && boot.volumes.length === 0}
+                  key={mode}
+                  onClick={() => setScopeMode(mode)}
+                  role="tab"
                   type="button"
                 >
-                  <span className="task-history-copy">
-                    <strong>{scopeLabel(job.scope, boot.volumes)}</strong>
-                    <small>
-                      {job.chapterNumbers.length} 章 · {job.statusLabel}
-                    </small>
-                  </span>
-                  <span className="task-history-progress">{job.progress}%</span>
-                  <span className="task-progress-track" aria-hidden="true">
-                    <span style={{ width: `${job.progress}%` }} />
-                  </span>
-                  {job.waitingReviewChapterCount > 0 ? (
-                    <span className="task-history-review">
-                      {job.waitingReviewChapterCount} 章待确认
-                    </span>
-                  ) : null}
+                  {SCOPE_LABELS[mode]}
                 </button>
               ))}
             </div>
-          )}
-        </aside>
-
-        <section className="task-detail" aria-labelledby="task-detail-title">
-          {!detail ? (
-            <div className="task-detail-empty">
-              <p className="workspace-step">进展</p>
-              <h2 id="task-detail-title">选择一条任务查看详情</h2>
-              <p>这里会显示当前章节、完成情况、用量和需要确认的内容。</p>
+            <div className="task-create-grid">
+              {scopeMode === 'chapter' ? (
+                <label className="field">
+                  <span>从哪一章开始</span>
+                  <select
+                    onChange={(event) => setChapterNumber(event.target.value)}
+                    value={chapterNumber}
+                  >
+                    {boot.chapters.map((chapter) => (
+                      <option key={chapter.chapterNumber} value={chapter.chapterNumber}>
+                        第 {chapter.chapterNumber} 章 · {chapter.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {scopeMode === 'volume' ? (
+                <label className="field">
+                  <span>选择一卷</span>
+                  <select onChange={(event) => setVolumeId(event.target.value)} value={volumeId}>
+                    {boot.volumes.map((volume) => (
+                      <option key={volume.id} value={volume.id}>
+                        {volume.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {scopeMode === 'range' ? (
+                <>
+                  <label className="field">
+                    <span>起始章</span>
+                    <input
+                      min="1"
+                      onChange={(event) => setStartChapter(event.target.value)}
+                      type="number"
+                      value={startChapter}
+                    />
+                  </label>
+                  <label className="field">
+                    <span>结束章</span>
+                    <input
+                      min="1"
+                      onChange={(event) => setEndChapter(event.target.value)}
+                      type="number"
+                      value={endChapter}
+                    />
+                  </label>
+                </>
+              ) : null}
+              {scopeMode === 'book' ? (
+                <div className="task-book-scope">
+                  <strong>{boot.chapters.length} 章</strong>
+                  <span>从第一章按顺序创作到最后一章</span>
+                </div>
+              ) : null}
+              <label className="field">
+                <span>质量档位</span>
+                <select
+                  onChange={(event) =>
+                    setQualityTier(event.target.value as keyof typeof QUALITY_LABELS)
+                  }
+                  value={qualityTier}
+                >
+                  {Object.entries(QUALITY_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span>单章最少字数</span>
+                <input
+                  min="1"
+                  onChange={(event) => setTargetMinCharacters(event.target.value)}
+                  type="number"
+                  value={targetMinCharacters}
+                />
+              </label>
+              <label className="field">
+                <span>单章最多字数</span>
+                <input
+                  min="1"
+                  onChange={(event) => setTargetMaxCharacters(event.target.value)}
+                  type="number"
+                  value={targetMaxCharacters}
+                />
+              </label>
             </div>
-          ) : (
-            <>
-              <div className="task-detail-heading">
+
+            <fieldset className="task-approval">
+              <legend>审批方式</legend>
+              {(Object.keys(APPROVAL_LABELS) as BatchApprovalMode[]).map((mode) => {
+                const disabled = mode === 'auto' && autoBlockedReasons.length > 0;
+                return (
+                  <label className={approvalMode === mode ? 'checked' : ''} key={mode}>
+                    <input
+                      checked={approvalMode === mode}
+                      disabled={disabled}
+                      name="approval-mode"
+                      onChange={() => setApprovalMode(mode)}
+                      type="radio"
+                      value={mode}
+                    />
+                    <span>
+                      <strong>{APPROVAL_LABELS[mode].label}</strong>
+                      <small>{APPROVAL_LABELS[mode].hint}</small>
+                    </span>
+                  </label>
+                );
+              })}
+              {autoBlockedReasons.length > 0 ? (
+                <p className="task-hint">
+                  自动通过暂不可用：{autoBlockedReasons.join('；')}。
+                </p>
+              ) : null}
+            </fieldset>
+
+            <div className="task-estimate">
+              <div>
+                <span>预计章节</span>
+                <strong>{estimate ? `${estimate.chapterCount} 章` : '等待章纲'}</strong>
+              </div>
+              <div>
+                <span>预计 token</span>
+                <strong>{estimate ? approximateTokens(estimate.estimatedTotalTokens) : '—'}</strong>
+              </div>
+              <div>
+                <span>预计费用</span>
+                <strong>{estimate ? `约 $${estimate.estimatedCost.toFixed(4)}` : '—'}</strong>
+              </div>
+              <div>
+                <span>预计耗时</span>
+                <strong>{estimate ? `约 ${estimate.estimatedMinutes} 分钟` : '—'}</strong>
+              </div>
+              <small>费用按当前模型配置估算，实际以模型账单为准；平台不设额度。</small>
+            </div>
+
+            <div className="task-readiness">
+              <div className="task-section-heading">
+                <h3>生成前准备度</h3>
+                <span>
+                  {completeOutlineCount + (lockedOutlineCount === selectedChapterNumbers.length ? 1 : 0)}
+                  {' / 3'}
+                </span>
+              </div>
+              <ul>
+                <li className={completeOutlineCount === selectedChapterNumbers.length ? 'done' : ''}>
+                  <strong>本区间章纲完整</strong>
+                  <small>
+                    {completeOutlineCount} / {selectedChapterNumbers.length} 章
+                  </small>
+                </li>
+                <li className={lockedOutlineCount === selectedChapterNumbers.length ? 'done' : ''}>
+                  <strong>章纲已锁定</strong>
+                  <small>
+                    {lockedOutlineCount} / {selectedChapterNumbers.length} 章
+                  </small>
+                </li>
+                <li className={selectedChapterNumbers.length > 0 ? 'done' : ''}>
+                  <strong>范围可展开</strong>
+                  <small>{selectedChapterNumbers.length} 章会进入任务</small>
+                </li>
+              </ul>
+            </div>
+
+            <div className="task-create-action">
+              <button
+                className="primary-button"
+                disabled={creating || selectedChapterNumbers.length === 0}
+                onClick={() => void handleCreate()}
+                type="button"
+              >
+                {creating ? '正在创建…' : '开始生成'}
+              </button>
+            </div>
+          </section>
+
+          <div className="task-layout">
+            <aside className="task-history" aria-labelledby="task-history-title">
+              <div className="task-section-heading">
                 <div>
-                  <p className="workspace-step">任务详情</p>
-                  <h2 id="task-detail-title">{scopeLabel(detail.scope, boot.volumes)}</h2>
-                  <p>
-                    {detail.chapterNumbers.length} 章 · 已完成 {detail.completedChapterCount} 章 ·
-                    待确认 {detail.waitingReviewChapterCount} 章
-                  </p>
+                  <p className="workspace-step">历史</p>
+                  <h2 id="task-history-title">创作任务</h2>
                 </div>
-                <div className="task-detail-status">
-                  <span className={`task-status task-status-${detail.status}`}>
-                    {detail.statusLabel}
-                  </span>
-                  <strong>{detail.progress}%</strong>
-                </div>
+                <span>{jobs.length} 条</span>
               </div>
-              <div className="task-progress-bar" aria-label={`进度 ${detail.progress}%`}>
-                <span style={{ width: `${detail.progress}%` }} />
-              </div>
-              <div className="task-actions">
-                {['queued', 'preparing', 'running', 'waiting_review'].includes(detail.status) ? (
-                  <button
-                    className="secondary-button"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handleControl('pause')}
-                    type="button"
-                  >
-                    暂停
-                  </button>
-                ) : null}
-                {detail.status === 'paused' ? (
-                  <button
-                    className="secondary-button"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handleControl('resume')}
-                    type="button"
-                  >
-                    继续
-                  </button>
-                ) : null}
-                {detail.status === 'failed' ? (
-                  <button
-                    className="primary-button"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handleControl('retry')}
-                    type="button"
-                  >
-                    从失败步骤重试
-                  </button>
-                ) : null}
-                {!['completed', 'canceled'].includes(detail.status) ? (
-                  <button
-                    className="text-button task-danger"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handleControl('cancel')}
-                    type="button"
-                  >
-                    取消剩余章节
-                  </button>
-                ) : null}
-              </div>
-
-              {report ? <TaskReportPanel report={report} /> : null}
-
-              <div className="task-chapter-heading">
-                <h3>章节进度</h3>
-                <span>用量会在每章完成后更新</span>
-              </div>
-              <div className="task-chapter-list">
-                {detail.items.map((item) => (
-                  <article className="task-chapter-item" key={item.id}>
-                    <div className="task-chapter-title">
-                      <span>{item.chapterNumber}</span>
-                      <div>
-                        <strong>{item.chapterTitle ?? `第 ${item.chapterNumber} 章`}</strong>
-                        <small>{item.statusLabel}</small>
-                      </div>
-                    </div>
-                    <div className="task-chapter-usage">
-                      <span>输入 {item.promptTokens.toLocaleString('zh-CN')}</span>
-                      <span>输出 {item.completionTokens.toLocaleString('zh-CN')}</span>
-                      <span>费用 ${item.cost.toFixed(6)}</span>
-                    </div>
-                    {item.error ? (
-                      <p className="task-chapter-error">
-                        {chapterFailureMessage(item.error.message)}
-                      </p>
-                    ) : null}
-                  </article>
-                ))}
-              </div>
-            </>
-          )}
-        </section>
-      </div>
-
-      <section className="task-review" aria-labelledby="task-review-title">
-        <div className="task-section-heading">
-          <div>
-            <p className="workspace-step">确认</p>
-            <h2 id="task-review-title">待我确认</h2>
-          </div>
-          <p>可以批准并锁定、送到写作台修改、驳回重写，或记下原因后忽略问题。</p>
-        </div>
-        {reviewItems.length === 0 ? (
-          <p className="task-empty">目前没有需要确认的章节。</p>
-        ) : (
-          <div className="task-review-list">
-            {reviewItems.map((item) => (
-              <article className="task-review-item" key={item.id}>
-                <div className="task-review-main">
-                  <div className="task-review-heading">
-                    <div>
-                      <p className="workspace-step">第 {item.chapterNumber} 章</p>
-                      <h3>{item.chapterTitle}</h3>
-                    </div>
-                    {item.quality ? (
-                      <span className="task-quality">
-                        {item.quality.watchDimensions.length > 0
-                          ? `${item.quality.watchDimensions.length} 项待留意`
-                          : '质量稳定'}
-                      </span>
-                    ) : null}
-                  </div>
-                  {item.quality ? <p>{item.quality.summary}</p> : null}
-                  <blockquote>{item.draftPreview}…</blockquote>
-                  {item.quality?.watchDimensions.length ? (
-                    <ul className="task-review-watch">
-                      {item.quality.watchDimensions.slice(0, 3).map((dimension) => (
-                        <li key={`${item.id}-${dimension.label}`}>
-                          <strong>{dimension.label}</strong>
-                          <span>{dimension.suggestion || dimension.summary}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                  {item.continuityIssues.length > 0 ? (
-                    <ul className="task-review-issues">
-                      {item.continuityIssues.slice(0, 3).map((issue) => (
-                        <li key={issue.id}>
-                          <span className={issue.status === 'open' ? 'open' : ''}>
-                            {issue.status === 'open' ? '待处理' : '已忽略'}
-                          </span>
-                          <p>{issue.message}</p>
-                          <small>{issue.suggestion}</small>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="task-review-clear">连续性检查没有发现需要处理的问题。</p>
-                  )}
-                </div>
-                <div className="task-review-actions">
-                  <button
-                    className="primary-button"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handleDecision(item, 'approve')}
-                    type="button"
-                  >
-                    批准并锁定
-                  </button>
-                  <button
-                    className="secondary-button"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handleDecision(item, 'send_to_desk')}
-                    type="button"
-                  >
-                    送写作台
-                  </button>
-                  <button
-                    className="secondary-button"
-                    disabled={Boolean(busyAction)}
-                    onClick={() => void handleDecision(item, 'reject')}
-                    type="button"
-                  >
-                    驳回重生成
-                  </button>
-                  {ignoreItemId === item.id ? (
-                    <div className="task-ignore-form">
-                      <label className="field">
-                        <span>忽略原因</span>
-                        <textarea
-                          onChange={(event) => setIgnoreReason(event.target.value)}
-                          placeholder="例如：这一处是角色的故意误判，后续会解释。"
-                          value={ignoreReason}
-                        />
-                      </label>
-                      <div>
-                        <button
-                          className="text-button"
-                          disabled={Boolean(busyAction)}
-                          onClick={() => void handleIgnore(item)}
-                          type="button"
-                        >
-                          确认忽略
-                        </button>
-                        <button
-                          className="text-button"
-                          onClick={() => {
-                            setIgnoreItemId('');
-                            setIgnoreReason('');
-                          }}
-                          type="button"
-                        >
-                          收起
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
+              {jobs.length === 0 ? (
+                <p className="task-empty">还没有创建过批量创作任务。</p>
+              ) : (
+                <div className="task-history-list">
+                  {jobs.map((job) => (
                     <button
-                      className="text-button"
-                      onClick={() => {
-                        setIgnoreItemId(item.id);
-                        setIgnoreReason('');
-                        setError('');
-                      }}
+                      aria-current={job.id === selectedJobId ? 'true' : undefined}
+                      className="task-history-item"
+                      key={job.id}
+                      onClick={() => selectJob(job.id)}
                       type="button"
                     >
-                      忽略问题
+                      <span className="task-history-copy">
+                        <strong>{scopeLabel(job.scope, boot.volumes)}</strong>
+                        <small>
+                          {job.chapterNumbers.length} 章 · {job.statusLabel}
+                        </small>
+                      </span>
+                      <span className="task-history-progress">{job.progress}%</span>
+                      <span className="task-progress-track" aria-hidden="true">
+                        <span style={{ width: `${job.progress}%` }} />
+                      </span>
+                      {job.waitingReviewChapterCount > 0 ? (
+                        <span className="task-history-review">
+                          {job.waitingReviewChapterCount} 章待确认
+                        </span>
+                      ) : null}
                     </button>
-                  )}
+                  ))}
                 </div>
-              </article>
-            ))}
+              )}
+            </aside>
+
+            <section className="task-detail" aria-labelledby="task-detail-title">
+              {!detail ? (
+                <div className="task-detail-empty">
+                  <p className="workspace-step">任务详情</p>
+                  <h2 id="task-detail-title">选择一条任务查看详情</h2>
+                  <p>这里会显示流水线、当前章节、进度、错误和任务控制。</p>
+                </div>
+              ) : (
+                <>
+                  <div className="task-detail-heading">
+                    <div>
+                      <p className="workspace-step">任务详情</p>
+                      <h2 id="task-detail-title">{scopeLabel(detail.scope, boot.volumes)}</h2>
+                    </div>
+                    <div className="task-detail-status">
+                      <span className={`task-status task-status-${detail.status}`}>
+                        {detail.statusLabel}
+                      </span>
+                      <strong>{detail.progress}%</strong>
+                    </div>
+                  </div>
+                  <div className="task-progress-bar" aria-label={`进度 ${detail.progress}%`}>
+                    <span style={{ width: `${detail.progress}%` }} />
+                  </div>
+                  <div className="task-dag" aria-label="任务流水线">
+                    {pipelineNodes(detail).map((node) => (
+                      <div className={`task-dag-node ${node.state}`} key={node.label}>
+                        <span>{node.state === 'done' ? '✓' : node.state === 'active' ? '●' : '○'}</span>
+                        <strong>{node.label}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="task-actions">
+                    {['queued', 'preparing', 'running', 'waiting_review'].includes(
+                      detail.status,
+                    ) ? (
+                      <button
+                        className="secondary-button"
+                        disabled={Boolean(busyAction)}
+                        onClick={() => void handleControl('pause')}
+                        type="button"
+                      >
+                        暂停
+                      </button>
+                    ) : null}
+                    {detail.status === 'paused' ? (
+                      <button
+                        className="secondary-button"
+                        disabled={Boolean(busyAction)}
+                        onClick={() => void handleControl('resume')}
+                        type="button"
+                      >
+                        继续
+                      </button>
+                    ) : null}
+                    {detail.status === 'failed' ? (
+                      <button
+                        className="primary-button"
+                        disabled={Boolean(busyAction)}
+                        onClick={() => void handleControl('retry')}
+                        type="button"
+                      >
+                        从失败步骤重试
+                      </button>
+                    ) : null}
+                    {!['completed', 'canceled'].includes(detail.status) ? (
+                      <button
+                        className="text-button task-danger"
+                        disabled={Boolean(busyAction)}
+                        onClick={() => void handleControl('cancel')}
+                        type="button"
+                      >
+                        取消剩余章节
+                      </button>
+                    ) : null}
+                  </div>
+                  <div className="task-chapter-heading">
+                    <h3>章节进度</h3>
+                    <span>用量会在每章完成后更新</span>
+                  </div>
+                  <div className="task-chapter-list">
+                    {detail.items.map((item) => (
+                      <article className="task-chapter-item" key={item.id}>
+                        <div className="task-chapter-title">
+                          <span>{item.chapterNumber}</span>
+                          <div>
+                            <strong>{item.chapterTitle ?? `第 ${item.chapterNumber} 章`}</strong>
+                            <small>{item.statusLabel}</small>
+                          </div>
+                        </div>
+                        <div className="task-chapter-usage">
+                          <span>输入 {item.promptTokens.toLocaleString('zh-CN')}</span>
+                          <span>输出 {item.completionTokens.toLocaleString('zh-CN')}</span>
+                          <span>费用 ${item.cost.toFixed(6)}</span>
+                        </div>
+                        {item.error ? (
+                          <p className="task-chapter-error">
+                            {chapterFailureMessage(item.error.message)}
+                          </p>
+                        ) : null}
+                      </article>
+                    ))}
+                  </div>
+                </>
+              )}
+            </section>
           </div>
-        )}
-      </section>
+        </>
+      ) : null}
+
+      {view === 'review' ? (
+        <section className="task-review" aria-labelledby="task-review-title">
+          <div className="task-section-heading">
+            <div>
+              <p className="workspace-step">审核队列</p>
+              <h2 id="task-review-title">待我确认</h2>
+            </div>
+            <p>可以批准并锁定、送到写作台修改、驳回重写、送平行版本，或记下原因后忽略问题。</p>
+          </div>
+          <div className="task-review-toolbar">
+            <label className="field">
+              <span>风险筛选</span>
+              <select
+                onChange={(event) => setRiskFilter(event.target.value as RiskFilter)}
+                value={riskFilter}
+              >
+                {(Object.keys(RISK_LABELS) as RiskFilter[]).map((value) => (
+                  <option key={value} value={value}>
+                    {RISK_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="secondary-button"
+              disabled={Boolean(busyAction) || reviewItems.every((item) => item.riskLevel !== 'low')}
+              onClick={() => void handleApproveLowRisk()}
+              type="button"
+            >
+              批量批准低风险
+            </button>
+            <span>{visibleReviewItems.length} 章显示中</span>
+          </div>
+          <div className="task-review-rules">
+            <div>
+              <strong>低风险可批量批准</strong>
+              <small>无连续性错误、无高风险事件、质量检查稳定</small>
+            </div>
+            <div>
+              <strong>高风险必须逐章看</strong>
+              <small>关键人物死亡、金手指升级、改已确认设定</small>
+            </div>
+            <div>
+              <strong>卷末必须人工确认</strong>
+              <small>自动通过也只到卷边界</small>
+            </div>
+          </div>
+          {visibleReviewItems.length === 0 ? (
+            <p className="task-empty">目前没有需要确认的章节。</p>
+          ) : (
+            <div className="task-review-list">
+              {visibleReviewItems.map((item) => (
+                <article className={`task-review-item risk-${item.riskLevel}`} key={item.id}>
+                  <div className="task-review-main">
+                    <div className="task-review-heading">
+                      <div>
+                        <p className="workspace-step">
+                          第 {item.chapterNumber} 章
+                          {item.volumeTitle ? ` · ${item.volumeTitle}` : ''}
+                        </p>
+                        <h3>{item.chapterTitle}</h3>
+                      </div>
+                      <div className="task-review-badges">
+                        <span className={`task-risk task-risk-${item.riskLevel}`}>
+                          {item.riskLabel}
+                        </span>
+                        {item.isVolumeEnd ? <span className="task-volume-end">卷末</span> : null}
+                        {item.quality ? (
+                          <span className="task-quality">
+                            {item.quality.watchDimensions.length > 0
+                              ? `${item.quality.watchDimensions.length} 项待留意`
+                              : '质量稳定'}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <p className="task-review-reason">{item.riskReasons.join('；')}</p>
+                    {item.quality ? <p>{item.quality.summary}</p> : null}
+                    <blockquote>{item.draftPreview}…</blockquote>
+                    {item.quality?.watchDimensions.length ? (
+                      <ul className="task-review-watch">
+                        {item.quality.watchDimensions.slice(0, 3).map((dimension) => (
+                          <li key={`${item.id}-${dimension.label}`}>
+                            <strong>{dimension.label}</strong>
+                            <span>{dimension.suggestion || dimension.summary}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
+                    {item.continuityIssues.length > 0 ? (
+                      <ul className="task-review-issues">
+                        {item.continuityIssues.slice(0, 3).map((issue) => (
+                          <li key={issue.id}>
+                            <span className={issue.status === 'open' ? 'open' : ''}>
+                              {issue.status === 'open' ? '待处理' : '已忽略'}
+                            </span>
+                            <p>{issue.message}</p>
+                            <small>{issue.suggestion}</small>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="task-review-clear">连续性检查没有发现需要处理的问题。</p>
+                    )}
+                  </div>
+                  <div className="task-review-actions">
+                    <button
+                      className="primary-button"
+                      disabled={Boolean(busyAction)}
+                      onClick={() => void handleDecision(item, 'approve')}
+                      type="button"
+                    >
+                      批准并锁定
+                    </button>
+                    <button
+                      className="secondary-button"
+                      disabled={Boolean(busyAction)}
+                      onClick={() => void handleDecision(item, 'send_to_desk')}
+                      type="button"
+                    >
+                      送写作台
+                    </button>
+                    <button
+                      className="secondary-button"
+                      disabled={Boolean(busyAction)}
+                      onClick={() => void handleDecision(item, 'send_to_parallel')}
+                      type="button"
+                    >
+                      送平行版本
+                    </button>
+                    <button
+                      className="secondary-button"
+                      disabled={Boolean(busyAction)}
+                      onClick={() => void handleDecision(item, 'reject')}
+                      type="button"
+                    >
+                      驳回重生成
+                    </button>
+                    {ignoreItemId === item.id ? (
+                      <div className="task-ignore-form">
+                        <label className="field">
+                          <span>忽略原因</span>
+                          <textarea
+                            onChange={(event) => setIgnoreReason(event.target.value)}
+                            placeholder="例如：这一处是角色的故意误判，后续会解释。"
+                            value={ignoreReason}
+                          />
+                        </label>
+                        <div>
+                          <button
+                            className="text-button"
+                            disabled={Boolean(busyAction)}
+                            onClick={() => void handleIgnore(item)}
+                            type="button"
+                          >
+                            确认忽略
+                          </button>
+                          <button
+                            className="text-button"
+                            onClick={() => {
+                              setIgnoreItemId('');
+                              setIgnoreReason('');
+                            }}
+                            type="button"
+                          >
+                            收起
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        className="text-button"
+                        onClick={() => {
+                          setIgnoreItemId(item.id);
+                          setIgnoreReason('');
+                          setError('');
+                        }}
+                        type="button"
+                      >
+                        忽略并记录原因
+                      </button>
+                    )}
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : null}
+
+      {view === 'report' ? (
+        <section className="task-report-view" aria-labelledby="task-report-view-title">
+          <div className="task-section-heading">
+            <div>
+              <p className="workspace-step">任务报告</p>
+              <h2 id="task-report-view-title">这一批发生了什么</h2>
+            </div>
+            <p>完成和失败章节、token、费用、连续性、质量摘要、未回收伏笔和下一步建议。</p>
+          </div>
+          {!report ? (
+            <p className="task-empty">选择一条任务后查看报告。</p>
+          ) : (
+            <TaskReportPanel report={report} detail={detail} />
+          )}
+        </section>
+      ) : null}
     </main>
   );
 }
 
-function TaskReportPanel({ report }: { report: BatchJobReport }) {
+function TaskReportPanel({
+  report,
+  detail,
+}: {
+  report: BatchJobReport;
+  detail: BatchJobDetail | null;
+}) {
+  const dimensions = report.quality?.dimensions ?? [];
+  const foreshadows = report.foreshadows?.items ?? [];
+  const nextActions = report.nextActions ?? [];
   return (
-    <section className="task-report" aria-labelledby="task-report-title">
+    <div className="task-report">
       <div className="task-report-heading">
         <div>
-          <p className="workspace-step">任务报告</p>
-          <h3 id="task-report-title">这一批发生了什么</h3>
+          <p className="workspace-step">{detail ? detail.statusLabel : '任务报告'}</p>
+          <h3>{detail ? `${report.totalChapters} 章` : '任务报告'}</h3>
         </div>
-        <span>{report.totalChapters} 章</span>
+        <span>{report.quality?.averageScore ?? 0} 分</span>
       </div>
       <div className="task-report-stats">
         <div>
@@ -867,7 +1209,50 @@ function TaskReportPanel({ report }: { report: BatchJobReport }) {
           <span>{report.continuity.summary}</span>
         </div>
       </div>
-    </section>
+      <div className="task-report-columns">
+        <div className="task-report-quality">
+          <h4>质量摘要</h4>
+          <p>{report.quality?.summary ?? '还没有质量报告。'}</p>
+          {dimensions.map((dimension) => (
+            <div className="task-report-bar" key={dimension.key}>
+              <span>{dimension.label}</span>
+              <div className="task-progress-track" aria-hidden="true">
+                <span style={{ width: `${dimension.score}%` }} />
+              </div>
+              <strong>{dimension.score}</strong>
+            </div>
+          ))}
+        </div>
+        <div className="task-report-foreshadows">
+          <h4>未回收伏笔 · {report.foreshadows?.totalOpen ?? 0}</h4>
+          {foreshadows.length === 0 ? (
+            <p className="task-empty">当前没有未回收伏笔。</p>
+          ) : (
+            <ul>
+              {foreshadows.map((item) => (
+                <li className={item.overdue ? 'overdue' : ''} key={item.title}>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.plannedPayoffChapter
+                      ? `计划第 ${item.plannedPayoffChapter} 章回收`
+                      : '还没有安排回收章节'}
+                    {item.overdue ? ' · 已过期' : ''}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+      <div className="task-report-next">
+        <h4>下一步建议</h4>
+        <ul>
+          {nextActions.map((action) => (
+            <li key={action}>{action}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
 
@@ -892,6 +1277,93 @@ function buildScope(input: {
     };
   }
   return { type: 'book' };
+}
+
+function selectedNumbers(
+  mode: ScopeMode,
+  input: {
+    chapterNumber: string;
+    volumeId: string;
+    startChapter: string;
+    endChapter: string;
+    chapters: BatchChapterOption[];
+    outlines: OutlineNode[];
+  },
+): number[] {
+  if (mode === 'chapter') {
+    return [Number(input.chapterNumber)].filter((value) => Number.isInteger(value) && value > 0);
+  }
+  if (mode === 'volume') {
+    return chaptersForVolume(input.volumeId, input.outlines).map(
+      (node) => node.chapterNumber as number,
+    );
+  }
+  if (mode === 'range') {
+    const start = Number(input.startChapter);
+    const end = Number(input.endChapter);
+    return input.chapters
+      .map((chapter) => chapter.chapterNumber)
+      .filter((value) => value >= start && value <= end);
+  }
+  return input.chapters.map((chapter) => chapter.chapterNumber);
+}
+
+function chaptersForVolume(volumeId: string, outlines: OutlineNode[]): OutlineNode[] {
+  if (!volumeId) {
+    return [];
+  }
+  const byId = new Map(outlines.map((node) => [node.id, node]));
+  return outlines
+    .filter(
+      (node) =>
+        node.level === 'chapter' &&
+        node.chapterNumber !== null &&
+        isDescendantOf(node, volumeId, byId),
+    )
+    .sort((left, right) => (left.chapterNumber ?? 0) - (right.chapterNumber ?? 0));
+}
+
+function isDescendantOf(
+  node: OutlineNode,
+  ancestorId: string,
+  byId: Map<string, OutlineNode>,
+): boolean {
+  let parentId = node.parentId;
+  const seen = new Set<string>();
+  while (parentId && !seen.has(parentId)) {
+    if (parentId === ancestorId) {
+      return true;
+    }
+    seen.add(parentId);
+    parentId = byId.get(parentId)?.parentId ?? null;
+  }
+  return false;
+}
+
+function pipelineNodes(detail: BatchJobDetail): Array<{
+  label: string;
+  state: 'done' | 'active' | 'pending';
+}> {
+  const started = !['queued', 'preparing'].includes(detail.status);
+  const running = ['preparing', 'running'].includes(detail.status);
+  const reviewing = detail.status === 'waiting_review';
+  const done = detail.status === 'completed';
+  return [
+    { label: '准备', state: started ? 'done' : running ? 'active' : 'pending' },
+    { label: '起草', state: started && !reviewing && !done ? 'active' : started ? 'done' : 'pending' },
+    { label: '审核', state: reviewing ? 'active' : done ? 'done' : 'pending' },
+    { label: '正史', state: done ? 'done' : 'pending' },
+  ];
+}
+
+function approximateTokens(value: number): string {
+  if (value >= 1_000_000) {
+    return `${(value / 1_000_000).toFixed(1)}M`;
+  }
+  if (value >= 1_000) {
+    return `${Math.round(value / 1_000)}K`;
+  }
+  return String(value);
 }
 
 function scopeLabel(scope: BatchScope | null, volumes: OutlineNode[]): string {
@@ -923,12 +1395,17 @@ function controlNotice(action: 'pause' | 'resume' | 'cancel' | 'retry'): string 
   return '已从失败的那一步重新开始。';
 }
 
-function reviewNotice(action: 'approve' | 'send_to_desk' | 'reject'): string {
+function reviewNotice(
+  action: 'approve' | 'send_to_desk' | 'send_to_parallel' | 'reject',
+): string {
   if (action === 'approve') {
     return '这一章已批准并锁定。';
   }
   if (action === 'send_to_desk') {
     return '已送到写作台。';
+  }
+  if (action === 'send_to_parallel') {
+    return '已创建平行版本，主线没有写入这一稿。';
   }
   return '已驳回，正在重新生成这一章。';
 }
@@ -943,6 +1420,15 @@ function batchErrorMessage(error: unknown): string {
     }
     if (error.code === 'BATCH_JOB_INVALID_TRANSITION') {
       return '这条任务现在的状态不能执行这个操作。';
+    }
+    if (error.code === 'BATCH_AUTO_APPROVAL_REQUIRES_STANDARD') {
+      return '自动通过只允许标准质量档位。';
+    }
+    if (error.code === 'BATCH_AUTO_APPROVAL_REQUIRES_LOCKED_OUTLINES') {
+      return '自动通过前需要先锁定本区间的全部章纲。';
+    }
+    if (error.code === 'BATCH_AUTO_APPROVAL_HAS_RISK') {
+      return '这个范围里有高风险章节，请改用逐章或逐卷审批。';
     }
     if (error.code === 'MODEL_CONFIG_REQUIRED') {
       return '还没有可用的正文模型，请先到模型设置里完成配置。';

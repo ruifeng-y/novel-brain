@@ -5,6 +5,7 @@ import { parseRedisConnection } from '@novel/contracts';
 import { AuthModule } from '../auth/auth.module';
 import { AccountAuditModule } from '../account-audit/account-audit.module';
 import { BranchStateModule } from '../branches/branch-state.module';
+import { BranchesModule } from '../branches/branches.module';
 import { DatabaseModule } from '../database/database.module';
 import { BatchJobsController } from './batch-jobs.controller';
 import { BatchJobsService } from './batch-jobs.service';
@@ -19,6 +20,7 @@ import { VersionsModule } from '../versions/versions.module';
     AuthModule,
     AccountAuditModule,
     BranchStateModule,
+    BranchesModule,
     VersionsModule,
     BullModule.forRootAsync({
       inject: [ConfigService],

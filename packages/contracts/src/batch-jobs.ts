@@ -27,6 +27,7 @@ export const batchJobScopeSchema = z.discriminatedUnion('type', [
 
 export const batchWritingSettingsSchema = z.object({
   qualityTier: writingQualityTierSchema.default('standard'),
+  approvalMode: z.enum(['chapter', 'volume', 'auto']).default('volume'),
   modelConfigId: z.string().uuid().optional(),
   targetMinCharacters: z.coerce
     .number()
@@ -82,6 +83,7 @@ export const batchReviewStatusSchema = z.enum([
   'pending',
   'approved',
   'sent_to_desk',
+  'sent_to_parallel',
   'rejected',
   'ignored',
 ]);
@@ -89,6 +91,7 @@ export const batchReviewStatusSchema = z.enum([
 export const batchReviewDecisionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('approve') }),
   z.object({ action: z.literal('send_to_desk') }),
+  z.object({ action: z.literal('send_to_parallel') }),
   z.object({ action: z.literal('reject') }),
   z.object({
     action: z.literal('ignore'),
@@ -123,9 +126,16 @@ export const BATCH_REVIEW_STATUS_LABELS: Record<z.infer<typeof batchReviewStatus
   pending: '待处理',
   approved: '已批准',
   sent_to_desk: '已送写作台',
+  sent_to_parallel: '已送平行版本',
   rejected: '已驳回',
   ignored: '已忽略',
 };
+
+export const BATCH_APPROVAL_MODE_LABELS = {
+  chapter: '逐章审批',
+  volume: '逐卷审批',
+  auto: '自动通过',
+} as const;
 
 export type BatchJobScope = z.infer<typeof batchJobScopeSchema>;
 export type BatchWritingSettings = z.infer<typeof batchWritingSettingsSchema>;
@@ -133,6 +143,28 @@ export type CreateBatchJobInput = z.infer<typeof createBatchJobSchema>;
 export type BatchChapterStatus = z.infer<typeof batchChapterStatusSchema>;
 export type BatchReviewStatus = z.infer<typeof batchReviewStatusSchema>;
 export type BatchReviewDecision = z.infer<typeof batchReviewDecisionSchema>;
+export type BatchApprovalMode = keyof typeof BATCH_APPROVAL_MODE_LABELS;
+
+export type BatchQualitySummary = {
+  averageScore: number;
+  summary: string;
+  dimensions: Array<{
+    key: string;
+    label: string;
+    score: number;
+    status: 'good' | 'watch' | 'weak';
+  }>;
+};
+
+export type BatchForeshadowSummary = {
+  totalOpen: number;
+  items: Array<{
+    title: string;
+    importance: 'must' | 'optional';
+    plannedPayoffChapter: number | null;
+    overdue: boolean;
+  }>;
+};
 
 export type BatchJobReport = {
   jobId: string;
@@ -153,4 +185,17 @@ export type BatchJobReport = {
     chaptersWithIssues: number;
     summary: string;
   };
+  quality: BatchQualitySummary;
+  foreshadows: BatchForeshadowSummary;
+  nextActions: string[];
+};
+
+export type BatchJobEstimate = {
+  chapterNumbers: number[];
+  chapterCount: number;
+  estimatedPromptTokens: number;
+  estimatedCompletionTokens: number;
+  estimatedTotalTokens: number;
+  estimatedCost: number;
+  estimatedMinutes: number;
 };

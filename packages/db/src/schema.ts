@@ -1928,6 +1928,7 @@ export const batchReviewStatusEnum = pgEnum('batch_review_status', [
   'pending',
   'approved',
   'sent_to_desk',
+  'sent_to_parallel',
   'rejected',
   'ignored',
 ]);

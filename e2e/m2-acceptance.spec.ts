@@ -323,9 +323,10 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   });
 
   await page.goto(`/workspace/${xianxia.id}/write`);
-  await page.getByRole('link', { name: '创作任务' }).click();
-  await expect(page).toHaveURL(new RegExp(`/workspace/${xianxia.id}/jobs$`));
-  await expect(page.getByRole('heading', { name: '把连续章节交给创作任务' })).toBeVisible();
+  await page.getByRole('link', { name: '批量生产' }).click();
+  await expect(page).toHaveURL(new RegExp(`/workspace/${xianxia.id}/batch$`));
+  await expect(page.getByRole('heading', { name: '把长跑拆成可管理的段落' })).toBeVisible();
+  await page.getByRole('radio', { name: /逐章审批/ }).check();
   await page.getByRole('tab', { name: '自定义区间' }).click();
   await page.getByLabel('起始章').fill('1');
   await page.getByLabel('结束章').fill('2');
@@ -333,8 +334,9 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   await page.getByLabel('单章最多字数').fill('1400');
 
   const batchStartedAt = performance.now();
-  await page.getByRole('button', { name: '创建创作任务' }).click();
+  await page.getByRole('button', { name: '开始生成' }).click();
   await expect(page.getByText('已创建 2 章的创作任务。')).toBeVisible();
+  await page.getByRole('tab', { name: /审核队列/ }).click();
   await expect(page.locator('.task-review-item')).toHaveCount(2, { timeout: 45_000 });
   const batchReviewMs = Math.round(performance.now() - batchStartedAt);
   await page.screenshot({

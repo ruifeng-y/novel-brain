@@ -1,17 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { DEFAULT_CHAPTER_TARGET_MAX, DEFAULT_CHAPTER_TARGET_MIN } from '@novel/contracts';
+import {
+  DEFAULT_CHAPTER_TARGET_MAX,
+  DEFAULT_CHAPTER_TARGET_MIN,
+  type BatchForeshadowSummary,
+  type BatchQualitySummary,
+} from '@novel/contracts';
 import { estimateModelCost } from '@novel/core';
 import {
   annotations,
   chapterOutlines,
   chapters,
   drafts,
+  foreshadows,
   generationRequests,
   jobChapters,
   jobEvents,
   jobReports,
   jobSteps,
   jobs,
+  qualityReports,
   type JobChapterRow,
   type JobRow,
 } from '@novel/db';
@@ -27,6 +34,23 @@ const GENERATION_STEPS = [
   'extract_facts',
   'verify',
 ] as const;
+
+const QUALITY_DIMENSION_LABELS: Record<string, string> = {
+  hook: '钩子',
+  pacing: '节奏',
+  information_density: '信息密度',
+  character_voice: '人物声纹',
+  prose: '文笔',
+  continuity: '连续性',
+};
+
+const QUALITY_STATUS_SCORES = { good: 90, watch: 75, weak: 55 } as const;
+
+type QualityReportLike = {
+  summary: string;
+  dimensions: Array<Record<string, unknown>>;
+  issueCounts: Record<string, number>;
+};
 
 @Injectable()
 export class BatchGenerationRunner {
@@ -496,29 +520,57 @@ export class BatchGenerationRunner {
               ),
             )
         : [];
+    const chapterIds = chapterRows.map((chapter) => chapter.id);
+    const qualityRows =
+      chapterIds.length > 0
+        ? await this.database.db
+            .select()
+            .from(qualityReports)
+            .where(inArray(qualityReports.chapterId, chapterIds))
+        : [];
+    const foreshadowRows = await this.database.db
+      .select()
+      .from(foreshadows)
+      .where(
+        and(
+          eq(foreshadows.workId, job.workId),
+          eq(foreshadows.branchId, job.branchId),
+          eq(foreshadows.status, 'planted'),
+        ),
+      )
+      .orderBy(asc(foreshadows.importance), asc(foreshadows.plannedPayoffChapter))
+      .limit(20);
     const promptTokens = items.reduce((total, item) => total + item.promptTokens, 0);
     const completionTokens = items.reduce((total, item) => total + item.completionTokens, 0);
     const openIssueCount = issueRows.filter((issue) => issue.status === 'open').length;
     const ignoredIssueCount = issueRows.filter((issue) => issue.status === 'ignored').length;
+    const completedChapterNumbers = items
+      .filter((item) => item.status === 'completed')
+      .map((item) => item.chapterNumber);
+    const waitingReviewChapterNumbers = items
+      .filter((item) => item.status === 'waiting_review')
+      .map((item) => item.chapterNumber);
+    const failedChapters = items
+      .filter((item) => item.status === 'failed')
+      .map((item) => ({
+        chapterNumber: item.chapterNumber,
+        message: typeof item.error?.message === 'string' ? item.error.message : '这一章没有完成',
+      }));
+    const quality = this.buildQualitySummary(qualityRows);
+    const foreshadow = this.buildForeshadowSummary(
+      foreshadowRows,
+      completedChapterNumbers.length ? Math.max(...completedChapterNumbers) : 0,
+    );
     const report = {
       jobId: job.id,
       generatedAt: new Date().toISOString(),
       totalChapters: items.length,
-      completedChapterNumbers: items
-        .filter((item) => item.status === 'completed')
-        .map((item) => item.chapterNumber),
-      failedChapters: items
-        .filter((item) => item.status === 'failed')
-        .map((item) => ({
-          chapterNumber: item.chapterNumber,
-          message: typeof item.error?.message === 'string' ? item.error.message : '这一章没有完成',
-        })),
+      completedChapterNumbers,
+      failedChapters,
       canceledChapterNumbers: items
         .filter((item) => item.status === 'canceled')
         .map((item) => item.chapterNumber),
-      waitingReviewChapterNumbers: items
-        .filter((item) => item.status === 'waiting_review')
-        .map((item) => item.chapterNumber),
+      waitingReviewChapterNumbers,
       promptTokens,
       completionTokens,
       totalTokens: promptTokens + completionTokens,
@@ -533,6 +585,14 @@ export class BatchGenerationRunner {
             ? '连续性检查没有发现需要处理的问题。'
             : `共发现 ${issueRows.length} 个连续性问题，其中 ${openIssueCount} 个待处理，${ignoredIssueCount} 个已忽略。`,
       },
+      quality,
+      foreshadows: foreshadow,
+      nextActions: this.buildNextActions({
+        waitingReview: waitingReviewChapterNumbers.length,
+        failed: failedChapters.length,
+        openIssues: openIssueCount,
+        foreshadows: foreshadow,
+      }),
     };
     const now = new Date();
     await this.database.db
@@ -642,6 +702,108 @@ export class BatchGenerationRunner {
       eventType,
       payload,
     });
+  }
+
+  private buildQualitySummary(rows: Array<{ report: QualityReportLike }>): BatchQualitySummary {
+    const grouped = new Map<string, { label: string; total: number; count: number }>();
+    for (const row of rows) {
+      for (const dimension of row.report.dimensions) {
+        const key = String(dimension.key ?? '');
+        const status = String(dimension.status ?? 'watch') as keyof typeof QUALITY_STATUS_SCORES;
+        const score = QUALITY_STATUS_SCORES[status] ?? QUALITY_STATUS_SCORES.watch;
+        const current = grouped.get(key) ?? {
+          label: String(dimension.label ?? QUALITY_DIMENSION_LABELS[key] ?? key),
+          total: 0,
+          count: 0,
+        };
+        current.total += score;
+        current.count += 1;
+        grouped.set(key, current);
+      }
+    }
+    const dimensions = [...grouped.entries()]
+      .map(([key, value]) => {
+        const score = Math.round(value.total / value.count);
+        return {
+          key,
+          label: value.label,
+          score,
+          status: (score >= 85 ? 'good' : score >= 70 ? 'watch' : 'weak') as
+            | 'good'
+            | 'watch'
+            | 'weak',
+        };
+      })
+      .sort(
+        (left, right) =>
+          Object.keys(QUALITY_DIMENSION_LABELS).indexOf(left.key) -
+          Object.keys(QUALITY_DIMENSION_LABELS).indexOf(right.key),
+      );
+    if (dimensions.length === 0) {
+      return { averageScore: 0, summary: '还没有质量报告。', dimensions: [] };
+    }
+    const averageScore = Math.round(
+      dimensions.reduce((total, dimension) => total + dimension.score, 0) / dimensions.length,
+    );
+    const lowest = [...dimensions].sort((left, right) => left.score - right.score)[0];
+    return {
+      averageScore,
+      summary:
+        lowest && lowest.score < 85
+          ? `${lowest.label} ${lowest.score} 分，是这一批最需要留意的维度。`
+          : '六项质量检查整体稳定。',
+      dimensions,
+    };
+  }
+
+  private buildForeshadowSummary(
+    rows: Array<{
+      title: string;
+      importance: 'must' | 'optional';
+      plannedPayoffChapter: number | null;
+    }>,
+    lastCompletedChapter: number,
+  ): BatchForeshadowSummary {
+    return {
+      totalOpen: rows.length,
+      items: rows.map((row) => ({
+        title: row.title,
+        importance: row.importance,
+        plannedPayoffChapter: row.plannedPayoffChapter,
+        overdue:
+          row.plannedPayoffChapter !== null &&
+          lastCompletedChapter > 0 &&
+          row.plannedPayoffChapter < lastCompletedChapter,
+      })),
+    };
+  }
+
+  private buildNextActions(input: {
+    waitingReview: number;
+    failed: number;
+    openIssues: number;
+    foreshadows: BatchForeshadowSummary;
+  }): string[] {
+    const actions: string[] = [];
+    if (input.failed > 0) {
+      actions.push(`有 ${input.failed} 章失败，确认模型 Key 和错误后从失败步骤重试。`);
+    }
+    if (input.openIssues > 0) {
+      actions.push(`连续性检查还有 ${input.openIssues} 个待处理问题，逐章确认或记录忽略原因。`);
+    }
+    if (input.waitingReview > 0) {
+      actions.push(`还有 ${input.waitingReview} 章等待确认，高风险章节必须逐章审核。`);
+    }
+    const overdue = input.foreshadows.items.filter((item) => item.overdue);
+    if (overdue.length > 0) {
+      actions.push(`有 ${overdue.length} 个伏笔已超过计划回收章节，先安排回收或调整计划。`);
+    } else if (input.foreshadows.totalOpen > 0) {
+      actions.push(`还有 ${input.foreshadows.totalOpen} 个伏笔未回收，写作时保持提醒。`);
+    }
+    if (actions.length === 0) {
+      actions.push('本批没有阻塞项，可以检查任务报告后继续下一卷。');
+    }
+    return actions;
   }
 
   private record(value: unknown): Record<string, unknown> {

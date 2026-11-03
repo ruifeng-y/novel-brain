@@ -1,0 +1,1 @@
+ALTER TYPE "public"."batch_review_status" ADD VALUE 'sent_to_parallel' BEFORE 'rejected';

@@ -1,22 +1,26 @@
 import { InjectQueue } from '@nestjs/bullmq';
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import {
   BATCH_CHAPTER_STATUS_LABELS,
   BATCH_JOB_STATUS_LABELS,
   BATCH_REVIEW_STATUS_LABELS,
   type AccountAuditAction,
+  type BatchJobEstimate,
   type BatchJobReport,
+  type BatchQualitySummary,
+  type BatchForeshadowSummary,
   type BatchReviewDecision,
   type CreateBatchJobInput,
   type JobStatus,
 } from '@novel/contracts';
-import { transitionJobStatus } from '@novel/core';
+import { estimateModelCost, transitionJobStatus } from '@novel/core';
 import {
   annotations,
   chapterOutlines,
   chapterVersions,
   chapters,
   drafts,
+  foreshadows,
   generationRequests,
   jobChapters,
   jobEvents,
@@ -34,11 +38,54 @@ import { and, asc, desc, eq, inArray, isNull, max, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 import { DatabaseService } from '../database/database.service';
 import { AccountAuditService } from '../account-audit/account-audit.service';
+import { BranchesService } from '../branches/branches.service';
 import { VersionGraphService } from '../versions/version-graph.service';
 import { RateLimitService } from '../security/rate-limit.service';
 import { chapterGenerationError } from './chapter-generation.errors';
 
 const BATCH_STEPS = ['prepare', 'generate', 'report'] as const;
+
+const HIGH_RISK_KEYWORDS = [
+  '死亡',
+  '牺牲',
+  '弑杀',
+  '弑父',
+  '弑母',
+  '叛变',
+  '黑化',
+  '金手指升级',
+  '能力升级',
+  '突破境界',
+  '身份揭露',
+  '真实身份',
+  '灭门',
+  '改设定',
+] as const;
+
+const QUALITY_DIMENSION_LABELS: Record<string, string> = {
+  hook: '钩子',
+  pacing: '节奏',
+  information_density: '信息密度',
+  character_voice: '人物声纹',
+  prose: '文笔',
+  continuity: '连续性',
+};
+
+const QUALITY_STATUS_SCORES = { good: 90, watch: 75, weak: 55 } as const;
+
+type QualityReportLike = {
+  summary: string;
+  dimensions: Array<Record<string, unknown>>;
+  issueCounts: Record<string, number>;
+};
+
+type QualityLike = { report: QualityReportLike } | null;
+
+type IssueLike = {
+  status: string;
+  severity: string;
+  message: string;
+};
 
 @Injectable()
 export class BatchJobsService {
@@ -47,6 +94,7 @@ export class BatchJobsService {
     private readonly rateLimits: RateLimitService,
     private readonly versions: VersionGraphService,
     private readonly accountAudit: AccountAuditService,
+    private readonly branches: BranchesService,
     @InjectQueue('generation') private readonly generationQueue: Queue,
   ) {}
 
@@ -60,6 +108,7 @@ export class BatchJobsService {
     }
     await this.requireBranch(userId, workId, branchId);
     const chapterNumbers = await this.expandScope(workId, branchId, input);
+    await this.assertApprovalModeAllowed(workId, branchId, chapterNumbers, input);
     const now = new Date();
     const created = await this.database.db.transaction(async (tx) => {
       const [job] = await tx
@@ -133,8 +182,36 @@ export class BatchJobsService {
     return this.getJob(userId, workId, branchId, created.id);
   }
 
+  async estimate(
+    userId: string,
+    workId: string,
+    branchId: string,
+    input: CreateBatchJobInput,
+  ): Promise<BatchJobEstimate> {
+    await this.requireBranch(userId, workId, branchId);
+    const chapterNumbers = await this.expandScope(workId, branchId, input);
+    const chapterCount = chapterNumbers.length;
+    const averageCharacters =
+      (input.settings.targetMinCharacters + input.settings.targetMaxCharacters) / 2;
+    const estimatedPromptTokens = Math.round(chapterCount * 4_200);
+    const estimatedCompletionTokens = Math.round(chapterCount * averageCharacters * 1.2);
+    const estimatedTotalTokens = estimatedPromptTokens + estimatedCompletionTokens;
+    return {
+      chapterNumbers,
+      chapterCount,
+      estimatedPromptTokens,
+      estimatedCompletionTokens,
+      estimatedTotalTokens,
+      estimatedCost: Number(
+        estimateModelCost(estimatedPromptTokens, estimatedCompletionTokens).toFixed(6),
+      ),
+      estimatedMinutes: Math.max(1, Math.ceil(chapterCount * 3)),
+    };
+  }
+
   async list(userId: string, workId: string, branchId: string) {
     await this.requireBranch(userId, workId, branchId);
+    await this.applyAutoApprovalsForBranch(userId, workId, branchId);
     const rows = await this.database.db
       .select()
       .from(jobs)
@@ -155,7 +232,8 @@ export class BatchJobsService {
 
   async getJob(userId: string, workId: string, branchId: string, jobId: string) {
     const job = await this.requireJob(userId, workId, branchId, jobId);
-    return this.toJobDetail(job);
+    await this.applyAutoApprovals(userId, job);
+    return this.toJobDetail(await this.requireJob(userId, workId, branchId, jobId));
   }
 
   async pause(userId: string, workId: string, branchId: string, jobId: string) {
@@ -211,6 +289,7 @@ export class BatchJobsService {
 
   async listReviewQueue(userId: string, workId: string, branchId: string) {
     await this.requireBranch(userId, workId, branchId);
+    await this.applyAutoApprovalsForBranch(userId, workId, branchId);
     const rows = await this.database.db
       .select({
         item: jobChapters,
@@ -266,6 +345,18 @@ export class BatchJobsService {
         .set({
           status: 'completed',
           reviewStatus: decision.action === 'approve' ? 'approved' : 'sent_to_desk',
+          reviewNote: null,
+          reviewedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(jobChapters.id, item.id));
+    } else if (decision.action === 'send_to_parallel') {
+      await this.sendDraftToParallel(job, item);
+      await this.database.db
+        .update(jobChapters)
+        .set({
+          status: 'completed',
+          reviewStatus: 'sent_to_parallel',
           reviewNote: null,
           reviewedAt: now,
           updatedAt: now,
@@ -344,7 +435,8 @@ export class BatchJobsService {
   }
 
   async getReport(userId: string, workId: string, branchId: string, jobId: string) {
-    await this.requireJob(userId, workId, branchId, jobId);
+    const job = await this.requireJob(userId, workId, branchId, jobId);
+    await this.applyAutoApprovals(userId, job);
     return this.refreshReport(jobId);
   }
 
@@ -681,11 +773,30 @@ export class BatchJobsService {
           )
           .orderBy(asc(annotations.status), asc(annotations.startOffset))
       : [];
+    const [outline] = await this.database.db
+      .select()
+      .from(chapterOutlines)
+      .where(
+        and(
+          eq(chapterOutlines.workId, item.workId),
+          eq(chapterOutlines.branchId, item.branchId),
+          eq(chapterOutlines.chapterNumber, item.chapterNumber),
+          eq(chapterOutlines.level, 'chapter'),
+        ),
+      )
+      .limit(1);
+    const volume = await this.volumeInfoForChapter(item.workId, item.branchId, outline);
+    const risk = this.assessReviewRisk(quality ?? null, issueRows, outline ?? null);
     return {
       ...this.toJobChapterResponse(item),
       jobStatus,
       jobStatusLabel: BATCH_JOB_STATUS_LABELS[jobStatus],
       chapterTitle: chapter?.title ?? `第 ${item.chapterNumber} 章`,
+      volumeTitle: volume?.title ?? null,
+      isVolumeEnd: volume?.isVolumeEnd ?? false,
+      riskLevel: risk.level,
+      riskLabel: risk.label,
+      riskReasons: risk.reasons,
       draftPreview: Array.from(draft?.content ?? '')
         .slice(0, 300)
         .join(''),
@@ -713,11 +824,422 @@ export class BatchJobsService {
     };
   }
 
+  private async assertApprovalModeAllowed(
+    workId: string,
+    branchId: string,
+    chapterNumbers: number[],
+    input: CreateBatchJobInput,
+  ) {
+    if (input.settings.approvalMode !== 'auto') {
+      return;
+    }
+    if (input.settings.qualityTier !== 'standard') {
+      throw chapterGenerationError(
+        HttpStatus.CONFLICT,
+        'BATCH_AUTO_APPROVAL_REQUIRES_STANDARD',
+        '自动通过只允许使用标准质量档位。',
+      );
+    }
+    const outlines = await this.database.db
+      .select()
+      .from(chapterOutlines)
+      .where(
+        and(
+          eq(chapterOutlines.workId, workId),
+          eq(chapterOutlines.branchId, branchId),
+          eq(chapterOutlines.level, 'chapter'),
+        ),
+      );
+    const selected = outlines.filter(
+      (outline) =>
+        outline.chapterNumber !== null && chapterNumbers.includes(outline.chapterNumber),
+    );
+    const unlocked = selected.filter((outline) => !outline.lockedAt);
+    if (unlocked.length > 0) {
+      throw chapterGenerationError(
+        HttpStatus.CONFLICT,
+        'BATCH_AUTO_APPROVAL_REQUIRES_LOCKED_OUTLINES',
+        `自动通过前需要先锁定章纲，当前还有 ${unlocked.length} 章未锁定。`,
+      );
+    }
+    const risky = selected.filter(
+      (outline) => this.highRiskOutlineReasons(outline).length > 0,
+    );
+    if (risky.length > 0) {
+      throw chapterGenerationError(
+        HttpStatus.CONFLICT,
+        'BATCH_AUTO_APPROVAL_HAS_RISK',
+        `第 ${risky
+          .map((outline) => outline.chapterNumber)
+          .join('、')} 章涉及高风险事件，不能使用自动通过。`,
+      );
+    }
+  }
+
+  private async applyAutoApprovalsForBranch(
+    userId: string,
+    workId: string,
+    branchId: string,
+  ) {
+    const rows = await this.database.db
+      .select()
+      .from(jobs)
+      .where(
+        and(
+          eq(jobs.workId, workId),
+          eq(jobs.branchId, branchId),
+          eq(jobs.type, 'batch_generate'),
+          inArray(jobs.status, ['running', 'waiting_review']),
+        ),
+      );
+    for (const job of rows) {
+      await this.applyAutoApprovals(userId, job);
+    }
+  }
+
+  private async applyAutoApprovals(userId: string, job: JobRow) {
+    if (!['running', 'waiting_review'].includes(job.status)) {
+      return;
+    }
+    const settings = this.record(job.payload.settings);
+    const approvalMode = settings.approvalMode;
+    if (approvalMode !== 'volume' && approvalMode !== 'auto') {
+      return;
+    }
+    const items = await this.listJobChapterRows(job.id);
+    for (const item of items) {
+      if (item.status !== 'waiting_review' || item.reviewStatus !== 'pending' || !item.draftId) {
+        continue;
+      }
+      const reviewItem = await this.toReviewItem(item, job.status);
+      if (reviewItem.riskLevel === 'high') {
+        continue;
+      }
+      if (approvalMode === 'volume' && reviewItem.isVolumeEnd) {
+        continue;
+      }
+      try {
+        await this.review(userId, job.workId, job.branchId, job.id, item.id, {
+          action: 'approve',
+        });
+      } catch (error) {
+        if (this.isReviewItemConflict(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+  }
+
+  private highRiskOutlineReasons(outline: ChapterOutlineRow): string[] {
+    const text = [
+      outline.title,
+      outline.summary,
+      outline.details,
+      outline.chapterGoal,
+      ...outline.sceneBeats,
+      outline.chapterEndHook,
+    ].join(' ');
+    const hits = HIGH_RISK_KEYWORDS.filter((keyword) => text.includes(keyword));
+    return hits.length > 0 ? [`章纲涉及高风险事件：${hits.join('、')}`] : [];
+  }
+
+  private isReviewItemConflict(error: unknown): boolean {
+    if (!(error instanceof HttpException)) {
+      return false;
+    }
+    const response = error.getResponse();
+    return (
+      typeof response === 'object' &&
+      response !== null &&
+      'code' in response &&
+      response.code === 'BATCH_REVIEW_ITEM_NOT_PENDING'
+    );
+  }
+
+  private assessReviewRisk(
+    quality: QualityLike,
+    issues: IssueLike[],
+    outline: ChapterOutlineRow | null,
+  ): { level: 'low' | 'medium' | 'high'; label: string; reasons: string[] } {
+    const critical = outline ? this.highRiskOutlineReasons(outline) : [];
+    const watch: string[] = [];
+    if (!quality) {
+      critical.push('还没有质量报告，不能自动通过');
+    } else {
+      const weak = quality.report.dimensions.filter((dimension) => dimension.status === 'weak');
+      const warning = quality.report.dimensions.filter((dimension) => dimension.status === 'watch');
+      if (weak.length > 0) {
+        critical.push(
+          `质量维度偏弱：${weak
+            .map((dimension) => String(dimension.label ?? dimension.key ?? '未知'))
+            .join('、')}`,
+        );
+      }
+      if (warning.length > 0) {
+        watch.push(
+          `质量维度待留意：${warning
+            .map((dimension) => String(dimension.label ?? dimension.key ?? '未知'))
+            .join('、')}`,
+        );
+      }
+      const issueTotal = Object.values(quality.report.issueCounts).reduce(
+        (total, value) => total + value,
+        0,
+      );
+      if (issueTotal > 0) {
+        watch.push(`文内自检记录了 ${issueTotal} 个问题`);
+      }
+    }
+    const openIssues = issues.filter((issue) => issue.status === 'open');
+    if (openIssues.length > 0) {
+      critical.push(`连续性检查有 ${openIssues.length} 个待处理问题`);
+    }
+    if (critical.length > 0) {
+      return { level: 'high', label: '高风险', reasons: [...critical, ...watch] };
+    }
+    if (watch.length > 0) {
+      return { level: 'medium', label: '中风险', reasons: watch };
+    }
+    return { level: 'low', label: '低风险', reasons: ['连续性检查与质量检查均未发现阻塞项'] };
+  }
+
+  private async volumeInfoForChapter(
+    workId: string,
+    branchId: string,
+    outline: ChapterOutlineRow | null,
+  ): Promise<{ title: string; isVolumeEnd: boolean } | null> {
+    if (!outline) {
+      return null;
+    }
+    const outlines = await this.database.db
+      .select()
+      .from(chapterOutlines)
+      .where(and(eq(chapterOutlines.workId, workId), eq(chapterOutlines.branchId, branchId)));
+    const byId = new Map(outlines.map((row) => [row.id, row]));
+    let parentId = outline.parentId;
+    const seen = new Set<string>();
+    while (parentId && !seen.has(parentId)) {
+      const parent = byId.get(parentId);
+      if (!parent) {
+        break;
+      }
+      if (parent.level === 'volume') {
+        const volumeChapters = outlines.filter(
+          (row) =>
+            row.level === 'chapter' &&
+            row.chapterNumber !== null &&
+            this.isDescendantOf(row, parent.id, byId),
+        );
+        const lastChapterNumber = Math.max(
+          ...volumeChapters.map((row) => row.chapterNumber as number),
+        );
+        return {
+          title: parent.title,
+          isVolumeEnd: outline.chapterNumber === lastChapterNumber,
+        };
+      }
+      seen.add(parent.id);
+      parentId = parent.parentId;
+    }
+    return null;
+  }
+
+  private async sendDraftToParallel(job: JobRow, item: JobChapterRow) {
+    const [draft] = item.draftId
+      ? await this.database.db.select().from(drafts).where(eq(drafts.id, item.draftId)).limit(1)
+      : [];
+    if (!draft?.content.trim()) {
+      throw chapterGenerationError(
+        HttpStatus.CONFLICT,
+        'BATCH_DRAFT_NOT_READY',
+        'The generated chapter text is not ready for a parallel version',
+      );
+    }
+    const [outline] = await this.database.db
+      .select()
+      .from(chapterOutlines)
+      .where(
+        and(
+          eq(chapterOutlines.workId, job.workId),
+          eq(chapterOutlines.branchId, job.branchId),
+          eq(chapterOutlines.chapterNumber, item.chapterNumber),
+          eq(chapterOutlines.level, 'chapter'),
+        ),
+      )
+      .limit(1);
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const branch = await this.branches.create(job.userId, job.workId, {
+      sourceBranchId: job.branchId,
+      versionPointId: 'current',
+      name: `第 ${item.chapterNumber} 章平行稿 ${stamp}`,
+      reason: `审核队列将第 ${item.chapterNumber} 章送入平行版本，主线不写入这一稿。`,
+      kind: 'rewrite',
+    });
+    const title = outline?.title.trim() || `第 ${item.chapterNumber} 章`;
+    const now = new Date();
+    const [chapter] = await this.database.db
+      .insert(chapters)
+      .values({
+        workId: job.workId,
+        branchId: branch.id,
+        chapterNumber: item.chapterNumber,
+        title,
+        status: 'writing',
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: [chapters.workId, chapters.branchId, chapters.chapterNumber],
+        set: { title, updatedAt: now },
+      })
+      .returning();
+    const [version] = await this.database.db
+      .insert(chapterVersions)
+      .values({
+        chapterId: chapter.id,
+        version: 1,
+        content: draft.content,
+        contentHash: createHash('sha256').update(draft.content).digest('hex'),
+        wordCount: Array.from(draft.content).filter((character) =>
+          /[\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/u.test(character),
+        ).length,
+        modelConfigId: null,
+        createdBy: job.userId,
+        source: 'generated',
+        createdAt: now,
+      })
+      .returning();
+    await this.database.db
+      .update(chapters)
+      .set({
+        status: 'writing',
+        currentVersionId: version.id,
+        wordCount: version.wordCount,
+        updatedAt: now,
+      })
+      .where(eq(chapters.id, chapter.id));
+    await this.versions.recordChapterVersion(job.userId, job.workId, branch.id, version.id);
+    await this.database.db
+      .update(chapters)
+      .set({ status: 'planned', updatedAt: now })
+      .where(
+        and(
+          eq(chapters.workId, job.workId),
+          eq(chapters.branchId, item.branchId),
+          eq(chapters.chapterNumber, item.chapterNumber),
+          isNull(chapters.currentVersionId),
+        ),
+      );
+  }
+
+  private buildQualitySummary(rows: Array<{ report: QualityReportLike }>): BatchQualitySummary {
+    const grouped = new Map<string, { label: string; total: number; count: number }>();
+    for (const row of rows) {
+      for (const dimension of row.report.dimensions) {
+        const key = String(dimension.key ?? '');
+        const status = String(dimension.status ?? 'watch') as keyof typeof QUALITY_STATUS_SCORES;
+        const score = QUALITY_STATUS_SCORES[status] ?? QUALITY_STATUS_SCORES.watch;
+        const current = grouped.get(key) ?? {
+          label: String(dimension.label ?? QUALITY_DIMENSION_LABELS[key] ?? key),
+          total: 0,
+          count: 0,
+        };
+        current.total += score;
+        current.count += 1;
+        grouped.set(key, current);
+      }
+    }
+    const dimensions = [...grouped.entries()]
+      .map(([key, value]) => {
+        const score = Math.round(value.total / value.count);
+        return {
+          key,
+          label: value.label,
+          score,
+          status: (score >= 85 ? 'good' : score >= 70 ? 'watch' : 'weak') as
+            | 'good'
+            | 'watch'
+            | 'weak',
+        };
+      })
+      .sort(
+        (left, right) =>
+          Object.keys(QUALITY_DIMENSION_LABELS).indexOf(left.key) -
+          Object.keys(QUALITY_DIMENSION_LABELS).indexOf(right.key),
+      );
+    if (dimensions.length === 0) {
+      return { averageScore: 0, summary: '还没有质量报告。', dimensions: [] };
+    }
+    const averageScore = Math.round(
+      dimensions.reduce((total, dimension) => total + dimension.score, 0) / dimensions.length,
+    );
+    const lowest = [...dimensions].sort((left, right) => left.score - right.score)[0];
+    return {
+      averageScore,
+      summary:
+        lowest && lowest.score < 85
+          ? `${lowest.label} ${lowest.score} 分，是这一批最需要留意的维度。`
+          : '六项质量检查整体稳定。',
+      dimensions,
+    };
+  }
+
+  private buildForeshadowSummary(
+    rows: Array<{
+      title: string;
+      importance: 'must' | 'optional';
+      plannedPayoffChapter: number | null;
+    }>,
+    lastCompletedChapter: number,
+  ): BatchForeshadowSummary {
+    return {
+      totalOpen: rows.length,
+      items: rows.map((row) => ({
+        title: row.title,
+        importance: row.importance,
+        plannedPayoffChapter: row.plannedPayoffChapter,
+        overdue:
+          row.plannedPayoffChapter !== null &&
+          lastCompletedChapter > 0 &&
+          row.plannedPayoffChapter < lastCompletedChapter,
+      })),
+    };
+  }
+
+  private buildNextActions(input: {
+    waitingReview: number;
+    failed: number;
+    openIssues: number;
+    foreshadows: BatchForeshadowSummary;
+  }): string[] {
+    const actions: string[] = [];
+    if (input.failed > 0) {
+      actions.push(`有 ${input.failed} 章失败，确认模型 Key 和错误后从失败步骤重试。`);
+    }
+    if (input.openIssues > 0) {
+      actions.push(`连续性检查还有 ${input.openIssues} 个待处理问题，逐章确认或记录忽略原因。`);
+    }
+    if (input.waitingReview > 0) {
+      actions.push(`还有 ${input.waitingReview} 章等待确认，高风险章节必须逐章审核。`);
+    }
+    const overdue = input.foreshadows.items.filter((item) => item.overdue);
+    if (overdue.length > 0) {
+      actions.push(`有 ${overdue.length} 个伏笔已超过计划回收章节，先安排回收或调整计划。`);
+    } else if (input.foreshadows.totalOpen > 0) {
+      actions.push(`还有 ${input.foreshadows.totalOpen} 个伏笔未回收，写作时保持提醒。`);
+    }
+    if (actions.length === 0) {
+      actions.push('本批没有阻塞项，可以检查任务报告后继续下一卷。');
+    }
+    return actions;
+  }
+
   private async saveGeneratedVersion(
     job: JobRow,
     item: JobChapterRow,
     status: 'writing' | 'locked',
-  ) {
+  ): Promise<{ id: string; wordCount: number }> {
     const [draft] = item.draftId
       ? await this.database.db.select().from(drafts).where(eq(drafts.id, item.draftId)).limit(1)
       : [];
@@ -791,6 +1313,7 @@ export class BatchJobsService {
       return created;
     });
     await this.versions.recordChapterVersion(job.userId, job.workId, item.branchId, created.id);
+    return created;
   }
 
   private async ignoreChapterIssues(job: JobRow, item: JobChapterRow, reason: string) {
@@ -866,6 +1389,25 @@ export class BatchJobsService {
               ),
             )
         : [];
+    const qualityRows =
+      chapterIds.length > 0
+        ? await this.database.db
+            .select()
+            .from(qualityReports)
+            .where(inArray(qualityReports.chapterId, chapterIds))
+        : [];
+    const foreshadowRows = await this.database.db
+      .select()
+      .from(foreshadows)
+      .where(
+        and(
+          eq(foreshadows.workId, job.workId),
+          eq(foreshadows.branchId, job.branchId),
+          eq(foreshadows.status, 'planted'),
+        ),
+      )
+      .orderBy(asc(foreshadows.importance), asc(foreshadows.plannedPayoffChapter))
+      .limit(20);
     const completedChapterNumbers = items
       .filter((item) => item.status === 'completed')
       .map((item) => item.chapterNumber);
@@ -891,6 +1433,17 @@ export class BatchJobsService {
       issueRows.length === 0
         ? '连续性检查没有发现需要处理的问题。'
         : `共发现 ${issueRows.length} 个连续性问题，其中 ${openIssueCount} 个待处理，${ignoredIssueCount} 个已忽略。`;
+    const quality = this.buildQualitySummary(qualityRows);
+    const lastCompletedChapter = completedChapterNumbers.length
+      ? Math.max(...completedChapterNumbers)
+      : 0;
+    const foreshadow = this.buildForeshadowSummary(foreshadowRows, lastCompletedChapter);
+    const nextActions = this.buildNextActions({
+      waitingReview: waitingReviewChapterNumbers.length,
+      failed: failedChapters.length,
+      openIssues: openIssueCount,
+      foreshadows: foreshadow,
+    });
     const report: BatchJobReport = {
       jobId: job.id,
       generatedAt: new Date().toISOString(),
@@ -910,6 +1463,9 @@ export class BatchJobsService {
         chaptersWithIssues,
         summary,
       },
+      quality,
+      foreshadows: foreshadow,
+      nextActions,
     };
     const now = new Date();
     await this.database.db
@@ -995,5 +1551,11 @@ export class BatchJobsService {
       detail: '批量生成任务状态已更新',
       metadata: { workId, branchId, jobId },
     });
+  }
+
+  private record(value: unknown): Record<string, unknown> {
+    return value && typeof value === 'object' && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
   }
 }

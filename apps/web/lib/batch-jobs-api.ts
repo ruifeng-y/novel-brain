@@ -13,7 +13,15 @@ export type BatchJobStatus =
 export type BatchChapterStatus =
   'pending' | 'running' | 'waiting_review' | 'completed' | 'failed' | 'canceled';
 
-export type BatchReviewStatus = 'pending' | 'approved' | 'sent_to_desk' | 'rejected' | 'ignored';
+export type BatchReviewStatus =
+  | 'pending'
+  | 'approved'
+  | 'sent_to_desk'
+  | 'sent_to_parallel'
+  | 'rejected'
+  | 'ignored';
+
+export type BatchApprovalMode = 'chapter' | 'volume' | 'auto';
 
 export type BatchScope =
   | { type: 'chapter'; chapterNumber: number }
@@ -75,6 +83,11 @@ export type BatchJobDetail = BatchJobSummary & {
 export type ReviewQueueItem = BatchJobItem & {
   jobStatus: BatchJobStatus;
   jobStatusLabel: string;
+  volumeTitle: string | null;
+  isVolumeEnd: boolean;
+  riskLevel: 'low' | 'medium' | 'high';
+  riskLabel: string;
+  riskReasons: string[];
   draftPreview: string;
   quality: {
     summary: string;
@@ -114,12 +127,33 @@ export type BatchJobReport = {
     chaptersWithIssues: number;
     summary: string;
   };
+  quality: {
+    averageScore: number;
+    summary: string;
+    dimensions: Array<{
+      key: string;
+      label: string;
+      score: number;
+      status: 'good' | 'watch' | 'weak';
+    }>;
+  };
+  foreshadows: {
+    totalOpen: number;
+    items: Array<{
+      title: string;
+      importance: 'must' | 'optional';
+      plannedPayoffChapter: number | null;
+      overdue: boolean;
+    }>;
+  };
+  nextActions: string[];
 };
 
 export type CreateBatchJobInput = {
   scope: BatchScope;
   settings: {
     qualityTier: 'fast' | 'standard' | 'premium';
+    approvalMode: BatchApprovalMode;
     targetMinCharacters: number;
     targetMaxCharacters: number;
   };
@@ -128,8 +162,19 @@ export type CreateBatchJobInput = {
 export type BatchReviewDecision =
   | { action: 'approve' }
   | { action: 'send_to_desk' }
+  | { action: 'send_to_parallel' }
   | { action: 'reject' }
   | { action: 'ignore'; reason: string };
+
+export type BatchJobEstimate = {
+  chapterNumbers: number[];
+  chapterCount: number;
+  estimatedPromptTokens: number;
+  estimatedCompletionTokens: number;
+  estimatedTotalTokens: number;
+  estimatedCost: number;
+  estimatedMinutes: number;
+};
 
 function jobsPath(workId: string, branchId: string): string {
   return `/api/v1/works/${encodeURIComponent(workId)}/branches/${encodeURIComponent(branchId)}`;
@@ -177,6 +222,17 @@ export function createBatchJob(
   input: CreateBatchJobInput,
 ): Promise<BatchJobDetail> {
   return apiRequest<BatchJobDetail>(`${jobsPath(workId, branchId)}/jobs`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export function estimateBatchJob(
+  workId: string,
+  branchId: string,
+  input: CreateBatchJobInput,
+): Promise<BatchJobEstimate> {
+  return apiRequest<BatchJobEstimate>(`${jobsPath(workId, branchId)}/jobs/estimate`, {
     method: 'POST',
     body: JSON.stringify(input),
   });
