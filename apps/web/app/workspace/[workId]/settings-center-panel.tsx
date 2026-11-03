@@ -19,6 +19,7 @@ import {
   createRelation,
   loadEntity,
   searchEntities,
+  updateCustomField as updateCustomFieldDefinition,
   updateEntity,
   type CustomFieldDefinition,
   type CustomFieldType,
@@ -45,6 +46,10 @@ type FieldDraft = {
   label: string;
   type: CustomFieldType;
   options: string;
+  applicableTypes: EntityType[];
+  required: boolean;
+  relationTargetType: EntityType | '';
+  enabled: boolean;
 };
 
 const ENTITY_TYPES = Object.entries(ENTITY_TYPE_LABELS) as Array<[EntityType, string]>;
@@ -143,6 +148,7 @@ export function SettingsCenterPanel({
   initialRelations,
   initialType,
   fieldsInitiallyOpen = false,
+  onCustomFieldsChange,
   title = '设定中心',
 }: {
   workId: string;
@@ -153,6 +159,7 @@ export function SettingsCenterPanel({
   initialRelations: Relation[];
   initialType?: EntityType;
   fieldsInitiallyOpen?: boolean;
+  onCustomFieldsChange?: (fields: CustomFieldDefinition[]) => void;
   title?: string;
 }) {
   const genreDefinition = getGenrePackDefinition(genrePack);
@@ -186,7 +193,12 @@ export function SettingsCenterPanel({
     label: '',
     type: 'text',
     options: '',
+    applicableTypes: [],
+    required: false,
+    relationTargetType: '',
+    enabled: true,
   });
+  const [editingFieldId, setEditingFieldId] = useState<string | null>(null);
   const [fieldState, setFieldState] = useState<SaveState>({ status: 'idle' });
   const [relationState, setRelationState] = useState<SaveState>({ status: 'idle' });
   const [relationFrom, setRelationFrom] = useState(selectedId ?? '');
@@ -361,16 +373,97 @@ export function SettingsCenterPanel({
     event.preventDefault();
     setFieldState({ status: 'saving' });
     try {
-      const created = await createCustomField(workId, branchId, {
-        label: fieldDraft.label,
-        type: fieldDraft.type,
-        ...(fieldDraft.type === 'single_select' || fieldDraft.type === 'multi_select'
-          ? { options: splitValues(fieldDraft.options) }
-          : {}),
+      const options = splitValues(fieldDraft.options);
+      if (editingFieldId) {
+        const updated = await updateCustomFieldDefinition(workId, branchId, editingFieldId, {
+          label: fieldDraft.label,
+          ...(fieldDraft.type === 'single_select' || fieldDraft.type === 'multi_select'
+            ? { options }
+            : {}),
+          applicableTypes: fieldDraft.applicableTypes,
+          required: fieldDraft.required,
+          relationTargetType:
+            fieldDraft.type === 'relation_ref' ? fieldDraft.relationTargetType || null : null,
+          enabled: fieldDraft.enabled,
+        });
+        setCustomFields((current) =>
+          current.map((field) => (field.id === updated.id ? updated : field)),
+        );
+        onCustomFieldsChange?.(
+          customFields.map((field) => (field.id === updated.id ? updated : field)),
+        );
+        setEditingFieldId(null);
+        resetFieldDraft();
+        setFieldState({ status: 'saved', message: '字段已更新' });
+      } else {
+        const created = await createCustomField(workId, branchId, {
+          label: fieldDraft.label,
+          type: fieldDraft.type,
+          ...(fieldDraft.type === 'single_select' || fieldDraft.type === 'multi_select'
+            ? { options }
+            : {}),
+          applicableTypes: fieldDraft.applicableTypes,
+          required: fieldDraft.required,
+          relationTargetType:
+            fieldDraft.type === 'relation_ref' ? fieldDraft.relationTargetType || null : null,
+          enabled: fieldDraft.enabled,
+        });
+        setCustomFields((current) => [...current, created]);
+        onCustomFieldsChange?.([...customFields, created]);
+        resetFieldDraft();
+        setFieldState({ status: 'saved', message: '字段已添加' });
+      }
+    } catch (error) {
+      setFieldState({ status: 'error', message: settingsError(error) });
+    }
+  }
+
+  function resetFieldDraft() {
+    setFieldDraft({
+      label: '',
+      type: 'text',
+      options: '',
+      applicableTypes: [],
+      required: false,
+      relationTargetType: '',
+      enabled: true,
+    });
+  }
+
+  function onEditField(field: CustomFieldDefinition) {
+    setEditingFieldId(field.id);
+    setFieldDraft({
+      label: field.label,
+      type: field.type,
+      options: field.options.join('，'),
+      applicableTypes: field.applicableTypes,
+      required: field.required,
+      relationTargetType: field.relationTargetType ?? '',
+      enabled: field.enabled,
+    });
+    setFieldState({ status: 'idle' });
+  }
+
+  async function onToggleField(field: CustomFieldDefinition) {
+    setFieldState({ status: 'saving' });
+    try {
+      const updated = await updateCustomFieldDefinition(workId, branchId, field.id, {
+        enabled: !field.enabled,
       });
-      setCustomFields((current) => [...current, created]);
-      setFieldDraft({ label: '', type: 'text', options: '' });
-      setFieldState({ status: 'saved', message: '字段已添加' });
+      setCustomFields((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      onCustomFieldsChange?.(
+        customFields.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      if (editingFieldId === field.id) {
+        setEditingFieldId(null);
+        resetFieldDraft();
+      }
+      setFieldState({
+        status: 'saved',
+        message: updated.enabled ? '字段已启用' : '字段已停用，已有数据保留',
+      });
     } catch (error) {
       setFieldState({ status: 'error', message: settingsError(error) });
     }
@@ -413,6 +506,11 @@ export function SettingsCenterPanel({
     : null;
   const draftSubtypes = genreSubtypes.filter((subtype) => subtype.entityType === draft.type);
   const templateFields = getGenreFieldDefinitions(genrePack, draft.subtype);
+  const applicableCustomFields = customFields.filter(
+    (field) =>
+      field.enabled &&
+      (field.applicableTypes.length === 0 || field.applicableTypes.includes(draft.type)),
+  );
 
   return (
     <section className="settings-center-board" aria-labelledby="settings-center-title">
@@ -600,10 +698,44 @@ export function SettingsCenterPanel({
               {customFields.length > 0 ? (
                 <ul className="settings-field-list">
                   {customFields.map((field) => (
-                    <li key={field.id}>
-                      <strong>{field.label}</strong>
-                      <span>{field.typeLabel}</span>
-                      {field.options.length > 0 ? <small>{field.options.join('、')}</small> : null}
+                    <li className={field.enabled ? '' : 'disabled'} key={field.id}>
+                      <div className="settings-field-copy">
+                        <strong>
+                          {field.label}
+                          {field.required ? <em>必填</em> : null}
+                        </strong>
+                        <span>
+                          {field.typeLabel} ·{' '}
+                          {field.applicableTypes.length > 0
+                            ? field.applicableTypes
+                                .map((type) => ENTITY_TYPE_LABELS[type] ?? type)
+                                .join('、')
+                            : '全部对象'}
+                          {field.relationTargetType
+                            ? ` · 指向${ENTITY_TYPE_LABELS[field.relationTargetType] ?? field.relationTargetType}`
+                            : ''}
+                        </span>
+                        {field.options.length > 0 ? (
+                          <small>{field.options.join('、')}</small>
+                        ) : null}
+                        <small>{field.enabled ? '启用中' : '已停用，已有数据保留'}</small>
+                      </div>
+                      <div className="settings-field-actions">
+                        <button
+                          className="text-button"
+                          onClick={() => onEditField(field)}
+                          type="button"
+                        >
+                          编辑
+                        </button>
+                        <button
+                          className="text-button"
+                          onClick={() => void onToggleField(field)}
+                          type="button"
+                        >
+                          {field.enabled ? '停用' : '启用'}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -611,6 +743,9 @@ export function SettingsCenterPanel({
                 <p className="settings-list-empty">还没有自定义字段。</p>
               )}
               <form className="settings-field-form" onSubmit={onAddField}>
+                <p className="settings-field-form-title">
+                  {editingFieldId ? '编辑字段' : '新增字段'}
+                </p>
                 <label className="field">
                   <span>字段名称</span>
                   <input
@@ -628,6 +763,7 @@ export function SettingsCenterPanel({
                   <span>字段类型</span>
                   <select
                     aria-label="字段类型"
+                    disabled={Boolean(editingFieldId)}
                     onChange={(event) => {
                       const type = event.currentTarget.value as CustomFieldType;
                       setFieldDraft((current) => ({
@@ -662,13 +798,106 @@ export function SettingsCenterPanel({
                     />
                   </label>
                 ) : null}
+                <fieldset className="settings-field-applicable">
+                  <legend>适用对象</legend>
+                  {ENTITY_TYPES.map(([value, label]) => (
+                    <label key={value}>
+                      <input
+                        checked={fieldDraft.applicableTypes.includes(value)}
+                        onChange={(event) => {
+                          const checked = event.currentTarget.checked;
+                          setFieldDraft((current) => ({
+                            ...current,
+                            applicableTypes: checked
+                              ? [...current.applicableTypes, value]
+                              : current.applicableTypes.filter((type) => type !== value),
+                          }));
+                        }}
+                        type="checkbox"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                  <small>不选表示全部对象。</small>
+                </fieldset>
+                {fieldDraft.type === 'relation_ref' ? (
+                  <label className="field">
+                    <span>关系目标</span>
+                    <select
+                      aria-label="关系目标"
+                      onChange={(event) =>
+                        setFieldDraft((current) => ({
+                          ...current,
+                          relationTargetType: event.currentTarget.value as EntityType | '',
+                        }))
+                      }
+                      value={fieldDraft.relationTargetType}
+                    >
+                      <option value="">任意对象</option>
+                      {ENTITY_TYPES.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <div className="settings-field-flags">
+                  <label>
+                    <input
+                      checked={fieldDraft.required}
+                      onChange={(event) => {
+                        const required = event.currentTarget.checked;
+                        setFieldDraft((current) => ({
+                          ...current,
+                          required,
+                        }));
+                      }}
+                      type="checkbox"
+                    />
+                    <span>必填</span>
+                  </label>
+                  <label>
+                    <input
+                      checked={fieldDraft.enabled}
+                      onChange={(event) => {
+                        const enabled = event.currentTarget.checked;
+                        setFieldDraft((current) => ({
+                          ...current,
+                          enabled,
+                        }));
+                      }}
+                      type="checkbox"
+                    />
+                    <span>启用</span>
+                  </label>
+                </div>
+                <div className="settings-field-form-actions">
+                  {editingFieldId ? (
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        setEditingFieldId(null);
+                        resetFieldDraft();
+                        setFieldState({ status: 'idle' });
+                      }}
+                      type="button"
+                    >
+                      取消编辑
+                    </button>
+                  ) : null}
                 <button
                   className="secondary-button"
                   disabled={fieldState.status === 'saving'}
                   type="submit"
                 >
-                  {fieldState.status === 'saving' ? '正在添加…' : '添加字段'}
+                  {fieldState.status === 'saving'
+                    ? '正在保存…'
+                    : editingFieldId
+                      ? '保存字段'
+                      : '添加字段'}
                 </button>
+                </div>
                 {fieldState.status === 'error' ? (
                   <p className="form-message form-message-error" role="alert">
                     {fieldState.message}
@@ -833,11 +1062,11 @@ export function SettingsCenterPanel({
               </fieldset>
             ) : null}
 
-            {customFields.length > 0 ? (
+            {applicableCustomFields.length > 0 ? (
               <fieldset className="settings-custom-fields">
                 <legend>项目字段</legend>
                 <div className="settings-form-grid">
-                  {customFields.map((field) => (
+                  {applicableCustomFields.map((field) => (
                     <CustomFieldControl
                       entities={catalog}
                       field={field}
@@ -848,6 +1077,31 @@ export function SettingsCenterPanel({
                   ))}
                 </div>
               </fieldset>
+            ) : null}
+
+            {customFields.some((field) => draft.customFields[field.key] !== undefined) ? (
+              <section className="settings-entity-values">
+                <h4>自定义字段值</h4>
+                <dl>
+                  {customFields
+                    .filter((field) => draft.customFields[field.key] !== undefined)
+                    .map((field) => (
+                      <div key={field.id}>
+                        <dt>
+                          {field.label}
+                          {field.enabled ? null : <small>已停用</small>}
+                        </dt>
+                        <dd>
+                          {formatCustomFieldValue(
+                            field,
+                            draft.customFields[field.key],
+                            catalog,
+                          )}
+                        </dd>
+                      </div>
+                    ))}
+                </dl>
+              </section>
             ) : null}
 
             {saveState.status === 'error' ? (
@@ -1075,18 +1329,40 @@ function CustomFieldControl({
   onChange,
 }: {
   field: Pick<CustomFieldDefinition, 'key' | 'label' | 'type'> &
-    Partial<Pick<GenrePackFieldDefinition, 'options'>>;
+    Partial<
+      Pick<
+        CustomFieldDefinition,
+        'options' | 'required' | 'relationTargetType'
+      > &
+        Pick<GenrePackFieldDefinition, 'options'>
+    >;
   value: CustomFieldValue | undefined;
   entities: Entity[];
   onChange: (value: CustomFieldValue) => void;
 }) {
-  if (field.type === 'text') {
+  if (field.type === 'text' || field.type === 'long_text') {
+    if (field.type === 'long_text') {
+      return (
+        <label className="field">
+          <span>{field.label}</span>
+          <textarea
+            aria-label={field.label}
+            maxLength={30_000}
+            onChange={(event) => onChange(event.currentTarget.value)}
+            required={field.required}
+            rows={5}
+            value={typeof value === 'string' ? value : ''}
+          />
+        </label>
+      );
+    }
     return (
       <label className="field">
         <span>{field.label}</span>
         <input
           aria-label={field.label}
           onChange={(event) => onChange(event.currentTarget.value)}
+          required={field.required}
           value={typeof value === 'string' ? value : ''}
         />
       </label>
@@ -1101,6 +1377,7 @@ function CustomFieldControl({
           onChange={(event) =>
             onChange(event.currentTarget.value === '' ? null : Number(event.currentTarget.value))
           }
+          required={field.required}
           type="number"
           value={typeof value === 'number' ? value : ''}
         />
@@ -1114,6 +1391,7 @@ function CustomFieldControl({
         <input
           aria-label={field.label}
           onChange={(event) => onChange(event.currentTarget.value || null)}
+          required={field.required}
           type="date"
           value={typeof value === 'string' ? value : ''}
         />
@@ -1127,6 +1405,7 @@ function CustomFieldControl({
         <select
           aria-label={field.label}
           onChange={(event) => onChange(event.currentTarget.value || null)}
+          required={field.required}
           value={typeof value === 'string' ? value : ''}
         >
           <option value="">暂不选择</option>
@@ -1185,7 +1464,12 @@ function CustomFieldControl({
         value={typeof value === 'string' ? value : ''}
       >
         <option value="">暂不选择</option>
-        {entities.map((entity) => (
+        {entities
+          .filter(
+            (entity) =>
+              !field.relationTargetType || entity.type === field.relationTargetType,
+          )
+          .map((entity) => (
           <option key={entity.id} value={entity.id}>
             {entity.name} · {entity.typeLabel}
           </option>
@@ -1193,4 +1477,24 @@ function CustomFieldControl({
       </select>
     </label>
   );
+}
+
+function formatCustomFieldValue(
+  field: CustomFieldDefinition,
+  value: CustomFieldValue | undefined,
+  entities: Entity[],
+): string {
+  if (value === null || value === undefined || value === '') {
+    return '未填写';
+  }
+  if (typeof value === 'boolean') {
+    return value ? '是' : '否';
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join('、') : '未填写';
+  }
+  if (field.type === 'relation_ref' && typeof value === 'string') {
+    return entities.find((entity) => entity.id === value)?.name ?? '引用已失效';
+  }
+  return String(value);
 }

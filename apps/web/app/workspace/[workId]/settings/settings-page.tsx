@@ -183,6 +183,11 @@ export function SettingsPage({ workId }: { workId: string }) {
             initialRelations={relations}
             initialType={activeSection.type}
             key={tab}
+            onCustomFieldsChange={(fields) =>
+              setState((current) =>
+                current.status === 'ready' ? { ...current, customFields: fields } : current,
+              )
+            }
             title={tab === 'custom' ? '自定义字段' : '设定档案'}
             workId={work.id}
           />

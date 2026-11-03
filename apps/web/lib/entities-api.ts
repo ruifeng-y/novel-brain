@@ -12,7 +12,14 @@ export type EntityScope = keyof typeof ENTITY_SCOPE_LABELS;
 export type EntityStatus = keyof typeof ENTITY_STATUS_LABELS;
 export type RelationPredicate = keyof typeof RELATION_PREDICATE_LABELS;
 export type CustomFieldType =
-  'text' | 'number' | 'date' | 'single_select' | 'multi_select' | 'boolean' | 'relation_ref';
+  | 'text'
+  | 'long_text'
+  | 'number'
+  | 'date'
+  | 'single_select'
+  | 'multi_select'
+  | 'boolean'
+  | 'relation_ref';
 
 export type CustomFieldDefinition = {
   id: string;
@@ -21,6 +28,10 @@ export type CustomFieldDefinition = {
   type: CustomFieldType;
   typeLabel: string;
   options: string[];
+  applicableTypes: EntityType[];
+  required: boolean;
+  relationTargetType: EntityType | null;
+  enabled: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -210,12 +221,42 @@ export function updateEntity(
 export function createCustomField(
   workId: string,
   branchId: string,
-  input: { label: string; type: CustomFieldType; options?: string[] },
+  input: {
+    label: string;
+    type: CustomFieldType;
+    options?: string[];
+    applicableTypes?: EntityType[];
+    required?: boolean;
+    relationTargetType?: EntityType | null;
+    enabled?: boolean;
+  },
 ): Promise<CustomFieldDefinition> {
   return apiRequest<CustomFieldDefinition>(`${entityCenterPath(workId, branchId)}/custom-fields`, {
     method: 'POST',
     body: JSON.stringify(input),
   });
+}
+
+export function updateCustomField(
+  workId: string,
+  branchId: string,
+  fieldId: string,
+  input: {
+    label?: string;
+    options?: string[];
+    applicableTypes?: EntityType[];
+    required?: boolean;
+    relationTargetType?: EntityType | null;
+    enabled?: boolean;
+  },
+): Promise<CustomFieldDefinition> {
+  return apiRequest<CustomFieldDefinition>(
+    `${entityCenterPath(workId, branchId)}/custom-fields/${encodeURIComponent(fieldId)}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    },
+  );
 }
 
 export function createRelation(

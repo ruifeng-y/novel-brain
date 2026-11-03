@@ -14,6 +14,7 @@ import {
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   customFieldDefinitionInputSchema,
+  customFieldDefinitionUpdateSchema,
   entityCreateSchema,
   entitySearchSchema,
   entityUpdateSchema,
@@ -155,6 +156,24 @@ export class EntitiesController {
     );
   }
 
+  @Patch('custom-fields/:fieldId')
+  @ApiOperation({ summary: 'Edit or disable a custom settings field' })
+  updateCustomField(
+    @Param('workId') workId: string,
+    @Param('branchId') branchId: string,
+    @Param('fieldId') fieldId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.entitiesService.updateCustomField(
+      this.requireUserId(request),
+      this.parseId(workId),
+      this.parseId(branchId),
+      this.parseFieldId(fieldId),
+      this.parseBody(customFieldDefinitionUpdateSchema, body, 'Complete the custom field details'),
+    );
+  }
+
   @Get('relations')
   @ApiOperation({ summary: 'List typed settings relations for a work branch' })
   listRelations(
@@ -218,6 +237,14 @@ export class EntitiesController {
     const parsed = workIdSchema.safeParse(value);
     if (!parsed.success) {
       throw entitiesError(HttpStatus.NOT_FOUND, 'ENTITY_NOT_FOUND', 'Setting not found');
+    }
+    return parsed.data;
+  }
+
+  private parseFieldId(value: string): string {
+    const parsed = workIdSchema.safeParse(value);
+    if (!parsed.success) {
+      throw entitiesError(HttpStatus.NOT_FOUND, 'CUSTOM_FIELD_NOT_FOUND', 'Custom field not found');
     }
     return parsed.data;
   }

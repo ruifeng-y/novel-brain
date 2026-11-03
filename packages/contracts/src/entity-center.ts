@@ -41,6 +41,7 @@ export const entityStatusSchema = z.enum(['draft', 'proposal', 'locked', 'archiv
 
 export const CUSTOM_FIELD_TYPE_LABELS = {
   text: '文本',
+  long_text: '长文本',
   number: '数字',
   date: '日期',
   single_select: '单选',
@@ -51,6 +52,7 @@ export const CUSTOM_FIELD_TYPE_LABELS = {
 
 export const customFieldTypeSchema = z.enum([
   'text',
+  'long_text',
   'number',
   'date',
   'single_select',
@@ -107,6 +109,10 @@ export const customFieldDefinitionInputSchema = z
     label: z.string().trim().min(1).max(60),
     type: customFieldTypeSchema,
     options: uniqueOptionsSchema.optional(),
+    applicableTypes: z.array(entityTypeSchema).max(7).default([]),
+    required: z.boolean().default(false),
+    relationTargetType: entityTypeSchema.nullish(),
+    enabled: z.boolean().default(true),
   })
   .superRefine((value, context) => {
     if (
@@ -122,6 +128,27 @@ export const customFieldDefinitionInputSchema = z
   });
 
 export type CustomFieldDefinitionInput = z.infer<typeof customFieldDefinitionInputSchema>;
+
+export const customFieldDefinitionUpdateSchema = z
+  .object({
+    label: z.string().trim().min(1).max(60).optional(),
+    options: uniqueOptionsSchema.optional(),
+    applicableTypes: z.array(entityTypeSchema).max(7).optional(),
+    required: z.boolean().optional(),
+    relationTargetType: entityTypeSchema.nullish(),
+    enabled: z.boolean().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.options !== undefined && value.options.length === 0) {
+      context.addIssue({
+        code: 'custom',
+        path: ['options'],
+        message: 'Field options cannot be empty when provided',
+      });
+    }
+  });
+
+export type CustomFieldDefinitionUpdate = z.infer<typeof customFieldDefinitionUpdateSchema>;
 
 const entityFieldsSchema = z.object({
   name: z.string().trim().min(1).max(200),

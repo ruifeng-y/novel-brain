@@ -156,6 +156,7 @@ describe('entity center API', () => {
 
     const fieldInputs = [
       { label: '旧伤备注', type: 'text' },
+      { label: '背景长文', type: 'long_text' },
       { label: '年龄', type: 'number' },
       { label: '生辰', type: 'date' },
       { label: '境界', type: 'single_select', options: ['炼气', '筑基', '金丹'] },
@@ -183,6 +184,11 @@ describe('entity center API', () => {
         expect(body.items).toEqual(
           expect.arrayContaining([
             expect.objectContaining({ label: '旧伤备注', type: 'text', typeLabel: '文本' }),
+            expect.objectContaining({
+              label: '背景长文',
+              type: 'long_text',
+              typeLabel: '长文本',
+            }),
             expect.objectContaining({ label: '年龄', type: 'number', typeLabel: '数字' }),
             expect.objectContaining({ label: '生辰', type: 'date', typeLabel: '日期' }),
             expect.objectContaining({
@@ -236,6 +242,7 @@ describe('entity center API', () => {
       status: 'locked',
       customFields: {
         [fieldByLabel.get('旧伤备注')!.key]: '左臂有旧伤，阴雨天会疼。',
+        [fieldByLabel.get('背景长文')!.key]: '三岁那年，天门吞掉了母亲的名字。',
         [fieldByLabel.get('年龄')!.key]: 23,
         [fieldByLabel.get('生辰')!.key]: '1999-03-04',
         [fieldByLabel.get('境界')!.key]: '筑基',
@@ -825,5 +832,167 @@ describe('entity center API', () => {
       });
 
     await otherAuthor.agent.get(`${centerPath}/entities`).expect(404);
+  });
+
+  it('applies, edits, and disables custom fields without rewriting existing values', async () => {
+    const author = await createAuthor(app, passwordHash);
+    const work = await createWork(author.agent, '自定义字段');
+    const centerPath = `/api/v1/works/${work.id}/branches/${work.mainBranchId}`;
+
+    const createdField = await author.agent
+      .post(`${centerPath}/custom-fields`)
+      .send({
+        label: '称号',
+        type: 'text',
+        applicableTypes: ['character'],
+        required: true,
+      })
+      .expect(201);
+    expect(createdField.body).toMatchObject({
+      label: '称号',
+      type: 'text',
+      applicableTypes: ['character'],
+      required: true,
+      relationTargetType: null,
+      enabled: true,
+    });
+    const fieldKey = createdField.body.key as string;
+
+    const faction = await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '天门盟',
+        aliases: [],
+        type: 'faction',
+        summary: '',
+        description: '',
+        tags: [],
+        scope: 'work',
+        status: 'draft',
+      })
+      .expect(201);
+
+    await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '沈砚',
+        aliases: [],
+        type: 'character',
+        summary: '',
+        description: '',
+        tags: [],
+        scope: 'work',
+        status: 'draft',
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.code).toBe('CUSTOM_FIELD_INVALID');
+        expect(body.details.fields).toEqual(
+          expect.arrayContaining([expect.objectContaining({ field: '称号' })]),
+        );
+      });
+
+    const character = await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '沈砚',
+        aliases: [],
+        type: 'character',
+        summary: '',
+        description: '',
+        tags: [],
+        scope: 'work',
+        status: 'draft',
+        customFields: { [fieldKey]: '守碑人' },
+      })
+      .expect(201);
+
+    const relationField = await author.agent
+      .post(`${centerPath}/custom-fields`)
+      .send({
+        label: '所属势力',
+        type: 'relation_ref',
+        applicableTypes: ['character'],
+        relationTargetType: 'faction',
+      })
+      .expect(201);
+
+    await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '顾青',
+        aliases: [],
+        type: 'character',
+        summary: '',
+        description: '',
+        tags: [],
+        scope: 'work',
+        status: 'draft',
+        customFields: {
+          [fieldKey]: '天门弟子',
+          [relationField.body.key]: character.body.id,
+        },
+      })
+      .expect(400)
+      .expect(({ body }) => {
+        expect(body.details.fields).toEqual(
+          expect.arrayContaining([expect.objectContaining({ field: '所属势力' })]),
+        );
+      });
+
+    await author.agent
+      .post(`${centerPath}/entities`)
+      .send({
+        name: '顾青',
+        aliases: [],
+        type: 'character',
+        summary: '',
+        description: '',
+        tags: [],
+        scope: 'work',
+        status: 'draft',
+        customFields: {
+          [fieldKey]: '天门弟子',
+          [relationField.body.key]: faction.body.id,
+        },
+      })
+      .expect(201);
+
+    const updatedField = await author.agent
+      .patch(`${centerPath}/custom-fields/${createdField.body.id}`)
+      .send({ label: '人物称号', required: false, enabled: false })
+      .expect(200);
+    expect(updatedField.body).toMatchObject({
+      label: '人物称号',
+      required: false,
+      enabled: false,
+    });
+
+    await author.agent
+      .post(`${centerPath}/custom-fields`)
+      .send({ label: '旧伤备注', type: 'long_text', applicableTypes: ['character'] })
+      .expect(201);
+
+    const fields = await author.agent.get(`${centerPath}/custom-fields`).expect(200);
+    expect(fields.body.items).toHaveLength(3);
+    expect(fields.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ label: '人物称号', enabled: false }),
+        expect.objectContaining({ label: '旧伤备注', type: 'long_text', enabled: true }),
+        expect.objectContaining({
+          label: '所属势力',
+          type: 'relation_ref',
+          relationTargetType: 'faction',
+        }),
+      ]),
+    );
+
+    await author.agent
+      .patch(`${centerPath}/entities/${character.body.id}`)
+      .send({ summary: '停用字段不影响已有数据。' })
+      .expect(200)
+      .expect(({ body }) => {
+        expect(body.customFields[fieldKey]).toBe('守碑人');
+      });
   });
 });

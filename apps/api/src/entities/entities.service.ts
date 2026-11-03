@@ -9,6 +9,7 @@ import {
   getGenreFieldDefinitions,
   getGenreSubtypeDefinition,
   type CustomFieldDefinitionInput,
+  type CustomFieldDefinitionUpdate,
   type CustomFieldValue,
   type EntityCreateInput,
   type EntitySearchInput,
@@ -41,6 +42,10 @@ type CustomFieldResponse = {
   type: EntityCustomFieldRow['type'];
   typeLabel: string;
   options: string[];
+  applicableTypes: string[];
+  required: boolean;
+  relationTargetType: string | null;
+  enabled: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -149,6 +154,10 @@ export class EntitiesService {
         label: input.label,
         type: input.type,
         options: input.options ?? [],
+        applicableTypes: input.applicableTypes,
+        required: input.required,
+        relationTargetType: input.relationTargetType ?? null,
+        enabled: input.enabled,
         createdAt: now,
         updatedAt: now,
       })
@@ -156,6 +165,61 @@ export class EntitiesService {
 
     await this.touchWork(workId, now);
     return this.toCustomFieldResponse(created);
+  }
+
+  async updateCustomField(
+    userId: string,
+    workId: string,
+    branchId: string,
+    fieldId: string,
+    input: CustomFieldDefinitionUpdate,
+  ): Promise<CustomFieldResponse> {
+    await this.requireBranch(userId, workId, branchId);
+    const [existing] = await this.database.db
+      .select()
+      .from(entityCustomFields)
+      .where(
+        and(
+          eq(entityCustomFields.id, fieldId),
+          eq(entityCustomFields.workId, workId),
+          eq(entityCustomFields.branchId, branchId),
+        ),
+      )
+      .limit(1);
+    if (!existing) {
+      throw entitiesError(HttpStatus.NOT_FOUND, 'CUSTOM_FIELD_NOT_FOUND', 'Custom field not found');
+    }
+    const options = input.options ?? existing.options;
+    if (
+      (existing.type === 'single_select' || existing.type === 'multi_select') &&
+      options.length === 0
+    ) {
+      throw entitiesError(
+        HttpStatus.BAD_REQUEST,
+        'CUSTOM_FIELD_OPTIONS_REQUIRED',
+        'Select fields need at least one option',
+      );
+    }
+    const now = new Date();
+    const [updated] = await this.database.db
+      .update(entityCustomFields)
+      .set({
+        ...(input.label === undefined ? {} : { label: input.label }),
+        ...(input.options === undefined ? {} : { options }),
+        ...(input.applicableTypes === undefined
+          ? {}
+          : { applicableTypes: input.applicableTypes }),
+        ...(input.required === undefined ? {} : { required: input.required }),
+        ...(input.relationTargetType === undefined
+          ? {}
+          : { relationTargetType: input.relationTargetType ?? null }),
+        ...(input.enabled === undefined ? {} : { enabled: input.enabled }),
+        updatedAt: now,
+      })
+      .where(eq(entityCustomFields.id, existing.id))
+      .returning();
+    await this.touchWork(workId, now);
+    return this.toCustomFieldResponse(updated);
   }
 
   async listEntities(
@@ -233,6 +297,7 @@ export class EntitiesService {
       workId,
       branchId,
       genrePack,
+      input.type,
       subtype,
       input.customFields,
     );
@@ -287,10 +352,17 @@ export class EntitiesService {
       nextType,
       input.subtype === undefined ? existing.subtype : input.subtype,
     );
-    const customFields = await this.validateCustomFields(workId, branchId, genrePack, nextSubtype, {
-      ...existing.customFields,
-      ...(input.customFields ?? {}),
-    });
+    const customFields = await this.validateCustomFields(
+      workId,
+      branchId,
+      genrePack,
+      nextType,
+      nextSubtype,
+      {
+        ...existing.customFields,
+        ...(input.customFields ?? {}),
+      },
+    );
     const now = new Date();
 
     try {
@@ -495,6 +567,7 @@ export class EntitiesService {
     workId: string,
     branchId: string,
     genrePack: string,
+    entityType: string,
     subtype: string,
     values: Record<string, CustomFieldValue>,
   ): Promise<Record<string, EntityCustomFieldValue>> {
@@ -503,13 +576,28 @@ export class EntitiesService {
       .from(entityCustomFields)
       .where(and(eq(entityCustomFields.workId, workId), eq(entityCustomFields.branchId, branchId)));
     const packDefinitions = getGenreFieldDefinitions(genrePack, subtype);
-    const byKey = new Map<string, { label: string; type: string; options: string[] }>(
+    const byKey = new Map<
+      string,
+      {
+        label: string;
+        type: string;
+        options: string[];
+        applicableTypes: string[];
+        required: boolean;
+        relationTargetType: string | null;
+        enabled: boolean;
+      }
+    >(
       definitions.map((definition) => [
         definition.key,
         {
           label: definition.label,
           type: definition.type,
           options: definition.options,
+          applicableTypes: definition.applicableTypes,
+          required: definition.required,
+          relationTargetType: definition.relationTargetType,
+          enabled: definition.enabled,
         },
       ]),
     );
@@ -518,6 +606,10 @@ export class EntitiesService {
         label: definition.label,
         type: definition.type,
         options: definition.options ?? [],
+        applicableTypes: [],
+        required: false,
+        relationTargetType: null,
+        enabled: true,
       });
     }
     const errors: Array<{ field: string; message: string }> = [];
@@ -528,12 +620,27 @@ export class EntitiesService {
         errors.push({ field: key, message: 'Unknown custom field' });
         continue;
       }
+      if (
+        definition.applicableTypes.length > 0 &&
+        !definition.applicableTypes.includes(entityType)
+      ) {
+        errors.push({ field: definition.label, message: 'This field does not apply to this type' });
+        continue;
+      }
+      if (!definition.enabled) {
+        continue;
+      }
       if (rawValue === null) {
         continue;
       }
 
       if (definition.type === 'text' && typeof rawValue !== 'string') {
         errors.push({ field: definition.label, message: 'Enter text' });
+      } else if (
+        definition.type === 'long_text' &&
+        (typeof rawValue !== 'string' || Array.from(rawValue).length > 30_000)
+      ) {
+        errors.push({ field: definition.label, message: 'Enter up to 30,000 characters' });
       } else if (
         definition.type === 'number' &&
         (typeof rawValue !== 'number' || !Number.isFinite(rawValue))
@@ -564,7 +671,7 @@ export class EntitiesService {
           errors.push({ field: definition.label, message: 'Choose a setting' });
         } else {
           const [referenced] = await this.database.db
-            .select({ id: entities.id })
+            .select({ id: entities.id, type: entities.type })
             .from(entities)
             .where(
               and(
@@ -580,8 +687,36 @@ export class EntitiesService {
               field: definition.label,
               message: 'Choose a setting from this work and creation line',
             });
+          } else if (
+            definition.relationTargetType &&
+            referenced.type !== definition.relationTargetType
+          ) {
+            errors.push({
+              field: definition.label,
+              message: 'Choose a setting of the required type',
+            });
           }
         }
+      }
+    }
+
+    for (const [key, definition] of byKey) {
+      if (
+        !definition.enabled ||
+        !definition.required ||
+        (definition.applicableTypes.length > 0 &&
+          !definition.applicableTypes.includes(entityType))
+      ) {
+        continue;
+      }
+      const value = values[key];
+      const missing =
+        value === undefined ||
+        value === null ||
+        (typeof value === 'string' && value.trim() === '') ||
+        (Array.isArray(value) && value.length === 0);
+      if (missing) {
+        errors.push({ field: definition.label, message: 'This field is required' });
       }
     }
 
@@ -709,6 +844,10 @@ export class EntitiesService {
       typeLabel:
         CUSTOM_FIELD_TYPE_LABELS[row.type as keyof typeof CUSTOM_FIELD_TYPE_LABELS] ?? row.type,
       options: row.options,
+      applicableTypes: row.applicableTypes,
+      required: row.required,
+      relationTargetType: row.relationTargetType,
+      enabled: row.enabled,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };

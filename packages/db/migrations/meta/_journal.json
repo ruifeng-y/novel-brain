@@ -372,6 +372,13 @@
       "when": 1793700331979,
       "tag": "0052_lame_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793701223680,
+      "tag": "0053_misty_zaladane",
+      "breakpoints": true
     }
   ]
 }

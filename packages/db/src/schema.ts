@@ -713,6 +713,13 @@ export const entityCustomFields = pgTable(
       .$type<string[]>()
       .notNull()
       .default(sql`'[]'::jsonb`),
+    applicableTypes: jsonb('applicable_types')
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    required: boolean('required').notNull().default(false),
+    relationTargetType: text('relation_target_type'),
+    enabled: boolean('enabled').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
   },
