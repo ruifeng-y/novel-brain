@@ -216,6 +216,7 @@ export function StoryPlanningPanel({
                 return (
                   <article
                     className={`story-bible-card${card.summary.trim() ? ' filled' : ''}`}
+                    id={`bible-card-${card.key}`}
                     key={card.key}
                   >
                     <div className="story-bible-card-heading">
