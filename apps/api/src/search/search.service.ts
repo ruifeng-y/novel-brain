@@ -1,11 +1,20 @@
 import { HttpStatus, Injectable } from '@nestjs/common';
 import {
+  FACT_TYPE_LABELS,
   WORK_SEARCH_TYPE_LABELS,
   type WorkSearchInput,
   type WorkSearchItem,
   type WorkSearchResult,
 } from '@novel/contracts';
-import { chapterOutlines, chapters, chapterVersions, entities, workBranches, works } from '@novel/db';
+import {
+  chapterOutlines,
+  chapters,
+  chapterVersions,
+  entities,
+  facts,
+  workBranches,
+  works,
+} from '@novel/db';
 import { and, desc, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { DatabaseService } from '../database/database.service';
 import { searchError } from './search.errors';
@@ -24,7 +33,7 @@ export class SearchService {
     const pattern = `%${input.q}%`;
     const perTypeLimit = Math.min(input.limit, 20);
 
-    const [settingRows, outlineRows, chapterRows] = await Promise.all([
+    const [settingRows, outlineRows, chapterRows, factRows] = await Promise.all([
       this.database.db
         .select({
           id: entities.id,
@@ -34,6 +43,7 @@ export class SearchService {
           description: entities.description,
           tags: entities.tags,
           customFields: entities.customFields,
+          entityType: entities.type,
           updatedAt: entities.updatedAt,
         })
         .from(entities)
@@ -114,18 +124,46 @@ export class SearchService {
         )
         .orderBy(chapters.chapterNumber)
         .limit(perTypeLimit),
+      this.database.db
+        .select({
+          id: facts.id,
+          type: facts.type,
+          statement: facts.statement,
+          sourceSentence: facts.sourceSentence,
+          chapterNumber: chapters.chapterNumber,
+          updatedAt: facts.createdAt,
+        })
+        .from(facts)
+        .innerJoin(chapters, eq(chapters.id, facts.chapterId))
+        .where(
+          and(
+            eq(facts.workId, workId),
+            eq(facts.branchId, branchId),
+            or(ilike(facts.statement, pattern), ilike(facts.sourceSentence, pattern)),
+          ),
+        )
+        .orderBy(desc(facts.createdAt))
+        .limit(perTypeLimit),
     ]);
 
     const items: WorkSearchItem[] = [
       ...settingRows.map((row) =>
-        this.item('setting', row.id, row.name, this.snippet(input.q, [
+        this.item(
+          'setting',
+          row.id,
           row.name,
-          row.summary,
-          row.description,
-          row.aliases.join(' '),
-          row.tags.join(' '),
-          JSON.stringify(row.customFields),
-        ]), null, row.updatedAt),
+          this.snippet(input.q, [
+            row.name,
+            row.summary,
+            row.description,
+            row.aliases.join(' '),
+            row.tags.join(' '),
+            JSON.stringify(row.customFields),
+          ]),
+          null,
+          row.updatedAt,
+          row.entityType,
+        ),
       ),
       ...outlineRows.map((row) =>
         this.item(
@@ -161,9 +199,19 @@ export class SearchService {
           row.updatedAt,
         ),
       ),
+      ...factRows.map((row) =>
+        this.item(
+          'fact',
+          row.id,
+          `已确认设定 · ${FACT_TYPE_LABELS[row.type]}`,
+          this.snippet(input.q, [row.statement, row.sourceSentence]),
+          row.chapterNumber,
+          row.updatedAt,
+        ),
+      ),
     ];
 
-    const order = { setting: 0, outline: 1, chapter: 2 } as const;
+    const order = { setting: 0, outline: 1, chapter: 2, fact: 3 } as const;
     items.sort(
       (left, right) =>
         order[left.type] - order[right.type] ||
@@ -180,6 +228,7 @@ export class SearchService {
     snippet: string,
     chapterNumber: number | null,
     updatedAt: Date,
+    entityType?: string,
   ): WorkSearchItem {
     return {
       type,
@@ -188,6 +237,7 @@ export class SearchService {
       title,
       snippet,
       chapterNumber,
+      ...(entityType ? { entityType } : {}),
       updatedAt: updatedAt.toISOString(),
     };
   }

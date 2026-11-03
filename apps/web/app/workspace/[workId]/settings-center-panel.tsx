@@ -145,6 +145,7 @@ export function SettingsCenterPanel({
   genrePack,
   initialEntities,
   initialCustomFields,
+  initialEntityId,
   initialRelations,
   initialType,
   fieldsInitiallyOpen = false,
@@ -156,6 +157,7 @@ export function SettingsCenterPanel({
   genrePack: string;
   initialEntities: Entity[];
   initialCustomFields: CustomFieldDefinition[];
+  initialEntityId?: string;
   initialRelations: Relation[];
   initialType?: EntityType;
   fieldsInitiallyOpen?: boolean;
@@ -172,7 +174,7 @@ export function SettingsCenterPanel({
   const [customFields, setCustomFields] = useState(initialCustomFields);
   const [relations, setRelations] = useState(initialRelations);
   const [selectedId, setSelectedId] = useState<string | null>(
-    initialItems[0]?.id ?? initialEntities[0]?.id ?? null,
+    initialEntityId ?? initialItems[0]?.id ?? initialEntities[0]?.id ?? null,
   );
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [draft, setDraft] = useState<EntityInput>(() =>

@@ -5,6 +5,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ApiError, apiRequest, type User } from '../../lib/auth-api';
 import type { Work } from '../../lib/works-api';
+import { GlobalSearchPanel } from './global-search-panel';
+import { NotificationCenter } from './notification-center';
 
 type ShellUser = Pick<User, 'displayName' | 'email'>;
 type ShellWork = Pick<Work, 'id' | 'title'>;
@@ -182,6 +184,7 @@ function ShellFrame({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -284,6 +287,11 @@ function ShellFrame({
               type="button"
             >
               <NavIcon name="bell" />
+              {unreadNotifications > 0 ? (
+                <span className="app-notification-badge" aria-label={`${unreadNotifications} 条未读通知`}>
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              ) : null}
             </button>
             <button
               aria-expanded={userMenuOpen}
@@ -302,21 +310,14 @@ function ShellFrame({
         </header>
 
         {searchOpen ? (
-          <section aria-label="全局搜索" className="app-popover app-search-panel" role="dialog">
-            <label className="app-search-field">
-              <span>全局搜索</span>
-              <input autoFocus placeholder="搜索作品、设定、人物、大纲或章节" type="search" />
-            </label>
-            <p className="app-popover-empty">输入关键词开始搜索。搜索结果会在内容页接入后显示。</p>
-          </section>
+          <GlobalSearchPanel onClose={closePanels} />
         ) : null}
 
         {notificationsOpen ? (
-          <section aria-label="通知中心" className="app-popover" role="dialog">
-            <p className="app-popover-kicker">通知中心</p>
-            <h2>暂无新通知</h2>
-            <p className="app-popover-empty">任务完成、待审核和连续性问题会出现在这里。</p>
-          </section>
+          <NotificationCenter
+            onClose={closePanels}
+            onUnreadChange={setUnreadNotifications}
+          />
         ) : null}
 
         {userMenuOpen ? (
@@ -333,6 +334,9 @@ function ShellFrame({
             </Link>
             <Link href="/workspace/settings/privacy" onClick={closePanels} role="menuitem">
               隐私与数据
+            </Link>
+            <Link href="/help" onClick={closePanels} role="menuitem">
+              帮助与快捷键
             </Link>
             <button
               onClick={() => {

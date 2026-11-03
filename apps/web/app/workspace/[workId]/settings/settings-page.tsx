@@ -65,6 +65,28 @@ export function SettingsPage({ workId }: { workId: string }) {
   const router = useRouter();
   const [state, setState] = useState<SettingsState>({ status: 'loading' });
   const [tab, setTab] = useState<SettingsTab>('world');
+  const [initialEntityId, setInitialEntityId] = useState<string>();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requested = params.get('tab');
+    const tabs: SettingsTab[] = [
+      'world',
+      'character',
+      'faction',
+      'map',
+      'power',
+      'item',
+      'golden',
+      'timeline',
+      'confirmed',
+      'custom',
+    ];
+    if (requested && tabs.includes(requested as SettingsTab)) {
+      setTab(requested as SettingsTab);
+    }
+    setInitialEntityId(params.get('entity') ?? undefined);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -179,6 +201,7 @@ export function SettingsPage({ workId }: { workId: string }) {
             fieldsInitiallyOpen={tab === 'custom'}
             genrePack={work.genrePack}
             initialCustomFields={customFields}
+            initialEntityId={initialEntityId}
             initialEntities={entities}
             initialRelations={relations}
             initialType={activeSection.type}
