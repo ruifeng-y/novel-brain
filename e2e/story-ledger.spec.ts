@@ -49,7 +49,7 @@ test('an author manages plot lines, foreshadows, and a character arc', async ({ 
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
   const { workId, branchId } = await currentWorkAndBranch(page);
   const characterResponse = await page.request.post(
@@ -69,10 +69,11 @@ test('an author manages plot lines, foreshadows, and a character arc', async ({ 
   );
   expect(characterResponse.ok()).toBe(true);
 
-  await page.reload();
+  await page.goto(`/workspace/${workId}/foreshadows`);
   const ledger = page.getByRole('region', { name: '剧情线、伏笔与人物弧' });
   await expect(ledger.getByRole('heading', { name: '剧情线、伏笔与人物弧' })).toBeVisible();
   await expect(ledger.getByRole('heading', { name: '剧情体检' })).toBeVisible();
+  await ledger.getByRole('tab', { name: '剧情线', exact: true }).click();
 
   await ledger.getByRole('button', { name: '新建剧情线' }).click();
   await ledger.getByLabel('剧情线名称').fill('追查母亲失踪真相');

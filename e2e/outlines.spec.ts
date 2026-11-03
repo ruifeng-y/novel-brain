@@ -70,8 +70,8 @@ test('an author can plan, reorder, lock, regenerate, and delete outline nodes', 
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
-  const workId = page.url().split('/').pop();
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  const workId = page.url().split('/').at(-2) as string;
   const workResponse = await page.request.get(`/api/v1/works/${workId}`);
   const work = (await workResponse.json()) as { mainBranch: { id: string } };
 
@@ -88,6 +88,7 @@ test('an author can plan, reorder, lock, regenerate, and delete outline nodes', 
   expect(modelResponse.ok()).toBeTruthy();
   expect(work.mainBranch.id).toBeTruthy();
 
+  await page.goto(`/workspace/${workId}/outline`);
   const outline = page.getByRole('region', { name: '完整大纲' });
   await expect(outline.getByRole('heading', { name: '完整大纲' })).toBeVisible();
   await outline.getByRole('button', { name: '创建全书总纲' }).click();
@@ -223,8 +224,8 @@ test('an author can drag chapters and scenes into a persisted order', async ({ p
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
-  const workId = page.url().split('/').pop() as string;
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  const workId = page.url().split('/').at(-2) as string;
   const workResponse = await page.request.get(`/api/v1/works/${workId}`);
   const work = (await workResponse.json()) as { mainBranch: { id: string } };
   const branchId = work.mainBranch.id;
@@ -286,7 +287,7 @@ test('an author can drag chapters and scenes into a persisted order', async ({ p
     details: '',
   });
 
-  await page.reload();
+  await page.goto(`/workspace/${workId}/outline`);
   const outline = page.getByRole('region', { name: '完整大纲' });
   await expect(outline.getByRole('heading', { name: '完整大纲' })).toBeVisible();
 

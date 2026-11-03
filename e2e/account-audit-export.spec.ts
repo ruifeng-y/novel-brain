@@ -44,7 +44,7 @@ test('an author exports every data area and searches the account audit trail', a
   await page.getByLabel('书名').fill(`账号导出验收${Date.now()}`);
   await page.getByLabel('笔名').fill('归舟');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
   await page.goto('/workspace/settings/privacy');
   await expect(page.getByRole('heading', { name: '导出与审计' })).toBeVisible();

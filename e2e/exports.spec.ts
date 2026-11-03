@@ -98,14 +98,14 @@ test('an author previews, exports, and downloads a book in the selected platform
   await page.getByLabel('书名').fill(`导出验收${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   const { workId, branchId } = await currentWorkAndBranch(page);
   await createOutlineBook(page, workId, branchId);
   await writeChapter(page, workId, branchId, 1, '沈砚听见剑鸣。');
   await writeChapter(page, workId, branchId, 2, '城门下站着一个陌生人。');
   await writeChapter(page, workId, branchId, 3, '残剑在雨里醒来。');
 
-  await page.goto(`/workspace/${workId}`);
+  await page.goto(`/workspace/${workId}/export`);
   const panel = page.getByRole('region', { name: '导出与平台预设' });
   await expect(panel).toBeVisible();
   await expect(panel.getByLabel('导出格式').locator('option')).toHaveText([

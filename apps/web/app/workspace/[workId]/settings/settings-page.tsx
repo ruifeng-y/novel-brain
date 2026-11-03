@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { WorkShell } from '../../../_components/app-shell';
 import { ApiError, apiRequest, type User } from '../../../../lib/auth-api';
+import { HistoryRulePanel } from '../history-rule-panel';
 import {
   loadEntityCenter,
   type CustomFieldDefinition,
@@ -196,24 +197,39 @@ export function SettingsPage({ workId }: { workId: string }) {
             workId={work.id}
           />
         ) : (
-          <SettingsCenterPanel
-            branchId={work.mainBranch!.id}
-            fieldsInitiallyOpen={tab === 'custom'}
-            genrePack={work.genrePack}
-            initialCustomFields={customFields}
-            initialEntityId={initialEntityId}
-            initialEntities={entities}
-            initialRelations={relations}
-            initialType={activeSection.type}
-            key={tab}
-            onCustomFieldsChange={(fields) =>
-              setState((current) =>
-                current.status === 'ready' ? { ...current, customFields: fields } : current,
-              )
-            }
-            title={tab === 'custom' ? '自定义字段' : '设定档案'}
-            workId={work.id}
-          />
+          <>
+            <SettingsCenterPanel
+              branchId={work.mainBranch!.id}
+              fieldsInitiallyOpen={tab === 'custom'}
+              genrePack={work.genrePack}
+              initialCustomFields={customFields}
+              initialEntityId={initialEntityId}
+              initialEntities={entities}
+              initialRelations={relations}
+              initialType={activeSection.type}
+              key={tab}
+              onCustomFieldsChange={(fields) =>
+                setState((current) =>
+                  current.status === 'ready' ? { ...current, customFields: fields } : current,
+                )
+              }
+              onEntitiesChange={(nextEntities) =>
+                setState((current) =>
+                  current.status === 'ready' ? { ...current, entities: nextEntities } : current,
+                )
+              }
+              title={tab === 'custom' ? '自定义字段' : '设定档案'}
+              workId={work.id}
+            />
+            {work.genrePack === 'history' && tab === 'world' ? (
+              <HistoryRulePanel
+                branchId={work.mainBranch!.id}
+                entities={entities}
+                mapOverview={mapOverview}
+                workId={work.id}
+              />
+            ) : null}
+          </>
         )}
       </main>
     </WorkShell>

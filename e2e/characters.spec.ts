@@ -51,7 +51,8 @@ test('an author can maintain a character profile, state, and knowledge history',
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  await page.getByRole('link', { name: '设定中心', exact: true }).click();
   await expect(page.getByRole('heading', { name: '设定中心' })).toBeVisible();
 
   await page.getByRole('button', { name: '新建设定' }).click();

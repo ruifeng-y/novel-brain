@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createFirstChapterOutline, currentWorkAndBranch, useIsolatedClientIp } from './support';
+import {
+  createFirstChapterOutline,
+  currentWorkAndBranch,
+  openWorkBible,
+  useIsolatedClientIp,
+} from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -89,7 +94,7 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
   await page.getByLabel('规模').selectOption('long');
   await page.getByLabel('目标平台').selectOption('起点中文网');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
 
   await page.getByRole('link', { name: '模型设置' }).click();
@@ -107,9 +112,10 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
 
   await page.getByRole('link', { name: '作品书架' }).click();
   await page.getByRole('link', { name: `打开《${title}》` }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
 
+  await openWorkBible(page);
   await page.getByLabel('一句话故事').fill(storyBible.oneSentenceStory);
   await page.getByLabel('主角').fill(storyBible.protagonist);
   await page.getByLabel('世界铁律').fill(storyBible.worldIronLaw);
@@ -118,7 +124,7 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
 
   const work = await currentWorkAndBranch(page);
   await createFirstChapterOutline(page, work.workId, work.branchId, chapterOutline);
-  await page.reload();
+  await page.goto(`/workspace/${work.workId}/outline`);
   await expect(page.getByRole('heading', { name: '完整大纲' })).toBeVisible();
   await capture(page, '02-story-bible-and-outline.png');
 

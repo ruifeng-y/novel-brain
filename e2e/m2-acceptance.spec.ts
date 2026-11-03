@@ -193,8 +193,8 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   await page.getByLabel('规模').selectOption('long');
   await page.getByLabel('目标平台').selectOption('起点中文网');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
-  const xianxiaId = new URL(page.url()).pathname.split('/').at(-1);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  const xianxiaId = new URL(page.url()).pathname.split('/').at(-2);
   if (!xianxiaId) {
     throw new Error('The xianxia work page did not include a work id');
   }
@@ -208,13 +208,14 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   await page.getByLabel('历史方向').selectOption('transmigration_hegemony');
   await page.getByLabel('目标平台').selectOption('起点中文网');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
-  const historyId = new URL(page.url()).pathname.split('/').at(-1);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  const historyId = new URL(page.url()).pathname.split('/').at(-2);
   if (!historyId) {
     throw new Error('The history work page did not include a work id');
   }
   const history = await apiJson<WorkRecord>(page, 'GET', `/api/v1/works/${historyId}`);
   await expect(page.getByText('历史 · 穿越争霸').first()).toBeVisible();
+  await page.goto(`/workspace/${historyId}/settings`);
   await expect(page.getByRole('heading', { name: '历史规则检查' })).toBeVisible();
 
   const urban = await createWork(page, {
@@ -308,14 +309,14 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   await mkdir(SCREENSHOT_DIR, { recursive: true });
   await page.goto('/workspace');
   for (const title of [xianxiaTitle, historyTitle, urban.title]) {
-    await expect(page.getByRole('heading', { name: title })).toBeVisible();
+    await expect(page.getByRole('heading', { name: title }).first()).toBeVisible();
   }
   await page.screenshot({
     path: `${SCREENSHOT_DIR}/01-three-genre-bookshelf.png`,
     fullPage: true,
   });
 
-  await page.goto(`/workspace/${history.id}`);
+  await page.goto(`/workspace/${history.id}/settings`);
   await expect(page.getByRole('heading', { name: '历史规则检查' })).toBeVisible();
   await page.screenshot({
     path: `${SCREENSHOT_DIR}/02-history-rules.png`,
@@ -323,7 +324,7 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   });
 
   await page.goto(`/workspace/${xianxia.id}/write`);
-  await page.getByRole('link', { name: '批量生产' }).click();
+  await page.goto(`/workspace/${xianxia.id}/batch`);
   await expect(page).toHaveURL(new RegExp(`/workspace/${xianxia.id}/batch$`));
   await expect(page.getByRole('heading', { name: '把长跑拆成可管理的段落' })).toBeVisible();
   await page.getByRole('radio', { name: /逐章审批/ }).check();
@@ -401,7 +402,7 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
     'downstream',
   ]);
 
-  await page.goto(`/workspace/${xianxia.id}`);
+  await page.goto(`/workspace/${xianxia.id}/changes`);
   const changePanel = page.getByRole('region', { name: '修改请求' });
   await expect(changePanel.getByText('可以直接应用')).toBeVisible();
   await expect(changePanel.getByText('六项检查')).toBeVisible();
@@ -440,6 +441,7 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   }
 
   await page.reload();
+  await page.getByRole('button', { name: '平行版本', exact: true }).click();
   const parallelPanel = page.getByRole('region', { name: '平行版本' });
   await expect(parallelPanel).toBeVisible();
   await page.getByLabel('平行版本名称').fill('旧城回响另一版');
@@ -455,6 +457,7 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
     path: `${SCREENSHOT_DIR}/06-parallel-version.png`,
   });
 
+  await page.getByRole('button', { name: '版本与回滚', exact: true }).click();
   const versionPanel = page.getByRole('region', { name: '版本图' });
   await expect(versionPanel.getByRole('img', { name: '版本关系图' })).toBeVisible();
   const targetVersion = versionPanel

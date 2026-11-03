@@ -209,7 +209,7 @@ export function WorkspaceHome() {
         method: 'POST',
         body: JSON.stringify(workPayload(form, entryMode)),
       });
-      router.push(`/workspace/${work.id}`);
+      router.push(`/workspace/${work.id}/overview`);
     } catch (error) {
       setFormError(friendlyError(error));
       setFormBusy(false);
@@ -381,7 +381,7 @@ export function WorkspaceHome() {
                 >
                   继续写作
                 </Link>
-                <Link className="secondary-button" href={`/workspace/${currentWork.id}`}>
+                <Link className="secondary-button" href={`/workspace/${currentWork.id}/overview`}>
                   作品总览
                 </Link>
               </div>
@@ -462,7 +462,11 @@ export function WorkspaceHome() {
         {recentWorks.length > 0 ? (
           <div className="dashboard-recent-list">
             {recentWorks.map((work) => (
-              <Link className="dashboard-recent-item" href={`/workspace/${work.id}`} key={work.id}>
+              <Link
+                className="dashboard-recent-item"
+                href={`/workspace/${work.id}/overview`}
+                key={work.id}
+              >
                 <span className="dashboard-recent-mark">{work.title.slice(0, 1)}</span>
                 <span className="dashboard-recent-copy">
                   <strong>{work.title}</strong>
@@ -661,7 +665,7 @@ export function WorkspaceHome() {
                           <Link
                             aria-label={`打开《${work.title}》`}
                             className="work-card-title-link"
-                            href={`/workspace/${work.id}`}
+                            href={`/workspace/${work.id}/overview`}
                           >
                             <h3>{work.title}</h3>
                           </Link>

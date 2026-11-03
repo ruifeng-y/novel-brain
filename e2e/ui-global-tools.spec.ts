@@ -61,7 +61,7 @@ test('global search, notifications, and help work together', async ({ page }) =>
     },
   });
 
-  await page.goto(`/workspace/${workId}`);
+  await page.goto(`/workspace/${workId}/overview`);
   await page.getByRole('button', { name: '全局搜索' }).click();
   const search = page.getByRole('dialog', { name: '全局搜索' });
   await search.getByPlaceholder(/搜索作品/).fill('沈砚');
@@ -71,7 +71,7 @@ test('global search, notifications, and help work together', async ({ page }) =>
   await expect(page).toHaveURL(new RegExp(`/workspace/${workId}/settings\\?tab=character`));
   await expect(page.getByText('沈砚').first()).toBeVisible();
 
-  await page.goto(`/workspace/${workId}`);
+  await page.goto(`/workspace/${workId}/overview`);
   await page.getByRole('button', { name: '全局搜索' }).click();
   await page.getByRole('dialog', { name: '全局搜索' }).getByPlaceholder(/搜索作品/).fill('断碑');
   await expect(

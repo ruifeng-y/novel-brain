@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createFirstChapterOutline, currentWorkAndBranch, useIsolatedClientIp } from './support';
+import {
+  createFirstChapterOutline,
+  currentWorkAndBranch,
+  openWorkBible,
+  useIsolatedClientIp,
+} from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -41,12 +46,14 @@ async function registerAuthor(page: Page, email: string): Promise<void> {
 test('an author can fork a saved version, compare it, and pick one chapter back to main', async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   await registerAuthor(page, `parallel-versions-e2e-${Date.now()}@example.com`);
   await page.getByLabel('书名').fill(`平行版本${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
+  await openWorkBible(page);
   await page.getByLabel('一句话故事').fill('边城少年以残剑问仙，最终守住人间最后一道天门。');
   await page.getByLabel('主角').fill('沈砚，外冷内热的边城剑客');
   await page.getByLabel('世界铁律').fill('任何人借天门之力，都必须以一段真实记忆作为代价。');
@@ -64,13 +71,15 @@ test('an author can fork a saved version, compare it, and pick one chapter back 
   await page.getByRole('link', { name: '写作台', exact: true }).click();
   const body = page.getByLabel('章节正文');
   await body.fill('沈砚听见剑鸣。');
+  await expect(body).toHaveValue('沈砚听见剑鸣。');
   await page.getByRole('button', { name: '保存版本' }).click();
   await expect(page.getByText('版本 1 已保存')).toBeVisible();
   await body.fill('沈砚在断碑前听见了母亲的回音。');
   await page.getByRole('button', { name: '保存版本' }).click();
   await expect(page.getByText('版本 2 已保存')).toBeVisible();
 
-  await page.goto(`/workspace/${workId}`);
+  await page.goto(`/workspace/${workId}/changes`);
+  await page.getByRole('button', { name: '平行版本', exact: true }).click();
   const panel = page.getByRole('region', { name: '平行版本' });
   await expect(panel).toBeVisible();
   await page.getByLabel('平行版本名称').fill('母亲回音的另一版');

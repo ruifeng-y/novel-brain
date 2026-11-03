@@ -98,7 +98,7 @@ test('an author prepares metadata, previews as a reader, and exports publish che
   await page.getByLabel('书名').fill(`发布准备${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   const { workId, branchId } = await currentWorkAndBranch(page);
   await createPublishBook(page, workId, branchId);
   await writeChapter(page, workId, branchId, 1, '沈砚听见剑鸣。');
@@ -117,7 +117,8 @@ test('an author prepares metadata, previews as a reader, and exports publish che
   });
   expect(modelConfig.ok()).toBe(true);
 
-  await page.goto(`/workspace/${workId}`);
+  await page.goto(`/workspace/${workId}/export`);
+  await page.getByRole('button', { name: '发布准备', exact: true }).click();
   const panel = page.getByRole('region', { name: '发布准备' });
   await expect(panel).toBeVisible();
 

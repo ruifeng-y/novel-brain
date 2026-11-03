@@ -486,7 +486,7 @@ export function WorkShell({
     <ShellFrame
       crumbs={[
         { label: '我的作品', href: '/workspace' },
-        { label: state.work.title, href: `/workspace/${workId}` },
+        { label: state.work.title, href: `/workspace/${workId}/overview` },
         { label: activeLabel },
       ]}
       mode="work"

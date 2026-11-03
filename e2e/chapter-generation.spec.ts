@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createFirstChapterOutline, currentWorkAndBranch, useIsolatedClientIp } from './support';
+import {
+  createFirstChapterOutline,
+  currentWorkAndBranch,
+  openWorkBible,
+  useIsolatedClientIp,
+} from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -116,8 +121,9 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
+  await openWorkBible(page);
   await page.getByLabel('一句话故事').fill(storyBible.oneSentenceStory);
   await page.getByLabel('主角').fill(storyBible.protagonist);
   await page.getByLabel('世界铁律').fill(storyBible.worldIronLaw);
@@ -246,9 +252,10 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
-  const workId = new URL(page.url()).pathname.split('/').at(-1) as string;
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  const workId = new URL(page.url()).pathname.split('/').at(-2) as string;
 
+  await openWorkBible(page);
   await page.getByLabel('一句话故事').fill('边城少年以残剑问仙，最终守住人间最后一道天门。');
   await page.getByLabel('主角').fill('沈砚，外冷内热的边城剑客');
   await page.getByLabel('世界铁律').fill('任何人借天门之力，都必须以一段真实记忆作为代价。');

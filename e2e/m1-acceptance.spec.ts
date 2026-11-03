@@ -336,9 +336,9 @@ test('M1 acceptance: one xianxia work reaches an internally serializable state',
   await page.getByLabel('规模').selectOption('long');
   await page.getByLabel('目标平台').selectOption('起点中文网');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
-  const workId = new URL(page.url()).pathname.split('/').at(-1);
+  const workId = new URL(page.url()).pathname.split('/').at(-2);
   if (!workId) {
     throw new Error('The new work page did not include a work id');
   }
@@ -767,7 +767,7 @@ test('M1 acceptance: one xianxia work reaches an internally serializable state',
   expect(map.factionControls).toHaveLength(1);
   expect(map.presences).toHaveLength(1);
 
-  await page.reload();
+  await page.goto(`/workspace/${workId}/bible`);
   await expect(page.getByRole('heading', { name: '故事圣经' })).toBeVisible();
   await expect(page.getByText('九张卡片都已填写，可以锁定。')).toBeVisible();
   await expect(page.getByText('这本故事圣经已经锁定')).toBeVisible();
@@ -776,6 +776,7 @@ test('M1 acceptance: one xianxia work reaches an internally serializable state',
     path: `${SCREENSHOT_DIR}/01-story-bible-locked.png`,
   });
 
+  await page.goto(`/workspace/${workId}/outline`);
   const outlineSection = page.getByRole('region', { name: '完整大纲' });
   await expect(outlineSection.getByText('第一章 断碑')).toBeVisible();
   await expect(outlineSection.getByText('第二章 旧名')).toBeVisible();
@@ -788,14 +789,14 @@ test('M1 acceptance: one xianxia work reaches an internally serializable state',
     path: `${SCREENSHOT_DIR}/03-generation-readiness.png`,
   });
 
-  const settingsBoard = page.getByRole('region', { name: '设定中心' });
-  await expect(settingsBoard.getByRole('button', { name: /玄天宗/ }).first()).toBeVisible();
-  await settingsBoard.screenshot({
+  await page.goto(`/workspace/${workId}/settings?tab=faction`);
+  await expect(page.getByRole('button', { name: /玄天宗/ }).first()).toBeVisible();
+  await page.screenshot({
     path: `${SCREENSHOT_DIR}/04-settings-center.png`,
   });
-  const mapBoard = page.getByRole('region', { name: '地图与势力' });
-  await expect(mapBoard.getByRole('button', { name: /荒寺/ }).first()).toBeVisible();
-  await mapBoard.screenshot({
+  await page.goto(`/workspace/${workId}/settings?tab=map`);
+  await expect(page.getByRole('button', { name: /荒寺/ }).first()).toBeVisible();
+  await page.screenshot({
     path: `${SCREENSHOT_DIR}/05-map-and-faction.png`,
   });
 

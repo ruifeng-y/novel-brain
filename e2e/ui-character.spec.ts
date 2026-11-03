@@ -13,7 +13,7 @@ test('the character tab shows profile, state, knowledge, relations, and history'
   await registerAuthor(page, email, 'correct horse battery staple');
   await createWork(page, title);
 
-  const workId = new URL(page.url()).pathname.split('/').at(-1);
+  const workId = new URL(page.url()).pathname.split('/').at(-2);
   if (!workId) {
     throw new Error('The created work did not have an id');
   }

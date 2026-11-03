@@ -93,22 +93,23 @@ test('an author can create and validate a history work in the Chinese workspace'
   await page.getByLabel('目标平台').selectOption('起点中文网');
   await page.getByRole('button', { name: '创建并开始' }).click();
 
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
   await expect(page.getByText('历史 · 穿越争霸').first()).toBeVisible();
+  const { workId, branchId } = await currentWorkAndBranch(page);
+  await page.goto(`/workspace/${workId}/settings`);
   await expect(page.getByRole('heading', { name: '设定中心' })).toBeVisible();
-  for (const subtype of ['朝代', '官制', '军制', '地理', '世家']) {
-    await expect(page.getByRole('button', { name: subtype, exact: true })).toBeVisible();
-  }
-
-  await page.getByRole('button', { name: '官制', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: '设定中心栏目' })
+    .getByRole('button', { name: '势力', exact: true })
+    .click();
   await page.getByRole('button', { name: '新建设定' }).click();
+  await page.locator('select[aria-label="题材子类型"]').selectOption({ label: '官制' });
   await page.getByLabel('名称', { exact: true }).fill('中书省');
   await page.getByLabel('官阶').fill('2');
   await page.getByRole('button', { name: '保存设定' }).click();
   await expect(page.getByText('设定已保存')).toBeVisible();
 
-  const { workId, branchId } = await currentWorkAndBranch(page);
   const centerPath = `/api/v1/works/${workId}/branches/${branchId}`;
   const army = await apiJson<{ id: string }>(page, 'POST', `${centerPath}/entities`, {
     name: '朔州军',

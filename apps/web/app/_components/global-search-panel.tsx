@@ -99,7 +99,7 @@ export function GlobalSearchPanel({ onClose }: { onClose: () => void }) {
               id: result.id,
               title: result.title,
               snippet: `${result.penName} · ${result.statusLabel} · ${result.genrePackLabel}`,
-              href: `/workspace/${result.id}`,
+              href: `/workspace/${result.id}/overview`,
             });
           }
           if (workId) {

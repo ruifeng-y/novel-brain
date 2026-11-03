@@ -55,10 +55,10 @@ test('an author can create, list, and reopen a work', async ({ page }) => {
   await page.getByLabel('目标平台').selectOption('起点中文网');
   await page.getByRole('button', { name: '创建并开始' }).click();
 
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
   await expect(page.getByText('筹备中', { exact: true })).toBeVisible();
-  await expect(page.getByText('主创作线已就绪')).toBeVisible();
+  await expect(page.getByRole('link', { name: '继续写作' })).toBeVisible();
 
   await page.getByRole('link', { name: '返回作品列表' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
@@ -69,7 +69,7 @@ test('an author can create, list, and reopen a work', async ({ page }) => {
   await expect(page.getByText('筹备中', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: `打开《${title}》` }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
 });
 
@@ -113,12 +113,14 @@ test('an author can start from one line, set writing conventions, and upload a c
   await page.getByLabel('禁忌').fill('不写无代价复活。');
   await page.getByRole('button', { name: '创建并开始' }).click();
 
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  const workId = new URL(page.url()).pathname.split('/').at(-2);
+  await page.goto(`/workspace/${workId}/work-settings`);
   await expect(page.getByLabel('目标读者')).toHaveValue('喜欢长线伏笔的读者');
   await expect(page.getByLabel('章节字数')).toHaveValue('2600');
   await expect(page.getByLabel('更新节奏')).toHaveValue('每周三更');
-  await expect(page.getByText('升级流', { exact: true })).toBeVisible();
+  await expect(page.getByLabel('作品标签')).toHaveValue(/升级流/);
 
   await page.getByLabel('封面图片').setInputFiles({
     name: 'cover.png',

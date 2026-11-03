@@ -1,7 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import JSZip from 'jszip';
 import { readFile } from 'node:fs/promises';
-import { createFirstChapterOutline, currentWorkAndBranch, useIsolatedClientIp } from './support';
+import {
+  createFirstChapterOutline,
+  currentWorkAndBranch,
+  openWorkBible,
+  useIsolatedClientIp,
+} from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -47,8 +52,9 @@ test('an author can inspect versions, undo one change, export history, and roll 
   await page.getByLabel('书名').fill(`版本图${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
+  await openWorkBible(page);
   await page.getByLabel('一句话故事').fill('边城少年以残剑问仙，最终守住人间最后一道天门。');
   await page.getByLabel('主角').fill('沈砚，外冷内热的边城剑客');
   await page.getByLabel('世界铁律').fill('任何人借天门之力，都必须以一段真实记忆作为代价。');
@@ -105,7 +111,8 @@ test('an author can inspect versions, undo one change, export history, and roll 
     data: { mode: 'apply' },
   });
 
-  await page.goto(`/workspace/${workId}`);
+  await page.goto(`/workspace/${workId}/changes`);
+  await page.getByRole('button', { name: '版本与回滚', exact: true }).click();
   const versionPanel = page.getByRole('region', { name: '版本图' });
   await expect(versionPanel).toBeVisible();
   await expect(versionPanel.getByRole('img', { name: '版本关系图' })).toBeVisible();
@@ -133,13 +140,16 @@ test('an author can inspect versions, undo one change, export history, and roll 
     '沈砚听见剑鸣。',
   );
 
+  await page.getByRole('button', { name: '修改请求', exact: true }).click();
   const changePanel = page.getByRole('region', { name: '修改请求' });
   await expect(changePanel.getByRole('button', { name: '撤销这次修改' })).toBeVisible();
   await changePanel.getByLabel('撤销原因（可选）').fill('先保留初版写法。');
   await changePanel.getByRole('button', { name: '撤销这次修改' }).click();
   await expect(page.getByText('修改已撤销，撤销记录已保留。')).toBeVisible();
 
+  await page.getByRole('button', { name: '版本与回滚', exact: true }).click();
   await page.reload();
+  await page.getByRole('button', { name: '版本与回滚', exact: true }).click();
   const refreshedVersions = page.getByRole('region', { name: '版本图' });
   await refreshedVersions.getByLabel('搜索操作记录').fill('撤销');
   await refreshedVersions.getByRole('button', { name: '查找' }).click();
@@ -162,7 +172,7 @@ test('an author can inspect versions, undo one change, export history, and roll 
   await expect(page.getByLabel('章节正文')).toHaveValue('沈砚听见剑鸣。');
   await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(0);
 
-  await page.goto(`/workspace/${workId}`);
+  await page.goto(`/workspace/${workId}/changes`);
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1),

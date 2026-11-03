@@ -1056,7 +1056,7 @@ export function WritingDesk({
         </div>
         <nav className="workspace-nav" aria-label="写作台导航">
           <Link href={`/workspace/${boot.work.id}/overview`}>返回作品总览</Link>
-          <Link href={`/workspace/${boot.work.id}`}>作品与章纲</Link>
+          <Link href={`/workspace/${boot.work.id}/overview`}>作品与章纲</Link>
           <Link href={`/workspace/${boot.work.id}/jobs`}>创作任务</Link>
           <Link href="/workspace/settings">模型设置</Link>
         </nav>
@@ -1068,7 +1068,7 @@ export function WritingDesk({
             <strong>已完本作品当前为只读状态</strong>
             <span>正文、设定和大纲都保留查看；要继续修改，请先恢复连载或打开平行版本。</span>
           </div>
-          <Link className="secondary-button" href={`/workspace/${boot.work.id}`}>
+          <Link className="secondary-button" href={`/workspace/${boot.work.id}/overview`}>
             查看作品状态
           </Link>
         </section>
@@ -1079,7 +1079,7 @@ export function WritingDesk({
           <p className="workspace-step">写作台</p>
           <h1>还没有可写的章节</h1>
           <p>先在作品页保存第一章的章纲，写作台就会在这里等你。</p>
-          <Link className="primary-button back-button" href={`/workspace/${boot.work.id}`}>
+          <Link className="primary-button back-button" href={`/workspace/${boot.work.id}/overview`}>
             去准备章纲
           </Link>
         </section>
@@ -1116,7 +1116,7 @@ export function WritingDesk({
             </div>
             <div className="writing-chapter-foot">
               <p>章节、正文和参考面板同屏工作，改动会自动保存。</p>
-              <Link href={`/workspace/${boot.work.id}`}>调整章纲</Link>
+              <Link href={`/workspace/${boot.work.id}/overview`}>调整章纲</Link>
             </div>
           </aside>
 

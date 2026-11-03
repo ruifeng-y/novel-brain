@@ -98,7 +98,7 @@ test('an author manages the work lifecycle, library filters, import, and read-on
 
   await page.goto('/workspace');
   await page.getByLabel('搜索作品').fill(title);
-  await page.getByRole('button', { name: '搜索', exact: true }).click();
+  await page.getByLabel('搜索作品').press('Enter');
   const card = page.locator('.work-card', { hasText: title });
   await expect(card).toBeVisible();
   await expect(card.getByText('质量分')).toBeVisible();
@@ -115,7 +115,7 @@ test('an author manages the work lifecycle, library filters, import, and read-on
 
   await page.getByRole('tab', { name: '进行中的作品' }).click();
   await page.getByLabel('搜索作品').fill(title);
-  await page.getByRole('button', { name: '搜索', exact: true }).click();
+  await page.getByLabel('搜索作品').press('Enter');
   const activeCard = page.locator('.work-card', { hasText: title });
   await activeCard.getByRole('button', { name: '复制作品' }).click();
   await expect(page.getByText(`已复制为《${title}副本》`, { exact: false })).toBeVisible();
@@ -141,16 +141,15 @@ test('an author manages the work lifecycle, library filters, import, and read-on
     buffer: Buffer.from('# 第一章 旧城\n风从城门下吹过。\n\n# 第二章 来客\n陌生人递来一封旧信。'),
   });
   await page.getByRole('button', { name: '导入并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: importedTitle, exact: true })).toBeVisible();
   await expect(page.getByText('连载中', { exact: true })).toBeVisible();
 
   await apiJson(page, 'PATCH', `/api/v1/works/${work.id}`, { status: 'completed' });
-  await page.goto(`/workspace/${work.id}`);
-  await expect(page.getByRole('heading', { name: '这本书默认只读' })).toBeVisible();
+  await page.goto(`/workspace/${work.id}/overview`);
   await expect(page.getByText('写作台只读')).toBeVisible();
   await page.getByRole('button', { name: '恢复连载' }).first().click();
-  await expect(page.getByRole('heading', { name: '主创作线已就绪' })).toBeVisible();
+  await expect(page.getByRole('link', { name: '继续写作' })).toBeVisible();
   await page.getByRole('link', { name: '写作台', exact: true }).click();
   await expect(page.getByLabel('章节正文')).toBeEditable();
 
@@ -167,7 +166,7 @@ test('an author manages the work lifecycle, library filters, import, and read-on
   });
 
   await page.getByRole('link', { name: '作品与章纲' }).click();
-  await expect(page.getByRole('heading', { name: '这本书默认只读' })).toBeVisible();
+  await expect(page.getByText('写作台只读')).toBeVisible();
   await page.getByRole('button', { name: '恢复连载' }).first().click();
-  await expect(page.getByText('写作台只读')).toHaveCount(0);
+  await expect(page.getByRole('link', { name: '继续写作' })).toBeVisible();
 });

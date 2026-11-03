@@ -503,7 +503,7 @@ export function TaskCenter({
             </div>
           </div>
           <nav className="workspace-nav" aria-label="创作任务导航">
-            <Link href={`/workspace/${boot.work.id}`}>作品与章纲</Link>
+            <Link href={`/workspace/${boot.work.id}/overview`}>作品与章纲</Link>
             <Link href={`/workspace/${boot.work.id}/write`}>写作台</Link>
             <Link href="/workspace/settings">模型设置</Link>
           </nav>

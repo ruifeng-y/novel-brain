@@ -53,7 +53,7 @@ export async function createWork(
   await page.getByLabel('规模').selectOption('long');
   await page.getByLabel('目标平台').selectOption('起点中文网');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 }
 
 export async function useIsolatedClientIp(page: Page): Promise<void> {
@@ -124,7 +124,7 @@ export async function createFirstChapterOutline(
 export async function currentWorkAndBranch(
   page: Page,
 ): Promise<{ workId: string; branchId: string }> {
-  const workId = new URL(page.url()).pathname.split('/').at(-1);
+  const workId = new URL(page.url()).pathname.split('/').at(-2);
   if (!workId) {
     throw new Error('The current page is not a work page');
   }
@@ -134,4 +134,24 @@ export async function currentWorkAndBranch(
   }
   const work = (await response.json()) as { mainBranch: { id: string } };
   return { workId, branchId: work.mainBranch.id };
+}
+
+export async function openWorkBible(page: Page): Promise<string> {
+  const workId = new URL(page.url()).pathname.split('/').at(-2);
+  if (!workId) {
+    throw new Error('The current page is not a work page');
+  }
+  await page.goto(`/workspace/${workId}/bible`);
+  await expect(page.getByRole('heading', { name: '故事圣经', exact: true })).toBeVisible();
+  return workId;
+}
+
+export async function openWorkOutline(page: Page): Promise<string> {
+  const workId = new URL(page.url()).pathname.split('/').at(-2);
+  if (!workId) {
+    throw new Error('The current page is not a work page');
+  }
+  await page.goto(`/workspace/${workId}/outline`);
+  await expect(page.getByRole('heading', { name: '大纲工作台', exact: true })).toBeVisible();
+  return workId;
 }

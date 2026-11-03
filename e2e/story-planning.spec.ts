@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { useIsolatedClientIp } from './support';
+import { openWorkBible, useIsolatedClientIp } from './support';
 
 type MailpitMessage = {
   ID: string;
@@ -60,15 +60,16 @@ test('an author can save and reopen a story bible and chapter outline', async ({
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
-  await expect(page.getByRole('heading', { name: '故事圣经' })).toBeVisible();
+  const workId = await openWorkBible(page);
   await page.getByLabel('一句话故事').fill(storyBible.oneSentenceStory);
   await page.getByLabel('主角').fill(storyBible.protagonist);
   await page.getByLabel('世界铁律').fill(storyBible.worldIronLaw);
   await page.getByRole('button', { name: '保存故事圣经' }).click();
   await expect(page.getByText('故事圣经已保存')).toBeVisible();
 
+  await page.goto(`/workspace/${workId}/outline`);
   const outline = page.getByRole('region', { name: '完整大纲' });
   await outline.getByRole('button', { name: '创建全书总纲' }).click();
   await outline.getByLabel('节点标题').fill('九门总纲');
@@ -92,12 +93,11 @@ test('an author can save and reopen a story bible and chapter outline', async ({
   await outline.getByRole('button', { name: '保存节点' }).click();
   await expect(outline.getByText('第一章 断碑')).toBeVisible();
 
-  await page.getByRole('link', { name: '返回作品列表' }).click();
-  await page.getByRole('link', { name: `打开《${title}》` }).click();
-  await expect(page.getByRole('heading', { name: '故事圣经' })).toBeVisible();
+  await page.goto(`/workspace/${workId}/bible`);
   await expect(page.getByLabel('一句话故事')).toHaveValue(storyBible.oneSentenceStory);
   await expect(page.getByLabel('主角')).toHaveValue(storyBible.protagonist);
   await expect(page.getByLabel('世界铁律')).toHaveValue(storyBible.worldIronLaw);
+  await page.goto(`/workspace/${workId}/outline`);
   await page.getByRole('button', { name: '编辑《第一章 断碑》' }).click();
   await expect(page.getByLabel('章目标')).toHaveValue(chapterOutline.chapterGoal);
   await expect(page.getByLabel('叙事视角')).toHaveValue(chapterOutline.pov);
@@ -176,8 +176,9 @@ test('an author can complete, lock, and confirm changes to every story bible car
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
+  await openWorkBible(page);
   await expect(page.locator('.story-bible-card')).toHaveCount(9);
   for (const [index, card] of cards.entries()) {
     await page.getByLabel(card.label, { exact: true }).fill(card.summary);

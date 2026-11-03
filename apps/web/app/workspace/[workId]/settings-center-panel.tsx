@@ -150,6 +150,7 @@ export function SettingsCenterPanel({
   initialType,
   fieldsInitiallyOpen = false,
   onCustomFieldsChange,
+  onEntitiesChange,
   title = '设定中心',
 }: {
   workId: string;
@@ -162,6 +163,7 @@ export function SettingsCenterPanel({
   initialType?: EntityType;
   fieldsInitiallyOpen?: boolean;
   onCustomFieldsChange?: (fields: CustomFieldDefinition[]) => void;
+  onEntitiesChange?: (entities: Entity[]) => void;
   title?: string;
 }) {
   const genreDefinition = getGenrePackDefinition(genrePack);
@@ -347,7 +349,9 @@ export function SettingsCenterPanel({
       const saved = selectedId
         ? await updateEntity(workId, branchId, selectedId, draft)
         : await createEntity(workId, branchId, draft);
-      setCatalog((current) => upsertEntity(current, saved));
+      const nextCatalog = upsertEntity(catalog, saved);
+      setCatalog(nextCatalog);
+      onEntitiesChange?.(nextCatalog);
       const refreshed = await searchEntities(workId, branchId, filtersAtSave);
       if (sameFilters(filtersRef.current, filtersAtSave)) {
         setItems(refreshed.items);

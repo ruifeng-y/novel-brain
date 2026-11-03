@@ -42,7 +42,8 @@ async function signUp(page: import('@playwright/test').Page): Promise<void> {
   await page.getByLabel('书名').fill(`九境残卷${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  await page.getByRole('link', { name: '设定中心', exact: true }).click();
   await expect(page.getByRole('heading', { name: '设定中心' })).toBeVisible();
 }
 
@@ -51,6 +52,18 @@ async function createSetting(
   name: string,
   type: '人物' | '力量体系' | '物品功法' | '时间线',
 ): Promise<void> {
+  const section =
+    type === '人物'
+      ? '人物档案'
+      : type === '力量体系'
+        ? '力量体系'
+        : type === '物品功法'
+          ? '物品功法'
+          : '时间线';
+  await page
+    .getByRole('navigation', { name: '设定中心栏目' })
+    .getByRole('button', { name: section, exact: true })
+    .click();
   await page.getByRole('button', { name: '新建设定' }).click();
   await page.getByLabel('名称', { exact: true }).fill(name);
   await page.getByLabel('类型', { exact: true }).selectOption({ label: type });
@@ -62,6 +75,7 @@ async function createSetting(
 test('an author can maintain power growth, golden fingers, item ownership, and story time', async ({
   page,
 }) => {
+  test.setTimeout(180_000);
   await signUp(page);
 
   await createSetting(page, '沈砚', '人物');

@@ -73,8 +73,13 @@ test('an author can build a layered map and resolve a two-place conflict', async
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
-  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
 
+  await page.getByRole('link', { name: '设定中心', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: '设定中心栏目' })
+    .getByRole('button', { name: '势力', exact: true })
+    .click();
   await page.getByRole('button', { name: '新建设定' }).click();
   await page.getByLabel('名称', { exact: true }).fill('无宗');
   await page.getByLabel('类型', { exact: true }).selectOption({ label: '势力' });
@@ -82,6 +87,10 @@ test('an author can build a layered map and resolve a two-place conflict', async
   await page.getByRole('button', { name: '保存设定' }).click();
   await expect(page.getByRole('button', { name: /无宗/ })).toBeVisible();
 
+  await page
+    .getByRole('navigation', { name: '设定中心栏目' })
+    .getByRole('button', { name: '人物档案', exact: true })
+    .click();
   await page.getByRole('button', { name: '新建设定' }).click();
   await page.getByLabel('名称', { exact: true }).fill('沈砚');
   await page.getByLabel('类型', { exact: true }).selectOption({ label: '人物' });
@@ -89,7 +98,8 @@ test('an author can build a layered map and resolve a two-place conflict', async
   await page.getByRole('button', { name: '保存设定' }).click();
   await expect(page.getByRole('button', { name: /沈砚/ })).toBeVisible();
 
-  await page.reload();
+  const workId = new URL(page.url()).pathname.split('/').at(-2);
+  await page.goto(`/workspace/${workId}/settings?tab=map`);
   await expect(page.getByRole('heading', { name: '地图与势力' })).toBeVisible();
 
   await addPlace(page, '九洲', '世界');
