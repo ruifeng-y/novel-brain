@@ -45,7 +45,7 @@ async function registerAuthor(page: Page, email: string): Promise<void> {
 }
 
 async function configureProseModel(page: Page): Promise<void> {
-  await page.getByRole('link', { name: '模型设置' }).click();
+  await page.goto('/workspace/settings');
   await page.getByLabel('配置名称').fill('DeepSeek 正文');
   await page.getByLabel('API Key').fill('sk-e2e-fake-provider');
   await page.getByLabel('用途', { exact: true }).selectOption('prose');
@@ -55,7 +55,7 @@ async function configureProseModel(page: Page): Promise<void> {
 
 async function createWorkWithOutline(page: Page, title: string): Promise<void> {
   if (new URL(page.url()).pathname !== '/workspace') {
-    await page.getByRole('link', { name: '作品书架' }).click();
+    await page.goto('/workspace');
   }
   await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(title);

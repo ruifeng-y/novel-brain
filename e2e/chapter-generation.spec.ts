@@ -110,14 +110,14 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
-  await page.getByRole('link', { name: '模型设置' }).click();
+  await page.goto('/workspace/settings');
   await page.getByLabel('配置名称').fill('DeepSeek 正文');
   await page.getByLabel('API Key').fill('sk-e2e-fake-provider');
   await page.getByLabel('用途', { exact: true }).selectOption('prose');
   await page.getByRole('button', { name: '保存配置' }).click();
   await expect(page.getByText('配置已保存')).toBeVisible();
 
-  await page.getByRole('link', { name: '作品书架' }).click();
+  await page.goto('/workspace');
   await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
@@ -242,14 +242,14 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
-  await page.getByRole('link', { name: '模型设置' }).click();
+  await page.goto('/workspace/settings');
   await page.getByLabel('配置名称').fill('DeepSeek 正文');
   await page.getByLabel('API Key').fill('sk-e2e-fake-provider');
   await page.getByLabel('用途', { exact: true }).selectOption('prose');
   await page.getByRole('button', { name: '保存配置' }).click();
   await expect(page.getByText('配置已保存')).toBeVisible();
 
-  await page.getByRole('link', { name: '作品书架' }).click();
+  await page.goto('/workspace');
   await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');

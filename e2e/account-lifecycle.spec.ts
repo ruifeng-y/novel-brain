@@ -81,7 +81,7 @@ test('an author can manage every account lifecycle step through the Chinese UI',
 
   await registerAuthor(page, email);
 
-  await page.getByRole('link', { name: '账号设置' }).click();
+  await page.goto('/workspace/settings/account');
   await expect(page).toHaveURL(/\/workspace\/settings\/account$/);
   await expect(page.getByRole('heading', { name: '你的写作身份' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '登录会话' })).toBeVisible();
@@ -130,7 +130,7 @@ test('an author can manage every account lifecycle step through the Chinese UI',
   await expect(page.getByText('密码已重置，请用新密码登录。')).toBeVisible();
   await login(page, email, resetPassword);
 
-  await page.getByRole('link', { name: '账号设置' }).click();
+  await page.goto('/workspace/settings/account');
   const emailForm = page.getByRole('form', { name: '邮箱变更表单' });
   await emailForm.getByLabel('新邮箱').fill(newEmail);
   await emailForm.getByLabel('当前密码').fill(resetPassword);
@@ -144,7 +144,7 @@ test('an author can manage every account lifecycle step through the Chinese UI',
   await expect(page.getByText('邮箱已修改，请用新邮箱登录。')).toBeVisible();
   await login(page, newEmail, resetPassword);
 
-  await page.getByRole('link', { name: '账号设置' }).click();
+  await page.goto('/workspace/settings/account');
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: '导出全部数据' }).click();
   const download = await downloadPromise;
@@ -170,7 +170,7 @@ test('an author can manage every account lifecycle step through the Chinese UI',
   await expect(page.getByText('账号已恢复，请重新登录。')).toBeVisible();
   await login(page, newEmail, resetPassword);
 
-  await page.getByRole('link', { name: '账号设置' }).click();
+  await page.goto('/workspace/settings/account');
   await expect(page.getByLabel('显示名')).toHaveValue('青云客');
   await expect(page.getByText('青衫客', { exact: true })).toBeVisible();
   await expect(page.getByText(/Canon|Context Pack|Agent|POV|Branch|正史|上下文包/)).toHaveCount(0);

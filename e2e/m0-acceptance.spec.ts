@@ -99,7 +99,7 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
   await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();
 
-  await page.getByRole('link', { name: '模型设置' }).click();
+  await page.goto('/workspace/settings');
   await expect(page.getByRole('heading', { name: '模型设置' })).toBeVisible();
   await page.getByLabel('配置名称').fill('M0 本地验收模型');
   await page.getByLabel('Base URL').fill('http://127.0.0.1:9/openai-compatible');
@@ -112,7 +112,7 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
   await expect(page.getByText('sk-m0-local-only')).toHaveCount(0);
   await capture(page, '01-model-settings.png');
 
-  await page.getByRole('link', { name: '作品书架' }).click();
+  await page.goto('/workspace');
   await page.getByRole('link', { name: `打开《${title}》` }).click();
   await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
   await expect(page.getByRole('heading', { name: title })).toBeVisible();

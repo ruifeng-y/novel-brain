@@ -4,14 +4,24 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { ApiError, apiRequest, type User } from '../../lib/auth-api';
-import type { Work } from '../../lib/works-api';
+import { loadChanges } from '../../lib/changes-api';
+import type { Work, WorkListResponse } from '../../lib/works-api';
 import { GlobalSearchPanel } from './global-search-panel';
 import { NotificationCenter } from './notification-center';
 
 type ShellUser = Pick<User, 'displayName' | 'email'>;
-type ShellWork = Pick<Work, 'id' | 'title'>;
+type ShellWork = Pick<
+  Work,
+  | 'id'
+  | 'title'
+  | 'completedChapters'
+  | 'totalChapters'
+  | 'progressPercent'
+  | 'unresolvedForeshadowCount'
+  | 'mainBranch'
+>;
 
-type AccountNavKey = 'dashboard' | 'settings';
+type AccountNavKey = 'dashboard' | 'settings' | 'help';
 
 export type WorkNavKey =
   | 'overview'
@@ -34,21 +44,74 @@ const WORK_NAV: Array<{
   key: WorkNavKey;
   label: string;
   path: (workId: string) => string;
+  icon: SidebarIconName;
 }> = [
-  { key: 'overview', label: '作品总览', path: (workId) => `/workspace/${workId}/overview` },
-  { key: 'bible', label: '故事圣经', path: (workId) => `/workspace/${workId}/bible` },
-  { key: 'settings', label: '设定中心', path: (workId) => `/workspace/${workId}/settings` },
-  { key: 'outline', label: '大纲工作台', path: (workId) => `/workspace/${workId}/outline` },
+  {
+    key: 'overview',
+    label: '作品总览',
+    path: (workId) => `/workspace/${workId}/overview`,
+    icon: 'book-open',
+  },
+  {
+    key: 'bible',
+    label: '故事圣经',
+    path: (workId) => `/workspace/${workId}/bible`,
+    icon: 'book-marked',
+  },
+  {
+    key: 'settings',
+    label: '设定中心',
+    path: (workId) => `/workspace/${workId}/settings`,
+    icon: 'network',
+  },
+  {
+    key: 'outline',
+    label: '大纲工作台',
+    path: (workId) => `/workspace/${workId}/outline`,
+    icon: 'list-tree',
+  },
   {
     key: 'foreshadows',
     label: '伏笔账本',
     path: (workId) => `/workspace/${workId}/foreshadows`,
+    icon: 'git-commit',
   },
-  { key: 'writing', label: '写作台', path: (workId) => `/workspace/${workId}/write` },
-  { key: 'batch', label: '批量生产', path: (workId) => `/workspace/${workId}/batch` },
-  { key: 'changes', label: '修改与版本', path: (workId) => `/workspace/${workId}/changes` },
-  { key: 'export', label: '导出与发布', path: (workId) => `/workspace/${workId}/export` },
+  {
+    key: 'writing',
+    label: '写作台',
+    path: (workId) => `/workspace/${workId}/write`,
+    icon: 'pen',
+  },
+  {
+    key: 'batch',
+    label: '批量生产',
+    path: (workId) => `/workspace/${workId}/batch`,
+    icon: 'layers',
+  },
+  {
+    key: 'changes',
+    label: '修改与版本',
+    path: (workId) => `/workspace/${workId}/changes`,
+    icon: 'git-branch',
+  },
+  {
+    key: 'export',
+    label: '导出与发布',
+    path: (workId) => `/workspace/${workId}/export`,
+    icon: 'send',
+  },
 ];
+
+const CREATION_NAV_KEYS: WorkNavKey[] = [
+  'overview',
+  'bible',
+  'settings',
+  'outline',
+  'foreshadows',
+  'writing',
+];
+
+const PRODUCTION_NAV_KEYS: WorkNavKey[] = ['batch', 'changes', 'export'];
 
 const WORK_PAGE_LABELS: Record<WorkNavKey, string> = {
   overview: '作品总览',
@@ -127,30 +190,388 @@ function ShellBrand() {
       <span className="app-brand-mark">墨</span>
       <span className="app-brand-copy">
         <strong>墨舟</strong>
-        <small>NOVELBRAIN BETA</small>
+        <small>NovelBrain</small>
       </span>
+      <span className="app-beta-badge">BETA</span>
     </Link>
   );
 }
 
-function ShellShortcuts({ onLogout }: { onLogout: () => void }) {
+type SidebarIconName =
+  | 'dashboard'
+  | 'book-open'
+  | 'book-marked'
+  | 'network'
+  | 'list-tree'
+  | 'git-commit'
+  | 'pen'
+  | 'layers'
+  | 'git-branch'
+  | 'send'
+  | 'help'
+  | 'settings'
+  | 'logout'
+  | 'chevrons-left';
+
+function SidebarIcon({ name }: { name: SidebarIconName }) {
+  if (name === 'dashboard') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <rect
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          width="7"
+          x="3.5"
+          y="3.5"
+        />
+        <rect
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          width="7"
+          x="13.5"
+          y="3.5"
+        />
+        <rect
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          width="7"
+          x="3.5"
+          y="13.5"
+        />
+        <rect
+          height="7"
+          rx="1.5"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          width="7"
+          x="13.5"
+          y="13.5"
+        />
+      </svg>
+    );
+  }
+  if (name === 'book-open') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <path
+          d="M12 6.4C10.5 4.7 8.2 4 4.5 4v14.2c3.7 0 6 .7 7.5 2.4 1.5-1.7 3.8-2.4 7.5-2.4V4c-3.7 0-6 .7-7.5 2.4Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+        />
+        <path d="M12 6.4v14.2" stroke="currentColor" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+  if (name === 'book-marked') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <path
+          d="M4.5 4.5A1.5 1.5 0 0 1 6 3h12a1.5 1.5 0 0 1 1.5 1.5V21l-7.5-4.3L4.5 21V4.5Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+        />
+        <path
+          d="M8 3v8l4-2.4L16 11V3"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+        />
+      </svg>
+    );
+  }
+  if (name === 'network') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="5" r="2.3" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="5" cy="18" r="2.3" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="19" cy="18" r="2.3" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M10.8 7 6.2 15.8M13.2 7l4.6 8.8M7.3 18h9.4"
+          stroke="currentColor"
+          strokeWidth="1.7"
+        />
+      </svg>
+    );
+  }
+  if (name === 'list-tree') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <path
+          d="M6 4v16M6 8h4.5M6 14h4.5"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.7"
+        />
+        <rect
+          height="3.5"
+          rx="1"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          width="9.5"
+          x="10.5"
+          y="6.2"
+        />
+        <rect
+          height="3.5"
+          rx="1"
+          stroke="currentColor"
+          strokeWidth="1.7"
+          width="9.5"
+          x="10.5"
+          y="12.2"
+        />
+      </svg>
+    );
+  }
+  if (name === 'git-commit') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M3 12h5.8M15.2 12H21"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.7"
+        />
+      </svg>
+    );
+  }
+  if (name === 'pen') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <path
+          d="m15.2 5.2 3.6 3.6M4.5 19.5l1-4.6L16 4.4a1.4 1.4 0 0 1 2 0l1.6 1.6a1.4 1.4 0 0 1 0 2L9.1 18.5l-4.6 1Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+        />
+        <path d="M13 21h7" stroke="currentColor" strokeLinecap="round" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+  if (name === 'layers') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <path
+          d="m12 3 9 4.8-9 4.8-9-4.8L12 3Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+        />
+        <path
+          d="m3 12 9 4.8 9-4.8M3 16.2l9 4.8 9-4.8"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+        />
+      </svg>
+    );
+  }
+  if (name === 'git-branch') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <circle cx="6" cy="5" r="2" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="6" cy="19" r="2" stroke="currentColor" strokeWidth="1.7" />
+        <circle cx="18" cy="7" r="2" stroke="currentColor" strokeWidth="1.7" />
+        <path d="M6 7v10M8 8.5c4 0 4 3 8 3" stroke="currentColor" strokeWidth="1.7" />
+      </svg>
+    );
+  }
+  if (name === 'send') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <path
+          d="m21 3-7.2 18-3.4-7.4L3 10.2 21 3Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+        />
+        <path
+          d="m10.4 13.6 4.4-4.4"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.7"
+        />
+      </svg>
+    );
+  }
+  if (name === 'help') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M9.6 9.2a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.9v.3"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.7"
+        />
+        <path d="M12 17.3h.01" stroke="currentColor" strokeLinecap="round" strokeWidth="2.2" />
+      </svg>
+    );
+  }
+  if (name === 'settings') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.7" />
+        <path
+          d="M19.2 13.5a7.8 7.8 0 0 0 0-3l1.5-1.2-1.8-3.1-1.8.7a8 8 0 0 0-2.6-1.5L14.2 3h-3.6l-.3 2.4a8 8 0 0 0-2.6 1.5l-1.8-.7-1.8 3.1 1.5 1.2a7.8 7.8 0 0 0 0 3l-1.5 1.2 1.8 3.1 1.8-.7a8 8 0 0 0 2.6 1.5l.3 2.4h3.6l.3-2.4a8 8 0 0 0 2.6-1.5l1.8.7 1.8-3.1-1.5-1.2Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.4"
+        />
+      </svg>
+    );
+  }
+  if (name === 'logout') {
+    return (
+      <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+        <path
+          d="M10 4H5.5A1.5 1.5 0 0 0 4 5.5v13A1.5 1.5 0 0 0 5.5 20H10"
+          stroke="currentColor"
+          strokeWidth="1.7"
+        />
+        <path
+          d="M14 8l4 4-4 4M9 12h9"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.7"
+        />
+      </svg>
+    );
+  }
   return (
-    <div className="app-sidebar-shortcuts">
-      <Link href="/workspace">作品书架</Link>
-      <Link href="/workspace/settings">模型设置</Link>
-      <Link href="/workspace/settings/account">账号设置</Link>
-      <button onClick={onLogout} type="button">
-        退出登录
-      </button>
-    </div>
+    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+      <path
+        d="m13 6-6 6 6 6M19 6l-6 6 6 6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.7"
+      />
+    </svg>
   );
 }
 
-function ShellSidebarFooter({ user }: { user: ShellUser }) {
+function ShellContextCard({
+  avatar,
+  title,
+  subtitle,
+  href,
+  linkLabel,
+  chevron,
+}: {
+  avatar: string;
+  title: string;
+  subtitle: string;
+  href?: string;
+  linkLabel?: string;
+  chevron?: boolean;
+}) {
+  const content = (
+    <>
+      <span className="app-context-avatar">{avatar}</span>
+      <span className="app-context-copy">
+        <strong>{title}</strong>
+        <small>{subtitle}</small>
+      </span>
+      {chevron ? (
+        <span className="app-context-chevron">
+          <SidebarIcon name="chevrons-left" />
+        </span>
+      ) : null}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Link
+        aria-label={linkLabel}
+        className="app-context-card app-context-work"
+        href={href}
+        title={linkLabel}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return <div className="app-context-card">{content}</div>;
+}
+
+function ShellNavItem({
+  active,
+  badge,
+  href,
+  icon,
+  label,
+}: {
+  active: boolean;
+  badge?: { kind: 'count' | 'alert' | 'dot'; value?: number };
+  href: string;
+  icon: SidebarIconName;
+  label: string;
+}) {
   return (
-    <div className="app-sidebar-footer">
-      <strong>{user.displayName}</strong>
-      <small>个人作者</small>
+    <Link aria-current={active ? 'page' : undefined} className="app-nav-item" href={href}>
+      <span className="app-nav-icon">
+        <SidebarIcon name={icon} />
+      </span>
+      <span className="app-nav-text">{label}</span>
+      {badge?.kind === 'dot' ? <span aria-hidden="true" className="app-nav-dot" /> : null}
+      {badge && badge.kind !== 'dot' && (badge.value ?? 0) > 0 ? (
+        <span aria-hidden="true" className={`app-nav-badge app-nav-badge-${badge.kind}`}>
+          {badge.value}
+        </span>
+      ) : null}
+    </Link>
+  );
+}
+
+function ShellSidebarBottom({
+  helpActive,
+  onLogout,
+  settingsActive,
+  user,
+}: {
+  helpActive: boolean;
+  onLogout: () => void;
+  settingsActive: boolean;
+  user: ShellUser;
+}) {
+  return (
+    <div className="app-sidebar-bottom">
+      <ShellNavItem active={helpActive} href="/help" icon="help" label="帮助" />
+      <ShellNavItem
+        active={settingsActive}
+        href="/workspace/settings"
+        icon="settings"
+        label="设置"
+      />
+      <div className="app-user-card">
+        <span className="app-user-avatar">{user.displayName.trim().slice(0, 1) || '作'}</span>
+        <span className="app-user-copy">
+          <strong>{user.displayName}</strong>
+          <small>个人作者</small>
+        </span>
+        <button
+          aria-label="退出登录"
+          className="app-user-logout"
+          onClick={onLogout}
+          title="退出登录"
+          type="button"
+        >
+          <SidebarIcon name="logout" />
+        </button>
+      </div>
     </div>
   );
 }
@@ -288,7 +709,10 @@ function ShellFrame({
             >
               <NavIcon name="bell" />
               {unreadNotifications > 0 ? (
-                <span className="app-notification-badge" aria-label={`${unreadNotifications} 条未读通知`}>
+                <span
+                  className="app-notification-badge"
+                  aria-label={`${unreadNotifications} 条未读通知`}
+                >
                   {unreadNotifications > 9 ? '9+' : unreadNotifications}
                 </span>
               ) : null}
@@ -309,15 +733,10 @@ function ShellFrame({
           </div>
         </header>
 
-        {searchOpen ? (
-          <GlobalSearchPanel onClose={closePanels} />
-        ) : null}
+        {searchOpen ? <GlobalSearchPanel onClose={closePanels} /> : null}
 
         {notificationsOpen ? (
-          <NotificationCenter
-            onClose={closePanels}
-            onUnreadChange={setUnreadNotifications}
-          />
+          <NotificationCenter onClose={closePanels} onUnreadChange={setUnreadNotifications} />
         ) : null}
 
         {userMenuOpen ? (
@@ -369,11 +788,30 @@ export function AccountShell({
   children: ReactNode;
 }) {
   const logout = useShellLogout();
+  const [workCount, setWorkCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    apiRequest<WorkListResponse>('/api/v1/works')
+      .then((response) => {
+        if (mounted) {
+          setWorkCount(response.items.length);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const accountSubtitle =
+    workCount === null ? user.displayName : `${user.displayName} · ${workCount} 部作品`;
 
   return (
     <ShellFrame
       crumbs={
-        active === 'settings'
+        active === 'settings' && !breadcrumbLabel
           ? [{ label: '工作台', href: '/workspace' }, { label: '设置' }]
           : breadcrumbLabel
             ? [{ label: '工作台', href: '/workspace' }, { label: breadcrumbLabel }]
@@ -384,27 +822,96 @@ export function AccountShell({
       sidebar={
         <>
           <ShellBrand />
-
+          <ShellContextCard
+            avatar={user.displayName.trim().slice(0, 1) || '作'}
+            subtitle={accountSubtitle}
+            title="个人作者"
+          />
           <nav aria-label="账号导航" className="app-nav">
-            <Link aria-current={active === 'dashboard' ? 'page' : undefined} href="/workspace">
-              工作台
-            </Link>
-            <Link
-              aria-current={active === 'settings' ? 'page' : undefined}
-              href="/workspace/settings"
-            >
-              设置
-            </Link>
+            <div className="app-nav-label">创作</div>
+            <ShellNavItem
+              active={active === 'dashboard'}
+              href="/workspace"
+              icon="dashboard"
+              label="工作台"
+            />
           </nav>
-
-          <ShellShortcuts onLogout={() => void logout()} />
-          <ShellSidebarFooter user={user} />
+          <ShellSidebarBottom
+            helpActive={active === 'help'}
+            onLogout={() => void logout()}
+            settingsActive={active === 'settings'}
+            user={user}
+          />
         </>
       }
       user={user}
     >
       {children}
     </ShellFrame>
+  );
+}
+
+type AccountPageState =
+  { status: 'loading' } | { status: 'ready'; user: User } | { status: 'error' };
+
+export function AccountPageShell({
+  active,
+  breadcrumbLabel,
+  children,
+}: {
+  active: AccountNavKey;
+  breadcrumbLabel?: string;
+  children: ReactNode;
+}) {
+  const router = useRouter();
+  const [state, setState] = useState<AccountPageState>({ status: 'loading' });
+
+  useEffect(() => {
+    let mounted = true;
+    apiRequest<User>('/api/v1/auth/me')
+      .then((user) => {
+        if (mounted) {
+          setState({ status: 'ready', user });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!mounted) {
+          return;
+        }
+        if (error instanceof ApiError && error.status === 401) {
+          router.replace('/login');
+          return;
+        }
+        setState({ status: 'error' });
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [router]);
+
+  if (state.status === 'loading') {
+    return <main className="app-shell-loading">正在打开页面…</main>;
+  }
+
+  if (state.status === 'error') {
+    return (
+      <main className="app-shell-error">
+        <section>
+          <h1>暂时无法打开页面</h1>
+          <p>请稍后刷新重试。</p>
+          <Link className="secondary-button" href="/workspace">
+            返回工作台
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <AccountShell active={active} breadcrumbLabel={breadcrumbLabel} user={state.user}>
+      {children}
+    </AccountShell>
   );
 }
 
@@ -431,6 +938,7 @@ export function WorkShell({
   const [state, setState] = useState<WorkShellState>(() =>
     user && work ? { status: 'ready', user, work } : { status: 'loading' },
   );
+  const [changeCount, setChangeCount] = useState(0);
 
   useEffect(() => {
     if (user && work) {
@@ -461,6 +969,30 @@ export function WorkShell({
       mounted = false;
     };
   }, [router, user, work, workId]);
+
+  useEffect(() => {
+    if (state.status !== 'ready' || !state.work.mainBranch) {
+      setChangeCount(0);
+      return;
+    }
+
+    let mounted = true;
+    loadChanges(state.work.id, state.work.mainBranch.id)
+      .then((response) => {
+        if (!mounted) {
+          return;
+        }
+        const activeCount = response.items.filter((item) =>
+          ['draft', 'analyzing', 'waiting_confirmation', 'applying'].includes(item.status),
+        ).length;
+        setChangeCount(activeCount);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      mounted = false;
+    };
+  }, [state]);
 
   if (state.status === 'loading') {
     return <main className="app-shell-loading">正在打开作品…</main>;
@@ -494,29 +1026,56 @@ export function WorkShell({
       sidebar={
         <>
           <ShellBrand />
-
-          <div className="app-work-context">
-            <span>当前作品</span>
-            <strong>{state.work.title}</strong>
-          </div>
-
+          <ShellContextCard
+            avatar={state.work.title.trim().slice(0, 1) || '书'}
+            chevron
+            href="/workspace"
+            linkLabel="返回我的作品"
+            subtitle={
+              state.work.totalChapters > 0
+                ? `已写 ${state.work.completedChapters} 章 / 共 ${state.work.totalChapters} 章`
+                : `已写 ${state.work.completedChapters} 章`
+            }
+            title={state.work.title}
+          />
           <nav aria-label="作品导航" className="app-nav">
-            {WORK_NAV.map((item) => (
-              <Link
-                aria-current={active === item.key ? 'page' : undefined}
+            <div className="app-nav-label">创作</div>
+            {WORK_NAV.filter((item) => CREATION_NAV_KEYS.includes(item.key)).map((item) => (
+              <ShellNavItem
+                active={active === item.key}
+                badge={
+                  item.key === 'bible'
+                    ? { kind: 'dot' }
+                    : item.key === 'foreshadows'
+                      ? { kind: 'alert', value: state.work.unresolvedForeshadowCount }
+                      : item.key === 'writing'
+                        ? { kind: 'count', value: state.work.completedChapters }
+                        : undefined
+                }
                 href={item.path(workId)}
+                icon={item.icon}
                 key={item.key}
-              >
-                {item.label}
-              </Link>
+                label={item.label}
+              />
             ))}
-            <Link aria-label="返回作品列表" className="app-nav-back" href="/workspace">
-              返回工作台
-            </Link>
+            <div className="app-nav-label app-nav-label-spaced">生产</div>
+            {WORK_NAV.filter((item) => PRODUCTION_NAV_KEYS.includes(item.key)).map((item) => (
+              <ShellNavItem
+                active={active === item.key}
+                badge={item.key === 'changes' ? { kind: 'alert', value: changeCount } : undefined}
+                href={item.path(workId)}
+                icon={item.icon}
+                key={item.key}
+                label={item.label}
+              />
+            ))}
           </nav>
-
-          <ShellShortcuts onLogout={() => void logout()} />
-          <ShellSidebarFooter user={state.user} />
+          <ShellSidebarBottom
+            helpActive={false}
+            onLogout={() => void logout()}
+            settingsActive={active === 'settings' || active === 'work-settings'}
+            user={state.user}
+          />
         </>
       }
       user={state.user}

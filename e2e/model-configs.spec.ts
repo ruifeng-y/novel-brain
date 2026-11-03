@@ -64,7 +64,7 @@ test('an author can save, test, mask, and delete a model configuration', async (
     await page.getByRole('button', { name: '创建账号' }).click();
     await expect(page).toHaveURL(/\/workspace$/);
 
-    await page.getByRole('link', { name: '模型设置' }).click();
+    await page.goto('/workspace/settings');
     await expect(page).toHaveURL(/\/workspace\/settings$/);
     await expect(page.getByRole('heading', { name: '模型设置' })).toBeVisible();
 

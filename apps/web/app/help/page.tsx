@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
+import { AccountPageShell } from '../_components/app-shell';
 
 export const metadata: Metadata = {
   title: '帮助与快捷键 · NovelBrain',
@@ -48,21 +48,8 @@ const faqs = [
 
 export default function HelpPage() {
   return (
+    <AccountPageShell active="help" breadcrumbLabel="帮助">
     <main className="workspace-shell settings-shell">
-      <header className="workspace-header">
-        <Link className="workspace-brand" href="/workspace">
-          NovelBrain
-        </Link>
-        <nav className="workspace-nav" aria-label="帮助导航">
-          <Link href="/workspace">作品书架</Link>
-          <Link href="/workspace/settings">模型设置</Link>
-          <Link href="/workspace/settings/account">账号设置</Link>
-          <Link aria-current="page" href="/help">
-            帮助
-          </Link>
-        </nav>
-      </header>
-
       <section className="settings-hero">
         <div>
           <p className="workspace-step">使用说明</p>
@@ -112,5 +99,6 @@ export default function HelpPage() {
         </section>
       </div>
     </main>
+    </AccountPageShell>
   );
 }

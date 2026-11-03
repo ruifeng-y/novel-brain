@@ -70,7 +70,7 @@ test('an author gets the account and work shell with a responsive drawer', async
   await expect(page.getByRole('navigation', { name: '作品导航' })).toBeHidden();
 
   await page.getByRole('button', { name: '打开导航' }).click();
-  await page.getByRole('link', { name: '返回作品列表', exact: true }).click();
+  await page.getByRole('link', { name: '返回我的作品', exact: true }).click();
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByRole('button', { name: '打开导航' })).toBeVisible();
 

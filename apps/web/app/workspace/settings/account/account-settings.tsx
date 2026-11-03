@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { AccountShell } from '../../../_components/app-shell';
 import {
   ApiError,
   apiRequest,
@@ -363,21 +363,8 @@ export function AccountSettings() {
   }
 
   return (
+    <AccountShell active="settings" breadcrumbLabel="账号设置" user={state.user}>
     <main className="workspace-shell settings-shell account-shell">
-      <header className="workspace-header">
-        <Link className="workspace-brand" href="/workspace">
-          NovelBrain
-        </Link>
-        <nav className="workspace-nav" aria-label="账号导航">
-          <Link href="/workspace">作品书架</Link>
-          <Link href="/workspace/settings">模型设置</Link>
-          <Link aria-current="page" href="/workspace/settings/account">
-            账号设置
-          </Link>
-          <Link href="/workspace/settings/privacy">隐私与合规</Link>
-        </nav>
-      </header>
-
       <section className="settings-hero account-hero">
         <div>
           <p className="workspace-step">账号与安全</p>
@@ -822,5 +809,6 @@ export function AccountSettings() {
         </section>
       </div>
     </main>
+    </AccountShell>
   );
 }

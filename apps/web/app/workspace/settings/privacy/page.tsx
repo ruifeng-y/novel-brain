@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { AccountPageShell } from '../../../_components/app-shell';
 import { AccountDataTools } from './account-data-tools';
 
 export const metadata: Metadata = {
@@ -27,21 +28,8 @@ const dataItems = [
 
 export default function PrivacySettingsPage() {
   return (
+    <AccountPageShell active="settings" breadcrumbLabel="隐私与合规">
     <main className="workspace-shell settings-shell">
-      <header className="workspace-header">
-        <Link className="workspace-brand" href="/workspace">
-          NovelBrain
-        </Link>
-        <nav className="workspace-nav" aria-label="账号导航">
-          <Link href="/workspace">作品书架</Link>
-          <Link href="/workspace/settings">模型设置</Link>
-          <Link href="/workspace/settings/account">账号设置</Link>
-          <Link aria-current="page" href="/workspace/settings/privacy">
-            隐私与合规
-          </Link>
-        </nav>
-      </header>
-
       <section className="settings-hero">
         <div>
           <p className="workspace-step">账号设置</p>
@@ -148,5 +136,6 @@ export default function PrivacySettingsPage() {
         </aside>
       </div>
     </main>
+    </AccountPageShell>
   );
 }
