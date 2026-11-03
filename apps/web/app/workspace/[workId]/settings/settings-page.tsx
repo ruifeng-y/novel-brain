@@ -12,7 +12,9 @@ import {
   type EntityType,
   type Relation,
 } from '../../../../lib/entities-api';
+import { loadMapOverview, type MapOverview } from '../../../../lib/maps-api';
 import type { Work } from '../../../../lib/works-api';
+import { MapFactionPanel } from '../map-faction-panel';
 import { SettingsCenterPanel } from '../settings-center-panel';
 import { ConfirmedFactsPanel } from './confirmed-facts-panel';
 import { GoldenFingerOverview } from './golden-finger-overview';
@@ -38,6 +40,7 @@ type SettingsState =
       entities: Entity[];
       customFields: CustomFieldDefinition[];
       relations: Relation[];
+      mapOverview: MapOverview;
     }
   | { status: 'error'; message: string };
 
@@ -73,7 +76,10 @@ export function SettingsPage({ workId }: { workId: string }) {
         if (!work.mainBranch) {
           throw new Error('这个故事还没有可编辑的创作线。');
         }
-        const center = await loadEntityCenter(work.id, work.mainBranch.id);
+        const [center, mapOverview] = await Promise.all([
+          loadEntityCenter(work.id, work.mainBranch.id),
+          loadMapOverview(work.id, work.mainBranch.id),
+        ]);
         if (active) {
           setState({
             status: 'ready',
@@ -82,6 +88,7 @@ export function SettingsPage({ workId }: { workId: string }) {
             entities: center.entities,
             customFields: center.customFields,
             relations: center.relations,
+            mapOverview,
           });
         }
       })
@@ -126,7 +133,7 @@ export function SettingsPage({ workId }: { workId: string }) {
     );
   }
 
-  const { user, work, entities, customFields, relations } = state;
+  const { user, work, entities, customFields, relations, mapOverview } = state;
   const activeSection = SECTIONS.find((section) => section.key === tab) ?? SECTIONS[0];
 
   return (
@@ -151,7 +158,14 @@ export function SettingsPage({ workId }: { workId: string }) {
           ))}
         </nav>
 
-        {tab === 'confirmed' ? (
+        {tab === 'map' ? (
+          <MapFactionPanel
+            branchId={work.mainBranch!.id}
+            entities={entities}
+            initialOverview={mapOverview}
+            workId={work.id}
+          />
+        ) : tab === 'confirmed' ? (
           <ConfirmedFactsPanel branchId={work.mainBranch!.id} workId={work.id} />
         ) : tab === 'golden' ? (
           <GoldenFingerOverview
