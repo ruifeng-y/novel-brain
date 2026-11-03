@@ -55,6 +55,7 @@ export function WorkspaceHome() {
   const router = useRouter();
   const [userState, setUserState] = useState<UserState>({ status: 'loading' });
   const [works, setWorks] = useState<Work[]>([]);
+  const [dashboardWorks, setDashboardWorks] = useState<Work[]>([]);
   const [worksLoading, setWorksLoading] = useState(false);
   const [penNames, setPenNames] = useState<PenNameListResponse['items']>([]);
   const [worksError, setWorksError] = useState('');
@@ -146,6 +147,25 @@ export function WorkspaceHome() {
     wordRange,
   ]);
 
+  useEffect(() => {
+    if (userState.status !== 'ready') {
+      return;
+    }
+    let active = true;
+    apiRequest<WorkListResponse>('/api/v1/works?view=active&sort=updated_desc')
+      .then((response) => {
+        if (active) {
+          setDashboardWorks(response.items);
+        }
+      })
+      .catch(() => {
+        // The bookshelf list below still works when the dashboard summary cannot load.
+      });
+    return () => {
+      active = false;
+    };
+  }, [userState.status]);
+
   async function refreshWorks() {
     const filters: WorkListFilters = {
       search,
@@ -156,8 +176,12 @@ export function WorkspaceHome() {
       ...(view === 'active' && statusFilter ? { status: statusFilter } : {}),
       ...(genreFilter ? { genrePack: genreFilter as Work['genrePack'] } : {}),
     };
-    const response = await apiRequest<WorkListResponse>(`/api/v1/works${buildWorksQuery(filters)}`);
+    const [response, dashboardResponse] = await Promise.all([
+      apiRequest<WorkListResponse>(`/api/v1/works${buildWorksQuery(filters)}`),
+      apiRequest<WorkListResponse>('/api/v1/works?view=active&sort=updated_desc'),
+    ]);
     setWorks(response.items);
+    setDashboardWorks(dashboardResponse.items);
   }
 
   async function signOut(allDevices: boolean) {
@@ -319,6 +343,9 @@ export function WorkspaceHome() {
     );
   }
 
+  const currentWork = dashboardWorks[0];
+  const recentWorks = dashboardWorks.slice(0, 3);
+
   return (
     <AccountShell active="dashboard" user={userState.user}>
       <main className="workspace-shell">
@@ -328,12 +355,128 @@ export function WorkspaceHome() {
             <p className="workspace-step">作品书架</p>
             <span className="workspace-beta-badge">V1 验收候选</span>
           </div>
-          <h1>你的作品</h1>
+          <h1>今天想把故事推进到哪里？</h1>
           <p className="workspace-beta-note">
-            在这里管理连载中的书、已归档的作品和最近删除的旧稿。
+            继续写、整理设定，或者开一本新书。
           </p>
         </div>
-        <p className="workspace-email">共 {works.length} 部作品</p>
+        <p className="workspace-email">共 {dashboardWorks.length} 部作品</p>
+      </section>
+
+      <section className="dashboard-command-grid" aria-label="今日写作">
+        {currentWork ? (
+          <article className="continue-card" aria-labelledby="continue-title">
+            <div className="continue-card-copy">
+              <p className="workspace-step">继续写作</p>
+              <h2 id="continue-title">继续写《{currentWork.title}》</h2>
+              <p>
+                {GENRE_LABELS[currentWork.genrePack] ?? currentWork.genrePack} ·{' '}
+                {currentWork.progressPercent}% · {currentWork.wordCount.toLocaleString('zh-CN')} 字 ·
+                最近编辑 {formatWorkDate(currentWork.lastEditedAt)}
+              </p>
+              <div className="continue-actions">
+                <Link
+                  className="primary-button"
+                  href={`/workspace/${currentWork.id}/write`}
+                >
+                  继续写作
+                </Link>
+                <Link className="secondary-button" href={`/workspace/${currentWork.id}`}>
+                  作品总览
+                </Link>
+              </div>
+            </div>
+            <div className="continue-progress" aria-hidden="true">
+              <span style={{ width: `${currentWork.progressPercent}%` }} />
+            </div>
+          </article>
+        ) : (
+          <article className="continue-card continue-card-empty" aria-labelledby="continue-title">
+            <div className="continue-card-copy">
+              <p className="workspace-step">继续写作</p>
+              <h2 id="continue-title">从第一本书开始</h2>
+              <p>写下一句话，剩下的边写边补。</p>
+              <div className="continue-actions">
+                <a className="primary-button" href="#create-work-title">
+                  新建作品
+                </a>
+              </div>
+            </div>
+          </article>
+        )}
+
+        <aside className="today-panel" aria-labelledby="today-tasks-title">
+          <div className="today-panel-heading">
+            <div>
+              <p className="workspace-step">写作提醒</p>
+              <h2 id="today-tasks-title">今日任务</h2>
+            </div>
+            <span>{currentWork ? 3 : 0}</span>
+          </div>
+          {currentWork ? (
+            <ul className="today-task-list">
+              <li>
+                <Link href={`/workspace/${currentWork.id}/foreshadows`}>
+                  <span>
+                    <strong>未回收伏笔</strong>
+                    <small>先处理会影响后续章节的线索</small>
+                  </span>
+                  <span>{currentWork.unresolvedForeshadowCount}</span>
+                </Link>
+              </li>
+              <li>
+                <Link href={`/workspace/${currentWork.id}/write`}>
+                  <span>
+                    <strong>连续性检查</strong>
+                    <small>写作台会在保存时检查冲突</small>
+                  </span>
+                  <span>→</span>
+                </Link>
+              </li>
+              <li>
+                <Link href={`/workspace/${currentWork.id}/write`}>
+                  <span>
+                    <strong>章末钩子</strong>
+                    <small>去写作台生成下一章悬念</small>
+                  </span>
+                  <span>→</span>
+                </Link>
+              </li>
+            </ul>
+          ) : (
+            <p className="dashboard-empty">还没有进行中的作品。</p>
+          )}
+        </aside>
+      </section>
+
+      <section className="dashboard-recent" aria-labelledby="recent-changes-title">
+        <div className="dashboard-recent-heading">
+          <div>
+            <p className="workspace-step">版本</p>
+            <h2 id="recent-changes-title">最近修改</h2>
+          </div>
+          <a className="text-button" href="#works-list-title">
+            查看全部
+          </a>
+        </div>
+        {recentWorks.length > 0 ? (
+          <div className="dashboard-recent-list">
+            {recentWorks.map((work) => (
+              <Link className="dashboard-recent-item" href={`/workspace/${work.id}`} key={work.id}>
+                <span className="dashboard-recent-mark">{work.title.slice(0, 1)}</span>
+                <span className="dashboard-recent-copy">
+                  <strong>{work.title}</strong>
+                  <small>
+                    {work.statusLabel} · {formatWorkDate(work.lastEditedAt)}
+                  </small>
+                </span>
+                <span className="dashboard-recent-progress">{work.progressPercent}%</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="dashboard-empty">还没有最近修改。</p>
+        )}
       </section>
 
       <div className="workspace-layout">

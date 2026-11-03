@@ -56,17 +56,17 @@ test('an author can create, list, and reopen a work', async ({ page }) => {
   await page.getByRole('button', { name: '创建并开始' }).click();
 
   await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
-  await expect(page.getByText('筹备中')).toBeVisible();
+  await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
+  await expect(page.getByText('筹备中', { exact: true })).toBeVisible();
   await expect(page.getByText('主创作线已就绪')).toBeVisible();
 
   await page.getByRole('link', { name: '返回作品列表' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
-  await expect(page.getByRole('heading', { name: title })).toBeVisible();
+  await expect(page.getByRole('heading', { name: title, exact: true })).toBeVisible();
   await expect(page.getByText('进度', { exact: true })).toBeVisible();
   await expect(page.getByText('字数', { exact: true })).toBeVisible();
   await expect(page.getByText('最近编辑', { exact: true })).toBeVisible();
-  await expect(page.getByText('筹备中')).toBeVisible();
+  await expect(page.getByText('筹备中', { exact: true })).toBeVisible();
 
   await page.getByRole('link', { name: `打开《${title}》` }).click();
   await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+$/);
