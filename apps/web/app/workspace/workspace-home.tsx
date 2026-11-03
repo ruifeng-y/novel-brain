@@ -345,143 +345,211 @@ export function WorkspaceHome() {
 
   const currentWork = dashboardWorks[0];
   const recentWorks = dashboardWorks.slice(0, 3);
+  const totalWords = dashboardWorks.reduce((total, work) => total + work.wordCount, 0);
+  const unresolvedForeshadows = dashboardWorks.reduce(
+    (total, work) => total + work.unresolvedForeshadowCount,
+    0,
+  );
+  const qualityScores = dashboardWorks
+    .map((work) => work.qualityScore)
+    .filter((score): score is number => score !== null);
+  const averageQuality = qualityScores.length
+    ? Math.round(qualityScores.reduce((total, score) => total + score, 0) / qualityScores.length)
+    : null;
+  const displayName = userState.user.displayName.trim() || '作者';
+  const hour = new Date().getHours();
+  const greeting = hour < 11 ? '早上好' : hour < 18 ? '下午好' : '晚上好';
+  const todayLabel = new Date().toLocaleDateString('zh-CN', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  });
 
   return (
     <AccountShell active="dashboard" user={userState.user}>
       <main className="workspace-shell">
-      <section className="workspace-intro">
-        <div>
-          <div className="workspace-scope-line">
-            <p className="workspace-step">作品书架</p>
-            <span className="workspace-beta-badge">V1 验收候选</span>
+        <section className="studio-page-head">
+          <div>
+            <p className="workspace-step">个人工作室 · {todayLabel}</p>
+            <h1>
+              {greeting}，{displayName}
+            </h1>
+            <p className="workspace-beta-note">今天想把故事推进到哪里？</p>
           </div>
-          <h1>今天想把故事推进到哪里？</h1>
-          <p className="workspace-beta-note">
-            继续写、整理设定，或者开一本新书。
-          </p>
-        </div>
-        <p className="workspace-email">共 {dashboardWorks.length} 部作品</p>
-      </section>
+          <div className="studio-head-actions">
+            <Link className="secondary-button" href="/workspace/new-project">
+              从一句话开始
+            </Link>
+            {currentWork ? (
+              <Link className="primary-button" href={`/workspace/${currentWork.id}/write`}>
+                继续写作
+              </Link>
+            ) : null}
+          </div>
+        </section>
 
-      <section className="dashboard-command-grid" aria-label="今日写作">
-        {currentWork ? (
-          <article className="continue-card" aria-labelledby="continue-title">
-            <div className="continue-card-copy">
-              <p className="workspace-step">继续写作</p>
-              <h2 id="continue-title">继续写《{currentWork.title}》</h2>
-              <p>
-                {GENRE_LABELS[currentWork.genrePack] ?? currentWork.genrePack} ·{' '}
-                {currentWork.progressPercent}% · {currentWork.wordCount.toLocaleString('zh-CN')} 字 ·
-                最近编辑 {formatWorkDate(currentWork.lastEditedAt)}
-              </p>
-              <div className="continue-actions">
-                <Link
-                  className="primary-button"
-                  href={`/workspace/${currentWork.id}/write`}
-                >
-                  继续写作
-                </Link>
-                <Link className="secondary-button" href={`/workspace/${currentWork.id}/overview`}>
-                  作品总览
-                </Link>
-              </div>
-            </div>
-            <div className="continue-progress" aria-hidden="true">
-              <span style={{ width: `${currentWork.progressPercent}%` }} />
-            </div>
+        <section className="studio-stat-grid" aria-label="创作概览">
+          <article className="studio-stat-card">
+            <span className="studio-stat-label">进行中的作品</span>
+            <strong>{dashboardWorks.length}</strong>
+            <small>{dashboardWorks.filter((work) => work.status === 'serializing').length} 部正在连载</small>
           </article>
-        ) : (
-          <article className="continue-card continue-card-empty" aria-labelledby="continue-title">
-            <div className="continue-card-copy">
-              <p className="workspace-step">继续写作</p>
-              <h2 id="continue-title">从第一本书开始</h2>
-              <p>写下一句话，剩下的边写边补。</p>
-              <div className="continue-actions">
-                <a className="primary-button" href="#create-work-title">
-                  新建作品
+          <article className="studio-stat-card">
+            <span className="studio-stat-label">累计字数</span>
+            <strong>{totalWords.toLocaleString('zh-CN')}</strong>
+            <small>全部进行中的作品</small>
+          </article>
+          <article className="studio-stat-card">
+            <span className="studio-stat-label">待处理建议</span>
+            <strong>{unresolvedForeshadows}</strong>
+            <small>未回收伏笔与连续性提醒</small>
+          </article>
+          <article className="studio-stat-card">
+            <span className="studio-stat-label">平均质量分</span>
+            <strong>{averageQuality ?? '暂无'}</strong>
+            <small>来自已生成章节的质量报告</small>
+          </article>
+        </section>
+
+        <section className="studio-dashboard-grid">
+          {currentWork ? (
+            <article className="studio-continue-card" aria-labelledby="continue-title">
+              <div className="studio-cover">
+                <small>{GENRE_LABELS[currentWork.genrePack] ?? currentWork.genrePack}</small>
+                <strong>{currentWork.title}</strong>
+                <em>{currentWork.statusLabel}</em>
+              </div>
+              <div className="studio-continue-copy">
+                <p className="workspace-step">继续写作</p>
+                <h2 id="continue-title">{currentWork.title}</h2>
+                <p className="studio-muted">
+                  {currentWork.penName} · {SCALE_LABELS[currentWork.scale] ?? currentWork.scale} ·{' '}
+                  {currentWork.targetPlatform}
+                </p>
+                <div className="studio-progress-row">
+                  <div className="work-progress-track" aria-hidden="true">
+                    <span style={{ width: `${currentWork.progressPercent}%` }} />
+                  </div>
+                  <strong>{currentWork.progressPercent}%</strong>
+                </div>
+                <p className="studio-continue-note">
+                  最近编辑 {formatWorkDate(currentWork.lastEditedAt)}。先看连续性提醒，再写下一章。
+                </p>
+                <div className="studio-continue-actions">
+                  <Link className="primary-button" href={`/workspace/${currentWork.id}/write`}>
+                    写下一章
+                  </Link>
+                  <Link className="secondary-button" href={`/workspace/${currentWork.id}/bible`}>
+                    故事圣经
+                  </Link>
+                  <Link
+                    className="secondary-button"
+                    href={`/workspace/${currentWork.id}/overview`}
+                  >
+                    作品总览
+                  </Link>
+                </div>
+              </div>
+              <div className="studio-continue-side">
+                <div>
+                  <span>累计字数</span>
+                  <strong>{currentWork.wordCount.toLocaleString('zh-CN')}</strong>
+                </div>
+                <div>
+                  <span>质量分</span>
+                  <strong>{currentWork.qualityScore ?? '暂无'}</strong>
+                </div>
+                <div>
+                  <span>未回收伏笔</span>
+                  <strong>{currentWork.unresolvedForeshadowCount}</strong>
+                </div>
+              </div>
+            </article>
+          ) : (
+            <article className="studio-continue-card studio-continue-empty">
+              <div className="studio-continue-copy">
+                <p className="workspace-step">继续写作</p>
+                <h2 id="continue-title">从第一本书开始</h2>
+                <p className="studio-muted">写下一句话，剩下的边写边补。</p>
+                <div className="studio-continue-actions">
+                  <Link className="primary-button" href="/workspace/new-project">
+                    新建作品
+                  </Link>
+                </div>
+              </div>
+            </article>
+          )}
+
+          <aside className="studio-side-stack">
+            <section className="studio-side-panel" aria-labelledby="today-tasks-title">
+              <div className="studio-side-heading">
+                <h2 id="today-tasks-title">今日任务</h2>
+                <span>{currentWork ? 3 : 0} 项</span>
+              </div>
+              {currentWork ? (
+                <ul className="today-task-list">
+                  <li>
+                    <Link href={`/workspace/${currentWork.id}/foreshadows`}>
+                      <span>
+                        <strong>未回收伏笔</strong>
+                        <small>先处理会影响后续章节的线索</small>
+                      </span>
+                      <span>{currentWork.unresolvedForeshadowCount}</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href={`/workspace/${currentWork.id}/write`}>
+                      <span>
+                        <strong>连续性检查</strong>
+                        <small>写作台会在保存时检查冲突</small>
+                      </span>
+                      <span>→</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href={`/workspace/${currentWork.id}/write`}>
+                      <span>
+                        <strong>章末钩子</strong>
+                        <small>去写作台生成下一章悬念</small>
+                      </span>
+                      <span>→</span>
+                    </Link>
+                  </li>
+                </ul>
+              ) : (
+                <p className="dashboard-empty">还没有进行中的作品。</p>
+              )}
+            </section>
+
+            <section className="studio-side-panel" aria-labelledby="recent-changes-title">
+              <div className="studio-side-heading">
+                <h2 id="recent-changes-title">最近修改</h2>
+                <a className="text-button" href="#works-list-title">
+                  查看全部
                 </a>
               </div>
-            </div>
-          </article>
-        )}
-
-        <aside className="today-panel" aria-labelledby="today-tasks-title">
-          <div className="today-panel-heading">
-            <div>
-              <p className="workspace-step">写作提醒</p>
-              <h2 id="today-tasks-title">今日任务</h2>
-            </div>
-            <span>{currentWork ? 3 : 0}</span>
-          </div>
-          {currentWork ? (
-            <ul className="today-task-list">
-              <li>
-                <Link href={`/workspace/${currentWork.id}/foreshadows`}>
-                  <span>
-                    <strong>未回收伏笔</strong>
-                    <small>先处理会影响后续章节的线索</small>
-                  </span>
-                  <span>{currentWork.unresolvedForeshadowCount}</span>
-                </Link>
-              </li>
-              <li>
-                <Link href={`/workspace/${currentWork.id}/write`}>
-                  <span>
-                    <strong>连续性检查</strong>
-                    <small>写作台会在保存时检查冲突</small>
-                  </span>
-                  <span>→</span>
-                </Link>
-              </li>
-              <li>
-                <Link href={`/workspace/${currentWork.id}/write`}>
-                  <span>
-                    <strong>章末钩子</strong>
-                    <small>去写作台生成下一章悬念</small>
-                  </span>
-                  <span>→</span>
-                </Link>
-              </li>
-            </ul>
-          ) : (
-            <p className="dashboard-empty">还没有进行中的作品。</p>
-          )}
-        </aside>
-      </section>
-
-      <section className="dashboard-recent" aria-labelledby="recent-changes-title">
-        <div className="dashboard-recent-heading">
-          <div>
-            <p className="workspace-step">版本</p>
-            <h2 id="recent-changes-title">最近修改</h2>
-          </div>
-          <a className="text-button" href="#works-list-title">
-            查看全部
-          </a>
-        </div>
-        {recentWorks.length > 0 ? (
-          <div className="dashboard-recent-list">
-            {recentWorks.map((work) => (
-              <Link
-                className="dashboard-recent-item"
-                href={`/workspace/${work.id}/overview`}
-                key={work.id}
-              >
-                <span className="dashboard-recent-mark">{work.title.slice(0, 1)}</span>
-                <span className="dashboard-recent-copy">
-                  <strong>{work.title}</strong>
-                  <small>
-                    {work.statusLabel} · {formatWorkDate(work.lastEditedAt)}
-                  </small>
-                </span>
-                <span className="dashboard-recent-progress">{work.progressPercent}%</span>
-              </Link>
-            ))}
-          </div>
-        ) : (
-          <p className="dashboard-empty">还没有最近修改。</p>
-        )}
-      </section>
+              {recentWorks.length > 0 ? (
+                <ul className="studio-activity-list">
+                  {recentWorks.map((work) => (
+                    <li key={work.id}>
+                      <Link href={`/workspace/${work.id}/overview`}>
+                        <span className="studio-activity-mark" />
+                        <span>
+                          <strong>{work.title}</strong>
+                          <small>
+                            {work.statusLabel} · {formatWorkDate(work.lastEditedAt)}
+                          </small>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="dashboard-empty">还没有最近修改。</p>
+              )}
+            </section>
+          </aside>
+        </section>
 
       <div className="workspace-layout">
         <section className="works-list-section" aria-labelledby="works-list-title">
