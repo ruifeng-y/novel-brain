@@ -301,13 +301,15 @@ export function StoryLedgerPanel({
   workId,
   branchId,
   initialLedger,
+  initialTab = 'threads',
 }: {
   workId: string;
   branchId: string;
   initialLedger: StoryLedger;
+  initialTab?: LedgerTab;
 }) {
   const [ledger, setLedger] = useState(initialLedger);
-  const [tab, setTab] = useState<LedgerTab>('threads');
+  const [tab, setTab] = useState<LedgerTab>(initialTab);
   const [notice, setNotice] = useState<Notice>({ status: 'idle' });
   const [threadEditor, setThreadEditor] = useState<{ id?: string } | null>(null);
   const [threadForm, setThreadForm] = useState<ThreadDraft>(blankThread);
