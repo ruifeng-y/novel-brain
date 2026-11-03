@@ -644,7 +644,7 @@ describe('chapter generation API', () => {
       .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/generate`)
       .send({})
       .expect(202);
-    await waitForJob(
+    const firstJob = await waitForJob(
       author.agent,
       work.id,
       work.mainBranchId,
@@ -677,6 +677,13 @@ describe('chapter generation API', () => {
         `/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/fact-proposals/${rejected.id}/reject`,
       )
       .send({})
+      .expect(201);
+    await author.agent
+      .post(`/api/v1/works/${work.id}/branches/${work.mainBranchId}/chapters/1/versions`)
+      .send({
+        title: '断碑夜雨',
+        content: firstJob.draft.content,
+      })
       .expect(201);
 
     await saveOutline(author.agent, work.id, work.mainBranchId, 2, {
@@ -712,6 +719,19 @@ describe('chapter generation API', () => {
       },
     });
     expect(secondJob.context.sourceRefs).toContain(`fact:${confirmed.body.fact.id}`);
+    const previousChapter = secondJob.context.sections.find(
+      (section: { key: string }) => section.key === 'previousChapter',
+    );
+    expect(previousChapter).toMatchObject({
+      title: '前章衔接',
+      content: {
+        chapterNumber: 1,
+        title: '断碑夜雨',
+      },
+    });
+    expect(
+      (previousChapter as { content: { excerpt: string } }).content.excerpt,
+    ).toContain(firstJob.draft.content.trim().slice(-120));
 
     const serializedContext = JSON.stringify(secondJob.context);
     expect(serializedContext).not.toContain(rejected.statement);

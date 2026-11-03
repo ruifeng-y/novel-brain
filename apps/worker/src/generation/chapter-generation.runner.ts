@@ -56,6 +56,13 @@ import {
 
 type GenerationStepKey = 'readiness' | 'brief' | 'context' | 'draft' | 'extract_facts' | 'verify';
 
+type PreviousChapterContext = {
+  chapterNumber: number;
+  title: string;
+  summary: string;
+  excerpt: string;
+};
+
 type GenerationErrorInfo = {
   code: string;
   message: string;
@@ -349,6 +356,11 @@ export class ChapterGenerationRunner {
           generation.workId,
           generation.branchId,
           settings.referenceChapters,
+        ),
+        await this.loadPreviousChapterContext(
+          generation.workId,
+          generation.branchId,
+          Number(jobRow.payload.chapterNumber),
         ),
         jobRow.payload,
         contextFacts,
@@ -808,6 +820,44 @@ export class ChapterGenerationRunner {
     }
   }
 
+  private async loadPreviousChapterContext(
+    workId: string,
+    branchId: string,
+    chapterNumber: number,
+  ): Promise<PreviousChapterContext | null> {
+    if (chapterNumber <= 1) {
+      return null;
+    }
+    const previousNumber = chapterNumber - 1;
+    const [row] = await this.database.db
+      .select({
+        chapterNumber: chapters.chapterNumber,
+        title: chapters.title,
+        summary: chapters.summary,
+        content: chapterVersions.content,
+      })
+      .from(chapters)
+      .leftJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
+      .where(
+        and(
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, branchId),
+          eq(chapters.chapterNumber, previousNumber),
+        ),
+      )
+      .limit(1);
+    if (!row?.content?.trim()) {
+      return null;
+    }
+    const normalized = row.content.trim();
+    return {
+      chapterNumber: previousNumber,
+      title: row.title?.trim() || `第 ${previousNumber} 章`,
+      summary: row.summary?.trim() || '',
+      excerpt: normalized.length > 1_800 ? `…${normalized.slice(-1_800)}` : normalized,
+    };
+  }
+
   private compileContext(
     bible: StoryBibleRow,
     outline: ChapterOutlineRow,
@@ -823,6 +873,7 @@ export class ChapterGenerationRunner {
       summary: string;
       content: string;
     }>,
+    previousChapter: PreviousChapterContext | null,
     jobPayload: Record<string, unknown>,
     confirmedFacts: Array<{
       id: string;
@@ -881,6 +932,15 @@ export class ChapterGenerationRunner {
           chapterEndHook: outline.chapterEndHook,
         },
       },
+      ...(previousChapter
+        ? [
+            {
+              key: 'previousChapter',
+              title: '前章衔接',
+              content: previousChapter,
+            },
+          ]
+        : []),
       ...(genreDefinition
         ? [
             {
@@ -987,6 +1047,7 @@ export class ChapterGenerationRunner {
     const systemPrompt = [
       '你是一位擅长中文长篇网络小说的作者。',
       '请严格依据作者提供的创作资料写作，保持人物、世界规则和前文事实一致。',
+      '必须承接前章结尾的时间、地点、人物状态和事件结果，不得改写或跳过前章已经发生的内容。',
       ...(historyContext
         ? [
             '这是一部历史题材小说。故事发生在架空古代，不要写入现代器物、现代制度或网络词汇。',
@@ -1056,6 +1117,17 @@ export class ChapterGenerationRunner {
       `叙事视角：${effectivePov}`,
       `场景节拍：${outline.sceneBeats.join('；')}`,
       `章末钩子：${outline.chapterEndHook}`,
+      ...(previousChapter
+        ? [
+            '',
+            '【前章衔接】',
+            `第 ${previousChapter.chapterNumber} 章《${previousChapter.title}》`,
+            `前章摘要：${previousChapter.summary || '无'}`,
+            '前章结尾原文：',
+            previousChapter.excerpt,
+            '本章开头必须自然承接这段结尾；物品尺寸、人物伤疤、食物、信物、时间和人物位置不得与前章冲突。',
+          ]
+        : []),
       ...(confirmedFacts.length > 0
         ? [
             '',
@@ -1100,6 +1172,7 @@ export class ChapterGenerationRunner {
       sourceRefs: [
         `story_bible:${bible.id}`,
         `chapter_outline:${outline.id}`,
+        ...(previousChapter ? [`chapter:${previousChapter.chapterNumber}`] : []),
         ...referenceChapters.map((chapter) => `chapter:${chapter.chapterNumber}`),
         ...confirmedFacts.map((fact) => `fact:${fact.id}`),
         ...urbanSettings.map((setting) => `entity:${setting.id}`),
