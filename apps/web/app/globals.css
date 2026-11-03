@@ -12049,3 +12049,19 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+.writing-shell.focus-mode .writing-desk {
+  grid-template-areas: 'editor';
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.writing-shell.focus-mode .writing-chapters,
+.writing-shell.focus-mode .writing-context {
+  display: none;
+}
+
+.writing-shell.focus-mode .writing-editor {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}

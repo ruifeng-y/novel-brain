@@ -134,6 +134,7 @@ export function WritingDesk({
   const [generating, setGenerating] = useState(false);
   const [currentAction, setCurrentAction] = useState<WritingAction | null>(null);
   const [saving, setSaving] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [generationState, setGenerationState] = useState<GenerationState>('idle');
   const [completionLabel, setCompletionLabel] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
@@ -1039,7 +1040,9 @@ export function WritingDesk({
   const workReadOnly = boot.work.readOnly;
 
   return (
-    <main className={`writing-shell${workReadOnly ? ' writing-shell-readonly' : ''}`}>
+    <main
+      className={`writing-shell${workReadOnly ? ' writing-shell-readonly' : ''}${focusMode ? ' focus-mode' : ''}`}
+    >
       <header className="writing-header">
         <div className="writing-header-main">
           <Link className="workspace-brand" href="/workspace">
@@ -1052,6 +1055,7 @@ export function WritingDesk({
           </div>
         </div>
         <nav className="workspace-nav" aria-label="写作台导航">
+          <Link href={`/workspace/${boot.work.id}/overview`}>返回作品总览</Link>
           <Link href={`/workspace/${boot.work.id}`}>作品与章纲</Link>
           <Link href={`/workspace/${boot.work.id}/jobs`}>创作任务</Link>
           <Link href="/workspace/settings">模型设置</Link>
@@ -1227,6 +1231,13 @@ export function WritingDesk({
                 type="button"
               >
                 {saving ? '正在保存…' : '保存版本'}
+              </button>
+              <button
+                className="secondary-button"
+                onClick={() => setFocusMode((current) => !current)}
+                type="button"
+              >
+                {focusMode ? '退出专注' : '专注模式'}
               </button>
             </div>
 
