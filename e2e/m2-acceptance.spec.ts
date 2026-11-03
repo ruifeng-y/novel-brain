@@ -199,7 +199,7 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   }
   const xianxia = await apiJson<WorkRecord>(page, 'GET', `/api/v1/works/${xianxiaId}`);
 
-  await page.goto('/workspace');
+  await page.goto('/workspace?quick=1');
   const historyTitle = `北境争鼎·M2验收${stamp}`;
   await page.getByLabel('书名').fill(historyTitle);
   await page.getByLabel('笔名').fill('朔风客');

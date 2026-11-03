@@ -47,6 +47,7 @@ export async function createWork(
   title: string,
   penName = '壳层测试作者',
 ): Promise<void> {
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill(penName);
   await page.getByLabel('题材').selectOption('xianxia');

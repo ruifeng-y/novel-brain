@@ -76,6 +76,11 @@ export function WorkspaceHome() {
   const [busyAction, setBusyAction] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string>();
   const [leaving, setLeaving] = useState<'current' | 'all'>();
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+
+  useEffect(() => {
+    setQuickCreateOpen(new URLSearchParams(window.location.search).get('quick') === '1');
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -902,6 +907,7 @@ export function WorkspaceHome() {
           )}
         </section>
 
+        {quickCreateOpen || dashboardWorks.length === 0 ? (
         <aside className="create-panel" aria-labelledby="create-work-title">
           <div className="create-panel-heading">
             <p className="workspace-step">开始写作</p>
@@ -1017,6 +1023,7 @@ export function WorkspaceHome() {
             </button>
           </div>
         </aside>
+        ) : null}
       </div>
       </main>
     </AccountShell>
