@@ -171,6 +171,16 @@ export type FactProposal = {
   updatedAt: string;
 };
 
+export type ConfirmedFact = {
+  id: string;
+  chapterNumber: number;
+  type: FactType;
+  typeLabel: string;
+  statement: string;
+  sourceSentence: string;
+  confirmedAt: string;
+};
+
 export type ConfirmFactProposalResult = {
   proposal: FactProposal;
   fact: {
@@ -463,6 +473,15 @@ export function loadContinuityIssues(
 ): Promise<{ items: ContinuityIssue[] }> {
   return apiRequest<{ items: ContinuityIssue[] }>(
     `${generationPath(workId, branchId)}/chapters/${chapterNumber}/annotations`,
+  );
+}
+
+export function loadConfirmedFacts(
+  workId: string,
+  branchId: string,
+): Promise<{ items: ConfirmedFact[] }> {
+  return apiRequest<{ items: ConfirmedFact[] }>(
+    `${generationPath(workId, branchId)}/facts`,
   );
 }
 

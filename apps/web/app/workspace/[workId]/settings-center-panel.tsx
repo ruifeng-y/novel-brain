@@ -141,6 +141,9 @@ export function SettingsCenterPanel({
   initialEntities,
   initialCustomFields,
   initialRelations,
+  initialType,
+  fieldsInitiallyOpen = false,
+  title = '设定中心',
 }: {
   workId: string;
   branchId: string;
@@ -148,25 +151,37 @@ export function SettingsCenterPanel({
   initialEntities: Entity[];
   initialCustomFields: CustomFieldDefinition[];
   initialRelations: Relation[];
+  initialType?: EntityType;
+  fieldsInitiallyOpen?: boolean;
+  title?: string;
 }) {
   const genreDefinition = getGenrePackDefinition(genrePack);
   const genreSubtypes = genreDefinition?.subtypes ?? [];
+  const initialItems = initialType
+    ? initialEntities.filter((entity) => entity.type === initialType)
+    : initialEntities;
   const [catalog, setCatalog] = useState(initialEntities);
-  const [items, setItems] = useState(initialEntities);
+  const [items, setItems] = useState(initialItems);
   const [customFields, setCustomFields] = useState(initialCustomFields);
   const [relations, setRelations] = useState(initialRelations);
-  const [selectedId, setSelectedId] = useState<string | null>(initialEntities[0]?.id ?? null);
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialItems[0]?.id ?? initialEntities[0]?.id ?? null,
+  );
   const [detail, setDetail] = useState<EntityDetail | null>(null);
   const [draft, setDraft] = useState<EntityInput>(() =>
-    initialEntities[0] ? entityDraft(initialEntities[0]) : emptyEntity(),
+    initialItems[0] ?? initialEntities[0]
+      ? entityDraft(initialItems[0] ?? initialEntities[0])
+      : emptyEntity(),
   );
-  const [activeFilters, setActiveFilters] = useState<EntitySearchFilters>({});
+  const [activeFilters, setActiveFilters] = useState<EntitySearchFilters>(
+    initialType ? { type: initialType } : {},
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [tagQuery, setTagQuery] = useState('');
   const [statusQuery, setStatusQuery] = useState<'' | EntityStatus>('');
   const [listState, setListState] = useState<SaveState>({ status: 'idle' });
   const [saveState, setSaveState] = useState<SaveState>({ status: 'idle' });
-  const [fieldsOpen, setFieldsOpen] = useState(false);
+  const [fieldsOpen, setFieldsOpen] = useState(fieldsInitiallyOpen);
   const [fieldDraft, setFieldDraft] = useState<FieldDraft>({
     label: '',
     type: 'text',
@@ -404,7 +419,7 @@ export function SettingsCenterPanel({
       <div className="settings-center-heading">
         <div>
           <p className="workspace-step">世界观、人物与物件</p>
-          <h2 id="settings-center-title">设定中心</h2>
+          <h2 id="settings-center-title">{title}</h2>
           <p>把散落在脑中的世界信息整理成可搜索、可关联、能被章节和大纲引用的条目。</p>
         </div>
         <div className="settings-center-count" aria-label="设定数量">
