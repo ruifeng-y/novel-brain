@@ -11105,3 +11105,260 @@ textarea {
     flex-direction: column;
   }
 }
+
+.work-overview-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.work-confirm-bar {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid #e6c9c3;
+  border-radius: 8px;
+  background: #fbf1ee;
+}
+
+.work-confirm-bar p {
+  margin: 0 0 10px;
+  color: #7a3328;
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+.work-confirm-bar > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.work-overview-section {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #d9d8d0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.work-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.work-readiness-card {
+  padding: 14px;
+  border: 1px solid #e0e3dc;
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.work-readiness-card > span {
+  color: #8a6a3f;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.work-readiness-card.is-ready > span {
+  color: var(--jade);
+}
+
+.work-readiness-card strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.9rem;
+}
+
+.work-readiness-card p {
+  margin: 6px 0 0;
+  color: #7b847c;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.work-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.work-quick-card {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid #e0e3dc;
+  border-radius: 8px;
+  background: #fbfcfa;
+}
+
+.work-quick-card:hover {
+  border-color: #cbd3cc;
+  background: #f8f9f6;
+}
+
+.work-quick-card strong {
+  font-size: 0.85rem;
+}
+
+.work-quick-card small {
+  padding-right: 18px;
+  color: #7b847c;
+  font-size: 0.72rem;
+  line-height: 1.5;
+}
+
+.work-quick-card > span {
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  color: var(--cinnabar);
+}
+
+.work-overview-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.work-chapter-list,
+.work-change-list,
+.work-reminder-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.work-chapter-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid #e0e3dc;
+  border-radius: 7px;
+  background: #fbfcfa;
+}
+
+.work-chapter-row > span {
+  color: var(--cinnabar);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.work-chapter-row strong {
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.work-chapter-row small {
+  color: #7b847c;
+  font-size: 0.7rem;
+}
+
+.work-change-row {
+  padding: 10px 12px;
+  border: 1px solid #e0e3dc;
+  border-radius: 7px;
+  background: #fbfcfa;
+}
+
+.work-change-row strong {
+  font-size: 0.82rem;
+}
+
+.work-change-row p {
+  margin: 4px 0;
+  color: #5f6962;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.work-change-row small {
+  color: #7b847c;
+  font-size: 0.7rem;
+}
+
+.work-reminder-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e0e3dc;
+  border-radius: 7px;
+  background: #fbfcfa;
+}
+
+.work-reminder-row > span {
+  flex-shrink: 0;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: #f5e4df;
+  color: var(--cinnabar);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.work-reminder-row > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.work-reminder-row strong {
+  display: block;
+  font-size: 0.82rem;
+}
+
+.work-reminder-row p {
+  margin: 4px 0 0;
+  color: #7b847c;
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.work-settings-back {
+  margin-bottom: 12px;
+}
+
+.work-settings-shell .settings-hero {
+  padding-top: 18px;
+}
+
+.work-lifecycle-panel {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #d9d8d0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.work-lifecycle-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+@media (max-width: 1120px) {
+  .work-readiness-grid,
+  .work-quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 780px) {
+  .work-overview-columns,
+  .work-readiness-grid,
+  .work-quick-grid {
+    grid-template-columns: 1fr;
+  }
+}
