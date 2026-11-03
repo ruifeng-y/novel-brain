@@ -50,7 +50,13 @@ const QUALITY_LABELS = {
   premium: '精品',
 } as const;
 
-export function TaskCenter({ workId }: { workId: string }) {
+export function TaskCenter({
+  workId,
+  showHeader = true,
+}: {
+  workId: string;
+  showHeader?: boolean;
+}) {
   const router = useRouter();
   const [boot, setBoot] = useState<BootState>({ status: 'loading' });
   const [jobs, setJobs] = useState<BatchJobSummary[]>([]);
@@ -337,24 +343,26 @@ export function TaskCenter({ workId }: { workId: string }) {
   ).length;
 
   return (
-    <main className="task-shell">
-      <header className="task-header">
-        <div className="task-header-main">
-          <Link className="workspace-brand" href="/workspace">
-            NovelBrain
-          </Link>
-          <span className="writing-header-divider" aria-hidden="true" />
-          <div>
-            <p>{GENRE_LABELS[boot.work.genrePack] ?? boot.work.genrePack}</p>
-            <strong>{boot.work.title}</strong>
+    <main className={`task-shell${showHeader ? '' : ' task-shell-embedded'}`}>
+      {showHeader ? (
+        <header className="task-header">
+          <div className="task-header-main">
+            <Link className="workspace-brand" href="/workspace">
+              NovelBrain
+            </Link>
+            <span className="writing-header-divider" aria-hidden="true" />
+            <div>
+              <p>{GENRE_LABELS[boot.work.genrePack] ?? boot.work.genrePack}</p>
+              <strong>{boot.work.title}</strong>
+            </div>
           </div>
-        </div>
-        <nav className="workspace-nav" aria-label="创作任务导航">
-          <Link href={`/workspace/${boot.work.id}`}>作品与章纲</Link>
-          <Link href={`/workspace/${boot.work.id}/write`}>写作台</Link>
-          <Link href="/workspace/settings">模型设置</Link>
-        </nav>
-      </header>
+          <nav className="workspace-nav" aria-label="创作任务导航">
+            <Link href={`/workspace/${boot.work.id}`}>作品与章纲</Link>
+            <Link href={`/workspace/${boot.work.id}/write`}>写作台</Link>
+            <Link href="/workspace/settings">模型设置</Link>
+          </nav>
+        </header>
+      ) : null}
 
       <section className="task-hero">
         <div>
