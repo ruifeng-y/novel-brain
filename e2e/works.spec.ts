@@ -48,6 +48,8 @@ test('an author can create, list, and reopen a work', async ({ page }) => {
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByRole('heading', { name: '书架还是空的' })).toBeVisible();
 
+  await page.goto('/workspace?quick=1');
+
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByLabel('题材').selectOption('xianxia');
@@ -97,6 +99,7 @@ test('an author can start from one line, set writing conventions, and upload a c
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
+  await page.goto('/workspace?quick=1');
   await page.getByRole('tab', { name: '一句话想法' }).click();
   await page.getByLabel('故事灵感').fill(idea);
   await page.getByLabel('笔名').fill('青云客');

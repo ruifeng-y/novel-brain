@@ -57,6 +57,7 @@ async function createWorkWithOutline(page: Page, title: string): Promise<void> {
   if (new URL(page.url()).pathname !== '/workspace') {
     await page.getByRole('link', { name: '作品书架' }).click();
   }
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();

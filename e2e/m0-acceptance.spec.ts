@@ -88,6 +88,8 @@ test('M0 acceptance: one author journey reaches confirmed facts and visible cont
   await expect(page).toHaveURL(/\/login$/);
   await signInThroughUi(page, email, password);
 
+  await page.goto('/workspace?quick=1');
+
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByLabel('题材').selectOption('xianxia');

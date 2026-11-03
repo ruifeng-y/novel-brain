@@ -67,6 +67,8 @@ test('an author can plan, reorder, lock, regenerate, and delete outline nodes', 
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
+  await page.goto('/workspace?quick=1');
+
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
@@ -220,6 +222,8 @@ test('an author can drag chapters and scenes into a persisted order', async ({ p
   await page.getByLabel('密码').fill(password);
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
+
+  await page.goto('/workspace?quick=1');
 
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');

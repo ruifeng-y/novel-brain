@@ -70,6 +70,8 @@ test('an author can build a layered map and resolve a two-place conflict', async
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
+  await page.goto('/workspace?quick=1');
+
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();

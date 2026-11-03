@@ -95,6 +95,7 @@ test('an author previews, exports, and downloads a book in the selected platform
   page,
 }) => {
   await registerAuthor(page, `exports-e2e-${Date.now()}@example.com`);
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(`导出验收${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();

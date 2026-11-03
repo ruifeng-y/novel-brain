@@ -41,6 +41,8 @@ test('an author exports every data area and searches the account audit trail', a
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
+  await page.goto('/workspace?quick=1');
+
   await page.getByLabel('书名').fill(`账号导出验收${Date.now()}`);
   await page.getByLabel('笔名').fill('归舟');
   await page.getByRole('button', { name: '创建并开始' }).click();

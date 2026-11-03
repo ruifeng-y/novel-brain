@@ -907,7 +907,7 @@ export function WorkspaceHome() {
           )}
         </section>
 
-        {quickCreateOpen || dashboardWorks.length === 0 ? (
+        {quickCreateOpen ? (
         <aside className="create-panel" aria-labelledby="create-work-title">
           <div className="create-panel-heading">
             <p className="workspace-step">开始写作</p>

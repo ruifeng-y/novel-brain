@@ -39,6 +39,8 @@ async function signUp(page: import('@playwright/test').Page): Promise<void> {
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
+  await page.goto('/workspace?quick=1');
+
   await page.getByLabel('书名').fill(`九境残卷${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();

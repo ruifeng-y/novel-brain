@@ -118,6 +118,7 @@ test('an author can generate, edit, save, and recover a chapter in the writing d
   await expect(page.getByText('配置已保存')).toBeVisible();
 
   await page.getByRole('link', { name: '作品书架' }).click();
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
@@ -249,6 +250,7 @@ test('an author sees and can ignore a left-arm continuity conflict in the writin
   await expect(page.getByText('配置已保存')).toBeVisible();
 
   await page.getByRole('link', { name: '作品书架' }).click();
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();

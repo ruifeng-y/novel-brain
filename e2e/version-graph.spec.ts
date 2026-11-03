@@ -49,6 +49,7 @@ test('an author can inspect versions, undo one change, export history, and roll 
   page,
 }) => {
   await registerAuthor(page, `version-graph-e2e-${Date.now()}@example.com`);
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(`版本图${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();

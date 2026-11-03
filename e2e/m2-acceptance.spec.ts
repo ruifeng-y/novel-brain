@@ -186,6 +186,7 @@ test('M2 acceptance: three genres, batch review, changes, versions, and rollback
   await registerAuthor(page, email);
 
   const xianxiaTitle = `九门问心·M2验收${stamp}`;
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(xianxiaTitle);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByLabel('题材').selectOption('xianxia');

@@ -132,6 +132,7 @@ test('an author manages the work lifecycle, library filters, import, and read-on
   await expect(trashedCard).toHaveCount(0);
 
   await page.getByRole('tab', { name: '导入旧稿' }).click();
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(importedTitle);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByLabel('题材').selectOption('xianxia');

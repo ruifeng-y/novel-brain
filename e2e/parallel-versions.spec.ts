@@ -48,6 +48,7 @@ test('an author can fork a saved version, compare it, and pick one chapter back 
 }) => {
   test.setTimeout(90_000);
   await registerAuthor(page, `parallel-versions-e2e-${Date.now()}@example.com`);
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(`平行版本${Date.now()}`);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();

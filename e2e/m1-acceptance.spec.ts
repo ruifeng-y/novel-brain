@@ -330,6 +330,8 @@ test('M1 acceptance: one xianxia work reaches an internally serializable state',
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
+  await page.goto('/workspace?quick=1');
+
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByLabel('题材').selectOption('xianxia');

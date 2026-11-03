@@ -86,6 +86,7 @@ test('an author can create and validate a history work in the Chinese workspace'
 
   await useIsolatedClientIp(page);
   await registerAuthor(page, email);
+  await page.goto('/workspace?quick=1');
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('朔风客');
   await page.getByLabel('题材').selectOption('history');

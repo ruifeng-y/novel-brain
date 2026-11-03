@@ -57,6 +57,8 @@ test('an author can save and reopen a story bible and chapter outline', async ({
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
 
+  await page.goto('/workspace?quick=1');
+
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
   await page.getByRole('button', { name: '创建并开始' }).click();
@@ -172,6 +174,8 @@ test('an author can complete, lock, and confirm changes to every story bible car
   await page.getByLabel('密码').fill(password);
   await page.getByRole('button', { name: '创建账号' }).click();
   await expect(page).toHaveURL(/\/workspace$/);
+
+  await page.goto('/workspace?quick=1');
 
   await page.getByLabel('书名').fill(title);
   await page.getByLabel('笔名').fill('青云客');
