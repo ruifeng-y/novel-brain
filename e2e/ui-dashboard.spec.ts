@@ -14,6 +14,7 @@ test('the dashboard shows continue writing, today tasks, and recent changes', as
   await expect(page.getByRole('heading', { name: '从第一本书开始' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '今日任务' })).toBeVisible();
   await expect(page.getByRole('heading', { name: '最近修改' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '开始一本新书' })).toHaveCount(0);
 
   await createWork(page, title);
   await page.goto('/workspace');
@@ -27,6 +28,7 @@ test('the dashboard shows continue writing, today tasks, and recent changes', as
   );
   await expect(page.getByRole('link', { name: /未回收伏笔/ })).toBeVisible();
   await expect(page.locator('.studio-activity-list').getByText(title)).toBeVisible();
+  await expect(page.getByRole('heading', { name: '开始一本新书' })).toHaveCount(0);
 
   const card = page.locator('.work-card', { hasText: title });
   await expect(card).toBeVisible();
