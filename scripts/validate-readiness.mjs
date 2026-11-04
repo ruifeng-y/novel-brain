@@ -107,7 +107,7 @@ if (prototypeOnlyRows[0]) {
 }
 
 for (const [id, node] of Object.entries(nodes)) {
-  requireCheck(['leaf', 'package', 'integration'].includes(node.type),
+  requireCheck(['spec', 'leaf', 'package', 'integration'].includes(node.type),
     `Issue #${id} has an unknown dependency node type.`);
   requireCheck(Array.isArray(node.blocked_by),
     `Issue #${id} must declare blocked_by as an array.`);
