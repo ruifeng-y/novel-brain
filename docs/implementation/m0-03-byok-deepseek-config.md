@@ -15,12 +15,13 @@
 
 ## 验证结果
 
-- `pnpm check`：17 个单元/契约测试通过。
-- `pnpm test:integration`：8 个真实 PostgreSQL/Redis HTTP 集成测试通过。
+- `pnpm check`：18 个单元/契约测试通过。
+- `pnpm test:integration`：9 个真实 PostgreSQL/Redis HTTP 集成测试通过。
 - `pnpm test:e2e`：13 个真实 API Playwright 测试通过。
 - 集成测试确认数据库密文不包含明文 Key，API 响应不包含明文 Key。
 - 跨用户读取、测试和删除模型配置均被拒绝。
 - `https://127.0.0.1` 等 SSRF 目标被拒绝。
+- API Key 使用信封加密；创建接口支持 `Idempotency-Key`，并保持至少一个默认配置。
 
 ## 边界
 

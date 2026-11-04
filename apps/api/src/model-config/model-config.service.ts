@@ -34,8 +34,19 @@ export class ModelConfigService {
     return (await this.repository.list(userId)).map((config) => this.toContract(config));
   }
 
-  async create(userId: string, input: ModelConfigInput): Promise<ModelConfig> {
-    validateProviderConfig(input);
+  async create(
+    userId: string,
+    input: ModelConfigInput,
+    idempotencyKey?: string,
+  ): Promise<ModelConfig> {
+    if (idempotencyKey) {
+      const existing = await this.repository.findByIdempotencyKey(userId, idempotencyKey);
+      if (existing) {
+        return this.toContract(existing);
+      }
+    }
+    await validateProviderConfig(input);
+    const existingConfigs = await this.repository.list(userId);
     const config = await this.repository.create({
       id: uuidv7(),
       userId,
@@ -45,19 +56,29 @@ export class ModelConfigService {
       model: input.model,
       encryptedKey: encryptApiKey(input.apiKey),
       keyMasked: maskApiKey(input.apiKey),
-      isDefault: input.isDefault,
+      isDefault: existingConfigs.length === 0 ? true : input.isDefault,
+      idempotencyKey: idempotencyKey ?? null,
     });
     return this.toContract(config);
   }
 
   async update(userId: string, id: string, input: ModelConfigUpdate): Promise<ModelConfig> {
     const existing = await this.requireConfig(userId, id);
+    if (input.version !== existing.version) {
+      throw new ApiError(409, "VERSION_CONFLICT", "配置已被其他操作更新，请刷新后重试");
+    }
+    if (input.isDefault === false && existing.isDefault) {
+      const configs = await this.repository.list(userId);
+      if (configs.filter((config) => config.isDefault).length === 1) {
+        throw new ApiError(400, "VALIDATION_INVALID", "至少保留一个默认配置");
+      }
+    }
     const merged = {
       provider: existing.provider,
       baseUrl: input.baseUrl ?? existing.baseUrl,
       model: input.model ?? existing.model,
     };
-    validateProviderConfig(merged as Pick<ModelConfigInput, "provider" | "baseUrl">);
+    await validateProviderConfig(merged as Pick<ModelConfigInput, "provider" | "baseUrl">);
     const config = await this.repository.update(userId, id, input.version, {
       ...(input.label !== undefined ? { label: input.label } : {}),
       ...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl.replace(/\/$/, "") } : {}),

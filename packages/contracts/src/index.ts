@@ -170,6 +170,7 @@ export const modelProviderInfoSchema = z.object({
   key: modelProviderSchema,
   label: z.string(),
   defaultBaseUrl: z.string(),
+  baseUrls: z.array(z.string()),
   models: z.array(z.string()),
 });
 export type ModelProviderInfo = z.infer<typeof modelProviderInfoSchema>;

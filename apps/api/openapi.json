@@ -724,6 +724,12 @@
                           "defaultBaseUrl": {
                             "type": "string"
                           },
+                          "baseUrls": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
                           "models": {
                             "type": "array",
                             "items": {
@@ -731,7 +737,7 @@
                             }
                           }
                         },
-                        "required": ["key", "label", "defaultBaseUrl", "models"],
+                        "required": ["key", "label", "defaultBaseUrl", "baseUrls", "models"],
                         "additionalProperties": false
                       }
                     },
@@ -863,7 +869,16 @@
       },
       "post": {
         "operationId": "ModelConfigController_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "idempotency-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "requestBody": {
           "required": true,
           "content": {

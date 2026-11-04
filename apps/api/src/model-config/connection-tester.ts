@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import type { ModelConfig } from "@novel-brain/contracts";
 
+import { validateProviderConfig } from "./provider-registry";
+
 export const MODEL_CONNECTION_TESTER = Symbol("MODEL_CONNECTION_TESTER");
 
 export interface ConnectionTestInput {
@@ -23,6 +25,7 @@ export class HttpModelConnectionTester implements ModelConnectionTester {
   async test({ config, apiKey }: ConnectionTestInput): Promise<ConnectionTestResult> {
     const startedAt = Date.now();
     try {
+      await validateProviderConfig(config);
       const response = await fetch(`${config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
         redirect: "manual",

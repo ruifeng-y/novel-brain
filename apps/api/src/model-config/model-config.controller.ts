@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   Param,
   Patch,
@@ -69,10 +70,15 @@ export class ModelConfigController {
   @HttpCode(200)
   @ApiBody({ schema: createBodySchema })
   @ApiOkResponse({ description: "Created model config", schema: configResponseSchema })
-  async create(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+  async create(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+    @Headers("idempotency-key") idempotencyKey?: string,
+  ) {
     const config = await this.service.create(
       this.userId(request),
       modelConfigInputSchema.parse(body),
+      idempotencyKey,
     );
     return modelConfigResponseSchema.parse(envelope(config));
   }

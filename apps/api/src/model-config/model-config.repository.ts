@@ -42,6 +42,18 @@ export class ModelConfigRepository implements OnModuleDestroy {
     return config;
   }
 
+  async findByIdempotencyKey(
+    userId: string,
+    idempotencyKey: string,
+  ): Promise<ModelConfigRecord | undefined> {
+    const [config] = await this.db
+      .select()
+      .from(modelConfigs)
+      .where(and(eq(modelConfigs.userId, userId), eq(modelConfigs.idempotencyKey, idempotencyKey)))
+      .limit(1);
+    return config;
+  }
+
   async create(input: {
     id: string;
     userId: string;
@@ -52,6 +64,7 @@ export class ModelConfigRepository implements OnModuleDestroy {
     encryptedKey: string;
     keyMasked: string;
     isDefault: boolean;
+    idempotencyKey: string | null;
   }): Promise<ModelConfigRecord> {
     return this.db.transaction(async (transaction) => {
       if (input.isDefault) {
@@ -82,6 +95,20 @@ export class ModelConfigRepository implements OnModuleDestroy {
     }>,
   ): Promise<ModelConfigRecord | null> {
     return this.db.transaction(async (transaction) => {
+      const [existing] = await transaction
+        .select({ id: modelConfigs.id })
+        .from(modelConfigs)
+        .where(
+          and(
+            eq(modelConfigs.id, id),
+            eq(modelConfigs.userId, userId),
+            eq(modelConfigs.version, version),
+          ),
+        )
+        .limit(1);
+      if (!existing) {
+        return null;
+      }
       if (values.isDefault) {
         await transaction
           .update(modelConfigs)
@@ -108,11 +135,34 @@ export class ModelConfigRepository implements OnModuleDestroy {
   }
 
   async delete(userId: string, id: string): Promise<boolean> {
-    const deleted = await this.db
-      .delete(modelConfigs)
-      .where(and(eq(modelConfigs.id, id), eq(modelConfigs.userId, userId)))
-      .returning({ id: modelConfigs.id });
-    return deleted.length > 0;
+    return this.db.transaction(async (transaction) => {
+      const [existing] = await transaction
+        .select()
+        .from(modelConfigs)
+        .where(and(eq(modelConfigs.id, id), eq(modelConfigs.userId, userId)))
+        .limit(1);
+      if (!existing) {
+        return false;
+      }
+      await transaction
+        .delete(modelConfigs)
+        .where(and(eq(modelConfigs.id, id), eq(modelConfigs.userId, userId)));
+      if (existing.isDefault) {
+        const [replacement] = await transaction
+          .select({ id: modelConfigs.id })
+          .from(modelConfigs)
+          .where(eq(modelConfigs.userId, userId))
+          .orderBy(desc(modelConfigs.updatedAt))
+          .limit(1);
+        if (replacement) {
+          await transaction
+            .update(modelConfigs)
+            .set({ isDefault: true, updatedAt: new Date() })
+            .where(eq(modelConfigs.id, replacement.id));
+        }
+      }
+      return true;
+    });
   }
 
   async updateTestStatus(

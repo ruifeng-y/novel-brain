@@ -7,6 +7,8 @@ import {
   GENERATE_CHAPTER_JOB,
   generateChapterJobSchema,
   loginRequestSchema,
+  modelConfigInputSchema,
+  modelConfigSchema,
   readinessResponseSchema,
   registerRequestSchema,
   sendRegistrationCodeRequestSchema,
@@ -154,6 +156,35 @@ describe("shared contracts", () => {
         },
         requestId: "req_session",
         meta: {},
+      }),
+    ).toBeTruthy();
+  });
+
+  it("validates model configuration request and response contracts", () => {
+    expect(
+      modelConfigInputSchema.parse({
+        provider: "deepseek",
+        label: "DeepSeek 正文",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-secret-value-1234",
+        isDefault: true,
+      }),
+    ).toBeTruthy();
+    expect(
+      modelConfigSchema.parse({
+        id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
+        provider: "deepseek",
+        label: "DeepSeek 正文",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        keyMasked: "****1234",
+        isDefault: true,
+        version: 1,
+        lastTestStatus: "success",
+        lastTestedAt: "2026-11-04T08:00:00.000Z",
+        createdAt: "2026-11-04T08:00:00.000Z",
+        updatedAt: "2026-11-04T08:00:00.000Z",
       }),
     ).toBeTruthy();
   });

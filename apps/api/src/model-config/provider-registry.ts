@@ -1,5 +1,9 @@
-import { ApiError } from "../common/api-error";
+import { lookup } from "node:dns/promises";
+import { isIP } from "node:net";
+
 import type { ModelConfigInput, ModelProviderInfo } from "@novel-brain/contracts";
+
+import { ApiError } from "../common/api-error";
 
 const DEEPSEEK_BASE_URL = "https://api.deepseek.com";
 
@@ -16,23 +20,26 @@ export function listProviders(): ModelProviderInfo[] {
       key: "deepseek",
       label: "DeepSeek 官方 API",
       defaultBaseUrl: DEEPSEEK_BASE_URL,
+      baseUrls: [DEEPSEEK_BASE_URL],
       models: ["deepseek-chat", "deepseek-reasoner"],
     },
   ];
-  for (const baseUrl of openAiAllowlist()) {
+  const allowlist = openAiAllowlist();
+  if (allowlist.length > 0) {
     providers.push({
       key: "openai-compatible",
-      label: `OpenAI 兼容 · ${new URL(baseUrl).host}`,
-      defaultBaseUrl: baseUrl,
+      label: "OpenAI 兼容白名单",
+      defaultBaseUrl: allowlist[0] ?? "",
+      baseUrls: allowlist,
       models: ["custom"],
     });
   }
   return providers;
 }
 
-export function validateProviderConfig(
+export async function validateProviderConfig(
   input: Pick<ModelConfigInput, "provider" | "baseUrl">,
-): void {
+): Promise<void> {
   let url: URL;
   try {
     url = new URL(input.baseUrl);
@@ -42,15 +49,6 @@ export function validateProviderConfig(
   if (url.protocol !== "https:") {
     throw new ApiError(400, "MODEL_CONNECTION_FAILED", "Base URL 必须使用 HTTPS");
   }
-  if (
-    url.hostname === "localhost" ||
-    url.hostname === "127.0.0.1" ||
-    url.hostname === "::1" ||
-    /^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(url.hostname) ||
-    /^(fc|fd|fe80:)/i.test(url.hostname)
-  ) {
-    throw new ApiError(400, "MODEL_CONNECTION_FAILED", "Base URL 不得指向本地或私有网络");
-  }
 
   const normalized = input.baseUrl.replace(/\/$/, "");
   if (input.provider === "deepseek" && normalized !== DEEPSEEK_BASE_URL) {
@@ -59,4 +57,52 @@ export function validateProviderConfig(
   if (input.provider === "openai-compatible" && !openAiAllowlist().includes(normalized)) {
     throw new ApiError(400, "MODEL_CONNECTION_FAILED", "该 Provider 未加入白名单");
   }
+
+  const hostname = url.hostname.replace(/^\[|\]$/g, "");
+  if (hostname === "localhost") {
+    throw new ApiError(400, "MODEL_CONNECTION_FAILED", "Base URL 不得指向本地网络");
+  }
+  const addresses = isIP(hostname)
+    ? [{ address: hostname }]
+    : await lookup(hostname, { all: true, verbatim: true }).catch(() => []);
+  if (addresses.length === 0 || addresses.some(({ address }) => !isPublicAddress(address))) {
+    throw new ApiError(400, "MODEL_CONNECTION_FAILED", "Base URL 不得指向本地或私有网络");
+  }
+}
+
+function isPublicAddress(address: string): boolean {
+  if (isIP(address) === 4) {
+    const octets = address.split(".").map(Number);
+    const first = octets[0] ?? 0;
+    const second = octets[1] ?? 0;
+    return !(
+      first === 0 ||
+      first === 10 ||
+      first === 127 ||
+      (first === 100 && second >= 64 && second <= 127) ||
+      (first === 169 && second === 254) ||
+      (first === 172 && second >= 16 && second <= 31) ||
+      (first === 192 && second === 0) ||
+      (first === 192 && second === 168) ||
+      (first === 198 && (second === 18 || second === 19)) ||
+      first >= 224
+    );
+  }
+  if (isIP(address) === 6) {
+    const normalized = address.toLowerCase();
+    if (normalized.startsWith("::ffff:")) {
+      return isPublicAddress(normalized.slice(7));
+    }
+    return !(
+      normalized === "::" ||
+      normalized === "::1" ||
+      normalized.startsWith("fc") ||
+      normalized.startsWith("fd") ||
+      normalized.startsWith("fe8") ||
+      normalized.startsWith("fe9") ||
+      normalized.startsWith("fea") ||
+      normalized.startsWith("feb")
+    );
+  }
+  return false;
 }

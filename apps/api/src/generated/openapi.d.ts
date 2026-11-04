@@ -594,6 +594,7 @@ export interface operations {
               key: "deepseek" | "openai-compatible";
               label: string;
               defaultBaseUrl: string;
+              baseUrls: string[];
               models: string[];
             }[];
             /** Format: starts_with */
@@ -657,7 +658,9 @@ export interface operations {
   ModelConfigController_create: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "idempotency-key": string;
+      };
       path?: never;
       cookie?: never;
     };

@@ -84,6 +84,7 @@ export const modelConfigs = pgTable(
     model: text("model").notNull(),
     encryptedKey: text("encrypted_key").notNull(),
     keyMasked: text("key_masked").notNull(),
+    idempotencyKey: text("idempotency_key"),
     isDefault: boolean("is_default").notNull().default(false),
     version: integer("version").notNull().default(1),
     lastTestStatus: text("last_test_status"),
@@ -91,5 +92,8 @@ export const modelConfigs = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("model_configs_user_id_idx").on(table.userId)],
+  (table) => [
+    index("model_configs_user_id_idx").on(table.userId),
+    uniqueIndex("model_configs_user_idempotency_unique").on(table.userId, table.idempotencyKey),
+  ],
 );

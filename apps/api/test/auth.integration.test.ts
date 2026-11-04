@@ -258,6 +258,7 @@ describe("auth HTTP integration", () => {
       .post("/api/v1/model-configs")
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "model-create-1")
       .send({
         provider: "deepseek",
         label: "DeepSeek 正文",
@@ -267,6 +268,23 @@ describe("auth HTTP integration", () => {
         isDefault: true,
       })
       .expect(200);
+
+    const replay = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "model-create-1")
+      .send({
+        provider: "deepseek",
+        label: "重复请求",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-different-value-9999",
+        isDefault: false,
+      })
+      .expect(200);
+    expect(replay.body.data.id).toBe(created.body.data.id);
+    expect(replay.body.data.label).toBe("DeepSeek 正文");
 
     expect(JSON.stringify(created.body)).not.toContain(apiKey);
     expect(created.body.data.keyMasked).toBe("****1234");
@@ -339,6 +357,60 @@ describe("auth HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", otherCsrf)
       .expect(404);
+  });
+
+  it("keeps a default model config invariant", async () => {
+    const owner = await createAuthenticatedAgent(
+      "defaults@example.com",
+      "StrongPassword123",
+      "默认配置作者",
+    );
+    const token = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+    const first = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        provider: "deepseek",
+        label: "默认模型",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-secret-value-1234",
+        isDefault: false,
+      })
+      .expect(200);
+    expect(first.body.data.isDefault).toBe(true);
+
+    const second = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        provider: "deepseek",
+        label: "备用模型",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-reasoner",
+        apiKey: "sk-secret-value-5678",
+        isDefault: false,
+      })
+      .expect(200);
+
+    await owner
+      .patch(`/api/v1/model-configs/${first.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: first.body.data.version, isDefault: false })
+      .expect(400);
+
+    await owner
+      .delete(`/api/v1/model-configs/${first.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .expect(200);
+    const configs = await owner.get("/api/v1/model-configs").expect(200);
+    expect(
+      configs.body.data.find((config: { id: string }) => config.id === second.body.data.id),
+    ).toMatchObject({ isDefault: true });
   });
 });
 
