@@ -1,0 +1,49 @@
+name: Readiness Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "docs/planning/v1-capability-manifest.md"
+      - "docs/planning/v1-capability-traceability.md"
+      - "docs/planning/v1-issue-dependency-graph.json"
+      - "docs/ui/v1-ui-parity-matrix.md"
+      - "scripts/validate-readiness.mjs"
+      - ".github/workflows/readiness-validation.yml"
+  push:
+    branches:
+      - main
+      - "codex/**"
+      - "chore/**"
+      - "docs/**"
+      - "reset/**"
+    paths:
+      - "docs/planning/v1-capability-manifest.md"
+      - "docs/planning/v1-capability-traceability.md"
+      - "docs/planning/v1-issue-dependency-graph.json"
+      - "docs/ui/v1-ui-parity-matrix.md"
+      - "scripts/validate-readiness.mjs"
+      - ".github/workflows/readiness-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: readiness-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate V1 readiness contracts
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate capability, UI and dependency contracts
+        run: node scripts/validate-readiness.mjs
