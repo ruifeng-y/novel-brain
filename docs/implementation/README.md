@@ -8,11 +8,13 @@ The repository currently contains product/technical documentation, accepted ADRs
 
 - M0 parent spec: GitHub issue #66.
 - M0 implementation tickets: #67–#79.
-- M1 parent spec: #80.
-- M2 parent spec: #81.
-- M3 parent spec: #82.
+- M1 parent spec: #80; implementation tickets: #84–#90.
+- M2 parent spec: #81; implementation tickets: #91–#97.
+- M3 parent spec: #82; implementation tickets: #98–#104.
+- Full ticket map and dependency graph: `docs/planning/m1-m3-ticket-map.md`.
+- Capability-to-ticket ledger: `docs/planning/v1-capability-traceability.md`.
 
-M0 tickets have bounded scope and acceptance criteria. M1–M3 are milestone specifications, not single-ticket implementation units. Their implementation tickets must be decomposed and dependency-linked before those milestones are started. Do not pass #80, #81 or #82 to /implement as one giant task.
+M0–M3 now have bounded child implementation tickets. M1–M3 tickets #84–#104 are ticketed but not implemented or verified. Do not pass #80, #81 or #82 to /implement as one giant task. Follow the explicit blockers in each child issue and the ticket map; do not infer readiness from labels.
 
 ## 2. First command
 
@@ -79,15 +81,16 @@ Independent frontier tickets may run in parallel only when they share no mutable
 8. 10M is a release claim, not an assumption: capacity must be demonstrated with the M3 fixture and recorded load/recovery evidence.
 
 ## 6. M1–M3 implementation readiness gate
-Issues #80–#82 are parent specifications. Before /implement begins for each milestone:
-- decompose the parent into bounded tickets by domain/workflow slice;
-- assign every ticket exact capability IDs and parity-matrix page(s), or mark it explicitly backend-only;
-- define file/package ownership where parallel implementation is planned;
-- add blocking relationships so the ready frontier is unambiguous;
-- ensure every ticket has observable acceptance criteria and test evidence;
-- reconcile the ticket set against the capability manifest and traceability table.
+Issues #80–#82 remain milestone specification parents. Their implementation work is decomposed into #84–#104 and mapped in `docs/planning/m1-m3-ticket-map.md`.
 
-A milestone is not implementation-ready while it has unmapped V1 capabilities, broad parent-only scope, unresolved cross-ticket contracts, or tickets marked ready despite open blockers.
+Before starting any child ticket:
+- check every blocker named in the issue body and the dependency map;
+- confirm its capability IDs in the traceability ledger;
+- inspect the affected UI parity rows and contracts;
+- agree schema/API ownership before parallel work;
+- stop on unresolved product or ADR conflicts.
+
+The dependency map is normative. GitHub native dependency edges were not available through the connected integration, so blockers are explicitly recorded in issue bodies and the map. A milestone is not implementation-ready merely because its child tickets exist: blockers must close and tests/evidence must pass.
 
 ## 7. Commands and evidence
 The exact production workspace commands will be established by ticket #67 and recorded in root developer documentation. Until then, do not invent package scripts or claim the production stack is runnable.
