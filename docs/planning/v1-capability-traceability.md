@@ -82,8 +82,8 @@
 | GEN-004 | 连续性/文风/读者 Critic | V1 | mapped | #117 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Critics; 结构化问题 | M1 |
 | GEN-005 | 两轮定向修订 | V1 | mapped | #118 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Reviser; 修订差异 | M1 |
 | GEN-006 | 正史提交/Canon Curator | V1 | mapped | #78 | #78 | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Canon; 门禁 E2E | M0 |
-| GEN-007 | 按章/卷/区间/全本批量 | V1 | mapped | #91 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | BatchJobs; 任务 E2E | M2 |
-| GEN-008 | 父子任务/暂停/恢复/取消/重试 | V1 | mapped | #91 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Jobs; 重启恢复 | M2 |
+| GEN-007 | 按章/卷/区间/全本批量 | V1 | mapped | #151 | #91 package integration | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | BatchJobs; 任务 E2E | M2 |
+| GEN-008 | 父子任务/暂停/恢复/取消/重试 | V1 | mapped | #152 | #91 package integration | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Jobs; 重启恢复 | M2 |
 | GEN-009 | 黄金三章候选/确认/锁定 | V1 | mapped | #147 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | GoldenThree; 候选对比 | M1 |
 | GEN-010 | 卷级验收/自动通过/审核队列 | V1 | mapped | #149 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Review/Jobs; 高风险门禁 | M2 |
 | GEN-011 | 成本/吞吐/失败报告 | V1 | mapped | #150 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Usage/Reports; 单章/单卷 | M2 |
