@@ -8,25 +8,50 @@ interface RouteContext {
   params: Promise<{ path: string[] }>;
 }
 
-export async function GET(request: NextRequest, context: RouteContext): Promise<Response> {
+async function proxy(request: NextRequest, context: RouteContext): Promise<Response> {
   const apiInternalUrl = process.env.API_INTERNAL_URL ?? "http://127.0.0.1:3001";
   const { path } = await context.params;
   const target = new URL(`/api/v1/${path.join("/")}`, apiInternalUrl);
   target.search = request.nextUrl.search;
+  const requestHeaders = new Headers();
+  for (const header of [
+    "accept",
+    "content-type",
+    "cookie",
+    "origin",
+    "user-agent",
+    "x-csrf-token",
+    "x-forwarded-for",
+  ]) {
+    const value = request.headers.get(header);
+    if (value) {
+      requestHeaders.set(header, value);
+    }
+  }
 
   try {
-    const response = await fetch(target, {
+    const init: RequestInit = {
       cache: "no-store",
-      headers: {
-        accept: "application/json",
-      },
-    });
+      method: request.method,
+      headers: requestHeaders,
+    };
+    if (request.method !== "GET" && request.method !== "HEAD") {
+      init.body = await request.text();
+    }
+    const response = await fetch(target, init);
+
+    const responseHeaders = new Headers();
+    const contentType = response.headers.get("content-type");
+    if (contentType) {
+      responseHeaders.set("content-type", contentType);
+    }
+    for (const cookie of response.headers.getSetCookie()) {
+      responseHeaders.append("set-cookie", cookie);
+    }
 
     return new Response(response.body, {
       status: response.status,
-      headers: {
-        "content-type": response.headers.get("content-type") ?? "application/json",
-      },
+      headers: responseHeaders,
     });
   } catch {
     return Response.json(
@@ -42,3 +67,8 @@ export async function GET(request: NextRequest, context: RouteContext): Promise<
     );
   }
 }
+
+export const GET = proxy;
+export const POST = proxy;
+export const PATCH = proxy;
+export const DELETE = proxy;

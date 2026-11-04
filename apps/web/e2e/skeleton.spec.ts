@@ -127,6 +127,14 @@ test("health page leaves loading when the request times out", async ({ page }) =
 });
 
 test("workspace route renders the app shell placeholder at all viewports", async ({ page }) => {
+  await page.goto("/login");
+  await page.getByLabel("邮箱").fill("lin@example.com");
+  await page.getByLabel("密码").fill("StrongPassword123");
+  const loginButton = page.getByRole("button", { name: "登录" });
+  await expect(loginButton).toBeEnabled();
+  await loginButton.click();
+  await expect(page).toHaveURL(/\/workspace$/);
+
   for (const width of [390, 900, 1180, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/workspace");

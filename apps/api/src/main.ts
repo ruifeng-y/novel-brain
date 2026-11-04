@@ -3,6 +3,7 @@ import "reflect-metadata";
 import { NestFactory } from "@nestjs/core";
 
 import { AppModule } from "./app.module";
+import { ApiExceptionFilter } from "./common/api-exception.filter";
 import { AppLogger } from "./logging/app-logger";
 
 async function bootstrap(): Promise<void> {
@@ -11,7 +12,10 @@ async function bootstrap(): Promise<void> {
 
   app.useLogger(logger);
   app.setGlobalPrefix("api/v1");
-  app.getHttpAdapter().getInstance().disable("x-powered-by");
+  app.useGlobalFilters(new ApiExceptionFilter());
+  const express = app.getHttpAdapter().getInstance();
+  express.disable("x-powered-by");
+  express.set("trust proxy", 1);
   app.enableShutdownHooks();
 
   const port = Number(process.env.API_PORT ?? 3001);

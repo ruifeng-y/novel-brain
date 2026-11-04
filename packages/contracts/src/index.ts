@@ -1,8 +1,15 @@
 import { z } from "zod";
 
 export const ERROR_CODES = [
+  "VALIDATION_INVALID",
   "AUTH_CODE_INVALID",
   "AUTH_RATE_LIMITED",
+  "AUTH_EMAIL_TAKEN",
+  "AUTH_PASSWORD_WEAK",
+  "AUTH_LOGIN_FAILED",
+  "AUTH_SESSION_INVALID",
+  "AUTH_CSRF_INVALID",
+  "AUTH_ORIGIN_INVALID",
   "MODEL_KEY_INVALID",
   "MODEL_CONNECTION_FAILED",
   "BIBLE_NOT_READY",
@@ -20,6 +27,13 @@ export const ERROR_CODES = [
 
 export const errorCodeSchema = z.enum(ERROR_CODES);
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
+
+export const uuidV7Schema = z
+  .string()
+  .regex(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    "Expected a UUID v7",
+  );
 
 export const apiErrorSchema = z.object({
   error: z.object({
@@ -43,6 +57,73 @@ export type ApiEnvelope<T> = {
   requestId: string;
   meta: Record<string, unknown>;
 };
+
+export const authEmailSchema = z.string().trim().toLowerCase().email().max(254);
+export const authPasswordSchema = z
+  .string()
+  .min(12)
+  .max(128)
+  .regex(/[A-Za-z]/, "Password must contain a letter")
+  .regex(/\d/, "Password must contain a number");
+export const authDisplayNameSchema = z.string().trim().min(1).max(50);
+
+export const sendRegistrationCodeRequestSchema = z.object({
+  email: authEmailSchema,
+});
+export type SendRegistrationCodeRequest = z.infer<typeof sendRegistrationCodeRequestSchema>;
+
+export const registerRequestSchema = z.object({
+  email: authEmailSchema,
+  code: z.string().regex(/^\d{6}$/),
+  password: authPasswordSchema,
+  displayName: authDisplayNameSchema,
+});
+export type RegisterRequest = z.infer<typeof registerRequestSchema>;
+
+export const loginRequestSchema = z.object({
+  email: authEmailSchema,
+  password: z.string().min(1).max(128),
+});
+export type LoginRequest = z.infer<typeof loginRequestSchema>;
+
+export const authUserSchema = z.object({
+  id: uuidV7Schema,
+  emailMasked: z.string().min(3),
+  displayName: z.string().min(1),
+  createdAt: z.string().datetime(),
+});
+export type AuthUser = z.infer<typeof authUserSchema>;
+
+export const authSessionSchema = z.object({
+  id: uuidV7Schema,
+  expiresAt: z.string().datetime(),
+  current: z.literal(true),
+  userAgent: z.string(),
+  createdAt: z.string().datetime(),
+});
+export type AuthSession = z.infer<typeof authSessionSchema>;
+
+export const authSessionDataSchema = z.object({
+  user: authUserSchema,
+  session: authSessionSchema,
+});
+export type AuthSessionData = z.infer<typeof authSessionDataSchema>;
+
+export const csrfDataSchema = z.object({
+  token: z.string().min(20),
+});
+export const sendRegistrationCodeDataSchema = z.object({
+  sent: z.literal(true),
+  expiresAt: z.string().datetime(),
+});
+export const logoutDataSchema = z.object({
+  loggedOut: z.literal(true),
+});
+
+export const csrfResponseSchema = apiEnvelopeSchema(csrfDataSchema);
+export const sendRegistrationCodeResponseSchema = apiEnvelopeSchema(sendRegistrationCodeDataSchema);
+export const authSessionResponseSchema = apiEnvelopeSchema(authSessionDataSchema);
+export const logoutResponseSchema = apiEnvelopeSchema(logoutDataSchema);
 
 export const serviceNameSchema = z.enum(["api", "worker"]);
 export type ServiceName = z.infer<typeof serviceNameSchema>;
@@ -95,12 +176,6 @@ export const WORKER_JOB_STEPS = [
   "await_review",
 ] as const;
 
-export const uuidV7Schema = z
-  .string()
-  .regex(
-    /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-    "Expected a UUID v7",
-  );
 export const workerJobStepSchema = z.enum(WORKER_JOB_STEPS);
 
 export const generateChapterJobSchema = z.object({

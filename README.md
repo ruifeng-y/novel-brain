@@ -32,6 +32,12 @@ pnpm stack:down
 pnpm test
 ```
 
+运行需要 PostgreSQL 与 Redis 的 API 集成测试：
+
+```bash
+pnpm test:integration
+```
+
 运行全部本地检查：
 
 ```bash

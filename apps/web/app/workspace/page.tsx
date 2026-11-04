@@ -1,11 +1,18 @@
 import { ArrowRight, BookOpen } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { AppShell } from "../../components/app-shell";
+import { getCurrentAuth } from "../../lib/auth";
 
-export default function WorkspacePage() {
+export default async function WorkspacePage() {
+  const auth = await getCurrentAuth();
+  if (!auth) {
+    redirect("/login?reason=session-expired");
+  }
+
   return (
-    <AppShell>
+    <AppShell user={auth.user}>
       <section className="page-head">
         <div>
           <p className="eyebrow">个人工作室</p>

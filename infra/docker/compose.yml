@@ -69,6 +69,12 @@ services:
       API_PORT: 3001
       DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/novelbrain
       REDIS_URL: redis://redis:6379
+      AUTH_SECRET: local-development-auth-secret-change-me
+      APP_ORIGIN: http://localhost:3000
+      COOKIE_SECURE: "false"
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: 墨舟 <no-reply@novelbrain.local>
     ports:
       - "3001:3001"
     depends_on:
