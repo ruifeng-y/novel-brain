@@ -127,4 +127,15 @@ Existing p95/streaming/SSE/RPO/RTO targets are taken from the technical baseline
 
 ## 9. Commands and evidence
 
-The exact production workspace commands will be established by ticket #67 and recorded in root developer documentation. Until then, do not invent package scripts or claim the production stack is runnable.
+Ticket #67 establishes the production workspace commands:
+
+```bash
+pnpm install
+pnpm stack:up
+pnpm test
+pnpm check
+pnpm stack:smoke
+pnpm --filter @novel-brain/api openapi:generate
+```
+
+The local Compose stack includes Web, API, Worker, Postgres, Redis, Mailpit and a one-shot deterministic fake AI smoke service. `pnpm test` runs the initial unit and contract suite; `pnpm check` runs format, lint, typecheck and tests; `pnpm stack:smoke` verifies the running services and the active Worker queue consumer. The API generates OpenAPI from NestJS Swagger while sourcing response schemas from the shared Zod contracts, then derives TypeScript types. Root developer instructions live in `README.md`, and M0-01 evidence is recorded in `docs/implementation/m0-01-walking-skeleton.md`.

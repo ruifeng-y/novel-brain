@@ -1,0 +1,22 @@
+{
+  "name": "@novel-brain/worker",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.3.2",
+    "@nestjs/core": "12.3.2",
+    "@novel-brain/contracts": "workspace:*",
+    "@novel-brain/core": "workspace:*",
+    "@novel-brain/db": "workspace:*",
+    "bullmq": "6.6.0",
+    "ioredis": "6.0.0",
+    "pino": "^10.0.0",
+    "reflect-metadata": "^0.2.0",
+    "rxjs": "^7.8.0"
+  }
+}

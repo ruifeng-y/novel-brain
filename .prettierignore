@@ -1,0 +1,16 @@
+node_modules
+dist
+.next
+coverage
+playwright-report
+test-results
+artifacts
+docs
+prototype
+pnpm-lock.yaml
+AGENTS.md
+GLOSSARY.md
+.github/workflows/prototype-parity.yml
+.github/workflows/readiness-validation.yml
+scripts/validate-readiness.mjs
+packages/db/migrations
