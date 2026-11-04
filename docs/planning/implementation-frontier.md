@@ -1,7 +1,7 @@
 # Implementation frontier v2
 
 > Updated: 2026-11-04.
-> Repository baseline: main after PR #105 was merged. The readiness remediation is being prepared on branch docs/readiness-remediation-a-d. Do not merge this branch automatically.
+> Repository baseline: main after PR #153 (A–D readiness remediation) was merged at `95b0d57`. Final Design Freeze is maintained as a separate implementation branch and reviewed through its own PR.
 
 ## 1. Current truth
 
@@ -11,7 +11,7 @@
 - M2 specification: #81; M2 package/integration tickets: #91–#97.
 - M3 specification: #82; M3 package/integration tickets: #98–#104.
 - New bounded leaf tickets: #106–#152. They are mapped; their existence does not make them startable.
-- PR #105 only established the first M1–M3 coarse ticket layer. The present remediation adds finer leaf tasks, restores unique capability ownership and makes evidence paths explicit.
+- PR #105 established the first M1–M3 ticket layer; PR #153 subsequently added bounded leaf tasks, unique capability ownership, explicit UI evidence paths and independent scale/quality gates.
 
 ## 2. First executable frontier
 
