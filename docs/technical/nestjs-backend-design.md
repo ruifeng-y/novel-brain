@@ -1,6 +1,6 @@
 # NovelBrain V1 后端技术设计
 
-> 状态：V1 基线 v2（已同步 ADR 0010–0024）
+> 状态：V1 基线 v2（已同步 ADR 0010–0027）
 > 版本：v0.4
 > 日期：2026-11-04
 > 范围：NestJS API、NestJS Worker、Drizzle 数据模型、REST API、任务状态机
@@ -8,7 +8,7 @@
 
 ## 0. V1 Baseline Freeze
 
-以下约束优先于本文旧条款；冲突时以 ADR 0010–0023 和 `docs/planning/v1-capability-manifest.md` 为准。
+以下约束优先于本文旧条款；冲突时以 ADR 0010–0027 和 `docs/planning/v1-capability-manifest.md` 为准。
 
 - 容量基线：1000 万字、3000–4000 章、30–40 卷；每卷 80–120 章，每章 2500–3500 字。
 - 版本模型：每个分支只有一套版本图；branch commit、canon commit、章节版本、大纲版本、快照和修改请求必须挂到同一张图，不允许并存多套互相竞争的真源。
@@ -41,9 +41,9 @@
 - 模型：Vercel AI SDK，首批接入 DeepSeek 官方 API，OpenAI 兼容接口。
 - 追踪：Langfuse TS SDK。
 - 部署：先局域网 Docker Compose，云上托管后续。
-- 中文检索：V1 用 `pg_trgm` + `simple tsvector`；向量检索后续，不装 `zhparser`。
+- 中文检索：V1 只用 `pg_trgm` + `simple tsvector` 与结构化别名/关系查询；不启用 pgvector 扩展，不建立 embedding 字段或 HNSW 索引，不装 `zhparser`。向量检索须另行立项并通过 ADR。
 - 测试：Vitest，E2E 用 Playwright。
-- 不做 Python 服务、本地模型、管理员后台、团队、配额、计费。
+- 不做 Python 服务、本地模型、管理员后台、团队成员协作、同章实时协同编辑、完整经济交易引擎、平台配额或计费。实时协作和经济交易引擎列为 post-V1 产品范围，见 ADR 0025–0026。
 
 ### 1.3 架构形态
 
@@ -411,7 +411,7 @@ POST     /api/v1/works/:workId/branches/:branchId/publish-check
 
 ### 4.1 约定
 
-- 主键统一用 `uuid`，默认 `gen_random_uuid()`。
+- 主键类型统一为 PostgreSQL `uuid`；业务 ID 统一由应用服务端生成 UUID v7。数据库列不设置 `gen_random_uuid()` 等业务 ID 默认生成器，具体规则见 `docs/technical/m0-protocol-freeze.md`。
 - 时间统一用 `timestamptz`。
 - 用户可见数据带 `deleted_at`，软删除。
 - 故事数据统一带 `work_id` 和 `branch_id`。
@@ -420,7 +420,7 @@ POST     /api/v1/works/:workId/branches/:branchId/publish-check
 - 大文本先存 Postgres `text`，导出、图片和附件本地走 MinIO，云上走 S3 兼容存储。
 - 章节版本存 `content` 和 `content_hash`，用于去重。
 - 中文检索 V1 用 `pg_trgm` 做名称和子串匹配，`simple tsvector` 做精确词匹配，实体别名和时间过滤做扩展；不安装 `zhparser`。
-- `pgvector` 和 HNSW 作为后续语义检索增强，不进入 V1 发布门禁。
+- V1 的搜索文档只保存可重建的文本、标题、来源和 `tsvector`/`pg_trgm` 所需字段；不创建 embedding 列、pgvector 扩展或 HNSW 索引。后续语义检索作为独立能力评审，不进入 V1 发布门禁。
 - 所有表带 `created_at`，需要修改的表带 `updated_at`。
 
 ### 4.2 身份模块
@@ -516,7 +516,7 @@ POST     /api/v1/works/:workId/branches/:branchId/publish-check
 | --- | --- | --- |
 | `export_jobs` | `id`, `work_id`, `branch_id`, `format`, `range`, `options`, `status`, `file_key`, `error`, `expires_at` | `(work_id, status)` |
 | `export_templates` | `id`, `name`, `config` | 唯一 `name` |
-| `search_documents` | `id`, `work_id`, `branch_id`, `source_type`, `source_id`, `title`, `content`, `tsv`, `embedding`, `model` | `(work_id, branch_id, source_type)`；GIN `tsv`；HNSW `embedding` |
+| `search_documents` | `id`, `work_id`, `branch_id`, `source_type`, `source_id`, `title`, `content`, `tsv` | `(work_id, branch_id, source_type)`；GIN `tsv`；按查询条件建立普通/表达式索引 |
 
 ### 4.11 关键约束
 
@@ -991,7 +991,7 @@ V1 先按单机 Docker Compose 部署。MinIO 存导出、地图、封面和附�
 ### 13.1 已确认决策
 
 - 先局域网部署，MinIO 做本地对象存储，云厂商和云存储后续再定。
-- 中文检索 V1 用 `pg_trgm` + `simple tsvector`，不装 `zhparser`；`pgvector` 作为后续增强。
+- 中文检索 V1 用 `pg_trgm` + `simple tsvector`，不装 `zhparser`，不启用 pgvector/embedding/HNSW。语义向量检索属于 post-V1 独立扩展。
 - 测试框架统一 Vitest，NestJS 用 `unplugin-swc`，E2E 用 Playwright。
 - 首批模型供应商为 DeepSeek 官方 API，OpenAI 兼容接口。
 - DeepSeek Base URL 使用 `https://api.deepseek.com`，模型名以官方当前文档为准。

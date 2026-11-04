@@ -29,6 +29,7 @@ Only parity-verified or deviation-approved production pages can pass the V1 UI r
 8. 1440 / 1180 / 900 / 390 viewport coverage is required. No horizontal overflow; page shell, content order, primary action placement and responsive breakpoints must match the signed-off baseline.
 9. Author-facing language must not expose Agent, Canon, Context Pack, P0–P4, 正史 or other internal implementation terms.
 10. UI-001–UI-009 are global cross-cutting requirements. #104 owns the final V1-wide audit; #79 owns the M0 UI closeout; feature issues listed below own each page's production implementation and evidence.
+11. Production visual comparison follows `docs/ui/production-visual-regression.md`: pinned Chromium/font environment, four viewport baselines, deterministic fixtures, bounded pixel-diff tolerance, CI artifacts and explicit author approval for baseline changes.
 
 ## 3. Page-level ownership and evidence ledger
 
