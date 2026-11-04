@@ -65,12 +65,20 @@ services:
       dockerfile: infra/docker/Dockerfile
       target: api
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       API_PORT: 3001
       DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/novelbrain
       REDIS_URL: redis://redis:6379
+      AUTH_SECRET: local-development-auth-secret-change-me
+      PROXY_IP_SECRET: local-development-proxy-ip-secret
+      ALLOW_INSECURE_LOCAL_PROXY_IP: "true"
+      APP_ORIGIN: http://localhost:3000
+      COOKIE_SECURE: "false"
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+      MAIL_FROM: 墨舟 <no-reply@novelbrain.local>
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -120,8 +128,11 @@ services:
     environment:
       NODE_ENV: production
       API_INTERNAL_URL: http://api:3001
-    ports:
-      - "3000:3000"
+      PROXY_IP_SECRET: local-development-proxy-ip-secret
+      ALLOW_INSECURE_LOCAL_PROXY_IP: "true"
+      TRUST_PROXY_HEADERS: "true"
+    expose:
+      - "3000"
     depends_on:
       api:
         condition: service_healthy
@@ -136,6 +147,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  caddy:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "3000:80"
+    depends_on:
+      web:
+        condition: service_healthy
 
 volumes:
   postgres-data:

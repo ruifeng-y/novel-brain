@@ -1,26 +1,12 @@
-import path from "node:path";
-
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-
-import { createDatabaseClient, createDatabasePool } from "./client";
+import { runMigrations } from "./migrations";
 
 async function main(): Promise<void> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required");
   }
-
-  const pool = createDatabasePool(databaseUrl);
-  const database = createDatabaseClient(pool);
-
-  try {
-    await migrate(database, {
-      migrationsFolder: path.join(__dirname, "../migrations"),
-    });
-    console.log(JSON.stringify({ event: "database.migrations.completed" }));
-  } finally {
-    await pool.end();
-  }
+  await runMigrations(databaseUrl);
+  console.log(JSON.stringify({ event: "database.migrations.completed" }));
 }
 
 main().catch((error: unknown) => {

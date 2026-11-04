@@ -13,9 +13,9 @@ pnpm stack:up
 
 启动后：
 
-- Web：<http://localhost:3000>
+- Web（Caddy 入口）：<http://localhost:3000>
 - 健康页：<http://localhost:3000/health>
-- API：<http://localhost:3001/api/v1/health>
+- API（仅本机回环）：<http://localhost:3001/api/v1/health>
 - Mailpit：<http://localhost:8025>
 
 停止并清理容器：
@@ -30,6 +30,12 @@ pnpm stack:down
 
 ```bash
 pnpm test
+```
+
+运行需要 PostgreSQL 与 Redis 的 API 集成测试：
+
+```bash
+pnpm test:integration
 ```
 
 运行全部本地检查：

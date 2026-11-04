@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { registerUser, resetRateLimits, uniqueEmail } from "./helpers/auth";
+
 const timestamp = "2026-11-04T08:00:00.000Z";
 
 async function mockReadyHealth(page: Page) {
@@ -126,7 +128,22 @@ test("health page leaves loading when the request times out", async ({ page }) =
   await expect(page.getByText("暂时无法读取服务状态")).toBeVisible({ timeout: 8_000 });
 });
 
-test("workspace route renders the app shell placeholder at all viewports", async ({ page }) => {
+test("workspace route renders the app shell placeholder at all viewports", async ({
+  page,
+  request,
+}) => {
+  await resetRateLimits();
+  const email = uniqueEmail("workspace");
+  await registerUser(request, email, "StrongPassword123", "工作区作者");
+
+  await page.goto("/login");
+  await page.getByLabel("邮箱").fill(email);
+  await page.getByLabel("密码").fill("StrongPassword123");
+  const loginButton = page.getByRole("button", { name: "登录" });
+  await expect(loginButton).toBeEnabled();
+  await loginButton.click();
+  await expect(page).toHaveURL(/\/workspace$/);
+
   for (const width of [390, 900, 1180, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/workspace");

@@ -6,19 +6,44 @@ import {
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
+  LogOut,
   Settings,
 } from "lucide-react";
+import type { AuthUser } from "@novel-brain/contracts";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useState } from "react";
+
+import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
 
 const navigation = [
   { href: "/workspace", label: "工作台", icon: LayoutDashboard },
   { href: "/health", label: "服务状态", icon: Activity },
 ];
 
-export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) {
+export function AppShell({
+  children,
+  user,
+}: Readonly<{ children: React.ReactNode; user?: AuthUser }>) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
   const current = pathname.startsWith("/workspace") ? "工作台" : "服务状态";
+
+  async function logout() {
+    setLoggingOut(true);
+    try {
+      const csrfToken = await getCsrfToken();
+      await fetch("/api/v1/auth/logout", {
+        method: "POST",
+        headers: { "x-csrf-token": csrfToken },
+      });
+    } finally {
+      clearCsrfCache();
+      router.replace("/login");
+      router.refresh();
+    }
+  }
 
   return (
     <div className="app-shell">
@@ -77,13 +102,26 @@ export function AppShell({ children }: Readonly<{ children: React.ReactNode }>) 
           </div>
           <div className="user-card">
             <span className="avatar" aria-hidden="true">
-              作
+              {user?.displayName.slice(0, 1) ?? "作"}
             </span>
             <span className="user-copy">
-              <strong>个人作者</strong>
-              <small>创作空间</small>
+              <strong>{user?.displayName ?? "个人作者"}</strong>
+              <small>{user?.emailMasked ?? "长篇创作"}</small>
             </span>
-            <BookOpen size={16} aria-hidden="true" />
+            {user ? (
+              <button
+                aria-label="退出登录"
+                className="icon-btn small user-logout"
+                disabled={loggingOut}
+                onClick={logout}
+                title="退出登录"
+                type="button"
+              >
+                <LogOut size={16} aria-hidden="true" />
+              </button>
+            ) : (
+              <BookOpen size={16} aria-hidden="true" />
+            )}
           </div>
         </div>
       </aside>

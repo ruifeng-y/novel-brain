@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { GENERATE_CHAPTER_JOB, generateChapterJobSchema, readinessResponseSchema } from "../src";
+import {
+  authPasswordSchema,
+  authSessionResponseSchema,
+  csrfResponseSchema,
+  GENERATE_CHAPTER_JOB,
+  generateChapterJobSchema,
+  loginRequestSchema,
+  readinessResponseSchema,
+  registerRequestSchema,
+  sendRegistrationCodeRequestSchema,
+  sendRegistrationCodeResponseSchema,
+  logoutResponseSchema,
+} from "../src";
 
 describe("shared contracts", () => {
   it("accepts the readiness envelope shared by Web and API", () => {
@@ -83,5 +95,66 @@ describe("shared contracts", () => {
         checkpoint: { step: "unknown", payload: {} },
       }),
     ).toThrow();
+  });
+
+  it("validates the M0 auth request and response contracts", () => {
+    expect(sendRegistrationCodeRequestSchema.parse({ email: "Author@Example.com" }).email).toBe(
+      "author@example.com",
+    );
+    expect(
+      registerRequestSchema.parse({
+        email: "author@example.com",
+        code: "123456",
+        password: "StrongPassword123",
+        displayName: "林见鹿",
+      }),
+    ).toMatchObject({ email: "author@example.com", displayName: "林见鹿" });
+    expect(
+      loginRequestSchema.parse({ email: "author@example.com", password: "StrongPassword123" }),
+    ).toBeTruthy();
+    expect(() => authPasswordSchema.parse("short")).toThrow();
+
+    expect(
+      csrfResponseSchema.parse({
+        data: { token: "csrf-token-with-enough-length" },
+        requestId: "req_csrf",
+        meta: {},
+      }),
+    ).toBeTruthy();
+    expect(
+      sendRegistrationCodeResponseSchema.parse({
+        data: { sent: true, expiresAt: "2026-11-04T08:10:00.000Z" },
+        requestId: "req_send_code",
+        meta: {},
+      }),
+    ).toBeTruthy();
+    expect(
+      logoutResponseSchema.parse({
+        data: { loggedOut: true },
+        requestId: "req_logout",
+        meta: {},
+      }),
+    ).toBeTruthy();
+    expect(
+      authSessionResponseSchema.parse({
+        data: {
+          user: {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
+            emailMasked: "au***@example.com",
+            displayName: "林见鹿",
+            createdAt: "2026-11-04T08:00:00.000Z",
+          },
+          session: {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
+            expiresAt: "2026-11-11T08:00:00.000Z",
+            current: true,
+            userAgent: "vitest",
+            createdAt: "2026-11-04T08:00:00.000Z",
+          },
+        },
+        requestId: "req_session",
+        meta: {},
+      }),
+    ).toBeTruthy();
   });
 });

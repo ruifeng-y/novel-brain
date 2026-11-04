@@ -133,9 +133,10 @@ Ticket #67 establishes the production workspace commands:
 pnpm install
 pnpm stack:up
 pnpm test
+pnpm test:integration
 pnpm check
 pnpm stack:smoke
 pnpm --filter @novel-brain/api openapi:generate
 ```
 
-The local Compose stack includes Web, API, Worker, Postgres, Redis, Mailpit and a one-shot deterministic fake AI smoke service. `pnpm test` runs the initial unit and contract suite; `pnpm check` runs format, lint, typecheck and tests; `pnpm stack:smoke` verifies the running services and the active Worker queue consumer. The API generates OpenAPI from NestJS Swagger while sourcing response schemas from the shared Zod contracts, then derives TypeScript types. Root developer instructions live in `README.md`, and M0-01 evidence is recorded in `docs/implementation/m0-01-walking-skeleton.md`.
+The local Compose stack includes Web, API, Worker, Postgres, Redis, Mailpit and a one-shot deterministic fake AI smoke service. `pnpm test` runs unit and contract tests; `pnpm test:integration` runs HTTP integration tests against PostgreSQL and Redis; `pnpm check` runs format, lint, typecheck and unit tests; `pnpm stack:smoke` verifies the running services and the active Worker queue consumer. The API generates OpenAPI from NestJS Swagger while sourcing response schemas from the shared Zod contracts, then derives TypeScript types. Root developer instructions live in `README.md`; M0-01 and M0-02 evidence is recorded under `docs/implementation/`.
