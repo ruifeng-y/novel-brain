@@ -1,7 +1,7 @@
 # Implementation frontier v2
 
 > Updated: 2026-11-04.
-> Repository baseline: main after PR #153 (A–D readiness remediation) was merged at `95b0d57`. Final Design Freeze is maintained as a separate implementation branch and reviewed through its own PR.
+> Repository baseline: main after PR #153 (A–D readiness remediation, `95b0d57`) and PR #154 (Final Design Freeze, `e35a71b`) were merged. The five design-freeze decisions are now part of the V1 implementation baseline.
 
 ## 1. Current truth
 
