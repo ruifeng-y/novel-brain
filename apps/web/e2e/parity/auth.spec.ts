@@ -41,7 +41,7 @@ test("registers, enters the workspace and logs out", async ({ page }) => {
 
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByRole("heading", { name: "工作台" })).toBeVisible();
-  await expect(page.getByText("新作者")).toBeVisible();
+  await expect(page.getByText("新作者", { exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "退出登录" }).click();
   await expect(page).toHaveURL(/\/login$/);
@@ -59,7 +59,7 @@ test("logs in and reaches the authenticated shell", async ({ page, request }) =>
   await loginButton.click();
 
   await expect(page).toHaveURL(/\/workspace$/);
-  await expect(page.getByText("林见鹿")).toBeVisible();
+  await expect(page.getByText("林见鹿", { exact: true })).toBeVisible();
 });
 
 test("stale sessions redirect to login with an expired-session message", async ({

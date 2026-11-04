@@ -204,6 +204,124 @@ export const modelConfigDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
 
+export const workStatusSchema = z.enum([
+  "draft",
+  "preparing",
+  "serializing",
+  "paused",
+  "completed",
+  "archived",
+]);
+export type WorkStatus = z.infer<typeof workStatusSchema>;
+
+export const workGenreSchema = z.enum(["xianxia", "history", "urban"]);
+export type WorkGenre = z.infer<typeof workGenreSchema>;
+
+export const workScaleTargetSchema = z.enum(["short", "medium", "long", "epic"]);
+export type WorkScaleTarget = z.infer<typeof workScaleTargetSchema>;
+
+export const workSourceModeSchema = z.enum(["idea", "blank", "template"]);
+export type WorkSourceMode = z.infer<typeof workSourceModeSchema>;
+
+const workBaseInputShape = {
+  title: z.string().trim().min(1).max(120),
+  penName: z.string().trim().min(1).max(50).optional(),
+  genre: workGenreSchema.default("xianxia"),
+  scaleTarget: workScaleTargetSchema.default("long"),
+  chapterLengthTarget: z.number().int().min(1000).max(10000).default(3000),
+};
+
+export const workCreateRequestSchema = z.discriminatedUnion("mode", [
+  z.object({
+    mode: z.literal("idea"),
+    idea: z.string().trim().min(10).max(5000),
+    ...workBaseInputShape,
+  }),
+  z.object({
+    mode: z.literal("blank"),
+    ...workBaseInputShape,
+  }),
+  z.object({
+    mode: z.literal("template"),
+    templateKey: z.literal("xianxia"),
+    ...workBaseInputShape,
+  }),
+]);
+export type WorkCreateRequest = z.infer<typeof workCreateRequestSchema>;
+
+export const workTemplatePackSchema = z.object({
+  id: uuidV7Schema,
+  key: workGenreSchema,
+  version: z.number().int().positive(),
+  label: z.string(),
+  fields: z.record(z.string(), z.unknown()),
+});
+export type WorkTemplatePack = z.infer<typeof workTemplatePackSchema>;
+
+export const workSchema = z.object({
+  id: uuidV7Schema,
+  title: z.string(),
+  penName: z.string(),
+  genre: workGenreSchema,
+  status: workStatusSchema,
+  scaleTarget: workScaleTargetSchema,
+  chapterLengthTarget: z.number().int().positive(),
+  sourceMode: workSourceModeSchema,
+  idea: z.string().nullable(),
+  templatePack: workTemplatePackSchema.nullable(),
+  settings: z.record(z.string(), z.unknown()),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type Work = z.infer<typeof workSchema>;
+
+export const workBranchSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  name: z.string(),
+  headNodeId: uuidV7Schema,
+  status: z.enum(["active", "archived"]),
+});
+export type WorkBranch = z.infer<typeof workBranchSchema>;
+
+export const workReadinessItemSchema = z.object({
+  key: z.enum(["main_branch", "model_config", "story_bible", "outline"]),
+  label: z.string(),
+  ready: z.boolean(),
+});
+
+export const workReadinessSchema = z.object({
+  status: z.enum(["not_ready", "partial", "ready"]),
+  completed: z.number().int().nonnegative(),
+  total: z.number().int().positive(),
+  items: z.array(workReadinessItemSchema),
+});
+export type WorkReadiness = z.infer<typeof workReadinessSchema>;
+
+export const workOverviewSchema = workSchema.extend({
+  mainBranch: workBranchSchema,
+  branches: z.array(workBranchSchema),
+  readiness: workReadinessSchema,
+});
+export type WorkOverview = z.infer<typeof workOverviewSchema>;
+
+export const workListQuerySchema = z.object({
+  q: z.string().trim().max(120).optional(),
+  status: workStatusSchema.optional(),
+  genre: workGenreSchema.optional(),
+  cursor: uuidV7Schema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type WorkListQuery = z.infer<typeof workListQuerySchema>;
+
+export const workResponseSchema = apiEnvelopeSchema(workOverviewSchema);
+export const workListResponseSchema = z.object({
+  data: z.array(workSchema),
+  requestId: z.string().startsWith("req_"),
+  meta: z.object({ nextCursor: uuidV7Schema.nullable() }),
+});
+export const workBranchesResponseSchema = apiEnvelopeSchema(z.array(workBranchSchema));
+
 export const serviceNameSchema = z.enum(["api", "worker"]);
 export type ServiceName = z.infer<typeof serviceNameSchema>;
 

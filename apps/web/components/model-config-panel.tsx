@@ -171,11 +171,12 @@ export function ModelConfigPanel() {
         throw new Error(await readError(response));
       }
       const result = modelConnectionTestResponseSchema.parse(await response.json()).data;
+      await fetchConfigs();
       setNotice(result.status === "success" ? "连接正常。" : result.message);
     } catch (caught) {
+      await fetchConfigs().catch(() => undefined);
       setError(caught instanceof Error ? caught.message : "连接测试失败。");
     } finally {
-      await fetchConfigs().catch(() => undefined);
       setBusy("");
     }
   }

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -9,6 +10,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 export const systemMetadata = pgTable("system_metadata", {
@@ -123,5 +125,126 @@ export const auditLogs = pgTable(
   (table) => [
     index("audit_logs_actor_created_idx").on(table.actorId, table.createdAt),
     index("audit_logs_target_idx").on(table.targetType, table.targetId),
+  ],
+);
+
+export const genrePacks = pgTable(
+  "genre_packs",
+  {
+    id: uuid("id").primaryKey(),
+    key: text("key").notNull(),
+    version: integer("version").notNull(),
+    label: text("label").notNull(),
+    fields: jsonb("fields").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("genre_packs_key_version_unique").on(table.key, table.version),
+    check("genre_packs_key_check", sql`${table.key} in ('xianxia', 'history', 'urban')`),
+  ],
+);
+
+export const works = pgTable(
+  "works",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    penName: text("pen_name").notNull(),
+    genre: text("genre").notNull(),
+    status: text("status").notNull().default("draft"),
+    scaleTarget: text("scale_target").notNull().default("long"),
+    chapterLengthTarget: integer("chapter_length_target").notNull().default(3000),
+    sourceMode: text("source_mode").notNull(),
+    idea: text("idea"),
+    templateKey: text("template_key"),
+    templatePackId: uuid("template_pack_id").references(() => genrePacks.id, {
+      onDelete: "restrict",
+    }),
+    settings: jsonb("settings").$type<Record<string, unknown>>().notNull().default({}),
+    idempotencyKey: text("idempotency_key"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("works_user_status_updated_idx").on(table.userId, table.status, table.updatedAt),
+    uniqueIndex("works_user_idempotency_unique").on(table.userId, table.idempotencyKey),
+    check(
+      "works_status_check",
+      sql`${table.status} in ('draft', 'preparing', 'serializing', 'paused', 'completed', 'archived')`,
+    ),
+    check("works_genre_check", sql`${table.genre} in ('xianxia', 'history', 'urban')`),
+    check(
+      "works_scale_target_check",
+      sql`${table.scaleTarget} in ('short', 'medium', 'long', 'epic')`,
+    ),
+    check("works_source_mode_check", sql`${table.sourceMode} in ('idea', 'blank', 'template')`),
+  ],
+);
+
+export const workBranches = pgTable(
+  "work_branches",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    headNodeId: uuid("head_node_id").references((): AnyPgColumn => versionNodes.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("work_branches_work_name_unique").on(table.workId, table.name),
+    uniqueIndex("work_branches_head_node_unique").on(table.headNodeId),
+    index("work_branches_user_work_idx").on(table.userId, table.workId),
+    check("work_branches_status_check", sql`${table.status} in ('active', 'archived')`),
+  ],
+);
+
+export const versionNodes = pgTable(
+  "version_nodes",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentNodeId: uuid("parent_node_id").references((): AnyPgColumn => versionNodes.id, {
+      onDelete: "restrict",
+    }),
+    nodeType: text("node_type").notNull(),
+    snapshotId: uuid("snapshot_id"),
+    objectType: text("object_type").notNull(),
+    objectId: uuid("object_id").notNull(),
+    objectVersion: integer("object_version").notNull().default(1),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    message: text("message").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("version_nodes_branch_created_idx").on(table.branchId, table.createdAt),
+    index("version_nodes_user_work_idx").on(table.userId, table.workId),
+    check(
+      "version_nodes_node_type_check",
+      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
+    ),
   ],
 );

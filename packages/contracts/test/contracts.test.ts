@@ -18,6 +18,9 @@ import {
   sendRegistrationCodeRequestSchema,
   sendRegistrationCodeResponseSchema,
   logoutResponseSchema,
+  workBranchSchema,
+  workCreateRequestSchema,
+  workSchema,
 } from "../src";
 
 describe("shared contracts", () => {
@@ -229,6 +232,53 @@ describe("shared contracts", () => {
         data: { deleted: true },
         requestId: "req_delete",
         meta: {},
+      }),
+    ).toBeTruthy();
+  });
+
+  it("validates work creation and branch contracts", () => {
+    expect(
+      workCreateRequestSchema.parse({
+        mode: "idea",
+        title: "忘川书",
+        idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+      }),
+    ).toMatchObject({
+      genre: "xianxia",
+      scaleTarget: "long",
+      chapterLengthTarget: 3000,
+    });
+    expect(
+      workCreateRequestSchema.parse({
+        mode: "template",
+        templateKey: "xianxia",
+        title: "仙途模板",
+      }),
+    ).toMatchObject({ mode: "template", templateKey: "xianxia" });
+    expect(
+      workSchema.parse({
+        id: "01a1a6f9-9d9b-71e1-98ed-ae21fe958ef4",
+        title: "忘川书",
+        penName: "林见鹿",
+        genre: "xianxia",
+        status: "draft",
+        scaleTarget: "long",
+        chapterLengthTarget: 3000,
+        sourceMode: "idea",
+        idea: "一个被宗门抛弃的杂役。",
+        templatePack: null,
+        settings: {},
+        createdAt: "2026-11-04T08:00:00.000Z",
+        updatedAt: "2026-11-04T08:00:00.000Z",
+      }),
+    ).toBeTruthy();
+    expect(
+      workBranchSchema.parse({
+        id: "01a1a6f9-9d9b-71e1-98ed-ae21fe958ef4",
+        workId: "01a1a6f9-9d9b-71e1-98ed-ae21fe958ef4",
+        name: "main",
+        headNodeId: "01a1a6f9-9d9b-71e1-98ed-ae21fe958ef4",
+        status: "active",
       }),
     ).toBeTruthy();
   });
