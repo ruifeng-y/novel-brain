@@ -132,6 +132,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/model-configs/providers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ModelConfigController_getProviders"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/model-configs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ModelConfigController_list"];
+    put?: never;
+    post: operations["ModelConfigController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/model-configs/{configId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["ModelConfigController_delete"];
+    options?: never;
+    head?: never;
+    patch: operations["ModelConfigController_update"];
+    trace?: never;
+  };
+  "/api/v1/model-configs/{configId}/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ModelConfigController_test"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -497,6 +561,277 @@ export interface operations {
                 status: "up" | "down";
                 latencyMs: number;
               }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModelConfigController_getProviders: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Allowed providers */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              key: "deepseek" | "openai-compatible";
+              label: string;
+              defaultBaseUrl: string;
+              models: string[];
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModelConfigController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description User model configs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              provider: "deepseek" | "openai-compatible";
+              label: string;
+              baseUrl: string;
+              model: string;
+              keyMasked: string;
+              isDefault: boolean;
+              version: number;
+              /** @enum {string|null} */
+              lastTestStatus:
+                "success" | "key_invalid" | "rate_limited" | "timeout" | "error" | null;
+              /** Format: date-time */
+              lastTestedAt: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModelConfigController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          provider: "deepseek" | "openai-compatible";
+          label: string;
+          /** Format: uri */
+          baseUrl: string;
+          model: string;
+          apiKey: string;
+          /** @default false */
+          isDefault: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Created model config */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              provider: "deepseek" | "openai-compatible";
+              label: string;
+              baseUrl: string;
+              model: string;
+              keyMasked: string;
+              isDefault: boolean;
+              version: number;
+              /** @enum {string|null} */
+              lastTestStatus:
+                "success" | "key_invalid" | "rate_limited" | "timeout" | "error" | null;
+              /** Format: date-time */
+              lastTestedAt: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModelConfigController_delete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        configId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Deleted model config */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              deleted: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModelConfigController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        configId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          label?: string;
+          /** Format: uri */
+          baseUrl?: string;
+          model?: string;
+          apiKey?: string;
+          isDefault?: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated model config */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              provider: "deepseek" | "openai-compatible";
+              label: string;
+              baseUrl: string;
+              model: string;
+              keyMasked: string;
+              isDefault: boolean;
+              version: number;
+              /** @enum {string|null} */
+              lastTestStatus:
+                "success" | "key_invalid" | "rate_limited" | "timeout" | "error" | null;
+              /** Format: date-time */
+              lastTestedAt: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ModelConfigController_test: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        configId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Connection test result */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              status: "success" | "key_invalid" | "rate_limited" | "timeout" | "error";
+              latencyMs: number;
+              message: string;
             };
             /** Format: starts_with */
             requestId: string;

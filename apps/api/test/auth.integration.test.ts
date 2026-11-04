@@ -41,6 +41,10 @@ describe("auth HTTP integration", () => {
     process.env.ALLOW_INSECURE_LOCAL_PROXY_IP = "true";
     process.env.APP_ORIGIN = origin;
     process.env.NODE_ENV = "test";
+    process.env.MODEL_CONNECTION_TESTER = "fake";
+    process.env.MODEL_CONFIG_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
+    process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
+    process.env.MODEL_PROVIDER_ALLOWLIST = "https://api.openai.com/v1";
 
     await runMigrations(databaseUrl);
     databasePool = createDatabasePool(databaseUrl);
@@ -81,6 +85,29 @@ describe("auth HTTP integration", () => {
       httpRequest.set("X-CSRF-Token", csrfToken);
     }
     return httpRequest;
+  }
+
+  async function createAuthenticatedAgent(
+    email: string,
+    password: string,
+    displayName: string,
+  ): Promise<SuperAgentTest> {
+    const userAgent = request.agent(app.getHttpServer());
+    const csrfResponse = await userAgent.get("/api/v1/auth/csrf").expect(200);
+    const token = csrfResponse.body.data.token as string;
+    await userAgent
+      .post("/api/v1/auth/register/send-code")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ email })
+      .expect(200);
+    await userAgent
+      .post("/api/v1/auth/register")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ email, code: mail.codes.get(email), password, displayName })
+      .expect(200);
+    return userAgent;
   }
 
   it("registers, restores the session, logs out and rejects the old cookie", async () => {
@@ -216,6 +243,102 @@ describe("auth HTTP integration", () => {
       })
       .expect(400);
     expect(weak.body.error.code).toBe("AUTH_PASSWORD_WEAK");
+  });
+
+  it("encrypts model keys, returns masks and tests connections", async () => {
+    const owner = await createAuthenticatedAgent(
+      "models@example.com",
+      "StrongPassword123",
+      "模型作者",
+    );
+    const csrfResponse = await owner.get("/api/v1/auth/csrf").expect(200);
+    const token = csrfResponse.body.data.token as string;
+    const apiKey = "sk-secret-value-1234";
+    const created = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        provider: "deepseek",
+        label: "DeepSeek 正文",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey,
+        isDefault: true,
+      })
+      .expect(200);
+
+    expect(JSON.stringify(created.body)).not.toContain(apiKey);
+    expect(created.body.data.keyMasked).toBe("****1234");
+    const stored = await databasePool.query<{ encrypted_key: string }>(
+      "SELECT encrypted_key FROM model_configs WHERE id = $1",
+      [created.body.data.id],
+    );
+    expect(stored.rows[0]?.encrypted_key).not.toContain(apiKey);
+
+    const tested = await owner
+      .post(`/api/v1/model-configs/${created.body.data.id}/test`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .expect(200);
+    expect(tested.body.data.status).toBe("success");
+    expect(JSON.stringify(tested.body)).not.toContain(apiKey);
+  });
+
+  it("rejects SSRF targets and cross-user model configuration access", async () => {
+    const owner = await createAuthenticatedAgent(
+      "owner@example.com",
+      "StrongPassword123",
+      "配置所有者",
+    );
+    const other = await createAuthenticatedAgent(
+      "other@example.com",
+      "StrongPassword123",
+      "其他作者",
+    );
+    const ownerCsrf = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+    const otherCsrf = (await other.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const rejected = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerCsrf)
+      .send({
+        provider: "openai-compatible",
+        label: "SSRF",
+        baseUrl: "https://127.0.0.1/v1",
+        model: "custom",
+        apiKey: "sk-secret-value-1234",
+        isDefault: false,
+      })
+      .expect(400);
+    expect(rejected.body.error.code).toBe("MODEL_CONNECTION_FAILED");
+
+    const created = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerCsrf)
+      .send({
+        provider: "deepseek",
+        label: "DeepSeek",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-secret-value-1234",
+        isDefault: true,
+      })
+      .expect(200);
+
+    expect((await other.get("/api/v1/model-configs").expect(200)).body.data).toEqual([]);
+    await other
+      .delete(`/api/v1/model-configs/${created.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherCsrf)
+      .expect(404);
+    await other
+      .post(`/api/v1/model-configs/${created.body.data.id}/test`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherCsrf)
+      .expect(404);
   });
 });
 

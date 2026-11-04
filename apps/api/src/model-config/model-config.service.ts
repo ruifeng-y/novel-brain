@@ -1,0 +1,119 @@
+import { Inject, Injectable } from "@nestjs/common";
+import type {
+  ModelConfig,
+  ModelConfigInput,
+  ModelConfigUpdate,
+  ModelProviderInfo,
+} from "@novel-brain/contracts";
+import { uuidv7 } from "uuidv7";
+
+import { ApiError } from "../common/api-error";
+import {
+  MODEL_CONNECTION_TESTER,
+  type ConnectionTestResult,
+  type ModelConnectionTester,
+} from "./connection-tester";
+import { decryptApiKey, encryptApiKey, maskApiKey } from "./model-config-crypto";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ModelConfigRepository, type ModelConfigRecord } from "./model-config.repository";
+import { listProviders, validateProviderConfig } from "./provider-registry";
+
+@Injectable()
+export class ModelConfigService {
+  constructor(
+    private readonly repository: ModelConfigRepository,
+    @Inject(MODEL_CONNECTION_TESTER) private readonly tester: ModelConnectionTester,
+  ) {}
+
+  getProviders(): ModelProviderInfo[] {
+    return listProviders();
+  }
+
+  async list(userId: string): Promise<ModelConfig[]> {
+    return (await this.repository.list(userId)).map((config) => this.toContract(config));
+  }
+
+  async create(userId: string, input: ModelConfigInput): Promise<ModelConfig> {
+    validateProviderConfig(input);
+    const config = await this.repository.create({
+      id: uuidv7(),
+      userId,
+      provider: input.provider,
+      label: input.label,
+      baseUrl: input.baseUrl.replace(/\/$/, ""),
+      model: input.model,
+      encryptedKey: encryptApiKey(input.apiKey),
+      keyMasked: maskApiKey(input.apiKey),
+      isDefault: input.isDefault,
+    });
+    return this.toContract(config);
+  }
+
+  async update(userId: string, id: string, input: ModelConfigUpdate): Promise<ModelConfig> {
+    const existing = await this.requireConfig(userId, id);
+    const merged = {
+      provider: existing.provider,
+      baseUrl: input.baseUrl ?? existing.baseUrl,
+      model: input.model ?? existing.model,
+    };
+    validateProviderConfig(merged as Pick<ModelConfigInput, "provider" | "baseUrl">);
+    const config = await this.repository.update(userId, id, input.version, {
+      ...(input.label !== undefined ? { label: input.label } : {}),
+      ...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl.replace(/\/$/, "") } : {}),
+      ...(input.model !== undefined ? { model: input.model } : {}),
+      ...(input.apiKey !== undefined
+        ? {
+            encryptedKey: encryptApiKey(input.apiKey),
+            keyMasked: maskApiKey(input.apiKey),
+          }
+        : {}),
+      ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
+    });
+    if (!config) {
+      throw new ApiError(409, "VERSION_CONFLICT", "配置已被其他操作更新，请刷新后重试");
+    }
+    return this.toContract(config);
+  }
+
+  async delete(userId: string, id: string): Promise<void> {
+    if (!(await this.repository.delete(userId, id))) {
+      throw new ApiError(404, "MODEL_CONFIG_NOT_FOUND", "模型配置不存在");
+    }
+  }
+
+  async test(userId: string, id: string): Promise<ConnectionTestResult> {
+    const config = await this.requireConfig(userId, id);
+    const result = await this.tester.test({
+      config: this.toContract(config),
+      apiKey: decryptApiKey(config.encryptedKey),
+    });
+    await this.repository.updateTestStatus(userId, id, result.status);
+    return result;
+  }
+
+  private async requireConfig(userId: string, id: string): Promise<ModelConfigRecord> {
+    const config = await this.repository.find(userId, id);
+    if (!config) {
+      throw new ApiError(404, "MODEL_CONFIG_NOT_FOUND", "模型配置不存在");
+    }
+    return config;
+  }
+
+  private toContract(config: ModelConfigRecord): ModelConfig {
+    return {
+      id: config.id,
+      provider: config.provider as ModelConfig["provider"],
+      label: config.label,
+      baseUrl: config.baseUrl,
+      model: config.model,
+      keyMasked: config.keyMasked,
+      isDefault: config.isDefault,
+      version: config.version,
+      lastTestStatus: config.lastTestStatus as ModelConfig["lastTestStatus"],
+      lastTestedAt: config.lastTestedAt?.toISOString() ?? null,
+      createdAt: config.createdAt.toISOString(),
+      updatedAt: config.updatedAt.toISOString(),
+    };
+  }
+}

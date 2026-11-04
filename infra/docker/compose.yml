@@ -77,6 +77,9 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       MAIL_FROM: 墨舟 <no-reply@novelbrain.local>
+      MODEL_CONFIG_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+      ALLOW_INSECURE_LOCAL_MODEL_KEY: "true"
+      MODEL_PROVIDER_ALLOWLIST: https://api.openai.com/v1
     ports:
       - "127.0.0.1:3001:3001"
     depends_on:

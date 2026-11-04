@@ -1,5 +1,14 @@
 import { sql } from "drizzle-orm";
-import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const systemMetadata = pgTable("system_metadata", {
   key: text("key").primaryKey(),
@@ -60,4 +69,27 @@ export const emailVerificationCodes = pgTable(
   (table) => [
     index("email_codes_email_purpose_created_idx").on(table.email, table.purpose, table.createdAt),
   ],
+);
+
+export const modelConfigs = pgTable(
+  "model_configs",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    label: text("label").notNull(),
+    baseUrl: text("base_url").notNull(),
+    model: text("model").notNull(),
+    encryptedKey: text("encrypted_key").notNull(),
+    keyMasked: text("key_masked").notNull(),
+    isDefault: boolean("is_default").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    lastTestStatus: text("last_test_status"),
+    lastTestedAt: timestamp("last_tested_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("model_configs_user_id_idx").on(table.userId)],
 );

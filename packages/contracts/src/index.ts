@@ -12,6 +12,10 @@ export const ERROR_CODES = [
   "AUTH_ORIGIN_INVALID",
   "MODEL_KEY_INVALID",
   "MODEL_CONNECTION_FAILED",
+  "MODEL_RATE_LIMITED",
+  "MODEL_TIMEOUT",
+  "MODEL_PROVIDER_ERROR",
+  "MODEL_CONFIG_NOT_FOUND",
   "BIBLE_NOT_READY",
   "BIBLE_LOCKED",
   "JOB_BUDGET_EXCEEDED",
@@ -124,6 +128,65 @@ export const csrfResponseSchema = apiEnvelopeSchema(csrfDataSchema);
 export const sendRegistrationCodeResponseSchema = apiEnvelopeSchema(sendRegistrationCodeDataSchema);
 export const authSessionResponseSchema = apiEnvelopeSchema(authSessionDataSchema);
 export const logoutResponseSchema = apiEnvelopeSchema(logoutDataSchema);
+
+export const modelProviderSchema = z.enum(["deepseek", "openai-compatible"]);
+export const modelConfigInputSchema = z.object({
+  provider: modelProviderSchema,
+  label: z.string().trim().min(1).max(80),
+  baseUrl: z.url().max(500),
+  model: z.string().trim().min(1).max(120),
+  apiKey: z.string().min(1).max(500),
+  isDefault: z.boolean().default(false),
+});
+export type ModelConfigInput = z.infer<typeof modelConfigInputSchema>;
+
+export const modelConfigUpdateSchema = z.object({
+  version: z.number().int().positive(),
+  label: z.string().trim().min(1).max(80).optional(),
+  baseUrl: z.url().max(500).optional(),
+  model: z.string().trim().min(1).max(120).optional(),
+  apiKey: z.string().min(1).max(500).optional(),
+  isDefault: z.boolean().optional(),
+});
+export type ModelConfigUpdate = z.infer<typeof modelConfigUpdateSchema>;
+
+export const modelConfigSchema = z.object({
+  id: uuidV7Schema,
+  provider: modelProviderSchema,
+  label: z.string(),
+  baseUrl: z.string(),
+  model: z.string(),
+  keyMasked: z.string(),
+  isDefault: z.boolean(),
+  version: z.number().int().positive(),
+  lastTestStatus: z.enum(["success", "key_invalid", "rate_limited", "timeout", "error"]).nullable(),
+  lastTestedAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type ModelConfig = z.infer<typeof modelConfigSchema>;
+
+export const modelProviderInfoSchema = z.object({
+  key: modelProviderSchema,
+  label: z.string(),
+  defaultBaseUrl: z.string(),
+  models: z.array(z.string()),
+});
+export type ModelProviderInfo = z.infer<typeof modelProviderInfoSchema>;
+
+export const modelConfigsResponseSchema = apiEnvelopeSchema(z.array(modelConfigSchema));
+export const modelProvidersResponseSchema = apiEnvelopeSchema(z.array(modelProviderInfoSchema));
+export const modelConfigResponseSchema = apiEnvelopeSchema(modelConfigSchema);
+export const modelConnectionTestResponseSchema = apiEnvelopeSchema(
+  z.object({
+    status: z.enum(["success", "key_invalid", "rate_limited", "timeout", "error"]),
+    latencyMs: z.number().nonnegative(),
+    message: z.string(),
+  }),
+);
+export const modelConfigDeleteResponseSchema = apiEnvelopeSchema(
+  z.object({ deleted: z.literal(true) }),
+);
 
 export const serviceNameSchema = z.enum(["api", "worker"]);
 export type ServiceName = z.infer<typeof serviceNameSchema>;
