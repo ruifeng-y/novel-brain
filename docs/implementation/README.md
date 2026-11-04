@@ -4,17 +4,18 @@
 
 ## 1. What is ready now
 
-The repository currently contains product/technical documentation, accepted ADRs, a signed-off static prototype and Playwright prototype-parity tests. It does not yet contain the production Web/API/Worker application source. The first implementation unit is therefore the M0 walking skeleton, not a feature patch to the prototype.
+The repository contains product/technical documentation, accepted ADRs, a signed-off static prototype and prototype Playwright tests. It does not yet contain the production Web/API/Worker application source. The first implementation unit is therefore the M0 walking skeleton, not a feature patch to the prototype.
 
-- M0 parent spec: GitHub issue #66.
-- M0 implementation tickets: #67–#79.
-- M1 parent spec: #80; implementation tickets: #84–#90.
-- M2 parent spec: #81; implementation tickets: #91–#97.
-- M3 parent spec: #82; implementation tickets: #98–#104.
-- Full ticket map and dependency graph: `docs/planning/m1-m3-ticket-map.md`.
+- M0 parent spec: #66; leaf implementation tickets: #67–#79.
+- M1 parent spec: #80; package/integration issues: #84–#90; leaf issues: #106–#119 and #141–#148.
+- M2 parent spec: #81; package/integration issues: #91–#97; leaf issues: #120–#128 and #149–#152.
+- M3 parent spec: #82; package/integration issues: #98–#104; leaf issues: #129–#140.
+- Ticket map: `docs/planning/m1-m3-ticket-map.md`.
+- Machine-readable dependency graph: `docs/planning/v1-issue-dependency-graph.json`.
 - Capability-to-ticket ledger: `docs/planning/v1-capability-traceability.md`.
+- UI page ownership/evidence: `docs/ui/v1-ui-parity-matrix.md`.
 
-M0–M3 now have bounded child implementation tickets. M1–M3 tickets #84–#104 are ticketed but not implemented or verified. Do not pass #80, #81 or #82 to /implement as one giant task. Follow the explicit blockers in each child issue and the ticket map; do not infer readiness from labels.
+M1/M2/M3 package parents are not single /implement tasks: #84–#89, #91, #93–#96 and #98–#103. Implement their bounded child issues first, then close each parent with integration evidence. #90, #97 and #104 are integration/release gates. The new leaf issues are mapped, not automatically ready or verified. Never infer readiness from labels alone.
 
 ## 2. First command
 
@@ -57,6 +58,7 @@ Only #67 is the initial frontier. A ticket is startable only after every listed 
 Independent frontier tickets may run in parallel only when they share no mutable contract or schema under active change. If a shared contract is needed, serialize the work or agree the contract first. Integrate each completed ticket before starting dependent work.
 
 ## 4. Ticket completion contract
+
 - [ ] Implementation matches the issue acceptance criteria and capability IDs.
 - [ ] Relevant accepted ADRs and technical contracts are followed.
 - [ ] Zod/OpenAPI contracts are shared across Web/API/Worker; no duplicate hand-written DTO.
@@ -67,10 +69,11 @@ Independent frontier tickets may run in parallel only when they share no mutable
 - [ ] UI work references its parity-matrix row, implements required states, and uses real API/Worker actions.
 - [ ] Playwright covers primary behavior, gates, errors and responsive viewports required by the ticket.
 - [ ] Focused tests, typecheck, lint/format and relevant full test suite pass.
-- [ ] code-review has been run and all blocking findings are resolved.
+- [ ] Code review has been run and all blocking findings are resolved.
 - [ ] Evidence is recorded in the issue or implementation report; no criterion is silently waived.
 
 ## 5. Cross-cutting invariants
+
 1. One version graph: no competing authoritative parent chains for chapter versions, canon commits, branches or snapshots.
 2. Three separate editorial transitions: fact decision, chapter approval and story-fact submission are distinct; only the final gated submission changes authoritative confirmed settings.
 3. Durable orchestration: Postgres owns job state and checkpoints; Redis/BullMQ transports work. Retries are idempotent and resume from the failed step.
@@ -78,22 +81,31 @@ Independent frontier tickets may run in parallel only when they share no mutable
 5. Continuity before prose: generation receives versioned, source-cited context; objective story facts and per-character knowledge/belief/suspicion remain distinct.
 6. Long-work retrieval: structured facts and state projections are authoritative; summaries and search indexes are derived, versioned and rebuildable.
 7. No fake production behavior: fake providers are test seams only. UI demo controls and static prototype data do not satisfy production acceptance.
-8. 10M is a release claim, not an assumption: capacity must be demonstrated with the M3 fixture and recorded load/recovery evidence.
+8. 10M is a release claim, not an assumption: capacity must be demonstrated with #137 and the recorded load/recovery evidence.
+9. Long-horizon continuity is a separate release claim: #138 must test ground-truth state and knowledge boundaries over 3,000–4,000 chapters; a capacity benchmark cannot substitute for it.
 
 ## 6. M1–M3 implementation readiness gate
-Issues #80–#82 remain milestone specification parents. Their implementation work is decomposed into #84–#104 and mapped in `docs/planning/m1-m3-ticket-map.md`.
 
-Before starting any child ticket:
-- check every blocker named in the issue body and the dependency map;
-- confirm its capability IDs in the traceability ledger;
+Issues #80–#82 remain milestone specification parents. The package/leaf structure and sequence are maintained in `docs/planning/m1-m3-ticket-map.md`; blocker edges are maintained in `docs/planning/v1-issue-dependency-graph.json` and repeated in issue bodies.
+
+Before starting any leaf ticket:
+- check every blocker named in the issue body and dependency graph;
+- confirm its unique primary capability mapping in the traceability ledger;
 - inspect the affected UI parity rows and contracts;
 - agree schema/API ownership before parallel work;
 - stop on unresolved product or ADR conflicts.
 
-The dependency map is normative. GitHub native dependency edges were not available through the connected integration, so blockers are explicitly recorded in issue bodies and the map. A milestone is not implementation-ready merely because its child tickets exist: blockers must close and tests/evidence must pass.
+The graph validator is run from the repository root:
 
-## 7. Commands and evidence
-The exact production workspace commands will be established by ticket #67 and recorded in root developer documentation. Until then, do not invent package scripts or claim the production stack is runnable.
+    node scripts/validate-readiness.mjs
+
+The dependency graph is normative together with each issue's Dependencies section. GitHub native dependency edges are not assumed to exist. A milestone is not implementation-ready merely because child tickets exist: blockers must close, shared contracts must be integrated and tests/evidence must pass.
+
+The capability ledger contains **119 IDs**: the 117 original manifest entries plus PERF-001 (10M capacity/recovery) and CONT-001 (long-horizon continuity). AGENT-007 vector retrieval and QUALITY-009 real-reader feedback remain explicitly post-V1/deferred.
+
+## 7. UI parity and prototype evidence
+
+The signed-off prototype contains 18 screens: 17 production page contracts plus one prototype-only states gallery. Production Web/API/Worker code and production golden screenshots do not yet exist.
 
 Prototype regression remains independently runnable from prototype/:
 
@@ -102,4 +114,15 @@ Prototype regression remains independently runnable from prototype/:
     pnpm exec playwright install chromium
     pnpm test:parity
 
-The prototype test is not a substitute for production Web/API/Worker tests.
+The prototype suite is not a substitute for production Web/API/Worker or production screenshot-parity tests. Production page owners, Playwright spec paths, four viewport sizes and future golden artifact locations are registered in docs/ui/v1-ui-parity-matrix.md. Production golden images are generated only after the initial production page has been accepted by the author; do not copy prototype images into the production golden folder.
+
+## 8. Scale and quality gates
+
+- #137 / `docs/performance/v1-10m-capacity-benchmark.md`: deterministic 10,000,000-character fixture, mixed workload, p50/p95/p99 measurements, storage/index growth, job recovery and backup/restore.
+- #138 / `docs/quality/v1-long-horizon-continuity-benchmark.md`: 3,000–4,000 chapter / 30–40 volume continuity ground truth, character knowledge boundaries, state invariants, plot/foreshadow checks and human blind review.
+
+Existing p95/streaming/SSE/RPO/RTO targets are taken from the technical baseline. Numeric p99, concurrent-user, storage-headroom and selected reviewer-agreement thresholds remain decision-required until formally approved; do not invent pass values.
+
+## 9. Commands and evidence
+
+The exact production workspace commands will be established by ticket #67 and recorded in root developer documentation. Until then, do not invent package scripts or claim the production stack is runnable.
