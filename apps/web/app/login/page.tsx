@@ -1,14 +1,15 @@
 import { redirect } from "next/navigation";
 
 import { AuthForm } from "../../components/auth-form";
-import { getCurrentAuth } from "../../lib/auth";
+import { getCurrentAuthState } from "../../lib/auth";
 
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ reason?: string }>;
 }) {
-  if (await getCurrentAuth()) {
+  const auth = await getCurrentAuthState();
+  if (auth.status === "authenticated") {
     redirect("/workspace");
   }
   const reason = (await searchParams).reason;
@@ -16,7 +17,7 @@ export default async function LoginPage({
   return (
     <AuthForm
       mode="login"
-      permissionDenied={reason === "permission"}
+      permissionDenied={auth.status === "forbidden" || reason === "permission"}
       sessionExpired={reason === "session-expired"}
     />
   );

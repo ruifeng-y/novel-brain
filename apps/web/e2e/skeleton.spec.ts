@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { registerUser, uniqueEmail } from "./helpers/auth";
+import { registerUser, resetRateLimits, uniqueEmail } from "./helpers/auth";
 
 const timestamp = "2026-11-04T08:00:00.000Z";
 
@@ -132,6 +132,7 @@ test("workspace route renders the app shell placeholder at all viewports", async
   page,
   request,
 }) => {
+  await resetRateLimits();
   const email = uniqueEmail("workspace");
   await registerUser(request, email, "StrongPassword123", "工作区作者");
 

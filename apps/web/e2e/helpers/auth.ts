@@ -1,9 +1,21 @@
 import { expect, type APIRequestContext } from "@playwright/test";
+import Redis from "ioredis";
 
 const origin = "http://localhost:3000";
 
 export function uniqueEmail(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.floor(Math.random() * 10_000)}@example.com`;
+}
+
+export async function resetRateLimits(): Promise<void> {
+  const redis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
+    maxRetriesPerRequest: 1,
+  });
+  try {
+    await redis.flushdb();
+  } finally {
+    redis.disconnect();
+  }
 }
 
 async function csrf(request: APIRequestContext): Promise<string> {
@@ -42,7 +54,7 @@ export async function registerUser(
   email: string,
   password: string,
   displayName: string,
-): Promise<void> {
+): Promise<string> {
   await sendCode(request, email);
   const token = await csrf(request);
   const response = await request.post("/api/v1/auth/register", {
@@ -50,4 +62,9 @@ export async function registerUser(
     data: { email, code: await mailCode(email), password, displayName },
   });
   expect(response.status()).toBe(200);
+  const sessionCookie = /nb_session=([^;]+)/.exec(response.headers()["set-cookie"] ?? "")?.[1];
+  if (!sessionCookie) {
+    throw new Error("Registration did not return nb_session");
+  }
+  return sessionCookie;
 }

@@ -18,6 +18,9 @@ export class SessionAuthGuard implements CanActivate {
     if (!auth) {
       throw new ApiError(401, "AUTH_SESSION_INVALID", "登录状态已失效，请重新登录");
     }
+    if (auth.user.status !== "active") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "当前账号已被禁用");
+    }
     request.auth = auth;
     return true;
   }

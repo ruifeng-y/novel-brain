@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
+import { Pool } from "pg";
 
-import { mailCode, registerUser, sendCode, uniqueEmail } from "../helpers/auth";
+import { mailCode, registerUser, resetRateLimits, sendCode, uniqueEmail } from "../helpers/auth";
+
+test.beforeEach(async () => {
+  await resetRateLimits();
+});
 
 test("auth page matches the shell at four viewports", async ({ page }, testInfo) => {
   for (const width of [390, 900, 1180, 1440]) {
@@ -89,7 +94,40 @@ test("rate-limit errors are visible and recoverable", async ({ page, request }) 
   await expect(page.getByText("操作过于频繁，请稍后再试。")).toBeVisible();
 });
 
-test("permission-denied state is explicit", async ({ page }) => {
-  await page.goto("/login?reason=permission");
+test("disabled accounts redirect to the permission state", async ({ page, context, request }) => {
+  const email = uniqueEmail("disabled");
+  const sessionCookie = await registerUser(request, email, "StrongPassword123", "禁用作者");
+  await context.addCookies([
+    {
+      name: "nb_session",
+      value: sessionCookie,
+      domain: "localhost",
+      path: "/",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+  ]);
+
+  await page.goto("/workspace");
+  await expect(page).toHaveURL(/\/workspace$/);
+
+  const pool = new Pool({
+    connectionString:
+      process.env.E2E_DATABASE_URL ??
+      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain",
+  });
+  try {
+    await pool.query("UPDATE users SET status = 'disabled' WHERE email = $1", [email]);
+  } finally {
+    await pool.end();
+  }
+
+  const disabledSession = await request.get("/api/v1/auth/me", {
+    headers: { cookie: `nb_session=${sessionCookie}` },
+  });
+  expect(disabledSession.status()).toBe(403);
+
+  await page.goto("/workspace");
+  await expect(page).toHaveURL(/\/login\?reason=permission$/);
   await expect(page.getByText("当前账号无权访问此页面。")).toBeVisible();
 });

@@ -75,7 +75,7 @@ export type SendRegistrationCodeRequest = z.infer<typeof sendRegistrationCodeReq
 export const registerRequestSchema = z.object({
   email: authEmailSchema,
   code: z.string().regex(/^\d{6}$/),
-  password: z.string().min(1).max(128),
+  password: authPasswordSchema,
   displayName: authDisplayNameSchema,
 });
 export type RegisterRequest = z.infer<typeof registerRequestSchema>;

@@ -137,8 +137,18 @@
                   },
                   "password": {
                     "type": "string",
-                    "minLength": 1,
-                    "maxLength": 128
+                    "minLength": 12,
+                    "maxLength": 128,
+                    "allOf": [
+                      {
+                        "type": "string",
+                        "pattern": "[A-Za-z]"
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "\\d"
+                      }
+                    ]
                   },
                   "displayName": {
                     "type": "string",

@@ -10,6 +10,8 @@ import {
   readinessResponseSchema,
   registerRequestSchema,
   sendRegistrationCodeRequestSchema,
+  sendRegistrationCodeResponseSchema,
+  logoutResponseSchema,
 } from "../src";
 
 describe("shared contracts", () => {
@@ -116,6 +118,20 @@ describe("shared contracts", () => {
       csrfResponseSchema.parse({
         data: { token: "csrf-token-with-enough-length" },
         requestId: "req_csrf",
+        meta: {},
+      }),
+    ).toBeTruthy();
+    expect(
+      sendRegistrationCodeResponseSchema.parse({
+        data: { sent: true, expiresAt: "2026-11-04T08:10:00.000Z" },
+        requestId: "req_send_code",
+        meta: {},
+      }),
+    ).toBeTruthy();
+    expect(
+      logoutResponseSchema.parse({
+        data: { loggedOut: true },
+        requestId: "req_logout",
         meta: {},
       }),
     ).toBeTruthy();

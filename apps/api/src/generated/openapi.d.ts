@@ -227,7 +227,7 @@ export interface operations {
           /** Format: email */
           email: string;
           code: string;
-          password: string;
+          password: string & string;
           displayName: string;
         };
       };

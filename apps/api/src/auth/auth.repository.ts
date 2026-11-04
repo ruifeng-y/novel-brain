@@ -133,7 +133,6 @@ export class AuthRepository implements OnModuleDestroy {
           eq(sessions.tokenHash, tokenHash),
           isNull(sessions.revokedAt),
           gt(sessions.expiresAt, new Date()),
-          eq(users.status, "active"),
         ),
       )
       .limit(1);

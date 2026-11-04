@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from "@nestjs/common";
 import {
+  authPasswordSchema,
   authSessionResponseSchema,
   csrfResponseSchema,
   loginRequestSchema,
@@ -13,6 +14,7 @@ import { ApiBody, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swag
 import type { Response } from "express";
 import { z } from "zod";
 
+import { ApiError } from "../common/api-error";
 import type { AuthenticatedRequest } from "./auth.types";
 import { randomToken } from "./auth-crypto";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -80,6 +82,11 @@ export class AuthController {
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ) {
+    const password = (body as { password?: unknown } | null)?.password;
+    if (typeof password !== "string" || !authPasswordSchema.safeParse(password).success) {
+      throw new ApiError(400, "AUTH_PASSWORD_WEAK", "密码至少 12 位，并且必须同时包含字母和数字");
+    }
+
     const issued = await this.authService.register(
       registerRequestSchema.parse(body),
       request.ip ?? "unknown",

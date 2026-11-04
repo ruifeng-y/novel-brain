@@ -3,16 +3,19 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AppShell } from "../../components/app-shell";
-import { getCurrentAuth } from "../../lib/auth";
+import { getCurrentAuthState } from "../../lib/auth";
 
 export default async function WorkspacePage() {
-  const auth = await getCurrentAuth();
-  if (!auth) {
+  const auth = await getCurrentAuthState();
+  if (auth.status === "unauthenticated") {
     redirect("/login?reason=session-expired");
+  }
+  if (auth.status === "forbidden") {
+    redirect("/login?reason=permission");
   }
 
   return (
-    <AppShell user={auth.user}>
+    <AppShell user={auth.data.user}>
       <section className="page-head">
         <div>
           <p className="eyebrow">个人工作室</p>
