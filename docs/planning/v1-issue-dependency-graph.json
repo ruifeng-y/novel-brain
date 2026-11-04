@@ -1,0 +1,979 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-11-04",
+  "repository": "ruifeng-y/novel-brain",
+  "semantics": {
+    "blocked_by": "Issue cannot start until each blocker is complete and integrated.",
+    "children": "Package-to-leaf membership; package closeout waits for children. Parent membership is not a blocker edge.",
+    "cycle_rule": "blocked_by edges must form a directed acyclic graph."
+  },
+  "nodes": {
+    "66": {
+      "type": "spec",
+      "blocked_by": [],
+      "children": [],
+      "parent": null
+    },
+    "67": {
+      "type": "leaf",
+      "blocked_by": [],
+      "children": [],
+      "parent": null
+    },
+    "68": {
+      "type": "leaf",
+      "blocked_by": [
+        67
+      ],
+      "children": [],
+      "parent": null
+    },
+    "69": {
+      "type": "leaf",
+      "blocked_by": [
+        67
+      ],
+      "children": [],
+      "parent": null
+    },
+    "70": {
+      "type": "leaf",
+      "blocked_by": [
+        67,
+        68
+      ],
+      "children": [],
+      "parent": null
+    },
+    "71": {
+      "type": "leaf",
+      "blocked_by": [
+        70
+      ],
+      "children": [],
+      "parent": null
+    },
+    "72": {
+      "type": "leaf",
+      "blocked_by": [
+        70
+      ],
+      "children": [],
+      "parent": null
+    },
+    "73": {
+      "type": "leaf",
+      "blocked_by": [
+        70
+      ],
+      "children": [],
+      "parent": null
+    },
+    "74": {
+      "type": "leaf",
+      "blocked_by": [
+        73
+      ],
+      "children": [],
+      "parent": null
+    },
+    "75": {
+      "type": "leaf",
+      "blocked_by": [
+        73,
+        74
+      ],
+      "children": [],
+      "parent": null
+    },
+    "76": {
+      "type": "leaf",
+      "blocked_by": [
+        69,
+        74,
+        75
+      ],
+      "children": [],
+      "parent": null
+    },
+    "77": {
+      "type": "leaf",
+      "blocked_by": [
+        76
+      ],
+      "children": [],
+      "parent": null
+    },
+    "78": {
+      "type": "leaf",
+      "blocked_by": [
+        75,
+        77
+      ],
+      "children": [],
+      "parent": null
+    },
+    "79": {
+      "type": "integration",
+      "blocked_by": [
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78
+      ],
+      "children": [],
+      "parent": null
+    },
+    "80": {
+      "type": "spec",
+      "blocked_by": [],
+      "children": [],
+      "parent": null
+    },
+    "81": {
+      "type": "spec",
+      "blocked_by": [],
+      "children": [],
+      "parent": null
+    },
+    "82": {
+      "type": "spec",
+      "blocked_by": [],
+      "children": [],
+      "parent": null
+    },
+    "84": {
+      "type": "package",
+      "blocked_by": [
+        70,
+        73,
+        74
+      ],
+      "children": [
+        143,
+        144
+      ],
+      "parent": null
+    },
+    "85": {
+      "type": "package",
+      "blocked_by": [
+        84
+      ],
+      "children": [
+        106,
+        107,
+        108
+      ],
+      "parent": null
+    },
+    "86": {
+      "type": "package",
+      "blocked_by": [
+        143,
+        144,
+        106,
+        107,
+        108
+      ],
+      "children": [
+        145,
+        146
+      ],
+      "parent": null
+    },
+    "87": {
+      "type": "package",
+      "blocked_by": [
+        143,
+        144,
+        145
+      ],
+      "children": [
+        147,
+        148
+      ],
+      "parent": null
+    },
+    "88": {
+      "type": "package",
+      "blocked_by": [
+        106,
+        107,
+        108,
+        145,
+        146,
+        147,
+        148
+      ],
+      "children": [
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115
+      ],
+      "parent": null
+    },
+    "89": {
+      "type": "package",
+      "blocked_by": [
+        75,
+        76,
+        77,
+        78,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        145,
+        146
+      ],
+      "children": [
+        116,
+        117,
+        118,
+        119
+      ],
+      "parent": null
+    },
+    "90": {
+      "type": "integration",
+      "blocked_by": [
+        84,
+        85,
+        86,
+        87,
+        88,
+        89
+      ],
+      "children": [],
+      "parent": null
+    },
+    "91": {
+      "type": "package",
+      "blocked_by": [
+        110,
+        115
+      ],
+      "children": [
+        151,
+        152
+      ],
+      "parent": null
+    },
+    "92": {
+      "type": "leaf",
+      "blocked_by": [
+        84,
+        85,
+        70
+      ],
+      "children": [],
+      "parent": null
+    },
+    "93": {
+      "type": "package",
+      "blocked_by": [
+        91,
+        114,
+        115,
+        117,
+        147
+      ],
+      "children": [
+        149,
+        150
+      ],
+      "parent": null
+    },
+    "94": {
+      "type": "package",
+      "blocked_by": [
+        85,
+        88,
+        89,
+        78
+      ],
+      "children": [
+        120,
+        121,
+        122
+      ],
+      "parent": null
+    },
+    "95": {
+      "type": "package",
+      "blocked_by": [
+        94,
+        89,
+        78
+      ],
+      "children": [
+        123,
+        124,
+        125
+      ],
+      "parent": null
+    },
+    "96": {
+      "type": "package",
+      "blocked_by": [
+        72,
+        85,
+        86,
+        91
+      ],
+      "children": [
+        126,
+        127,
+        128
+      ],
+      "parent": null
+    },
+    "97": {
+      "type": "integration",
+      "blocked_by": [
+        91,
+        92,
+        93,
+        94,
+        95,
+        96
+      ],
+      "children": [],
+      "parent": null
+    },
+    "98": {
+      "type": "package",
+      "blocked_by": [
+        96
+      ],
+      "children": [
+        129
+      ],
+      "parent": null
+    },
+    "99": {
+      "type": "package",
+      "blocked_by": [
+        98,
+        100
+      ],
+      "children": [
+        130,
+        131
+      ],
+      "parent": null
+    },
+    "100": {
+      "type": "package",
+      "blocked_by": [],
+      "children": [
+        132,
+        133,
+        134
+      ],
+      "parent": null
+    },
+    "101": {
+      "type": "package",
+      "blocked_by": [
+        100
+      ],
+      "children": [
+        135,
+        136
+      ],
+      "parent": null
+    },
+    "102": {
+      "type": "package",
+      "blocked_by": [
+        91,
+        93,
+        95,
+        96,
+        101
+      ],
+      "children": [
+        137
+      ],
+      "parent": null
+    },
+    "103": {
+      "type": "package",
+      "blocked_by": [
+        90,
+        102
+      ],
+      "children": [
+        138,
+        139,
+        140
+      ],
+      "parent": null
+    },
+    "104": {
+      "type": "integration",
+      "blocked_by": [
+        79,
+        90,
+        97,
+        102,
+        103,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152
+      ],
+      "children": [],
+      "parent": null
+    },
+    "106": {
+      "type": "leaf",
+      "blocked_by": [
+        144,
+        74
+      ],
+      "children": [],
+      "parent": 85
+    },
+    "107": {
+      "type": "leaf",
+      "blocked_by": [
+        144,
+        74
+      ],
+      "children": [],
+      "parent": 85
+    },
+    "108": {
+      "type": "leaf",
+      "blocked_by": [
+        144,
+        74
+      ],
+      "children": [],
+      "parent": 85
+    },
+    "109": {
+      "type": "leaf",
+      "blocked_by": [
+        67,
+        69,
+        144
+      ],
+      "children": [],
+      "parent": 88
+    },
+    "110": {
+      "type": "leaf",
+      "blocked_by": [
+        109,
+        76
+      ],
+      "children": [],
+      "parent": 88
+    },
+    "111": {
+      "type": "leaf",
+      "blocked_by": [
+        143,
+        144,
+        106,
+        107,
+        108,
+        76
+      ],
+      "children": [],
+      "parent": 88
+    },
+    "112": {
+      "type": "leaf",
+      "blocked_by": [
+        106,
+        107,
+        108,
+        111
+      ],
+      "children": [],
+      "parent": 88
+    },
+    "113": {
+      "type": "leaf",
+      "blocked_by": [
+        145,
+        146,
+        111,
+        112
+      ],
+      "children": [],
+      "parent": 88
+    },
+    "114": {
+      "type": "leaf",
+      "blocked_by": [
+        109,
+        110,
+        69,
+        76
+      ],
+      "children": [],
+      "parent": 88
+    },
+    "115": {
+      "type": "leaf",
+      "blocked_by": [
+        110,
+        114
+      ],
+      "children": [],
+      "parent": 88
+    },
+    "116": {
+      "type": "leaf",
+      "blocked_by": [
+        75,
+        76,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        145,
+        146
+      ],
+      "children": [],
+      "parent": 89
+    },
+    "117": {
+      "type": "leaf",
+      "blocked_by": [
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        116,
+        145,
+        146,
+        76
+      ],
+      "children": [],
+      "parent": 89
+    },
+    "118": {
+      "type": "leaf",
+      "blocked_by": [
+        116,
+        117,
+        75,
+        76
+      ],
+      "children": [],
+      "parent": 89
+    },
+    "119": {
+      "type": "leaf",
+      "blocked_by": [
+        106,
+        145,
+        146,
+        117
+      ],
+      "children": [],
+      "parent": 89
+    },
+    "120": {
+      "type": "leaf",
+      "blocked_by": [
+        106,
+        107,
+        108,
+        116,
+        117,
+        78
+      ],
+      "children": [],
+      "parent": 94
+    },
+    "121": {
+      "type": "leaf",
+      "blocked_by": [
+        119,
+        106,
+        107,
+        108,
+        145,
+        146,
+        113,
+        120
+      ],
+      "children": [],
+      "parent": 94
+    },
+    "122": {
+      "type": "leaf",
+      "blocked_by": [
+        120,
+        121,
+        78
+      ],
+      "children": [],
+      "parent": 94
+    },
+    "123": {
+      "type": "leaf",
+      "blocked_by": [
+        78,
+        144,
+        106,
+        107,
+        108
+      ],
+      "children": [],
+      "parent": 95
+    },
+    "124": {
+      "type": "leaf",
+      "blocked_by": [
+        123,
+        120,
+        121
+      ],
+      "children": [],
+      "parent": 95
+    },
+    "125": {
+      "type": "leaf",
+      "blocked_by": [
+        124,
+        123,
+        132
+      ],
+      "children": [],
+      "parent": 95
+    },
+    "126": {
+      "type": "leaf",
+      "blocked_by": [
+        72,
+        91,
+        136
+      ],
+      "children": [],
+      "parent": 96
+    },
+    "127": {
+      "type": "leaf",
+      "blocked_by": [
+        71,
+        106,
+        107,
+        108
+      ],
+      "children": [],
+      "parent": 96
+    },
+    "128": {
+      "type": "leaf",
+      "blocked_by": [
+        112,
+        113,
+        126,
+        127,
+        91,
+        70
+      ],
+      "children": [],
+      "parent": 96
+    },
+    "129": {
+      "type": "leaf",
+      "blocked_by": [
+        126,
+        128,
+        135,
+        136
+      ],
+      "children": [],
+      "parent": 98
+    },
+    "130": {
+      "type": "leaf",
+      "blocked_by": [
+        129,
+        136
+      ],
+      "children": [],
+      "parent": 99
+    },
+    "131": {
+      "type": "leaf",
+      "blocked_by": [
+        130,
+        132,
+        133
+      ],
+      "children": [],
+      "parent": 99
+    },
+    "132": {
+      "type": "leaf",
+      "blocked_by": [
+        67
+      ],
+      "children": [],
+      "parent": 100
+    },
+    "133": {
+      "type": "leaf",
+      "blocked_by": [
+        69,
+        114
+      ],
+      "children": [],
+      "parent": 100
+    },
+    "134": {
+      "type": "leaf",
+      "blocked_by": [
+        132,
+        68,
+        70
+      ],
+      "children": [],
+      "parent": 100
+    },
+    "135": {
+      "type": "leaf",
+      "blocked_by": [
+        67,
+        133
+      ],
+      "children": [],
+      "parent": 101
+    },
+    "136": {
+      "type": "leaf",
+      "blocked_by": [
+        134,
+        135
+      ],
+      "children": [],
+      "parent": 101
+    },
+    "137": {
+      "type": "leaf",
+      "blocked_by": [
+        91,
+        93,
+        95,
+        96,
+        128,
+        134,
+        136
+      ],
+      "children": [],
+      "parent": 102
+    },
+    "138": {
+      "type": "leaf",
+      "blocked_by": [
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        145,
+        146,
+        90,
+        115
+      ],
+      "children": [],
+      "parent": 103
+    },
+    "139": {
+      "type": "leaf",
+      "blocked_by": [
+        90,
+        117,
+        118,
+        119,
+        138
+      ],
+      "children": [],
+      "parent": 103
+    },
+    "140": {
+      "type": "leaf",
+      "blocked_by": [
+        69,
+        114,
+        139
+      ],
+      "children": [],
+      "parent": 103
+    },
+    "141": {
+      "type": "leaf",
+      "blocked_by": [
+        68,
+        69
+      ],
+      "children": [],
+      "parent": null
+    },
+    "142": {
+      "type": "leaf",
+      "blocked_by": [
+        70,
+        134
+      ],
+      "children": [],
+      "parent": null
+    },
+    "143": {
+      "type": "leaf",
+      "blocked_by": [
+        70,
+        73
+      ],
+      "children": [],
+      "parent": 84
+    },
+    "144": {
+      "type": "leaf",
+      "blocked_by": [
+        74,
+        143
+      ],
+      "children": [],
+      "parent": 84
+    },
+    "145": {
+      "type": "leaf",
+      "blocked_by": [
+        143,
+        144,
+        106,
+        107,
+        108,
+        75
+      ],
+      "children": [],
+      "parent": 86
+    },
+    "146": {
+      "type": "leaf",
+      "blocked_by": [
+        143,
+        145,
+        106
+      ],
+      "children": [],
+      "parent": 86
+    },
+    "147": {
+      "type": "leaf",
+      "blocked_by": [
+        143,
+        145,
+        76
+      ],
+      "children": [],
+      "parent": 87
+    },
+    "148": {
+      "type": "leaf",
+      "blocked_by": [
+        143,
+        144,
+        145,
+        106,
+        107,
+        108,
+        69,
+        75
+      ],
+      "children": [],
+      "parent": 87
+    },
+    "149": {
+      "type": "leaf",
+      "blocked_by": [
+        91,
+        117,
+        147
+      ],
+      "children": [],
+      "parent": 93
+    },
+    "150": {
+      "type": "leaf",
+      "blocked_by": [
+        91,
+        114,
+        115
+      ],
+      "children": [],
+      "parent": 93
+    },
+    "151": {
+      "type": "leaf",
+      "blocked_by": [
+        110,
+        115
+      ],
+      "children": [],
+      "parent": 91
+    },
+    "152": {
+      "type": "leaf",
+      "blocked_by": [
+        151,
+        115,
+        110
+      ],
+      "children": [],
+      "parent": 91
+    }
+  }
+}
