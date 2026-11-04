@@ -1,91 +1,96 @@
 # V1 UI Parity Matrix
 
-> 状态：编码前生效
-> 权威来源：`docs/ui/prototype-contract.md`、`docs/ui/v1-prototype-signoff.md`
-> 目标：让“最终 Web 页面与原型一致”成为可追踪、可测试、可阻断合并的门禁。
+> Status: pre-production implementation contract, updated 2026-11-04.
+> Authority: docs/ui/prototype-contract.md and docs/ui/v1-prototype-signoff.md.
+> The signed-off prototype baseline comprises **18 prototype pages**: 17 production page contracts + one prototype-only state gallery. The production application has not started; no production page is parity-verified and no production golden screenshots exist yet.
 
-## 1. 状态定义
+## 1. Status and evidence semantics
 
-| 状态 | 含义 |
+| State | Meaning |
 | --- | --- |
-| `prototype-signed` | 原型已签收，有页面、动作、状态和四档截图 |
-| `production-pending` | 生产页面尚未实现或未提交 parity 证据 |
-| `production-built` | 页面已实现，但尚未完成完整 parity 验收 |
-| `parity-verified` | 路由、动作、状态、响应式、视觉和作者语言全部通过 |
-| `deviation-approved` | 经作者签收的明确偏离，记录原因、范围和替代基线 |
-| `prototype-only` | 只用于演示，不进入生产 |
-| `later-M1/M2/M3` | 当前里程碑不实现，但保留原型基线 |
+| prototype-signed | The prototype page/action/state contract has been signed off and has source screenshots. |
+| production-pending | The production route/page is not implemented or its required evidence is not complete. |
+| production-built | Production route and real actions exist; full parity evidence is still pending. |
+| parity-verified | Route, actions, API behavior, required states, four viewports, visual comparison and author language all pass. |
+| deviation-approved | A specific deviation was accepted by the product owner and recorded with reason/scope/replacement baseline. |
+| prototype-only | Demonstration-only surface; forbidden in production. |
 
-只有 `parity-verified` 或 `deviation-approved` 的页面可以进入 V1 发布验收。
+Only parity-verified or deviation-approved production pages can pass the V1 UI release gate. A prototype test or prototype screenshot is not production evidence.
 
-## 2. 全局规则
+## 2. Global contract
 
-- 每个 UI ticket 必须引用本矩阵的一行，并列出该行的页面 ID 和能力 ID。
-- 每个页面的生产路由必须与原型页面语义一致，不能拆成多个无映射页面或把多个页面塞进一个无结构页面。
-- 页面必须实现该行要求的状态；不能只做正常态。
-- 四档截图固定为 1440 / 1180 / 900 / 390，固定测试数据和固定 Chromium 字体环境。
-- 生产页面首次通过作者对照后，生成生产 golden screenshot；之后 CI 视觉 diff 不允许无审批漂移。
-- 作者界面不允许出现 Agent、Canon、Context Pack、P0–P4、正史等内部术语。
-- 任何页面结构、动作、门禁或状态变更，先更新原型、`prototype-contract.md`、本矩阵和签收记录，再改生产代码。
-- 全局 UI 能力 `UI-001`–`UI-009` 适用于所有页面；下表只列页面专有能力。
+1. Prototype anchor, page actions, information hierarchy and required states are sourced from docs/ui/prototype-contract.md. Production API contracts are sourced from docs/technical/nestjs-backend-design.md and docs/technical/m0-protocol-freeze.md where the page is part of M0.
+2. Every production page has exactly one primary page issue. Supporting issues own additional features/actions that appear on the same page; they do not replace the page's primary issue.
+3. The primary feature ticket owns creation of its production parity spec at apps/web/e2e/parity/<page>.spec.ts. Supporting feature tickets add assertions to that same spec or linked feature specs. No page can be left without a named owner.
+4. Prototype screenshot files are reference inputs only: prototype/screens/v1-baseline/<page>-<viewport>.png. The 1440 viewport is included alongside 1180/900/390.
+5. Production golden output is expected at artifacts/ui/golden/<page>/<page>-<viewport>.png. These files **do not exist yet**; they are generated only after the first real production page is compared with the signed-off prototype and accepted by the author.
+6. Fixed fixture, Chromium version and font environment must be pinned. Each page must cover primary actions, actual API/Worker effects, failure/empty/loading/disabled/permission/partial/conflict/long states as applicable.
+7. Every visible interactive control must cause a real state change or be explicitly listed in prototype_only inventory. Toast-only actions, fake API responses and static data do not pass.
+8. 1440 / 1180 / 900 / 390 viewport coverage is required. No horizontal overflow; page shell, content order, primary action placement and responsive breakpoints must match the signed-off baseline.
+9. Author-facing language must not expose Agent, Canon, Context Pack, P0–P4, 正史 or other internal implementation terms.
+10. UI-001–UI-009 are global cross-cutting requirements. #104 owns the final V1-wide audit; #79 owns the M0 UI closeout; feature issues listed below own each page's production implementation and evidence.
 
-## 3. 页面一致性台账
+## 3. Page-level ownership and evidence ledger
 
-原型截图统一位于 `prototype/screens/v1-baseline/`，每页固定四张：
+In the columns below, the prototype screenshot path and production test/golden path are **required artifact locations**, not claims that those production artifacts already exist.
 
-```text
-<page>-390.png
-<page>-900.png
-<page>-1180.png
-<page>-1440.png
+| Page ID | Prototype anchor | Production route | Milestone | Primary page issue | Supporting feature issues | Action / API contract source | Required page states | Prototype reference screenshots | Production Playwright parity spec | Production golden artifacts | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| auth | #auth | /login · /register · /forgot-password · /reset-password | M0 | #68 | 141, 69 | auth/password/session; M0 Protocol Freeze §5.1 | loading / error / disabled / permission / rate-limit / session-expired | `prototype/screens/v1-baseline/auth-{390,900,1180,1440}.png` | `apps/web/e2e/parity/auth.spec.ts` | `artifacts/ui/golden/auth/auth-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| dashboard | #dashboard | /workspace | M0 | #70 | 97, 142 | works list/search/archive/restore; WorksModule API | loading / empty / error / disabled / long | `prototype/screens/v1-baseline/dashboard-{390,900,1180,1440}.png` | `apps/web/e2e/parity/dashboard.spec.ts` | `artifacts/ui/golden/dashboard/dashboard-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| new-project | #new-project | /workspace/new-project | M0→M1/M2 | #70 | 71, 72, 84, 92, 126, 127 | five creation entries + import workflows; Works/Import APIs | loading / error / partial / disabled / long / conflict | `prototype/screens/v1-baseline/new-project-{390,900,1180,1440}.png` | `apps/web/e2e/parity/new-project.spec.ts` | `artifacts/ui/golden/new-project/new-project-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| work-overview | #work-overview | /workspace/[workId]/overview | M0→M1 | #70 | 90, 97 | work overview/readiness/progress; Works/Jobs APIs | loading / empty / error / partial / readonly / archived / long | `prototype/screens/v1-baseline/work-overview-{390,900,1180,1440}.png` | `apps/web/e2e/parity/work-overview.spec.ts` | `artifacts/ui/golden/work-overview/work-overview-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| bible | #bible | /workspace/[workId]/bible | M0→M1 | #73 | 84, 87 | nine-card generation/edit/lock/readiness; StoryBible API | loading / empty / error / locked / proposal / partial / long | `prototype/screens/v1-baseline/bible-{390,900,1180,1440}.png` | `apps/web/e2e/parity/bible.spec.ts` | `artifacts/ui/golden/bible/bible-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| settings | #settings | /workspace/[workId]/settings | M0→M1/M2 | #74 | 84, 92, 106, 107, 108 | seven setting domains and typed CRUD; Canon/domain APIs | loading / empty / error / disabled / locked / proposal / long | `prototype/screens/v1-baseline/settings-{390,900,1180,1440}.png` | `apps/web/e2e/parity/settings.spec.ts` | `artifacts/ui/golden/settings/settings-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| outline | #outline | /workspace/[workId]/outline | M0→M1 | #75 | 86, 87 | chapter brief/readiness, five-level outline and golden-three; Planning APIs | loading / empty / error / locked / partial / long | `prototype/screens/v1-baseline/outline-{390,900,1180,1440}.png` | `apps/web/e2e/parity/outline.spec.ts` | `artifacts/ui/golden/outline/outline-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| foreshadows | #foreshadows | /workspace/[workId]/foreshadows | M1 | #86 | 117, 121 | plot/foreshadow ledger; Planning/Canon APIs | loading / empty / error / disabled / long | `prototype/screens/v1-baseline/foreshadows-{390,900,1180,1440}.png` | `apps/web/e2e/parity/foreshadows.spec.ts` | `artifacts/ui/golden/foreshadows/foreshadows-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| writing | #writing | /workspace/[workId]/write | M0→M1 | #76 | 77, 78, 109–115, 116–119 | generation/context/facts/review/submit and advanced writing; Generation/Review APIs | loading / empty / error / disabled / partial / conflict / long | `prototype/screens/v1-baseline/writing-{390,900,1180,1440}.png` | `apps/web/e2e/parity/writing.spec.ts` | `artifacts/ui/golden/writing/writing-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| batch | #batch | /workspace/[workId]/batch | M2 | #91 | 93, 97, 109–115 | parent/volume/chapter jobs, costs, review queue; Jobs APIs | loading / empty / error / partial / disabled / long / paused / failed | `prototype/screens/v1-baseline/batch-{390,900,1180,1440}.png` | `apps/web/e2e/parity/batch.spec.ts` | `artifacts/ui/golden/batch/batch-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| changes | #changes | /workspace/[workId]/changes | M2 | #120 | 121–125, 97 | change request/impact/version/branch/merge; Changes/Version APIs | loading / error / conflict / partial / disabled / stale-version | `prototype/screens/v1-baseline/changes-{390,900,1180,1440}.png` | `apps/web/e2e/parity/changes.spec.ts` | `artifacts/ui/golden/changes/changes-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| export-publish | #export-publish | /workspace/[workId]/export | M3 | #129 | 130, 131 | export receipt/manifest, publish checks and reader preview; Export APIs | loading / empty / error / partial / expired / long | `prototype/screens/v1-baseline/export-publish-{390,900,1180,1440}.png` | `apps/web/e2e/parity/export-publish.spec.ts` | `artifacts/ui/golden/export-publish/export-publish-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| work-settings | #work-settings | /workspace/[workId]/work-settings | M1 | #142 | 134 | cover/tags/status/copy/archive/trash; Works APIs | loading / error / disabled / permission / readonly / confirmation | `prototype/screens/v1-baseline/work-settings-{390,900,1180,1440}.png` | `apps/web/e2e/parity/work-settings.spec.ts` | `artifacts/ui/golden/work-settings/work-settings-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| entity-detail | #entity-detail | /workspace/[workId]/settings (embedded detail) | M1 | #106 | 107, 108, 74 | entity/relationship/knowledge/resource state; domain APIs | loading / empty / error / disabled / locked / proposal / long | `prototype/screens/v1-baseline/entity-detail-{390,900,1180,1440}.png` | `apps/web/e2e/parity/entity-detail.spec.ts` | `artifacts/ui/golden/entity-detail/entity-detail-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| account-settings | #account-settings | /workspace/settings · /workspace/settings/account | M0→M1/M3 | #69 | 141, 134 | provider/model configuration, pen names, sessions, account export/delete; Users/ModelConfig APIs | loading / error / disabled / permission / partial / rate-limit | `prototype/screens/v1-baseline/account-settings-{390,900,1180,1440}.png` | `apps/web/e2e/parity/account-settings.spec.ts` | `artifacts/ui/golden/account-settings/account-settings-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| help | #help | /help | M3 | #131 | 104 | help/FAQ content and navigation; static content contract | static / empty / error | `prototype/screens/v1-baseline/help-{390,900,1180,1440}.png` | `apps/web/e2e/parity/help.spec.ts` | `artifacts/ui/golden/help/help-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| legal | #legal | /legal/* | M3 | #131 | 104 | privacy/terms/AI disclosure/appeal content; static + moderation contract | static / error | `prototype/screens/v1-baseline/legal-{390,900,1180,1440}.png` | `apps/web/e2e/parity/legal.spec.ts` | `artifacts/ui/golden/legal/legal-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| states | `#states` | none — excluded from production | prototype-only | — | — | prototype state gallery only | normal / empty / loading / error / disabled / permission / partial / long / locked / readonly / conflict | `prototype/screens/v1-baseline/states-{390,900,1180,1440}.png` | — | — | prototype-only |
+
+## 4. UI issue ownership rules
+
+- Primary page issue must update this row as implementation progresses: production-pending → production-built → parity-verified (or deviation-approved).
+- Supporting feature issues must add action/API/state evidence to the page spec and must not declare the whole page parity-verified on their own.
+- Package issues #85/#88/#89/#94/#95/#96/#98–#103 integrate cross-page work; they are not substitutes for primary leaf owners.
+- #104 is the global closeout for all 17 production page rows; #79 closes the M0 subset. Both aggregate evidence and may not fabricate missing page evidence.
+- Entity detail is embedded inside Settings, not a new route. It remains a distinct page contract/state surface because the prototype contains a separately testable page panel.
+- states is prototype-only and does not count as a production route or release page.
+
+## 5. Page completion checklist
+
+A page cannot transition to parity-verified until all applicable checks pass:
+
+1. Production route loads with the correct authenticated/unauthenticated shell, selected work and selected branch context.
+2. Every primary action invokes the real API/Worker contract and produces a persistent, observable result.
+3. Loading, empty, error, disabled, permission, partial, conflict, locked, long-content and stale-version states are tested where applicable; each has a clear recovery path.
+4. Playwright exercises the page's primary actions and gate transitions against deterministic integration fixtures.
+5. The page spec runs at 1440, 1180, 900 and 390 and asserts no horizontal overflow.
+6. Production screenshots are captured from a real running production page using the fixed browser/font environment and compared against prototype references.
+7. Author signs off the initial production golden; subsequent visual drift is CI-blocking unless a deviation is approved.
+8. Author-language scan and prototype_only leakage scan pass.
+9. Page issue links the run, screenshots, route, API contracts and sign-off record.
+
+## 6. Prototype baseline regression
+
+Prototype regression remains useful as a separate design-contract test:
+
+```bash
+cd prototype
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+pnpm test:parity
 ```
 
-| 页面 ID | 原型 hash | 生产路由 | 里程碑 | 页面专有能力 | 必备状态 | 原型证据 | UI ticket | Parity test | 生产 golden | 当前状态 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| auth | `#auth` | `/login`、`/register`、`/forgot-password`、`/reset-password` | M0 | ACCT-001、ACCT-002、ACCT-009 | loading / error / disabled / permission / rate-limit / session-expired | `auth-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| dashboard | `#dashboard` | `/workspace` | M0 | WORK-004、WORK-006、WORK-009 | loading / empty / error / disabled / long | `dashboard-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| new-project | `#new-project` | `/workspace/new-project` | M0 | WORK-001、WORK-002、WORK-003、ONBOARD-001、ONBOARD-003 | loading / error / partial / disabled / long | `new-project-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| work-overview | `#work-overview` | `/workspace/[workId]/overview` | M0 partial → M1 full | WORK-005、WORK-009 | loading / empty / error / partial / readonly / archived / long | `work-overview-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| bible | `#bible` | `/workspace/[workId]/bible` | M0 | ONBOARD-001、ONBOARD-002、ONBOARD-004、ONBOARD-005 | loading / empty / error / locked / proposal / partial / long | `bible-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| settings | `#settings` | `/workspace/[workId]/settings` | M0 partial → M1 full | SET-001、SET-002、SET-003、SET-004、SET-005、SET-006、SET-007、SET-008、SET-009、SET-010、SET-011、SET-012、ONBOARD-003、ONBOARD-005 | loading / empty / error / disabled / locked / proposal / long | `settings-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| outline | `#outline` | `/workspace/[workId]/outline` | M0 partial → M1 full | PLAN-001、PLAN-002、PLAN-003、PLAN-004、PLAN-005、PLAN-006、PLAN-007、GEN-009 | loading / empty / error / locked / partial | `outline-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| foreshadows | `#foreshadows` | `/workspace/[workId]/foreshadows` | M1 | PLAN-004 | loading / empty / error / disabled / long | `foreshadows-{390,900,1180,1440}.png` | TBD | TBD | TBD | later-M1 |
-| writing | `#writing` | `/workspace/[workId]/write` | M0 partial → M1 full | GEN-001、GEN-002、GEN-003、GEN-004、GEN-005、GEN-006、AGENT-004、AGENT-005、AGENT-010、AGENT-011、QUALITY-001、QUALITY-002、QUALITY-003 | loading / empty / error / disabled / partial / conflict / long | `writing-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| batch | `#batch` | `/workspace/[workId]/batch` | M2 | GEN-007、GEN-008、GEN-010、GEN-011、QUALITY-004、QUALITY-005 | loading / empty / error / partial / disabled / long | `batch-{390,900,1180,1440}.png` | TBD | TBD | TBD | later-M2 |
-| changes | `#changes` | `/workspace/[workId]/changes` | M2 | CHANGE-001、CHANGE-002、CHANGE-003、CHANGE-004、CHANGE-005、CHANGE-006、CHANGE-007、CHANGE-008、CHANGE-009 | loading / error / conflict / partial / disabled | `changes-{390,900,1180,1440}.png` | TBD | TBD | TBD | later-M2 |
-| export-publish | `#export-publish` | `/workspace/[workId]/export` | M3 | IO-004、IO-005 | loading / empty / error / partial / expired / long | `export-publish-{390,900,1180,1440}.png` | TBD | TBD | TBD | later-M3 |
-| work-settings | `#work-settings` | `/workspace/[workId]/work-settings` | M1 | WORK-006、WORK-007、WORK-008 | loading / error / disabled / permission / readonly | `work-settings-{390,900,1180,1440}.png` | TBD | TBD | TBD | later-M1 |
-| entity-detail | `#entity-detail` | `/workspace/[workId]/settings` 内嵌 | M1 | SET-002、SET-003、SET-004、SET-005、SET-006、SET-007、SET-008、SET-009、SET-010、SET-012 | loading / empty / error / disabled / locked / proposal / long | `entity-detail-{390,900,1180,1440}.png` | TBD | TBD | TBD | later-M1 |
-| account-settings | `#account-settings` | `/workspace/settings`、`/workspace/settings/account` | M0 partial → M1 full | ACCT-003、ACCT-004、ACCT-005、ACCT-006、ACCT-007、ACCT-008、ACCT-009 | loading / error / disabled / permission / partial / rate-limit | `account-settings-{390,900,1180,1440}.png` | TBD | TBD | TBD | production-pending |
-| help | `#help` | `/help` | M3 | UI-009 | static / empty / error | `help-{390,900,1180,1440}.png` | TBD | TBD | TBD | later-M3 |
-| legal | `#legal` | `/legal/*` | M3 | SEC-005 | static / error | `legal-{390,900,1180,1440}.png` | TBD | TBD | TBD | later-M3 |
-| states | `#states` | 不进入生产 | prototype-only | UI-004、UI-005、UI-006 | normal / empty / loading / error / disabled / permission / partial / long / locked / readonly / conflict | `states-{390,900,1180,1440}.png` | — | — | — | prototype-only |
+Test source: prototype/tests/parity.spec.ts. The current prototype suite is documented as 49 assertions across 18 pages and four viewports. It validates the prototype, not the future production application.
 
-## 4. 页面级验收清单
+## 7. Production parity entry points
 
-页面从 `production-built` 进入 `parity-verified` 前，必须同时满足：
-
-1. 路由存在，且页面根节点、壳层、导航和面包屑符合原型。
-2. 所有主操作已接真实 API 或 Worker，不存在纯 Toast 假动作。
-3. 页面所有适用状态都有可见出口。
-4. 1440 / 1180 / 900 / 390 无横向溢出，布局断点符合原型。
-5. Playwright 通过关键动作、门禁、状态和角色/名称断言。
-6. 生产 golden screenshot 已由作者对照原型签收。
-7. 作者语言扫描通过。
-8. ticket 引用本矩阵行和至少一个能力 ID。
-9. 故意偏离已有 `deviation-approved` 记录。
-
-## 5. 视觉基线规则
-
-- 原型截图是设计基线，不是生产 HTML 的直接像素复用目标。
-- 首次生产实现由作者对照原型签收后，生产 Chromium 截图成为 golden baseline。
-- 后续 CI 使用固定 viewport、固定字体、固定 fixture 和明确 diff 阈值。
-- 允许浏览器字体渲染差异，不允许布局、信息顺序、主操作位置、门禁或状态文案漂移。
-- 视觉 diff 失败时，修复页面；确需偏离时更新原型和本矩阵并重新签收。
-
-## 6. 与 `/to-tickets` 的关系
-
-- 每个 UI ticket 必须填本矩阵的 `UI ticket` 列和 `Parity test` 列。
-- 一个 ticket 可以覆盖多个相邻页面，但不能让任何页面没有归属。
-- ticket 完成后把当前状态更新为 `production-built`；全部证据通过后改为 `parity-verified`。
-- M1–M3 页面现在保持 `later-M1/M2/M3`，不代表可以跳过本矩阵。
+After #67 creates the production monorepo, the owning page issue creates its parity spec at apps/web/e2e/parity/<page>.spec.ts and adds a documented command to run it. The expected screenshot output root is artifacts/ui/golden/. Do not commit empty placeholder images or copy prototype screenshots into the production golden folder. If the actual web package path differs after #67, update this contract before implementation proceeds; do not silently rename or omit the evidence.
