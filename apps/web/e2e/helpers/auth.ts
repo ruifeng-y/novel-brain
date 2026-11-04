@@ -8,7 +8,7 @@ export function uniqueEmail(prefix: string): string {
 }
 
 export async function resetRateLimits(): Promise<void> {
-  const redis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379", {
+  const redis = new Redis(process.env.E2E_REDIS_URL ?? "redis://localhost:6379/1", {
     maxRetriesPerRequest: 1,
   });
   try {

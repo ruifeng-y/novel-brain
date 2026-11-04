@@ -1,8 +1,9 @@
 import { defineConfig } from "@playwright/test";
 
 const databaseUrl =
-  process.env.E2E_DATABASE_URL ?? "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain";
-const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
+  process.env.E2E_DATABASE_URL ??
+  "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
+const redisUrl = process.env.E2E_REDIS_URL ?? "redis://localhost:6379/1";
 
 export default defineConfig({
   testDir: "./apps/web/e2e",
@@ -28,6 +29,8 @@ export default defineConfig({
         DATABASE_URL: databaseUrl,
         REDIS_URL: redisUrl,
         AUTH_SECRET: "playwright-auth-secret",
+        PROXY_IP_SECRET: "playwright-proxy-ip-secret",
+        ALLOW_INSECURE_LOCAL_PROXY_IP: "true",
         APP_ORIGIN: "http://localhost:3000",
         COOKIE_SECURE: "false",
         SMTP_HOST: "127.0.0.1",
@@ -40,7 +43,12 @@ export default defineConfig({
     {
       command: "pnpm --filter @novel-brain/web dev",
       url: "http://localhost:3000/health",
-      env: { API_INTERNAL_URL: "http://127.0.0.1:3001" },
+      env: {
+        API_INTERNAL_URL: "http://127.0.0.1:3001",
+        PROXY_IP_SECRET: "playwright-proxy-ip-secret",
+        ALLOW_INSECURE_LOCAL_PROXY_IP: "true",
+        TRUST_PROXY_HEADERS: "false",
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

@@ -114,7 +114,7 @@ test("disabled accounts redirect to the permission state", async ({ page, contex
   const pool = new Pool({
     connectionString:
       process.env.E2E_DATABASE_URL ??
-      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain",
+      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e",
   });
   try {
     await pool.query("UPDATE users SET status = 'disabled' WHERE email = $1", [email]);

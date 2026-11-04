@@ -6,6 +6,7 @@ import { MAIL_GATEWAY, type MailGateway } from "../src/auth/mail.gateway";
 import { AppModule } from "../src/app.module";
 import { ApiExceptionFilter } from "../src/common/api-exception.filter";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
+import { signClientIp } from "@novel-brain/core";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -13,7 +14,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 const databaseUrl =
   process.env.TEST_DATABASE_URL ??
   "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_test";
-const redisUrl = process.env.REDIS_URL ?? "redis://localhost:6379";
+const redisUrl = process.env.TEST_REDIS_URL ?? "redis://localhost:6379/2";
 const origin = "http://localhost:3000";
 
 class CapturingMailGateway implements MailGateway {
@@ -36,6 +37,8 @@ describe("auth HTTP integration", () => {
     process.env.DATABASE_URL = databaseUrl;
     process.env.REDIS_URL = redisUrl;
     process.env.AUTH_SECRET = "integration-test-auth-secret";
+    process.env.PROXY_IP_SECRET = "integration-test-proxy-secret";
+    process.env.ALLOW_INSECURE_LOCAL_PROXY_IP = "true";
     process.env.APP_ORIGIN = origin;
     process.env.NODE_ENV = "test";
 
@@ -158,6 +161,31 @@ describe("auth HTTP integration", () => {
       .send({ email })
       .expect(429);
     expect(limited.body.error.code).toBe("AUTH_RATE_LIMITED");
+  });
+
+  it("keeps IP rate limits isolated per verified client", async () => {
+    const csrfToken = await csrf();
+    const secret = "integration-test-proxy-secret";
+    const firstClient = signClientIp("203.0.113.10", secret);
+    const secondClient = signClientIp("203.0.113.11", secret);
+
+    for (let index = 0; index < 5; index += 1) {
+      await post("/api/v1/auth/register/send-code", csrfToken)
+        .set("X-Client-IP", firstClient)
+        .send({ email: `client-a-${index}@example.com` })
+        .expect(200);
+    }
+
+    const limited = await post("/api/v1/auth/register/send-code", csrfToken)
+      .set("X-Client-IP", firstClient)
+      .send({ email: "client-a-6@example.com" })
+      .expect(429);
+    expect(limited.body.error.code).toBe("AUTH_RATE_LIMITED");
+
+    await post("/api/v1/auth/register/send-code", csrfToken)
+      .set("X-Client-IP", secondClient)
+      .send({ email: "client-a-7@example.com" })
+      .expect(200);
   });
 
   it("rejects expired codes and weak passwords with stable errors", async () => {

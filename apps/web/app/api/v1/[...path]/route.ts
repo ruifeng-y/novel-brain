@@ -1,5 +1,5 @@
 import { apiErrorSchema } from "@novel-brain/contracts";
-import { createRequestId } from "@novel-brain/core";
+import { createRequestId, resolveProxyIpSecret, signClientIp } from "@novel-brain/core";
 import type { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +14,14 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
   const target = new URL(`/api/v1/${path.join("/")}`, apiInternalUrl);
   target.search = request.nextUrl.search;
   const requestHeaders = new Headers();
+  const forwardedFor =
+    process.env.TRUST_PROXY_HEADERS === "true" ? request.headers.get("x-forwarded-for") : null;
+  const clientIp = forwardedFor?.split(",")[0]?.trim() || "127.0.0.1";
+  const proxySecret = resolveProxyIpSecret(
+    process.env.PROXY_IP_SECRET,
+    process.env.ALLOW_INSECURE_LOCAL_PROXY_IP,
+  );
+  requestHeaders.set("x-client-ip", signClientIp(clientIp, proxySecret));
   for (const header of [
     "accept",
     "content-type",

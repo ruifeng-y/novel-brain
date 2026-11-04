@@ -15,7 +15,6 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new ApiExceptionFilter());
   const express = app.getHttpAdapter().getInstance();
   express.disable("x-powered-by");
-  express.set("trust proxy", 1);
   app.enableShutdownHooks();
 
   const port = Number(process.env.API_PORT ?? 3001);

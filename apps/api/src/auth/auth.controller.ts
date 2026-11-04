@@ -17,6 +17,7 @@ import { z } from "zod";
 import { ApiError } from "../common/api-error";
 import type { AuthenticatedRequest } from "./auth.types";
 import { randomToken } from "./auth-crypto";
+import { getClientIp } from "./client-ip";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { AuthService } from "./auth.service";
@@ -66,7 +67,7 @@ export class AuthController {
   @ApiOkResponse({ description: "Verification code sent", schema: sendCodeResponseJsonSchema })
   async sendRegistrationCode(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
     const input = sendRegistrationCodeRequestSchema.parse(body);
-    const result = await this.authService.sendRegistrationCode(input, request.ip ?? "unknown");
+    const result = await this.authService.sendRegistrationCode(input, getClientIp(request));
     return sendRegistrationCodeResponseSchema.parse(
       responseEnvelope({ sent: true, expiresAt: result.expiresAt.toISOString() }),
     );
@@ -89,7 +90,7 @@ export class AuthController {
 
     const issued = await this.authService.register(
       registerRequestSchema.parse(body),
-      request.ip ?? "unknown",
+      getClientIp(request),
       request.headers["user-agent"] ?? "",
       parseCookies(request.headers.cookie)[SESSION_COOKIE],
     );
@@ -109,7 +110,7 @@ export class AuthController {
   ) {
     const issued = await this.authService.login(
       loginRequestSchema.parse(body),
-      request.ip ?? "unknown",
+      getClientIp(request),
       request.headers["user-agent"] ?? "",
       parseCookies(request.headers.cookie)[SESSION_COOKIE],
     );

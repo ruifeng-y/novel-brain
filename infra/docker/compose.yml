@@ -70,6 +70,8 @@ services:
       DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/novelbrain
       REDIS_URL: redis://redis:6379
       AUTH_SECRET: local-development-auth-secret-change-me
+      PROXY_IP_SECRET: local-development-proxy-ip-secret
+      ALLOW_INSECURE_LOCAL_PROXY_IP: "true"
       APP_ORIGIN: http://localhost:3000
       COOKIE_SECURE: "false"
       SMTP_HOST: mailpit
@@ -126,6 +128,9 @@ services:
     environment:
       NODE_ENV: production
       API_INTERNAL_URL: http://api:3001
+      PROXY_IP_SECRET: local-development-proxy-ip-secret
+      ALLOW_INSECURE_LOCAL_PROXY_IP: "true"
+      TRUST_PROXY_HEADERS: "false"
     ports:
       - "3000:3000"
     depends_on:
