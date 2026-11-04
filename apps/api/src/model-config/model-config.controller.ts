@@ -70,10 +70,7 @@ export class ModelConfigController {
   @ApiHeader({ name: "Idempotency-Key", required: false })
   @ApiBody({ schema: createBodySchema })
   @ApiOkResponse({ description: "Created model config", schema: configResponseSchema })
-  async create(
-    @Req() request: AuthenticatedRequest,
-    @Body() body: unknown,
-  ) {
+  async create(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
     const idempotencyKey =
       typeof request.headers["idempotency-key"] === "string"
         ? request.headers["idempotency-key"]
