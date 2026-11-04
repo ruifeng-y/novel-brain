@@ -658,8 +658,7 @@ export interface operations {
   ModelConfigController_create: {
     parameters: {
       query?: never;
-      header: {
-        "idempotency-key": string;
+      header?: {
         "Idempotency-Key"?: string;
       };
       path?: never;

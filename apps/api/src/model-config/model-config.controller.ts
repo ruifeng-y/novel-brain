@@ -3,7 +3,6 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   HttpCode,
   Param,
   Patch,
@@ -74,8 +73,11 @@ export class ModelConfigController {
   async create(
     @Req() request: AuthenticatedRequest,
     @Body() body: unknown,
-    @Headers("idempotency-key") idempotencyKey?: string,
   ) {
+    const idempotencyKey =
+      typeof request.headers["idempotency-key"] === "string"
+        ? request.headers["idempotency-key"]
+        : undefined;
     const config = await this.service.create(
       this.userId(request),
       modelConfigInputSchema.parse(body),
