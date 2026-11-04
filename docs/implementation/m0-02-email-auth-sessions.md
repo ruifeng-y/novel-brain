@@ -33,8 +33,9 @@
 
 ## 验证结果
 
-- `pnpm check`：通过，15 个单元/契约测试。
-- `pnpm test:integration`：通过，5 个真实 PostgreSQL/Redis HTTP 集成测试。
+- `pnpm check`：通过，17 个单元/契约测试。
+- `pnpm test:integration`：通过，6 个真实 PostgreSQL/Redis HTTP 集成测试。
 - `pnpm test:e2e`：通过，10 个 Playwright 测试，覆盖注册、登录、登出、过期会话、限流、权限态和四档响应式。
 - 真实 Compose + Mailpit 浏览器链路：注册验证码发送、注册、进入工作区、退出登录全部通过。
 - 真实 API 链路：登出后使用旧 `nb_session` Cookie 调用 `/auth/me` 返回 `401 AUTH_SESSION_INVALID`。
+- Caddy 统一入口会覆盖 `X-Forwarded-For`；Web BFF 对客户端 IP 签名，API 验签后用于按客户端限流。
