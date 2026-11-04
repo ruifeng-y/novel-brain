@@ -99,6 +99,8 @@ The graph validator is run from the repository root:
 
     node scripts/validate-readiness.mjs
 
+The same command is enforced by `.github/workflows/readiness-validation.yml` for pull requests and relevant branch updates. It validates documentation/issue graph structure only; it does not certify implementation or release readiness.
+
 The dependency graph is normative together with each issue's Dependencies section. GitHub native dependency edges are not assumed to exist. A milestone is not implementation-ready merely because child tickets exist: blockers must close, shared contracts must be integrated and tests/evidence must pass.
 
 The capability ledger contains **119 IDs**: the 117 original manifest entries plus PERF-001 (10M capacity/recovery) and CONT-001 (long-horizon continuity). AGENT-007 vector retrieval and QUALITY-009 real-reader feedback remain explicitly post-V1/deferred.
@@ -114,7 +116,7 @@ Prototype regression remains independently runnable from prototype/:
     pnpm exec playwright install chromium
     pnpm test:parity
 
-The prototype suite is not a substitute for production Web/API/Worker or production screenshot-parity tests. Production page owners, Playwright spec paths, four viewport sizes and future golden artifact locations are registered in docs/ui/v1-ui-parity-matrix.md. Production golden images are generated only after the initial production page has been accepted by the author; do not copy prototype images into the production golden folder.
+The prototype suite is not a substitute for production Web/API/Worker or production screenshot-parity tests. Production page owners, Playwright spec paths, four viewport sizes and future golden artifact locations are registered in docs/ui/v1-ui-parity-matrix.md. Production golden images are generated only after the initial production page has been accepted by the author; do not copy prototype images into the production golden folder. Follow `docs/ui/production-visual-regression.md` and ADR 0027 for pinned rendering, 0.5% pixel tolerance, deterministic fixtures, CI diff artifacts and baseline approval.
 
 ## 8. Scale and quality gates
 
