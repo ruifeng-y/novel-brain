@@ -12,7 +12,7 @@ The repository's design baseline is more traceable and implementation-oriented a
 | --- | --- | --- |
 | A — Capability and scope traceability | 119 capability IDs, unique primary owner per V1 capability, deferred items explicit | Documentation baseline complete |
 | B — UI parity and prototype traceability | 17 production page contracts + 1 prototype-only gallery; page owners/spec/golden paths assigned | Documentation baseline complete; production evidence pending |
-| C — Leaf-ticket decomposition and dependency control | 47 new leaf issues (#106–#152), package parents clarified, 85-node/316-edge DAG and validator | Documentation baseline complete; implementation pending |
+| C — Leaf-ticket decomposition and dependency control | 47 new leaf issues (#106–#152), package parents clarified, 85-node/318-edge DAG and validator | Documentation baseline complete; implementation pending |
 | D — 10M capacity and long-horizon continuity proof | Two independent benchmark specifications and two cross-cutting capability gates | Test specifications complete; benchmark execution pending |
 
 ## Stage A — Capability ownership and requirements traceability
@@ -80,7 +80,7 @@ Changes:
 
 Dependency graph snapshot:
 - 85 issue/spec nodes.
-- 316 blocker edges.
+- 318 blocker edges.
 - No missing references, self-dependencies, parent/child mismatches or cycles in the structural validation pass.
 
 Run locally from repository root:
