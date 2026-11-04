@@ -78,7 +78,7 @@ services:
       SMTP_PORT: 1025
       MAIL_FROM: 墨舟 <no-reply@novelbrain.local>
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -130,9 +130,9 @@ services:
       API_INTERNAL_URL: http://api:3001
       PROXY_IP_SECRET: local-development-proxy-ip-secret
       ALLOW_INSECURE_LOCAL_PROXY_IP: "true"
-      TRUST_PROXY_HEADERS: "false"
-    ports:
-      - "3000:3000"
+      TRUST_PROXY_HEADERS: "true"
+    expose:
+      - "3000"
     depends_on:
       api:
         condition: service_healthy
@@ -147,6 +147,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 20
+
+  caddy:
+    image: caddy:2-alpine
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    ports:
+      - "3000:80"
+    depends_on:
+      web:
+        condition: service_healthy
 
 volumes:
   postgres-data:
