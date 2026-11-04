@@ -76,6 +76,7 @@ const ids = Object.keys(nodes);
 requireCheck(ids.length > 0, 'Dependency graph has no nodes.');
 for (const [id, node] of Object.entries(nodes)) {
   requireCheck(!node.blocked_by.includes(Number(id)) && !node.blocked_by.includes(id),
+  requireCheck(new Set(node.blocked_by.map(String)).size === node.blocked_by.length, `Issue #${id} has duplicate blocker edges.`);
     `Issue #${id} has a self-dependency.`);
   for (const blocker of node.blocked_by) {
     requireCheck(Boolean(nodes[String(blocker)]), `Issue #${id} references missing blocker #${blocker}.`);
