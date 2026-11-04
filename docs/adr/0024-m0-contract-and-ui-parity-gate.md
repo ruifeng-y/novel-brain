@@ -15,7 +15,7 @@ Status: accepted
 - Worker 只接受带 `jobType`、`workId`、`branchId`、`idempotencyKey` 和检查点的 typed job contract；API 不直接执行长任务。
 - 章节批准、事实确认和故事事实提交是三个独立 API 动作。事实提交必须同时满足章节已批准/锁定、必填事实已确认、无未解决高风险冲突。
 - AI 测试使用确定性 fake provider；真实 DeepSeek 只用于独立 smoke 和评测，不进入普通单元测试。
-- 原型是 UI 验收基线。M0 生产页面必须通过页面/动作/状态矩阵、四档响应式、固定数据截图对比和作者语言扫描，未通过不得合并。
+- 原型是 UI 验收基线。`docs/ui/v1-ui-parity-matrix.md` 是逐页生产台账；M0 生产页面必须通过页面/动作/状态矩阵、四档响应式、固定数据截图对比和作者语言扫描，未通过不得合并。
 - 任何协议、状态机或 UI 基线变更必须先更新协议文档/原型并重新签收，不能在实现 PR 中静默改变。
 
 ## Consequences

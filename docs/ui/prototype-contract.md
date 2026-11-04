@@ -1,6 +1,8 @@
 # V1 Prototype Contract
 
 > 原型是 UI 验收基线。本文定义页面/动作/状态/API 对应关系、组件和签收规则；不是 spec。
+>
+> 逐页生产一致性追踪见 `docs/ui/v1-ui-parity-matrix.md`。
 
 ## 1. 页面矩阵
 
@@ -79,6 +81,7 @@
 ## 5. 签收规则
 
 - 每个 UI ticket 必须引用本矩阵的一行。
+- 每个 UI ticket 必须同步填写 `docs/ui/v1-ui-parity-matrix.md` 的 ticket、parity test 和生产 golden 列。
 - 每个页面必须实现本页必备状态，不能只做正常态。
 - 每个可见控件必须映射到真实动作，或标记为 `prototype_only`。
 - 每个页面至少提交 1440/1180/900/390 的结构或截图证据。

@@ -322,7 +322,7 @@ M0 至少需要：
 
 ## 10. UI Parity Gate
 
-M0 页面必须引用原型合同中的页面/动作/状态行。
+M0 页面必须引用原型合同中的页面/动作/状态行，并在 `docs/ui/v1-ui-parity-matrix.md` 中登记 UI ticket、parity test 和生产 golden。
 
 ### 页面范围
 
