@@ -14,7 +14,8 @@
 ## 2. HTTP 通用协议
 
 - `Content-Type: application/json; charset=utf-8`。
-- ID 使用 UUID v7；服务端生成，客户端不得自行构造业务 ID。
+- ID 使用 UUID v7；由应用服务端在业务写入入口生成，客户端不得自行构造业务 ID。
+- PostgreSQL 列不得再以 `gen_random_uuid()` 作为业务 ID 默认值；数据库负责持久化和唯一性约束，不负责生成另一种 ID。
 - 时间为 UTC ISO 8601；作者界面按浏览器时区展示。
 - 成功响应：
 
