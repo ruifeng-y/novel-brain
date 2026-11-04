@@ -59,7 +59,7 @@ requireCheck(!/\bTBD\b|待定/i.test(uiMatrix), 'UI parity matrix still contains
 for (const cells of productionRows) {
   const page = cells[1];
   requireCheck(/^#\d+$/.test(cells[5]), `Production page ${page} has no primary page issue.`);
-  if (/^#\\d+$/.test(cells[5])) {
+  if (/^#\d+$/.test(cells[5])) {
     const owner = nodes[cells[5].slice(1)];
     requireCheck(owner?.type === 'leaf', `Production page ${page} must be owned by a leaf issue, not a package.`);
   }
