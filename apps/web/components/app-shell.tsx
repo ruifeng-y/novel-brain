@@ -96,10 +96,10 @@ export function AppShell({
             <CircleHelp size={18} aria-hidden="true" />
             <span>帮助</span>
           </div>
-          <div className="nav-item quiet" aria-disabled="true">
+          <Link className="nav-item quiet" href="/workspace/settings/account">
             <Settings size={18} aria-hidden="true" />
             <span>设置</span>
-          </div>
+          </Link>
           <div className="user-card">
             <span className="avatar" aria-hidden="true">
               {user?.displayName.slice(0, 1) ?? "作"}

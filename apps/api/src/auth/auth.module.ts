@@ -21,6 +21,6 @@ import { SessionAuthGuard } from "./session.guard";
       useClass: SmtpMailGateway,
     },
   ],
-  exports: [AuthService],
+  exports: [AuthService, CsrfGuard, SessionAuthGuard],
 })
 export class AuthModule {}

@@ -1,5 +1,15 @@
 import { sql } from "drizzle-orm";
-import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  boolean,
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const systemMetadata = pgTable("system_metadata", {
   key: text("key").primaryKey(),
@@ -59,5 +69,59 @@ export const emailVerificationCodes = pgTable(
   },
   (table) => [
     index("email_codes_email_purpose_created_idx").on(table.email, table.purpose, table.createdAt),
+  ],
+);
+
+export const modelConfigs = pgTable(
+  "model_configs",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    label: text("label").notNull(),
+    baseUrl: text("base_url").notNull(),
+    model: text("model").notNull(),
+    purposes: jsonb("purposes")
+      .$type<string[]>()
+      .notNull()
+      .default(sql`'["writing"]'::jsonb`),
+    encryptedKey: text("encrypted_key").notNull(),
+    keyMasked: text("key_masked").notNull(),
+    idempotencyKey: text("idempotency_key"),
+    isDefault: boolean("is_default").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    lastTestStatus: text("last_test_status"),
+    lastTestedAt: timestamp("last_tested_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("model_configs_user_id_idx").on(table.userId),
+    uniqueIndex("model_configs_user_idempotency_unique").on(table.userId, table.idempotencyKey),
+  ],
+);
+
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").primaryKey(),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    decision: text("decision").notNull(),
+    correlationId: text("correlation_id").notNull(),
+    ip: text("ip").notNull().default("unknown"),
+    userAgent: text("user_agent").notNull().default("unknown"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("audit_logs_actor_created_idx").on(table.actorId, table.createdAt),
+    index("audit_logs_target_idx").on(table.targetType, table.targetId),
   ],
 );

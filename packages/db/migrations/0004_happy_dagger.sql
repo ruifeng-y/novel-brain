@@ -1,0 +1,2 @@
+ALTER TABLE "model_configs" ADD COLUMN "idempotency_key" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "model_configs_user_idempotency_unique" ON "model_configs" USING btree ("user_id","idempotency_key");
