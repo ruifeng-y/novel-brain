@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { randomInt } from "node:crypto";
 import {
+  authPasswordSchema,
   type AuthSessionData,
   type LoginRequest,
   type RegisterRequest,
@@ -69,7 +70,16 @@ export class AuthService {
     return { expiresAt };
   }
 
-  async register(request: RegisterRequest, ip: string, userAgent: string): Promise<IssuedSession> {
+  async register(
+    request: RegisterRequest,
+    ip: string,
+    userAgent: string,
+    existingSessionToken?: string,
+  ): Promise<IssuedSession> {
+    if (!authPasswordSchema.safeParse(request.password).success) {
+      throw new ApiError(400, "AUTH_PASSWORD_WEAK", "密码至少 12 位，并且必须同时包含字母和数字");
+    }
+
     const email = request.email.toLowerCase();
     if (await this.repository.findUserByEmail(email)) {
       throw new ApiError(409, "AUTH_EMAIL_TAKEN", "该邮箱已注册");
@@ -113,10 +123,15 @@ export class AuthService {
     }
 
     await this.repository.updateLastLogin(user.id);
-    return this.issueSession(user, ip, userAgent);
+    return this.issueSession(user, ip, userAgent, existingSessionToken);
   }
 
-  async login(request: LoginRequest, ip: string, userAgent: string): Promise<IssuedSession> {
+  async login(
+    request: LoginRequest,
+    ip: string,
+    userAgent: string,
+    existingSessionToken?: string,
+  ): Promise<IssuedSession> {
     const email = request.email.toLowerCase();
     await this.rateLimiter.consumeLogin(email, ip);
     const user = await this.repository.findUserByEmail(email);
@@ -130,7 +145,7 @@ export class AuthService {
     }
 
     await this.repository.updateLastLogin(user.id);
-    return this.issueSession(user, ip, userAgent);
+    return this.issueSession(user, ip, userAgent, existingSessionToken);
   }
 
   async resolveSession(token: string | undefined): Promise<{
@@ -176,7 +191,15 @@ export class AuthService {
     user: UserRecord,
     ip: string,
     userAgent: string,
+    existingSessionToken?: string,
   ): Promise<IssuedSession> {
+    if (existingSessionToken) {
+      const existing = await this.repository.findSessionWithUser(sha256(existingSessionToken));
+      if (existing) {
+        await this.repository.revokeSession(existing.session.id);
+      }
+    }
+
     const token = randomToken();
     const session = await this.repository.createSession({
       id: uuidv7(),

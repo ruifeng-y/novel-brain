@@ -23,7 +23,10 @@ export function parseCookies(header: string | undefined): Record<string, string>
 }
 
 function secureCookie(): boolean {
-  return process.env.COOKIE_SECURE === "true";
+  return (
+    process.env.COOKIE_SECURE === "true" ||
+    (process.env.NODE_ENV === "production" && process.env.COOKIE_SECURE !== "false")
+  );
 }
 
 export function setSessionCookie(response: Response, token: string, maxAgeSeconds: number): void {

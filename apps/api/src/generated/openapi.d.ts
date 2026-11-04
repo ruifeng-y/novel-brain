@@ -153,11 +153,24 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description CSRF token */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            data: {
+              token: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };
@@ -168,13 +181,36 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: email */
+          email: string;
+        };
+      };
+    };
     responses: {
+      /** @description Verification code sent */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              sent: true;
+              /** Format: date-time */
+              expiresAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };
@@ -185,13 +221,52 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: email */
+          email: string;
+          code: string;
+          password: string;
+          displayName: string;
+        };
+      };
+    };
     responses: {
+      /** @description Registered session */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            data: {
+              user: {
+                id: string;
+                emailMasked: string;
+                displayName: string;
+                /** Format: date-time */
+                createdAt: string;
+              };
+              session: {
+                id: string;
+                /** Format: date-time */
+                expiresAt: string;
+                /** @enum {boolean} */
+                current: true;
+                userAgent: string;
+                /** Format: date-time */
+                createdAt: string;
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };
@@ -202,13 +277,50 @@ export interface operations {
       path?: never;
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: email */
+          email: string;
+          password: string;
+        };
+      };
+    };
     responses: {
+      /** @description Authenticated session */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            data: {
+              user: {
+                id: string;
+                emailMasked: string;
+                displayName: string;
+                /** Format: date-time */
+                createdAt: string;
+              };
+              session: {
+                id: string;
+                /** Format: date-time */
+                expiresAt: string;
+                /** @enum {boolean} */
+                current: true;
+                userAgent: string;
+                /** Format: date-time */
+                createdAt: string;
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };
@@ -221,11 +333,40 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description Current authenticated session */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            data: {
+              user: {
+                id: string;
+                emailMasked: string;
+                displayName: string;
+                /** Format: date-time */
+                createdAt: string;
+              };
+              session: {
+                id: string;
+                /** Format: date-time */
+                expiresAt: string;
+                /** @enum {boolean} */
+                current: true;
+                userAgent: string;
+                /** Format: date-time */
+                createdAt: string;
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };
@@ -238,11 +379,25 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
+      /** @description Session revoked */
       200: {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              loggedOut: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };

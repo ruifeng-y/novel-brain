@@ -33,7 +33,7 @@
 
 ## 验证结果
 
-- `pnpm check`：通过，14 个单元/契约测试。
+- `pnpm check`：通过，15 个单元/契约测试。
 - `pnpm test:integration`：通过，5 个真实 PostgreSQL/Redis HTTP 集成测试。
 - `pnpm test:e2e`：通过，10 个 Playwright 测试，覆盖注册、登录、登出、过期会话、限流、权限态和四档响应式。
 - 真实 Compose + Mailpit 浏览器链路：注册验证码发送、注册、进入工作区、退出登录全部通过。

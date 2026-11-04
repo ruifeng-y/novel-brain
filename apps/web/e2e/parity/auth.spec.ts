@@ -1,12 +1,6 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
-async function resetMockApi(request: APIRequestContext) {
-  await request.post("http://127.0.0.1:3001/__test/reset");
-}
-
-test.beforeEach(async ({ request }) => {
-  await resetMockApi(request);
-});
+import { mailCode, registerUser, sendCode, uniqueEmail } from "../helpers/auth";
 
 test("auth page matches the shell at four viewports", async ({ page }, testInfo) => {
   for (const width of [390, 900, 1180, 1440]) {
@@ -28,11 +22,14 @@ test("auth page matches the shell at four viewports", async ({ page }, testInfo)
 });
 
 test("registers, enters the workspace and logs out", async ({ page }) => {
+  const email = uniqueEmail("register");
   await page.goto("/register");
-  await page.getByLabel("邮箱").fill("new-author@example.com");
-  await page.getByRole("button", { name: "发送验证码" }).click();
+  await page.getByLabel("邮箱").fill(email);
+  const sendCodeButton = page.getByRole("button", { name: "发送验证码" });
+  await expect(sendCodeButton).toBeEnabled();
+  await sendCodeButton.click();
   await expect(page.getByText("验证码已发送，请检查邮箱。")).toBeVisible();
-  await page.getByLabel("验证码").fill("123456");
+  await page.getByLabel("验证码").fill(await mailCode(email));
   await page.getByLabel("显示名称").fill("新作者");
   await page.getByLabel("密码").fill("StrongPassword123");
   await page.getByRole("button", { name: "注册并进入" }).click();
@@ -45,11 +42,16 @@ test("registers, enters the workspace and logs out", async ({ page }) => {
   await expect(page).toHaveURL(/\/login$/);
 });
 
-test("logs in and reaches the authenticated shell", async ({ page }) => {
+test("logs in and reaches the authenticated shell", async ({ page, request }) => {
+  const email = uniqueEmail("login");
+  await registerUser(request, email, "StrongPassword123", "林见鹿");
+
   await page.goto("/login");
-  await page.getByLabel("邮箱").fill("lin@example.com");
+  await page.getByLabel("邮箱").fill(email);
   await page.getByLabel("密码").fill("StrongPassword123");
-  await page.getByRole("button", { name: "登录" }).click();
+  const loginButton = page.getByRole("button", { name: "登录" });
+  await expect(loginButton).toBeEnabled();
+  await loginButton.click();
 
   await expect(page).toHaveURL(/\/workspace$/);
   await expect(page.getByText("林见鹿")).toBeVisible();
@@ -75,12 +77,15 @@ test("stale sessions redirect to login with an expired-session message", async (
   await expect(page.getByText("登录状态已失效，请重新登录。")).toBeVisible();
 });
 
-test("rate-limit errors are visible and recoverable", async ({ page }) => {
+test("rate-limit errors are visible and recoverable", async ({ page, request }) => {
+  const email = uniqueEmail("rate-limit");
+  await sendCode(request, email);
+
   await page.goto("/register");
-  await page.getByLabel("邮箱").fill("rate-limited@example.com");
-  const sendCode = page.getByRole("button", { name: "发送验证码" });
-  await expect(sendCode).toBeEnabled();
-  await sendCode.click();
+  await page.getByLabel("邮箱").fill(email);
+  const sendCodeButton = page.getByRole("button", { name: "发送验证码" });
+  await expect(sendCodeButton).toBeEnabled();
+  await sendCodeButton.click();
   await expect(page.getByText("操作过于频繁，请稍后再试。")).toBeVisible();
 });
 

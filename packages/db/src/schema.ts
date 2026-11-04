@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const systemMetadata = pgTable("system_metadata", {
@@ -17,8 +18,9 @@ export const users = pgTable(
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (table) => [uniqueIndex("users_email_unique").on(table.email)],
+  (table) => [uniqueIndex("users_email_lower_unique").on(sql`lower(${table.email})`)],
 );
 
 export const sessions = pgTable(

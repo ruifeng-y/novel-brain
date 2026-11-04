@@ -89,16 +89,20 @@ describe("auth HTTP integration", () => {
     const code = mail.codes.get(email);
     expect(code).toMatch(/^\d{6}$/);
 
-    await post("/api/v1/auth/register", csrfToken)
+    const register = await post("/api/v1/auth/register", csrfToken)
       .send({ email, code, password, displayName: "林见鹿" })
       .expect(200);
+    const oldCookie = String(register.headers["set-cookie"]).split(";")[0];
 
     const me = await agent.get("/api/v1/auth/me").expect(200);
     expect(me.body.data.user.displayName).toBe("林见鹿");
     expect(me.body.data.user.emailMasked).toBe("au***@example.com");
 
     await post("/api/v1/auth/logout", csrfToken).expect(200);
-    const stale = await agent.get("/api/v1/auth/me").expect(401);
+    const stale = await request(app.getHttpServer())
+      .get("/api/v1/auth/me")
+      .set("Cookie", oldCookie)
+      .expect(401);
     expect(stale.body.error.code).toBe("AUTH_SESSION_INVALID");
   });
 
@@ -108,21 +112,23 @@ describe("auth HTTP integration", () => {
     const password = "StrongPassword123";
 
     await post("/api/v1/auth/register/send-code", csrfToken).send({ email }).expect(200);
-    await post("/api/v1/auth/register", csrfToken)
+    const register = await post("/api/v1/auth/register", csrfToken)
       .send({ email, code: mail.codes.get(email), password, displayName: "登录作者" })
       .expect(200);
+    const oldCookie = String(register.headers["set-cookie"]).split(";")[0];
     const firstSession = (await agent.get("/api/v1/auth/me").expect(200)).body.data.session.id;
 
-    await post("/api/v1/auth/logout", csrfToken).expect(200);
-    const loginCsrfToken = await csrf();
-    const login = await post("/api/v1/auth/login", loginCsrfToken)
-      .send({ email, password })
-      .expect(200);
+    const login = await post("/api/v1/auth/login", csrfToken).send({ email, password }).expect(200);
 
     expect(login.body.data.session.id).not.toBe(firstSession);
     expect((await agent.get("/api/v1/auth/me").expect(200)).body.data.user.displayName).toBe(
       "登录作者",
     );
+    const stale = await request(app.getHttpServer())
+      .get("/api/v1/auth/me")
+      .set("Cookie", oldCookie)
+      .expect(401);
+    expect(stale.body.error.code).toBe("AUTH_SESSION_INVALID");
   });
 
   it("rejects unsafe requests without CSRF and same-origin validation", async () => {
@@ -181,7 +187,7 @@ describe("auth HTTP integration", () => {
         displayName: "弱密码作者",
       })
       .expect(400);
-    expect(weak.body.error.code).toBe("VALIDATION_INVALID");
+    expect(weak.body.error.code).toBe("AUTH_PASSWORD_WEAK");
   });
 });
 

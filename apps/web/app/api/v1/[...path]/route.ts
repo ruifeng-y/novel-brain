@@ -21,7 +21,6 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
     "origin",
     "user-agent",
     "x-csrf-token",
-    "x-forwarded-for",
   ]) {
     const value = request.headers.get(header);
     if (value) {

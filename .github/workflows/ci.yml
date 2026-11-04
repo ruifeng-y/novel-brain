@@ -64,6 +64,37 @@ jobs:
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: novelbrain
+          POSTGRES_USER: novelbrain
+          POSTGRES_PASSWORD: novelbrain
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U novelbrain -d novelbrain"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 12
+      mailpit:
+        image: axllent/mailpit:v1.33.0
+        ports:
+          - 1025:1025
+          - 8025:8025
+    env:
+      E2E_DATABASE_URL: postgresql://novelbrain:novelbrain@localhost:5432/novelbrain
+      REDIS_URL: redis://localhost:6379
 
     steps:
       - uses: actions/checkout@v4

@@ -65,7 +65,7 @@ services:
       dockerfile: infra/docker/Dockerfile
       target: api
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       API_PORT: 3001
       DATABASE_URL: postgresql://novelbrain:novelbrain@postgres:5432/novelbrain
       REDIS_URL: redis://redis:6379

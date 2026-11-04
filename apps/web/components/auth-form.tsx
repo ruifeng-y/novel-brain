@@ -78,18 +78,9 @@ export function AuthForm({ mode, sessionExpired, permissionDenied }: AuthFormPro
     setSuccess("");
     setSendingCode(true);
     try {
-      const response = await fetch("/api/v1/auth/register/send-code", {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": csrfToken,
-        },
-        body: JSON.stringify({ email }),
-      });
-      if (!response.ok) {
-        throw new Error(readError(await response.json()));
-      }
-      sendRegistrationCodeResponseSchema.parse(await response.json());
+      sendRegistrationCodeResponseSchema.parse(
+        await postJson("/api/v1/auth/register/send-code", csrfToken, { email }),
+      );
       setSuccess("验证码已发送，请检查邮箱。");
       setCodeCooldown(60);
     } catch (caught) {
@@ -105,20 +96,13 @@ export function AuthForm({ mode, sessionExpired, permissionDenied }: AuthFormPro
     setSuccess("");
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/v1/auth/${mode === "login" ? "login" : "register"}`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-csrf-token": csrfToken,
-        },
-        body: JSON.stringify(
+      authSessionResponseSchema.parse(
+        await postJson(
+          `/api/v1/auth/${mode === "login" ? "login" : "register"}`,
+          csrfToken,
           mode === "login" ? { email, password } : { email, password, code, displayName },
         ),
-      });
-      if (!response.ok) {
-        throw new Error(readError(await response.json()));
-      }
-      authSessionResponseSchema.parse(await response.json());
+      );
       router.replace("/workspace");
       router.refresh();
     } catch (caught) {
@@ -326,4 +310,20 @@ function readError(payload: unknown): string {
     return "请求失败，请稍后重试。";
   }
   return errorMessages[parsed.data.error.code] ?? parsed.data.error.message;
+}
+
+async function postJson(path: string, csrfToken: string, payload: unknown): Promise<unknown> {
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify(payload),
+  });
+  const body: unknown = await response.json();
+  if (!response.ok) {
+    throw new Error(readError(body));
+  }
+  return body;
 }
