@@ -18,7 +18,7 @@ export async function resetRateLimits(): Promise<void> {
   }
 }
 
-async function csrf(request: APIRequestContext): Promise<string> {
+export async function getCsrf(request: APIRequestContext): Promise<string> {
   const response = await request.get("/api/v1/auth/csrf");
   expect(response.ok()).toBe(true);
   return (await response.json()).data.token as string;
@@ -41,7 +41,7 @@ export async function mailCode(email: string): Promise<string> {
 }
 
 export async function sendCode(request: APIRequestContext, email: string): Promise<void> {
-  const token = await csrf(request);
+  const token = await getCsrf(request);
   const response = await request.post("/api/v1/auth/register/send-code", {
     headers: { Origin: origin, "X-CSRF-Token": token },
     data: { email },
@@ -56,7 +56,7 @@ export async function registerUser(
   displayName: string,
 ): Promise<string> {
   await sendCode(request, email);
-  const token = await csrf(request);
+  const token = await getCsrf(request);
   const response = await request.post("/api/v1/auth/register", {
     headers: { Origin: origin, "X-CSRF-Token": token },
     data: { email, code: await mailCode(email), password, displayName },
@@ -67,4 +67,21 @@ export async function registerUser(
     throw new Error("Registration did not return nb_session");
   }
   return sessionCookie;
+}
+
+export async function createWork(
+  request: APIRequestContext,
+  payload: Record<string, unknown>,
+): Promise<{ id: string; title: string }> {
+  const token = await getCsrf(request);
+  const response = await request.post("/api/v1/works", {
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
+    data: payload,
+  });
+  expect(response.status()).toBe(200);
+  return (await response.json()).data as { id: string; title: string };
 }

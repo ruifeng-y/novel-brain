@@ -97,7 +97,7 @@ for (const cells of productionRows) {
     `Production page ${page} has no production Playwright spec path.`);
   requireCheck(cells[11]?.includes('artifacts/ui/golden/'),
     `Production page ${page} has no production golden path.`);
-  requireCheck(cells[12] === 'production-pending',
+  requireCheck(['production-pending', 'production-built'].includes(cells[12]),
     `Production page ${page} cannot be marked verified before production evidence exists.`);
 }
 

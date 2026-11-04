@@ -196,6 +196,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorksController_list"];
+    put?: never;
+    post: operations["WorksController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorksController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorksController_branches"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -864,6 +912,340 @@ export interface operations {
               latencyMs: number;
               message: string;
             };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Current user works */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_create: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Idempotency-Key"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              /** @enum {string} */
+              mode: "idea";
+              idea: string;
+              title: string;
+              penName?: string;
+              /**
+               * @default xianxia
+               * @enum {string}
+               */
+              genre: "xianxia" | "history" | "urban";
+              /**
+               * @default long
+               * @enum {string}
+               */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              /** @default 3000 */
+              chapterLengthTarget: number;
+            }
+          | {
+              /** @enum {string} */
+              mode: "blank";
+              title: string;
+              penName?: string;
+              /**
+               * @default xianxia
+               * @enum {string}
+               */
+              genre: "xianxia" | "history" | "urban";
+              /**
+               * @default long
+               * @enum {string}
+               */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              /** @default 3000 */
+              chapterLengthTarget: number;
+            }
+          | {
+              /** @enum {string} */
+              mode: "template";
+              /** @enum {string} */
+              templateKey: "xianxia";
+              title: string;
+              penName?: string;
+              /**
+               * @default xianxia
+               * @enum {string}
+               */
+              genre: "xianxia" | "history" | "urban";
+              /**
+               * @default long
+               * @enum {string}
+               */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              /** @default 3000 */
+              chapterLengthTarget: number;
+            };
+      };
+    };
+    responses: {
+      /** @description Created work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work overview */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_branches: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work branches */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              name: string;
+              headNodeId: string;
+              /** @enum {string} */
+              status: "active" | "archived";
+            }[];
             /** Format: starts_with */
             requestId: string;
             /** @default {} */

@@ -28,7 +28,13 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
-  const current = pathname.startsWith("/workspace") ? "工作台" : "服务状态";
+  const current = pathname.endsWith("/overview")
+    ? "作品总览"
+    : pathname === "/workspace/new-project"
+      ? "新建作品"
+      : pathname.startsWith("/workspace")
+        ? "工作台"
+        : "服务状态";
 
   async function logout() {
     setLoggingOut(true);
