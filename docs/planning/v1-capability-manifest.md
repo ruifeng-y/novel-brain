@@ -1,6 +1,6 @@
-# V1 Capability Manifest v1
+# V1 Capability Manifest v2
 
-> 状态：draft，用于基线同步和覆盖检查，不是 spec。
+> 状态：V1 delivery scope baseline v2（2026-11-04）。本版保留 117 个原始能力，并新增两个独立的跨切面发布门禁：PERF-001 与 CONT-001。
 >
 > 优先级：ADR 0010–0024 > 需求/技术/原型中的旧条款。发现冲突时，先更新基线，再进入 `/to-spec`。
 
@@ -194,7 +194,16 @@
 | EVAL-003 | 真实 DeepSeek smoke | V1 | — | Eval/AI | 连接与质量 |
 | EVAL-004 | Prompt/模型灰度与回滚 | V1 | — | Eval/Agents | 版本治理 |
 
-## 15. 覆盖规则
+## 15. Cross-cutting scale and continuity gates
+
+| ID | 能力 | 范围 | 原型 | 后端/数据 | 验收 |
+| --- | --- | --- | --- | --- | --- |
+| PERF-001 | 1000 万字容量/性能/恢复基准 | V1 | — | Perf/Storage/Search/Jobs | 固定 10M fixture、负载模型、p50/p95/p99、资源/成本/容量和恢复报告 |
+| CONT-001 | 3000–4000 章跨卷叙事连续性基准 | V1 | writing/settings/outline | Continuity/Eval/Canon/Knowledge | Ground-truth 跨卷 fixture、知识边界/状态不变量/伏笔/分支验证与人工盲评 |
+
+PERF-001 与 CONT-001 是互不替代的发布门禁：容量测试不证明叙事正确，长线内容评分也不证明数据库、索引和恢复满足容量目标。
+
+## 16. 覆盖规则
 
 - 每个 V1 能力必须有至少一个 ticket；每个 ticket 至少引用一个 V1 能力。
 - 每个 V1 能力必须有原型页面/动作或明确标记为“无 UI（后台能力）”。
