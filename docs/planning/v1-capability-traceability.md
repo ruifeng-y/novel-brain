@@ -38,16 +38,16 @@
 | WORK-007 | 复制作品，默认不复制正文和版本 | V1 | mapped | #142 | — | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | Works; 默认值校验 | M1 |
 | WORK-008 | 作品设置/封面/标签/连载状态 | V1 | mapped | #142 | — | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | Works/Storage; API + UI | M1 |
 | WORK-009 | 全站当前作品 + 当前平行版本上下文 | V1 | mapped | #70 | #95, #123 | M0 Spec #66; Works/Import contracts; ADR 0018 for import lifecycle | Works/Branches; 切换一致性 E2E | M0 |
-| ONBOARD-001 | 故事罗盘/故事蓝图 | V1 | mapped | #73 | #84 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | StoryBible/Planner; 生成 + 确认 | M0 |
-| ONBOARD-002 | 九卡故事圣经/版本/锁定 | V1 | mapped | #73 | #84 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | StoryBible; 版本 + 锁定 | M0 |
+| ONBOARD-001 | 故事罗盘/故事蓝图 | V1 | mapped | #143 | #84 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | StoryBible/Planner; 生成 + 确认 | M0 |
+| ONBOARD-002 | 九卡故事圣经/版本/锁定 | V1 | mapped | #143 | #84 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | StoryBible; 版本 + 锁定 | M0 |
 | ONBOARD-003 | 题材包：仙侠/历史/都市 | V1 | mapped | #92 | #70, #84 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | GenrePacks; 三题材差异测试 | M2 |
-| ONBOARD-004 | 世界铁律/硬规则 | V1 | mapped | #73 | #74, #84 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | Canon/StoryBible; 规则校验 | M0 |
+| ONBOARD-004 | 世界铁律/硬规则 | V1 | mapped | #143 | #74, #84 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | Canon/StoryBible; 规则校验 | M0 |
 | ONBOARD-005 | 核心人物/关系/人物弧 | V1 | mapped | #106 | #73, #74 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | Characters/Relations; 关系图 | M1 |
-| ONBOARD-006 | 主线/支线/伏笔计划 | V1 | mapped | #86 | — | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | StoryLedger; 计划 + 账本 | M1 |
-| ONBOARD-007 | 全书/卷/幕/章/场景大纲 | V1 | mapped | #86 | #75 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | Outline; 五层树 | M1 |
-| ONBOARD-008 | 设定冻结/开书门禁 | V1 | mapped | #87 | — | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | StoryBible/Readiness; 门禁 E2E | M1 |
-| SET-001 | 7 个设定顶层栏目 | V1 | mapped | #84 | #74 | M1 Spec #80; Canon/domain contracts; ADR 0019 | Settings; 信息架构 | M1 |
-| SET-002 | 实体/别名/自定义字段 | V1 | mapped | #84 | #74 | M1 Spec #80; Canon/domain contracts; ADR 0019 | Entities/CustomFields; CRUD + 迁移 | M1 |
+| ONBOARD-006 | 主线/支线/伏笔计划 | V1 | mapped | #146 | — | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | StoryLedger; 计划 + 账本 | M1 |
+| ONBOARD-007 | 全书/卷/幕/章/场景大纲 | V1 | mapped | #145 | #75 | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | Outline; 五层树 | M1 |
+| ONBOARD-008 | 设定冻结/开书门禁 | V1 | mapped | #148 | — | M1 Spec #80; StoryBible/Planning contracts; ADR 0019 | StoryBible/Readiness; 门禁 E2E | M1 |
+| SET-001 | 7 个设定顶层栏目 | V1 | mapped | #144 | #74 | M1 Spec #80; Canon/domain contracts; ADR 0019 | Settings; 信息架构 | M1 |
+| SET-002 | 实体/别名/自定义字段 | V1 | mapped | #144 | #74 | M1 Spec #80; Canon/domain contracts; ADR 0019 | Entities/CustomFields; CRUD + 迁移 | M1 |
 | SET-003 | 实体关系/有效期 | V1 | mapped | #106 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Relations; 关系图 | M1 |
 | SET-004 | 势力/控制区/关系 | V1 | mapped | #107 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Factions/Relations; 控制区冲突 | M1 |
 | SET-005 | 地图节点/连接/旅行时间/标记 | V1 | mapped | #107 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Maps; 地图 E2E | M1 |
@@ -56,15 +56,15 @@
 | SET-008 | 物品功法/归属/流转 | V1 | mapped | #108 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Items/Ownership; 归属校验 | M1 |
 | SET-009 | 时间线/纪元/事件/行程 | V1 | mapped | #107 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Timeline; 时间冲突 | M1 |
 | SET-010 | 人物档案/状态/认知/声线 | V1 | mapped | #106 | #74 | M1 Spec #80; Canon/domain contracts; ADR 0019 | Characters/Knowledge; 知识边界 | M1 |
-| SET-011 | 设定状态：草稿/提案/锁定/废弃 | V1 | mapped | #84 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Settings/Canon; 状态机 | M1 |
-| SET-012 | 设定提案/冲突证据/引用 | V1 | mapped | #84 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Canon/Critics; 提案 E2E | M1 |
-| PLAN-001 | 大纲树/看板/张力曲线 | V1 | mapped | #86 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Outline; 五层视图 | M1 |
-| PLAN-002 | 大纲重排/锁定/版本 | V1 | mapped | #86 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Outline; 版本 + 锁定 | M1 |
-| PLAN-003 | 黄金三章/开篇策略 | V1 | mapped | #87 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Outline/GoldenThree; 候选 + 门禁 | M1 |
-| PLAN-004 | 伏笔账本/剧情线/人物弧 | V1 | mapped | #86 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | StoryLedger; CRUD + 检查 | M1 |
-| PLAN-005 | 生成准备度检查 | V1 | mapped | #87 | #75 | M1 Spec #80; PlanningModule contract; ADR 0019 | Readiness; 缺项提示 | M1 |
-| PLAN-006 | 卷/幕契约与重规划触发 | V1 | mapped | #86 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Planner; 偏离报告 | M1 |
-| PLAN-007 | 场景卡/节拍/信息释放 | V1 | mapped | #86 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Outline/Scene; 场景生成 | M1 |
+| SET-011 | 设定状态：草稿/提案/锁定/废弃 | V1 | mapped | #144 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Settings/Canon; 状态机 | M1 |
+| SET-012 | 设定提案/冲突证据/引用 | V1 | mapped | #144 | — | M1 Spec #80; Canon/domain contracts; ADR 0019 | Canon/Critics; 提案 E2E | M1 |
+| PLAN-001 | 大纲树/看板/张力曲线 | V1 | mapped | #145 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Outline; 五层视图 | M1 |
+| PLAN-002 | 大纲重排/锁定/版本 | V1 | mapped | #145 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Outline; 版本 + 锁定 | M1 |
+| PLAN-003 | 黄金三章/开篇策略 | V1 | mapped | #147 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Outline/GoldenThree; 候选 + 门禁 | M1 |
+| PLAN-004 | 伏笔账本/剧情线/人物弧 | V1 | mapped | #146 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | StoryLedger; CRUD + 检查 | M1 |
+| PLAN-005 | 生成准备度检查 | V1 | mapped | #148 | #75 | M1 Spec #80; PlanningModule contract; ADR 0019 | Readiness; 缺项提示 | M1 |
+| PLAN-006 | 卷/幕契约与重规划触发 | V1 | mapped | #145 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Planner; 偏离报告 | M1 |
+| PLAN-007 | 场景卡/节拍/信息释放 | V1 | mapped | #145 | — | M1 Spec #80; PlanningModule contract; ADR 0019 | Outline/Scene; 场景生成 | M1 |
 | AGENT-001 | Agent 角色/I/O 契约 | V1 | mapped | #109 | — | M1 Spec #80; AgentRuntime/ContextModule contract; ADR 0001, 0021 | Agents; Schema + 契约测试 | M1 |
 | AGENT-002 | 确定性编排器状态机 | V1 | mapped | #110 | — | M1 Spec #80; AgentRuntime/ContextModule contract; ADR 0001, 0021 | Orchestrator; 状态机 E2E | M1 |
 | AGENT-003 | 工具白名单/读写权限 | V1 | mapped | #109 | — | M1 Spec #80; AgentRuntime/ContextModule contract; ADR 0001, 0021 | Agents/Tools; 越权测试 | M1 |
@@ -84,13 +84,13 @@
 | GEN-006 | 正史提交/Canon Curator | V1 | mapped | #78 | #78 | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Canon; 门禁 E2E | M0 |
 | GEN-007 | 按章/卷/区间/全本批量 | V1 | mapped | #91 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | BatchJobs; 任务 E2E | M2 |
 | GEN-008 | 父子任务/暂停/恢复/取消/重试 | V1 | mapped | #91 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Jobs; 重启恢复 | M2 |
-| GEN-009 | 黄金三章候选/确认/锁定 | V1 | mapped | #87 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | GoldenThree; 候选对比 | M1 |
-| GEN-010 | 卷级验收/自动通过/审核队列 | V1 | mapped | #93 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Review/Jobs; 高风险门禁 | M2 |
-| GEN-011 | 成本/吞吐/失败报告 | V1 | mapped | #93 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Usage/Reports; 单章/单卷 | M2 |
+| GEN-009 | 黄金三章候选/确认/锁定 | V1 | mapped | #147 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | GoldenThree; 候选对比 | M1 |
+| GEN-010 | 卷级验收/自动通过/审核队列 | V1 | mapped | #149 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Review/Jobs; 高风险门禁 | M2 |
+| GEN-011 | 成本/吞吐/失败报告 | V1 | mapped | #150 | — | M0 Spec #66; M0 Protocol Freeze §§5–9; Generation contract; ADR 0017 | Usage/Reports; 单章/单卷 | M2 |
 | QUALITY-001 | 六维质量报告 | V1 | mapped | #117 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Quality; 六维证据 | M1 |
 | QUALITY-002 | 冲突证据/批注/忽略原因 | V1 | mapped | #117 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Critics/Annotations; 问题生命周期 | M1 |
 | QUALITY-003 | 事实确认/驳回/修改 | V1 | mapped | #77 | #78 | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Facts/Proposals; 逐条确认 | M0 |
-| QUALITY-004 | 审核队列/批准/驳回/批量 | V1 | mapped | #93 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Review; 批量低风险 | M2 |
+| QUALITY-004 | 审核队列/批准/驳回/批量 | V1 | mapped | #149 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Review; 批量低风险 | M2 |
 | QUALITY-005 | 黄金三章/卷末验收 | V1 | mapped | #90 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Gates; 作者签收 | M1 |
 | QUALITY-006 | 固定基准集/回归门禁 | V1 | mapped | #139 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Eval; 三题材 + 长线 | M3 |
 | QUALITY-007 | 作者反馈记录 | V1 | mapped | #118 | — | M1–M3 specs #80–#82; Review/Eval contract; ADR 0017, 0022 | Feedback; 接受/拒绝/改写 | M1 |
