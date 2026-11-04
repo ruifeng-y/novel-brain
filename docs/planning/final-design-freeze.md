@@ -26,7 +26,7 @@ The design phase is closed when the following are true:
 - [x] UUID generation ownership is unambiguous across API/Worker/database.
 - [x] V1 search architecture has no contradictory vector schema/index requirement.
 - [x] Real-time collaboration and full economy scope are explicitly retained but deferred.
-- [x] The readiness validator is syntactically valid and has an automated CI entry point.
+- [x] The readiness validator source has been repaired and an automated CI entry point has been added; successful execution is a required PR check before this freeze is merged.
 - [x] Production screenshot comparison has a deterministic environment, fixed viewports, numeric tolerance, artifact retention and author approval workflow.
 - [x] The production page matrix remains the owner of all 17 V1 page contracts.
 - [x] No additional global design review is required before starting M0 #67.
