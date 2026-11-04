@@ -5,6 +5,7 @@
 > Update this ledger as tickets are decomposed, implemented and verified.
 
 ## Current readiness
+
 | Area | State | Evidence / next action |
 | --- | --- | --- |
 | Product baseline | accepted | Requirements, capability manifest, ADRs 0001–0024 |
@@ -18,10 +19,12 @@
 | Full V1 capability-to-ticket mapping | not complete | Reconcile manifest/traceability after ticket decomposition before V1 claim |
 
 ## M0 frontier
+
 Initial frontier: **#67 only**.
 Subsequent eligible tickets are governed by the dependency graph in docs/implementation/README.md. GitHub issue labels are not a substitute for checking blockers. If an issue body or dependency differs from this ledger, stop and reconcile the two before starting.
 
 ## M1–M3 decomposition requirement
+
 The milestone parent issues describe outcomes and contain user stories/decisions, but are too broad for one /implement session. Decomposition must create vertical implementation tickets with:
 - bounded user-visible behavior or backend capability;
 - exact capability IDs;
@@ -34,6 +37,7 @@ The milestone parent issues describe outcomes and contain user stories/decisions
 M3 performance and quality tickets must define measurable workload, thresholds, environment, dataset, repeat count and artifact format. Do not invent P95/P99 targets without a documented workload and hardware profile; record provisional targets as provisional and require owner approval before release freeze.
 
 ## Review exit criteria
+
 The project is ready for /implement at the current frontier when:
 1. the issue is bounded and all blockers are closed;
 2. its capability IDs and design sources are linked;

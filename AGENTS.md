@@ -4,27 +4,27 @@
 This repository is the active NovelBrain product. Implement only approved scope recorded in GitHub Issues and the documents referenced by those issues.
 
 Before implementation:
-1. Read GLOSSARY.md.
-2. Read relevant accepted ADRs in docs/adr/.
+1. Read `GLOSSARY.md`.
+2. Read relevant accepted ADRs in `docs/adr/`.
 3. Read relevant requirements, technical contracts, UI contract and parity-matrix rows.
-4. Read docs/implementation/README.md and docs/planning/implementation-frontier.md.
+4. Read `docs/implementation/README.md` and `docs/planning/implementation-frontier.md`.
 5. Fetch the exact GitHub issue and state its title before changing code.
 
 Authority order:
 1. Accepted ADRs for decisions and invariants.
-2. docs/requirements/v1-requirements.md for product behavior.
-3. docs/technical/nestjs-backend-design.md and docs/technical/m0-protocol-freeze.md for architecture and protocol contracts.
-4. docs/ui/prototype-contract.md, docs/ui/v1-prototype-signoff.md, and docs/ui/v1-ui-parity-matrix.md for UI behavior and acceptance.
+2. `docs/requirements/v1-requirements.md` for product behavior.
+3. `docs/technical/nestjs-backend-design.md` and `docs/technical/m0-protocol-freeze.md` for architecture and protocol contracts.
+4. `docs/ui/prototype-contract.md`, `docs/ui/v1-prototype-signoff.md`, and `docs/ui/v1-ui-parity-matrix.md` for UI behavior and acceptance.
 5. Capability Manifest and Traceability for coverage and mapping.
 6. GitHub implementation tickets for the bounded work unit and acceptance evidence.
 
-If two sources conflict, stop the affected work and report the conflict. Do not choose silently, invent a product decision, or edit an accepted ADR without explicit approval.
+If two sources conflict, stop the affected work and report the conflict. Do not choose silently, invent a new product decision, or edit an accepted ADR without explicit approval.
 
 ## Implementation workflow
-- Use /implement #<issue-number> for one bounded ticket at a time. Do not implement a milestone parent spec as one ticket.
-- Follow docs/implementation/README.md and the dependency frontier. Do not start a blocked ticket.
-- Use the tdd skill at agreed public seams where possible; run targeted tests and typechecks during implementation.
-- After implementation, use the code-review skill, resolve findings, run the full relevant suite, and commit on the current implementation branch.
+- Use `/implement #<issue-number>` for one bounded ticket at a time. Do not implement a milestone parent spec as one ticket.
+- Follow `docs/implementation/README.md` and the dependency frontier. Do not start a blocked ticket.
+- Use the `tdd` skill at agreed public seams where possible; run targeted tests and typechecks during implementation.
+- After implementation, use the `code-review` skill, resolve findings, run the full relevant suite, and commit on the current implementation branch.
 - Never claim a ticket is complete without concrete test, UI parity, security, or benchmark evidence required by its acceptance criteria.
 - Keep changes within the ticket. If a missing requirement or cross-ticket contract is found, stop and raise a scoped issue.
 

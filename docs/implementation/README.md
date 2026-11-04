@@ -3,6 +3,7 @@
 > Status: implementation is authorized by the accepted baseline. Start with the first unblocked M0 ticket. This document governs engineering execution; it does not replace product requirements, ADRs, technical contracts or ticket acceptance criteria.
 
 ## 1. What is ready now
+
 The repository currently contains product/technical documentation, accepted ADRs, a signed-off static prototype and Playwright prototype-parity tests. It does not yet contain the production Web/API/Worker application source. The first implementation unit is therefore the M0 walking skeleton, not a feature patch to the prototype.
 
 - M0 parent spec: GitHub issue #66.
@@ -14,6 +15,7 @@ The repository currently contains product/technical documentation, accepted ADRs
 M0 tickets have bounded scope and acceptance criteria. M1–M3 are milestone specifications, not single-ticket implementation units. Their implementation tickets must be decomposed and dependency-linked before those milestones are started. Do not pass #80, #81 or #82 to /implement as one giant task.
 
 ## 2. First command
+
 After checking out the branch you intend to develop on and ensuring the repository is clean, invoke:
 
     /implement #67
@@ -31,6 +33,7 @@ The skill contract is:
 The issue tracker is GitHub in this repository. Use gh from the repository clone as described in docs/agents/issue-tracker.md.
 
 ## 3. M0 dependency graph
+
 Only #67 is the initial frontier. A ticket is startable only after every listed blocker is complete and merged into the implementation branch.
 
 | Ticket | Scope | Blocked by |
