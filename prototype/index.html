@@ -33,7 +33,7 @@
         <span class="context-avatar work-avatar">仙</span>
         <span class="context-copy">
           <strong>仙途：忘川书</strong>
-          <small>第 2 卷 · 第 47 章</small>
+          <small>主线 · 第 1 卷 · 第 47 章</small>
         </span>
         <i data-lucide="chevrons-left"></i>
       </button>
@@ -200,10 +200,10 @@
               <div class="continue-copy">
                 <div class="panel-kicker"><span class="status-dot live"></span>正在连载</div>
                 <h2>仙途：忘川书</h2>
-                <p class="muted">第 2 卷 · 血河夜行 · 第 47 章「断臂之后」</p>
+                <p class="muted">第 1 卷 · 少年出山 · 第 47 章「断臂之后」</p>
                 <div class="continue-progress">
                   <div class="progress"><span style="width:47%"></span></div>
-                  <span>本卷 14 / 30 章</span>
+                  <span>本卷 47 / 100 章</span>
                 </div>
                 <p class="continue-note">主角左臂骨折尚未痊愈，下一章需要处理「断臂之后的第一战」。系统已准备 3 条连续性提醒。</p>
                 <div class="button-row">
@@ -301,11 +301,11 @@
             </div>
           </div>
           <div class="project-grid" id="project-grid">
-            <article class="project-card" data-page="bible" data-work-id="w-1" data-view="active" data-status="serializing" data-genre="xianxia" data-title="仙途：忘川书" data-pen="林见鹿" data-updated="2" data-words="3000000" data-quality="84" data-foreshadows="4">
+        <article class="project-card" data-page="bible" data-work-id="w-1" data-view="active" data-status="serializing" data-genre="xianxia" data-title="仙途：忘川书" data-pen="林见鹿" data-updated="2" data-words="10000000" data-quality="84" data-foreshadows="4">
               <div class="project-cover cover-xianxia"><span>仙途</span><strong>忘川书</strong></div>
               <div class="project-info">
                 <div class="project-title-row"><h3>仙途：忘川书</h3><span class="badge live-badge">连载中</span></div>
-                <p>仙侠 · 300 万字 · 第 2 卷</p>
+                <p>仙侠 · 1000 万字 · 第 1 卷</p>
                 <div class="progress"><span style="width:47%"></span></div>
                 <small>今日 3,240 字 · 2 分钟前</small>
                 <div class="project-metrics"><span>质量 84</span><span>未回收伏笔 4</span></div>
@@ -353,7 +353,7 @@
                 <div class="project-metrics"><span>质量 70</span><span>未回收伏笔 0</span></div>
                 <div class="project-actions">
                   <button data-action="restore-work" data-id="w-4">恢复</button>
-                  <button data-action="delete-work" data-id="w-4">永久删除</button>
+                  <button type="button" disabled title="需先完成作品导出">先导出再删除</button>
                 </div>
               </div>
             </article>
@@ -367,7 +367,7 @@
                 <div class="project-metrics"><span>质量 61</span><span>未回收伏笔 0</span></div>
                 <div class="project-actions">
                   <button data-action="restore-work" data-id="w-5">恢复</button>
-                  <button data-action="delete-work" data-id="w-5">永久删除</button>
+                  <button type="button" disabled title="需先完成作品导出">先导出再删除</button>
                 </div>
               </div>
             </article>
@@ -412,6 +412,7 @@
               <button class="seg active" type="button" data-entry-mode="idea">一句话想法</button>
               <button class="seg" type="button" data-entry-mode="blank">空白作品</button>
               <button class="seg" type="button" data-entry-mode="template">题材模板</button>
+              <button class="seg" type="button" data-entry-mode="settings">导入设定</button>
               <button class="seg" type="button" data-entry-mode="import">导入旧稿</button>
             </div>
           </div>
@@ -451,8 +452,6 @@
                       <option>仙侠 · 修真文明</option>
                       <option>都市 · 异能</option>
                       <option>历史 · 权谋</option>
-                      <option>悬疑 · 民俗</option>
-                      <option>科幻 · 废土</option>
                     </select>
                   </div>
                   <div>
@@ -460,7 +459,7 @@
                     <select class="select" id="scale">
                       <option>长篇 · 100 到 300 万字</option>
                       <option>中篇 · 30 到 50 万字</option>
-                      <option>超长篇 · 500 万字以上</option>
+                      <option>超长篇 · 1000 万字以上</option>
                       <option>短篇 · 3 到 10 万字</option>
                     </select>
                   </div>
@@ -634,9 +633,11 @@
               <label class="import-dropzone" for="manuscript">
                 <i data-lucide="upload-cloud"></i>
                 <strong>选择旧稿文件，或拖到这里</strong>
-                <span>最大 20 MB · 会先预览章节切分，不会自动抽取人物设定</span>
+                <span>大文件分块导入（示例文件 20 MB）· 默认只预览章节切分，不自动抽取人物设定</span>
                 <input id="manuscript" type="file" accept=".txt,.md,.markdown,.docx" hidden>
               </label>
+              <div class="settings-note"><i data-lucide="info"></i><span>默认“文本导入”只保留原文和章节结构；“设定提取”是可选后台任务，会生成候选、冲突和导入报告。</span></div>
+              <label class="check-row"><input type="checkbox"><span>可选：抽取人物、事实、关系、时间线和伏笔候选</span></label>
               <div class="import-preview" id="import-preview">
                 <div class="import-preview-head">
                   <strong>章节切分预览</strong>
@@ -655,13 +656,62 @@
                   <div class="import-row-actions"><button class="text-btn small" data-action="import-edit-title">改标题</button><button class="text-btn small" data-action="import-split">拆分</button><button class="text-btn small" data-action="import-merge">合并</button></div>
                 </div>
               </div>
+              <div class="import-preview" aria-label="导入报告">
+                <div class="import-preview-head">
+                  <strong>导入报告 · 可选设定提取</strong>
+                  <span class="badge gold-badge">待确认</span>
+                </div>
+                <div class="import-chapter-row"><span>自动接受</span><strong>3 条低风险事实</strong><small>可抽检</small><span class="badge jade-badge">高置信度</span></div>
+                <div class="import-chapter-row"><span>待确认</span><strong>2 条人物认知</strong><small>需要作者裁决</small><span class="badge gold-badge">人工确认</span></div>
+                <div class="import-chapter-row"><span>冲突</span><strong>1 条父母之死</strong><small>正文说自杀，设定说仇杀</small><span class="badge alert-badge">必须裁决</span></div>
+                <div class="settings-note import-checkpoint">
+                  <i data-lucide="clock-3"></i>
+                  <span id="import-progress-text">后台分块解析中 · 已处理 3 / 12 块 · 支持断点恢复</span>
+                  <button class="text-btn small" type="button" data-action="toggle-import-pause">暂停解析</button>
+                </div>
+              </div>
               <div class="import-actions">
                 <button class="btn btn-ghost" type="button" data-action="chapter-split-settings">
                   <i data-lucide="scissors"></i><span>调整切分</span>
                 </button>
-                <button class="btn btn-primary" type="button" data-action="create-work">
-                  <i data-lucide="arrow-right"></i><span>导入并进入总览</span>
+                <button class="btn btn-primary" type="button" disabled title="先裁决导入报告中的冲突">
+                  <i data-lucide="lock"></i><span>先裁决 1 条冲突</span>
                 </button>
+              </div>
+            </article>
+          </div>
+
+          <div class="import-layout" data-entry-view="settings-import" hidden>
+            <article class="panel import-panel">
+              <div class="panel-head">
+                <div><span class="panel-kicker">导入设定</span><h2>把人物、势力、地图和体系带进来</h2></div>
+                <span class="badge">部分或完整设定</span>
+              </div>
+              <div class="settings-note"><i data-lucide="info"></i><span>可以只导入已有的一部分，也可以导入完整设定。系统先识别候选，不会直接覆盖现有作品。</span></div>
+              <label class="import-dropzone" for="settings-manuscript">
+                <i data-lucide="file-up"></i>
+                <strong>上传设定文件，或直接粘贴到下面</strong>
+                <span>TXT · Markdown · DOCX · 支持人物卡、势力表、地图说明和体系设定</span>
+                <input id="settings-manuscript" type="file" accept=".txt,.md,.markdown,.docx" hidden>
+              </label>
+              <label class="field">
+                <span>粘贴设定</span>
+                <textarea class="idea-input" id="settings-import-text" rows="5" placeholder="例如：&#10;人物：沈砚，外门杂役，左臂骨折，不能双手结印。&#10;势力：太玄门、血河宗、无相楼。&#10;地图：人界 → 东境 → 忘川渡。"></textarea>
+              </label>
+              <div class="import-preview" id="settings-import-preview">
+                <div class="import-preview-head">
+                  <strong>识别结果</strong>
+                  <span class="badge">尚未识别</span>
+                </div>
+                <div class="import-chapter-row"><span>人物</span><strong>2 条候选</strong><small>主角、关键配角</small><span class="badge jade-badge">可映射</span></div>
+                <div class="import-chapter-row"><span>势力</span><strong>3 条候选</strong><small>宗门、敌对势力、情报组织</small><span class="badge jade-badge">可映射</span></div>
+                <div class="import-chapter-row"><span>地图</span><strong>3 层节点</strong><small>人界 → 东境 → 忘川渡</small><span class="badge jade-badge">可映射</span></div>
+                <div class="import-chapter-row"><span>体系</span><strong>境界 7 层 · 金手指 1 条</strong><small>需要作者确认代价和限制</small><span class="badge gold-badge">待确认</span></div>
+                <div class="import-chapter-row"><span>冲突</span><strong>1 条父母之死</strong><small>设定说仇杀，旧稿说自杀</small><span class="badge alert-badge">必须裁决</span></div>
+              </div>
+              <div class="import-actions">
+                <button class="btn btn-ghost" type="button" data-action="scan-settings-import"><i data-lucide="scan-search"></i><span>开始识别</span></button>
+                <button class="btn btn-primary" type="button" disabled title="先裁决识别结果中的冲突"><i data-lucide="lock"></i><span>先裁决 1 条冲突</span></button>
               </div>
             </article>
           </div>
@@ -676,7 +726,7 @@
                 <span class="badge live-badge">连载中</span>
                 <span class="badge">仙侠 · 长篇</span>
               </div>
-              <p class="page-sub">林见鹿 · 300 万字 · 起点中文网 · 第 2 卷 / 共 5 卷</p>
+              <p class="page-sub">林见鹿 · 1000 万字 · 起点中文网 · 第 1 卷 / 共 30–40 卷（示例前 5 卷）</p>
             </div>
             <div class="head-actions">
               <button class="btn btn-ghost" data-page="settings">
@@ -700,11 +750,11 @@
             </div>
             <div class="overview-copy">
               <span class="panel-kicker"><span class="status-dot live"></span>正在连载</span>
-              <h2>第 2 卷 · 血河夜行</h2>
+              <h2>第 1 卷 · 少年出山</h2>
               <p>沈砚带着断臂和忘川书的秘密进入南境，血河宗的追兵、顾青的试探和一场被抹掉的旧案同时逼近。</p>
               <div class="overview-progress">
                 <div class="progress"><span style="width:47%"></span></div>
-                <span>本卷 14 / 30 章</span>
+                <span>本卷 47 / 100 章</span>
               </div>
               <div class="button-row">
                 <button class="btn btn-primary" data-page="writing">
@@ -736,7 +786,7 @@
             <article class="stat-card">
               <span class="stat-icon cinnabar"><i data-lucide="book-open-check"></i></span>
               <div><strong>47</strong><span>已写章节</span></div>
-              <small>本卷 14 / 30</small>
+              <small>本卷 47 / 100</small>
             </article>
             <article class="stat-card">
               <span class="stat-icon gold"><i data-lucide="database"></i></span>
@@ -774,7 +824,7 @@
                 </div>
                 <div class="readiness-item done">
                   <span class="readiness-check"><i data-lucide="check"></i></span>
-                  <div><strong>第二卷大纲已就绪</strong><small>卷纲、幕纲和 30 章章纲齐全</small></div>
+                  <div><strong>第一卷大纲已就绪</strong><small>卷纲、幕纲和 100 章章纲齐全</small></div>
                   <span class="badge">可生成</span>
                 </div>
                 <div class="readiness-item warning">
@@ -867,11 +917,11 @@
                 <span class="badge live-badge">连载中</span>
                 <span class="badge locked-badge"><i data-lucide="lock"></i>故事圣经 v12 已锁定</span>
               </div>
-              <p class="page-sub">仙侠 · 300 万字 · 第 2 卷 / 共 5 卷 · 最后更新于 10 分钟前</p>
+              <p class="page-sub">仙侠 · 1000 万字 · 第 1 卷 / 共 30–40 卷（示例前 5 卷） · 最后更新于 10 分钟前</p>
             </div>
             <div class="head-actions">
-              <button class="btn btn-ghost" data-action="edit-bible">
-                <i data-lucide="pencil"></i><span>编辑</span>
+              <button class="btn btn-ghost" type="button" disabled>
+                <i data-lucide="lock"></i><span>已锁定 · 走修改请求</span>
               </button>
               <button class="btn btn-ghost" data-action="check-bible">
                 <i data-lucide="sparkles"></i><span>让 AI 检查</span>
@@ -1112,7 +1162,7 @@
             <aside class="panel settings-category-nav" aria-label="设定分类">
               <div class="settings-category-head">
                 <span class="panel-kicker">设定分类</span>
-                <strong>10 个栏目</strong>
+                <strong>7 个栏目</strong>
               </div>
               <button class="settings-category-item active" data-tab="world"><i data-lucide="globe-2"></i><span>世界规则</span><small>3 层</small></button>
               <button class="settings-category-item" data-tab="characters"><i data-lucide="users"></i><span>人物档案</span><small>12</small></button>
@@ -1120,10 +1170,7 @@
               <button class="settings-category-item" data-tab="map"><i data-lucide="map"></i><span>地图</span><small>3 层</small></button>
               <button class="settings-category-item" data-tab="power"><i data-lucide="zap"></i><span>力量体系</span><small>9 境</small></button>
               <button class="settings-category-item" data-tab="items"><i data-lucide="swords"></i><span>物品功法</span><small>18</small></button>
-              <button class="settings-category-item" data-tab="goldenfinger"><i data-lucide="gem"></i><span>金手指</span><small>1</small></button>
               <button class="settings-category-item" data-tab="timeline"><i data-lucide="history"></i><span>时间线</span><small>26</small></button>
-              <button class="settings-category-item" data-tab="confirmed"><i data-lucide="badge-check"></i><span>已确认设定</span><small>128</small></button>
-              <button class="settings-category-item" data-tab="custom"><i data-lucide="sliders-horizontal"></i><span>自定义字段</span><small>9</small></button>
             </aside>
 
             <div class="settings-content">
@@ -1485,7 +1532,7 @@
                     </div>
                   </div>
                   <div class="field-preview-list" id="custom-field-preview"></div>
-                  <div class="settings-note"><i data-lucide="info"></i><span>这些字段会进入设定详情、筛选、导出和生成上下文，不是普通备注。</span></div>
+                  <div class="settings-note"><i data-lucide="info"></i><span>这些字段会进入设定详情、筛选、导出和后续写作参考，不是普通备注。</span></div>
                 </section>
                 <section class="panel field-safety-panel">
                   <div class="panel-head"><h3>变更安全</h3><span class="badge jade-badge">兼容</span></div>
@@ -1529,26 +1576,26 @@
               <div class="panel-head"><h3>五层结构</h3><span class="badge">全书</span></div>
               <div class="outline-tree">
                 <button class="outline-tree-item root" data-outline-node="book"><i data-lucide="book-open"></i><div><strong>仙途：忘川书</strong><small>全书总纲</small></div></button>
-                <button class="outline-tree-item level-1 active" data-outline-node="volume-2"><i data-lucide="layers-3"></i><div><strong>第二卷 · 血河夜行</strong><small>第 31-60 章</small></div></button>
+                <button class="outline-tree-item level-1 active" data-outline-node="volume-2"><i data-lucide="layers-3"></i><div><strong>第一卷 · 少年出山</strong><small>第 1–100 章 · 当前篇 血河夜行</small></div></button>
                 <button class="outline-tree-item level-2" data-outline-node="act-3"><i data-lucide="panel-top"></i><div><strong>第三幕 · 断臂</strong><small>第 45-53 章</small></div></button>
                 <button class="outline-tree-item level-3" data-outline-node="chapter-48"><i data-lucide="file-text"></i><div><strong>第 48 章</strong><small>一只手也能结印</small></div></button>
                 <button class="outline-tree-item level-4" data-outline-node="scene-1"><i data-lucide="clapperboard"></i><div><strong>场景 1</strong><small>藏起断臂</small></div></button>
                 <button class="outline-tree-item level-4" data-outline-node="scene-2"><i data-lucide="clapperboard"></i><div><strong>场景 2</strong><small>追兵逼近</small></div></button>
               </div>
               <div class="divider"></div>
-              <div class="panel-head"><h3>全书结构</h3><span class="badge">5 卷</span></div>
-              <div class="volume-item active"><span class="volume-index">01</span><div><strong>少年出山</strong><small>第 1-30 章 · 已锁定</small></div><i data-lucide="lock"></i></div>
-              <div class="volume-item"><span class="volume-index">02</span><div><strong>血河夜行</strong><small>第 31-60 章 · 进行中</small></div><span class="status-pill live">47 / 60</span></div>
-              <div class="volume-item"><span class="volume-index">03</span><div><strong>灵界来客</strong><small>第 61-90 章 · 未写</small></div><span class="status-pill">0 / 30</span></div>
-              <div class="volume-item"><span class="volume-index">04</span><div><strong>天门旧梦</strong><small>第 91-120 章 · 未写</small></div><span class="status-pill">0 / 30</span></div>
-              <div class="volume-item"><span class="volume-index">05</span><div><strong>忘川尽头</strong><small>第 121-150 章 · 未写</small></div><span class="status-pill">0 / 30</span></div>
+              <div class="panel-head"><h3>全书结构</h3><span class="badge">30–40 卷（示例前 5 卷）</span></div>
+              <div class="volume-item active"><span class="volume-index">01</span><div><strong>少年出山</strong><small>第 1–100 章 · 进行中</small></div><span class="status-pill live">47 / 100</span></div>
+              <div class="volume-item"><span class="volume-index">02</span><div><strong>天门初开</strong><small>第 101-200 章 · 未写</small></div><span class="status-pill">0 / 100</span></div>
+              <div class="volume-item"><span class="volume-index">03</span><div><strong>灵界来客</strong><small>第 201-300 章 · 未写</small></div><span class="status-pill">0 / 100</span></div>
+              <div class="volume-item"><span class="volume-index">04</span><div><strong>天门旧梦</strong><small>第 301-400 章 · 未写</small></div><span class="status-pill">0 / 100</span></div>
+              <div class="volume-item"><span class="volume-index">05</span><div><strong>忘川尽头</strong><small>第 401-500 章 · 未写</small></div><span class="status-pill">0 / 100</span></div>
               <button class="btn btn-ghost btn-block" data-action="add-volume-draft"><i data-lucide="plus"></i><span>新增一卷</span></button>
             </aside>
 
             <div class="outline-main">
               <div class="panel-head outline-head">
-                <div><span class="panel-kicker">第二卷</span><h2>血河夜行</h2><p>目标：沈砚第一次真正面对血河宗，左臂受伤，忘川书暴露。</p></div>
-                <div class="outline-stats"><span>14 / 30 章</span><span>9.8 万字</span><span class="jade-text">质量 84</span></div>
+                <div><span class="panel-kicker">第一卷</span><h2>少年出山</h2><p>目标：沈砚第一次真正面对血河宗，左臂受伤，忘川书暴露。</p></div>
+                <div class="outline-stats"><span>47 / 100 章</span><span>14.2 万字</span><span class="jade-text">质量 84</span></div>
               </div>
               <div class="chapter-list">
                 <article class="chapter-card done" data-chapter="45">
@@ -1660,6 +1707,22 @@
                 <span class="badge gold-badge">待复核</span>
               </article>
             </div>
+            <div class="panel-head"><h3>第一章候选</h3><span class="badge">方向选择</span></div>
+            <div class="compare-box">
+              <div><span>候选 A · 钩子优先</span><p>残剑割掌，血逆流上碑，碑文里浮出他母亲的名字。</p></div>
+              <div class="alt"><span>候选 B · 人物优先</span><p>沈砚在雨里替陌生人收尸，才发现死者袖口绣着他家的旧纹。</p></div>
+            </div>
+            <div class="quality-dimensions">
+              <div><span>开篇钩子</span><strong class="jade-text">4/5</strong><small>首段有异常事件</small></div>
+              <div><span>主角吸引力</span><strong class="jade-text">4/5</strong><small>行动目标清楚</small></div>
+              <div><span>世界规则</span><strong class="gold-text">3/5</strong><small>天门代价需再明确</small></div>
+              <div><span>核心冲突</span><strong class="jade-text">4/5</strong><small>追兵与残剑同时出现</small></div>
+              <div><span>读者承诺</span><strong class="jade-text">4/5</strong><small>升级与记忆代价成立</small></div>
+              <div><span>章末追读</span><strong class="gold-text">3/5</strong><small>候选 B 的亲属线索更强</small></div>
+            </div>
+            <label class="check-row"><input type="radio" name="golden-candidate" checked><span>已选定候选 B · 人物优先；六维评审达标后才能锁定</span></label>
+            <div class="settings-note"><i data-lucide="lock"></i><span>作者选定方向后才能锁定黄金三章；锁定后进入风格基线和已确认设定，后续修改走平行版本。</span></div>
+            <button class="btn btn-primary btn-block" type="button" disabled title="六维评审全部达到 4/5 后才能锁定"><i data-lucide="lock"></i><span>六维评审未达标 · 暂不可锁定</span></button>
           </section>
           </div>
 
@@ -1686,11 +1749,11 @@
           <div class="outline-view" data-outline-view-panel="tension">
             <article class="panel tension-panel">
               <div class="panel-head">
-                <div><span class="panel-kicker">张力曲线</span><h3>第二卷 · 血河夜行</h3></div>
-                <span class="badge">第 31-60 章</span>
+                <div><span class="panel-kicker">张力曲线</span><h3>第一卷 · 少年出山</h3></div>
+                <span class="badge">当前篇 · 第 31–60 章</span>
               </div>
               <div class="tension-chart">
-                <svg viewBox="0 0 900 260" role="img" aria-label="第二卷张力曲线">
+                <svg viewBox="0 0 900 260" role="img" aria-label="第一卷张力曲线">
                   <path d="M20 210 L90 190 L160 200 L230 150 L300 170 L370 120 L440 145 L510 90 L580 115 L650 70 L720 100 L790 55 L860 80" fill="none" stroke="#b23a2b" stroke-width="3"/>
                   <path d="M20 210 L90 190 L160 200 L230 150 L300 170 L370 120 L440 145 L510 90 L580 115 L650 70 L720 100 L790 55 L860 80 L860 240 L20 240 Z" fill="#b23a2b" opacity=".07"/>
                   <line x1="510" y1="30" x2="510" y2="240" stroke="#2f6f5e" stroke-dasharray="5 5"/>
@@ -1808,10 +1871,10 @@
           </div>
           <div class="writing-shell">
             <aside class="panel chapter-sidebar">
-              <div class="panel-head"><div><span class="panel-kicker">第二卷</span><h3>血河夜行</h3></div><span class="badge">14 / 30</span></div>
+                <div class="panel-head"><div><span class="panel-kicker">第一卷</span><h3>少年出山</h3></div><span class="badge">47 / 100</span></div>
               <select class="select chapter-volume-nav" aria-label="切换卷">
                 <option>第一卷 · 少年出山</option>
-                <option selected>第二卷 · 血河夜行</option>
+                <option selected>第一卷 · 少年出山</option>
                 <option>第三卷 · 灵界来客</option>
                 <option>第四卷 · 天门旧梦</option>
                 <option>第五卷 · 忘川尽头</option>
@@ -1852,7 +1915,7 @@
 
               <div class="editor-paper" contenteditable="true" spellcheck="false">
                 <div class="chapter-heading">
-                  <span>第 47 章</span>
+                  <span>第 47 章 · <em id="editor-chapter-status" class="chapter-status-text">写作中</em></span>
                   <h1>断臂之后</h1>
                 </div>
                 <p>血从袖口滴下来，落在青石板上，像一串没有写完的省略号。</p>
@@ -1883,6 +1946,7 @@
             <aside class="writing-notes">
               <div class="notes-tabs">
                 <button class="note-tab active" data-note-tab="advice">编辑建议 <span>3</span></button>
+                <button class="note-tab" data-note-tab="context">本章参考 <span>必用</span></button>
                 <button class="note-tab" data-note-tab="continuity">连续性 <span class="alert-count">2</span></button>
                 <button class="note-tab" data-note-tab="threads">伏笔 <span>4</span></button>
                 <button class="note-tab" data-note-tab="facts">事实 <span class="alert-count">4</span></button>
@@ -1890,6 +1954,25 @@
                 <button class="note-tab" data-note-tab="quality">质量 <span>84</span></button>
                 <button class="note-tab" data-note-tab="generation">生成</button>
                 <button class="note-tab" data-note-tab="versions">版本 <span>3</span></button>
+              </div>
+              <div class="note-panel" data-note-panel="context">
+                <article class="note-card">
+                  <div class="note-head"><span class="badge cinnabar-text">必用</span><small>不可移除</small></div>
+                  <h4>故事圣经 · 世界铁律</h4>
+                  <p>来源：故事圣经 v3 · 记忆是天门唯一贡品。装入本章上下文，预算不足时也不能移除。</p>
+                </article>
+                <article class="note-card">
+                  <div class="note-head"><span class="badge">场景参考</span><small>按当前场景加入</small></div>
+                  <h4>左臂骨折 · 顾青 · 血河渡口</h4>
+                  <p>来源：第 47 章事实卡、人物状态、地图节点。按当前场景检索进入，附来源章和有效期。</p>
+                </article>
+                <div class="settings-note"><i data-lucide="list-filter"></i><span>资料取舍：备用章节 3 条未采用；风格样本保留 2 条；必用资料 7 条已固定。</span></div>
+                <div class="compare-box">
+                  <div><span>修订前</span><p>他抬起左手，强行结印。</p></div>
+                  <div class="alt"><span>修订后</span><p>他把左手压在膝上，只用右手掐诀，骨缝里的钝痛让他停了半拍。</p></div>
+                </div>
+                <div class="settings-note"><i data-lucide="route"></i><span>生成轨迹：draft 2m14s · continuity 38s · style 21s · revise 1m02s · 总费用约 0.42 元</span></div>
+                <div class="settings-note"><i data-lucide="git-commit-horizontal"></i><span>检查点：context 完成 · draft 完成 · verify 待重试；失败可从 verify 继续，不重写草稿。</span></div>
               </div>
               <div class="note-panel active" data-note-panel="advice">
                 <article class="note-card">
@@ -1945,16 +2028,16 @@
                 </article>
               </div>
               <div class="note-panel" data-note-panel="facts">
-                <article class="note-card alert-note">
+                <article class="note-card alert-note" data-fact-status="pending">
                   <div class="note-head"><span class="badge alert-badge">待确认</span><small>第 47 章</small></div>
                   <h4>沈砚左臂骨折，不能双手结印</h4>
-                  <p>来源句：“他试着抬起左手，骨头里立刻传来一阵钝痛。”确认后会进入后续生成上下文。</p>
+                  <p>来源句：“他试着抬起左手，骨头里立刻传来一阵钝痛。”确认后只改变事实状态，不会直接写入已确认设定。</p>
                   <div class="note-actions">
                     <button class="text-btn small" data-action="decide-fact" data-decision="confirmed">确认</button>
                     <button class="text-btn small" data-action="decide-fact" data-decision="rejected">驳回</button>
                   </div>
                 </article>
-                <article class="note-card">
+                <article class="note-card" data-fact-status="pending">
                   <div class="note-head"><span class="badge gold-badge">待确认</span><small>第 47 章</small></div>
                   <h4>顾青看见了忘川书的一角</h4>
                   <p>来源句：“顾青的眼神变了。”需要作者确认他是否真的看见，还是只是察觉沈砚在隐瞒。</p>
@@ -1964,8 +2047,18 @@
                   </div>
                 </article>
                 <div class="note-summary">
-                  <span>本章已确认 12 条</span>
+                  <div><strong id="fact-summary-title">本章事实 · 12 条已确认待提交</strong><small id="fact-summary-note">2 条待确认，章节仍为写作中</small></div>
                   <button class="text-btn small" data-page="settings">查看已确认设定</button>
+                </div>
+                <div class="fact-submit-gate" id="fact-submit-gate">
+                  <div>
+                    <strong>提交本章事实</strong>
+                    <small id="fact-submit-reason">先批准本章，再确认剩余 2 条事实。</small>
+                  </div>
+                  <div class="fact-submit-actions">
+                    <button class="btn btn-ghost btn-small" type="button" data-action="approve-current-chapter">批准本章</button>
+                    <button class="btn btn-primary btn-small" type="button" data-action="submit-chapter-facts" disabled>提交本章事实</button>
+                  </div>
                 </div>
               </div>
               <div class="note-panel" data-note-panel="characters">
@@ -2065,6 +2158,7 @@
                 <button class="seg">自定义</button>
                 <button class="seg">全本</button>
               </div>
+              <div class="settings-note"><i data-lucide="layers-3"></i><span>任务层级：全书父任务 → 卷子任务 → 章工作项 → 步骤；失败章节单独重试，已确认设定提交串行，成本超限硬停。</span></div>
               <div class="two-col-fields">
                 <div><label class="field-label">起始章节</label><input class="input" value="第 48 章"></div>
                 <div><label class="field-label">结束章节</label><input class="input" value="第 60 章"></div>
@@ -2084,7 +2178,7 @@
               </div>
               <div class="batch-readiness">
                 <div class="panel-head"><h3>生成前准备度</h3><span class="badge jade-badge">5 / 6</span></div>
-                <div class="readiness-item done"><span class="readiness-check"><i data-lucide="check"></i></span><div><strong>全书总纲已确认</strong><small>第二卷卷纲已锁定</small></div></div>
+                <div class="readiness-item done"><span class="readiness-check"><i data-lucide="check"></i></span><div><strong>全书总纲已确认</strong><small>第一卷卷纲已锁定</small></div></div>
                 <div class="readiness-item done"><span class="readiness-check"><i data-lucide="check"></i></span><div><strong>本区间章纲完整</strong><small>13 / 13 章</small></div></div>
                 <div class="readiness-item done"><span class="readiness-check"><i data-lucide="check"></i></span><div><strong>模型 Key 可用</strong><small>deepseek-chat</small></div></div>
                 <div class="readiness-item warning"><span class="readiness-check"><i data-lucide="alert-triangle"></i></span><div><strong>第 50 章有关键人物死亡</strong><small>高风险，必须逐章确认</small></div></div>
@@ -2101,7 +2195,7 @@
 
             <div class="batch-tasks">
               <article class="panel task-panel">
-                <div class="panel-head"><div><span class="panel-kicker">运行中</span><h3>第二卷 · 第 48-60 章</h3></div><span class="badge live-badge">62%</span></div>
+                <div class="panel-head"><div><span class="panel-kicker">运行中</span><h3>第一卷 · 第 48-60 章</h3></div><span class="badge live-badge">62%</span></div>
                 <div class="progress"><span style="width:62%"></span></div>
                 <div class="task-meta"><span>已完成 8 / 13 章</span><span>预计 24 分钟</span><span>预估 $0.42</span></div>
                 <div class="dag">
@@ -2120,9 +2214,9 @@
               </article>
 
               <article class="panel task-panel">
-                <div class="panel-head"><div><span class="panel-kicker">排队中</span><h3>第二卷 · 连续性审计</h3></div><span class="badge">等待中</span></div>
+                <div class="panel-head"><div><span class="panel-kicker">排队中</span><h3>第一卷 · 连续性审计</h3></div><span class="badge">等待中</span></div>
                 <div class="progress"><span style="width:0%"></span></div>
-                <div class="task-meta"><span>依赖第二卷生成完成</span><span>预计 68,000 token</span></div>
+                <div class="task-meta"><span>依赖第一卷生成完成</span><span>预计 68,000 token</span></div>
               </article>
 
               <article class="panel task-panel">
@@ -2135,7 +2229,7 @@
             <section class="panel task-history">
               <div class="panel-head"><div><span class="panel-kicker">任务历史</span><h3>最近 7 天</h3></div><button class="text-btn small" data-action="export-task-history">导出</button></div>
               <div class="task-history-list">
-                <div><span>今天 10:42</span><strong>第二卷 · 第 48-60 章</strong><small>运行中 · 8 / 13 章</small></div>
+                <div><span>今天 10:42</span><strong>第一卷 · 第 48-60 章</strong><small>运行中 · 8 / 13 章</small></div>
                 <div><span>昨天 21:08</span><strong>第一卷 · 完本审计</strong><small>已完成 · 2 个待确认项</small></div>
                 <div><span>昨天 18:06</span><strong>第 47 章 · 连续性审计</strong><small>已完成 · 1 个问题已处理</small></div>
               </div>
@@ -2176,7 +2270,7 @@
                     <div class="review-actions">
                       <button class="btn btn-ghost btn-small" data-page="changes">拉平行版本</button>
                       <button class="btn btn-ghost btn-small" data-action="reject-review">驳回重生成</button>
-                      <button class="btn btn-ghost btn-small" data-action="confirm-action" data-confirm-title="忽略高风险问题" data-confirm-message="忽略后仍会保留问题记录，但不会阻塞任务继续。" data-confirm-label="记录原因并忽略" data-confirm-reason="true" data-confirm-success="问题已忽略，原因已记录">忽略并记录原因</button>
+                      <span class="badge alert-badge">高风险不可忽略</span>
                     </div>
                   </article>
                 </div>
@@ -2186,7 +2280,7 @@
                 <div class="review-rule"><i data-lucide="check-check"></i><div><strong>低风险可批量批准</strong><small>无连续性错误、无关键人物死亡、质量 ≥ 80</small></div></div>
                 <div class="review-rule"><i data-lucide="alert-triangle"></i><div><strong>高风险必须逐章看</strong><small>关键人物死亡、金手指升级、改已确认设定</small></div></div>
                 <div class="review-rule"><i data-lucide="lock"></i><div><strong>卷末必须人工确认</strong><small>自动通过也只到卷边界</small></div></div>
-                <div class="settings-note"><i data-lucide="info"></i><span>批准后会锁定章节并写入已确认设定；送写作台不会锁定。</span></div>
+                <div class="settings-note"><i data-lucide="info"></i><span>批准后只锁定章节；事实要逐条确认，再由作者提交本章事实，才会更新已确认设定。</span></div>
               </aside>
             </div>
           </div>
@@ -2194,7 +2288,7 @@
           <div class="batch-view" data-batch-view-panel="report">
             <div class="report-layout">
               <article class="panel report-summary">
-                <div class="panel-head"><div><span class="panel-kicker">任务报告</span><h3>第二卷 · 第 48-60 章</h3></div><span class="badge jade-badge">已完成</span></div>
+                <div class="panel-head"><div><span class="panel-kicker">任务报告</span><h3>第一卷 · 第 48-60 章</h3></div><span class="badge jade-badge">已完成</span></div>
                 <div class="report-stat-grid">
                   <div><span>完成章节</span><strong>13 / 13</strong><small>0 章失败</small></div>
                   <div><span>总字数</span><strong>38,420</strong><small>平均 2,955 字</small></div>
@@ -2215,7 +2309,7 @@
                   <ul class="report-list">
                     <li>第 50 章的关键人物死亡需要作者逐章确认。</li>
                     <li>第 53 章回收左臂伤势，避免超过计划有效期。</li>
-                    <li>第二卷结束后先做卷级审计，再进入第三卷大纲。</li>
+                    <li>第一卷结束后先做卷级审计，再进入第三卷大纲。</li>
                   </ul>
                 </div>
               </article>
@@ -2250,6 +2344,7 @@
             <select class="select"><option>全部状态</option><option>等待确认</option><option>已应用</option><option>已驳回</option></select>
             <select class="select"><option>全部风险</option><option>安全</option><option>可修复</option><option>结构性冲突</option></select>
           </div>
+          <div class="settings-note"><i data-lucide="git-branch"></i><span>版本记录：章节、大纲、已确认设定、快照、合并和回滚都会留下版本。这里只逐项选择要带过去的内容，不做整条分支自动覆盖。</span></div>
 
           <div class="change-layout">
             <div class="change-main">
@@ -2260,7 +2355,7 @@
                 </div>
                 <div class="change-meta"><span>发起人：林见鹿</span><span>时间：今天 14:08</span><span>原因：卷三需要更强的反派动机</span><span>目标分支：主线</span></div>
                 <div class="change-actions">
-                  <button class="btn btn-ghost btn-small" data-action="confirm-action" data-confirm-title="应用修改请求 CR-024" data-confirm-message="安全项直接应用；可修复项会生成改写建议；结构性冲突仍需拉平行版本。" data-confirm-label="确认应用" data-confirm-reason="true" data-confirm-success="修改请求已应用，已重新校验"><i data-lucide="check"></i>应用修改</button>
+                  <button class="btn btn-ghost btn-small" type="button" disabled><i data-lucide="lock"></i>结构性冲突不可直接应用</button>
                   <button class="btn btn-ghost btn-small" data-action="undo-change"><i data-lucide="undo-2"></i>撤销上次修改</button>
                 </div>
                 <div class="diff-box">
@@ -2324,10 +2419,21 @@
 
               <article class="panel compare-panel">
                 <div class="panel-head"><h3>并排比较</h3><span class="badge">第 18 章</span></div>
+                <div class="segmented" aria-label="比较对象">
+                  <button class="seg active" type="button">正文</button>
+                  <button class="seg" type="button">事实</button>
+                  <button class="seg" type="button">设定</button>
+                  <button class="seg" type="button">大纲</button>
+                  <button class="seg" type="button">伏笔</button>
+                </div>
                 <div class="compare-box">
                   <div><span>主线</span><p>“你活着，比什么都重要。”掌门把他从雪地里抱起来。</p></div>
                   <div class="alt"><span>平行版本</span><p>“你身上……有他的味道。”掌门把他从雪地里抱起来，手指在他袖口停了一瞬。</p></div>
                 </div>
+                <div class="settings-note"><i data-lucide="git-pull-request-arrow"></i><span>摘取按对象逐项确认：正文、事实、设定、大纲、伏笔分别检测冲突；高风险变更必须二次确认。</span></div>
+                <label class="check-row"><input type="checkbox" checked><span>摘取：掌门动机改写（正文）</span></label>
+                <label class="check-row"><input type="checkbox"><span>摘取：掌门与血河宗关系（事实）</span></label>
+                <label class="check-row"><input type="checkbox"><span>摘取：卷三反派动机（大纲）</span></label>
                 <button class="btn btn-ghost btn-block" data-action="full-compare"><i data-lucide="columns-2"></i><span>查看完整对比</span></button>
                 <button class="btn btn-primary btn-block" data-action="confirm-action" data-confirm-title="选择性摘取到主线" data-confirm-message="只摘取平行版本中的掌门动机，不覆盖其他已写章节。" data-confirm-label="确认摘取" data-confirm-reason="true" data-confirm-success="已把平行版本的掌门动机摘取回主线，等待影响分析"><i data-lucide="git-pull-request-arrow"></i><span>选择性摘取到主线</span></button>
               </article>
@@ -2465,10 +2571,10 @@
             </section>
 
             <aside class="panel export-preview-panel">
-              <div class="panel-head"><div><span class="panel-kicker">目录预览</span><h3>仙途：忘川书</h3></div><span class="badge">第二卷</span></div>
+              <div class="panel-head"><div><span class="panel-kicker">目录预览</span><h3>仙途：忘川书</h3></div><span class="badge">第一卷</span></div>
               <div class="export-book-preview">
-                <div class="export-cover"><span>卷二</span><strong>血河<br>夜行</strong><em>断臂之后</em></div>
-                <div class="export-book-meta"><strong>仙途：忘川书</strong><small>林见鹿 · 仙侠 · 约 1,284,500 字</small><small>第二卷 · 第 31-60 章</small></div>
+                <div class="export-cover"><span>卷一</span><strong>少年<br>出山</strong><em>断臂之后</em></div>
+                <div class="export-book-meta"><strong>仙途：忘川书</strong><small>林见鹿 · 仙侠 · 约 1,284,500 字</small><small>第一卷 · 第 1–100 章</small></div>
               </div>
               <div class="export-toc">
                 <div><span>第 45 章</span><strong>血河渡口</strong><small>3,120 字</small></div>
@@ -2489,7 +2595,7 @@
             <section class="panel export-history-panel">
               <div class="panel-head"><div><span class="panel-kicker">导出历史</span><h3>最近生成的文件</h3></div><button class="text-btn small" data-action="refresh-export-history">刷新</button></div>
               <div class="export-history-list">
-                <div class="export-history-row"><i data-lucide="file-text"></i><div><strong>仙途：忘川书_第二卷.txt</strong><small>今天 10:42 · 9.8 MB · 7 天后过期</small></div><button class="btn btn-ghost btn-small" data-action="download-export">下载</button></div>
+                <div class="export-history-row"><i data-lucide="file-text"></i><div><strong>仙途：忘川书_第一卷.txt</strong><small>今天 10:42 · 9.8 MB · 7 天后过期</small></div><button class="btn btn-ghost btn-small" data-action="download-export">下载</button></div>
                 <div class="export-history-row"><i data-lucide="file-code-2"></i><div><strong>仙途：忘川书_全书.md</strong><small>昨天 21:08 · 12.4 MB · 已过期</small></div><button class="btn btn-ghost btn-small" data-action="reexport-history">重新导出</button></div>
                 <div class="export-history-row"><i data-lucide="file-type-2"></i><div><strong>仙途：忘川书_投稿版.docx</strong><small>10 月 30 日 · 8.1 MB · 已下载</small></div><button class="btn btn-ghost btn-small" data-action="download-export">下载</button></div>
               </div>
@@ -2535,7 +2641,7 @@
                 <div><label class="field-label">题材包</label><select class="select"><option>仙侠 · 修真文明</option><option>历史 · 穿越争霸</option><option>都市 · 资本</option></select></div>
                 <div><label class="field-label">目标平台</label><select class="select"><option>起点中文网</option><option>番茄小说</option><option>通用网文</option></select></div>
                 <div><label class="field-label">目标读者</label><input class="input" value="偏好长线伏笔与升级爽感的仙侠读者"></div>
-                <div><label class="field-label">规模</label><select class="select"><option>长篇 · 100 到 300 万字</option><option>超长篇 · 500 万字以上</option></select></div>
+                <div><label class="field-label">规模</label><select class="select"><option>长篇 · 100 到 300 万字</option><option>超长篇 · 1000 万字以上</option></select></div>
                 <div><label class="field-label">章节字数</label><input class="input" value="3000"></div>
                 <div><label class="field-label">更新节奏</label><select class="select"><option>日更</option><option>隔日更</option><option>周更</option></select></div>
                 <div><label class="field-label">状态</label><select class="select"><option>连载中</option><option>筹备中</option><option>暂停</option><option>已完本</option></select></div>
@@ -2559,7 +2665,7 @@
                   <button data-action="resume-work"><i data-lucide="play"></i><div><strong>恢复连载</strong><small>从只读状态回到可编辑状态</small></div><i data-lucide="chevron-right"></i></button>
                   <button data-action="confirm-action" data-confirm-title="归档作品" data-confirm-message="归档后从书架隐藏，随时可以恢复。" data-confirm-label="归档作品" data-confirm-success="作品已归档，可在“已归档”中恢复"><i data-lucide="archive"></i><div><strong>归档作品</strong><small>从书架隐藏，随时可以恢复</small></div><i data-lucide="chevron-right"></i></button>
                   <button data-action="confirm-action" data-confirm-title="移入回收站" data-confirm-message="作品将移入回收站，30 天内可以恢复。" data-confirm-label="移入回收站" data-confirm-reason="true" data-confirm-success="作品已移入回收站，30 天内可以恢复"><i data-lucide="trash-2"></i><div><strong>移入回收站</strong><small>30 天内可以恢复</small></div><i data-lucide="chevron-right"></i></button>
-                  <button class="danger-action" data-action="confirm-action" data-confirm-title="永久删除作品" data-confirm-message="永久删除后不能恢复，所有章节、设定和版本都会被删除。" data-confirm-label="永久删除" data-confirm-reason="true" data-confirm-success="作品已永久删除"><i data-lucide="triangle-alert"></i><div><strong>永久删除</strong><small>不可恢复，必须二次确认</small></div><i data-lucide="chevron-right"></i></button>
+                  <button class="danger-action" type="button" disabled><i data-lucide="triangle-alert"></i><div><strong>永久删除</strong><small>需先完成导出；当前未导出，删除已禁用</small></div><i data-lucide="lock"></i></button>
                 </div>
               </section>
             </aside>
@@ -2603,8 +2709,8 @@
           <div class="page-head">
             <div>
               <p class="eyebrow">界面状态</p>
-              <h1>同一套页面，七种状态</h1>
-              <p class="page-sub">正常、空、加载、错误、锁定、只读、冲突，都必须有明确出口。</p>
+              <h1>同一套页面，十一种状态</h1>
+              <p class="page-sub">正常、空、加载、错误、禁用、权限不足、部分成功、长内容、锁定、只读、冲突，都必须有明确出口。</p>
             </div>
             <button class="btn btn-ghost" data-page="account-settings"><i data-lucide="arrow-left"></i><span>返回账号设置</span></button>
           </div>
@@ -2639,6 +2745,34 @@
               <div class="state-demo-conflict"><i data-lucide="shield-alert"></i><strong>左臂骨折，但正文出现双手结印</strong><p>已确认设定要求第 53 章前不能双手结印。</p><button class="btn btn-ghost btn-small" data-page="writing">去写作台处理</button></div>
             </article>
           </div>
+          <article class="panel">
+            <div class="panel-head"><div><span class="panel-kicker">逐页状态规格</span><h3>每页需要的状态，不是一张全局遮罩</h3></div><span class="badge">18 页</span></div>
+            <div class="state-matrix-wrap">
+              <table class="state-matrix">
+                <thead><tr><th>页面</th><th>必需状态</th><th>已实现状态</th><th>证据</th></tr></thead>
+                <tbody>
+                  <tr><td>auth</td><td>normal / loading / error / disabled / permission</td><td>normal / error / permission</td><td>页面状态 + 登录状态演示</td></tr>
+                  <tr><td>dashboard</td><td>normal / empty / loading / error / disabled / long</td><td>normal / empty / error / long</td><td>页面内状态面板</td></tr>
+                  <tr><td>new-project</td><td>normal / loading / error / partial / disabled / long</td><td>normal / error / partial / long</td><td>向导、旧稿导入、设定导入</td></tr>
+                  <tr><td>work-overview</td><td>normal / loading / error / readonly / archived / long</td><td>normal / empty / error / partial / readonly / long</td><td>页面内状态面板</td></tr>
+                  <tr><td>bible</td><td>normal / loading / error / empty / locked / proposal</td><td>normal / empty / error / partial / locked / long</td><td>锁定、补全提案、来源状态</td></tr>
+                  <tr><td>settings</td><td>normal / loading / error / empty / disabled / locked / long</td><td>normal / empty / error / locked / long</td><td>7 栏、锁定、长列表</td></tr>
+                  <tr><td>outline</td><td>normal / loading / error / empty / locked / partial</td><td>normal / empty / error / locked / partial</td><td>树、看板、张力、黄金三章</td></tr>
+                  <tr><td>foreshadows</td><td>normal / loading / error / empty / disabled / long</td><td>normal / empty / error / partial / long</td><td>伏笔账本与风险检查</td></tr>
+                  <tr><td>writing</td><td>normal / loading / error / partial / conflict / long</td><td>normal / error / partial / conflict / long</td><td>本章参考、事实提交门禁</td></tr>
+                  <tr><td>batch</td><td>normal / loading / error / partial / disabled / long</td><td>normal / error / partial / long</td><td>父任务、卷任务、章节失败</td></tr>
+                  <tr><td>changes</td><td>normal / loading / error / conflict / partial / disabled</td><td>normal / conflict / partial / error</td><td>影响分析、版本比较、摘取</td></tr>
+                  <tr><td>export-publish</td><td>normal / loading / error / empty / partial / disabled</td><td>normal / empty / error / partial / disabled</td><td>导出任务、发布检查</td></tr>
+                  <tr><td>work-settings</td><td>normal / loading / error / disabled / permission / readonly</td><td>normal / error / disabled / permission / readonly</td><td>删除门禁、作品状态</td></tr>
+                  <tr><td>entity-detail</td><td>normal / loading / error / empty / locked / permission / long</td><td>normal / empty / error / locked / permission / long</td><td>档案、关系、状态历史</td></tr>
+                  <tr><td>account-settings</td><td>normal / loading / error / disabled / permission / partial</td><td>normal / error / permission</td><td>Key、会话、导出与注销</td></tr>
+                  <tr><td>help</td><td>normal / empty / error / permission</td><td>normal / empty / error / permission</td><td>快捷键、术语、FAQ</td></tr>
+                  <tr><td>legal</td><td>normal / error / empty / permission / readonly</td><td>normal / error / empty / permission / readonly</td><td>协议、隐私、AI 标识</td></tr>
+                  <tr><td>states</td><td>normal + 10 类页面状态</td><td>全部 11 类</td><td>顶栏演示模式与逐页状态面板</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
         </section>
 
         <section class="page auth-page" data-page="auth">
@@ -2793,7 +2927,7 @@
               <div class="data-action-list">
                 <div><i data-lucide="download"></i><div><strong>导出账号数据</strong><small>作品、设定、正文、版本和修改记录</small></div><button class="btn btn-ghost btn-small" data-action="export-account-data">导出</button></div>
                 <div><i data-lucide="shield-check"></i><div><strong>隐私与 AI 内容说明</strong><small>查看数据范围、模型调用和生成内容标识</small></div><button class="btn btn-ghost btn-small" data-page="legal">查看</button></div>
-                <div class="danger-row"><i data-lucide="trash-2"></i><div><strong>删除账号</strong><small>30 天内可以恢复，过期后永久删除</small></div><button class="btn btn-ghost btn-small danger-button" data-action="confirm-action" data-confirm-title="删除账号" data-confirm-message="账号将进入 30 天恢复期，过期后永久删除。" data-confirm-label="删除账号" data-confirm-reason="true" data-confirm-success="账号已进入 30 天恢复期">删除</button></div>
+                <div class="danger-row"><i data-lucide="trash-2"></i><div><strong>删除账号</strong><small>需先完成数据导出；30 天内可恢复，过期后永久删除</small></div><button class="btn btn-ghost btn-small danger-button" type="button" disabled>先导出再删除</button></div>
               </div>
             </section>
 
@@ -2834,9 +2968,9 @@
               </div>
               <div class="head-actions entity-page-actions">
                 <button class="btn btn-ghost" data-action="copy-entity"><i data-lucide="copy"></i><span>复制档案</span></button>
-                <button class="btn btn-ghost" data-action="add-entity-alias"><i data-lucide="tag"></i><span>添加别名</span></button>
-                <button class="btn btn-ghost" data-action="delete-entity-entry"><i data-lucide="trash-2"></i><span>删除条目</span></button>
-                <button class="btn btn-primary" id="entity-page-edit" data-action="edit-entity-profile"><i data-lucide="pencil"></i><span>编辑档案</span></button>
+                <button class="btn btn-ghost" type="button" disabled title="已锁定档案的别名修改需走修改请求"><i data-lucide="lock"></i><span>已锁定 · 别名需修改请求</span></button>
+                <button class="btn btn-ghost" type="button" disabled><i data-lucide="lock"></i><span>已锁定 · 删除需修改请求</span></button>
+                <button class="btn btn-primary" type="button" disabled><i data-lucide="lock"></i><span>已锁定 · 编辑需修改请求</span></button>
               </div>
             </div>
           </div>
@@ -2940,10 +3074,10 @@
       <div class="search-command-body">
         <span class="panel-kicker">快速前往</span>
         <div class="search-result-group">
-          <button data-page="work-overview"><i data-lucide="book-open"></i><div><strong>仙途：忘川书</strong><small>作品 · 第 2 卷 · 血河夜行</small></div><kbd>↵</kbd></button>
+          <button data-page="work-overview"><i data-lucide="book-open"></i><div><strong>仙途：忘川书</strong><small>作品 · 第 1 卷 · 少年出山</small></div><kbd>↵</kbd></button>
           <button data-page="bible"><i data-lucide="book-marked"></i><div><strong>故事圣经</strong><small>九卡 · v12 · 已锁定</small></div><kbd>↵</kbd></button>
           <button data-page="settings"><i data-lucide="users"></i><div><strong>沈砚</strong><small>人物 · 主角 · 左臂骨折</small></div><kbd>↵</kbd></button>
-          <button data-page="outline"><i data-lucide="list-tree"></i><div><strong>第 48 章 · 一只手也能结印</strong><small>大纲 · 第二卷 · 第三幕</small></div><kbd>↵</kbd></button>
+          <button data-page="outline"><i data-lucide="list-tree"></i><div><strong>第 48 章 · 一只手也能结印</strong><small>大纲 · 第一卷 · 第三幕</small></div><kbd>↵</kbd></button>
         </div>
         <span class="panel-kicker">势力与地图</span>
         <div class="search-result-group">
@@ -2977,7 +3111,7 @@
       </button>
       <button class="notification-item" data-page="batch">
         <span class="notification-icon gold"><i data-lucide="layers-3"></i></span>
-        <div><strong>批量任务有 3 章待审核</strong><small>第二卷 · 8 分钟前</small><p>第 48、49、50 章已生成，等待作者确认。</p></div>
+        <div><strong>批量任务有 3 章待审核</strong><small>第一卷 · 8 分钟前</small><p>第 48、49、50 章已生成，等待作者确认。</p></div>
         <span class="badge gold-badge">待审核</span>
       </button>
       <button class="notification-item" data-page="changes">
@@ -2995,6 +3129,10 @@
     <button class="chip" data-demo-state="empty">空</button>
     <button class="chip" data-demo-state="loading">加载</button>
     <button class="chip" data-demo-state="error">错误</button>
+        <button class="chip" data-demo-state="disabled">禁用</button>
+        <button class="chip" data-demo-state="permission">权限不足</button>
+        <button class="chip" data-demo-state="partial">部分成功</button>
+        <button class="chip" data-demo-state="long">长内容</button>
     <button class="chip" data-demo-state="locked">锁定</button>
     <button class="chip" data-demo-state="readonly">只读</button>
     <button class="chip" data-demo-state="conflict">冲突</button>
@@ -3095,7 +3233,7 @@
         </div>
         <div class="setting-type-hint" id="setting-type-hint">
           <i data-lucide="info"></i>
-          <span>世界规则会参与后续生成和连续性检查；草稿不会立即进入生成上下文。</span>
+          <span>世界规则会参与后续生成和连续性检查；草稿不会立即进入后续写作参考。</span>
         </div>
         <div class="setting-create-error" id="setting-create-error" hidden></div>
       </form>
@@ -3299,8 +3437,8 @@
         <div class="modal-body copy-work-body">
           <label class="check-row"><input type="checkbox" checked data-copy-part="settings"><span>设定与故事圣经</span></label>
           <label class="check-row"><input type="checkbox" checked data-copy-part="outline"><span>大纲</span></label>
-          <label class="check-row"><input type="checkbox" checked data-copy-part="chapters"><span>正文</span></label>
-          <label class="check-row"><input type="checkbox" checked data-copy-part="versions"><span>版本与修改记录</span></label>
+          <label class="check-row"><input type="checkbox" data-copy-part="chapters"><span>正文</span></label>
+          <label class="check-row"><input type="checkbox" data-copy-part="versions"><span>版本与修改记录</span></label>
         </div>
         <div class="modal-actions">
           <button class="btn btn-ghost" type="button" data-action="close-copy-work">取消</button>
@@ -3455,9 +3593,13 @@
             <label class="field-label" for="outline-node-status">状态</label>
             <select class="select" id="outline-node-status">
               <option>已规划</option>
-              <option>进行中</option>
+              <option>写作中</option>
               <option>待审</option>
+              <option>要求修改</option>
+              <option>已批准</option>
               <option>已锁定</option>
+              <option>已发布</option>
+              <option>已驳回</option>
             </select>
           </div>
         </div>

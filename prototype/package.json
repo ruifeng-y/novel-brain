@@ -1,0 +1,11 @@
+{
+  "name": "novelbrain-prototype",
+  "private": true,
+  "scripts": {
+    "capture:screens": "node scripts/capture-screenshots.mjs",
+    "test:parity": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.64.1"
+  }
+}

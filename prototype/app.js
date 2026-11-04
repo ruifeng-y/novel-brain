@@ -3039,7 +3039,7 @@ const entityProfiles = {
       { label: "叙事计划", value: "伏笔、揭示和信息差" },
     ],
     knowledgeTitle: "约束范围",
-    knowledgeHint: "哪些事实必须进入生成上下文",
+    knowledgeHint: "哪些事实必须进入后续写作参考",
     knowledge: [
       {
         state: "必须遵守",
@@ -3579,8 +3579,10 @@ function setEntryMode(mode) {
   });
   const wizard = document.querySelector('[data-entry-view="wizard"]');
   const importView = document.querySelector('[data-entry-view="import"]');
-  if (wizard) wizard.hidden = mode === "import";
+  const settingsImportView = document.querySelector('[data-entry-view="settings-import"]');
+  if (wizard) wizard.hidden = mode === "import" || mode === "settings";
   if (importView) importView.hidden = mode !== "import";
+  if (settingsImportView) settingsImportView.hidden = mode !== "settings";
   if (mode === "blank") {
     const idea = document.getElementById("idea");
     const title = document.getElementById("work-title");
@@ -3593,7 +3595,9 @@ function setEntryMode(mode) {
   } else if (mode === "idea") {
     setWizardStep(1);
   }
-  if (mode !== "import") {
+  if (mode === "settings") {
+    showToast("设定导入：部分或完整设定都可以先识别再确认");
+  } else if (mode !== "import") {
     showToast(
       mode === "idea"
         ? "从一句话开始，先把灵感写下来"
@@ -3644,25 +3648,14 @@ function generateSettingProposal() {
   card.innerHTML = `
     <div class="panel-head"><div><span class="panel-kicker">AI 设定提案</span><h3>新增「血河旧案证人」</h3></div><span class="badge gold-badge">待确认</span></div>
     <p>建议新增一名血河宗旧案证人，用于第 50 章的关键人物死亡与卷三冲突。</p>
-    <div class="button-row"><button class="btn btn-ghost btn-small" data-action="dismiss-setting-proposal">放弃</button><button class="btn btn-primary btn-small" data-action="accept-setting-proposal">接受提案</button></div>`;
+    <div class="button-row"><button class="btn btn-ghost btn-small" data-action="dismiss-setting-proposal">放弃</button><button class="btn btn-primary btn-small" data-action="accept-setting-proposal">创建修改请求</button></div>`;
   host.appendChild(card);
   showToast("AI 已生成设定提案");
 }
 
 function acceptSettingProposal() {
   document.querySelector(".settings-proposal-card")?.remove();
-  let grid = document.querySelector(".tab-panel.active .entity-grid");
-  if (!grid) {
-    setTab("characters");
-    grid = document.querySelector('.tab-panel[data-tab-panel="characters"] .entity-grid');
-  }
-  if (grid) {
-    const card = document.createElement("article");
-    card.className = "entity-card panel";
-    card.innerHTML = '<div class="entity-top"><span class="item-mark">证</span><span class="badge gold-badge">AI 提案</span></div><h3>血河旧案证人</h3><p>血河宗旧案的关键证人，掌握第 50 章人物死亡的直接证据。</p><div class="entity-meta"><span>类型：人物</span><span>来源：AI 提案</span></div>';
-    grid.appendChild(card);
-  }
-  showToast("已接受设定提案，条目已加入当前分类");
+  showToast("已创建修改请求，影响分析完成后再更新设定");
 }
 
 function addEntityAlias() {
@@ -3893,10 +3886,165 @@ function toggleDemoMode() {
     document.querySelector(".main-shell")?.classList.remove("demo-state-blocked");
     const notice = document.getElementById("demo-state-notice");
     if (notice) notice.hidden = true;
-    const overlay = document.getElementById("demo-page-state");
-    if (overlay) overlay.hidden = true;
+    clearPageStates();
   }
-  showToast(open ? "演示模式已开启，可切换七类全局状态" : "演示模式已关闭");
+  showToast(open ? "演示模式已开启，可切换十一类全局状态" : "演示模式已关闭");
+}
+
+const PAGE_STATE_LABELS = {
+  auth: "登录与注册",
+  dashboard: "工作台",
+  "new-project": "新建作品",
+  "work-overview": "作品总览",
+  bible: "故事圣经",
+  settings: "设定中心",
+  outline: "大纲工作台",
+  foreshadows: "伏笔账本",
+  writing: "写作台",
+  batch: "批量生产",
+  changes: "修改与版本",
+  "export-publish": "导出与发布",
+  "work-settings": "作品设置",
+  "entity-detail": "档案详情",
+  "account-settings": "账号与模型",
+  help: "帮助",
+  legal: "法律与合规",
+  states: "界面状态",
+};
+
+const PAGE_STATE_OVERRIDES = {
+  dashboard: {
+    empty: { title: "还没有作品", body: "从一句话想法开始，先建一个故事蓝图。", action: '<button class="btn btn-primary btn-small" data-page="new-project">新建作品</button>' },
+    error: { title: "工作台加载失败", body: "作品列表暂时不可用，请重试。" },
+    long: { title: "1,240 部作品", body: "作品列表使用分页或虚拟滚动，避免一次渲染全部卡片。" },
+  },
+  "work-overview": {
+    empty: { title: "这本作品还没有内容", body: "先完成故事蓝图，再生成第一卷大纲。" },
+    partial: { title: "作品总览部分加载", body: "章节进度已加载，伏笔和待处理提醒暂时不可用。" },
+    readonly: { title: "作品已完本，默认只读", body: "需要继续写作时，先从作品设置恢复连载。" },
+    long: { title: "3,842 章 · 1,000 万字", body: "章节列表按卷分组，并只加载当前卷和最近更新。" },
+    error: { title: "作品总览加载失败", body: "作品进度或待处理提醒暂时不可用，请重试。" },
+  },
+  bible: {
+    empty: { title: "故事圣经还没开始", body: "先写一句话故事，再补主角、金手指和世界铁律。" },
+    locked: { title: "故事圣经已锁定", body: "修改必须发起修改请求，影响分析完成后再应用。" },
+    partial: { title: "九卡还差 2 张", body: "主线与结局方向已保存，支线和读者承诺仍需确认。" },
+    long: { title: "124 个关联设定", body: "关联内容按类型折叠，只展开当前卡片引用的设定。" },
+    error: { title: "故事圣经加载失败", body: "九卡内容暂时不可用，请重试。" },
+  },
+  "new-project": {
+    error: { title: "开书向导加载失败", body: "题材包或故事蓝图服务暂时不可用，请重试。" },
+    partial: { title: "开书资料部分完成", body: "故事罗盘已保存，世界规则和核心人物仍未完成。" },
+    long: { title: "导入 10M 字旧稿", body: "后台按文件、卷、章分块处理；已完成 3 / 12 块，可断点恢复。" },
+  },
+  writing: {
+    conflict: { title: "左臂骨折，但正文出现双手结印", body: "已确认设定要求第 53 章前不能双手结印。必须修订、拒稿或拉平行版本。" },
+    partial: { title: "本章生成部分成功", body: "草稿已完成，连续性检查失败；可从检查点重试，不重写草稿。" },
+    error: { title: "本章生成失败", body: "模型调用中断，已完成草稿和本章参考资料已保留。" },
+    long: { title: "第 47 章 · 2,860 字", body: "编辑器使用局部渲染和分段保存，避免长章节卡顿。" },
+  },
+  batch: {
+    partial: { title: "本卷部分成功", body: "47 章完成，2 章失败，1 章等待审核；失败章节可单独重试。" },
+    long: { title: "全本 3,000+ 章", body: "使用父任务 → 卷任务 → 章工作项，按卷推进并支持断点恢复。" },
+    error: { title: "批量任务失败", body: "任务已停在失败步骤，已完成章节和检查点保留。" },
+  },
+  changes: {
+    conflict: { title: "结构性冲突不可直接应用", body: "第 18 章和第 44 章受影响；请拉平行版本或逐对象摘取。" },
+    partial: { title: "摘取部分成功", body: "正文已摘取，事实和大纲仍有冲突，等待逐项确认。" },
+    error: { title: "版本比较失败", body: "版本图暂时不可用，请稍后重试。" },
+  },
+  outline: {
+    empty: { title: "还没有大纲", body: "先生成故事罗盘和卷/幕契约。" },
+    locked: { title: "第一卷大纲已锁定", body: "修改需要发起修改请求，并重新检查章纲和伏笔。" },
+    partial: { title: "大纲部分完成", body: "全书总纲已确认，第一卷章纲仍有 3 章缺失。" },
+  },
+  settings: {
+    empty: { title: "还没有设定", body: "从世界规则或人物档案开始。" },
+    locked: { title: "设定已锁定", body: "修改必须发起修改请求，不能直接编辑或删除。" },
+    long: { title: "1,240 条设定", body: "使用筛选、分页或虚拟滚动，避免一次渲染全部实体。" },
+  },
+  foreshadows: {
+    empty: { title: "还没有伏笔", body: "从第一卷主线里挑一条读者承诺，建立第一条伏笔。" },
+    partial: { title: "伏笔检查部分完成", body: "4 条伏笔已核对，2 条关联章节仍在加载。" },
+    long: { title: "386 条伏笔", body: "按状态、卷和重要程度筛选，只加载当前视图。" },
+    error: { title: "伏笔账本加载失败", body: "伏笔和回收计划暂时不可用，请重试。" },
+  },
+  "export-publish": {
+    empty: { title: "暂无可导出章节", body: "先完成至少一章正文，再创建导出任务。" },
+    partial: { title: "导出部分成功", body: "正文已导出，目录和封面仍在生成，可稍后重新下载。" },
+    disabled: { title: "发布检查未通过", body: "还有 1 条未裁决冲突，解决后才能生成发布包。" },
+    error: { title: "导出任务失败", body: "文件生成中断，已完成部分保留，可从失败步骤重试。" },
+  },
+  "work-settings": {
+    permission: { title: "无权修改这本作品", body: "只有作品作者可以修改作品设置。" },
+    disabled: { title: "当前设置不可修改", body: "作品正在批量生成，结束后才能修改题材和章节规格。" },
+    readonly: { title: "作品已完本", body: "恢复连载前，作品设置保持只读。" },
+    error: { title: "作品设置加载失败", body: "作品信息暂时不可用，请重试。" },
+  },
+  "account-settings": {
+    error: { title: "账号设置加载失败", body: "会话或模型配置暂时不可用，请重试。" },
+    permission: { title: "无权访问账号设置", body: "只有作者本人可以访问自己的账号和模型 Key。" },
+  },
+  "entity-detail": {
+    empty: { title: "档案不存在", body: "这条设定可能已被合并或删除，请返回设定中心重新选择。" },
+    locked: { title: "档案已锁定", body: "编辑、别名和删除都要发起修改请求。" },
+    permission: { title: "无权查看这份档案", body: "只有作品作者可以查看未公开设定。" },
+    long: { title: "1,286 条引用", body: "引用按正文、大纲、伏笔和设定分组加载。" },
+    error: { title: "档案加载失败", body: "人物、关系或状态历史暂时不可用，请重试。" },
+  },
+  help: {
+    empty: { title: "没有找到帮助内容", body: "换一个关键词，或从常见问题开始。" },
+    permission: { title: "帮助内容暂不可用", body: "当前网络无法加载帮助中心，请稍后重试。" },
+    error: { title: "帮助中心加载失败", body: "快捷键和常见问题暂时不可用，请重试。" },
+  },
+  legal: {
+    empty: { title: "条款尚未发布", body: "当前版本还没有可显示的协议内容。" },
+    permission: { title: "内容不可用", body: "当前环境无法加载协议内容，请稍后重试。" },
+    readonly: { title: "协议为只读版本", body: "条款内容不能在此页面修改。" },
+    error: { title: "协议加载失败", body: "用户协议或隐私政策暂时不可用，请重试。" },
+  },
+  states: {
+    disabled: { title: "状态演示已停用", body: "关闭批量任务后再切换全局状态。" },
+    partial: { title: "状态矩阵部分加载", body: "18 页规格已加载，截图证据仍在同步。" },
+    long: { title: "18 页 × 11 类状态", body: "状态矩阵按页面折叠，避免一次展示全部组合。" },
+  },
+  auth: {
+    error: { title: "登录失败", body: "账号、密码或验证码不正确，请重试。" },
+    permission: { title: "会话已过期", body: "请重新登录后继续。" },
+  },
+};
+
+const PAGE_STATE_META = {
+  empty: { icon: "inbox", title: "还没有内容", body: "当前页面没有内容，先完成前置步骤。" },
+  loading: { icon: "loader-circle", title: "正在加载", body: "页面正在等待数据，暂时不能操作。", skeleton: true },
+  error: { icon: "cloud-off", title: "加载失败", body: "数据或模型暂时不可用，请重试。" },
+  disabled: { icon: "ban", title: "当前操作不可用", body: "请先完成前置条件，再继续操作。" },
+  permission: { icon: "shield-off", title: "权限不足", body: "只有作者本人可以访问这个页面或操作。" },
+  partial: { icon: "list-checks", title: "部分成功", body: "已完成内容保留，失败部分可以单独重试。" },
+  long: { icon: "layers", title: "长内容", body: "已加载大量数据，使用分页或虚拟滚动。" },
+  locked: { icon: "lock", title: "内容已锁定", body: "修改需要发起修改请求。" },
+  readonly: { icon: "book-open-check", title: "只读模式", body: "作品已完本，默认只能阅读。" },
+  conflict: { icon: "shield-alert", title: "发现冲突", body: "正文与已确认设定不一致，需要处理。" },
+};
+
+function clearPageStates() {
+  document.querySelectorAll(".page-state-panel").forEach((panel) => panel.remove());
+  document.querySelectorAll(".page[data-page-state]").forEach((page) => {
+    delete page.dataset.pageState;
+  });
+}
+
+function pageStateSpec(page, state) {
+  const label = PAGE_STATE_LABELS[page] || "当前页面";
+  const meta = PAGE_STATE_META[state] || PAGE_STATE_META.error;
+  const override = PAGE_STATE_OVERRIDES[page]?.[state];
+  return {
+    icon: meta.icon,
+    title: override?.title || `${label} · ${meta.title}`,
+    body: override?.body || meta.body,
+    action: override?.action || "",
+    skeleton: Boolean(meta.skeleton),
+  };
 }
 
 function setDemoState(state) {
@@ -3904,52 +4052,34 @@ function setDemoState(state) {
     button.classList.toggle("active", button.dataset.demoState === state);
   });
   document.body.dataset.demoState = state;
-  const notice = document.getElementById("demo-state-notice");
-  const labels = {
-    normal: "正常",
-    empty: "空状态",
-    loading: "加载中",
-    error: "错误",
-    locked: "锁定",
-    readonly: "只读",
-    conflict: "冲突",
-  };
-  const messages = {
-    normal: "",
-    empty: "空状态：当前页面没有内容。先新建作品，或退出演示模式。",
-    loading: "加载中：页面正在等待数据，暂时不能操作。",
-    error: "错误状态：模型或数据加载失败，请重试或退出演示。",
-    locked: "锁定状态：当前内容已锁定，修改需要填写原因。",
-    readonly: "只读状态：作品已完本，默认只能阅读。",
-    conflict: "冲突状态：正文与已确认设定不一致，需要处理。",
-  };
-  if (notice) {
-    notice.textContent = messages[state] || "";
-    notice.hidden = state === "normal";
-    notice.dataset.state = state;
+  const labels = { normal: "正常", empty: "空状态", loading: "加载中", error: "错误", disabled: "禁用", permission: "权限不足", partial: "部分成功", long: "长内容", locked: "锁定", readonly: "只读", conflict: "冲突" };
+  clearPageStates();
+  const pageEl = document.querySelector(".page.active");
+  if (!pageEl || state === "normal") {
+    showToast(`演示状态：${labels[state] || state}`);
+    return;
   }
-  let overlay = document.getElementById("demo-page-state");
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "demo-page-state";
-    overlay.className = "demo-page-state";
-    document.querySelector(".main-shell")?.appendChild(overlay);
-  }
-  overlay.hidden = state === "normal";
-  overlay.dataset.state = state;
-  const content = {
-    empty: '<i data-lucide="inbox"></i><h2>这个页面还没有内容</h2><p>先新建作品，或返回正常状态继续浏览。</p><button class="btn btn-primary btn-small" data-action="set-demo-normal">返回正常</button>',
-    loading: '<div class="state-skeleton"><span></span><span></span><span></span><span></span></div><p>正在加载页面数据…</p>',
-    error: '<i data-lucide="cloud-off"></i><h2>加载失败</h2><p>模型或数据暂时不可用，请重试。</p><button class="btn btn-primary btn-small" data-action="set-demo-normal">返回正常</button>',
-    locked: '<i data-lucide="lock"></i><h2>内容已锁定</h2><p>修改需要填写原因并创建修改请求。</p><button class="btn btn-primary btn-small" data-action="set-demo-normal">返回正常</button>',
-    readonly: '<i data-lucide="book-open-check"></i><h2>只读模式</h2><p>作品已完本，默认只能阅读。</p><button class="btn btn-primary btn-small" data-action="set-demo-normal">返回正常</button>',
-    conflict: '<i data-lucide="shield-alert"></i><h2>发现连续性冲突</h2><p>正文与已确认设定不一致，需要处理后才能继续。</p><button class="btn btn-primary btn-small" data-action="set-demo-normal">返回正常</button>',
-  };
-  overlay.innerHTML = content[state] || "";
+  const page = pageEl.dataset.page;
+  const spec = pageStateSpec(page, state);
+  pageEl.dataset.pageState = state;
+  const panel = document.createElement("section");
+  panel.className = "panel page-state-panel";
+  panel.dataset.page = page;
+  panel.dataset.state = state;
+  panel.innerHTML = `
+    <div class="page-state-icon"><i data-lucide="${spec.icon}"></i></div>
+    <h2>${escapeHtml(spec.title)}</h2>
+    <p>${escapeHtml(spec.body)}</p>
+    ${spec.skeleton ? '<div class="state-skeleton"><span></span><span></span><span></span><span></span></div>' : ""}
+    <div class="page-state-actions">
+      ${spec.action}
+      <button class="btn btn-primary btn-small" data-action="set-demo-normal">返回正常</button>
+    </div>
+  `;
+  const head = pageEl.querySelector(".page-head");
+  if (head) head.insertAdjacentElement("afterend", panel);
+  else pageEl.prepend(panel);
   initIcons();
-  document
-    .querySelector(".main-shell")
-    ?.classList.toggle("demo-state-blocked", ["loading", "error", "locked", "readonly"].includes(state));
   showToast(`演示状态：${labels[state] || state}`);
 }
 
@@ -4369,7 +4499,7 @@ function initSettingCreate() {
   if (!form || !type || !hint) return;
 
   const hints = {
-    world: "世界规则会参与后续生成和连续性检查；草稿不会立即进入生成上下文。",
+    world: "世界规则会参与后续生成和连续性检查；草稿不会立即进入后续写作参考。",
     characters: "人物档案会关联当前状态、知识边界和关系；草稿可稍后补全。",
     factions: "势力可以关联控制区、人物和时间线；建议补充目标与资源。",
     map: "地点会参与地图层级、旅行时间和人物位置检查。",
@@ -4377,7 +4507,7 @@ function initSettingCreate() {
     items: "物品功法需要记录品阶、效果、代价、归属和限制。",
     goldenfinger: "金手指必须定义规则、代价、限制和成长曲线。",
     timeline: "时间节点会参与时间线一致性检查。",
-    confirmed: "已确认设定会进入后续生成上下文；请确认事实准确。",
+    confirmed: "这里只读查看已确认设定；新增事实应先在写作台确认并提交本章事实。",
   };
 
   type.addEventListener("change", () => {
@@ -4936,11 +5066,12 @@ function saveWritingVersion() {
 function decideFact(button, decision) {
   const card = button.closest(".note-card");
   if (!card) return;
+  card.dataset.factStatus = decision;
   const badge = card.querySelector(".note-head .badge");
   const labels = {
-    confirmed: ["已确认", "jade-badge", "事实已确认，已写入已确认设定"],
-    rejected: ["已驳回", "", "事实已驳回，不会进入后续上下文"],
-    modified: ["已修改确认", "jade-badge", "已改成“顾青只察觉异常”，并写入已确认设定"],
+    confirmed: ["已确认", "jade-badge", "事实已确认，等待本章满足提交条件"],
+    rejected: ["已驳回", "", "事实已驳回，不进入本章提交"],
+    modified: ["已修改确认", "jade-badge", "已改成“顾青只察觉异常”，等待本章提交"],
   };
   const [label, tone, message] = labels[decision] || labels.confirmed;
   if (badge) {
@@ -4949,7 +5080,94 @@ function decideFact(button, decision) {
   }
   const actions = card.querySelector(".note-actions");
   if (actions) actions.innerHTML = `<span class="note-result">${label}</span>`;
+  updateFactSubmitGate();
   showToast(message);
+}
+
+function updateFactSubmitGate() {
+  const writingPage = document.querySelector('.page[data-page="writing"]');
+  if (!writingPage) return;
+  const factsPanel = writingPage.querySelector('[data-note-panel="facts"]');
+  if (!factsPanel) return;
+  const pending = factsPanel.querySelectorAll('[data-fact-status="pending"]').length;
+  const confirmed = factsPanel.querySelectorAll(
+    '[data-fact-status="confirmed"], [data-fact-status="modified"]'
+  ).length;
+  const approved = writingPage.dataset.chapterApproved === "true";
+  const submitted = writingPage.dataset.factsSubmitted === "true";
+  const submit = factsPanel.querySelector('[data-action="submit-chapter-facts"]');
+  const approve = factsPanel.querySelector('[data-action="approve-current-chapter"]');
+  const reason = document.getElementById("fact-submit-reason");
+  const title = document.getElementById("fact-summary-title");
+  const note = document.getElementById("fact-summary-note");
+
+  if (title) {
+    title.textContent = submitted
+      ? `本章事实 · ${12 + confirmed} 条已提交`
+      : `本章事实 · ${12 + confirmed} 条已确认待提交`;
+  }
+  if (note) {
+    note.textContent = submitted
+      ? "摘要和索引已更新"
+      : `${pending} 条待确认，章节${approved ? "已批准" : "仍为写作中"}`;
+  }
+  if (approve) {
+    approve.disabled = approved;
+    approve.textContent = approved ? "本章已批准" : "批准本章";
+  }
+  if (submit) {
+    submit.disabled = submitted || !approved || pending > 0;
+    submit.textContent = submitted ? "本章事实已提交" : "提交本章事实";
+  }
+  if (reason) {
+    reason.textContent = submitted
+      ? "事实已提交，后续修改需要发起修改请求。"
+      : !approved && pending
+        ? `先批准本章，再确认剩余 ${pending} 条事实。`
+        : !approved
+          ? "先批准本章，才能提交事实。"
+          : pending
+            ? `还有 ${pending} 条事实待确认。`
+            : "已满足提交条件，可以提交本章事实。";
+  }
+}
+
+function approveCurrentChapter() {
+  const writingPage = document.querySelector('.page[data-page="writing"]');
+  if (!writingPage || writingPage.dataset.chapterApproved === "true") return;
+  openConfirm({
+    title: "批准本章",
+    message: "批准只锁定正文，不会自动提交事实。事实仍需逐条确认后再提交。",
+    label: "批准本章",
+    onConfirm: () => {
+      writingPage.dataset.chapterApproved = "true";
+      const status = document.getElementById("editor-chapter-status");
+      if (status) status.textContent = "已批准";
+      updateFactSubmitGate();
+      showToast("本章已批准；确认事实后还需要提交");
+    },
+  });
+}
+
+function submitChapterFacts() {
+  const writingPage = document.querySelector('.page[data-page="writing"]');
+  if (!writingPage) return;
+  const factsPanel = writingPage.querySelector('[data-note-panel="facts"]');
+  const pending = factsPanel?.querySelectorAll('[data-fact-status="pending"]').length || 0;
+  if (writingPage.dataset.chapterApproved !== "true") {
+    showToast("请先批准本章，再提交事实");
+    return;
+  }
+  if (pending > 0) {
+    showToast(`还有 ${pending} 条事实待确认`);
+    return;
+  }
+  if (writingPage.dataset.factsSubmitted === "true") return;
+  writingPage.dataset.factsSubmitted = "true";
+  const status = document.getElementById("editor-chapter-status");
+  if (status) status.textContent = "事实已提交";
+  updateFactSubmitGate();
+  showToast("本章事实已提交，摘要和索引已更新");
 }
 
 function applyGenerationControls() {
@@ -5037,7 +5255,7 @@ function startExportTask(button) {
   row.className = "export-history-row";
   row.innerHTML = `
     <i data-lucide="loader-circle"></i>
-    <div><strong>仙途：忘川书_第二卷.txt</strong><small>刚刚 · 正在生成</small></div>
+    <div><strong>仙途：忘川书_第一卷.txt</strong><small>刚刚 · 正在生成</small></div>
     <span class="badge gold-badge">生成中</span>`;
   list.prepend(row);
   initIcons();
@@ -5045,7 +5263,7 @@ function startExportTask(button) {
   window.setTimeout(() => {
     row.innerHTML = `
       <i data-lucide="file-text"></i>
-      <div><strong>仙途：忘川书_第二卷.txt</strong><small>刚刚 · 9.9 MB · 7 天后过期</small></div>
+      <div><strong>仙途：忘川书_第一卷.txt</strong><small>刚刚 · 9.9 MB · 7 天后过期</small></div>
       <button class="btn btn-ghost btn-small" data-action="download-export">下载</button>`;
     button.dataset.busy = "false";
     button.disabled = false;
@@ -5324,7 +5542,7 @@ function completeBible() {
     <p>母亲没有确认死亡，只是失踪。沈砚一直相信她还活着，这与“父母自杀”的认知形成更复杂的冲突。</p>
     <div class="button-row">
       <button class="btn btn-ghost btn-small" data-action="dismiss-bible-proposal">放弃</button>
-      <button class="btn btn-primary btn-small" data-action="accept-bible-proposal">接受提案</button>
+      <button class="btn btn-primary btn-small" data-action="accept-bible-proposal">创建修改请求</button>
     </div>`;
   main.prepend(proposal);
   showToast("AI 已生成补全提案，等待你确认");
@@ -5505,7 +5723,7 @@ function startBatchTask(button) {
   const task = document.createElement("article");
   task.className = "panel task-panel";
   task.innerHTML = `
-    <div class="panel-head"><div><span class="panel-kicker">排队中</span><h3>第二卷 · 第 48-60 章</h3></div><span class="badge">等待中</span></div>
+    <div class="panel-head"><div><span class="panel-kicker">排队中</span><h3>第一卷 · 第 48-60 章</h3></div><span class="badge">等待中</span></div>
     <div class="progress"><span style="width:0%"></span></div>
     <div class="task-meta"><span>已完成 0 / 13 章</span><span>预计 26 分钟</span><span>预估 $0.36</span></div>`;
   if (history) container.insertBefore(task, history);
@@ -5686,15 +5904,15 @@ function retryFailedBatch(button) {
 function exportTaskHistory() {
   downloadTextFile(
     "任务历史.txt",
-    "今天 10:42 第二卷 第48-60章 运行中 8/13\n昨天 21:08 第一卷 完本审计 已完成 2个待确认项\n昨天 18:06 第47章 连续性审计 已完成"
+    "今天 10:42 第一卷 第48-60章 运行中 8/13\n昨天 21:08 第一卷 完本审计 已完成 2个待确认项\n昨天 18:06 第47章 连续性审计 已完成"
   );
   showToast("任务历史已导出");
 }
 
 function exportTaskReport() {
   downloadTextFile(
-    "第二卷任务报告.txt",
-    "第二卷 第48-60章\n完成 13/13 章\n总字数 38,420\n连续性错误 1 处（已处理）\n下一步：第50章关键人物死亡需要逐章确认"
+    "第一卷任务报告.txt",
+    "第一卷 第48-60章\n完成 13/13 章\n总字数 38,420\n连续性错误 1 处（已处理）\n下一步：第50章关键人物死亡需要逐章确认"
   );
   showToast("任务报告已导出");
 }
@@ -5714,8 +5932,8 @@ function refreshExportHistory(button) {
 
 function downloadExport(button) {
   downloadTextFile(
-    "仙途：忘川书_第二卷.txt",
-    "仙途：忘川书\n第二卷 血河夜行\n\n第45章 血河渡口\n第46章 夜船\n第47章 断臂之后"
+    "仙途：忘川书_第一卷.txt",
+    "仙途：忘川书\n第一卷 少年出山\n\n第45章 血河渡口\n第46章 夜船\n第47章 断臂之后"
   );
   button.textContent = "已下载";
   showToast("开始下载导出文件");
@@ -5775,7 +5993,7 @@ function markAllNotificationsRead() {
 
 function quickExport() {
   closeExport();
-  downloadTextFile("仙途：忘川书_当前卷.txt", "仙途：忘川书\n第二卷 血河夜行\n\n当前卷导出");
+  downloadTextFile("仙途：忘川书_当前卷.txt", "仙途：忘川书\n第一卷 少年出山\n\n当前卷导出");
   showToast("导出任务已创建");
 }
 
@@ -6324,7 +6542,7 @@ function renderShelf() {
       actions.innerHTML =
         card.dataset.view === "active"
           ? `<button data-action="archive-work" data-id="${id}">归档</button><button data-action="trash-work" data-id="${id}">移入回收站</button>`
-          : `<button data-action="restore-work" data-id="${id}">恢复</button><button data-action="delete-work" data-id="${id}">永久删除</button>`;
+          : `<button data-action="restore-work" data-id="${id}">恢复</button><button type="button" disabled title="需先完成作品导出">先导出再删除</button>`;
     }
   });
   filtered.forEach((card) => grid.appendChild(card));
@@ -6550,17 +6768,7 @@ function handleAction(action, element) {
     case "delete-work": {
       const card = element.closest("[data-work-id]");
       if (card) {
-        openConfirm({
-          title: "永久删除作品",
-          message: "永久删除后不能恢复，所有章节、设定和版本都会被删除。",
-          label: "永久删除",
-          requireReason: true,
-          onConfirm: () => {
-            card.dataset.view = "deleted";
-            renderShelf();
-            showToast("作品已永久删除");
-          },
-        });
+        showToast("请先完成作品导出，再执行永久删除");
       }
       break;
     }
@@ -6669,6 +6877,12 @@ function handleAction(action, element) {
     case "decide-fact":
       decideFact(element, element.dataset.decision);
       break;
+    case "approve-current-chapter":
+      approveCurrentChapter();
+      break;
+    case "submit-chapter-facts":
+      submitChapterFacts();
+      break;
     case "apply-generation-controls":
       applyGenerationControls();
       break;
@@ -6743,16 +6957,7 @@ function handleAction(action, element) {
       break;
     case "accept-bible-proposal":
       element.closest(".bible-proposal")?.remove();
-      {
-        const card = document.getElementById("bible-protagonist");
-        if (card && !card.querySelector(".bible-card-note")) {
-          const note = document.createElement("div");
-          note.className = "bible-card-note";
-          note.textContent = "母亲状态：失踪，未确认死亡。沈砚一直相信她还活着。";
-          card.appendChild(note);
-        }
-      }
-      showToast("已接受补全提案，主角卡已更新");
+      showToast("已创建修改请求，影响分析完成后再更新故事圣经");
       break;
     case "dismiss-bible-proposal":
       element.closest(".bible-proposal")?.remove();
@@ -6833,6 +7038,12 @@ function handleAction(action, element) {
       break;
     case "chapter-split-settings":
       showChapterSplitSettings(element);
+      break;
+    case "scan-settings-import":
+      scanSettingsImport(element);
+      break;
+    case "toggle-import-pause":
+      toggleImportPause(element);
       break;
     case "import-edit-title":
       importEditTitle(element);
@@ -7287,6 +7498,32 @@ function initImportPreview() {
   });
 }
 
+function scanSettingsImport(button) {
+  const badge = document.querySelector(
+    "#settings-import-preview .import-preview-head .badge"
+  );
+  if (badge) {
+    badge.textContent = "识别完成";
+    badge.className = "badge jade-badge";
+  }
+  const label = button.querySelector("span");
+  if (label) label.textContent = "重新识别";
+  showToast("已识别 12 个设定候选，发现 1 条冲突，等待作者裁决");
+}
+
+function toggleImportPause(button) {
+  const text = document.getElementById("import-progress-text");
+  const paused = button.dataset.paused !== "true";
+  button.dataset.paused = String(paused);
+  button.textContent = paused ? "从检查点继续" : "暂停解析";
+  if (text) {
+    text.textContent = paused
+      ? "解析已暂停 · 已处理 3 / 12 块 · 可从检查点继续"
+      : "后台分块解析中 · 已处理 3 / 12 块 · 支持断点恢复";
+  }
+  showToast(paused ? "解析已暂停，检查点已保留" : "已从第 3 块检查点继续解析");
+}
+
 function renumberImportRows() {
   document.querySelectorAll(".import-chapter-row").forEach((row, index) => {
     const number = row.querySelector("span");
@@ -7401,6 +7638,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initOutlineNode();
   initChangeRequest();
   initEditorInput();
+  updateFactSubmitGate();
   bindCommentMarks();
   initIcons();
   setWizardStep(1);

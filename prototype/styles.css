@@ -693,6 +693,7 @@ svg.lucide {
 .head-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 9px;
   flex-shrink: 0;
 }
@@ -3821,6 +3822,16 @@ body.hide-comments .comment-mark::after {
   padding: 16px;
 }
 
+.compare-panel .segmented {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.compare-panel .seg {
+  flex: 1 1 60px;
+}
+
 .decision-option {
   display: flex;
   align-items: center;
@@ -4778,6 +4789,7 @@ body[data-context="work"] [data-context-card="account"] {
 /* V1 prototype: new work entry modes */
 .entry-mode-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 24px;
@@ -4805,6 +4817,7 @@ body[data-context="work"] [data-context-card="account"] {
 
 .entry-modes {
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 
 .entry-modes .seg {
@@ -5539,6 +5552,18 @@ body[data-context="work"] [data-context-card="account"] {
   .account-settings-actions {
     align-items: stretch;
     flex-direction: column;
+  }
+}
+
+@media (max-width: 1024px) {
+  .entity-page-actions {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .entity-page-actions .btn {
+    flex: 1 1 180px;
+    min-width: 0;
   }
 }
 
@@ -6297,6 +6322,68 @@ body[data-context="work"] [data-context-card="account"] {
   border-radius: 6px;
   color: var(--muted);
   font-size: 12px;
+}
+
+.note-summary > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.note-summary strong {
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.note-summary small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fact-submit-gate {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper-2);
+}
+
+.fact-submit-gate > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fact-submit-gate strong {
+  font-size: 13px;
+}
+
+.fact-submit-gate small {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.fact-submit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chapter-status-text {
+  color: var(--cinnabar);
+  font-style: normal;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .fact-submit-gate {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 
 .character-state-card {
@@ -7439,6 +7526,89 @@ body[data-context="work"] [data-context-card="account"] {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
+}
+
+.state-matrix-wrap {
+  overflow-x: auto;
+}
+
+.state-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.state-matrix th,
+.state-matrix td {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.state-matrix th {
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.state-matrix td:first-child {
+  color: var(--ink-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.page[data-page-state] > *:not(.page-head):not(.page-state-panel) {
+  display: none !important;
+}
+
+.page-state-panel {
+  min-height: 360px;
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.page-state-icon {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--cinnabar-soft);
+  color: var(--cinnabar);
+}
+
+.page-state-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.page-state-panel h2 {
+  margin: 4px 0 0;
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 1.35rem;
+}
+
+.page-state-panel p {
+  max-width: 640px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.page-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.page-state-panel .state-skeleton {
+  width: 100%;
+  max-width: 640px;
 }
 
 .state-demo-card {
@@ -11744,5 +11914,23 @@ body[data-demo-state="locked"] .demo-state-bar {
     align-items: flex-start;
     flex-direction: column;
     gap: 2px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .entity-page-hero {
+    flex-wrap: wrap;
+  }
+
+  .entity-page-actions {
+    width: 100%;
+    margin-left: 0;
+    flex-wrap: wrap;
+  }
+
+  .entity-page-actions .btn {
+    flex: 1 1 180px;
+    min-width: 0;
+    white-space: normal;
   }
 }
