@@ -21,7 +21,7 @@ import {
   modelProvidersResponseSchema,
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
-import { ApiBody, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
+import { ApiBody, ApiHeader, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
 import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
@@ -68,6 +68,7 @@ export class ModelConfigController {
 
   @Post()
   @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key", required: false })
   @ApiBody({ schema: createBodySchema })
   @ApiOkResponse({ description: "Created model config", schema: configResponseSchema })
   async create(

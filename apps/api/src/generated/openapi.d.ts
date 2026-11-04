@@ -660,6 +660,7 @@ export interface operations {
       query?: never;
       header: {
         "idempotency-key": string;
+        "Idempotency-Key"?: string;
       };
       path?: never;
       cookie?: never;

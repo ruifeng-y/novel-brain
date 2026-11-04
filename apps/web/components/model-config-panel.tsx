@@ -108,7 +108,11 @@ export function ModelConfigPanel() {
         editing ? `/api/v1/model-configs/${editing.id}` : "/api/v1/model-configs",
         {
           method: editing ? "PATCH" : "POST",
-          headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": csrfToken,
+            ...(!editing ? { "idempotency-key": crypto.randomUUID() } : {}),
+          },
           body: JSON.stringify(editing ? { ...payload, version: editing.version } : payload),
         },
       );

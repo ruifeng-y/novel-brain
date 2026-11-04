@@ -39,7 +39,7 @@ export function listProviders(): ModelProviderInfo[] {
 
 export async function validateProviderConfig(
   input: Pick<ModelConfigInput, "provider" | "baseUrl">,
-): Promise<void> {
+): Promise<string[]> {
   let url: URL;
   try {
     url = new URL(input.baseUrl);
@@ -68,6 +68,7 @@ export async function validateProviderConfig(
   if (addresses.length === 0 || addresses.some(({ address }) => !isPublicAddress(address))) {
     throw new ApiError(400, "MODEL_CONNECTION_FAILED", "Base URL 不得指向本地或私有网络");
   }
+  return addresses.map(({ address }) => address);
 }
 
 function isPublicAddress(address: string): boolean {
@@ -101,7 +102,12 @@ function isPublicAddress(address: string): boolean {
       normalized.startsWith("fe8") ||
       normalized.startsWith("fe9") ||
       normalized.startsWith("fea") ||
-      normalized.startsWith("feb")
+      normalized.startsWith("feb") ||
+      normalized.startsWith("fec") ||
+      normalized.startsWith("fed") ||
+      normalized.startsWith("fee") ||
+      normalized.startsWith("fef") ||
+      normalized.startsWith("ff")
     );
   }
   return false;

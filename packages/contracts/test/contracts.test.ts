@@ -9,6 +9,10 @@ import {
   loginRequestSchema,
   modelConfigInputSchema,
   modelConfigSchema,
+  modelConfigDeleteResponseSchema,
+  modelConfigUpdateSchema,
+  modelConnectionTestResponseSchema,
+  modelProvidersResponseSchema,
   readinessResponseSchema,
   registerRequestSchema,
   sendRegistrationCodeRequestSchema,
@@ -185,6 +189,36 @@ describe("shared contracts", () => {
         lastTestedAt: "2026-11-04T08:00:00.000Z",
         createdAt: "2026-11-04T08:00:00.000Z",
         updatedAt: "2026-11-04T08:00:00.000Z",
+      }),
+    ).toBeTruthy();
+    expect(modelConfigUpdateSchema.parse({ version: 1, label: "新名称" })).toBeTruthy();
+    expect(
+      modelProvidersResponseSchema.parse({
+        data: [
+          {
+            key: "deepseek",
+            label: "DeepSeek 官方 API",
+            defaultBaseUrl: "https://api.deepseek.com",
+            baseUrls: ["https://api.deepseek.com"],
+            models: ["deepseek-chat"],
+          },
+        ],
+        requestId: "req_providers",
+        meta: {},
+      }),
+    ).toBeTruthy();
+    expect(
+      modelConnectionTestResponseSchema.parse({
+        data: { status: "success", latencyMs: 1, message: "连接正常" },
+        requestId: "req_test",
+        meta: {},
+      }),
+    ).toBeTruthy();
+    expect(
+      modelConfigDeleteResponseSchema.parse({
+        data: { deleted: true },
+        requestId: "req_delete",
+        meta: {},
       }),
     ).toBeTruthy();
   });

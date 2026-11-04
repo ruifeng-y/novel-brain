@@ -44,7 +44,8 @@ describe("auth HTTP integration", () => {
     process.env.MODEL_CONNECTION_TESTER = "fake";
     process.env.MODEL_CONFIG_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
     process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
-    process.env.MODEL_PROVIDER_ALLOWLIST = "https://api.openai.com/v1";
+    process.env.MODEL_PROVIDER_ALLOWLIST =
+      "https://api.openai.com/v1,https://127.0.0.1/v1,https://[fec0::1]/v1";
 
     await runMigrations(databaseUrl);
     databasePool = createDatabasePool(databaseUrl);
@@ -286,6 +287,31 @@ describe("auth HTTP integration", () => {
     expect(replay.body.data.id).toBe(created.body.data.id);
     expect(replay.body.data.label).toBe("DeepSeek 正文");
 
+    const concurrentPayload = {
+      provider: "deepseek",
+      label: "并发重试",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "sk-concurrent-value-1111",
+      isDefault: false,
+    };
+    const [concurrentA, concurrentB] = await Promise.all([
+      owner
+        .post("/api/v1/model-configs")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .set("Idempotency-Key", "model-create-concurrent")
+        .send(concurrentPayload),
+      owner
+        .post("/api/v1/model-configs")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .set("Idempotency-Key", "model-create-concurrent")
+        .send(concurrentPayload),
+    ]);
+    expect([concurrentA.status, concurrentB.status]).toEqual([200, 200]);
+    expect(concurrentA.body.data.id).toBe(concurrentB.body.data.id);
+
     expect(JSON.stringify(created.body)).not.toContain(apiKey);
     expect(created.body.data.keyMasked).toBe("****1234");
     const stored = await databasePool.query<{ encrypted_key: string }>(
@@ -331,6 +357,21 @@ describe("auth HTTP integration", () => {
       })
       .expect(400);
     expect(rejected.body.error.code).toBe("MODEL_CONNECTION_FAILED");
+
+    const ipv6Rejected = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerCsrf)
+      .send({
+        provider: "openai-compatible",
+        label: "IPv6 SSRF",
+        baseUrl: "https://[fec0::1]/v1",
+        model: "custom",
+        apiKey: "sk-secret-value-1234",
+        isDefault: false,
+      })
+      .expect(400);
+    expect(ipv6Rejected.body.error.code).toBe("MODEL_CONNECTION_FAILED");
 
     const created = await owner
       .post("/api/v1/model-configs")

@@ -46,19 +46,29 @@ export class ModelConfigService {
       }
     }
     await validateProviderConfig(input);
-    const existingConfigs = await this.repository.list(userId);
-    const config = await this.repository.create({
-      id: uuidv7(),
-      userId,
-      provider: input.provider,
-      label: input.label,
-      baseUrl: input.baseUrl.replace(/\/$/, ""),
-      model: input.model,
-      encryptedKey: encryptApiKey(input.apiKey),
-      keyMasked: maskApiKey(input.apiKey),
-      isDefault: existingConfigs.length === 0 ? true : input.isDefault,
-      idempotencyKey: idempotencyKey ?? null,
-    });
+    let config: ModelConfigRecord;
+    try {
+      config = await this.repository.create({
+        id: uuidv7(),
+        userId,
+        provider: input.provider,
+        label: input.label,
+        baseUrl: input.baseUrl.replace(/\/$/, ""),
+        model: input.model,
+        encryptedKey: encryptApiKey(input.apiKey),
+        keyMasked: maskApiKey(input.apiKey),
+        isDefault: input.isDefault,
+        idempotencyKey: idempotencyKey ?? null,
+      });
+    } catch (error) {
+      if (idempotencyKey && isUniqueViolation(error)) {
+        const existing = await this.repository.findByIdempotencyKey(userId, idempotencyKey);
+        if (existing) {
+          return this.toContract(existing);
+        }
+      }
+      throw error;
+    }
     return this.toContract(config);
   }
 
@@ -137,4 +147,8 @@ export class ModelConfigService {
       updatedAt: config.updatedAt.toISOString(),
     };
   }
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }

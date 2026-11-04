@@ -5,7 +5,7 @@ import {
   modelConfigs,
   type DatabaseClient,
 } from "@novel-brain/db";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 
@@ -67,13 +67,22 @@ export class ModelConfigRepository implements OnModuleDestroy {
     idempotencyKey: string | null;
   }): Promise<ModelConfigRecord> {
     return this.db.transaction(async (transaction) => {
-      if (input.isDefault) {
+      await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.userId}))`);
+      const existing = await transaction
+        .select({ id: modelConfigs.id })
+        .from(modelConfigs)
+        .where(eq(modelConfigs.userId, input.userId));
+      const isDefault = existing.length === 0 ? true : input.isDefault;
+      if (isDefault) {
         await transaction
           .update(modelConfigs)
           .set({ isDefault: false, updatedAt: new Date() })
           .where(eq(modelConfigs.userId, input.userId));
       }
-      const [config] = await transaction.insert(modelConfigs).values(input).returning();
+      const [config] = await transaction
+        .insert(modelConfigs)
+        .values({ ...input, isDefault })
+        .returning();
       if (!config) {
         throw new Error("Failed to create model config");
       }
@@ -95,26 +104,7 @@ export class ModelConfigRepository implements OnModuleDestroy {
     }>,
   ): Promise<ModelConfigRecord | null> {
     return this.db.transaction(async (transaction) => {
-      const [existing] = await transaction
-        .select({ id: modelConfigs.id })
-        .from(modelConfigs)
-        .where(
-          and(
-            eq(modelConfigs.id, id),
-            eq(modelConfigs.userId, userId),
-            eq(modelConfigs.version, version),
-          ),
-        )
-        .limit(1);
-      if (!existing) {
-        return null;
-      }
-      if (values.isDefault) {
-        await transaction
-          .update(modelConfigs)
-          .set({ isDefault: false, updatedAt: new Date() })
-          .where(eq(modelConfigs.userId, userId));
-      }
+      await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`);
       const [config] = await transaction
         .update(modelConfigs)
         .set({
@@ -130,12 +120,22 @@ export class ModelConfigRepository implements OnModuleDestroy {
           ),
         )
         .returning();
+      if (!config) {
+        return null;
+      }
+      if (values.isDefault) {
+        await transaction
+          .update(modelConfigs)
+          .set({ isDefault: false, updatedAt: new Date() })
+          .where(and(eq(modelConfigs.userId, userId), ne(modelConfigs.id, id)));
+      }
       return config ?? null;
     });
   }
 
   async delete(userId: string, id: string): Promise<boolean> {
     return this.db.transaction(async (transaction) => {
+      await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${userId}))`);
       const [existing] = await transaction
         .select()
         .from(modelConfigs)
