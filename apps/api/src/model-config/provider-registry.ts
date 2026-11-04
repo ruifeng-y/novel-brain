@@ -55,7 +55,7 @@ export async function validateProviderConfig(
     throw new ApiError(400, "MODEL_CONNECTION_FAILED", "DeepSeek 必须使用官方 Base URL");
   }
   if (input.provider === "openai-compatible" && !openAiAllowlist().includes(normalized)) {
-    throw new ApiError(400, "MODEL_CONNECTION_FAILED", "该 Provider 未加入白名单");
+    throw new ApiError(400, "MODEL_CONNECTION_FAILED", "该服务商未加入白名单");
   }
 
   const hostname = url.hostname.replace(/^\[|\]$/g, "");

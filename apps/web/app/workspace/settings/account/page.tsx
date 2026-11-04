@@ -19,7 +19,7 @@ export default async function AccountSettingsPage() {
         <div>
           <p className="eyebrow">账号与模型</p>
           <h1>把写作环境准备好</h1>
-          <p className="page-sub">模型 Key 只显示掩码，费用由你自己的 Provider 账户承担。</p>
+          <p className="page-sub">模型 Key 只显示掩码，费用由你自己的服务商账户承担。</p>
         </div>
       </section>
       <ModelConfigPanel />

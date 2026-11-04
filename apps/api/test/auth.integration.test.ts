@@ -45,7 +45,7 @@ describe("auth HTTP integration", () => {
     process.env.MODEL_CONFIG_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
     process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
     process.env.MODEL_PROVIDER_ALLOWLIST =
-      "https://api.openai.com/v1,https://127.0.0.1/v1,https://[fec0::1]/v1";
+      "https://api.openai.com/v1,https://127.0.0.1/v1,https://10.0.0.1/v1,https://192.168.1.1/v1,https://169.254.169.254/v1,https://[fec0::1]/v1,https://[fe80::1]/v1";
 
     await runMigrations(databaseUrl);
     databasePool = createDatabasePool(databaseUrl);
@@ -266,6 +266,7 @@ describe("auth HTTP integration", () => {
         baseUrl: "https://api.deepseek.com",
         model: "deepseek-chat",
         apiKey,
+        purposes: ["planning", "writing"],
         isDefault: true,
       })
       .expect(200);
@@ -286,6 +287,7 @@ describe("auth HTTP integration", () => {
       .expect(200);
     expect(replay.body.data.id).toBe(created.body.data.id);
     expect(replay.body.data.label).toBe("DeepSeek 正文");
+    expect(created.body.data.purposes).toEqual(["planning", "writing"]);
 
     const concurrentPayload = {
       provider: "deepseek",
@@ -295,22 +297,48 @@ describe("auth HTTP integration", () => {
       apiKey: "sk-concurrent-value-1111",
       isDefault: false,
     };
-    const [concurrentA, concurrentB] = await Promise.all([
-      owner
-        .post("/api/v1/model-configs")
-        .set("Origin", origin)
-        .set("X-CSRF-Token", token)
-        .set("Idempotency-Key", "model-create-concurrent")
-        .send(concurrentPayload),
-      owner
-        .post("/api/v1/model-configs")
-        .set("Origin", origin)
-        .set("X-CSRF-Token", token)
-        .set("Idempotency-Key", "model-create-concurrent")
-        .send(concurrentPayload),
-    ]);
-    expect([concurrentA.status, concurrentB.status]).toEqual([200, 200]);
-    expect(concurrentA.body.data.id).toBe(concurrentB.body.data.id);
+    const ownerRow = await databasePool.query<{ id: string }>(
+      "SELECT id FROM users WHERE email = $1",
+      ["models@example.com"],
+    );
+    const ownerId = ownerRow.rows[0]?.id;
+    if (!ownerId) {
+      throw new Error("Model config owner was not created");
+    }
+
+    const lockClient = await databasePool.connect();
+    let lockReleased = false;
+    try {
+      await lockClient.query("BEGIN");
+      await lockClient.query("SELECT pg_advisory_xact_lock(hashtext($1))", [ownerId]);
+      const concurrentResponsesPromise = Promise.all(
+        Array.from({ length: 2 }, () =>
+          owner
+            .post("/api/v1/model-configs")
+            .set("Origin", origin)
+            .set("X-CSRF-Token", token)
+            .set("Idempotency-Key", "model-create-concurrent")
+            .send(concurrentPayload),
+        ),
+      );
+      await waitFor(async () => {
+        const waiting = await databasePool.query<{ count: number }>(
+          "SELECT count(*)::int AS count FROM pg_locks WHERE locktype = 'advisory' AND NOT granted",
+        );
+        return (waiting.rows[0]?.count ?? 0) >= 2;
+      }, "both model config creates to wait for the user lock");
+      await lockClient.query("COMMIT");
+      lockReleased = true;
+
+      const concurrentResponses = await concurrentResponsesPromise;
+      expect(concurrentResponses.map((response) => response.status)).toEqual([200, 200]);
+      expect(concurrentResponses[0]?.body.data.id).toBe(concurrentResponses[1]?.body.data.id);
+    } finally {
+      if (!lockReleased) {
+        await lockClient.query("ROLLBACK").catch(() => undefined);
+      }
+      lockClient.release();
+    }
 
     expect(JSON.stringify(created.body)).not.toContain(apiKey);
     expect(created.body.data.keyMasked).toBe("****1234");
@@ -327,6 +355,121 @@ describe("auth HTTP integration", () => {
       .expect(200);
     expect(tested.body.data.status).toBe("success");
     expect(JSON.stringify(tested.body)).not.toContain(apiKey);
+
+    const afterTest = await owner.get("/api/v1/model-configs").expect(200);
+    const testedConfig = afterTest.body.data.find(
+      (config: { id: string }) => config.id === created.body.data.id,
+    );
+    expect(testedConfig).toMatchObject({ version: 2, lastTestStatus: "success" });
+
+    const providerError = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "model-create-deleted")
+      .send({
+        provider: "deepseek",
+        label: "服务商异常",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-provider-error-1234",
+        isDefault: false,
+      })
+      .expect(200);
+    const providerErrorTest = await owner
+      .post(`/api/v1/model-configs/${providerError.body.data.id}/test`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .expect(400);
+    expect(providerErrorTest.body.error.code).toBe("MODEL_PROVIDER_ERROR");
+    expect(providerErrorTest.body.error.details.status).toBe("provider_error");
+    expect(JSON.stringify(providerErrorTest.body)).not.toContain("sk-provider-error-1234");
+
+    const expiredIdempotencyKey = "model-create-expired";
+    const expiringConfig = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", expiredIdempotencyKey)
+      .send({
+        provider: "deepseek",
+        label: "过期幂等",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-expired-value-1234",
+        isDefault: false,
+      })
+      .expect(200);
+    await databasePool.query(
+      "UPDATE model_configs SET created_at = now() - interval '25 hours' WHERE id = $1",
+      [expiringConfig.body.data.id],
+    );
+    const recreated = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", expiredIdempotencyKey)
+      .send({
+        provider: "deepseek",
+        label: "过期后重建",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-expired-value-5678",
+        isDefault: false,
+      })
+      .expect(200);
+    expect(recreated.body.data.id).not.toBe(expiringConfig.body.data.id);
+
+    const updated = await owner
+      .patch(`/api/v1/model-configs/${created.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: testedConfig.version, label: "DeepSeek 主模型", purposes: ["review"] })
+      .expect(200);
+    expect(updated.body.data.version).toBe(3);
+    expect(updated.body.data.purposes).toEqual(["review"]);
+    await owner
+      .delete(`/api/v1/model-configs/${providerError.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .expect(200);
+    const deletedReplay = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "model-create-deleted")
+      .send({
+        provider: "deepseek",
+        label: "删除后重试",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-deleted-replay-1234",
+        isDefault: false,
+      })
+      .expect(200);
+    expect(deletedReplay.body.data.id).toBe(providerError.body.data.id);
+    const visibleAfterDelete = await owner.get("/api/v1/model-configs").expect(200);
+    expect(
+      visibleAfterDelete.body.data.some(
+        (config: { id: string }) => config.id === providerError.body.data.id,
+      ),
+    ).toBe(false);
+
+    const audit = await databasePool.query<{
+      action: string;
+      ip: string;
+      user_agent: string;
+    }>("SELECT action, ip, user_agent FROM audit_logs WHERE actor_id = $1 ORDER BY created_at", [
+      ownerId,
+    ]);
+    expect(audit.rows.map((row) => row.action)).toEqual(
+      expect.arrayContaining([
+        "model_config.created",
+        "model_config.updated",
+        "model_config.deleted",
+      ]),
+    );
+    expect(audit.rows.every((row) => row.ip.length > 0 && row.user_agent.length > 0)).toBe(true);
   });
 
   it("rejects SSRF targets and cross-user model configuration access", async () => {
@@ -343,35 +486,31 @@ describe("auth HTTP integration", () => {
     const ownerCsrf = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
     const otherCsrf = (await other.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
 
-    const rejected = await owner
-      .post("/api/v1/model-configs")
-      .set("Origin", origin)
-      .set("X-CSRF-Token", ownerCsrf)
-      .send({
-        provider: "openai-compatible",
-        label: "SSRF",
-        baseUrl: "https://127.0.0.1/v1",
-        model: "custom",
-        apiKey: "sk-secret-value-1234",
-        isDefault: false,
-      })
-      .expect(400);
-    expect(rejected.body.error.code).toBe("MODEL_CONNECTION_FAILED");
-
-    const ipv6Rejected = await owner
-      .post("/api/v1/model-configs")
-      .set("Origin", origin)
-      .set("X-CSRF-Token", ownerCsrf)
-      .send({
-        provider: "openai-compatible",
-        label: "IPv6 SSRF",
-        baseUrl: "https://[fec0::1]/v1",
-        model: "custom",
-        apiKey: "sk-secret-value-1234",
-        isDefault: false,
-      })
-      .expect(400);
-    expect(ipv6Rejected.body.error.code).toBe("MODEL_CONNECTION_FAILED");
+    for (const baseUrl of [
+      "http://api.example.com/v1",
+      "https://127.0.0.1/v1",
+      "https://10.0.0.1/v1",
+      "https://192.168.1.1/v1",
+      "https://169.254.169.254/v1",
+      "https://[fec0::1]/v1",
+      "https://[fe80::1]/v1",
+    ]) {
+      const rejected = await owner
+        .post("/api/v1/model-configs")
+        .set("Origin", origin)
+        .set("X-CSRF-Token", ownerCsrf)
+        .send({
+          provider: "openai-compatible",
+          label: "SSRF",
+          baseUrl,
+          model: "custom",
+          apiKey: "sk-secret-value-1234",
+          isDefault: false,
+        })
+        .expect(400);
+      expect(rejected.body.error.code).toBe("MODEL_CONNECTION_FAILED");
+      expect(JSON.stringify(rejected.body)).not.toContain("sk-secret-value-1234");
+    }
 
     const created = await owner
       .post("/api/v1/model-configs")
@@ -388,16 +527,31 @@ describe("auth HTTP integration", () => {
       .expect(200);
 
     expect((await other.get("/api/v1/model-configs").expect(200)).body.data).toEqual([]);
-    await other
+    const foreignUpdate = await other
+      .patch(`/api/v1/model-configs/${created.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherCsrf)
+      .send({ version: created.body.data.version, label: "越权修改" })
+      .expect(403);
+    expect(foreignUpdate.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    const foreignDelete = await other
       .delete(`/api/v1/model-configs/${created.body.data.id}`)
       .set("Origin", origin)
       .set("X-CSRF-Token", otherCsrf)
-      .expect(404);
-    await other
+      .expect(403);
+    expect(foreignDelete.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    const foreignTest = await other
       .post(`/api/v1/model-configs/${created.body.data.id}/test`)
       .set("Origin", origin)
       .set("X-CSRF-Token", otherCsrf)
-      .expect(404);
+      .expect(403);
+    expect(foreignTest.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    const invalidId = await owner
+      .delete("/api/v1/model-configs/not-a-uuid")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerCsrf)
+      .expect(400);
+    expect(invalidId.body.error.code).toBe("VALIDATION_INVALID");
   });
 
   it("keeps a default model config invariant", async () => {
@@ -421,6 +575,12 @@ describe("auth HTTP integration", () => {
       })
       .expect(200);
     expect(first.body.data.isDefault).toBe(true);
+    const lastDelete = await owner
+      .delete(`/api/v1/model-configs/${first.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .expect(400);
+    expect(lastDelete.body.error.code).toBe("VALIDATION_INVALID");
 
     const second = await owner
       .post("/api/v1/model-configs")
@@ -451,7 +611,7 @@ describe("auth HTTP integration", () => {
     const configs = await owner.get("/api/v1/model-configs").expect(200);
     expect(
       configs.body.data.find((config: { id: string }) => config.id === second.body.data.id),
-    ).toMatchObject({ isDefault: true });
+    ).toMatchObject({ isDefault: true, version: 2 });
   });
 });
 
@@ -478,4 +638,20 @@ async function ensureDatabaseExists(databaseUrl: string): Promise<void> {
 
 function isDuplicateDatabase(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "42P04";
+}
+
+async function waitFor<T>(
+  condition: () => T | Promise<T>,
+  description: string,
+  timeoutMs = 5_000,
+): Promise<T> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt <= timeoutMs) {
+    const result = await condition();
+    if (result) {
+      return result;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error(`Timed out after ${timeoutMs}ms waiting for ${description}`);
 }

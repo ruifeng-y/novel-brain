@@ -16,7 +16,11 @@ import {
 import { decryptApiKey, encryptApiKey, maskApiKey } from "./model-config-crypto";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { ModelConfigRepository, type ModelConfigRecord } from "./model-config.repository";
+import {
+  ModelConfigRepository,
+  type ModelConfigAuditContext,
+  type ModelConfigRecord,
+} from "./model-config.repository";
 import { listProviders, validateProviderConfig } from "./provider-registry";
 
 @Injectable()
@@ -37,6 +41,7 @@ export class ModelConfigService {
   async create(
     userId: string,
     input: ModelConfigInput,
+    audit: ModelConfigAuditContext,
     idempotencyKey?: string,
   ): Promise<ModelConfig> {
     if (idempotencyKey) {
@@ -55,10 +60,12 @@ export class ModelConfigService {
         label: input.label,
         baseUrl: input.baseUrl.replace(/\/$/, ""),
         model: input.model,
+        purposes: input.purposes,
         encryptedKey: encryptApiKey(input.apiKey),
         keyMasked: maskApiKey(input.apiKey),
         isDefault: input.isDefault,
         idempotencyKey: idempotencyKey ?? null,
+        audit,
       });
     } catch (error) {
       if (idempotencyKey && isUniqueViolation(error)) {
@@ -72,7 +79,12 @@ export class ModelConfigService {
     return this.toContract(config);
   }
 
-  async update(userId: string, id: string, input: ModelConfigUpdate): Promise<ModelConfig> {
+  async update(
+    userId: string,
+    id: string,
+    input: ModelConfigUpdate,
+    audit: ModelConfigAuditContext,
+  ): Promise<ModelConfig> {
     const existing = await this.requireConfig(userId, id);
     if (input.version !== existing.version) {
       throw new ApiError(409, "VERSION_CONFLICT", "配置已被其他操作更新，请刷新后重试");
@@ -89,27 +101,38 @@ export class ModelConfigService {
       model: input.model ?? existing.model,
     };
     await validateProviderConfig(merged as Pick<ModelConfigInput, "provider" | "baseUrl">);
-    const config = await this.repository.update(userId, id, input.version, {
-      ...(input.label !== undefined ? { label: input.label } : {}),
-      ...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl.replace(/\/$/, "") } : {}),
-      ...(input.model !== undefined ? { model: input.model } : {}),
-      ...(input.apiKey !== undefined
-        ? {
-            encryptedKey: encryptApiKey(input.apiKey),
-            keyMasked: maskApiKey(input.apiKey),
-          }
-        : {}),
-      ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
-    });
+    const config = await this.repository.update(
+      userId,
+      id,
+      input.version,
+      {
+        ...(input.label !== undefined ? { label: input.label } : {}),
+        ...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl.replace(/\/$/, "") } : {}),
+        ...(input.model !== undefined ? { model: input.model } : {}),
+        ...(input.purposes !== undefined ? { purposes: input.purposes } : {}),
+        ...(input.apiKey !== undefined
+          ? {
+              encryptedKey: encryptApiKey(input.apiKey),
+              keyMasked: maskApiKey(input.apiKey),
+            }
+          : {}),
+        ...(input.isDefault !== undefined ? { isDefault: input.isDefault } : {}),
+      },
+      audit,
+    );
     if (!config) {
       throw new ApiError(409, "VERSION_CONFLICT", "配置已被其他操作更新，请刷新后重试");
     }
     return this.toContract(config);
   }
 
-  async delete(userId: string, id: string): Promise<void> {
-    if (!(await this.repository.delete(userId, id))) {
-      throw new ApiError(404, "MODEL_CONFIG_NOT_FOUND", "模型配置不存在");
+  async delete(userId: string, id: string, audit: ModelConfigAuditContext): Promise<void> {
+    const result = await this.repository.delete(userId, id, audit);
+    if (result === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "模型配置不存在或无权访问");
+    }
+    if (result === "last_config") {
+      throw new ApiError(400, "VALIDATION_INVALID", "至少保留一套默认配置");
     }
   }
 
@@ -126,7 +149,7 @@ export class ModelConfigService {
   private async requireConfig(userId: string, id: string): Promise<ModelConfigRecord> {
     const config = await this.repository.find(userId, id);
     if (!config) {
-      throw new ApiError(404, "MODEL_CONFIG_NOT_FOUND", "模型配置不存在");
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "模型配置不存在或无权访问");
     }
     return config;
   }
@@ -138,6 +161,7 @@ export class ModelConfigService {
       label: config.label,
       baseUrl: config.baseUrl,
       model: config.model,
+      purposes: config.purposes as ModelConfig["purposes"],
       keyMasked: config.keyMasked,
       isDefault: config.isDefault,
       version: config.version,

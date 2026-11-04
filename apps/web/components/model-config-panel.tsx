@@ -9,7 +9,7 @@ import {
   Trash2,
   TriangleAlert,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   apiErrorSchema,
   modelConfigResponseSchema,
@@ -18,7 +18,9 @@ import {
   modelProvidersResponseSchema,
   type ModelConfig,
   type ModelConfigInput,
+  type ModelConnectionTestStatus,
   type ModelProviderInfo,
+  type ModelPurpose,
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
@@ -29,6 +31,7 @@ interface FormState {
   baseUrl: string;
   model: string;
   apiKey: string;
+  purposes: ModelPurpose[];
   isDefault: boolean;
 }
 
@@ -38,8 +41,15 @@ const emptyForm: FormState = {
   baseUrl: "https://api.deepseek.com",
   model: "deepseek-chat",
   apiKey: "",
+  purposes: ["writing"],
   isDefault: true,
 };
+
+const purposeOptions: Array<{ value: ModelPurpose; label: string }> = [
+  { value: "planning", label: "规划" },
+  { value: "writing", label: "正文" },
+  { value: "review", label: "检查" },
+];
 
 export function ModelConfigPanel() {
   const [providers, setProviders] = useState<ModelProviderInfo[]>([]);
@@ -50,28 +60,37 @@ export function ModelConfigPanel() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const createIdempotencyKey = useRef<string | null>(null);
+
+  const fetchConfigs = useCallback(async () => {
+    const response = await fetch("/api/v1/model-configs", { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(await readError(response));
+    }
+    const configData = modelConfigsResponseSchema.parse(await response.json()).data;
+    setConfigs(configData);
+    return configData;
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [providerResponse, configResponse] = await Promise.all([
+      const [providerResponse] = await Promise.all([
         fetch("/api/v1/model-configs/providers", { cache: "no-store" }),
-        fetch("/api/v1/model-configs", { cache: "no-store" }),
+        fetchConfigs(),
       ]);
-      if (!providerResponse.ok || !configResponse.ok) {
-        throw new Error(await readError(configResponse));
+      if (!providerResponse.ok) {
+        throw new Error(await readError(providerResponse));
       }
       const providerData = modelProvidersResponseSchema.parse(await providerResponse.json()).data;
-      const configData = modelConfigsResponseSchema.parse(await configResponse.json()).data;
       setProviders(providerData);
-      setConfigs(configData);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "模型配置加载失败。");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchConfigs]);
 
   useEffect(() => {
     void load();
@@ -99,10 +118,14 @@ export function ModelConfigPanel() {
         label: form.label,
         baseUrl: form.baseUrl,
         model: form.model,
+        purposes: form.purposes,
         isDefault: form.isDefault,
       };
       if (form.apiKey) {
         payload.apiKey = form.apiKey;
+      }
+      if (!editing && !createIdempotencyKey.current) {
+        createIdempotencyKey.current = crypto.randomUUID();
       }
       const response = await fetch(
         editing ? `/api/v1/model-configs/${editing.id}` : "/api/v1/model-configs",
@@ -111,7 +134,7 @@ export function ModelConfigPanel() {
           headers: {
             "content-type": "application/json",
             "x-csrf-token": csrfToken,
-            ...(!editing ? { "idempotency-key": crypto.randomUUID() } : {}),
+            ...(!editing ? { "idempotency-key": createIdempotencyKey.current ?? "" } : {}),
           },
           body: JSON.stringify(editing ? { ...payload, version: editing.version } : payload),
         },
@@ -121,6 +144,9 @@ export function ModelConfigPanel() {
       }
       modelConfigResponseSchema.parse(await response.json());
       setNotice(editing ? "模型配置已更新。" : "模型配置已保存。");
+      if (!editing) {
+        createIdempotencyKey.current = null;
+      }
       setEditing(null);
       setForm(emptyForm);
       await load();
@@ -146,10 +172,10 @@ export function ModelConfigPanel() {
       }
       const result = modelConnectionTestResponseSchema.parse(await response.json()).data;
       setNotice(result.status === "success" ? "连接正常。" : result.message);
-      await load();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "连接测试失败。");
     } finally {
+      await fetchConfigs().catch(() => undefined);
       setBusy("");
     }
   }
@@ -182,6 +208,7 @@ export function ModelConfigPanel() {
       baseUrl: config.baseUrl,
       model: config.model,
       apiKey: "",
+      purposes: config.purposes,
       isDefault: config.isDefault,
     });
   }
@@ -231,17 +258,18 @@ export function ModelConfigPanel() {
                 <div className="model-config-copy">
                   <strong>{config.label}</strong>
                   <small>
-                    {config.model} · Key {config.keyMasked}
+                    {purposeLabels(config.purposes)} · {config.model} · Key {config.keyMasked}
                   </small>
                 </div>
                 {config.isDefault ? <span className="badge jade-badge">默认</span> : null}
                 <span
                   className={`badge ${config.lastTestStatus === "success" ? "live-badge" : ""}`}
+                  data-status={config.lastTestStatus ?? "untested"}
                 >
                   {config.lastTestStatus === "success" ? (
                     <CheckCircle2 size={12} aria-hidden="true" />
                   ) : null}
-                  {config.lastTestStatus === "success" ? "连接正常" : "未测试"}
+                  {connectionStatusLabel(config.lastTestStatus)}
                 </span>
                 <button
                   className="text-btn small"
@@ -280,12 +308,12 @@ export function ModelConfigPanel() {
         <div className="panel-head">
           <div>
             <span className="panel-kicker">{editing ? "编辑配置" : "新增配置"}</span>
-            <h2 id="model-form-title">填写 Provider 与 Key</h2>
+            <h2 id="model-form-title">填写服务商与 Key</h2>
           </div>
         </div>
         <form className="model-form" onSubmit={save}>
           <label className="auth-field">
-            <span>Provider</span>
+            <span>服务商</span>
             <select
               disabled={Boolean(editing)}
               onChange={(event) => selectProvider(event.target.value)}
@@ -323,6 +351,30 @@ export function ModelConfigPanel() {
               value={form.model}
             />
           </label>
+          <fieldset className="model-purposes">
+            <legend>适用场景</legend>
+            {purposeOptions.map((purpose) => (
+              <label key={purpose.value}>
+                <input
+                  checked={form.purposes.includes(purpose.value)}
+                  onChange={(event) => {
+                    const purposes = event.target.checked
+                      ? [...form.purposes, purpose.value]
+                      : form.purposes.filter((value) => value !== purpose.value);
+                    if (purposes.length === 0) {
+                      return;
+                    }
+                    setForm({
+                      ...form,
+                      purposes,
+                    });
+                  }}
+                  type="checkbox"
+                />
+                {purpose.label}
+              </label>
+            ))}
+          </fieldset>
           <label className="auth-field">
             <span>API Key</span>
             <input
@@ -369,4 +421,38 @@ export function ModelConfigPanel() {
 async function readError(response: Response): Promise<string> {
   const parsed = apiErrorSchema.safeParse(await response.json().catch(() => null));
   return parsed.success ? parsed.data.error.message : "请求失败，请稍后重试。";
+}
+
+function connectionStatusLabel(status: ModelConnectionTestStatus | null): string {
+  switch (status) {
+    case "success":
+      return "连接正常";
+    case "key_invalid":
+      return "Key 无效";
+    case "rate_limited":
+      return "已限流";
+    case "timeout":
+      return "连接超时";
+    case "provider_error":
+      return "服务商异常";
+    case "error":
+      return "连接失败";
+    default:
+      return "未测试";
+  }
+}
+
+function purposeLabel(purpose: ModelPurpose): string {
+  return purposeOptions.find((option) => option.value === purpose)?.label ?? purpose;
+}
+
+function purposeLabels(purposes: ModelPurpose[]): string {
+  return [...purposes]
+    .sort(
+      (left, right) =>
+        purposeOptions.findIndex((option) => option.value === left) -
+        purposeOptions.findIndex((option) => option.value === right),
+    )
+    .map(purposeLabel)
+    .join("、");
 }

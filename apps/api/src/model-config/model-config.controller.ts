@@ -11,6 +11,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  type ErrorCode,
   modelConfigInputSchema,
   modelConfigDeleteResponseSchema,
   modelConfigResponseSchema,
@@ -18,20 +19,23 @@ import {
   modelConfigsResponseSchema,
   modelConnectionTestResponseSchema,
   modelProvidersResponseSchema,
+  uuidV7Schema,
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
 import { ApiBody, ApiHeader, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
 import { z } from "zod";
 
+import { getClientIp } from "../auth/client-ip";
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiError } from "../common/api-error";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { ModelConfigService } from "./model-config.service";
 
-function envelope<T>(data: T) {
-  return { data, requestId: createRequestId(), meta: {} };
+function envelope<T>(data: T, requestId = createRequestId()) {
+  return { data, requestId, meta: {} };
 }
 
 function schemaOf(schema: z.ZodType): SchemaObject {
@@ -71,6 +75,7 @@ export class ModelConfigController {
   @ApiBody({ schema: createBodySchema })
   @ApiOkResponse({ description: "Created model config", schema: configResponseSchema })
   async create(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const requestId = createRequestId();
     const idempotencyKey =
       typeof request.headers["idempotency-key"] === "string"
         ? request.headers["idempotency-key"]
@@ -78,9 +83,10 @@ export class ModelConfigController {
     const config = await this.service.create(
       this.userId(request),
       modelConfigInputSchema.parse(body),
+      this.auditContext(request, requestId),
       idempotencyKey,
     );
-    return modelConfigResponseSchema.parse(envelope(config));
+    return modelConfigResponseSchema.parse(envelope(config, requestId));
   }
 
   @Patch(":configId")
@@ -91,12 +97,15 @@ export class ModelConfigController {
     @Param("configId") configId: string,
     @Body() body: unknown,
   ) {
+    const requestId = createRequestId();
+    const audit = this.auditContext(request, requestId);
     const config = await this.service.update(
       this.userId(request),
-      configId,
+      uuidV7Schema.parse(configId),
       modelConfigUpdateSchema.parse(body),
+      audit,
     );
-    return modelConfigResponseSchema.parse(envelope(config));
+    return modelConfigResponseSchema.parse(envelope(config, requestId));
   }
 
   @Delete(":configId")
@@ -106,17 +115,27 @@ export class ModelConfigController {
     schema: schemaOf(modelConfigDeleteResponseSchema),
   })
   async delete(@Req() request: AuthenticatedRequest, @Param("configId") configId: string) {
-    await this.service.delete(this.userId(request), configId);
-    return modelConfigDeleteResponseSchema.parse(envelope({ deleted: true }));
+    const requestId = createRequestId();
+    await this.service.delete(
+      this.userId(request),
+      uuidV7Schema.parse(configId),
+      this.auditContext(request, requestId),
+    );
+    return modelConfigDeleteResponseSchema.parse(envelope({ deleted: true }, requestId));
   }
 
   @Post(":configId/test")
   @HttpCode(200)
   @ApiOkResponse({ description: "Connection test result", schema: testResponseSchema })
   async test(@Req() request: AuthenticatedRequest, @Param("configId") configId: string) {
-    return modelConnectionTestResponseSchema.parse(
-      envelope(await this.service.test(this.userId(request), configId)),
-    );
+    const result = await this.service.test(this.userId(request), uuidV7Schema.parse(configId));
+    if (result.status !== "success") {
+      throw new ApiError(400, connectionErrorCode(result.status), result.message, {
+        status: result.status,
+        latencyMs: result.latencyMs,
+      });
+    }
+    return modelConnectionTestResponseSchema.parse(envelope(result));
   }
 
   private userId(request: AuthenticatedRequest): string {
@@ -125,4 +144,30 @@ export class ModelConfigController {
     }
     return request.auth.user.id;
   }
+
+  private auditContext(request: AuthenticatedRequest, requestId: string) {
+    const userAgent = String(request.headers["user-agent"] ?? "").trim();
+    return {
+      requestId,
+      ip: getClientIp(request) || "unknown",
+      userAgent: userAgent || "unknown",
+    };
+  }
 }
+
+function connectionErrorCode(status: Exclude<ConnectionStatus, "success">): ErrorCode {
+  switch (status) {
+    case "key_invalid":
+      return "MODEL_KEY_INVALID";
+    case "rate_limited":
+      return "MODEL_RATE_LIMITED";
+    case "timeout":
+      return "MODEL_TIMEOUT";
+    case "provider_error":
+      return "MODEL_PROVIDER_ERROR";
+    case "error":
+      return "MODEL_CONNECTION_FAILED";
+  }
+}
+
+type ConnectionStatus = Awaited<ReturnType<ModelConfigService["test"]>>["status"];

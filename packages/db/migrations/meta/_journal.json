@@ -36,6 +36,27 @@
       "when": 1793799216491,
       "tag": "0004_happy_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793802455468,
+      "tag": "0005_damp_inhumans",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793803496099,
+      "tag": "0006_slimy_susan_delgado",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793803691087,
+      "tag": "0007_bright_senator_kelly",
+      "breakpoints": true
     }
   ]
 }

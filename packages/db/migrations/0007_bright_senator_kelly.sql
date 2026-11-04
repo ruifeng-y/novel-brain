@@ -1,0 +1,1 @@
+ALTER TABLE "model_configs" ADD COLUMN "deleted_at" timestamp with time zone;

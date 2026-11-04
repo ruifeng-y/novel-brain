@@ -746,6 +746,30 @@ a:focus-visible {
   font-size: 12px;
 }
 
+.model-purposes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.model-purposes legend {
+  width: 100%;
+  margin-bottom: 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.model-purposes label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
 .model-form-actions {
   display: flex;
   gap: 8px;

@@ -182,6 +182,7 @@ describe("shared contracts", () => {
         label: "DeepSeek 正文",
         baseUrl: "https://api.deepseek.com",
         model: "deepseek-chat",
+        purposes: ["writing"],
         keyMasked: "****1234",
         isDefault: true,
         version: 1,
@@ -192,6 +193,15 @@ describe("shared contracts", () => {
       }),
     ).toBeTruthy();
     expect(modelConfigUpdateSchema.parse({ version: 1, label: "新名称" })).toBeTruthy();
+    expect(
+      modelConfigInputSchema.parse({
+        provider: "deepseek",
+        label: "默认用途",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: "sk-test-1234",
+      }).purposes,
+    ).toEqual(["writing"]);
     expect(
       modelProvidersResponseSchema.parse({
         data: [

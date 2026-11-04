@@ -796,6 +796,14 @@
                           "model": {
                             "type": "string"
                           },
+                          "purposes": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": ["planning", "writing", "review"]
+                            }
+                          },
                           "keyMasked": {
                             "type": "string"
                           },
@@ -811,7 +819,14 @@
                           "lastTestStatus": {
                             "nullable": true,
                             "type": "string",
-                            "enum": ["success", "key_invalid", "rate_limited", "timeout", "error"]
+                            "enum": [
+                              "success",
+                              "key_invalid",
+                              "rate_limited",
+                              "timeout",
+                              "provider_error",
+                              "error"
+                            ]
                           },
                           "lastTestedAt": {
                             "nullable": true,
@@ -836,6 +851,7 @@
                           "label",
                           "baseUrl",
                           "model",
+                          "purposes",
                           "keyMasked",
                           "isDefault",
                           "version",
@@ -910,12 +926,30 @@
                     "minLength": 1,
                     "maxLength": 500
                   },
+                  "purposes": {
+                    "default": ["writing"],
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["planning", "writing", "review"]
+                    }
+                  },
                   "isDefault": {
                     "default": false,
                     "type": "boolean"
                   }
                 },
-                "required": ["provider", "label", "baseUrl", "model", "apiKey", "isDefault"],
+                "required": [
+                  "provider",
+                  "label",
+                  "baseUrl",
+                  "model",
+                  "apiKey",
+                  "purposes",
+                  "isDefault"
+                ],
                 "additionalProperties": false
               }
             }
@@ -949,6 +983,14 @@
                         "model": {
                           "type": "string"
                         },
+                        "purposes": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["planning", "writing", "review"]
+                          }
+                        },
                         "keyMasked": {
                           "type": "string"
                         },
@@ -964,7 +1006,14 @@
                         "lastTestStatus": {
                           "nullable": true,
                           "type": "string",
-                          "enum": ["success", "key_invalid", "rate_limited", "timeout", "error"]
+                          "enum": [
+                            "success",
+                            "key_invalid",
+                            "rate_limited",
+                            "timeout",
+                            "provider_error",
+                            "error"
+                          ]
                         },
                         "lastTestedAt": {
                           "nullable": true,
@@ -989,6 +1038,7 @@
                         "label",
                         "baseUrl",
                         "model",
+                        "purposes",
                         "keyMasked",
                         "isDefault",
                         "version",
@@ -1066,6 +1116,15 @@
                     "minLength": 1,
                     "maxLength": 500
                   },
+                  "purposes": {
+                    "minItems": 1,
+                    "maxItems": 3,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["planning", "writing", "review"]
+                    }
+                  },
                   "isDefault": {
                     "type": "boolean"
                   }
@@ -1104,6 +1163,14 @@
                         "model": {
                           "type": "string"
                         },
+                        "purposes": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["planning", "writing", "review"]
+                          }
+                        },
                         "keyMasked": {
                           "type": "string"
                         },
@@ -1119,7 +1186,14 @@
                         "lastTestStatus": {
                           "nullable": true,
                           "type": "string",
-                          "enum": ["success", "key_invalid", "rate_limited", "timeout", "error"]
+                          "enum": [
+                            "success",
+                            "key_invalid",
+                            "rate_limited",
+                            "timeout",
+                            "provider_error",
+                            "error"
+                          ]
                         },
                         "lastTestedAt": {
                           "nullable": true,
@@ -1144,6 +1218,7 @@
                         "label",
                         "baseUrl",
                         "model",
+                        "purposes",
                         "keyMasked",
                         "isDefault",
                         "version",
@@ -1252,7 +1327,7 @@
                       "properties": {
                         "status": {
                           "type": "string",
-                          "enum": ["success", "key_invalid", "rate_limited", "timeout", "error"]
+                          "enum": ["success"]
                         },
                         "latencyMs": {
                           "type": "number",

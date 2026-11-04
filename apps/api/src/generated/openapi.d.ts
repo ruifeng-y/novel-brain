@@ -631,12 +631,19 @@ export interface operations {
               label: string;
               baseUrl: string;
               model: string;
+              purposes: ("planning" | "writing" | "review")[];
               keyMasked: string;
               isDefault: boolean;
               version: number;
               /** @enum {string|null} */
               lastTestStatus:
-                "success" | "key_invalid" | "rate_limited" | "timeout" | "error" | null;
+                | "success"
+                | "key_invalid"
+                | "rate_limited"
+                | "timeout"
+                | "provider_error"
+                | "error"
+                | null;
               /** Format: date-time */
               lastTestedAt: string | null;
               /** Format: date-time */
@@ -674,6 +681,12 @@ export interface operations {
           baseUrl: string;
           model: string;
           apiKey: string;
+          /**
+           * @default [
+           *       "writing"
+           *     ]
+           */
+          purposes: ("planning" | "writing" | "review")[];
           /** @default false */
           isDefault: boolean;
         };
@@ -694,12 +707,19 @@ export interface operations {
               label: string;
               baseUrl: string;
               model: string;
+              purposes: ("planning" | "writing" | "review")[];
               keyMasked: string;
               isDefault: boolean;
               version: number;
               /** @enum {string|null} */
               lastTestStatus:
-                "success" | "key_invalid" | "rate_limited" | "timeout" | "error" | null;
+                | "success"
+                | "key_invalid"
+                | "rate_limited"
+                | "timeout"
+                | "provider_error"
+                | "error"
+                | null;
               /** Format: date-time */
               lastTestedAt: string | null;
               /** Format: date-time */
@@ -769,6 +789,7 @@ export interface operations {
           baseUrl?: string;
           model?: string;
           apiKey?: string;
+          purposes?: ("planning" | "writing" | "review")[];
           isDefault?: boolean;
         };
       };
@@ -788,12 +809,19 @@ export interface operations {
               label: string;
               baseUrl: string;
               model: string;
+              purposes: ("planning" | "writing" | "review")[];
               keyMasked: string;
               isDefault: boolean;
               version: number;
               /** @enum {string|null} */
               lastTestStatus:
-                "success" | "key_invalid" | "rate_limited" | "timeout" | "error" | null;
+                | "success"
+                | "key_invalid"
+                | "rate_limited"
+                | "timeout"
+                | "provider_error"
+                | "error"
+                | null;
               /** Format: date-time */
               lastTestedAt: string | null;
               /** Format: date-time */
@@ -832,7 +860,7 @@ export interface operations {
           "application/json": {
             data: {
               /** @enum {string} */
-              status: "success" | "key_invalid" | "rate_limited" | "timeout" | "error";
+              status: "success";
               latencyMs: number;
               message: string;
             };
