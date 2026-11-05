@@ -110,7 +110,7 @@ describe("chapter workspace HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        order: 1,
+        number: 1,
         title: "一只手也能结印",
         brief: completeBrief(),
         ignored: true,
@@ -123,13 +123,13 @@ describe("chapter workspace HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        order: 1,
+        number: 1,
         title: "一只手也能结印",
         brief: completeBrief(),
       })
       .expect(201);
     expect(created.body.data).toMatchObject({
-      order: 1,
+      number: 1,
       title: "一只手也能结印",
       status: "planned",
       version: 1,
@@ -202,7 +202,7 @@ describe("chapter workspace HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        order: 1,
+        number: 1,
         title: "一只手也能结印",
         brief: completeBrief(),
       })
@@ -234,7 +234,7 @@ describe("chapter workspace HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        order: 1,
+        number: 1,
         title: "一只手也能结印",
         brief: completeBrief(),
       })
@@ -348,7 +348,7 @@ describe("chapter workspace HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", ownerToken)
       .send({
-        order: 1,
+        number: 1,
         title: "一只手也能结印",
         brief: completeBrief(),
       })
@@ -383,7 +383,7 @@ describe("chapter workspace HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        order: 1,
+        number: 1,
         title: "一只手也能结印",
         brief: completeBrief(),
       })

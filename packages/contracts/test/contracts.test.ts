@@ -138,6 +138,9 @@ describe("shared contracts", () => {
           id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c39",
           proposalId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c37",
           decisionId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c38",
+          sourceChapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c34",
+          validFromChapter: 1,
+          validToChapter: null,
           subject: "沈砚",
           predicate: "身体状态",
           object: "左臂骨折",
@@ -167,6 +170,8 @@ describe("shared contracts", () => {
         lockedAt: "2026-11-05T08:00:00.000Z",
         sourceChapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c34",
         sourceFactId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c39",
+        validFromChapter: 1,
+        validToChapter: null,
         predicate: "身体状态",
         object: "左臂骨折",
       }),
@@ -711,7 +716,7 @@ describe("shared contracts", () => {
       id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
       workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
       branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c13",
-      order: 1,
+      number: 1,
       title: "一只手也能结印",
       status: "planned",
       version: 1,
@@ -739,6 +744,8 @@ describe("shared contracts", () => {
       "settings",
       "brief",
     ]);
+    expect(chapter.number).toBe(1);
+    expect(chapter).not.toHaveProperty("order");
     expect(save).toEqual({
       version: 1,
       content: "血从袖口滴下来，落在青石板上。",
@@ -753,6 +760,50 @@ describe("shared contracts", () => {
       chapterVersionCreateRequestSchema.parse({
         version: 1,
         content: "",
+      }),
+    ).toThrow();
+  });
+
+  it("exposes validToChapter on confirmed facts", () => {
+    const fact = confirmedSettingSchema.parse({
+      kind: "fact",
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c51",
+      type: "character",
+      name: "沈砚",
+      summary: "身体状态：左臂骨折",
+      source: "canon",
+      status: "locked",
+      version: 1,
+      lockedAt: "2026-11-05T08:00:00.000Z",
+      sourceChapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c52",
+      sourceFactId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c51",
+      validFromChapter: 3,
+      validToChapter: null,
+      predicate: "身体状态",
+      object: "左臂骨折",
+    });
+
+    expect(fact).toMatchObject({
+      validFromChapter: 3,
+      validToChapter: null,
+    });
+  });
+
+  it("requires source and validity fields on confirmed facts", () => {
+    expect(() =>
+      confirmedSettingSchema.parse({
+        kind: "fact",
+        id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c53",
+        type: "character",
+        name: "沈砚",
+        summary: "身体状态：左臂骨折",
+        source: "canon",
+        status: "locked",
+        version: 1,
+        lockedAt: "2026-11-05T08:00:00.000Z",
+        validFromChapter: 3,
+        predicate: "身体状态",
+        object: "左臂骨折",
       }),
     ).toThrow();
   });

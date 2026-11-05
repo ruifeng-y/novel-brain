@@ -584,7 +584,14 @@ export const storyBibleDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
 
-export const settingEntityTypeSchema = z.enum(["world_rule", "character", "golden_finger"]);
+export const settingEntityTypeSchema = z.enum([
+  "world_rule",
+  "character",
+  "faction",
+  "map",
+  "power_system",
+  "golden_finger",
+]);
 export type SettingEntityType = z.infer<typeof settingEntityTypeSchema>;
 
 export const settingStatusSchema = z.enum(["draft", "proposed", "locked", "discarded"]);
@@ -619,6 +626,27 @@ export const goldenFingerDataSchema = z
   .strict();
 export type GoldenFingerData = z.infer<typeof goldenFingerDataSchema>;
 
+export const factionDataSchema = z
+  .object({
+    details: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type FactionData = z.infer<typeof factionDataSchema>;
+
+export const mapDataSchema = z
+  .object({
+    details: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type MapData = z.infer<typeof mapDataSchema>;
+
+export const powerSystemDataSchema = z
+  .object({
+    details: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type PowerSystemData = z.infer<typeof powerSystemDataSchema>;
+
 const settingEntityBaseShape = {
   name: z.string().trim().min(1).max(120),
   aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
@@ -637,6 +665,21 @@ export const settingEntityCreateRequestSchema = z.discriminatedUnion("type", [
     type: z.literal("character"),
     ...settingEntityBaseShape,
     data: characterDataSchema,
+  }),
+  z.object({
+    type: z.literal("faction"),
+    ...settingEntityBaseShape,
+    data: factionDataSchema,
+  }),
+  z.object({
+    type: z.literal("map"),
+    ...settingEntityBaseShape,
+    data: mapDataSchema,
+  }),
+  z.object({
+    type: z.literal("power_system"),
+    ...settingEntityBaseShape,
+    data: powerSystemDataSchema,
   }),
   z.object({
     type: z.literal("golden_finger"),
@@ -658,6 +701,9 @@ export const settingEntityPatchRequestSchema = z
       .union([
         worldRuleDataSchema.partial(),
         characterDataSchema.partial(),
+        factionDataSchema.partial(),
+        mapDataSchema.partial(),
+        powerSystemDataSchema.partial(),
         goldenFingerDataSchema.partial(),
       ])
       .optional(),
@@ -710,6 +756,21 @@ export const settingEntitySchema = z.discriminatedUnion("type", [
   }),
   z.object({
     ...settingEntityCommonShape,
+    type: z.literal("faction"),
+    data: factionDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("map"),
+    data: mapDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("power_system"),
+    data: powerSystemDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
     type: z.literal("golden_finger"),
     data: goldenFingerDataSchema,
   }),
@@ -728,21 +789,45 @@ export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
 
-export const confirmedSettingSchema = z.object({
-  kind: z.enum(["setting", "fact"]).optional(),
-  id: uuidV7Schema,
-  type: settingEntityTypeSchema,
-  name: z.string(),
-  summary: z.string(),
-  source: settingSourceSchema,
-  status: z.literal("locked"),
-  version: z.number().int().positive(),
-  lockedAt: z.string().datetime(),
-  sourceChapterId: uuidV7Schema.optional(),
-  sourceFactId: uuidV7Schema.optional(),
-  predicate: z.string().optional(),
-  object: z.string().optional(),
-});
+export const confirmedSettingSchema = z
+  .object({
+    kind: z.enum(["setting", "fact"]).optional(),
+    id: uuidV7Schema,
+    type: settingEntityTypeSchema,
+    name: z.string(),
+    summary: z.string(),
+    source: settingSourceSchema,
+    status: z.literal("locked"),
+    version: z.number().int().positive(),
+    lockedAt: z.string().datetime(),
+    sourceChapterId: uuidV7Schema.optional(),
+    sourceFactId: uuidV7Schema.optional(),
+    validFromChapter: z.number().int().positive().optional(),
+    validToChapter: z.number().int().positive().nullable().optional(),
+    predicate: z.string().optional(),
+    object: z.string().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.kind !== "fact") {
+      return;
+    }
+    const requiredFactFields = [
+      ["sourceChapterId", value.sourceChapterId],
+      ["validFromChapter", value.validFromChapter],
+      ["validToChapter", value.validToChapter],
+      ["predicate", value.predicate],
+      ["object", value.object],
+    ] as const;
+    for (const [field, fieldValue] of requiredFactFields) {
+      if (fieldValue === undefined) {
+        context.addIssue({
+          code: "custom",
+          path: [field],
+          message: `${field} is required for confirmed facts`,
+        });
+      }
+    }
+  });
 export type ConfirmedSetting = z.infer<typeof confirmedSettingSchema>;
 
 export const confirmedSettingListResponseSchema = apiEnvelopeSchema(
@@ -765,7 +850,7 @@ export const chapterSchema = z.object({
   id: uuidV7Schema,
   workId: uuidV7Schema,
   branchId: uuidV7Schema,
-  order: z.number().int().positive(),
+  number: z.number().int().positive(),
   title: z.string(),
   status: chapterStatusSchema,
   version: z.number().int().positive(),
@@ -826,7 +911,7 @@ export type ChapterWorkspace = z.infer<typeof chapterWorkspaceSchema>;
 
 export const chapterCreateRequestSchema = z
   .object({
-    order: z.number().int().positive().max(10_000),
+    number: z.number().int().positive().max(10_000),
     title: z.string().trim().min(1).max(200),
     brief: chapterBriefSchema,
   })
@@ -996,6 +1081,9 @@ export const canonCommitFactSchema = z.object({
   id: uuidV7Schema,
   proposalId: uuidV7Schema,
   decisionId: uuidV7Schema,
+  sourceChapterId: uuidV7Schema,
+  validFromChapter: z.number().int().positive(),
+  validToChapter: z.number().int().positive().nullable(),
   subject: z.string().min(1),
   predicate: z.string().min(1),
   object: z.string().min(1),
@@ -1132,6 +1220,7 @@ export const WORKER_JOB_STEPS = [
 ] as const;
 
 export const workerJobStepSchema = z.enum(WORKER_JOB_STEPS);
+export type WorkerJobStep = z.infer<typeof workerJobStepSchema>;
 
 export const generateChapterJobSchema = z.object({
   jobId: uuidV7Schema,

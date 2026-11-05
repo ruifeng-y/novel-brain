@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  compileChapterContext,
   compileContextPack,
+  ContextBudgetExceededError,
   createRequestId,
   elapsedMilliseconds,
   extractFactCandidates,
@@ -100,6 +102,192 @@ describe("context compiler", () => {
       },
     ]);
     expect(pack.sourceRefs).toEqual([requiredRef, settingRef]);
+  });
+
+  it("treats the locked story bible as required and stops when it cannot fit", () => {
+    expect(() =>
+      compileChapterContext(
+        {
+          chapter: {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
+            number: 1,
+            title: "第一章",
+            brief: {
+              goal: "写",
+              pov: "甲",
+              location: "山",
+              sceneBeats: ["战"],
+              requiredFacts: ["断臂"],
+            },
+          },
+          storyBible: {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
+            cards: [
+              {
+                title: "世界铁律",
+                content: "这是一段不能淘汰的故事圣经硬约束内容，必须完整进入上下文。",
+              },
+            ],
+          },
+          settings: [],
+          previousVersions: [],
+        },
+        10,
+      ),
+    ).toThrow(ContextBudgetExceededError);
+  });
+
+  it("includes the style sample and only scene-relevant confirmed settings", () => {
+    const pack = compileChapterContext(
+      {
+        chapter: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
+          number: 4,
+          title: "雨夜",
+          brief: {
+            goal: "沈砚在荒寺外迎敌",
+            pov: "沈砚",
+            location: "荒寺外",
+            sceneBeats: ["沈砚藏起断臂。"],
+            requiredFacts: ["左臂骨折"],
+          },
+        },
+        storyBible: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
+          cards: [{ title: "一句话故事", content: "杂役以记忆换仙途。" }],
+        },
+        styleSample: "句子短促，白描为主，避免华丽比喻。",
+        settings: [
+          {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c13",
+            type: "character",
+            name: "沈砚",
+            aliases: ["小砚"],
+            summary: "外门杂役",
+            attributes: { bodyState: "左臂骨折" },
+          },
+          {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c14",
+            type: "faction",
+            name: "无关宗门",
+            aliases: [],
+            summary: "与本章无关",
+            attributes: {},
+          },
+        ],
+        previousVersions: [],
+      },
+      200,
+    );
+
+    expect(pack.selected.map((source) => source.key)).toEqual(
+      expect.arrayContaining(["style:sample", "setting:0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c13"]),
+    );
+    expect(pack.selected.map((source) => source.key)).not.toContain(
+      "setting:0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c14",
+    );
+  });
+
+  it("excludes confirmed facts outside their chapter validity window", () => {
+    const pack = compileChapterContext(
+      {
+        chapter: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
+          number: 4,
+          title: "雨夜",
+          brief: {
+            goal: "沈砚在荒寺外迎敌",
+            pov: "沈砚",
+            location: "荒寺外",
+            sceneBeats: ["沈砚藏起断臂。"],
+            requiredFacts: ["左臂骨折"],
+          },
+        },
+        storyBible: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
+          cards: [{ title: "一句话故事", content: "杂役以记忆换仙途。" }],
+        },
+        settings: [
+          {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c17",
+            type: "fact",
+            name: "沈砚",
+            summary: "身体状态：未来才恢复",
+            attributes: {},
+            sourceChapterNumber: 1,
+            validFromChapter: 5,
+            validToChapter: null,
+          },
+          {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c18",
+            type: "fact",
+            name: "沈砚",
+            summary: "身体状态：早已痊愈",
+            attributes: {},
+            sourceChapterNumber: 1,
+            validFromChapter: 1,
+            validToChapter: 3,
+          },
+        ],
+        previousVersions: [],
+      },
+      200,
+    );
+
+    expect(pack.selected.map((source) => source.key)).not.toContain(
+      "setting:0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c17",
+    );
+    expect(pack.selected.map((source) => source.key)).not.toContain(
+      "setting:0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c18",
+    );
+  });
+
+  it("keeps submitted fact and source-chapter provenance in context citations", () => {
+    const pack = compileChapterContext(
+      {
+        chapter: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
+          number: 5,
+          title: "追问",
+          brief: {
+            goal: "沈砚确认身体状态",
+            pov: "沈砚",
+            location: "山门",
+            sceneBeats: ["沈砚抬起左臂。"],
+            requiredFacts: ["左臂骨折"],
+          },
+        },
+        storyBible: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
+          cards: [{ title: "一句话故事", content: "杂役以记忆换仙途。" }],
+        },
+        settings: [
+          {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c15",
+            type: "fact",
+            name: "沈砚",
+            summary: "身体状态：左臂骨折",
+            attributes: {
+              sourceChapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c16",
+            },
+            sourceChapterNumber: 3,
+            validFromChapter: 3,
+            validToChapter: null,
+          },
+        ],
+        previousVersions: [],
+      },
+      200,
+    );
+
+    expect(pack.selected.find((source) => source.key.startsWith("setting:"))?.sourceRefs).toEqual([
+      {
+        sourceType: "setting",
+        sourceId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c15",
+        label: "沈砚",
+        citation: "第 3 章事实 · 沈砚 · 身体状态：左臂骨折",
+      },
+    ]);
   });
 });
 

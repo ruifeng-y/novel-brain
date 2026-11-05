@@ -301,11 +301,22 @@ export function compileGenerationContext(
         id: sources.storyBible.id,
         cards: sources.storyBible.cards,
       },
+      ...(sources.styleSample ? { styleSample: sources.styleSample } : {}),
+      styleSampleId: sources.chapter.workId,
       settings: sources.settings.map((setting) => ({
         id: setting.id,
+        type: setting.type,
         name: setting.name,
+        aliases: setting.aliases,
         summary: setting.summary,
+        description: setting.description,
+        tags: setting.tags,
         attributes: setting.attributes,
+        ...(setting.sourceChapterNumber
+          ? { sourceChapterNumber: setting.sourceChapterNumber }
+          : {}),
+        ...(setting.validFromChapter ? { validFromChapter: setting.validFromChapter } : {}),
+        validToChapter: setting.validToChapter ?? null,
       })),
       previousVersions: sources.previousVersions,
     },

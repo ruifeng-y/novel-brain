@@ -45,7 +45,7 @@ async function createChapter(page: Page, work: { id: string; mainBranch: { id: s
   const response = await page.request.post(chaptersPath(work), {
     headers: { Origin: origin, "X-CSRF-Token": token },
     data: {
-      order: 1,
+      number: 1,
       title: "一只手也能结印",
       brief: {
         goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",

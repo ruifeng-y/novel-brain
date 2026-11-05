@@ -1,7 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import {
   characterDataSchema,
+  factionDataSchema,
   goldenFingerDataSchema,
+  mapDataSchema,
+  powerSystemDataSchema,
   type CharacterData,
   type ConfirmedSetting,
   type GoldenFingerData,
@@ -88,6 +91,8 @@ export class SettingsService {
         lockedAt: fact.createdAt.toISOString(),
         sourceChapterId: fact.chapterId,
         sourceFactId: fact.id,
+        validFromChapter: fact.validFromChapter,
+        validToChapter: fact.validToChapter,
         predicate: fact.predicate,
         object: fact.object,
       })),
@@ -226,6 +231,28 @@ export class SettingsService {
       };
     }
 
+    if (record.type === "faction" || record.type === "map" || record.type === "power_system") {
+      return {
+        id: record.id,
+        workId: record.workId,
+        branchId: record.branchId,
+        type: record.type,
+        name: record.name,
+        aliases: record.aliases,
+        summary: record.summary,
+        description: record.description,
+        tags: record.tags,
+        status: record.status as SettingEntity["status"],
+        source: record.source as SettingEntity["source"],
+        version: record.version,
+        data: record.attributes as { details: string },
+        lockedAt: record.lockedAt?.toISOString() ?? null,
+        lockedBy: record.lockedBy,
+        createdAt: record.createdAt.toISOString(),
+        updatedAt: record.updatedAt.toISOString(),
+      };
+    }
+
     return {
       id: record.id,
       workId: record.workId,
@@ -270,7 +297,13 @@ function requireMatchingSettingData(
       ? characterDataSchema.partial()
       : type === "golden_finger"
         ? goldenFingerDataSchema.partial()
-        : worldRuleDataSchema.partial();
+        : type === "faction"
+          ? factionDataSchema.partial()
+          : type === "map"
+            ? mapDataSchema.partial()
+            : type === "power_system"
+              ? powerSystemDataSchema.partial()
+              : worldRuleDataSchema.partial();
   const parsed = schema.safeParse(data);
   if (!parsed.success) {
     throw new ApiError(400, "VALIDATION_INVALID", "设定字段与当前类型不匹配");

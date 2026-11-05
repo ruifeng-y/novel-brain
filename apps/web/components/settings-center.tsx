@@ -57,6 +57,7 @@ type EditorState = {
   cost: string;
   limits: string;
   growth: string;
+  details: string;
 };
 
 const COLUMNS: Array<{
@@ -67,9 +68,9 @@ const COLUMNS: Array<{
   supported: boolean;
 }> = [
   { key: "world", label: "世界", contentLabel: "世界规则", icon: Globe2, supported: true },
-  { key: "factions", label: "势力", contentLabel: "势力", icon: Shield, supported: false },
+  { key: "factions", label: "势力", contentLabel: "势力", icon: Shield, supported: true },
   { key: "characters", label: "人物", contentLabel: "人物档案", icon: Users, supported: true },
-  { key: "map", label: "地图", contentLabel: "地图", icon: Map, supported: false },
+  { key: "map", label: "地图", contentLabel: "地图", icon: Map, supported: true },
   { key: "power", label: "力量体系", contentLabel: "力量体系", icon: Zap, supported: true },
   { key: "items", label: "物品功法", contentLabel: "物品功法", icon: Swords, supported: false },
   { key: "timeline", label: "时间线", contentLabel: "时间线", icon: History, supported: false },
@@ -78,12 +79,18 @@ const COLUMNS: Array<{
 const typeLabels: Record<SettingEntityType, string> = {
   world_rule: "世界规则",
   character: "人物档案",
+  faction: "势力",
+  map: "地图",
+  power_system: "力量体系",
   golden_finger: "金手指",
 };
 
 const typeDescriptions: Record<SettingTypeColumn, string> = {
   world_rule: "硬规则与不可违背的世界边界",
   character: "身体状态、知识边界与关系摘要",
+  faction: "组织立场、控制范围和人物关系",
+  map: "地点层级、路径和场景边界",
+  power_system: "层级、路径、突破条件和代价",
   golden_finger: "规则、代价、限制与成长",
 };
 
@@ -155,9 +162,11 @@ export function SettingsCenter({ workId }: { workId: string }) {
     return {
       world: entities.filter((entity) => entity.type === "world_rule").length,
       characters: entities.filter((entity) => entity.type === "character").length,
-      factions: 0,
-      map: 0,
-      power: entities.filter((entity) => entity.type === "golden_finger").length,
+      factions: entities.filter((entity) => entity.type === "faction").length,
+      map: entities.filter((entity) => entity.type === "map").length,
+      power: entities.filter(
+        (entity) => entity.type === "power_system" || entity.type === "golden_finger",
+      ).length,
       items: 0,
       timeline: 0,
     } satisfies Record<ColumnKey, number>;
@@ -346,9 +355,15 @@ export function SettingsCenter({ workId }: { workId: string }) {
       ? entities.filter((entity) => entity.type === "world_rule")
       : activeColumn === "characters"
         ? entities.filter((entity) => entity.type === "character")
-        : activeColumn === "power"
-          ? entities.filter((entity) => entity.type === "golden_finger")
-          : [];
+        : activeColumn === "factions"
+          ? entities.filter((entity) => entity.type === "faction")
+          : activeColumn === "map"
+            ? entities.filter((entity) => entity.type === "map")
+            : activeColumn === "power"
+              ? entities.filter(
+                  (entity) => entity.type === "power_system" || entity.type === "golden_finger",
+                )
+              : [];
 
   return (
     <>
@@ -565,6 +580,9 @@ function SettingEditor({
           >
             <option value="world_rule">世界规则</option>
             <option value="character">人物档案</option>
+            <option value="faction">势力</option>
+            <option value="map">地图</option>
+            <option value="power_system">力量体系</option>
             <option value="golden_finger">金手指</option>
           </select>
         </label>
@@ -657,6 +675,16 @@ function SettingEditor({
               />
             </label>
           </div>
+        ) : editor.type === "faction" || editor.type === "map" || editor.type === "power_system" ? (
+          <label className="settings-field">
+            <span>{typeLabels[editor.type]}</span>
+            <textarea
+              onChange={(event) => update("details", event.target.value)}
+              required
+              rows={4}
+              value={editor.details}
+            />
+          </label>
         ) : (
           <div className="settings-form-grid">
             <label className="settings-field">
@@ -868,6 +896,11 @@ function EntityDetail({
             <p>{entity.data.relationshipSummary}</p>
           </div>
         </>
+      ) : entity.type === "faction" || entity.type === "map" || entity.type === "power_system" ? (
+        <div className="settings-detail-block">
+          <h3>{typeLabels[entity.type]}</h3>
+          <p>{entity.data.details}</p>
+        </div>
       ) : (
         <div className="settings-golden-grid">
           <div>
@@ -1001,6 +1034,7 @@ function emptyEditor(type: SettingEntityType): EditorState {
     cost: "",
     limits: "",
     growth: "",
+    details: "",
   };
 }
 
@@ -1023,6 +1057,10 @@ function editorFromEntity(entity: SettingEntity): EditorState {
     cost: entity.type === "golden_finger" ? entity.data.cost : "",
     limits: entity.type === "golden_finger" ? entity.data.limits : "",
     growth: entity.type === "golden_finger" ? entity.data.growth : "",
+    details:
+      entity.type === "faction" || entity.type === "map" || entity.type === "power_system"
+        ? entity.data.details
+        : "",
   };
 }
 
@@ -1046,6 +1084,13 @@ function createPayload(editor: EditorState): SettingEntityCreateRequest {
         knowledgeBoundary: editor.knowledgeBoundary.trim(),
         relationshipSummary: editor.relationshipSummary.trim(),
       },
+    };
+  }
+  if (editor.type === "faction" || editor.type === "map" || editor.type === "power_system") {
+    return {
+      type: editor.type,
+      ...common,
+      data: { details: editor.details.trim() },
     };
   }
   return {
@@ -1080,6 +1125,12 @@ function patchPayload(editor: EditorState) {
         knowledgeBoundary: editor.knowledgeBoundary.trim(),
         relationshipSummary: editor.relationshipSummary.trim(),
       },
+    };
+  }
+  if (editor.type === "faction" || editor.type === "map" || editor.type === "power_system") {
+    return {
+      ...common,
+      data: { details: editor.details.trim() },
     };
   }
   return {
@@ -1147,15 +1198,27 @@ function settingsPath(work: WorkOverview): string {
 }
 
 function columnForType(type: SettingEntityType): ColumnKey {
-  return type === "world_rule" ? "world" : type === "character" ? "characters" : "power";
+  return type === "world_rule"
+    ? "world"
+    : type === "character"
+      ? "characters"
+      : type === "faction"
+        ? "factions"
+        : type === "map"
+          ? "map"
+          : "power";
 }
 
 function typeForColumn(column: ColumnKey): SettingEntityType {
   return column === "characters"
     ? "character"
-    : column === "power"
-      ? "golden_finger"
-      : "world_rule";
+    : column === "factions"
+      ? "faction"
+      : column === "map"
+        ? "map"
+        : column === "power"
+          ? "power_system"
+          : "world_rule";
 }
 
 function columnDescription(column: ColumnKey): string {
@@ -1164,7 +1227,7 @@ function columnDescription(column: ColumnKey): string {
     characters: "记录人物当前身体状态、知识边界和关系摘要。",
     factions: "势力、控制区和组织关系。",
     map: "地点层级、旅行时间和地图标记。",
-    power: "M0 先定义金手指的规则、代价、限制和成长。",
+    power: "记录力量体系，以及金手指的规则、代价、限制和成长。",
     items: "物品、功法、归属和流转。",
     timeline: "故事时间、事件和行程。",
   };

@@ -133,19 +133,19 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
         `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters`,
         "POST",
         {
-          order: Number(form.order),
+          number: Number(form.order),
           title: form.title.trim(),
           brief: briefPayload(form),
         },
         "章纲创建失败。",
       );
       setChapters((current) =>
-        [...current, chapter].sort((left, right) => left.order - right.order),
+        [...current, chapter].sort((left, right) => left.number - right.number),
       );
       setSelectedId(chapter.id);
       setForm({
         ...initialForm,
-        order: String(chapter.order + 1),
+        order: String(chapter.number + 1),
       });
       const readiness = await fetchOutlineReadiness(work);
       setOutlineReadiness(readiness);
@@ -225,7 +225,7 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
                   onClick={() => setSelectedId(chapter.id)}
                   type="button"
                 >
-                  <span>{String(chapter.order).padStart(2, "0")}</span>
+                  <span>{String(chapter.number).padStart(2, "0")}</span>
                   <div>
                     <strong>{chapter.title}</strong>
                     <small>{chapterStatusLabels[chapter.status]}</small>
@@ -241,7 +241,7 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
             <section className="panel outline-brief-detail" aria-labelledby="outline-detail-title">
               <div className="outline-detail-head">
                 <div>
-                  <span className="panel-kicker">第 {selected.order} 章</span>
+                  <span className="panel-kicker">第 {selected.number} 章</span>
                   <h2 id="outline-detail-title">{selected.title}</h2>
                 </div>
                 <span className={`badge chapter-status-${selected.status}`}>
@@ -471,7 +471,7 @@ function splitLines(value: string): string[] {
 }
 
 function nextChapterOrder(chapters: ChapterWorkspace[]): number {
-  return Math.max(0, ...chapters.map((chapter) => chapter.order)) + 1;
+  return Math.max(0, ...chapters.map((chapter) => chapter.number)) + 1;
 }
 
 function readinessLabel(readiness: ChapterReadiness | null): string {

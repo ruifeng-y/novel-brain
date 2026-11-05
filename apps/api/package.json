@@ -15,6 +15,7 @@
     "@nestjs/platform-express": "12.3.2",
     "@nestjs/swagger": "12.1.0",
     "@node-rs/argon2": "2.2.2",
+    "@novel-brain/ai": "workspace:*",
     "@novel-brain/contracts": "workspace:*",
     "@novel-brain/core": "workspace:*",
     "@novel-brain/db": "workspace:*",
@@ -31,7 +32,6 @@
   },
   "devDependencies": {
     "@nestjs/testing": "12.3.2",
-    "@novel-brain/ai": "workspace:*",
     "@types/express": "^5.0.0",
     "@types/nodemailer": "8.0.2",
     "openapi-typescript": "7.13.0"

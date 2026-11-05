@@ -1137,6 +1137,9 @@ export interface operations {
                 id: string;
                 proposalId: string;
                 decisionId: string;
+                sourceChapterId: string;
+                validFromChapter: number;
+                validToChapter: number | null;
                 subject: string;
                 predicate: string;
                 object: string;
@@ -1220,6 +1223,9 @@ export interface operations {
                 id: string;
                 proposalId: string;
                 decisionId: string;
+                sourceChapterId: string;
+                validFromChapter: number;
+                validToChapter: number | null;
                 subject: string;
                 predicate: string;
                 object: string;
@@ -1271,7 +1277,7 @@ export interface operations {
               id: string;
               workId: string;
               branchId: string;
-              order: number;
+              number: number;
               title: string;
               /** @enum {string} */
               status:
@@ -1348,7 +1354,7 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": {
-          order: number;
+          number: number;
           title: string;
           brief: {
             goal: string;
@@ -1372,7 +1378,7 @@ export interface operations {
               id: string;
               workId: string;
               branchId: string;
-              order: number;
+              number: number;
               title: string;
               /** @enum {string} */
               status:
@@ -1505,7 +1511,7 @@ export interface operations {
               id: string;
               workId: string;
               branchId: string;
-              order: number;
+              number: number;
               title: string;
               /** @enum {string} */
               status:
@@ -1607,7 +1613,7 @@ export interface operations {
               id: string;
               workId: string;
               branchId: string;
-              order: number;
+              number: number;
               title: string;
               /** @enum {string} */
               status:
@@ -1791,7 +1797,7 @@ export interface operations {
                 id: string;
                 workId: string;
                 branchId: string;
-                order: number;
+                number: number;
                 title: string;
                 /** @enum {string} */
                 status:
@@ -3314,7 +3320,7 @@ export interface operations {
                 id: string;
                 workId: string;
                 branchId: string;
-                order: number;
+                number: number;
                 title: string;
                 /** @enum {string} */
                 status:
@@ -4511,7 +4517,7 @@ export interface operations {
                 id: string;
                 workId: string;
                 branchId: string;
-                order: number;
+                number: number;
                 title: string;
                 /** @enum {string} */
                 status:
@@ -4685,6 +4691,87 @@ export interface operations {
                   /** Format: date-time */
                   updatedAt: string;
                   /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
                   type: "golden_finger";
                   data: {
                     rules: string;
@@ -4748,6 +4835,51 @@ export interface operations {
                 bodyState: string;
                 knowledgeBoundary: string;
                 relationshipSummary: string;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "faction";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                details: string;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "map";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                details: string;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "power_system";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                details: string;
               };
             }
           | {
@@ -4833,6 +4965,87 @@ export interface operations {
                     bodyState: string;
                     knowledgeBoundary: string;
                     relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
                   };
                 }
               | {
@@ -4975,6 +5188,87 @@ export interface operations {
                   /** Format: date-time */
                   updatedAt: string;
                   /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
                   type: "golden_finger";
                   data: {
                     rules: string;
@@ -5062,6 +5356,15 @@ export interface operations {
                 relationshipSummary?: string;
               }
             | {
+                details?: string;
+              }
+            | {
+                details?: string;
+              }
+            | {
+                details?: string;
+              }
+            | {
                 rules?: string;
                 cost?: string;
                 limits?: string;
@@ -5133,6 +5436,87 @@ export interface operations {
                     bodyState: string;
                     knowledgeBoundary: string;
                     relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
                   };
                 }
               | {
@@ -5281,6 +5665,87 @@ export interface operations {
                   /** Format: date-time */
                   updatedAt: string;
                   /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
                   type: "golden_finger";
                   data: {
                     rules: string;
@@ -5324,7 +5789,8 @@ export interface operations {
               kind?: "setting" | "fact";
               id: string;
               /** @enum {string} */
-              type: "world_rule" | "character" | "golden_finger";
+              type:
+                "world_rule" | "character" | "faction" | "map" | "power_system" | "golden_finger";
               name: string;
               summary: string;
               /** @enum {string} */
@@ -5336,6 +5802,8 @@ export interface operations {
               lockedAt: string;
               sourceChapterId?: string;
               sourceFactId?: string;
+              validFromChapter?: number;
+              validToChapter?: number | null;
               predicate?: string;
               object?: string;
             }[];

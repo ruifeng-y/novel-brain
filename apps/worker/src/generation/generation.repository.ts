@@ -3,8 +3,10 @@ import { createHash } from "node:crypto";
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   contextPackVersionSchema,
+  WORKER_JOB_STEPS,
   type GenerateChapterJob,
   type GenerationCost,
+  type WorkerJobStep,
 } from "@novel-brain/contracts";
 import {
   agentRuns,
@@ -33,6 +35,7 @@ import {
 import type { ChapterContextInput, CompiledContextPack } from "@novel-brain/core";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
@@ -49,16 +52,25 @@ export interface LoadedGenerationJob {
 export interface WorkerContextSources {
   chapter: InferSelectModel<typeof chapters>;
   storyBible: InferSelectModel<typeof storyBibles>;
+  styleSample?: string;
   settings: Array<{
     id: string;
     type: string;
     name: string;
+    aliases: string[];
     summary: string;
+    description: string;
+    tags: string[];
     attributes: Record<string, unknown>;
     source: string;
+    sourceChapterNumber?: number;
+    validFromChapter?: number;
+    validToChapter?: number | null;
   }>;
   previousVersions: ChapterContextInput["previousVersions"];
 }
+
+const factSourceChapters = alias(chapters, "fact_source_chapters");
 
 @Injectable()
 export class WorkerGenerationRepository implements OnModuleDestroy {
@@ -74,6 +86,41 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     this.db = createDatabaseClient(this.pool);
   }
 
+  async withJobLock<T>(jobId: string, operation: () => Promise<T>): Promise<T | undefined> {
+    const client = await this.pool.connect();
+    let locked = false;
+    try {
+      const result = await client.query<{ locked: boolean }>(
+        `SELECT pg_try_advisory_lock(
+           hashtext('novelbrain:generation-job'),
+           hashtext($1::text)
+         ) AS locked`,
+        [jobId],
+      );
+      locked = result.rows[0]?.locked === true;
+      if (!locked) {
+        return undefined;
+      }
+      return await operation();
+    } finally {
+      let unlockFailed = false;
+      if (locked) {
+        await client
+          .query(
+            `SELECT pg_advisory_unlock(
+               hashtext('novelbrain:generation-job'),
+               hashtext($1::text)
+             )`,
+            [jobId],
+          )
+          .catch(() => {
+            unlockFailed = true;
+          });
+      }
+      client.release(unlockFailed);
+    }
+  }
+
   async loadJob(payload: GenerateChapterJob): Promise<LoadedGenerationJob | undefined> {
     return this.withTenant(payload.actorId, async (transaction) => {
       const [row] = await transaction
@@ -81,22 +128,13 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         .from(jobs)
         .innerJoin(
           modelConfigs,
-          and(
-            eq(modelConfigs.id, jobs.modelConfigId),
-            eq(modelConfigs.userId, jobs.userId),
-            isNull(modelConfigs.deletedAt),
-          ),
+          and(eq(modelConfigs.id, jobs.modelConfigId), eq(modelConfigs.userId, jobs.userId)),
         )
         .innerJoin(works, and(eq(works.id, jobs.workId), eq(works.userId, jobs.userId)))
         .where(
           and(
             eq(jobs.id, payload.jobId),
             eq(jobs.userId, payload.actorId),
-            eq(jobs.workId, payload.workId),
-            eq(jobs.branchId, payload.branchId),
-            eq(jobs.chapterId, payload.chapterId),
-            eq(jobs.modelConfigId, payload.modelConfigId),
-            eq(jobs.idempotencyKey, payload.idempotencyKey),
             isNull(works.deletedAt),
           ),
         )
@@ -137,6 +175,17 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!storyBible) {
         return undefined;
       }
+      const [work] = await transaction
+        .select({ settings: works.settings })
+        .from(works)
+        .where(
+          and(
+            eq(works.id, payload.workId),
+            eq(works.userId, payload.actorId),
+            isNull(works.deletedAt),
+          ),
+        )
+        .limit(1);
       const settings = await transaction
         .select()
         .from(entities)
@@ -151,8 +200,20 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         )
         .orderBy(asc(entities.type), asc(entities.name));
       const submittedFacts = await transaction
-        .select()
+        .select({
+          fact: canonicalFacts,
+          sourceChapterNumber: factSourceChapters.number,
+        })
         .from(canonicalFacts)
+        .innerJoin(
+          factSourceChapters,
+          and(
+            eq(factSourceChapters.id, canonicalFacts.chapterId),
+            eq(factSourceChapters.workId, canonicalFacts.workId),
+            eq(factSourceChapters.branchId, canonicalFacts.branchId),
+            eq(factSourceChapters.userId, canonicalFacts.userId),
+          ),
+        )
         .where(
           and(
             eq(canonicalFacts.workId, payload.workId),
@@ -190,25 +251,38 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
             id: setting.id,
             type: setting.type,
             name: setting.name,
+            aliases: setting.aliases,
             summary: setting.summary,
+            description: setting.description,
+            tags: setting.tags,
             attributes: setting.attributes,
             source: setting.source,
           })),
           ...submittedFacts.map((fact) => ({
-            id: fact.id,
+            id: fact.fact.id,
             type: "fact",
-            name: fact.subject,
-            summary: `${fact.predicate}：${fact.object}`,
+            name: fact.fact.subject,
+            aliases: [],
+            summary: `${fact.fact.predicate}：${fact.fact.object}`,
+            description: "",
+            tags: [],
             attributes: {
-              subject: fact.subject,
-              predicate: fact.predicate,
-              object: fact.object,
-              risk: fact.risk,
-              sourceChapterId: fact.chapterId,
+              subject: fact.fact.subject,
+              predicate: fact.fact.predicate,
+              object: fact.fact.object,
+              risk: fact.fact.risk,
+              sourceChapterId: fact.fact.chapterId,
+              factProposalId: fact.fact.factProposalId,
             },
             source: "canon",
+            sourceChapterNumber: fact.sourceChapterNumber,
+            validFromChapter: fact.fact.validFromChapter,
+            validToChapter: fact.fact.validToChapter,
           })),
         ],
+        ...(typeof work?.settings.styleSample === "string"
+          ? { styleSample: work.settings.styleSample }
+          : {}),
         previousVersions,
       };
     });
@@ -251,6 +325,31 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         checkpoint: job.checkpoint,
       });
       return job;
+    });
+  }
+
+  async resumeStep(payload: GenerateChapterJob): Promise<WorkerJobStep> {
+    return this.withTenant(payload.actorId, async (transaction) => {
+      const [job] = await transaction
+        .select({ checkpoint: jobs.checkpoint })
+        .from(jobs)
+        .where(and(eq(jobs.id, payload.jobId), eq(jobs.userId, payload.actorId)))
+        .limit(1);
+      const checkpointStep = (job?.checkpoint as { step?: unknown } | undefined)?.step;
+      const step = WORKER_JOB_STEPS.find((candidate) => candidate === checkpointStep);
+      if (!step) {
+        return "prepare";
+      }
+      const [completed] = await transaction
+        .select({ status: jobSteps.status })
+        .from(jobSteps)
+        .where(and(eq(jobSteps.jobId, payload.jobId), eq(jobSteps.stepKey, step)))
+        .limit(1);
+      if (completed?.status !== "succeeded") {
+        return step;
+      }
+      const index = WORKER_JOB_STEPS.indexOf(step);
+      return WORKER_JOB_STEPS[index + 1] ?? "await_review";
     });
   }
 
@@ -698,43 +797,51 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     startedAt: Date;
   }): Promise<void> {
     await this.withTenant(input.payload.actorId, async (transaction) => {
-      await transaction.insert(agentRuns).values({
-        id: uuidv7(),
-        jobId: input.payload.jobId,
-        workId: input.payload.workId,
-        branchId: input.payload.branchId,
-        userId: input.payload.actorId,
-        stepKey: input.step,
-        role: input.role,
-        status: "succeeded",
-        inputHash: input.inputHash,
-        output: input.output,
-        citations: input.citations,
-        usage: input.usage,
-        startedAt: input.startedAt,
-        finishedAt: new Date(),
-      });
+      await transaction
+        .insert(agentRuns)
+        .values({
+          id: uuidv7(),
+          jobId: input.payload.jobId,
+          workId: input.payload.workId,
+          branchId: input.payload.branchId,
+          userId: input.payload.actorId,
+          stepKey: input.step,
+          role: input.role,
+          status: "succeeded",
+          inputHash: input.inputHash,
+          output: input.output,
+          citations: input.citations,
+          usage: input.usage,
+          startedAt: input.startedAt,
+          finishedAt: new Date(),
+        })
+        .onConflictDoNothing();
     });
   }
 
   async recordUsage(input: {
     payload: GenerateChapterJob;
+    step: "draft" | "verify" | "revise";
     model: string;
     inputTokens: number;
     outputTokens: number;
     costCny: number;
   }): Promise<void> {
     await this.withTenant(input.payload.actorId, async (transaction) => {
-      await transaction.insert(usageRecords).values({
-        id: uuidv7(),
-        userId: input.payload.actorId,
-        workId: input.payload.workId,
-        jobId: input.payload.jobId,
-        model: input.model,
-        promptTokens: input.inputTokens,
-        completionTokens: input.outputTokens,
-        costCny: input.costCny,
-      });
+      await transaction
+        .insert(usageRecords)
+        .values({
+          id: uuidv7(),
+          userId: input.payload.actorId,
+          workId: input.payload.workId,
+          jobId: input.payload.jobId,
+          stepKey: input.step,
+          model: input.model,
+          promptTokens: input.inputTokens,
+          completionTokens: input.outputTokens,
+          costCny: input.costCny,
+        })
+        .onConflictDoNothing();
     });
   }
 
