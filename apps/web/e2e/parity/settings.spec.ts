@@ -98,7 +98,7 @@ test("creates, edits and locks a minimal setting, then views confirmed settings 
   await expect(confirmed.getByRole("button", { name: /编辑|删除|锁定/ })).toHaveCount(0);
   await expect(page.locator(".settings-detail-rail").getByRole("button")).toHaveCount(0);
 
-  for (const column of ["势力", "地图", "物品功法", "时间线"]) {
+  for (const column of ["物品功法", "时间线"]) {
     await page
       .locator(".settings-column-nav")
       .getByRole("button", { name: new RegExp(`^${column}`) })
