@@ -196,6 +196,15 @@ export function WorkOverview({ workId }: { workId: string }) {
               </Link>
             </li>
             <li>
+              <Link className="overview-next-link" href={`/workspace/${workId}/settings`}>
+                <BookMarked size={16} aria-hidden="true" />
+                <div>
+                  <strong>整理最小设定</strong>
+                  <small>世界规则、人物状态和金手指</small>
+                </div>
+              </Link>
+            </li>
+            <li>
               <PenLine size={16} aria-hidden="true" />
               <div>
                 <strong>准备第一章</strong>

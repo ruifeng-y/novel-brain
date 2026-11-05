@@ -17,6 +17,7 @@ export const ERROR_CODES = [
   "MODEL_PROVIDER_ERROR",
   "BIBLE_NOT_READY",
   "BIBLE_LOCKED",
+  "SETTING_LOCKED",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
   "FACT_DECISION_REQUIRED",
@@ -581,6 +582,166 @@ export const storyBibleResponseSchema = apiEnvelopeSchema(storyBibleSchema);
 export const storyBibleReadinessResponseSchema = apiEnvelopeSchema(storyBibleReadinessSchema);
 export const storyBibleDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
+);
+
+export const settingEntityTypeSchema = z.enum(["world_rule", "character", "golden_finger"]);
+export type SettingEntityType = z.infer<typeof settingEntityTypeSchema>;
+
+export const settingStatusSchema = z.enum(["draft", "proposed", "locked", "discarded"]);
+export type SettingStatus = z.infer<typeof settingStatusSchema>;
+
+export const settingSourceSchema = z.enum(["author", "import", "ai", "canon"]);
+export type SettingSource = z.infer<typeof settingSourceSchema>;
+
+export const worldRuleDataSchema = z
+  .object({
+    rule: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type WorldRuleData = z.infer<typeof worldRuleDataSchema>;
+
+export const characterDataSchema = z
+  .object({
+    bodyState: z.string().trim().min(1).max(20_000),
+    knowledgeBoundary: z.string().trim().min(1).max(20_000),
+    relationshipSummary: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type CharacterData = z.infer<typeof characterDataSchema>;
+
+export const goldenFingerDataSchema = z
+  .object({
+    rules: z.string().trim().min(1).max(20_000),
+    cost: z.string().trim().min(1).max(20_000),
+    limits: z.string().trim().min(1).max(20_000),
+    growth: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type GoldenFingerData = z.infer<typeof goldenFingerDataSchema>;
+
+const settingEntityBaseShape = {
+  name: z.string().trim().min(1).max(120),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  summary: z.string().trim().min(1).max(500),
+  description: z.string().max(20_000).default(""),
+  tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+};
+
+export const settingEntityCreateRequestSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("world_rule"),
+    ...settingEntityBaseShape,
+    data: worldRuleDataSchema,
+  }),
+  z.object({
+    type: z.literal("character"),
+    ...settingEntityBaseShape,
+    data: characterDataSchema,
+  }),
+  z.object({
+    type: z.literal("golden_finger"),
+    ...settingEntityBaseShape,
+    data: goldenFingerDataSchema,
+  }),
+]);
+export type SettingEntityCreateRequest = z.infer<typeof settingEntityCreateRequestSchema>;
+
+export const settingEntityPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: settingEntityBaseShape.name.optional(),
+    aliases: settingEntityBaseShape.aliases.optional(),
+    summary: settingEntityBaseShape.summary.optional(),
+    description: settingEntityBaseShape.description.optional(),
+    tags: settingEntityBaseShape.tags.optional(),
+    data: z
+      .union([
+        worldRuleDataSchema.partial(),
+        characterDataSchema.partial(),
+        goldenFingerDataSchema.partial(),
+      ])
+      .optional(),
+  })
+  .refine(
+    (input) =>
+      input.name !== undefined ||
+      input.aliases !== undefined ||
+      input.summary !== undefined ||
+      input.description !== undefined ||
+      input.tags !== undefined ||
+      input.data !== undefined,
+    { message: "At least one setting field is required" },
+  );
+export type SettingEntityPatchRequest = z.infer<typeof settingEntityPatchRequestSchema>;
+
+export const settingEntityLockRequestSchema = z.object({
+  version: z.number().int().positive(),
+});
+export type SettingEntityLockRequest = z.infer<typeof settingEntityLockRequestSchema>;
+
+const settingEntityCommonShape = {
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  aliases: z.array(z.string()),
+  summary: z.string(),
+  description: z.string(),
+  tags: z.array(z.string()),
+  status: settingStatusSchema,
+  source: settingSourceSchema,
+  version: z.number().int().positive(),
+  lockedAt: z.string().datetime().nullable(),
+  lockedBy: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+};
+
+export const settingEntitySchema = z.discriminatedUnion("type", [
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("world_rule"),
+    data: worldRuleDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("character"),
+    data: characterDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("golden_finger"),
+    data: goldenFingerDataSchema,
+  }),
+]);
+export type SettingEntity = z.infer<typeof settingEntitySchema>;
+
+export const settingEntityListQuerySchema = z.object({
+  type: settingEntityTypeSchema.optional(),
+  status: settingStatusSchema.optional(),
+});
+export type SettingEntityListQuery = z.infer<typeof settingEntityListQuerySchema>;
+
+export const settingEntityResponseSchema = apiEnvelopeSchema(settingEntitySchema);
+export const settingEntityListResponseSchema = apiEnvelopeSchema(z.array(settingEntitySchema));
+export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
+  z.object({ deleted: z.literal(true) }),
+);
+
+export const confirmedSettingSchema = z.object({
+  id: uuidV7Schema,
+  type: settingEntityTypeSchema,
+  name: z.string(),
+  summary: z.string(),
+  source: settingSourceSchema,
+  status: z.literal("locked"),
+  version: z.number().int().positive(),
+  lockedAt: z.string().datetime(),
+});
+export type ConfirmedSetting = z.infer<typeof confirmedSettingSchema>;
+
+export const confirmedSettingListResponseSchema = apiEnvelopeSchema(
+  z.array(confirmedSettingSchema),
 );
 
 export const chapterStatusSchema = z.enum([

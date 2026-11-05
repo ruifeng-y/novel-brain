@@ -372,6 +372,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/entities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_list"];
+    put?: never;
+    post: operations["SettingsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_get"];
+    put?: never;
+    post?: never;
+    delete: operations["SettingsController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["SettingsController_patch"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsController_lock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/facts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ConfirmedSettingsController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/story-bible": {
     parameters: {
       query?: never;
@@ -2196,6 +2260,763 @@ export interface operations {
               latencyMs: number;
               message: string;
             };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Settings entities */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: (
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                }
+            )[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              /** @enum {string} */
+              type: "world_rule";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                rule: string;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "character";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                bodyState: string;
+                knowledgeBoundary: string;
+                relationshipSummary: string;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "golden_finger";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                rules: string;
+                cost: string;
+                limits: string;
+                growth: string;
+              };
+            };
+      };
+    };
+    responses: {
+      /** @description Created setting */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data:
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Setting detail */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data:
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Deleted setting */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              deleted: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          name?: string;
+          /** @default [] */
+          aliases?: string[];
+          summary?: string;
+          /** @default  */
+          description?: string;
+          /** @default [] */
+          tags?: string[];
+          data?:
+            | {
+                rule?: string;
+              }
+            | {
+                bodyState?: string;
+                knowledgeBoundary?: string;
+                relationshipSummary?: string;
+              }
+            | {
+                rules?: string;
+                cost?: string;
+                limits?: string;
+                growth?: string;
+              };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated setting */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data:
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_lock: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Locked setting */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data:
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ConfirmedSettingsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Confirmed settings projection */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "world_rule" | "character" | "golden_finger";
+              name: string;
+              summary: string;
+              /** @enum {string} */
+              source: "author" | "import" | "ai" | "canon";
+              /** @enum {string} */
+              status: "locked";
+              version: number;
+              /** Format: date-time */
+              lockedAt: string;
+            }[];
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
