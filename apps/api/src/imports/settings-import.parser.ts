@@ -32,7 +32,7 @@ const LABELS: Record<string, { type: ImportCandidateType; confidence: number }> 
   角色: { type: "character", confidence: 0.94 },
   势力: { type: "faction", confidence: 0.94 },
   地图: { type: "map", confidence: 0.94 },
-  力量体系: { type: "power_system", confidence: 0.82 },
+  力量体系: { type: "power_system", confidence: 0.94 },
   体系: { type: "power_system", confidence: 0.82 },
   金手指: { type: "golden_finger", confidence: 0.94 },
 };

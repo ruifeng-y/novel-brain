@@ -3,6 +3,7 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  contextPackPreviewResponseSchema,
   generationJobListResponseSchema,
   generationJobResponseSchema,
   generateChapterJobSchema,
@@ -11,13 +12,14 @@ import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import { FakeAiProvider } from "@novel-brain/ai";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../src/app.module";
 import { MAIL_GATEWAY, type MailGateway } from "../src/auth/mail.gateway";
 import { ApiExceptionFilter } from "../src/common/api-exception.filter";
 import { GenerationJobProcessor } from "../../worker/src/generation/generation.processor";
 import { WorkerGenerationRepository } from "../../worker/src/generation/generation.repository";
+import { ByokAiGatewayFactory } from "../../worker/src/generation/model-provider.factory";
 
 const databaseUrl =
   process.env.TEST_DATABASE_URL ??
@@ -51,6 +53,7 @@ describe("generation HTTP integration", () => {
     process.env.MODEL_CONFIG_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
     process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
     process.env.MODEL_CONNECTION_TESTER = "fake";
+    process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1";
 
     await runMigrations(databaseUrl);
     databasePool = createDatabasePool(databaseUrl);
@@ -166,8 +169,42 @@ describe("generation HTTP integration", () => {
     const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
     await createCompleteBible(owner, token, branchPath);
     await createConfirmedSettings(owner, token, branchPath);
+    await databasePool.query(
+      "UPDATE works SET settings = jsonb_build_object('styleSample', $2::text) WHERE id = $1",
+      [work.id, "短句白描，避免华丽比喻。"],
+    );
+    const unrelated = await owner
+      .post(`${branchPath}/entities`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "faction",
+        name: "无关宗门",
+        aliases: [],
+        summary: "本章不会出现",
+        description: "",
+        tags: [],
+        data: { details: "与当前场景无关。" },
+      })
+      .expect(201);
+    await owner
+      .post(`${branchPath}/entities/${unrelated.body.data.id}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: unrelated.body.data.version })
+      .expect(200);
     const chapter = await createChapter(owner, token, branchPath);
     await createModelConfig(owner, token);
+    const preview = contextPackPreviewResponseSchema.parse(
+      (
+        await owner
+          .get(`${branchPath}/chapters/${chapter.id}/context-preview?tokenBudget=12000`)
+          .expect(200)
+      ).body,
+    ).data;
+    expect(preview.selected.map((source) => source.key)).toContain("style:sample");
+    expect(preview.selected.map((source) => source.label)).toContain("沈砚");
+    expect(preview.selected.map((source) => source.label)).not.toContain("无关宗门");
     const job = await startGeneration(owner, token, branchPath, chapter.id, "generation-success");
     const workerPayload = await readWorkerPayload(job.id);
 
@@ -218,6 +255,222 @@ describe("generation HTTP integration", () => {
     expect(events.headers["content-type"]).toContain("text/event-stream");
     expect(events.text).toContain("job.step.succeeded");
     expect(events.text).toContain("job.waiting_review");
+  });
+
+  it("uses the job's decrypted BYOK configuration for every provider call", async () => {
+    const owner = await createAuthenticatedAgent("generation-byok@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        provider: "openai-compatible",
+        label: "白名单正文",
+        baseUrl: "https://8.8.8.8/v1",
+        model: "gpt-4.1-mini",
+        apiKey: "sk-byok-generation-4321",
+        purposes: ["writing"],
+        isDefault: true,
+      })
+      .expect(200);
+    const job = await startGeneration(owner, token, branchPath, chapter.id, "generation-byok");
+    const fetchImpl = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      expect(String(url)).toBe("https://8.8.8.8/v1/chat/completions");
+      expect(init?.headers).toMatchObject({
+        authorization: "Bearer sk-byok-generation-4321",
+      });
+      expect(JSON.parse(String(init?.body))).toMatchObject({
+        model: "gpt-4.1-mini",
+      });
+      return new Response(
+        JSON.stringify({
+          id: "byok-response",
+          model: "gpt-4.1-mini",
+          choices: [
+            {
+              message: { content: "沈砚把断臂藏进衣袍，只用右手结印。" },
+              finish_reason: "stop",
+            },
+          ],
+          usage: { prompt_tokens: 40, completion_tokens: 12 },
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    });
+
+    await new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      new ByokAiGatewayFactory({ mode: "byok", fetchImpl }),
+    ).process(await readWorkerPayload(job.id));
+
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    const completed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    expect(generationJobResponseSchema.parse(completed.body).data).toMatchObject({
+      status: "waiting_review",
+      error: null,
+    });
+    const usage = await databasePool.query<{ model: string; count: string }>(
+      "SELECT model, count(*)::text AS count FROM usage_records WHERE job_id = $1 GROUP BY model",
+      [job.id],
+    );
+    expect(usage.rows).toEqual([{ model: "gpt-4.1-mini", count: "3" }]);
+    const persisted = await databasePool.query<{ text: string }>(
+      `SELECT concat_ws(' ', error_message, checkpoint::text, cost::text) AS text
+       FROM jobs WHERE id = $1`,
+      [job.id],
+    );
+    expect(persisted.rows[0]?.text).not.toContain("sk-byok-generation-4321");
+  });
+
+  it("allows only one worker to own a durable job during concurrent redelivery", async () => {
+    const owner = await createAuthenticatedAgent("generation-concurrent@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-concurrent",
+    );
+    const workerPayload = await readWorkerPayload(job.id);
+    const fake = new FakeAiProvider();
+    let providerCalls = 0;
+    let releaseDraft!: () => void;
+    const draftReleased = new Promise<void>((resolve) => {
+      releaseDraft = resolve;
+    });
+    let markDraftStarted!: () => void;
+    const draftStarted = new Promise<void>((resolve) => {
+      markDraftStarted = resolve;
+    });
+    const provider = {
+      async generateText(input: Parameters<FakeAiProvider["generateText"]>[0]) {
+        providerCalls += 1;
+        if (providerCalls === 1) {
+          markDraftStarted();
+          await draftReleased;
+        }
+        return fake.generateText(input);
+      },
+      streamText(input: Parameters<FakeAiProvider["generateText"]>[0]) {
+        return fake.streamText(input);
+      },
+    };
+
+    const firstWorker = new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      provider,
+    ).process(workerPayload);
+    await draftStarted;
+    const secondWorker = new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      provider,
+    ).process(workerPayload);
+    await secondWorker;
+    releaseDraft();
+    await firstWorker;
+
+    expect(providerCalls).toBe(3);
+    const records = await databasePool.query<{ usage_count: string; trace_count: string }>(
+      `SELECT
+         (SELECT count(*)::text FROM usage_records WHERE job_id = $1) AS usage_count,
+         (SELECT count(*)::text FROM agent_runs WHERE job_id = $1) AS trace_count`,
+      [job.id],
+    );
+    expect(records.rows[0]).toEqual({ usage_count: "3", trace_count: "3" });
+  });
+
+  it("fails the durable job when its stored BYOK key cannot be decrypted", async () => {
+    const owner = await createAuthenticatedAgent("generation-invalid-key@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    const config = await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-invalid-key",
+    );
+    await databasePool.query("UPDATE model_configs SET encrypted_api_key = $2 WHERE id = $1", [
+      config.id,
+      "not-an-encrypted-key",
+    ]);
+
+    await new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      new ByokAiGatewayFactory({ mode: "byok" }),
+    ).process(await readWorkerPayload(job.id));
+
+    const failed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    expect(generationJobResponseSchema.parse(failed.body).data).toMatchObject({
+      status: "failed",
+      checkpoint: { step: "draft" },
+      error: {
+        code: "MODEL_PROVIDER_ERROR",
+        message: "模型配置无法读取，草稿和检查点已保留",
+      },
+    });
+  });
+
+  it("rejects generation when the locked story bible alone exceeds the token budget", async () => {
+    const owner = await createAuthenticatedAgent("generation-required-bible@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    await databasePool.query(
+      `UPDATE story_bibles
+       SET cards = jsonb_build_array(
+         jsonb_build_object('title', '世界铁律', 'content', $2::text)
+       )
+       WHERE work_id = $1`,
+      [work.id, "不可淘汰的故事圣经硬约束。".repeat(1_000)],
+    );
+
+    const rejected = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "generation-required-bible")
+      .send({
+        budget: {
+          maxCostCny: 2.5,
+          maxTokens: 200,
+          maxRevisionRounds: 2,
+        },
+      })
+      .expect(400);
+    expect(rejected.body.error).toMatchObject({
+      code: "JOB_BUDGET_EXCEEDED",
+      details: {
+        tokenBudget: 200,
+      },
+    });
+    const jobs = await databasePool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM jobs WHERE work_id = $1",
+      [work.id],
+    );
+    expect(jobs.rows[0]?.count).toBe("0");
   });
 
   it("preserves the draft checkpoint and resumes from the failed revise step", async () => {
@@ -349,6 +602,66 @@ describe("generation HTTP integration", () => {
       [job.id],
     );
     expect(contextSnapshot.rows[0]?.snapshot).not.toContain("重试后不应改写上下文");
+  });
+
+  it("resumes from the durable database checkpoint even when a redelivery payload is stale", async () => {
+    const owner = await createAuthenticatedAgent("generation-stale-payload@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-stale-payload",
+    );
+    const workerPayload = await readWorkerPayload(job.id);
+
+    await new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      new FakeAiProvider({ failOperations: ["revise"] }),
+    ).process(workerPayload);
+
+    const before = await databasePool.query<{ usage_count: string; trace_count: string }>(
+      `SELECT
+         (SELECT count(*)::text FROM usage_records WHERE job_id = $1) AS usage_count,
+         (SELECT count(*)::text FROM agent_runs WHERE job_id = $1) AS trace_count`,
+      [job.id],
+    );
+    await owner
+      .post(`${branchPath}/jobs/${job.id}/retry`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({})
+      .expect(202);
+
+    const provider = new FakeAiProvider();
+    const generateText = vi.spyOn(provider, "generateText");
+    await new GenerationJobProcessor(new WorkerGenerationRepository(), provider).process({
+      ...workerPayload,
+      workId: crypto.randomUUID(),
+      branchId: crypto.randomUUID(),
+      chapterId: crypto.randomUUID(),
+      modelConfigId: crypto.randomUUID(),
+      idempotencyKey: "stale-redelivery-key",
+      budget: { maxCostCny: 0.01, maxTokens: 1, maxRevisionRounds: 0 },
+      checkpoint: { step: "prepare", payload: {} },
+    });
+
+    expect(generateText.mock.calls.map(([input]) => input.operation)).toEqual(["revise"]);
+    const after = await databasePool.query<{ usage_count: string; trace_count: string }>(
+      `SELECT
+         (SELECT count(*)::text FROM usage_records WHERE job_id = $1) AS usage_count,
+         (SELECT count(*)::text FROM agent_runs WHERE job_id = $1) AS trace_count`,
+      [job.id],
+    );
+    expect(Number(after.rows[0]?.usage_count)).toBe(Number(before.rows[0]?.usage_count) + 1);
+    expect(Number(after.rows[0]?.trace_count)).toBe(Number(before.rows[0]?.trace_count) + 1);
   });
 
   it("stops at the budget limit after preserving the generated draft and checkpoint", async () => {
@@ -601,7 +914,7 @@ describe("generation HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        order: 1,
+        number: 1,
         title: "一只手也能结印",
         brief: {
           goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",

@@ -107,7 +107,7 @@ describe("settings import HTTP integration", () => {
         sourceName: "部分设定",
         text: [
           "人物：沈砚，外门杂役，左臂骨折。",
-          "力量体系：练气 → 筑基，突破需灵石。",
+          "体系：练气 → 筑基，突破需灵石。",
           "这是一段暂时无法归类的旧笔记。",
         ].join("\n"),
       })
@@ -128,7 +128,7 @@ describe("settings import HTTP integration", () => {
         pending: [
           {
             type: "power_system",
-            sourceExcerpt: "力量体系：练气 → 筑基，突破需灵石。",
+            sourceExcerpt: "体系：练气 → 筑基，突破需灵石。",
             status: "pending",
           },
         ],
@@ -339,7 +339,7 @@ describe("settings import HTTP integration", () => {
         unparsed: [],
       },
     });
-    expect(created.body.data.report.accepted).toHaveLength(6);
+    expect(created.body.data.report.accepted).toHaveLength(7);
     expect(
       [...created.body.data.report.accepted, ...created.body.data.report.pending].map(
         (candidate: { type: string }) => candidate.type,
@@ -347,7 +347,7 @@ describe("settings import HTTP integration", () => {
     ).toEqual(
       expect.arrayContaining(["character", "faction", "map", "power_system", "golden_finger"]),
     );
-    expect(created.body.data.report.pending).toHaveLength(1);
+    expect(created.body.data.report.pending).toHaveLength(0);
 
     const confirmed = await owner
       .post(`/api/v1/imports/${created.body.data.id}/confirm`)
@@ -360,6 +360,41 @@ describe("settings import HTTP integration", () => {
       sourceMode: "settings_import",
       mainBranch: { name: "main" },
     });
+    const importedBranchPath =
+      `/api/v1/works/${confirmed.body.data.id}/branches/` + `${confirmed.body.data.mainBranch.id}`;
+    const materialized = await owner.get(`${importedBranchPath}/entities`).expect(200);
+    expect(
+      materialized.body.data.map((entity: { type: string; name: string }) => [
+        entity.type,
+        entity.name,
+      ]),
+    ).toEqual(
+      expect.arrayContaining([
+        ["character", "沈砚"],
+        ["character", "顾青"],
+        ["faction", "太玄门"],
+        ["faction", "血河宗"],
+        ["map", "人界 → 东境 → 忘川渡"],
+        ["power_system", "练气 → 筑基 → 金丹"],
+        ["golden_finger", "忘川书"],
+      ]),
+    );
+    expect(
+      materialized.body.data.every(
+        (entity: { source: string; status: string }) =>
+          entity.source === "import" && entity.status === "locked",
+      ),
+    ).toBe(true);
+    const branchState = await databasePool.query<{ head_node_id: string }>(
+      "SELECT head_node_id FROM work_branches WHERE id = $1",
+      [confirmed.body.data.mainBranch.id],
+    );
+    expect(confirmed.body.data.mainBranch.headNodeId).toBe(branchState.rows[0]?.head_node_id);
+    const headNode = await databasePool.query<{ node_type: string }>(
+      "SELECT node_type FROM version_nodes WHERE id = $1",
+      [confirmed.body.data.mainBranch.headNodeId],
+    );
+    expect(headNode.rows[0]?.node_type).toBe("entity_version");
   });
 
   it("rejects unsupported files and keeps imports isolated by tenant", async () => {

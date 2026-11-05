@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import type {
+  ImportCandidateType,
   Work,
   WorkBranch,
   WorkCreateRequest,
@@ -15,6 +16,7 @@ import { ApiError } from "../common/api-error";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorksRepository } from "./works.repository";
 import type { WorkBranchRecord, WorkRecord, WorksAuditContext } from "./works.repository";
+import type { InitialSettingEntity } from "./works.repository";
 import type { GenrePackRecord } from "./works.repository";
 
 @Injectable()
@@ -87,7 +89,9 @@ export class WorksService {
     input: SettingsImportConfirmRequest,
     audit: WorksAuditContext,
     idempotencyKey: string,
+    candidates: ImportedSettingCandidate[] = [],
   ): Promise<WorkOverview> {
+    const initialSettingEntities = candidates.map(toInitialSettingEntity);
     const created = await this.repository.create({
       id: uuidv7(),
       branchId: uuidv7(),
@@ -101,7 +105,11 @@ export class WorksService {
       sourceMode: "settings_import",
       idea: null,
       templatePackId: null,
-      settings: { importId },
+      settings: {
+        importId,
+        materializedSettingCount: initialSettingEntities.length,
+      },
+      initialSettingEntities,
       idempotencyKey,
       audit,
     });
@@ -194,6 +202,42 @@ export class WorksService {
       status: branch.status as WorkBranch["status"],
     };
   }
+}
+
+export interface ImportedSettingCandidate {
+  id: string;
+  type: ImportCandidateType;
+  name: string;
+  summary: string;
+  sourceExcerpt: string;
+}
+
+function toInitialSettingEntity(candidate: ImportedSettingCandidate): InitialSettingEntity {
+  const summary = candidate.summary.trim() || candidate.name;
+  const attributes =
+    candidate.type === "character"
+      ? {
+          bodyState: summary,
+          knowledgeBoundary: "导入时未说明",
+          relationshipSummary: "导入时未说明",
+        }
+      : candidate.type === "golden_finger"
+        ? {
+            rules: summary,
+            cost: "导入时未说明",
+            limits: "导入时未说明",
+            growth: "导入时未说明",
+          }
+        : { details: summary };
+  return {
+    type: candidate.type,
+    name: candidate.name,
+    summary,
+    description: candidate.sourceExcerpt,
+    tags: ["导入"],
+    attributes,
+    importCandidateId: candidate.id,
+  };
 }
 
 function readiness(

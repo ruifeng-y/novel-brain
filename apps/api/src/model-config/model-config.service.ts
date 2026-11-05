@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { decryptApiKey, encryptApiKey, maskApiKey } from "@novel-brain/ai";
 import type {
   ModelConfig,
   ModelConfigInput,
@@ -13,7 +14,6 @@ import {
   type ConnectionTestResult,
   type ModelConnectionTester,
 } from "./connection-tester";
-import { decryptApiKey, encryptApiKey, maskApiKey } from "./model-config-crypto";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {

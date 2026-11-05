@@ -111,6 +111,15 @@ export class SettingsImportService {
     if (record.conflicts.some((conflict) => conflict.decision === "pending")) {
       throw new ApiError(409, "IMPORT_CONFLICT_UNRESOLVED", "请先裁决识别结果中的冲突");
     }
+    const acceptedCandidates = record.candidates
+      .filter((candidate) => candidate.status === "accepted")
+      .map((candidate) => ({
+        id: candidate.id,
+        type: candidate.candidateType as ImportCandidate["type"],
+        name: candidate.name,
+        summary: candidate.summary,
+        sourceExcerpt: candidate.sourceExcerpt,
+      }));
 
     const work = await this.worksService.createFromSettingsImport(
       userId,
@@ -119,6 +128,7 @@ export class SettingsImportService {
       input,
       audit,
       idempotencyKey,
+      acceptedCandidates,
     );
     await this.repository.markCompleted({
       userId,

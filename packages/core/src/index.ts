@@ -117,11 +117,20 @@ export interface ChapterContextInput {
     id: string;
     cards: Array<{ title: string; content: string }>;
   };
+  styleSample?: string;
+  styleSampleId?: string;
   settings: Array<{
     id: string;
+    type?: string;
     name: string;
+    aliases?: string[];
     summary: string;
+    description?: string;
+    tags?: string[];
     attributes: Record<string, unknown>;
+    sourceChapterNumber?: number;
+    validFromChapter?: number;
+    validToChapter?: number | null;
   }>;
   previousVersions: Array<{
     chapterId: string;
@@ -222,6 +231,16 @@ export function compileChapterContext(
     citation: "已锁定故事圣经",
   };
   const brief = input.chapter.brief;
+  const sceneText = [
+    input.chapter.title,
+    brief.goal,
+    brief.pov,
+    brief.location,
+    ...(brief.sceneBeats ?? []),
+    ...(brief.requiredFacts ?? []),
+  ]
+    .filter((value): value is string => typeof value === "string")
+    .join("\n");
   const candidates: ContextCompilerSource[] = [
     {
       key: "brief:required-facts",
@@ -245,24 +264,47 @@ export function compileChapterContext(
     {
       key: "story-bible:locked",
       label: "故事圣经",
-      priority: "high",
+      priority: "required",
       content: input.storyBible.cards.map((card) => `${card.title}：${card.content}`).join("\n"),
       sourceRefs: [bibleRef],
     },
-    ...input.settings.map((setting) => ({
-      key: `setting:${setting.id}`,
-      label: setting.name,
-      priority: "high" as const,
-      content: `${setting.summary}\n${JSON.stringify(setting.attributes)}`,
-      sourceRefs: [
-        {
-          sourceType: "setting" as const,
-          sourceId: setting.id,
-          label: setting.name,
-          citation: `已确认设定 · ${setting.name}`,
-        },
-      ],
-    })),
+    ...(input.styleSample?.trim()
+      ? [
+          {
+            key: "style:sample",
+            label: "文风样本",
+            priority: "normal" as const,
+            content: input.styleSample,
+            sourceRefs: [
+              {
+                sourceType: "style" as const,
+                sourceId: input.styleSampleId ?? input.storyBible.id,
+                label: "文风样本",
+                citation: "作品文风样本",
+              },
+            ],
+          },
+        ]
+      : []),
+    ...input.settings
+      .filter((setting) => isSceneRelevantSetting(setting, input.chapter.number, sceneText))
+      .map((setting) => ({
+        key: `setting:${setting.id}`,
+        label: setting.name,
+        priority: "high" as const,
+        content: `${setting.summary}\n${JSON.stringify(setting.attributes)}`,
+        sourceRefs: [
+          {
+            sourceType: "setting" as const,
+            sourceId: setting.id,
+            label: setting.name,
+            citation:
+              setting.type === "fact"
+                ? `第 ${setting.sourceChapterNumber ?? setting.validFromChapter ?? input.chapter.number} 章事实 · ${setting.name} · ${setting.summary}`
+                : `已确认设定 · ${setting.name}`,
+          },
+        ],
+      })),
     ...input.previousVersions.map((version) => ({
       key: `recent:${version.chapterId}`,
       label: `第 ${version.chapterNumber} 章`,
@@ -283,6 +325,31 @@ export function compileChapterContext(
     compilerVersion,
     sources: candidates.filter((source) => source.content.trim().length > 0),
   });
+}
+
+function isSceneRelevantSetting(
+  setting: ChapterContextInput["settings"][number],
+  chapterNumber: number,
+  sceneText: string,
+): boolean {
+  if (
+    setting.type === "fact" &&
+    setting.validFromChapter != null &&
+    setting.validFromChapter > chapterNumber
+  ) {
+    return false;
+  }
+  if (
+    setting.type === "fact" &&
+    setting.validToChapter != null &&
+    setting.validToChapter < chapterNumber
+  ) {
+    return false;
+  }
+  const identifiers = [setting.name, ...(setting.aliases ?? [])]
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return identifiers.some((identifier) => sceneText.includes(identifier));
 }
 
 export interface ExtractedFactCandidate {

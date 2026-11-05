@@ -98,7 +98,7 @@ test("creates a required chapter brief and shows partial readiness blockers", as
   expect(response.ok()).toBe(true);
   expect((await response.json()).data).toEqual([
     expect.objectContaining({
-      order: 1,
+      number: 1,
       title: "一只手也能结印",
       status: "planned",
       brief: {
@@ -146,7 +146,7 @@ test("renders error and long-content states without horizontal overflow", async 
   const created = await page.request.post(chaptersPath(work), {
     headers: { Origin: origin, "X-CSRF-Token": token },
     data: {
-      order: 1,
+      number: 1,
       title: "一只手也能结印",
       brief: {
         goal: `让沈砚在断臂后找到新的战斗方式。${"他必须只靠右手完成结印。".repeat(80)}`,

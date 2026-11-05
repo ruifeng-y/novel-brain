@@ -142,7 +142,7 @@ function toChapterContract(chapter: ChapterRecord): Chapter {
     id: chapter.id,
     workId: chapter.workId,
     branchId: chapter.branchId,
-    order: chapter.number,
+    number: chapter.number,
     title: chapter.title,
     status: chapter.status as Chapter["status"],
     version: chapter.version,

@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 
+export { decryptApiKey, encryptApiKey, maskApiKey } from "./model-config-crypto";
+
 export interface GenerationRequest {
   prompt: string;
   system?: string;

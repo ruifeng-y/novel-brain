@@ -238,9 +238,9 @@ describe("manuscript import HTTP integration", () => {
       mainBranch: { name: "main", status: "active" },
     });
     expect(confirmed.body.data.chapters).toEqual([
-      expect.objectContaining({ order: 1, title: "第一章 断碑夜雨", version: 1 }),
-      expect.objectContaining({ order: 2, title: "雨落断碑", version: 1 }),
-      expect.objectContaining({ order: 3, title: "夜船与断臂", version: 1 }),
+      expect.objectContaining({ number: 1, title: "第一章 断碑夜雨", version: 1 }),
+      expect.objectContaining({ number: 2, title: "雨落断碑", version: 1 }),
+      expect.objectContaining({ number: 3, title: "夜船与断臂", version: 1 }),
     ]);
     expect(confirmed.body.data.chapterVersions).toHaveLength(3);
     expect(

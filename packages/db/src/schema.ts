@@ -379,7 +379,7 @@ export const entities = pgTable(
     index("entities_branch_type_idx").on(table.branchId, table.type),
     check(
       "entities_type_check",
-      sql`${table.type} in ('world_rule', 'character', 'golden_finger')`,
+      sql`${table.type} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger')`,
     ),
     check(
       "entities_status_check",
@@ -711,6 +711,7 @@ export const facts = pgTable(
     required: boolean("required").notNull().default(false),
     status: text("status").notNull().default("active"),
     validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -927,7 +928,10 @@ export const agentRuns = pgTable(
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
-  (table) => [index("agent_runs_job_step_idx").on(table.jobId, table.stepKey)],
+  (table) => [
+    uniqueIndex("agent_runs_job_step_unique").on(table.jobId, table.stepKey),
+    index("agent_runs_job_step_idx").on(table.jobId, table.stepKey),
+  ],
 );
 
 export const usageRecords = pgTable(
@@ -943,13 +947,19 @@ export const usageRecords = pgTable(
     jobId: uuid("job_id")
       .notNull()
       .references(() => jobs.id, { onDelete: "cascade" }),
+    stepKey: text("step_key"),
     model: text("model").notNull(),
     promptTokens: integer("prompt_tokens").notNull(),
     completionTokens: integer("completion_tokens").notNull(),
     costCny: real("cost_cny").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("usage_records_job_created_idx").on(table.jobId, table.createdAt)],
+  (table) => [
+    uniqueIndex("usage_records_job_step_unique")
+      .on(table.jobId, table.stepKey)
+      .where(sql`${table.stepKey} is not null`),
+    index("usage_records_job_created_idx").on(table.jobId, table.createdAt),
+  ],
 );
 
 export const importJobs = pgTable(

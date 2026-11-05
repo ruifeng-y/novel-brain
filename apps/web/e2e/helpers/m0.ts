@@ -39,7 +39,7 @@ export async function createM0Chapter(
     {
       headers: { Origin: origin, "X-CSRF-Token": token },
       data: {
-        order: 1,
+        number: 1,
         title: "一只手也能结印",
         brief: {
           goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",

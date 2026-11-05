@@ -722,7 +722,7 @@ export function WritingWorkspace({
           <p className="eyebrow">章节写作</p>
           <h1>写作台</h1>
           <p className="page-sub">
-            {work.title} · 第 {selected.order} 章 · {statusLabels[selected.status]}
+            {work.title} · 第 {selected.number} 章 · {statusLabels[selected.status]}
           </p>
         </div>
         <div className="head-actions">
@@ -794,7 +794,7 @@ export function WritingWorkspace({
                 onClick={() => void selectChapter(chapter)}
                 type="button"
               >
-                <span>{chapter.order}</span>
+                <span>{chapter.number}</span>
                 <div>
                   <strong>{chapter.title}</strong>
                   <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
@@ -842,7 +842,7 @@ export function WritingWorkspace({
           <div className="writing-paper">
             <div className="writing-chapter-heading">
               <span>
-                第 {selected.order} 章 ·{" "}
+                第 {selected.number} 章 ·{" "}
                 <em className={`chapter-status-${selected.status}`}>
                   {statusLabels[selected.status]}
                 </em>
@@ -1029,7 +1029,7 @@ export function WritingWorkspace({
                       <p>
                         {proposal.subject} · {proposal.predicate}
                       </p>
-                      <small className="writing-fact-source">来源：第 {selected.order} 章</small>
+                      <small className="writing-fact-source">来源：第 {selected.number} 章</small>
                       <blockquote>来源句：“{proposal.sourceSentence}”</blockquote>
                       {proposal.decision ? (
                         <div className="writing-fact-decision">

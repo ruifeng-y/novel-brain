@@ -1,5 +1,11 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { type GenerateChapterJob, type GenerationCost } from "@novel-brain/contracts";
+import {
+  generateChapterJobSchema,
+  WORKER_JOB_STEPS,
+  type GenerateChapterJob,
+  type GenerationCost,
+  type WorkerJobStep,
+} from "@novel-brain/contracts";
 import {
   AiProviderError,
   M0_COST_PER_TOKEN_CNY,
@@ -15,6 +21,7 @@ import {
 } from "@novel-brain/core";
 
 import { AI_GATEWAY } from "./generation.tokens";
+import type { ByokAiGatewayFactory } from "./model-provider.factory";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
@@ -24,7 +31,7 @@ import {
   type WorkerContextSources,
 } from "./generation.repository";
 
-const STEP_PROGRESS = {
+const STEP_PROGRESS: Record<WorkerJobStep, number> = {
   prepare: 10,
   compile_context: 30,
   draft: 55,
@@ -32,70 +39,96 @@ const STEP_PROGRESS = {
   revise: 90,
   extract_facts: 96,
   await_review: 100,
-} as const;
-const EXECUTED_STEPS = [
-  "prepare",
-  "compile_context",
-  "draft",
-  "verify",
-  "revise",
-  "extract_facts",
-  "await_review",
-] as const;
-type ExecutedStep = (typeof EXECUTED_STEPS)[number];
+};
 class JobBudgetExceededError extends Error {
   constructor() {
     super("Generation budget exhausted");
     this.name = "JobBudgetExceededError";
   }
 }
+class ModelConfigurationError extends Error {
+  constructor() {
+    super("Model configuration could not be loaded");
+    this.name = "ModelConfigurationError";
+  }
+}
+
+type AiGatewayResolver = AiGateway | Pick<ByokAiGatewayFactory, "create">;
 
 @Injectable()
 export class GenerationJobProcessor {
   constructor(
     private readonly repository: WorkerGenerationRepository,
-    @Inject(AI_GATEWAY) private readonly provider: AiGateway,
+    @Inject(AI_GATEWAY) private readonly providerResolver: AiGatewayResolver,
   ) {}
 
   async process(payload: GenerateChapterJob): Promise<void> {
+    await this.repository.withJobLock(payload.jobId, () => this.processLocked(payload));
+  }
+
+  private async processLocked(payload: GenerateChapterJob): Promise<void> {
     const loaded = await this.repository.loadJob(payload);
     if (!loaded) {
       return;
     }
-    const started = await this.repository.begin(payload);
+    const durablePayload = generateChapterJobSchema.parse({
+      jobId: loaded.job.id,
+      jobType: loaded.job.type,
+      workId: loaded.job.workId,
+      branchId: loaded.job.branchId,
+      chapterId: loaded.job.chapterId,
+      actorId: loaded.job.userId,
+      modelConfigId: loaded.job.modelConfigId,
+      idempotencyKey: loaded.job.idempotencyKey,
+      budget: loaded.job.budget,
+      checkpoint: loaded.job.checkpoint,
+    });
+    const started = await this.repository.begin(durablePayload);
     if (started === "terminal" || !started) {
       return;
     }
     let job = started;
-    const checkpointIndex = EXECUTED_STEPS.indexOf(payload.checkpoint.step as ExecutedStep);
-    const startIndex = Math.max(0, checkpointIndex);
+    const resumeStep = await this.repository.resumeStep(durablePayload);
+    const startIndex = WORKER_JOB_STEPS.indexOf(resumeStep);
     let contextPack: CompiledContextPack | undefined;
+    let provider: AiGateway | undefined;
 
-    for (const step of EXECUTED_STEPS) {
-      const stepIndex = EXECUTED_STEPS.indexOf(step);
+    for (const step of WORKER_JOB_STEPS) {
+      const stepIndex = WORKER_JOB_STEPS.indexOf(step);
       if (stepIndex < startIndex) {
         continue;
       }
-      if (await this.repository.isCancelled(payload)) {
+      if (await this.repository.isCancelled(durablePayload)) {
         return;
       }
       try {
+        if (stepRequiresProvider(step) && !provider) {
+          try {
+            provider =
+              "generateText" in this.providerResolver
+                ? this.providerResolver
+                : this.providerResolver.create(loaded.modelConfig);
+          } catch {
+            throw new ModelConfigurationError();
+          }
+        }
         await this.repository.startStep(
-          payload,
+          durablePayload,
           step,
-          inputHash(payload, step),
+          inputHash(durablePayload, step),
           STEP_PROGRESS[step],
         );
         const result = await this.executeStep({
-          payload,
+          payload: durablePayload,
           loaded,
           job,
+          ...(provider ? { provider } : {}),
           step,
           ...(contextPack ? { contextPack } : {}),
         });
         contextPack = result.contextPack ?? contextPack;
         job = await this.repository.succeedStep({
-          payload,
+          payload: durablePayload,
           step,
           progress: STEP_PROGRESS[step],
           output: result.output,
@@ -105,7 +138,7 @@ export class GenerationJobProcessor {
       } catch (error) {
         const failure = toFailure(error);
         await this.repository.failStep({
-          payload,
+          payload: durablePayload,
           step,
           code: failure.code,
           message: failure.message,
@@ -113,14 +146,15 @@ export class GenerationJobProcessor {
         return;
       }
     }
-    await this.repository.complete(payload);
+    await this.repository.complete(durablePayload);
   }
 
   private async executeStep(input: {
     payload: GenerateChapterJob;
     loaded: LoadedGenerationJob;
     job: JobRecord;
-    step: ExecutedStep;
+    provider?: AiGateway;
+    step: WorkerJobStep;
     contextPack?: CompiledContextPack;
   }): Promise<{
     output: Record<string, unknown>;
@@ -155,11 +189,22 @@ export class GenerationJobProcessor {
               id: sources.storyBible.id,
               cards: sources.storyBible.cards,
             },
+            ...(sources.styleSample ? { styleSample: sources.styleSample } : {}),
+            styleSampleId: sources.chapter.workId,
             settings: sources.settings.map((setting) => ({
               id: setting.id,
+              type: setting.type,
               name: setting.name,
+              aliases: setting.aliases,
               summary: setting.summary,
+              description: setting.description,
+              tags: setting.tags,
               attributes: setting.attributes,
+              ...(setting.sourceChapterNumber
+                ? { sourceChapterNumber: setting.sourceChapterNumber }
+                : {}),
+              ...(setting.validFromChapter ? { validFromChapter: setting.validFromChapter } : {}),
+              validToChapter: setting.validToChapter ?? null,
             })),
             previousVersions: sources.previousVersions,
           },
@@ -182,6 +227,7 @@ export class GenerationJobProcessor {
         const result = await this.callProvider({
           payload: input.payload,
           job: input.job,
+          provider: requireProvider(input.provider),
           operation: "draft",
           prompt,
           system: "你是长篇仙侠小说写作助手。只输出本章正文。",
@@ -208,6 +254,7 @@ export class GenerationJobProcessor {
         const result = await this.callProvider({
           payload: input.payload,
           job: input.job,
+          provider: requireProvider(input.provider),
           operation: "verify",
           prompt,
           system: "你是连续性与知识边界审校员。输出简短、确定的审校结论。",
@@ -230,6 +277,7 @@ export class GenerationJobProcessor {
         const result = await this.callProvider({
           payload: input.payload,
           job: input.job,
+          provider: requireProvider(input.provider),
           operation: "revise",
           prompt,
           system: "你是定向修订编辑。只输出修订后的完整本章正文。",
@@ -303,16 +351,16 @@ export class GenerationJobProcessor {
   private async callProvider(input: {
     payload: GenerateChapterJob;
     job: JobRecord;
+    provider: AiGateway;
     operation: GenerationOperation;
     prompt: string;
     system: string;
   }): Promise<GenerationResult> {
     const estimatedTokens = estimateTokens(input.prompt) + 600;
     reserveBudget(input.job, estimatedTokens);
-    return this.provider.generateText({
+    return input.provider.generateText({
       prompt: input.prompt,
       system: input.system,
-      model: "fake-deterministic",
       maxTokens: 2_000,
       operation: input.operation,
     });
@@ -342,6 +390,7 @@ export class GenerationJobProcessor {
     });
     await this.repository.recordUsage({
       payload,
+      step,
       model: result.model,
       inputTokens: result.usage.inputTokens,
       outputTokens: result.usage.outputTokens,
@@ -383,6 +432,17 @@ function promptFromPack(pack: CompiledContextPack, instruction: string): string 
     "来源引用：",
     ...pack.sourceRefs.map((ref) => `- ${ref.citation}`),
   ].join("\n\n");
+}
+
+function stepRequiresProvider(step: WorkerJobStep): boolean {
+  return step === "draft" || step === "verify" || step === "revise";
+}
+
+function requireProvider(provider: AiGateway | undefined): AiGateway {
+  if (!provider) {
+    throw new Error("Model provider was not initialized");
+  }
+  return provider;
 }
 
 function inputHash(payload: GenerateChapterJob, step: string): string {
@@ -434,6 +494,12 @@ function toFailure(error: unknown): { code: string; message: string } {
     return {
       code: "MODEL_PROVIDER_ERROR",
       message: "模型服务暂时不可用，草稿和检查点已保留",
+    };
+  }
+  if (error instanceof ModelConfigurationError) {
+    return {
+      code: "MODEL_PROVIDER_ERROR",
+      message: "模型配置无法读取，草稿和检查点已保留",
     };
   }
   if (error instanceof ContextBudgetExceededError) {

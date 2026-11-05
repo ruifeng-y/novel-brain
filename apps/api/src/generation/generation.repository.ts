@@ -23,6 +23,7 @@ import type {
 } from "@novel-brain/contracts";
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
@@ -45,6 +46,7 @@ export interface GenerationBranchContext {
 export interface GenerationSources {
   chapter: InferSelectModel<typeof chapters>;
   storyBible: InferSelectModel<typeof storyBibles>;
+  styleSample?: string;
   settings: GenerationSettingSource[];
   previousVersions: Array<{
     chapterId: string;
@@ -60,9 +62,15 @@ export interface GenerationSettingSource {
   id: string;
   type: string;
   name: string;
+  aliases: string[];
   summary: string;
+  description: string;
+  tags: string[];
   attributes: Record<string, unknown>;
   source: string;
+  sourceChapterNumber?: number;
+  validFromChapter?: number;
+  validToChapter?: number | null;
 }
 
 export interface JobWithContextPack {
@@ -78,6 +86,8 @@ export interface PersistedContextPack {
   evicted: ContextPackEviction[];
   sourceRefs: ContextSourceRef[];
 }
+
+const factSourceChapters = alias(chapters, "fact_source_chapters");
 
 @Injectable()
 export class GenerationRepository implements OnModuleDestroy {
@@ -156,6 +166,11 @@ export class GenerationRepository implements OnModuleDestroy {
       if (!storyBible) {
         return undefined;
       }
+      const [work] = await transaction
+        .select({ settings: works.settings })
+        .from(works)
+        .where(and(eq(works.id, context.workId), eq(works.userId, userId), isNull(works.deletedAt)))
+        .limit(1);
       const settings = await transaction
         .select()
         .from(entities)
@@ -170,8 +185,20 @@ export class GenerationRepository implements OnModuleDestroy {
         )
         .orderBy(asc(entities.type), asc(entities.name));
       const submittedFacts = await transaction
-        .select()
+        .select({
+          fact: canonicalFacts,
+          sourceChapterNumber: factSourceChapters.number,
+        })
         .from(canonicalFacts)
+        .innerJoin(
+          factSourceChapters,
+          and(
+            eq(factSourceChapters.id, canonicalFacts.chapterId),
+            eq(factSourceChapters.workId, canonicalFacts.workId),
+            eq(factSourceChapters.branchId, canonicalFacts.branchId),
+            eq(factSourceChapters.userId, canonicalFacts.userId),
+          ),
+        )
         .where(
           and(
             eq(canonicalFacts.workId, context.workId),
@@ -225,25 +252,38 @@ export class GenerationRepository implements OnModuleDestroy {
             id: setting.id,
             type: setting.type,
             name: setting.name,
+            aliases: setting.aliases,
             summary: setting.summary,
+            description: setting.description,
+            tags: setting.tags,
             attributes: setting.attributes,
             source: setting.source,
           })),
           ...submittedFacts.map((fact) => ({
-            id: fact.id,
+            id: fact.fact.id,
             type: "fact",
-            name: fact.subject,
-            summary: `${fact.predicate}：${fact.object}`,
+            name: fact.fact.subject,
+            aliases: [],
+            summary: `${fact.fact.predicate}：${fact.fact.object}`,
+            description: "",
+            tags: [],
             attributes: {
-              subject: fact.subject,
-              predicate: fact.predicate,
-              object: fact.object,
-              risk: fact.risk,
-              sourceChapterId: fact.chapterId,
+              subject: fact.fact.subject,
+              predicate: fact.fact.predicate,
+              object: fact.fact.object,
+              risk: fact.fact.risk,
+              sourceChapterId: fact.fact.chapterId,
+              factProposalId: fact.fact.factProposalId,
             },
             source: "canon",
+            sourceChapterNumber: fact.sourceChapterNumber,
+            validFromChapter: fact.fact.validFromChapter,
+            validToChapter: fact.fact.validToChapter,
           })),
         ],
+        ...(typeof work?.settings.styleSample === "string"
+          ? { styleSample: work.settings.styleSample }
+          : {}),
         previousVersions,
         modelConfig,
       };

@@ -205,7 +205,7 @@ export class ChaptersRepository implements OnModuleDestroy {
             eq(chapters.userId, userId),
             eq(chapters.workId, context.workId),
             eq(chapters.branchId, context.branchId),
-            eq(chapters.number, input.order),
+            eq(chapters.number, input.number),
           ),
         )
         .limit(1);
@@ -221,7 +221,7 @@ export class ChaptersRepository implements OnModuleDestroy {
           workId: context.workId,
           branchId: context.branchId,
           userId,
-          number: input.order,
+          number: input.number,
           title: input.title,
           status: "planned",
           version: 1,

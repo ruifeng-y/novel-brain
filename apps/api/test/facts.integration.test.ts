@@ -604,6 +604,8 @@ describe("fact proposal HTTP integration", () => {
           source: "canon",
           sourceChapterId: chapter.id,
           status: "locked",
+          validFromChapter: 1,
+          validToChapter: null,
         }),
       ]),
     );
@@ -620,6 +622,61 @@ describe("fact proposal HTTP integration", () => {
     expect(context.selected.map((source) => source.key)).toEqual(
       expect.arrayContaining(commit.facts.map((fact) => `setting:${fact.id}`)),
     );
+    for (const fact of commit.facts) {
+      const selectedFact = context.selected.find((source) => source.key === `setting:${fact.id}`);
+      expect(selectedFact?.sourceRefs).toEqual([
+        expect.objectContaining({
+          sourceId: fact.id,
+          citation: `第 ${chapter.number} 章事实 · ${fact.subject} · ${fact.predicate}：${fact.object}`,
+        }),
+      ]);
+    }
+
+    const [futureFact, expiredFact] = commit.facts;
+    if (!futureFact || !expiredFact) {
+      throw new Error("Expected submitted facts in the canon commit");
+    }
+    await databasePool.query("UPDATE facts SET valid_from_chapter = 3 WHERE id = $1", [
+      futureFact.id,
+    ]);
+    await databasePool.query("UPDATE facts SET valid_to_chapter = 2 WHERE id = $1", [
+      expiredFact.id,
+    ]);
+
+    const beforeValidity = contextPackPreviewResponseSchema.parse(
+      (
+        await owner
+          .get(`${branchPath}/chapters/${secondChapter.id}/context-preview?tokenBudget=12000`)
+          .expect(200)
+      ).body,
+    ).data;
+    expect(beforeValidity.selected.map((source) => source.key)).not.toContain(
+      `setting:${futureFact.id}`,
+    );
+
+    const thirdChapter = await createReadyChapter(owner, token, branchPath, 3, "回响");
+    const afterValidity = contextPackPreviewResponseSchema.parse(
+      (
+        await owner
+          .get(`${branchPath}/chapters/${thirdChapter.id}/context-preview?tokenBudget=12000`)
+          .expect(200)
+      ).body,
+    ).data;
+    expect(afterValidity.selected.map((source) => source.key)).toContain(
+      `setting:${futureFact.id}`,
+    );
+    expect(afterValidity.selected.map((source) => source.key)).not.toContain(
+      `setting:${expiredFact.id}`,
+    );
+    expect(
+      afterValidity.selected.find((source) => source.key === `setting:${futureFact.id}`)
+        ?.sourceRefs,
+    ).toEqual([
+      expect.objectContaining({
+        sourceId: futureFact.id,
+        citation: `第 ${chapter.number} 章事实 · ${futureFact.subject} · ${futureFact.predicate}：${futureFact.object}`,
+      }),
+    ]);
 
     const replayed = await owner
       .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
@@ -766,7 +823,7 @@ describe("fact proposal HTTP integration", () => {
     agent: SuperAgentTest,
     token: string,
     branchPath: string,
-    order = 1,
+    number = 1,
     title = "一只手也能结印",
   ): Promise<{ id: string; version: number }> {
     const response = await agent
@@ -774,7 +831,7 @@ describe("fact proposal HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        order,
+        number,
         title,
         brief: {
           goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",
