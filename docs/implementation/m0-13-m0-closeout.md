@@ -56,6 +56,7 @@ pnpm smoke:deepseek
 - 缺少凭据时写入 `artifacts/playwright/deepseek-smoke.json`，状态为 `skipped`，`networkCalls` 为 `0`。
 - 存在凭据时调用 DeepSeek 官方兼容接口，记录 `textHash`、`textLength`、模型、token、延迟、成本估算和 provider response ID。
 - 演示前强制要求真实证据时设置 `REQUIRE_DEEPSEEK_SMOKE=1`；缺少凭据会以失败退出。
+- 2026-11-05 已使用真实凭据完成一次 smoke：模型 `deepseek-flash`，网络调用 1 次，45 tokens，延迟 918ms，估算成本 ¥0.00009，provider response ID `94eea13d-3784-4e0b-a6ac-83aa08368fa7`。证据只记录文本哈希与长度，不记录 Key 或生成正文。
 
 ## UI Parity 状态
 
@@ -71,10 +72,9 @@ pnpm smoke:deepseek
 - `pnpm --filter @novel-brain/api openapi:check`：OpenAPI 与生成类型无漂移。
 - `node scripts/validate-readiness.mjs`：119 个能力、119 个主 issue 映射、85 节点依赖图通过。
 - `pnpm stack:smoke`：Web、API readiness、Mailpit、Postgres、Redis 和 Worker 消费队列通过。
-- `pnpm smoke:deepseek`：凭据缺失，记录 `skipped`、`networkCalls: 0`，未伪造真实模型成功。
+- `pnpm smoke:deepseek`：真实凭据 smoke 成功，记录 `networkCalls: 1`、token、延迟、成本和脱敏文本哈希。
 
 ## 待补证据与风险
 
-- 本执行环境未检测到 `DEEPSEEK_API_KEY`，真实 DeepSeek smoke 未运行。
 - 生产 golden 截图尚未由作者签收。
 - Docker 镜像重建在 Corepack 下载 pnpm 时停滞；stack smoke 使用已有镜像完成服务级检查，当前源码由本地 check、integration 和 E2E 验证。
