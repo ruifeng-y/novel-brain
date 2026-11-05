@@ -155,6 +155,7 @@ M0 关键错误：
 | PATCH | `/api/v1/works/:workId/branches/:branchId/story-bible` | 修改未锁定卡片 |
 | POST | `/api/v1/works/:workId/branches/:branchId/story-bible/lock` | 锁定并创建版本节点 |
 | GET | `/api/v1/works/:workId/branches/:branchId/story-bible/readiness` | 生成准备度 |
+| DELETE | `/api/v1/works/:workId/branches/:branchId/story-bible/cards/:cardKey` | 固定九卡不可直接删除；锁定后返回 `BIBLE_LOCKED` |
 | GET/POST | `/api/v1/works/:workId/branches/:branchId/entities` | 最小世界/人物/金手指实体 |
 | GET/PATCH | `/api/v1/works/:workId/branches/:branchId/entities/:entityId` | 实体详情 |
 | GET | `/api/v1/works/:workId/branches/:branchId/facts` | 已确认设定投影 |
@@ -212,9 +213,12 @@ M0 关键错误：
 
 ### StoryBible
 
-- `id`、`workId`、`branchId`、`version`、`status`、`cards`、`lockedAt`、`lockedBy`。
+- `id`、`workId`、`branchId`、`version`、`status`、`cards`、`readiness`、`proposal`、`lockedAt`、`lockedBy`。
 - `cards` 固定九张：一句话故事、核心卖点、主角、金手指、世界铁律、主线、支线、结局方向、读者承诺。
 - `status`：`draft`、`proposed`、`locked`。
+- `readiness`：`not_ready`、`partial`、`ready`，并返回完成数、缺失卡片和是否可锁定。
+- `lockedBy` 为锁定操作者的用户 ID；锁定时间同时写入故事圣经、版本快照和版本节点。
+- M0 故事圣经仅对仙侠作品开放生成、编辑和锁定；其他题材读取空九卡，写操作返回 `VALIDATION_INVALID`。
 
 ### Chapter
 
@@ -279,7 +283,7 @@ proposed -> superseded
 
 ### 版本
 
-- 故事圣经锁定、章节版本、canon commit 和回滚都创建 `version_nodes`。
+- 故事圣经锁定、章节版本、canon commit 和回滚都创建 `version_nodes`；故事圣经节点类型为 `story_bible_version`。
 - 每个分支只有一个 head；同一分支无环。
 - M0 不允许覆盖历史版本。
 

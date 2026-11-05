@@ -30,11 +30,13 @@ export function AppShell({
   const [loggingOut, setLoggingOut] = useState(false);
   const current = pathname.endsWith("/overview")
     ? "作品总览"
-    : pathname === "/workspace/new-project"
-      ? "新建作品"
-      : pathname.startsWith("/workspace")
-        ? "工作台"
-        : "服务状态";
+    : pathname.endsWith("/bible")
+      ? "故事圣经"
+      : pathname === "/workspace/new-project"
+        ? "新建作品"
+        : pathname.startsWith("/workspace")
+          ? "工作台"
+          : "服务状态";
 
   async function logout() {
     setLoggingOut(true);

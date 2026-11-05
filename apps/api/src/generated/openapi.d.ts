@@ -372,6 +372,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["StoryBibleController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["StoryBibleController_patch"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/readiness": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["StoryBibleController_readiness"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/generate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StoryBibleController_generate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StoryBibleController_lock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/cards/{cardKey}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["StoryBibleController_deleteCard"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2124,6 +2204,434 @@ export interface operations {
             };
           };
         };
+      };
+    };
+  };
+  StoryBibleController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Nine-card story bible */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Updated story bible cards */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_readiness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Story bible readiness */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              status: "not_ready" | "partial" | "ready";
+              completed: number;
+              /** @enum {number} */
+              total: 9;
+              canLock: boolean;
+              missingCards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_generate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Generated story bible proposal */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_lock: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Locked story bible */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_deleteCard: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
