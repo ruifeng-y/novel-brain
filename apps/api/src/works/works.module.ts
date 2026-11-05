@@ -9,5 +9,6 @@ import { WorksService } from "./works.service";
   imports: [AuthModule],
   controllers: [WorksController],
   providers: [WorksRepository, WorksService],
+  exports: [WorksService],
 })
 export class WorksModule {}

@@ -6,6 +6,7 @@ import {
   csrfResponseSchema,
   GENERATE_CHAPTER_JOB,
   generateChapterJobSchema,
+  importReportSchema,
   loginRequestSchema,
   modelConfigInputSchema,
   modelConfigSchema,
@@ -17,10 +18,13 @@ import {
   registerRequestSchema,
   sendRegistrationCodeRequestSchema,
   sendRegistrationCodeResponseSchema,
+  settingsImportConfirmRequestSchema,
+  settingsImportConflictDecisionRequestSchema,
   logoutResponseSchema,
   workBranchSchema,
   workCreateRequestSchema,
   workSchema,
+  workSourceModeSchema,
 } from "../src";
 
 describe("shared contracts", () => {
@@ -281,5 +285,46 @@ describe("shared contracts", () => {
         status: "active",
       }),
     ).toBeTruthy();
+  });
+
+  it("validates settings import candidates, conflict decisions and confirmation contracts", () => {
+    const report = importReportSchema.parse({
+      accepted: [
+        {
+          id: "01a1a6f9-9d9b-71e1-98ed-ae21fe958ef4",
+          type: "character",
+          name: "沈砚",
+          summary: "外门杂役",
+          sourceExcerpt: "人物：沈砚，外门杂役。",
+          confidence: 0.94,
+          status: "accepted",
+        },
+      ],
+      pending: [],
+      conflicts: [],
+      unparsed: [
+        {
+          sourceExcerpt: "无法归类的旧笔记",
+          reason: "无法识别为人物、势力、地图、力量体系或金手指",
+        },
+      ],
+    });
+
+    expect(report.accepted[0]?.type).toBe("character");
+    expect(settingsImportConflictDecisionRequestSchema.parse({ decision: "use_primary" })).toEqual({
+      decision: "use_primary",
+    });
+    expect(settingsImportConfirmRequestSchema.parse({ title: "设定导入作品" })).toMatchObject({
+      genre: "xianxia",
+      scaleTarget: "long",
+      chapterLengthTarget: 3000,
+    });
+    expect(workSourceModeSchema.parse("settings_import")).toBe("settings_import");
+    expect(() =>
+      workCreateRequestSchema.parse({
+        mode: "settings_import",
+        title: "不应直接创建",
+      }),
+    ).toThrow();
   });
 });

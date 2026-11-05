@@ -71,6 +71,20 @@
       "when": 1793806864017,
       "tag": "0009_overconfident_lifeguard",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793837305546,
+      "tag": "0010_magical_pepper_potts",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793837685614,
+      "tag": "0011_living_earthquake",
+      "breakpoints": true
     }
   ]
 }

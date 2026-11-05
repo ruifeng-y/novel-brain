@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  real,
   text,
   timestamp,
   uniqueIndex,
@@ -181,7 +182,10 @@ export const works = pgTable(
       "works_scale_target_check",
       sql`${table.scaleTarget} in ('short', 'medium', 'long', 'epic')`,
     ),
-    check("works_source_mode_check", sql`${table.sourceMode} in ('idea', 'blank', 'template')`),
+    check(
+      "works_source_mode_check",
+      sql`${table.sourceMode} in ('idea', 'blank', 'template', 'settings_import')`,
+    ),
   ],
 );
 
@@ -247,4 +251,120 @@ export const versionNodes = pgTable(
       sql`${table.nodeType} in ('chapter_version', 'outline_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
     ),
   ],
+);
+
+export const importJobs = pgTable(
+  "import_jobs",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id").references(() => works.id, { onDelete: "set null" }),
+    branchId: uuid("branch_id").references(() => workBranches.id, { onDelete: "set null" }),
+    mode: text("mode").notNull().default("settings"),
+    status: text("status").notNull().default("awaiting_confirmation"),
+    sourceKind: text("source_kind").notNull(),
+    sourceName: text("source_name"),
+    sourceText: text("source_text").notNull(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("import_jobs_user_created_idx").on(table.userId, table.createdAt),
+    check("import_jobs_mode_check", sql`${table.mode} in ('settings')`),
+    check(
+      "import_jobs_status_check",
+      sql`${table.status} in ('awaiting_confirmation', 'completed')`,
+    ),
+    check("import_jobs_source_kind_check", sql`${table.sourceKind} in ('paste', 'file')`),
+  ],
+);
+
+export const importCandidates = pgTable(
+  "import_candidates",
+  {
+    id: uuid("id").primaryKey(),
+    importJobId: uuid("import_job_id")
+      .notNull()
+      .references(() => importJobs.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    candidateType: text("candidate_type").notNull(),
+    name: text("name").notNull(),
+    summary: text("summary").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+    sourceExcerpt: text("source_excerpt").notNull(),
+    confidence: real("confidence").notNull(),
+    status: text("status").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("import_candidates_job_idx").on(table.importJobId),
+    check(
+      "import_candidates_type_check",
+      sql`${table.candidateType} in ('character', 'faction', 'map', 'power_system', 'golden_finger')`,
+    ),
+    check(
+      "import_candidates_status_check",
+      sql`${table.status} in ('accepted', 'pending', 'conflict')`,
+    ),
+    check(
+      "import_candidates_confidence_check",
+      sql`${table.confidence} >= 0 and ${table.confidence} <= 1`,
+    ),
+  ],
+);
+
+export const importConflicts = pgTable(
+  "import_conflicts",
+  {
+    id: uuid("id").primaryKey(),
+    importJobId: uuid("import_job_id")
+      .notNull()
+      .references(() => importJobs.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    conflictType: text("conflict_type").notNull(),
+    summary: text("summary").notNull(),
+    primaryCandidateId: uuid("primary_candidate_id")
+      .notNull()
+      .references(() => importCandidates.id, { onDelete: "cascade" }),
+    secondaryCandidateId: uuid("secondary_candidate_id")
+      .notNull()
+      .references(() => importCandidates.id, { onDelete: "cascade" }),
+    decision: text("decision").notNull().default("pending"),
+    reason: text("reason"),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("import_conflicts_job_idx").on(table.importJobId),
+    check("import_conflicts_type_check", sql`${table.conflictType} in ('contradictory_setting')`),
+    check(
+      "import_conflicts_decision_check",
+      sql`${table.decision} in ('pending', 'use_primary', 'use_secondary')`,
+    ),
+  ],
+);
+
+export const importReports = pgTable(
+  "import_reports",
+  {
+    id: uuid("id").primaryKey(),
+    importJobId: uuid("import_job_id")
+      .notNull()
+      .references(() => importJobs.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    acceptedCandidateIds: jsonb("accepted_candidate_ids").$type<string[]>().notNull(),
+    pendingCandidateIds: jsonb("pending_candidate_ids").$type<string[]>().notNull(),
+    unparsed: jsonb("unparsed").$type<Array<{ sourceExcerpt: string; reason: string }>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("import_reports_job_unique").on(table.importJobId)],
 );

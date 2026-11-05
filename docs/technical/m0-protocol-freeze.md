@@ -137,8 +137,11 @@ M0 关键错误：
 | GET | `/api/v1/works/:workId` | 作品总览 |
 | GET | `/api/v1/works/:workId/branches` | M0 返回 main 分支 |
 | POST | `/api/v1/works/:workId/import` | 设定导入或旧稿导入 |
+| POST | `/api/v1/imports` | 从粘贴文本或小型 TXT/Markdown 文件识别设定候选，不创建作品 |
 | GET | `/api/v1/imports/:importId` | 导入状态和候选 |
 | GET | `/api/v1/imports/:importId/report` | 导入报告和冲突 |
+| POST | `/api/v1/imports/:importId/conflicts/:conflictId/decision` | 记录导入冲突裁决 |
+| POST | `/api/v1/imports/:importId/confirm` | 冲突全部裁决后创建新作品和 main 分支 |
 
 ### 5.4 故事圣经与最小设定
 
