@@ -964,7 +964,9 @@ function ConfirmedSettings({ items }: { items: ConfirmedSetting[] }) {
           {items.map((item) => (
             <article key={item.id}>
               <div>
-                <span className="tag">{typeLabels[item.type]}</span>
+                <span className="tag">
+                  {item.kind === "fact" ? "章节事实" : typeLabels[item.type]}
+                </span>
                 <strong>{item.name}</strong>
               </div>
               <p>{item.summary}</p>

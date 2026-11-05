@@ -14,6 +14,8 @@ import {
   Quote,
   RefreshCw,
   Save,
+  Send,
+  ShieldCheck,
   Sparkles,
   TriangleAlert,
   XCircle,
@@ -22,8 +24,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   apiErrorSchema,
+  canonCommitListResponseSchema,
+  canonCommitResponseSchema,
   chapterVersionListResponseSchema,
   chapterVersionSaveResponseSchema,
+  chapterReviewResponseSchema,
   chapterWorkspaceListResponseSchema,
   chapterWorkspaceResponseSchema,
   factProposalListResponseSchema,
@@ -32,6 +37,7 @@ import {
   generationJobResponseSchema,
   jobEventSchema,
   workResponseSchema,
+  type CanonCommit,
   type ChapterReadiness,
   type ChapterVersion,
   type ChapterWorkspace,
@@ -119,8 +125,12 @@ export function WritingWorkspace({
   const [factProposals, setFactProposals] = useState<FactProposal[]>([]);
   const [factsLoading, setFactsLoading] = useState(false);
   const [factBusyId, setFactBusyId] = useState<string | null>(null);
+  const [canonCommit, setCanonCommit] = useState<CanonCommit | null>(null);
+  const [reviewBusy, setReviewBusy] = useState(false);
+  const [submissionBusy, setSubmissionBusy] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const submissionKeys = useRef(new Map<string, string>());
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -154,11 +164,13 @@ export function WritingWorkspace({
           loadVersions(workData, nextSelectedId),
           loadGenerationJob(workData, nextSelectedId),
           loadFactProposals(workData, nextSelectedId),
+          loadCanonCommit(workData, nextSelectedId),
         ]);
       } else {
         setVersions([]);
         setGenerationJob(null);
         setFactProposals([]);
+        setCanonCommit(null);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "写作台加载失败。");
@@ -190,6 +202,35 @@ export function WritingWorkspace({
   const canGenerate = Boolean(
     selected?.readiness.canStartWriting && !generationActive && !generationBusy,
   );
+  const currentFactProposals = factProposals.filter(
+    (proposal) =>
+      proposal.sourceVersionId === selected?.currentVersionId && proposal.status !== "superseded",
+  );
+  const pendingRequiredFacts = currentFactProposals.filter(
+    (proposal) =>
+      proposal.required &&
+      proposal.status !== "confirmed" &&
+      proposal.status !== "modified_confirmed",
+  );
+  const unresolvedHighRiskFacts = currentFactProposals.filter(
+    (proposal) => proposal.risk === "high" && proposal.status === "proposed",
+  );
+  const chapterApproved = selected?.status === "approved" || selected?.status === "locked";
+  const factsSubmitted = Boolean(
+    selected &&
+    canonCommit &&
+    canonCommit.chapterId === selected.id &&
+    canonCommit.chapterVersionId === selected.currentVersionId,
+  );
+  const canApprove = Boolean(selected?.status === "waiting_review" && !reviewBusy);
+  const canSubmit = Boolean(
+    selected?.currentVersionId &&
+    chapterApproved &&
+    !factsSubmitted &&
+    pendingRequiredFacts.length === 0 &&
+    unresolvedHighRiskFacts.length === 0 &&
+    !submissionBusy,
+  );
   const comparisonLeft = versions.find((version) => version.id === leftVersionId);
   const comparisonRight = versions.find((version) => version.id === rightVersionId);
 
@@ -201,7 +242,11 @@ export function WritingWorkspace({
     setSaved(false);
     if (work) {
       try {
-        await Promise.all([loadVersions(work, chapter.id), loadFactProposals(work, chapter.id)]);
+        await Promise.all([
+          loadVersions(work, chapter.id),
+          loadFactProposals(work, chapter.id),
+          loadCanonCommit(work, chapter.id),
+        ]);
       } catch (caught) {
         setActionError(caught instanceof Error ? caught.message : "章节资料加载失败。");
       }
@@ -269,6 +314,18 @@ export function WritingWorkspace({
     } finally {
       setFactsLoading(false);
     }
+  }
+
+  async function loadCanonCommit(workData: WorkOverview, chapterId: string) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/canon/commits`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      throw new Error(await readError(response, "事实提交记录加载失败。"));
+    }
+    const commits = canonCommitListResponseSchema.parse(await response.json()).data;
+    setCanonCommit(commits.find((commit) => commit.chapterId === chapterId) ?? null);
   }
 
   async function startGeneration() {
@@ -415,6 +472,7 @@ export function WritingWorkspace({
           setSavedContent(chapter.currentVersion?.content ?? "");
           await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
           await loadFactProposals(workData, chapter.id);
+          await loadCanonCommit(workData, chapter.id);
         }
       }
     }
@@ -461,6 +519,81 @@ export function WritingWorkspace({
       setActionError(caught instanceof Error ? caught.message : "事实决策保存失败。");
     } finally {
       setFactBusyId(null);
+    }
+  }
+
+  async function approveChapter() {
+    if (!work || !selected || !canApprove) {
+      return;
+    }
+    setReviewBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}/review`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            action: "approve",
+            version: selected.version,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "章节批准失败。"));
+      }
+      const reviewed = chapterReviewResponseSchema.parse(await response.json()).data;
+      setChapters((current) =>
+        current.map((chapter) => (chapter.id === reviewed.chapter.id ? reviewed.chapter : chapter)),
+      );
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "章节批准失败。");
+    } finally {
+      setReviewBusy(false);
+    }
+  }
+
+  async function submitChapterFacts() {
+    if (!work || !selected?.currentVersionId || !canSubmit) {
+      return;
+    }
+    const submissionKey = `${selected.id}:${selected.currentVersionId}`;
+    let idempotencyKey = submissionKeys.current.get(submissionKey);
+    if (!idempotencyKey) {
+      idempotencyKey = crypto.randomUUID();
+      submissionKeys.current.set(submissionKey, idempotencyKey);
+    }
+    setSubmissionBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}/canon/commit`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": idempotencyKey,
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            chapterVersionId: selected.currentVersionId,
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "本章事实提交失败。"));
+      }
+      const commit = canonCommitResponseSchema.parse(await response.json()).data;
+      setCanonCommit(commit);
+      submissionKeys.current.delete(submissionKey);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "本章事实提交失败。");
+    } finally {
+      setSubmissionBusy(false);
     }
   }
 
@@ -1008,6 +1141,58 @@ export function WritingWorkspace({
                     </article>
                   ))}
                 </div>
+                <div className="writing-submit-gate" aria-label="提交本章事实">
+                  <div>
+                    <strong>提交本章事实</strong>
+                    <small>
+                      {factsSubmitted
+                        ? "事实已提交，后续修改需要发起修改请求。"
+                        : !chapterApproved
+                          ? pendingRequiredFacts.length > 0
+                            ? `先批准本章，再确认剩余 ${pendingRequiredFacts.length} 条事实。`
+                            : "先批准本章，才能提交事实。"
+                          : pendingRequiredFacts.length > 0
+                            ? `还有 ${pendingRequiredFacts.length} 条事实待确认。`
+                            : unresolvedHighRiskFacts.length > 0
+                              ? "还有高风险事实待处理。"
+                              : "已满足提交条件，可以提交本章事实。"}
+                    </small>
+                  </div>
+                  <div className="writing-submit-actions">
+                    <button
+                      className="btn btn-ghost btn-small"
+                      disabled={!canApprove}
+                      onClick={() => void approveChapter()}
+                      type="button"
+                    >
+                      {reviewBusy ? (
+                        <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                      ) : (
+                        <ShieldCheck size={13} aria-hidden="true" />
+                      )}
+                      {chapterApproved ? "本章已批准" : "批准本章"}
+                    </button>
+                    <button
+                      className="btn btn-primary btn-small"
+                      disabled={!canSubmit}
+                      onClick={() => void submitChapterFacts()}
+                      type="button"
+                    >
+                      {submissionBusy ? (
+                        <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                      ) : (
+                        <Send size={13} aria-hidden="true" />
+                      )}
+                      {factsSubmitted ? "本章事实已提交" : "提交本章事实"}
+                    </button>
+                  </div>
+                </div>
+                {canonCommit && factsSubmitted ? (
+                  <div className="writing-submit-summary">
+                    <strong>摘要已更新</strong>
+                    <span>{canonCommit.summary.text}</span>
+                  </div>
+                ) : null}
               </>
             )}
           </section>

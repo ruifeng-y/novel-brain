@@ -466,6 +466,40 @@ export const chapters = pgTable(
   ],
 );
 
+export const reviewDecisions = pgTable(
+  "review_decisions",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    action: text("action").notNull(),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    actorName: text("actor_name").notNull(),
+    reason: text("reason").notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("review_decisions_chapter_decided_idx").on(table.chapterId, table.decidedAt),
+    index("review_decisions_user_work_idx").on(table.userId, table.workId),
+    check("review_decisions_action_check", sql`${table.action} in ('approve', 'reject')`),
+  ],
+);
+
 export const chapterVersions = pgTable(
   "chapter_versions",
   {
@@ -593,6 +627,99 @@ export const factDecisions = pgTable(
       "fact_decisions_action_check",
       sql`${table.action} in ('confirm', 'modify_confirm', 'reject', 'supersede')`,
     ),
+  ],
+);
+
+export const canonCommits = pgTable(
+  "canon_commits",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    decisionSnapshot: jsonb("decision_snapshot")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
+    summary: jsonb("summary").$type<Record<string, unknown>>().notNull().default({}),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("canon_commits_chapter_unique").on(table.chapterId),
+    uniqueIndex("canon_commits_version_node_unique").on(table.versionNodeId),
+    uniqueIndex("canon_commits_user_chapter_idempotency_unique").on(
+      table.userId,
+      table.chapterId,
+      table.idempotencyKey,
+    ),
+    index("canon_commits_user_work_idx").on(table.userId, table.workId),
+    index("canon_commits_branch_created_idx").on(table.branchId, table.createdAt),
+  ],
+);
+
+export const facts = pgTable(
+  "facts",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    factProposalId: uuid("fact_proposal_id")
+      .notNull()
+      .references(() => factProposals.id, { onDelete: "restrict" }),
+    decisionId: uuid("decision_id")
+      .notNull()
+      .references(() => factDecisions.id, { onDelete: "restrict" }),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    canonCommitId: uuid("canon_commit_id")
+      .notNull()
+      .references(() => canonCommits.id, { onDelete: "cascade" }),
+    subject: text("subject").notNull(),
+    predicate: text("predicate").notNull(),
+    object: text("object").notNull(),
+    risk: text("risk").notNull(),
+    required: boolean("required").notNull().default(false),
+    status: text("status").notNull().default("active"),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("facts_fact_proposal_unique").on(table.factProposalId),
+    index("facts_user_work_status_idx").on(table.userId, table.workId, table.status),
+    index("facts_chapter_created_idx").on(table.chapterId, table.createdAt),
+    index("facts_canon_commit_idx").on(table.canonCommitId),
+    check("facts_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
+    check("facts_status_check", sql`${table.status} in ('active', 'superseded')`),
   ],
 );
 

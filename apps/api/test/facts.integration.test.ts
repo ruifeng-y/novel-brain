@@ -3,6 +3,7 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  chapterWorkspaceResponseSchema,
   confirmedSettingListResponseSchema,
   contextPackPreviewResponseSchema,
   factProposalListResponseSchema,
@@ -326,6 +327,370 @@ describe("fact proposal HTTP integration", () => {
     expect(JSON.stringify(context)).not.toContain(rejectedProposal.id);
   });
 
+  it("approves a chapter without changing fact proposals or confirmed settings", async () => {
+    const owner = await createAuthenticatedAgent("facts-approval@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const chapter = await createReadyChapter(owner, token, branchPath);
+    const started = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-approval-generation")
+      .send({
+        budget: {
+          maxCostCny: 2.5,
+          maxTokens: 12_000,
+          maxRevisionRounds: 2,
+        },
+      })
+      .expect(202);
+    const job = generationJobResponseSchema.parse(started.body).data;
+    await new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      new FakeAiProvider(),
+    ).process(await readWorkerPayload(job.id));
+
+    const waitingChapter = chapterWorkspaceResponseSchema.parse(
+      (await owner.get(`${branchPath}/chapters/${chapter.id}`).expect(200)).body,
+    ).data;
+    const proposalsBefore = factProposalListResponseSchema.parse(
+      (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
+    ).data;
+    const settingsBefore = confirmedSettingListResponseSchema.parse(
+      (await owner.get(`${branchPath}/facts`).expect(200)).body,
+    ).data;
+
+    const approved = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/review`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ action: "approve", version: waitingChapter.version })
+      .expect(200);
+
+    expect(approved.body.data).toMatchObject({
+      chapter: {
+        id: chapter.id,
+        status: "approved",
+      },
+      decision: {
+        action: "approve",
+        actorName: "事实作者",
+      },
+    });
+    expect(
+      factProposalListResponseSchema.parse(
+        (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
+      ).data,
+    ).toEqual(proposalsBefore);
+    expect(
+      confirmedSettingListResponseSchema.parse(
+        (await owner.get(`${branchPath}/facts`).expect(200)).body,
+      ).data,
+    ).toEqual(settingsBefore);
+  });
+
+  it("blocks fact submission with stable errors until approval and required decisions", async () => {
+    const owner = await createAuthenticatedAgent("facts-submit-gates@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const chapter = await createReadyChapter(owner, token, branchPath);
+    const started = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-gate-generation")
+      .send({
+        budget: {
+          maxCostCny: 2.5,
+          maxTokens: 12_000,
+          maxRevisionRounds: 2,
+        },
+      })
+      .expect(202);
+    const job = generationJobResponseSchema.parse(started.body).data;
+    await new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      new FakeAiProvider(),
+    ).process(await readWorkerPayload(job.id));
+    const waitingChapter = chapterWorkspaceResponseSchema.parse(
+      (await owner.get(`${branchPath}/chapters/${chapter.id}`).expect(200)).body,
+    ).data;
+
+    const unapproved = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-unapproved")
+      .send({ chapterVersionId: waitingChapter.currentVersionId })
+      .expect(409);
+    expect(unapproved.body.error).toMatchObject({
+      code: "CANON_CHAPTER_NOT_APPROVED",
+      details: { chapterStatus: "waiting_review" },
+    });
+
+    await owner
+      .post(`${branchPath}/chapters/${chapter.id}/review`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ action: "approve", version: waitingChapter.version })
+      .expect(200);
+
+    const undecided = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-undecided")
+      .send({ chapterVersionId: waitingChapter.currentVersionId })
+      .expect(409);
+    expect(undecided.body.error.code).toBe("FACT_SUBMISSION_BLOCKED");
+    expect(undecided.body.error.details.pendingRequiredFactIds.length).toBeGreaterThan(0);
+
+    const commits = await databasePool.query<{ count: string }>(
+      `SELECT count(*) FROM version_nodes
+       WHERE branch_id = $1 AND node_type = 'canon_commit'`,
+      [work.mainBranch.id],
+    );
+    expect(commits.rows[0]?.count).toBe("0");
+  });
+
+  it("submits confirmed facts once and only then updates confirmed settings", async () => {
+    const owner = await createAuthenticatedAgent("facts-submit-success@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const chapter = await createReadyChapter(owner, token, branchPath);
+    const started = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success-generation")
+      .send({
+        budget: {
+          maxCostCny: 2.5,
+          maxTokens: 12_000,
+          maxRevisionRounds: 2,
+        },
+      })
+      .expect(202);
+    const job = generationJobResponseSchema.parse(started.body).data;
+    await new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      new FakeAiProvider(),
+    ).process(await readWorkerPayload(job.id));
+    const waitingChapter = chapterWorkspaceResponseSchema.parse(
+      (await owner.get(`${branchPath}/chapters/${chapter.id}`).expect(200)).body,
+    ).data;
+    const proposals = factProposalListResponseSchema.parse(
+      (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
+    ).data;
+    const requiredProposals = proposals.filter((proposal) => proposal.required);
+    expect(requiredProposals).toHaveLength(2);
+    for (const proposal of requiredProposals) {
+      await decide(owner, token, branchPath, proposal.id, {
+        action: "confirm",
+        reason: "与本章正文一致",
+      });
+    }
+    const proposalsBeforeSubmission = factProposalListResponseSchema.parse(
+      (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
+    ).data;
+    const approved = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/review`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ action: "approve", version: waitingChapter.version })
+      .expect(200);
+    expect(approved.body.data.chapter.status).toBe("approved");
+
+    const settingsBeforeSubmission = confirmedSettingListResponseSchema.parse(
+      (await owner.get(`${branchPath}/facts`).expect(200)).body,
+    ).data;
+    const headBefore = (await owner.get(`/api/v1/works/${work.id}`).expect(200)).body.data
+      .mainBranch.headNodeId as string;
+    const submissionBody = { chapterVersionId: waitingChapter.currentVersionId };
+    const submitted = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success")
+      .send(submissionBody)
+      .expect(200);
+    const commit = submitted.body.data as {
+      id: string;
+      chapterId: string;
+      chapterVersionId: string;
+      versionNodeId: string;
+      sourceChapter: { id: string; number: number; title: string };
+      facts: Array<{ proposalId: string; decisionId: string }>;
+      decisions: Array<{ proposalId: string; decisionId: string }>;
+      summary: { factCount: number; text: string };
+    };
+    expect(commit).toMatchObject({
+      chapterId: chapter.id,
+      chapterVersionId: waitingChapter.currentVersionId,
+      sourceChapter: {
+        id: chapter.id,
+        number: 1,
+        title: "一只手也能结印",
+      },
+      summary: {
+        factCount: 2,
+      },
+    });
+    expect(commit.summary.text).toContain("第 1 章");
+    expect(commit.facts.map((fact) => fact.proposalId)).toEqual(
+      expect.arrayContaining(requiredProposals.map((proposal) => proposal.id)),
+    );
+    expect(commit.decisions.map((decision) => decision.proposalId)).toEqual(
+      expect.arrayContaining(requiredProposals.map((proposal) => proposal.id)),
+    );
+    expect(
+      factProposalListResponseSchema.parse(
+        (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
+      ).data,
+    ).toEqual(proposalsBeforeSubmission);
+    expect(
+      chapterWorkspaceResponseSchema.parse(
+        (await owner.get(`${branchPath}/chapters/${chapter.id}`).expect(200)).body,
+      ).data.status,
+    ).toBe("approved");
+
+    const graph = await databasePool.query<{
+      commit_count: string;
+      node_count: string;
+      parent_node_id: string;
+      snapshot_id: string;
+      branch_head_node_id: string;
+    }>(
+      `SELECT
+        (SELECT count(*) FROM canon_commits WHERE chapter_id = $1) AS commit_count,
+        (SELECT count(*) FROM version_nodes WHERE object_id = $1 AND node_type = 'canon_commit') AS node_count,
+        vn.parent_node_id,
+        vn.snapshot_id,
+        wb.head_node_id AS branch_head_node_id
+       FROM version_nodes vn
+       JOIN work_branches wb ON wb.id = vn.branch_id
+       WHERE vn.id = $2`,
+      [chapter.id, commit.versionNodeId],
+    );
+    expect(graph.rows[0]).toMatchObject({
+      commit_count: "1",
+      node_count: "1",
+      parent_node_id: headBefore,
+      snapshot_id: commit.id,
+      branch_head_node_id: commit.versionNodeId,
+    });
+
+    const settingsAfterSubmission = await owner.get(`${branchPath}/facts`).expect(200);
+    const submittedFacts = (
+      settingsAfterSubmission.body.data as Array<Record<string, unknown>>
+    ).filter((item) => item.kind === "fact");
+    expect(submittedFacts).toHaveLength(2);
+    expect(submittedFacts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: "canon",
+          sourceChapterId: chapter.id,
+          status: "locked",
+        }),
+      ]),
+    );
+    expect(settingsAfterSubmission.body.data).not.toEqual(settingsBeforeSubmission);
+
+    const secondChapter = await createReadyChapter(owner, token, branchPath, 2, "余波");
+    const context = contextPackPreviewResponseSchema.parse(
+      (
+        await owner
+          .get(`${branchPath}/chapters/${secondChapter.id}/context-preview?tokenBudget=12000`)
+          .expect(200)
+      ).body,
+    ).data;
+    expect(context.selected.map((source) => source.key)).toEqual(
+      expect.arrayContaining(commit.facts.map((fact) => `setting:${fact.id}`)),
+    );
+
+    const replayed = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success")
+      .send(submissionBody)
+      .expect(200);
+    expect(replayed.body.data.id).toBe(commit.id);
+    const counts = await databasePool.query<{ commits: string; facts: string; nodes: string }>(
+      `SELECT
+        (SELECT count(*) FROM canon_commits WHERE chapter_id = $1) AS commits,
+        (SELECT count(*) FROM facts WHERE chapter_id = $1) AS facts,
+        (SELECT count(*) FROM version_nodes WHERE object_id = $1 AND node_type = 'canon_commit') AS nodes`,
+      [chapter.id],
+    );
+    expect(counts.rows[0]).toEqual({ commits: "1", facts: "2", nodes: "1" });
+  });
+
+  it("rejects cross-tenant chapter approval and fact submission", async () => {
+    const owner = await createAuthenticatedAgent("facts-canon-owner@example.com");
+    const other = await createAuthenticatedAgent("facts-canon-other@example.com");
+    const work = await createWork(owner);
+    const ownerToken = await csrf(owner);
+    const otherToken = await csrf(other);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, ownerToken, branchPath);
+    await createConfirmedSettings(owner, ownerToken, branchPath);
+    await createModelConfig(owner, ownerToken);
+    const chapter = await createReadyChapter(owner, ownerToken, branchPath);
+    const started = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerToken)
+      .set("Idempotency-Key", "facts-canon-tenant-generation")
+      .send({
+        budget: {
+          maxCostCny: 2.5,
+          maxTokens: 12_000,
+          maxRevisionRounds: 2,
+        },
+      })
+      .expect(202);
+    const job = generationJobResponseSchema.parse(started.body).data;
+    await new GenerationJobProcessor(
+      new WorkerGenerationRepository(),
+      new FakeAiProvider(),
+    ).process(await readWorkerPayload(job.id));
+    const waitingChapter = chapterWorkspaceResponseSchema.parse(
+      (await owner.get(`${branchPath}/chapters/${chapter.id}`).expect(200)).body,
+    ).data;
+
+    const review = await other
+      .post(`${branchPath}/chapters/${chapter.id}/review`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({ action: "approve", version: waitingChapter.version })
+      .expect(403);
+    expect(review.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    const submission = await other
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .set("Idempotency-Key", "facts-canon-tenant-submit")
+      .send({ chapterVersionId: waitingChapter.currentVersionId })
+      .expect(403);
+    expect(submission.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    const commits = await other.get(`${branchPath}/canon/commits`).expect(403);
+    expect(commits.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+  });
+
   async function decide(
     agent: SuperAgentTest,
     token: string,
@@ -401,14 +766,16 @@ describe("fact proposal HTTP integration", () => {
     agent: SuperAgentTest,
     token: string,
     branchPath: string,
+    order = 1,
+    title = "一只手也能结印",
   ): Promise<{ id: string; version: number }> {
     const response = await agent
       .post(`${branchPath}/chapters`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        order: 1,
-        title: "一只手也能结印",
+        order,
+        title,
         brief: {
           goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",
           pov: "沈砚",

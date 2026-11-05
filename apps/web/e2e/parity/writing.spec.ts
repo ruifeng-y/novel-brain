@@ -346,6 +346,75 @@ test("confirms two fact proposals without changing confirmed settings", async ({
   }
 });
 
+test("approves, confirms required facts and submits the chapter end to end", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const settingsBefore = await page.request.get(`${branchPath}/facts`);
+  expect(settingsBefore.ok()).toBe(true);
+  const settingsDataBefore = (await settingsBefore.json()).data;
+  const worker = await startWorker();
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    await page.getByRole("button", { name: "生成整章" }).click();
+    await expect(
+      page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    const factsPanel = page.getByRole("region", { name: "本章事实" });
+    const submit = factsPanel.getByRole("button", { name: "提交本章事实" });
+    await expect(submit).toBeDisabled();
+    const proposalsBeforeApproval = await page.request.get(
+      `${branchPath}/chapters/${chapter.id}/fact-proposals`,
+    );
+    expect(proposalsBeforeApproval.ok()).toBe(true);
+    const proposalsDataBeforeApproval = (await proposalsBeforeApproval.json()).data;
+
+    await factsPanel.getByRole("button", { name: "批准本章" }).click();
+    await expect(factsPanel.getByRole("button", { name: "本章已批准" })).toBeDisabled();
+    await expect(submit).toBeDisabled();
+    await expect(factsPanel.getByText(/还有 2 条事实待确认/)).toBeVisible();
+    const proposalsAfterApproval = await page.request.get(
+      `${branchPath}/chapters/${chapter.id}/fact-proposals`,
+    );
+    expect((await proposalsAfterApproval.json()).data).toEqual(proposalsDataBeforeApproval);
+    const settingsAfterApproval = await page.request.get(`${branchPath}/facts`);
+    expect((await settingsAfterApproval.json()).data).toEqual(settingsDataBefore);
+
+    await factsPanel
+      .locator(".writing-fact-card:has(.writing-fact-risk-high)")
+      .getByRole("button", { name: "确认", exact: true })
+      .click();
+    await expect(factsPanel.getByText("已确认", { exact: true })).toHaveCount(1);
+    await factsPanel
+      .locator(".writing-fact-card:has(.writing-fact-risk-medium)")
+      .getByRole("button", { name: "确认", exact: true })
+      .click();
+    await expect(factsPanel.getByText("已确认", { exact: true })).toHaveCount(2);
+    await expect(factsPanel.getByText("已满足提交条件，可以提交本章事实。")).toBeVisible();
+    await expect(submit).toBeEnabled();
+    const settingsBeforeSubmission = await page.request.get(`${branchPath}/facts`);
+    expect((await settingsBeforeSubmission.json()).data).toEqual(settingsDataBefore);
+
+    await submit.click();
+    await expect(factsPanel.getByRole("button", { name: "本章事实已提交" })).toBeDisabled();
+    await expect(factsPanel.getByText("摘要已更新")).toBeVisible();
+    await expect(page.getByText("已批准", { exact: true })).toBeVisible();
+
+    const settingsAfterSubmission = await page.request.get(`${branchPath}/facts`);
+    const submittedSettings = (await settingsAfterSubmission.json()).data as Array<{
+      kind?: string;
+    }>;
+    expect(submittedSettings.filter((item) => item.kind === "fact")).toHaveLength(2);
+    expectAuthorFacingLanguage(page);
+  } finally {
+    await worker.stop();
+  }
+});
+
 test("keeps the draft checkpoint after provider failure and resumes from revise", async ({
   page,
   context,
