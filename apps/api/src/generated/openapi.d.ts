@@ -100,6 +100,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_list"];
+    put?: never;
+    post: operations["ChaptersController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/outline/readiness": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_outlineReadiness"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["ChaptersController_patch"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/readiness": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_readiness"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_versions"];
+    put?: never;
+    post: operations["ChaptersController_saveVersion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/health": {
     parameters: {
       query?: never;
@@ -773,6 +853,625 @@ export interface operations {
             data: {
               /** @enum {boolean} */
               loggedOut: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Ordered chapter briefs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              order: number;
+              title: string;
+              /** @enum {string} */
+              status:
+                | "planned"
+                | "writing"
+                | "waiting_review"
+                | "changes_requested"
+                | "approved"
+                | "locked"
+                | "published"
+                | "rejected";
+              version: number;
+              wordCount: number;
+              currentVersionId: string | null;
+              currentVersion: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              brief: {
+                goal: string;
+                pov: string;
+                location: string;
+                sceneBeats: string[];
+                requiredFacts: string[];
+              } | null;
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 3;
+                canStartWriting: boolean;
+                items: {
+                  /** @enum {string} */
+                  key: "story_bible" | "settings" | "brief";
+                  label: string;
+                  ready: boolean;
+                  missing: string[];
+                }[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          order: number;
+          title: string;
+          brief: {
+            goal: string;
+            pov: string;
+            location: string;
+            sceneBeats: string[];
+            requiredFacts: string[];
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Planned chapter */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              order: number;
+              title: string;
+              /** @enum {string} */
+              status:
+                | "planned"
+                | "writing"
+                | "waiting_review"
+                | "changes_requested"
+                | "approved"
+                | "locked"
+                | "published"
+                | "rejected";
+              version: number;
+              wordCount: number;
+              currentVersionId: string | null;
+              currentVersion: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              brief: {
+                goal: string;
+                pov: string;
+                location: string;
+                sceneBeats: string[];
+                requiredFacts: string[];
+              } | null;
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 3;
+                canStartWriting: boolean;
+                items: {
+                  /** @enum {string} */
+                  key: "story_bible" | "settings" | "brief";
+                  label: string;
+                  ready: boolean;
+                  missing: string[];
+                }[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_outlineReadiness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter plan readiness */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              status: "not_ready" | "partial" | "ready";
+              completed: number;
+              /** @enum {number} */
+              total: 3;
+              canStartWriting: boolean;
+              items: {
+                /** @enum {string} */
+                key: "story_bible" | "settings" | "brief";
+                label: string;
+                ready: boolean;
+                missing: string[];
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter workspace */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              order: number;
+              title: string;
+              /** @enum {string} */
+              status:
+                | "planned"
+                | "writing"
+                | "waiting_review"
+                | "changes_requested"
+                | "approved"
+                | "locked"
+                | "published"
+                | "rejected";
+              version: number;
+              wordCount: number;
+              currentVersionId: string | null;
+              currentVersion: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              brief: {
+                goal: string;
+                pov: string;
+                location: string;
+                sceneBeats: string[];
+                requiredFacts: string[];
+              } | null;
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 3;
+                canStartWriting: boolean;
+                items: {
+                  /** @enum {string} */
+                  key: "story_bible" | "settings" | "brief";
+                  label: string;
+                  ready: boolean;
+                  missing: string[];
+                }[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          title?: string;
+          brief?: {
+            goal: string;
+            pov: string;
+            location: string;
+            sceneBeats: string[];
+            requiredFacts: string[];
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated chapter brief */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              order: number;
+              title: string;
+              /** @enum {string} */
+              status:
+                | "planned"
+                | "writing"
+                | "waiting_review"
+                | "changes_requested"
+                | "approved"
+                | "locked"
+                | "published"
+                | "rejected";
+              version: number;
+              wordCount: number;
+              currentVersionId: string | null;
+              currentVersion: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              brief: {
+                goal: string;
+                pov: string;
+                location: string;
+                sceneBeats: string[];
+                requiredFacts: string[];
+              } | null;
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 3;
+                canStartWriting: boolean;
+                items: {
+                  /** @enum {string} */
+                  key: "story_bible" | "settings" | "brief";
+                  label: string;
+                  ready: boolean;
+                  missing: string[];
+                }[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_readiness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter readiness */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              status: "not_ready" | "partial" | "ready";
+              completed: number;
+              /** @enum {number} */
+              total: 3;
+              canStartWriting: boolean;
+              items: {
+                /** @enum {string} */
+                key: "story_bible" | "settings" | "brief";
+                label: string;
+                ready: boolean;
+                missing: string[];
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_versions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Append-only chapter versions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              chapterId: string;
+              version: number;
+              content: string;
+              contentHash: string;
+              versionNodeId: string;
+              parentNodeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_saveVersion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          content: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Saved chapter version and resulting chapter */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              chapter: {
+                id: string;
+                workId: string;
+                branchId: string;
+                order: number;
+                title: string;
+                /** @enum {string} */
+                status:
+                  | "planned"
+                  | "writing"
+                  | "waiting_review"
+                  | "changes_requested"
+                  | "approved"
+                  | "locked"
+                  | "published"
+                  | "rejected";
+                version: number;
+                wordCount: number;
+                currentVersionId: string | null;
+                currentVersion: {
+                  id: string;
+                  chapterId: string;
+                  version: number;
+                  content: string;
+                  contentHash: string;
+                  versionNodeId: string;
+                  parentNodeId: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                brief: {
+                  goal: string;
+                  pov: string;
+                  location: string;
+                  sceneBeats: string[];
+                  requiredFacts: string[];
+                } | null;
+                readiness: {
+                  /** @enum {string} */
+                  status: "not_ready" | "partial" | "ready";
+                  completed: number;
+                  /** @enum {number} */
+                  total: 3;
+                  canStartWriting: boolean;
+                  items: {
+                    /** @enum {string} */
+                    key: "story_bible" | "settings" | "brief";
+                    label: string;
+                    ready: boolean;
+                    missing: string[];
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              };
+              version: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              };
             };
             /** Format: starts_with */
             requestId: string;

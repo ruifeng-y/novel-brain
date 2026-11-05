@@ -138,12 +138,11 @@ export class WorksService {
     if (!mainBranch?.headNodeId) {
       throw new Error("Work is missing its main branch head");
     }
-    const modelConfigReady = await this.repository.hasModelConfig(userId);
-    const storyBibleReady = await this.repository.isStoryBibleLocked(
-      userId,
-      work.id,
-      mainBranch.id,
-    );
+    const [modelConfigReady, storyBibleReady, outlineReady] = await Promise.all([
+      this.repository.hasModelConfig(userId),
+      this.repository.isStoryBibleLocked(userId, work.id, mainBranch.id),
+      this.repository.hasReadyChapterBrief(userId, work.id, mainBranch.id),
+    ]);
     const templatePack =
       suppliedTemplatePack ??
       (work.templatePackId
@@ -153,7 +152,7 @@ export class WorksService {
       ...this.toContract(work, templatePack),
       mainBranch: this.toBranchContract(mainBranch),
       branches: branches.map((branch) => this.toBranchContract(branch)),
-      readiness: readiness(modelConfigReady, storyBibleReady),
+      readiness: readiness(modelConfigReady, storyBibleReady, outlineReady),
     };
   }
 
@@ -197,12 +196,16 @@ export class WorksService {
   }
 }
 
-function readiness(modelConfigReady: boolean, storyBibleReady: boolean): WorkReadiness {
+function readiness(
+  modelConfigReady: boolean,
+  storyBibleReady: boolean,
+  outlineReady: boolean,
+): WorkReadiness {
   const items: WorkReadiness["items"] = [
     { key: "main_branch", label: "主创作线", ready: true },
     { key: "model_config", label: "模型配置", ready: modelConfigReady },
     { key: "story_bible", label: "故事圣经", ready: storyBibleReady },
-    { key: "outline", label: "大纲", ready: false },
+    { key: "outline", label: "大纲", ready: outlineReady },
   ];
   const completed = items.filter((item) => item.ready).length;
   return {
