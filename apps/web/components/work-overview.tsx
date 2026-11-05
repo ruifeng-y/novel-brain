@@ -108,10 +108,17 @@ export function WorkOverview({ workId }: { workId: string }) {
             <ArrowLeft size={15} aria-hidden="true" />
             返回工作台
           </Link>
-          <Link className="btn btn-primary" href={`/workspace/${workId}/write`}>
-            <PenLine size={15} aria-hidden="true" />
-            继续写作
-          </Link>
+          {work.status === "archived" ? (
+            <button className="btn btn-primary" disabled type="button">
+              <PenLine size={15} aria-hidden="true" />
+              继续写作
+            </button>
+          ) : (
+            <Link className="btn btn-primary" href={`/workspace/${workId}/write`}>
+              <PenLine size={15} aria-hidden="true" />
+              继续写作
+            </Link>
+          )}
         </div>
       </section>
 

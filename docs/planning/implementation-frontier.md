@@ -5,7 +5,7 @@
 
 ## 1. Current truth
 
-- Production Web/API/Worker source has not been created yet; the signed-off prototype is a design baseline, not a production application.
+- M0 production Web/API/Worker source exists through integrated #67–#78; #79 records closeout evidence and remaining demo gates. The signed-off prototype remains the UI baseline, not production evidence by itself.
 - M0 specification: #66; M0 implementation tickets: #67–#79.
 - M1 specification: #80; M1 package/integration tickets: #84–#90.
 - M2 specification: #81; M2 package/integration tickets: #91–#97.

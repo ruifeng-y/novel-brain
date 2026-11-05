@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { type GenerateChapterJob, type GenerationCost } from "@novel-brain/contracts";
 import {
   AiProviderError,
+  M0_COST_PER_TOKEN_CNY,
   type AiGateway,
   type GenerationOperation,
   type GenerationResult,
@@ -42,8 +43,6 @@ const EXECUTED_STEPS = [
   "await_review",
 ] as const;
 type ExecutedStep = (typeof EXECUTED_STEPS)[number];
-const COST_PER_TOKEN_CNY = 0.000002;
-
 class JobBudgetExceededError extends Error {
   constructor() {
     super("Generation budget exhausted");
@@ -417,7 +416,7 @@ function toCost(result: GenerationResult): GenerationCost {
 }
 
 function calculateCost(tokens: number): number {
-  return Number((tokens * COST_PER_TOKEN_CNY).toFixed(8));
+  return Number((tokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
 }
 
 function zeroCost(): GenerationCost {
