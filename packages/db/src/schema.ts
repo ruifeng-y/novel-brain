@@ -184,7 +184,7 @@ export const works = pgTable(
     ),
     check(
       "works_source_mode_check",
-      sql`${table.sourceMode} in ('idea', 'blank', 'template', 'settings_import')`,
+      sql`${table.sourceMode} in ('idea', 'blank', 'template', 'settings_import', 'manuscript_import')`,
     ),
   ],
 );
@@ -253,6 +253,78 @@ export const versionNodes = pgTable(
   ],
 );
 
+export const chapters = pgTable(
+  "chapters",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    title: text("title").notNull(),
+    status: text("status").notNull().default("planned"),
+    version: integer("version").notNull().default(1),
+    currentVersionId: uuid("current_version_id").references((): AnyPgColumn => chapterVersions.id, {
+      onDelete: "set null",
+    }),
+    wordCount: integer("word_count").notNull().default(0),
+    brief: jsonb("brief").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("chapters_work_branch_number_unique").on(
+      table.workId,
+      table.branchId,
+      table.number,
+    ),
+    uniqueIndex("chapters_current_version_unique").on(table.currentVersionId),
+    index("chapters_user_work_idx").on(table.userId, table.workId),
+    check(
+      "chapters_status_check",
+      sql`${table.status} in ('planned', 'writing', 'waiting_review', 'changes_requested', 'approved', 'locked', 'published', 'rejected')`,
+    ),
+  ],
+);
+
+export const chapterVersions = pgTable(
+  "chapter_versions",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    content: text("content").notNull(),
+    contentHash: text("content_hash").notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    source: text("source").notNull().default("manual"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("chapter_versions_chapter_version_unique").on(table.chapterId, table.version),
+    uniqueIndex("chapter_versions_node_unique").on(table.versionNodeId),
+    index("chapter_versions_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
 export const importJobs = pgTable(
   "import_jobs",
   {
@@ -273,7 +345,7 @@ export const importJobs = pgTable(
   },
   (table) => [
     index("import_jobs_user_created_idx").on(table.userId, table.createdAt),
-    check("import_jobs_mode_check", sql`${table.mode} in ('settings')`),
+    check("import_jobs_mode_check", sql`${table.mode} in ('settings', 'manuscript_text')`),
     check(
       "import_jobs_status_check",
       sql`${table.status} in ('awaiting_confirmation', 'completed')`,

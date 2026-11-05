@@ -220,7 +220,13 @@ export type WorkGenre = z.infer<typeof workGenreSchema>;
 export const workScaleTargetSchema = z.enum(["short", "medium", "long", "epic"]);
 export type WorkScaleTarget = z.infer<typeof workScaleTargetSchema>;
 
-export const workSourceModeSchema = z.enum(["idea", "blank", "template", "settings_import"]);
+export const workSourceModeSchema = z.enum([
+  "idea",
+  "blank",
+  "template",
+  "settings_import",
+  "manuscript_import",
+]);
 export type WorkSourceMode = z.infer<typeof workSourceModeSchema>;
 
 const workBaseInputShape = {
@@ -412,6 +418,107 @@ export type SettingsImportConflictDecisionRequest = z.infer<
 
 export const settingsImportResponseSchema = apiEnvelopeSchema(settingsImportSchema);
 export const importReportResponseSchema = apiEnvelopeSchema(importReportSchema);
+
+export const manuscriptImportFormatSchema = z.enum(["txt", "markdown"]);
+export type ManuscriptImportFormat = z.infer<typeof manuscriptImportFormatSchema>;
+
+export const manuscriptImportStatusSchema = z.enum(["ready", "partial", "empty"]);
+export type ManuscriptImportStatus = z.infer<typeof manuscriptImportStatusSchema>;
+
+export const manuscriptImportWarningSchema = z.object({
+  sourceExcerpt: z.string().min(1),
+  reason: z.string().min(1),
+});
+export type ManuscriptImportWarning = z.infer<typeof manuscriptImportWarningSchema>;
+
+export const manuscriptImportChapterSchema = z.object({
+  order: z.number().int().positive(),
+  title: z.string().trim().min(1).max(200),
+  content: z.string(),
+  wordCount: z.number().int().nonnegative(),
+});
+export type ManuscriptImportChapter = z.infer<typeof manuscriptImportChapterSchema>;
+
+export const manuscriptImportSchema = z.object({
+  id: uuidV7Schema,
+  status: manuscriptImportStatusSchema,
+  sourceName: z.string().min(1),
+  format: manuscriptImportFormatSchema,
+  chapters: z.array(manuscriptImportChapterSchema),
+  warnings: z.array(manuscriptImportWarningSchema),
+  canConfirm: z.boolean(),
+  confirmedWorkId: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+});
+export type ManuscriptImport = z.infer<typeof manuscriptImportSchema>;
+
+export const manuscriptImportResponseSchema = apiEnvelopeSchema(manuscriptImportSchema);
+
+export const chapterStatusSchema = z.enum([
+  "planned",
+  "writing",
+  "waiting_review",
+  "changes_requested",
+  "approved",
+  "locked",
+  "published",
+  "rejected",
+]);
+export type ChapterStatus = z.infer<typeof chapterStatusSchema>;
+
+export const chapterSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  order: z.number().int().positive(),
+  title: z.string(),
+  status: chapterStatusSchema,
+  version: z.number().int().positive(),
+  wordCount: z.number().int().nonnegative(),
+  currentVersionId: uuidV7Schema,
+});
+export type Chapter = z.infer<typeof chapterSchema>;
+
+export const chapterVersionSchema = z.object({
+  id: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  version: z.number().int().positive(),
+  content: z.string(),
+  contentHash: z.string().min(1),
+  versionNodeId: uuidV7Schema,
+  parentNodeId: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+});
+export type ChapterVersion = z.infer<typeof chapterVersionSchema>;
+
+export const manuscriptImportConfirmRequestSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  penName: z.string().trim().min(1).max(50).optional(),
+  genre: workGenreSchema.default("xianxia"),
+  scaleTarget: workScaleTargetSchema.default("long"),
+  chapterLengthTarget: z.number().int().min(1000).max(10000).default(3000),
+  chapters: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        content: z.string().min(1),
+      }),
+    )
+    .min(1)
+    .max(1_000),
+});
+export type ManuscriptImportConfirmRequest = z.infer<typeof manuscriptImportConfirmRequestSchema>;
+
+export const manuscriptImportConfirmDataSchema = z.object({
+  work: workOverviewSchema,
+  chapters: z.array(chapterSchema),
+  chapterVersions: z.array(chapterVersionSchema),
+});
+export type ManuscriptImportConfirmData = z.infer<typeof manuscriptImportConfirmDataSchema>;
+
+export const manuscriptImportConfirmResponseSchema = apiEnvelopeSchema(
+  manuscriptImportConfirmDataSchema,
+);
 
 export const serviceNameSchema = z.enum(["api", "worker"]);
 export type ServiceName = z.infer<typeof serviceNameSchema>;

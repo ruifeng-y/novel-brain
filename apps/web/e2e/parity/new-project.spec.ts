@@ -169,6 +169,106 @@ test("imports complete settings and reports pending candidates before creation",
   await expect(page.getByRole("heading", { name: "完整设定开书" })).toBeVisible();
 });
 
+test("imports an old manuscript after editing a title and splitting a chapter", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  await page.getByRole("button", { name: "导入旧稿", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "把已经写下的部分带进来" })).toBeVisible();
+
+  await page.getByLabel("上传旧稿文件").setInputFiles({
+    name: "old-draft.md",
+    mimeType: "text/markdown",
+    buffer: Buffer.from(
+      [
+        "# 第一章 断碑夜雨",
+        "",
+        "雨落在断碑上。",
+        "",
+        "# 第二章 夜船",
+        "",
+        "夜船顺流而下。",
+        "",
+        "# 第三章 断臂之后",
+        "",
+        "沈砚按住左臂。",
+      ].join("\n"),
+      "utf8",
+    ),
+  });
+  await page.getByRole("button", { name: "识别章节" }).click();
+  await expect(page.getByText("识别到 3 章")).toBeVisible();
+
+  const rows = page.getByTestId("manuscript-chapter-row");
+  await expect(rows).toHaveCount(3);
+  await rows.nth(0).getByLabel("第 1 章标题").fill("第一章 断碑夜雨");
+  await rows.nth(0).getByRole("button", { name: "拆分第 1 章" }).click();
+  await expect(page.getByLabel("拆分位置")).toBeVisible();
+  await page.getByRole("button", { name: "确认拆分" }).click();
+  await expect(rows).toHaveCount(4);
+  await expect(rows.nth(1).getByLabel("第 2 章标题")).toHaveValue("拆分章节");
+  await rows.nth(1).getByLabel("第 2 章标题").fill("雨落断碑");
+  await rows.nth(1).getByRole("button", { name: "合并第 2 章与下一章" }).click();
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(1).getByLabel("第 2 章标题")).toHaveValue("雨落断碑");
+
+  await page.getByLabel("书名").fill("旧稿新书");
+  for (const width of [1440, 1180, 900, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByRole("heading", { name: "把已经写下的部分带进来" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "确认并创建作品" })).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
+  await page.getByRole("button", { name: "确认并创建作品" }).click();
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  await expect(page.getByRole("heading", { name: "旧稿新书" })).toBeVisible();
+  await expectAuthorFacingLanguage(page);
+});
+
+test("shows empty, partial, unsupported and unreadable manuscript states", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  await page.getByRole("button", { name: "导入旧稿", exact: true }).click();
+
+  await page.getByLabel("上传旧稿文件").setInputFiles({
+    name: "old-draft.docx",
+    mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    buffer: Buffer.from("not supported", "utf8"),
+  });
+  await expect(page.getByText("请选择 TXT 或 Markdown 旧稿文件")).toBeVisible();
+
+  await page.getByLabel("上传旧稿文件").setInputFiles({
+    name: "empty.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from(" \n\n ", "utf8"),
+  });
+  await page.getByRole("button", { name: "识别章节" }).click();
+  await expect(page.getByRole("heading", { name: "旧稿里没有可导入的正文" })).toBeVisible();
+
+  await page.getByLabel("上传旧稿文件").setInputFiles({
+    name: "partial.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("只有正文，没有章节标题。\n第二段仍然保留。", "utf8"),
+  });
+  await page.getByRole("button", { name: "识别章节" }).click();
+  await expect(page.getByText("部分内容未识别到章节标题")).toBeVisible();
+  await expect(page.getByTestId("manuscript-chapter-row")).toHaveCount(1);
+
+  await page.getByLabel("上传旧稿文件").setInputFiles({
+    name: "broken.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from([0xff, 0xfe, 0xfd]),
+  });
+  await page.getByRole("button", { name: "识别章节" }).click();
+  await expect(page.getByText("旧稿编码无法解析，请使用 UTF-8 编码")).toBeVisible();
+});
+
 test("blocks settings import confirmation until the conflict is decided", async ({
   page,
   context,

@@ -8,6 +8,8 @@ import {
   generateChapterJobSchema,
   importReportSchema,
   loginRequestSchema,
+  manuscriptImportConfirmRequestSchema,
+  manuscriptImportResponseSchema,
   modelConfigInputSchema,
   modelConfigSchema,
   modelConfigDeleteResponseSchema,
@@ -325,6 +327,57 @@ describe("shared contracts", () => {
         mode: "settings_import",
         title: "不应直接创建",
       }),
+    ).toThrow();
+  });
+
+  it("validates manuscript preview, edited chapter confirmation and work source contracts", () => {
+    expect(
+      manuscriptImportResponseSchema.parse({
+        data: {
+          id: "01a1a6f9-9d9b-71e1-98ed-ae21fe958ef4",
+          status: "partial",
+          sourceName: "old-draft.md",
+          format: "markdown",
+          chapters: [
+            {
+              order: 1,
+              title: "第一章 断碑夜雨",
+              content: "# 第一章 断碑夜雨\n\n雨落在断碑上。",
+              wordCount: 11,
+            },
+          ],
+          warnings: [
+            {
+              sourceExcerpt: "第一章",
+              reason: "章节标题为空，已使用章节序号作为标题并保留原文",
+            },
+          ],
+          canConfirm: true,
+          confirmedWorkId: null,
+          createdAt: "2026-11-04T08:00:00.000Z",
+        },
+        requestId: "req_manuscript",
+        meta: {},
+      }),
+    ).toMatchObject({ data: { status: "partial", canConfirm: true } });
+    expect(
+      manuscriptImportConfirmRequestSchema.parse({
+        title: "旧稿新书",
+        chapters: [
+          {
+            title: "第一章 断碑夜雨",
+            content: "# 第一章 断碑夜雨\n\n雨落在断碑上。",
+          },
+        ],
+      }),
+    ).toMatchObject({
+      genre: "xianxia",
+      scaleTarget: "long",
+      chapterLengthTarget: 3000,
+    });
+    expect(workSourceModeSchema.parse("manuscript_import")).toBe("manuscript_import");
+    expect(() =>
+      manuscriptImportConfirmRequestSchema.parse({ title: "空章节", chapters: [] }),
     ).toThrow();
   });
 });
