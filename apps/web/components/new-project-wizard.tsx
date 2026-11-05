@@ -13,13 +13,15 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { SettingsImportPanel } from "./settings-import-panel";
 
-type CreationMode = WorkCreateRequest["mode"];
+type CreationMode = WorkCreateRequest["mode"] | "settings_import";
 
 const modeLabels: Array<{ value: CreationMode; label: string }> = [
   { value: "idea", label: "一句话想法" },
   { value: "blank", label: "空白作品" },
   { value: "template", label: "题材模板" },
+  { value: "settings_import", label: "导入设定" },
 ];
 
 export function NewProjectWizard() {
@@ -38,6 +40,9 @@ export function NewProjectWizard() {
 
   async function createWork(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (mode === "settings_import") {
+      return;
+    }
     setBusy(true);
     setError("");
     idempotencyKey.current ??= crypto.randomUUID();
@@ -109,137 +114,159 @@ export function NewProjectWizard() {
         ))}
       </section>
 
-      <div className="creation-layout">
-        <form className="panel creation-form" onSubmit={createWork}>
-          <div className="panel-head">
-            <div>
-              <span className="panel-kicker">故事起点</span>
-              <h2>先把方向定下来</h2>
+      {mode === "settings_import" ? (
+        <SettingsImportPanel
+          chapterLengthTarget={chapterLengthTarget}
+          genre={genre}
+          onCreated={(workId) => {
+            router.push(`/workspace/${workId}/overview`);
+            router.refresh();
+          }}
+          penName={penName}
+          scaleTarget={scaleTarget}
+          setChapterLengthTarget={setChapterLengthTarget}
+          setGenre={setGenre}
+          setPenName={setPenName}
+          setScaleTarget={setScaleTarget}
+          setTitle={setTitle}
+          title={title}
+        />
+      ) : (
+        <div className="creation-layout">
+          <form className="panel creation-form" onSubmit={createWork}>
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">故事起点</span>
+                <h2>先把方向定下来</h2>
+              </div>
+              <span className="badge">{modeLabels.find((item) => item.value === mode)?.label}</span>
             </div>
-            <span className="badge">{modeLabels.find((item) => item.value === mode)?.label}</span>
-          </div>
 
-          <label className="auth-field">
-            <span>书名</span>
-            <input
-              maxLength={120}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-              value={title}
-            />
-          </label>
-
-          {mode === "idea" ? (
             <label className="auth-field">
-              <span>故事灵感</span>
-              <textarea
-                minLength={10}
-                onChange={(event) => setIdea(event.target.value)}
-                placeholder="例如：一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。"
-                required
-                rows={6}
-                value={idea}
-              />
-            </label>
-          ) : null}
-
-          {mode === "template" ? (
-            <label className="auth-field">
-              <span>题材模板</span>
-              <select
-                onChange={(event) => setTemplateKey(event.target.value as "xianxia")}
-                value={templateKey}
-              >
-                <option value="xianxia">仙侠 · 修真文明</option>
-              </select>
-            </label>
-          ) : null}
-
-          <div className="creation-field-grid">
-            <label className="auth-field">
-              <span>笔名</span>
+              <span>书名</span>
               <input
-                maxLength={50}
-                onChange={(event) => setPenName(event.target.value)}
-                placeholder="默认使用账号显示名"
-                value={penName}
-              />
-            </label>
-            <label className="auth-field">
-              <span>题材</span>
-              <select onChange={(event) => setGenre(event.target.value as WorkGenre)} value={genre}>
-                <option value="xianxia">仙侠</option>
-                <option value="history">历史</option>
-                <option value="urban">都市</option>
-              </select>
-            </label>
-            <label className="auth-field">
-              <span>故事规模</span>
-              <select
-                onChange={(event) => setScaleTarget(event.target.value as WorkScaleTarget)}
-                value={scaleTarget}
-              >
-                <option value="short">短篇 · 3 到 10 万字</option>
-                <option value="medium">中篇 · 30 到 50 万字</option>
-                <option value="long">长篇 · 100 到 300 万字</option>
-                <option value="epic">超长篇 · 1000 万字以上</option>
-              </select>
-            </label>
-            <label className="auth-field">
-              <span>章节字数</span>
-              <input
-                max={10000}
-                min={1000}
-                onChange={(event) => setChapterLengthTarget(Number(event.target.value))}
+                maxLength={120}
+                onChange={(event) => setTitle(event.target.value)}
                 required
-                type="number"
-                value={chapterLengthTarget}
+                value={title}
               />
             </label>
-          </div>
 
-          {error ? <div className="model-notice danger">{error}</div> : null}
+            {mode === "idea" ? (
+              <label className="auth-field">
+                <span>故事灵感</span>
+                <textarea
+                  minLength={10}
+                  onChange={(event) => setIdea(event.target.value)}
+                  placeholder="例如：一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。"
+                  required
+                  rows={6}
+                  value={idea}
+                />
+              </label>
+            ) : null}
 
-          <div className="model-form-actions">
-            <button className="btn btn-primary" disabled={busy} type="submit">
-              {busy ? (
-                <LoaderCircle className="spin" size={15} aria-hidden="true" />
-              ) : (
-                <Plus size={15} aria-hidden="true" />
-              )}
-              创建作品并进入总览
-            </button>
-          </div>
-        </form>
+            {mode === "template" ? (
+              <label className="auth-field">
+                <span>题材模板</span>
+                <select
+                  onChange={(event) => setTemplateKey(event.target.value as "xianxia")}
+                  value={templateKey}
+                >
+                  <option value="xianxia">仙侠 · 修真文明</option>
+                </select>
+              </label>
+            ) : null}
 
-        <aside className="panel creation-preview">
-          <div className="panel-head">
-            <div>
-              <span className="panel-kicker">创建预览</span>
-              <h2>{title || "你的下一本书"}</h2>
+            <div className="creation-field-grid">
+              <label className="auth-field">
+                <span>笔名</span>
+                <input
+                  maxLength={50}
+                  onChange={(event) => setPenName(event.target.value)}
+                  placeholder="默认使用账号显示名"
+                  value={penName}
+                />
+              </label>
+              <label className="auth-field">
+                <span>题材</span>
+                <select
+                  onChange={(event) => setGenre(event.target.value as WorkGenre)}
+                  value={genre}
+                >
+                  <option value="xianxia">仙侠</option>
+                  <option value="history">历史</option>
+                  <option value="urban">都市</option>
+                </select>
+              </label>
+              <label className="auth-field">
+                <span>故事规模</span>
+                <select
+                  onChange={(event) => setScaleTarget(event.target.value as WorkScaleTarget)}
+                  value={scaleTarget}
+                >
+                  <option value="short">短篇 · 3 到 10 万字</option>
+                  <option value="medium">中篇 · 30 到 50 万字</option>
+                  <option value="long">长篇 · 100 到 300 万字</option>
+                  <option value="epic">超长篇 · 1000 万字以上</option>
+                </select>
+              </label>
+              <label className="auth-field">
+                <span>章节字数</span>
+                <input
+                  max={10000}
+                  min={1000}
+                  onChange={(event) => setChapterLengthTarget(Number(event.target.value))}
+                  required
+                  type="number"
+                  value={chapterLengthTarget}
+                />
+              </label>
             </div>
-            <Sparkles size={18} aria-hidden="true" />
-          </div>
-          <div className="creation-cover">
-            <small>
-              {genreLabel(genre)} · {scaleLabel(scaleTarget)}
-            </small>
-            <strong>{title || "故事蓝图"}</strong>
-            <p>
-              {mode === "idea"
-                ? idea || "先写下一句最想讲的故事。"
-                : mode === "blank"
-                  ? "空白起步，不预设任何故事事实。"
-                  : "仙侠模板 · 修真文明"}
-            </p>
-          </div>
-          <ul className="creation-checklist">
-            <li>创建后自动建立主创作线</li>
-            <li>写入初始版本</li>
-            <li>总览显示准备度和规模目标</li>
-          </ul>
-        </aside>
-      </div>
+
+            {error ? <div className="model-notice danger">{error}</div> : null}
+
+            <div className="model-form-actions">
+              <button className="btn btn-primary" disabled={busy} type="submit">
+                {busy ? (
+                  <LoaderCircle className="spin" size={15} aria-hidden="true" />
+                ) : (
+                  <Plus size={15} aria-hidden="true" />
+                )}
+                创建作品并进入总览
+              </button>
+            </div>
+          </form>
+
+          <aside className="panel creation-preview">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">创建预览</span>
+                <h2>{title || "你的下一本书"}</h2>
+              </div>
+              <Sparkles size={18} aria-hidden="true" />
+            </div>
+            <div className="creation-cover">
+              <small>
+                {genreLabel(genre)} · {scaleLabel(scaleTarget)}
+              </small>
+              <strong>{title || "故事蓝图"}</strong>
+              <p>
+                {mode === "idea"
+                  ? idea || "先写下一句最想讲的故事。"
+                  : mode === "blank"
+                    ? "空白起步，不预设任何故事事实。"
+                    : "仙侠模板 · 修真文明"}
+              </p>
+            </div>
+            <ul className="creation-checklist">
+              <li>创建后自动建立主创作线</li>
+              <li>写入初始版本</li>
+              <li>总览显示准备度和规模目标</li>
+            </ul>
+          </aside>
+        </div>
+      )}
     </>
   );
 }

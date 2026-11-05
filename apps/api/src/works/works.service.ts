@@ -6,6 +6,7 @@ import type {
   WorkListQuery,
   WorkOverview,
   WorkReadiness,
+  SettingsImportConfirmRequest,
 } from "@novel-brain/contracts";
 import { uuidv7 } from "uuidv7";
 
@@ -77,6 +78,34 @@ export class WorksService {
       ),
       nextCursor: result.nextCursor,
     };
+  }
+
+  async createFromSettingsImport(
+    userId: string,
+    displayName: string,
+    importId: string,
+    input: SettingsImportConfirmRequest,
+    audit: WorksAuditContext,
+    idempotencyKey: string,
+  ): Promise<WorkOverview> {
+    const created = await this.repository.create({
+      id: uuidv7(),
+      branchId: uuidv7(),
+      nodeId: uuidv7(),
+      userId,
+      title: input.title,
+      penName: input.penName ?? displayName,
+      genre: input.genre,
+      scaleTarget: input.scaleTarget,
+      chapterLengthTarget: input.chapterLengthTarget,
+      sourceMode: "settings_import",
+      idea: null,
+      templatePackId: null,
+      settings: { importId },
+      idempotencyKey,
+      audit,
+    });
+    return this.toOverview(userId, created.work, created.branch);
   }
 
   async get(userId: string, workId: string): Promise<WorkOverview> {

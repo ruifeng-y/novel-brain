@@ -697,6 +697,2472 @@
         "tags": ["health"]
       }
     },
+    "/api/v1/imports": {
+      "post": {
+        "operationId": "SettingsImportController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100000
+                      },
+                      "sourceName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    },
+                    "required": ["text"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": ["file"],
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      },
+                      "sourceName": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100000
+                      },
+                      "sourceName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    },
+                    "required": ["text"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": ["file"],
+                    "properties": {
+                      "file": {
+                        "type": "string",
+                        "format": "binary"
+                      },
+                      "sourceName": {
+                        "type": "string",
+                        "maxLength": 200
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recognized settings candidates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["awaiting_confirmation", "completed"]
+                        },
+                        "sourceKind": {
+                          "type": "string",
+                          "enum": ["paste", "file"]
+                        },
+                        "sourceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "report": {
+                          "type": "object",
+                          "properties": {
+                            "accepted": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "character",
+                                      "faction",
+                                      "map",
+                                      "power_system",
+                                      "golden_finger"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": ["accepted", "pending", "conflict"]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "name",
+                                  "summary",
+                                  "sourceExcerpt",
+                                  "confidence",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "pending": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "character",
+                                      "faction",
+                                      "map",
+                                      "power_system",
+                                      "golden_finger"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": ["accepted", "pending", "conflict"]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "name",
+                                  "summary",
+                                  "sourceExcerpt",
+                                  "confidence",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "conflicts": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["contradictory_setting"]
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "candidates": {
+                                    "minItems": 2,
+                                    "maxItems": 2,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "character",
+                                            "faction",
+                                            "map",
+                                            "power_system",
+                                            "golden_finger"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "summary": {
+                                          "type": "string"
+                                        },
+                                        "sourceExcerpt": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "confidence": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "status": {
+                                          "type": "string",
+                                          "enum": ["accepted", "pending", "conflict"]
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "type",
+                                        "name",
+                                        "summary",
+                                        "sourceExcerpt",
+                                        "confidence",
+                                        "status"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "decision": {
+                                    "type": "string",
+                                    "enum": ["pending", "use_primary", "use_secondary"]
+                                  },
+                                  "decidedAt": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "summary",
+                                  "candidates",
+                                  "decision",
+                                  "decidedAt"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "unparsed": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["sourceExcerpt", "reason"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["accepted", "pending", "conflicts", "unparsed"],
+                          "additionalProperties": false
+                        },
+                        "canConfirm": {
+                          "type": "boolean"
+                        },
+                        "confirmedWorkId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "sourceKind",
+                        "sourceName",
+                        "report",
+                        "canConfirm",
+                        "confirmedWorkId",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["imports"]
+      }
+    },
+    "/api/v1/imports/{importId}": {
+      "get": {
+        "operationId": "SettingsImportController_get",
+        "parameters": [
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings import report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["awaiting_confirmation", "completed"]
+                        },
+                        "sourceKind": {
+                          "type": "string",
+                          "enum": ["paste", "file"]
+                        },
+                        "sourceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "report": {
+                          "type": "object",
+                          "properties": {
+                            "accepted": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "character",
+                                      "faction",
+                                      "map",
+                                      "power_system",
+                                      "golden_finger"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": ["accepted", "pending", "conflict"]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "name",
+                                  "summary",
+                                  "sourceExcerpt",
+                                  "confidence",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "pending": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "character",
+                                      "faction",
+                                      "map",
+                                      "power_system",
+                                      "golden_finger"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": ["accepted", "pending", "conflict"]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "name",
+                                  "summary",
+                                  "sourceExcerpt",
+                                  "confidence",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "conflicts": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["contradictory_setting"]
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "candidates": {
+                                    "minItems": 2,
+                                    "maxItems": 2,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "character",
+                                            "faction",
+                                            "map",
+                                            "power_system",
+                                            "golden_finger"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "summary": {
+                                          "type": "string"
+                                        },
+                                        "sourceExcerpt": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "confidence": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "status": {
+                                          "type": "string",
+                                          "enum": ["accepted", "pending", "conflict"]
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "type",
+                                        "name",
+                                        "summary",
+                                        "sourceExcerpt",
+                                        "confidence",
+                                        "status"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "decision": {
+                                    "type": "string",
+                                    "enum": ["pending", "use_primary", "use_secondary"]
+                                  },
+                                  "decidedAt": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "summary",
+                                  "candidates",
+                                  "decision",
+                                  "decidedAt"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "unparsed": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["sourceExcerpt", "reason"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["accepted", "pending", "conflicts", "unparsed"],
+                          "additionalProperties": false
+                        },
+                        "canConfirm": {
+                          "type": "boolean"
+                        },
+                        "confirmedWorkId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "sourceKind",
+                        "sourceName",
+                        "report",
+                        "canConfirm",
+                        "confirmedWorkId",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["imports"]
+      }
+    },
+    "/api/v1/imports/{importId}/report": {
+      "get": {
+        "operationId": "SettingsImportController_getReport",
+        "parameters": [
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings import report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "accepted": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "character",
+                                  "faction",
+                                  "map",
+                                  "power_system",
+                                  "golden_finger"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "summary": {
+                                "type": "string"
+                              },
+                              "sourceExcerpt": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["accepted", "pending", "conflict"]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "name",
+                              "summary",
+                              "sourceExcerpt",
+                              "confidence",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "pending": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "character",
+                                  "faction",
+                                  "map",
+                                  "power_system",
+                                  "golden_finger"
+                                ]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "summary": {
+                                "type": "string"
+                              },
+                              "sourceExcerpt": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "confidence": {
+                                "type": "number",
+                                "minimum": 0,
+                                "maximum": 1
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["accepted", "pending", "conflict"]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "name",
+                              "summary",
+                              "sourceExcerpt",
+                              "confidence",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "conflicts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "type": {
+                                "type": "string",
+                                "enum": ["contradictory_setting"]
+                              },
+                              "summary": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "candidates": {
+                                "minItems": 2,
+                                "maxItems": 2,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "character",
+                                        "faction",
+                                        "map",
+                                        "power_system",
+                                        "golden_finger"
+                                      ]
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "summary": {
+                                      "type": "string"
+                                    },
+                                    "sourceExcerpt": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "confidence": {
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 1
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": ["accepted", "pending", "conflict"]
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "type",
+                                    "name",
+                                    "summary",
+                                    "sourceExcerpt",
+                                    "confidence",
+                                    "status"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "decision": {
+                                "type": "string",
+                                "enum": ["pending", "use_primary", "use_secondary"]
+                              },
+                              "decidedAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "type",
+                              "summary",
+                              "candidates",
+                              "decision",
+                              "decidedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "unparsed": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sourceExcerpt": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": ["sourceExcerpt", "reason"],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": ["accepted", "pending", "conflicts", "unparsed"],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["imports"]
+      }
+    },
+    "/api/v1/imports/{importId}/conflicts/{conflictId}/decision": {
+      "post": {
+        "operationId": "SettingsImportController_decideConflict",
+        "parameters": [
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "conflictId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decision": {
+                    "type": "string",
+                    "enum": ["use_primary", "use_secondary"]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": ["decision"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated settings import",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["awaiting_confirmation", "completed"]
+                        },
+                        "sourceKind": {
+                          "type": "string",
+                          "enum": ["paste", "file"]
+                        },
+                        "sourceName": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "report": {
+                          "type": "object",
+                          "properties": {
+                            "accepted": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "character",
+                                      "faction",
+                                      "map",
+                                      "power_system",
+                                      "golden_finger"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": ["accepted", "pending", "conflict"]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "name",
+                                  "summary",
+                                  "sourceExcerpt",
+                                  "confidence",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "pending": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "character",
+                                      "faction",
+                                      "map",
+                                      "power_system",
+                                      "golden_finger"
+                                    ]
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "summary": {
+                                    "type": "string"
+                                  },
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "confidence": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 1
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": ["accepted", "pending", "conflict"]
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "name",
+                                  "summary",
+                                  "sourceExcerpt",
+                                  "confidence",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "conflicts": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["contradictory_setting"]
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "candidates": {
+                                    "minItems": 2,
+                                    "maxItems": 2,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "character",
+                                            "faction",
+                                            "map",
+                                            "power_system",
+                                            "golden_finger"
+                                          ]
+                                        },
+                                        "name": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "summary": {
+                                          "type": "string"
+                                        },
+                                        "sourceExcerpt": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "confidence": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 1
+                                        },
+                                        "status": {
+                                          "type": "string",
+                                          "enum": ["accepted", "pending", "conflict"]
+                                        }
+                                      },
+                                      "required": [
+                                        "id",
+                                        "type",
+                                        "name",
+                                        "summary",
+                                        "sourceExcerpt",
+                                        "confidence",
+                                        "status"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "decision": {
+                                    "type": "string",
+                                    "enum": ["pending", "use_primary", "use_secondary"]
+                                  },
+                                  "decidedAt": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "type",
+                                  "summary",
+                                  "candidates",
+                                  "decision",
+                                  "decidedAt"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "unparsed": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "sourceExcerpt": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["sourceExcerpt", "reason"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["accepted", "pending", "conflicts", "unparsed"],
+                          "additionalProperties": false
+                        },
+                        "canConfirm": {
+                          "type": "boolean"
+                        },
+                        "confirmedWorkId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "status",
+                        "sourceKind",
+                        "sourceName",
+                        "report",
+                        "canConfirm",
+                        "confirmedWorkId",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["imports"]
+      }
+    },
+    "/api/v1/imports/{importId}/confirm": {
+      "post": {
+        "operationId": "SettingsImportController_confirm",
+        "parameters": [
+          {
+            "name": "importId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "penName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  },
+                  "genre": {
+                    "default": "xianxia",
+                    "type": "string",
+                    "enum": ["xianxia", "history", "urban"]
+                  },
+                  "scaleTarget": {
+                    "default": "long",
+                    "type": "string",
+                    "enum": ["short", "medium", "long", "epic"]
+                  },
+                  "chapterLengthTarget": {
+                    "default": 3000,
+                    "type": "integer",
+                    "minimum": 1000,
+                    "maximum": 10000
+                  }
+                },
+                "required": ["title", "genre", "scaleTarget", "chapterLengthTarget"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created work",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "penName": {
+                          "type": "string"
+                        },
+                        "genre": {
+                          "type": "string",
+                          "enum": ["xianxia", "history", "urban"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "preparing",
+                            "serializing",
+                            "paused",
+                            "completed",
+                            "archived"
+                          ]
+                        },
+                        "scaleTarget": {
+                          "type": "string",
+                          "enum": ["short", "medium", "long", "epic"]
+                        },
+                        "chapterLengthTarget": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "sourceMode": {
+                          "type": "string",
+                          "enum": ["idea", "blank", "template", "settings_import"]
+                        },
+                        "idea": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "templatePack": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "key": {
+                              "type": "string",
+                              "enum": ["xianxia", "history", "urban"]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "fields": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "required": ["id", "key", "version", "label", "fields"],
+                          "additionalProperties": false
+                        },
+                        "settings": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "mainBranch": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "headNodeId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": ["active", "archived"]
+                            }
+                          },
+                          "required": ["id", "workId", "name", "headNodeId", "status"],
+                          "additionalProperties": false
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "headNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["active", "archived"]
+                              }
+                            },
+                            "required": ["id", "workId", "name", "headNodeId", "status"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "readiness": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": ["not_ready", "partial", "ready"]
+                            },
+                            "completed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "main_branch",
+                                      "model_config",
+                                      "story_bible",
+                                      "outline"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "ready": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": ["key", "label", "ready"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["status", "completed", "total", "items"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "penName",
+                        "genre",
+                        "status",
+                        "scaleTarget",
+                        "chapterLengthTarget",
+                        "sourceMode",
+                        "idea",
+                        "templatePack",
+                        "settings",
+                        "createdAt",
+                        "updatedAt",
+                        "mainBranch",
+                        "branches",
+                        "readiness"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["imports"]
+      }
+    },
+    "/api/v1/works": {
+      "get": {
+        "operationId": "WorksController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Current user works",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "penName": {
+                            "type": "string"
+                          },
+                          "genre": {
+                            "type": "string",
+                            "enum": ["xianxia", "history", "urban"]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "draft",
+                              "preparing",
+                              "serializing",
+                              "paused",
+                              "completed",
+                              "archived"
+                            ]
+                          },
+                          "scaleTarget": {
+                            "type": "string",
+                            "enum": ["short", "medium", "long", "epic"]
+                          },
+                          "chapterLengthTarget": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "maximum": 9007199254740991
+                          },
+                          "sourceMode": {
+                            "type": "string",
+                            "enum": ["idea", "blank", "template", "settings_import"]
+                          },
+                          "idea": {
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "templatePack": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "key": {
+                                "type": "string",
+                                "enum": ["xianxia", "history", "urban"]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "fields": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            },
+                            "required": ["id", "key", "version", "label", "fields"],
+                            "additionalProperties": false
+                          },
+                          "settings": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "penName",
+                          "genre",
+                          "status",
+                          "scaleTarget",
+                          "chapterLengthTarget",
+                          "sourceMode",
+                          "idea",
+                          "templatePack",
+                          "settings",
+                          "createdAt",
+                          "updatedAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["works"]
+      },
+      "post": {
+        "operationId": "WorksController_create",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": ["idea"]
+                      },
+                      "idea": {
+                        "type": "string",
+                        "minLength": 10,
+                        "maxLength": 5000
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "penName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      },
+                      "genre": {
+                        "default": "xianxia",
+                        "type": "string",
+                        "enum": ["xianxia", "history", "urban"]
+                      },
+                      "scaleTarget": {
+                        "default": "long",
+                        "type": "string",
+                        "enum": ["short", "medium", "long", "epic"]
+                      },
+                      "chapterLengthTarget": {
+                        "default": 3000,
+                        "type": "integer",
+                        "minimum": 1000,
+                        "maximum": 10000
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "idea",
+                      "title",
+                      "genre",
+                      "scaleTarget",
+                      "chapterLengthTarget"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": ["blank"]
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "penName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      },
+                      "genre": {
+                        "default": "xianxia",
+                        "type": "string",
+                        "enum": ["xianxia", "history", "urban"]
+                      },
+                      "scaleTarget": {
+                        "default": "long",
+                        "type": "string",
+                        "enum": ["short", "medium", "long", "epic"]
+                      },
+                      "chapterLengthTarget": {
+                        "default": 3000,
+                        "type": "integer",
+                        "minimum": 1000,
+                        "maximum": 10000
+                      }
+                    },
+                    "required": ["mode", "title", "genre", "scaleTarget", "chapterLengthTarget"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": ["template"]
+                      },
+                      "templateKey": {
+                        "type": "string",
+                        "enum": ["xianxia"]
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "penName": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50
+                      },
+                      "genre": {
+                        "default": "xianxia",
+                        "type": "string",
+                        "enum": ["xianxia", "history", "urban"]
+                      },
+                      "scaleTarget": {
+                        "default": "long",
+                        "type": "string",
+                        "enum": ["short", "medium", "long", "epic"]
+                      },
+                      "chapterLengthTarget": {
+                        "default": 3000,
+                        "type": "integer",
+                        "minimum": 1000,
+                        "maximum": 10000
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "templateKey",
+                      "title",
+                      "genre",
+                      "scaleTarget",
+                      "chapterLengthTarget"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created work",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "penName": {
+                          "type": "string"
+                        },
+                        "genre": {
+                          "type": "string",
+                          "enum": ["xianxia", "history", "urban"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "preparing",
+                            "serializing",
+                            "paused",
+                            "completed",
+                            "archived"
+                          ]
+                        },
+                        "scaleTarget": {
+                          "type": "string",
+                          "enum": ["short", "medium", "long", "epic"]
+                        },
+                        "chapterLengthTarget": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "sourceMode": {
+                          "type": "string",
+                          "enum": ["idea", "blank", "template", "settings_import"]
+                        },
+                        "idea": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "templatePack": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "key": {
+                              "type": "string",
+                              "enum": ["xianxia", "history", "urban"]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "fields": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "required": ["id", "key", "version", "label", "fields"],
+                          "additionalProperties": false
+                        },
+                        "settings": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "mainBranch": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "headNodeId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": ["active", "archived"]
+                            }
+                          },
+                          "required": ["id", "workId", "name", "headNodeId", "status"],
+                          "additionalProperties": false
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "headNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["active", "archived"]
+                              }
+                            },
+                            "required": ["id", "workId", "name", "headNodeId", "status"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "readiness": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": ["not_ready", "partial", "ready"]
+                            },
+                            "completed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "main_branch",
+                                      "model_config",
+                                      "story_bible",
+                                      "outline"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "ready": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": ["key", "label", "ready"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["status", "completed", "total", "items"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "penName",
+                        "genre",
+                        "status",
+                        "scaleTarget",
+                        "chapterLengthTarget",
+                        "sourceMode",
+                        "idea",
+                        "templatePack",
+                        "settings",
+                        "createdAt",
+                        "updatedAt",
+                        "mainBranch",
+                        "branches",
+                        "readiness"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["works"]
+      }
+    },
+    "/api/v1/works/{workId}": {
+      "get": {
+        "operationId": "WorksController_get",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Work overview",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "penName": {
+                          "type": "string"
+                        },
+                        "genre": {
+                          "type": "string",
+                          "enum": ["xianxia", "history", "urban"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "preparing",
+                            "serializing",
+                            "paused",
+                            "completed",
+                            "archived"
+                          ]
+                        },
+                        "scaleTarget": {
+                          "type": "string",
+                          "enum": ["short", "medium", "long", "epic"]
+                        },
+                        "chapterLengthTarget": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "sourceMode": {
+                          "type": "string",
+                          "enum": ["idea", "blank", "template", "settings_import"]
+                        },
+                        "idea": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "templatePack": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "key": {
+                              "type": "string",
+                              "enum": ["xianxia", "history", "urban"]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "label": {
+                              "type": "string"
+                            },
+                            "fields": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "required": ["id", "key", "version", "label", "fields"],
+                          "additionalProperties": false
+                        },
+                        "settings": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "mainBranch": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "headNodeId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": ["active", "archived"]
+                            }
+                          },
+                          "required": ["id", "workId", "name", "headNodeId", "status"],
+                          "additionalProperties": false
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "headNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["active", "archived"]
+                              }
+                            },
+                            "required": ["id", "workId", "name", "headNodeId", "status"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "readiness": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": ["not_ready", "partial", "ready"]
+                            },
+                            "completed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "main_branch",
+                                      "model_config",
+                                      "story_bible",
+                                      "outline"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "ready": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": ["key", "label", "ready"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["status", "completed", "total", "items"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "penName",
+                        "genre",
+                        "status",
+                        "scaleTarget",
+                        "chapterLengthTarget",
+                        "sourceMode",
+                        "idea",
+                        "templatePack",
+                        "settings",
+                        "createdAt",
+                        "updatedAt",
+                        "mainBranch",
+                        "branches",
+                        "readiness"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["works"]
+      }
+    },
+    "/api/v1/works/{workId}/branches": {
+      "get": {
+        "operationId": "WorksController_branches",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Work branches",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "workId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "headNodeId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["active", "archived"]
+                          }
+                        },
+                        "required": ["id", "workId", "name", "headNodeId", "status"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["works"]
+      }
+    },
     "/api/v1/model-configs/providers": {
       "get": {
         "operationId": "ModelConfigController_getProviders",
@@ -1359,878 +3825,6 @@
           }
         },
         "tags": ["model-configs"]
-      }
-    },
-    "/api/v1/works": {
-      "get": {
-        "operationId": "WorksController_list",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "Current user works",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                          },
-                          "title": {
-                            "type": "string"
-                          },
-                          "penName": {
-                            "type": "string"
-                          },
-                          "genre": {
-                            "type": "string",
-                            "enum": ["xianxia", "history", "urban"]
-                          },
-                          "status": {
-                            "type": "string",
-                            "enum": [
-                              "draft",
-                              "preparing",
-                              "serializing",
-                              "paused",
-                              "completed",
-                              "archived"
-                            ]
-                          },
-                          "scaleTarget": {
-                            "type": "string",
-                            "enum": ["short", "medium", "long", "epic"]
-                          },
-                          "chapterLengthTarget": {
-                            "type": "integer",
-                            "minimum": 0,
-                            "exclusiveMinimum": true,
-                            "maximum": 9007199254740991
-                          },
-                          "sourceMode": {
-                            "type": "string",
-                            "enum": ["idea", "blank", "template"]
-                          },
-                          "idea": {
-                            "nullable": true,
-                            "type": "string"
-                          },
-                          "templatePack": {
-                            "nullable": true,
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "key": {
-                                "type": "string",
-                                "enum": ["xianxia", "history", "urban"]
-                              },
-                              "version": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "exclusiveMinimum": true,
-                                "maximum": 9007199254740991
-                              },
-                              "label": {
-                                "type": "string"
-                              },
-                              "fields": {
-                                "type": "object",
-                                "additionalProperties": {}
-                              }
-                            },
-                            "required": ["id", "key", "version", "label", "fields"],
-                            "additionalProperties": false
-                          },
-                          "settings": {
-                            "type": "object",
-                            "additionalProperties": {}
-                          },
-                          "createdAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          },
-                          "updatedAt": {
-                            "type": "string",
-                            "format": "date-time",
-                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                          }
-                        },
-                        "required": [
-                          "id",
-                          "title",
-                          "penName",
-                          "genre",
-                          "status",
-                          "scaleTarget",
-                          "chapterLengthTarget",
-                          "sourceMode",
-                          "idea",
-                          "templatePack",
-                          "settings",
-                          "createdAt",
-                          "updatedAt"
-                        ],
-                        "additionalProperties": false
-                      }
-                    },
-                    "requestId": {
-                      "type": "string",
-                      "format": "starts_with",
-                      "pattern": "^req_.*"
-                    },
-                    "meta": {
-                      "type": "object",
-                      "properties": {
-                        "nextCursor": {
-                          "nullable": true,
-                          "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                        }
-                      },
-                      "required": ["nextCursor"],
-                      "additionalProperties": false
-                    }
-                  },
-                  "required": ["data", "requestId", "meta"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        },
-        "tags": ["works"]
-      },
-      "post": {
-        "operationId": "WorksController_create",
-        "parameters": [
-          {
-            "name": "Idempotency-Key",
-            "in": "header",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "type": "object",
-                    "properties": {
-                      "mode": {
-                        "type": "string",
-                        "enum": ["idea"]
-                      },
-                      "idea": {
-                        "type": "string",
-                        "minLength": 10,
-                        "maxLength": 5000
-                      },
-                      "title": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 120
-                      },
-                      "penName": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 50
-                      },
-                      "genre": {
-                        "default": "xianxia",
-                        "type": "string",
-                        "enum": ["xianxia", "history", "urban"]
-                      },
-                      "scaleTarget": {
-                        "default": "long",
-                        "type": "string",
-                        "enum": ["short", "medium", "long", "epic"]
-                      },
-                      "chapterLengthTarget": {
-                        "default": 3000,
-                        "type": "integer",
-                        "minimum": 1000,
-                        "maximum": 10000
-                      }
-                    },
-                    "required": [
-                      "mode",
-                      "idea",
-                      "title",
-                      "genre",
-                      "scaleTarget",
-                      "chapterLengthTarget"
-                    ],
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "mode": {
-                        "type": "string",
-                        "enum": ["blank"]
-                      },
-                      "title": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 120
-                      },
-                      "penName": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 50
-                      },
-                      "genre": {
-                        "default": "xianxia",
-                        "type": "string",
-                        "enum": ["xianxia", "history", "urban"]
-                      },
-                      "scaleTarget": {
-                        "default": "long",
-                        "type": "string",
-                        "enum": ["short", "medium", "long", "epic"]
-                      },
-                      "chapterLengthTarget": {
-                        "default": 3000,
-                        "type": "integer",
-                        "minimum": 1000,
-                        "maximum": 10000
-                      }
-                    },
-                    "required": ["mode", "title", "genre", "scaleTarget", "chapterLengthTarget"],
-                    "additionalProperties": false
-                  },
-                  {
-                    "type": "object",
-                    "properties": {
-                      "mode": {
-                        "type": "string",
-                        "enum": ["template"]
-                      },
-                      "templateKey": {
-                        "type": "string",
-                        "enum": ["xianxia"]
-                      },
-                      "title": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 120
-                      },
-                      "penName": {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 50
-                      },
-                      "genre": {
-                        "default": "xianxia",
-                        "type": "string",
-                        "enum": ["xianxia", "history", "urban"]
-                      },
-                      "scaleTarget": {
-                        "default": "long",
-                        "type": "string",
-                        "enum": ["short", "medium", "long", "epic"]
-                      },
-                      "chapterLengthTarget": {
-                        "default": 3000,
-                        "type": "integer",
-                        "minimum": 1000,
-                        "maximum": 10000
-                      }
-                    },
-                    "required": [
-                      "mode",
-                      "templateKey",
-                      "title",
-                      "genre",
-                      "scaleTarget",
-                      "chapterLengthTarget"
-                    ],
-                    "additionalProperties": false
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Created work",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                        },
-                        "title": {
-                          "type": "string"
-                        },
-                        "penName": {
-                          "type": "string"
-                        },
-                        "genre": {
-                          "type": "string",
-                          "enum": ["xianxia", "history", "urban"]
-                        },
-                        "status": {
-                          "type": "string",
-                          "enum": [
-                            "draft",
-                            "preparing",
-                            "serializing",
-                            "paused",
-                            "completed",
-                            "archived"
-                          ]
-                        },
-                        "scaleTarget": {
-                          "type": "string",
-                          "enum": ["short", "medium", "long", "epic"]
-                        },
-                        "chapterLengthTarget": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "exclusiveMinimum": true,
-                          "maximum": 9007199254740991
-                        },
-                        "sourceMode": {
-                          "type": "string",
-                          "enum": ["idea", "blank", "template"]
-                        },
-                        "idea": {
-                          "nullable": true,
-                          "type": "string"
-                        },
-                        "templatePack": {
-                          "nullable": true,
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "key": {
-                              "type": "string",
-                              "enum": ["xianxia", "history", "urban"]
-                            },
-                            "version": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "exclusiveMinimum": true,
-                              "maximum": 9007199254740991
-                            },
-                            "label": {
-                              "type": "string"
-                            },
-                            "fields": {
-                              "type": "object",
-                              "additionalProperties": {}
-                            }
-                          },
-                          "required": ["id", "key", "version", "label", "fields"],
-                          "additionalProperties": false
-                        },
-                        "settings": {
-                          "type": "object",
-                          "additionalProperties": {}
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "updatedAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "mainBranch": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "workId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "name": {
-                              "type": "string"
-                            },
-                            "headNodeId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "status": {
-                              "type": "string",
-                              "enum": ["active", "archived"]
-                            }
-                          },
-                          "required": ["id", "workId", "name", "headNodeId", "status"],
-                          "additionalProperties": false
-                        },
-                        "branches": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "workId": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "name": {
-                                "type": "string"
-                              },
-                              "headNodeId": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "status": {
-                                "type": "string",
-                                "enum": ["active", "archived"]
-                              }
-                            },
-                            "required": ["id", "workId", "name", "headNodeId", "status"],
-                            "additionalProperties": false
-                          }
-                        },
-                        "readiness": {
-                          "type": "object",
-                          "properties": {
-                            "status": {
-                              "type": "string",
-                              "enum": ["not_ready", "partial", "ready"]
-                            },
-                            "completed": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "maximum": 9007199254740991
-                            },
-                            "total": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "exclusiveMinimum": true,
-                              "maximum": 9007199254740991
-                            },
-                            "items": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "key": {
-                                    "type": "string",
-                                    "enum": [
-                                      "main_branch",
-                                      "model_config",
-                                      "story_bible",
-                                      "outline"
-                                    ]
-                                  },
-                                  "label": {
-                                    "type": "string"
-                                  },
-                                  "ready": {
-                                    "type": "boolean"
-                                  }
-                                },
-                                "required": ["key", "label", "ready"],
-                                "additionalProperties": false
-                              }
-                            }
-                          },
-                          "required": ["status", "completed", "total", "items"],
-                          "additionalProperties": false
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "title",
-                        "penName",
-                        "genre",
-                        "status",
-                        "scaleTarget",
-                        "chapterLengthTarget",
-                        "sourceMode",
-                        "idea",
-                        "templatePack",
-                        "settings",
-                        "createdAt",
-                        "updatedAt",
-                        "mainBranch",
-                        "branches",
-                        "readiness"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "requestId": {
-                      "type": "string",
-                      "format": "starts_with",
-                      "pattern": "^req_.*"
-                    },
-                    "meta": {
-                      "default": {},
-                      "type": "object",
-                      "additionalProperties": {}
-                    }
-                  },
-                  "required": ["data", "requestId", "meta"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        },
-        "tags": ["works"]
-      }
-    },
-    "/api/v1/works/{workId}": {
-      "get": {
-        "operationId": "WorksController_get",
-        "parameters": [
-          {
-            "name": "workId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Work overview",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "id": {
-                          "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                        },
-                        "title": {
-                          "type": "string"
-                        },
-                        "penName": {
-                          "type": "string"
-                        },
-                        "genre": {
-                          "type": "string",
-                          "enum": ["xianxia", "history", "urban"]
-                        },
-                        "status": {
-                          "type": "string",
-                          "enum": [
-                            "draft",
-                            "preparing",
-                            "serializing",
-                            "paused",
-                            "completed",
-                            "archived"
-                          ]
-                        },
-                        "scaleTarget": {
-                          "type": "string",
-                          "enum": ["short", "medium", "long", "epic"]
-                        },
-                        "chapterLengthTarget": {
-                          "type": "integer",
-                          "minimum": 0,
-                          "exclusiveMinimum": true,
-                          "maximum": 9007199254740991
-                        },
-                        "sourceMode": {
-                          "type": "string",
-                          "enum": ["idea", "blank", "template"]
-                        },
-                        "idea": {
-                          "nullable": true,
-                          "type": "string"
-                        },
-                        "templatePack": {
-                          "nullable": true,
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "key": {
-                              "type": "string",
-                              "enum": ["xianxia", "history", "urban"]
-                            },
-                            "version": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "exclusiveMinimum": true,
-                              "maximum": 9007199254740991
-                            },
-                            "label": {
-                              "type": "string"
-                            },
-                            "fields": {
-                              "type": "object",
-                              "additionalProperties": {}
-                            }
-                          },
-                          "required": ["id", "key", "version", "label", "fields"],
-                          "additionalProperties": false
-                        },
-                        "settings": {
-                          "type": "object",
-                          "additionalProperties": {}
-                        },
-                        "createdAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "updatedAt": {
-                          "type": "string",
-                          "format": "date-time",
-                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
-                        },
-                        "mainBranch": {
-                          "type": "object",
-                          "properties": {
-                            "id": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "workId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "name": {
-                              "type": "string"
-                            },
-                            "headNodeId": {
-                              "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                            },
-                            "status": {
-                              "type": "string",
-                              "enum": ["active", "archived"]
-                            }
-                          },
-                          "required": ["id", "workId", "name", "headNodeId", "status"],
-                          "additionalProperties": false
-                        },
-                        "branches": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "workId": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "name": {
-                                "type": "string"
-                              },
-                              "headNodeId": {
-                                "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                              },
-                              "status": {
-                                "type": "string",
-                                "enum": ["active", "archived"]
-                              }
-                            },
-                            "required": ["id", "workId", "name", "headNodeId", "status"],
-                            "additionalProperties": false
-                          }
-                        },
-                        "readiness": {
-                          "type": "object",
-                          "properties": {
-                            "status": {
-                              "type": "string",
-                              "enum": ["not_ready", "partial", "ready"]
-                            },
-                            "completed": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "maximum": 9007199254740991
-                            },
-                            "total": {
-                              "type": "integer",
-                              "minimum": 0,
-                              "exclusiveMinimum": true,
-                              "maximum": 9007199254740991
-                            },
-                            "items": {
-                              "type": "array",
-                              "items": {
-                                "type": "object",
-                                "properties": {
-                                  "key": {
-                                    "type": "string",
-                                    "enum": [
-                                      "main_branch",
-                                      "model_config",
-                                      "story_bible",
-                                      "outline"
-                                    ]
-                                  },
-                                  "label": {
-                                    "type": "string"
-                                  },
-                                  "ready": {
-                                    "type": "boolean"
-                                  }
-                                },
-                                "required": ["key", "label", "ready"],
-                                "additionalProperties": false
-                              }
-                            }
-                          },
-                          "required": ["status", "completed", "total", "items"],
-                          "additionalProperties": false
-                        }
-                      },
-                      "required": [
-                        "id",
-                        "title",
-                        "penName",
-                        "genre",
-                        "status",
-                        "scaleTarget",
-                        "chapterLengthTarget",
-                        "sourceMode",
-                        "idea",
-                        "templatePack",
-                        "settings",
-                        "createdAt",
-                        "updatedAt",
-                        "mainBranch",
-                        "branches",
-                        "readiness"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "requestId": {
-                      "type": "string",
-                      "format": "starts_with",
-                      "pattern": "^req_.*"
-                    },
-                    "meta": {
-                      "default": {},
-                      "type": "object",
-                      "additionalProperties": {}
-                    }
-                  },
-                  "required": ["data", "requestId", "meta"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        },
-        "tags": ["works"]
-      }
-    },
-    "/api/v1/works/{workId}/branches": {
-      "get": {
-        "operationId": "WorksController_branches",
-        "parameters": [
-          {
-            "name": "workId",
-            "required": true,
-            "in": "path",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Work branches",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": {
-                            "type": "string",
-                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                          },
-                          "workId": {
-                            "type": "string",
-                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                          },
-                          "name": {
-                            "type": "string"
-                          },
-                          "headNodeId": {
-                            "type": "string",
-                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
-                          },
-                          "status": {
-                            "type": "string",
-                            "enum": ["active", "archived"]
-                          }
-                        },
-                        "required": ["id", "workId", "name", "headNodeId", "status"],
-                        "additionalProperties": false
-                      }
-                    },
-                    "requestId": {
-                      "type": "string",
-                      "format": "starts_with",
-                      "pattern": "^req_.*"
-                    },
-                    "meta": {
-                      "default": {},
-                      "type": "object",
-                      "additionalProperties": {}
-                    }
-                  },
-                  "required": ["data", "requestId", "meta"],
-                  "additionalProperties": false
-                }
-              }
-            }
-          }
-        },
-        "tags": ["works"]
       }
     }
   },

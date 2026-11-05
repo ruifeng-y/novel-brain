@@ -220,7 +220,7 @@ export type WorkGenre = z.infer<typeof workGenreSchema>;
 export const workScaleTargetSchema = z.enum(["short", "medium", "long", "epic"]);
 export type WorkScaleTarget = z.infer<typeof workScaleTargetSchema>;
 
-export const workSourceModeSchema = z.enum(["idea", "blank", "template"]);
+export const workSourceModeSchema = z.enum(["idea", "blank", "template", "settings_import"]);
 export type WorkSourceMode = z.infer<typeof workSourceModeSchema>;
 
 const workBaseInputShape = {
@@ -321,6 +321,97 @@ export const workListResponseSchema = z.object({
   meta: z.object({ nextCursor: uuidV7Schema.nullable() }),
 });
 export const workBranchesResponseSchema = apiEnvelopeSchema(z.array(workBranchSchema));
+
+export const importCandidateTypeSchema = z.enum([
+  "character",
+  "faction",
+  "map",
+  "power_system",
+  "golden_finger",
+]);
+export type ImportCandidateType = z.infer<typeof importCandidateTypeSchema>;
+
+export const importCandidateStatusSchema = z.enum(["accepted", "pending", "conflict"]);
+export type ImportCandidateStatus = z.infer<typeof importCandidateStatusSchema>;
+
+export const importCandidateSchema = z.object({
+  id: uuidV7Schema,
+  type: importCandidateTypeSchema,
+  name: z.string().min(1),
+  summary: z.string(),
+  sourceExcerpt: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  status: importCandidateStatusSchema,
+});
+export type ImportCandidate = z.infer<typeof importCandidateSchema>;
+
+export const importUnparsedSchema = z.object({
+  sourceExcerpt: z.string().min(1),
+  reason: z.string().min(1),
+});
+export type ImportUnparsed = z.infer<typeof importUnparsedSchema>;
+
+export const importConflictSchema = z.object({
+  id: uuidV7Schema,
+  type: z.literal("contradictory_setting"),
+  summary: z.string().min(1),
+  candidates: z.array(importCandidateSchema).length(2),
+  decision: z.enum(["pending", "use_primary", "use_secondary"]),
+  decidedAt: z.string().datetime().nullable(),
+});
+export type ImportConflict = z.infer<typeof importConflictSchema>;
+
+export const importReportSchema = z.object({
+  accepted: z.array(importCandidateSchema),
+  pending: z.array(importCandidateSchema),
+  conflicts: z.array(importConflictSchema),
+  unparsed: z.array(importUnparsedSchema),
+});
+export type ImportReport = z.infer<typeof importReportSchema>;
+
+export const settingsImportStatusSchema = z.enum(["awaiting_confirmation", "completed"]);
+export type SettingsImportStatus = z.infer<typeof settingsImportStatusSchema>;
+
+export const settingsImportSourceKindSchema = z.enum(["paste", "file"]);
+export type SettingsImportSourceKind = z.infer<typeof settingsImportSourceKindSchema>;
+
+export const settingsImportSchema = z.object({
+  id: uuidV7Schema,
+  status: settingsImportStatusSchema,
+  sourceKind: settingsImportSourceKindSchema,
+  sourceName: z.string().nullable(),
+  report: importReportSchema,
+  canConfirm: z.boolean(),
+  confirmedWorkId: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+});
+export type SettingsImport = z.infer<typeof settingsImportSchema>;
+
+export const settingsImportCreateRequestSchema = z.object({
+  text: z.string().trim().min(1).max(100_000),
+  sourceName: z.string().trim().min(1).max(200).optional(),
+});
+export type SettingsImportCreateRequest = z.infer<typeof settingsImportCreateRequestSchema>;
+
+export const settingsImportConfirmRequestSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  penName: z.string().trim().min(1).max(50).optional(),
+  genre: workGenreSchema.default("xianxia"),
+  scaleTarget: workScaleTargetSchema.default("long"),
+  chapterLengthTarget: z.number().int().min(1000).max(10000).default(3000),
+});
+export type SettingsImportConfirmRequest = z.infer<typeof settingsImportConfirmRequestSchema>;
+
+export const settingsImportConflictDecisionRequestSchema = z.object({
+  decision: z.enum(["use_primary", "use_secondary"]),
+  reason: z.string().trim().min(1).max(500).optional(),
+});
+export type SettingsImportConflictDecisionRequest = z.infer<
+  typeof settingsImportConflictDecisionRequestSchema
+>;
+
+export const settingsImportResponseSchema = apiEnvelopeSchema(settingsImportSchema);
+export const importReportResponseSchema = apiEnvelopeSchema(importReportSchema);
 
 export const serviceNameSchema = z.enum(["api", "worker"]);
 export type ServiceName = z.infer<typeof serviceNameSchema>;
