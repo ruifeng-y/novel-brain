@@ -100,6 +100,278 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CanonController_submit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/canon/commits": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CanonController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_list"];
+    put?: never;
+    post: operations["ChaptersController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/outline/readiness": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_outlineReadiness"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["ChaptersController_patch"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/readiness": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_readiness"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChaptersController_versions"];
+    put?: never;
+    post: operations["ChaptersController_saveVersion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/extract-facts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["FactsController_extract"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/fact-proposals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["FactsController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/fact-proposals/{factProposalId}/decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["FactsController_decide"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/generate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GenerationController_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/context-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenerationController_contextPreview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenerationController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenerationController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GenerationController_cancel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GenerationController_retry"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenerationController_events"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/health": {
     parameters: {
       query?: never;
@@ -126,6 +398,182 @@ export interface paths {
     get: operations["HealthController_getReadiness"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/{importId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ManuscriptImportController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/{importId}/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_confirm"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorksController_list"];
+    put?: never;
+    post: operations["WorksController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorksController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorksController_branches"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsImportController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/{importId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsImportController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/{importId}/report": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsImportController_getReport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/{importId}/conflicts/{conflictId}/decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsImportController_decideConflict"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/{importId}/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsImportController_confirm"];
     delete?: never;
     options?: never;
     head?: never;
@@ -196,30 +644,78 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/works": {
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/review": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations["WorksController_list"];
+    get?: never;
     put?: never;
-    post: operations["WorksController_create"];
+    post: operations["ReviewController_review"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
     trace?: never;
   };
-  "/api/v1/works/{workId}": {
+  "/api/v1/works/{workId}/branches/{branchId}/entities": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations["WorksController_get"];
+    get: operations["SettingsController_list"];
+    put?: never;
+    post: operations["SettingsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_get"];
+    put?: never;
+    post?: never;
+    delete: operations["SettingsController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["SettingsController_patch"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsController_lock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/facts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ConfirmedSettingsController_list"];
     put?: never;
     post?: never;
     delete?: never;
@@ -228,17 +724,81 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/works/{workId}/branches": {
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations["WorksController_branches"];
+    get: operations["StoryBibleController_get"];
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["StoryBibleController_patch"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/readiness": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["StoryBibleController_readiness"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/generate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StoryBibleController_generate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StoryBibleController_lock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/cards/{cardKey}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["StoryBibleController_deleteCard"];
     options?: never;
     head?: never;
     patch?: never;
@@ -513,6 +1073,1930 @@ export interface operations {
       };
     };
   };
+  CanonController_submit: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          chapterVersionId: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Submitted chapter facts */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              chapterVersionId: string;
+              versionNodeId: string;
+              sourceChapter: {
+                id: string;
+                number: number;
+                title: string;
+              };
+              decisions: {
+                proposalId: string;
+                decisionId: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                /** @enum {string} */
+                resultingStatus:
+                  "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+                subject: string;
+                predicate: string;
+                object: string;
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                required: boolean;
+                sourceSentence: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              }[];
+              facts: {
+                id: string;
+                proposalId: string;
+                decisionId: string;
+                sourceChapterId: string;
+                validFromChapter: number;
+                validToChapter: number | null;
+                subject: string;
+                predicate: string;
+                object: string;
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                required: boolean;
+                /** @enum {string} */
+                status: "confirmed" | "modified_confirmed";
+              }[];
+              summary: {
+                factCount: number;
+                rejectedCount: number;
+                text: string;
+              };
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CanonController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Canon commits */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              chapterVersionId: string;
+              versionNodeId: string;
+              sourceChapter: {
+                id: string;
+                number: number;
+                title: string;
+              };
+              decisions: {
+                proposalId: string;
+                decisionId: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                /** @enum {string} */
+                resultingStatus:
+                  "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+                subject: string;
+                predicate: string;
+                object: string;
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                required: boolean;
+                sourceSentence: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              }[];
+              facts: {
+                id: string;
+                proposalId: string;
+                decisionId: string;
+                sourceChapterId: string;
+                validFromChapter: number;
+                validToChapter: number | null;
+                subject: string;
+                predicate: string;
+                object: string;
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                required: boolean;
+                /** @enum {string} */
+                status: "confirmed" | "modified_confirmed";
+              }[];
+              summary: {
+                factCount: number;
+                rejectedCount: number;
+                text: string;
+              };
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Ordered chapter briefs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              number: number;
+              title: string;
+              /** @enum {string} */
+              status:
+                | "planned"
+                | "writing"
+                | "waiting_review"
+                | "changes_requested"
+                | "approved"
+                | "locked"
+                | "published"
+                | "rejected";
+              version: number;
+              wordCount: number;
+              currentVersionId: string | null;
+              currentVersion: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              brief: {
+                goal: string;
+                pov: string;
+                location: string;
+                sceneBeats: string[];
+                requiredFacts: string[];
+              } | null;
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 3;
+                canStartWriting: boolean;
+                items: {
+                  /** @enum {string} */
+                  key: "story_bible" | "settings" | "brief";
+                  label: string;
+                  ready: boolean;
+                  missing: string[];
+                }[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          number: number;
+          title: string;
+          brief: {
+            goal: string;
+            pov: string;
+            location: string;
+            sceneBeats: string[];
+            requiredFacts: string[];
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Planned chapter */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              number: number;
+              title: string;
+              /** @enum {string} */
+              status:
+                | "planned"
+                | "writing"
+                | "waiting_review"
+                | "changes_requested"
+                | "approved"
+                | "locked"
+                | "published"
+                | "rejected";
+              version: number;
+              wordCount: number;
+              currentVersionId: string | null;
+              currentVersion: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              brief: {
+                goal: string;
+                pov: string;
+                location: string;
+                sceneBeats: string[];
+                requiredFacts: string[];
+              } | null;
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 3;
+                canStartWriting: boolean;
+                items: {
+                  /** @enum {string} */
+                  key: "story_bible" | "settings" | "brief";
+                  label: string;
+                  ready: boolean;
+                  missing: string[];
+                }[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_outlineReadiness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter plan readiness */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              status: "not_ready" | "partial" | "ready";
+              completed: number;
+              /** @enum {number} */
+              total: 3;
+              canStartWriting: boolean;
+              items: {
+                /** @enum {string} */
+                key: "story_bible" | "settings" | "brief";
+                label: string;
+                ready: boolean;
+                missing: string[];
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter workspace */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              number: number;
+              title: string;
+              /** @enum {string} */
+              status:
+                | "planned"
+                | "writing"
+                | "waiting_review"
+                | "changes_requested"
+                | "approved"
+                | "locked"
+                | "published"
+                | "rejected";
+              version: number;
+              wordCount: number;
+              currentVersionId: string | null;
+              currentVersion: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              brief: {
+                goal: string;
+                pov: string;
+                location: string;
+                sceneBeats: string[];
+                requiredFacts: string[];
+              } | null;
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 3;
+                canStartWriting: boolean;
+                items: {
+                  /** @enum {string} */
+                  key: "story_bible" | "settings" | "brief";
+                  label: string;
+                  ready: boolean;
+                  missing: string[];
+                }[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          title?: string;
+          brief?: {
+            goal: string;
+            pov: string;
+            location: string;
+            sceneBeats: string[];
+            requiredFacts: string[];
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated chapter brief */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              number: number;
+              title: string;
+              /** @enum {string} */
+              status:
+                | "planned"
+                | "writing"
+                | "waiting_review"
+                | "changes_requested"
+                | "approved"
+                | "locked"
+                | "published"
+                | "rejected";
+              version: number;
+              wordCount: number;
+              currentVersionId: string | null;
+              currentVersion: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              brief: {
+                goal: string;
+                pov: string;
+                location: string;
+                sceneBeats: string[];
+                requiredFacts: string[];
+              } | null;
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 3;
+                canStartWriting: boolean;
+                items: {
+                  /** @enum {string} */
+                  key: "story_bible" | "settings" | "brief";
+                  label: string;
+                  ready: boolean;
+                  missing: string[];
+                }[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_readiness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter readiness */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              status: "not_ready" | "partial" | "ready";
+              completed: number;
+              /** @enum {number} */
+              total: 3;
+              canStartWriting: boolean;
+              items: {
+                /** @enum {string} */
+                key: "story_bible" | "settings" | "brief";
+                label: string;
+                ready: boolean;
+                missing: string[];
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_versions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Append-only chapter versions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              chapterId: string;
+              version: number;
+              content: string;
+              contentHash: string;
+              versionNodeId: string;
+              parentNodeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChaptersController_saveVersion: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          content: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Saved chapter version and resulting chapter */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              chapter: {
+                id: string;
+                workId: string;
+                branchId: string;
+                number: number;
+                title: string;
+                /** @enum {string} */
+                status:
+                  | "planned"
+                  | "writing"
+                  | "waiting_review"
+                  | "changes_requested"
+                  | "approved"
+                  | "locked"
+                  | "published"
+                  | "rejected";
+                version: number;
+                wordCount: number;
+                currentVersionId: string | null;
+                currentVersion: {
+                  id: string;
+                  chapterId: string;
+                  version: number;
+                  content: string;
+                  contentHash: string;
+                  versionNodeId: string;
+                  parentNodeId: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                brief: {
+                  goal: string;
+                  pov: string;
+                  location: string;
+                  sceneBeats: string[];
+                  requiredFacts: string[];
+                } | null;
+                readiness: {
+                  /** @enum {string} */
+                  status: "not_ready" | "partial" | "ready";
+                  completed: number;
+                  /** @enum {number} */
+                  total: 3;
+                  canStartWriting: boolean;
+                  items: {
+                    /** @enum {string} */
+                    key: "story_bible" | "settings" | "brief";
+                    label: string;
+                    ready: boolean;
+                    missing: string[];
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              };
+              version: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  FactsController_extract: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Extracted fact proposals */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              subject: string;
+              predicate: string;
+              object: string;
+              sourceSentence: string;
+              /** @enum {string} */
+              status: "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+              confidence: number;
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              required: boolean;
+              decision: {
+                id: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                actorId: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  FactsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter fact proposals */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              subject: string;
+              predicate: string;
+              object: string;
+              sourceSentence: string;
+              /** @enum {string} */
+              status: "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+              confidence: number;
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              required: boolean;
+              decision: {
+                id: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                actorId: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  FactsController_decide: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        factProposalId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          action: "confirm" | "modify_confirm" | "reject" | "supersede";
+          reason?: string;
+          modified?: {
+            subject?: string;
+            predicate?: string;
+            object?: string;
+            /** @enum {string} */
+            risk?: "low" | "medium" | "high";
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated fact proposal */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              subject: string;
+              predicate: string;
+              object: string;
+              sourceSentence: string;
+              /** @enum {string} */
+              status: "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+              confidence: number;
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              required: boolean;
+              decision: {
+                id: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                actorId: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_start: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same chapter generation request */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /**
+           * @default {
+           *       "maxCostCny": 2.5,
+           *       "maxTokens": 30000,
+           *       "maxRevisionRounds": 2
+           *     }
+           */
+          budget?: {
+            maxCostCny: number;
+            maxTokens: number;
+            maxRevisionRounds: number;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Queued chapter generation job */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_contextPreview: {
+    parameters: {
+      query: {
+        tokenBudget: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Compiled chapter context preview */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              compilerVersion: string;
+              tokenBudget: number;
+              tokenUsed: number;
+              selected: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                priority: "required" | "high" | "normal";
+                content: string;
+                tokenCount: number;
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+              }[];
+              evicted: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                reason: "token_budget";
+                tokenCount: number;
+              }[];
+              sourceRefs: {
+                /** @enum {string} */
+                sourceType:
+                  "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                sourceId: string;
+                label: string;
+                citation: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_list: {
+    parameters: {
+      query: {
+        chapterId: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter generation jobs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Generation job and checkpoint */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancelled generation job */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_retry: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Retried generation job */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_events: {
+    parameters: {
+      query?: never;
+      header: {
+        "last-event-id": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   HealthController_getLiveness: {
     parameters: {
       query?: never;
@@ -609,6 +3093,1082 @@ export interface operations {
                 status: "up" | "down";
                 latencyMs: number;
               }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /** Format: binary */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Parsed manuscript chapters */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              status: "ready" | "partial" | "empty";
+              sourceName: string;
+              /** @enum {string} */
+              format: "txt" | "markdown";
+              chapters: {
+                order: number;
+                title: string;
+                content: string;
+                wordCount: number;
+              }[];
+              warnings: {
+                sourceExcerpt: string;
+                reason: string;
+              }[];
+              canConfirm: boolean;
+              confirmedWorkId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Parsed manuscript chapters */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              status: "ready" | "partial" | "empty";
+              sourceName: string;
+              /** @enum {string} */
+              format: "txt" | "markdown";
+              chapters: {
+                order: number;
+                title: string;
+                content: string;
+                wordCount: number;
+              }[];
+              warnings: {
+                sourceExcerpt: string;
+                reason: string;
+              }[];
+              canConfirm: boolean;
+              confirmedWorkId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_confirm: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Idempotency-Key"?: string;
+      };
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          title: string;
+          penName?: string;
+          /**
+           * @default xianxia
+           * @enum {string}
+           */
+          genre: "xianxia" | "history" | "urban";
+          /**
+           * @default long
+           * @enum {string}
+           */
+          scaleTarget: "short" | "medium" | "long" | "epic";
+          /** @default 3000 */
+          chapterLengthTarget: number;
+          chapters: {
+            title: string;
+            content: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Imported work and chapter versions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              work: {
+                id: string;
+                title: string;
+                penName: string;
+                /** @enum {string} */
+                genre: "xianxia" | "history" | "urban";
+                /** @enum {string} */
+                status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+                /** @enum {string} */
+                scaleTarget: "short" | "medium" | "long" | "epic";
+                chapterLengthTarget: number;
+                /** @enum {string} */
+                sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+                idea: string | null;
+                templatePack: {
+                  id: string;
+                  /** @enum {string} */
+                  key: "xianxia" | "history" | "urban";
+                  version: number;
+                  label: string;
+                  fields: {
+                    [key: string]: unknown;
+                  };
+                } | null;
+                settings: {
+                  [key: string]: unknown;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                mainBranch: {
+                  id: string;
+                  workId: string;
+                  name: string;
+                  headNodeId: string;
+                  /** @enum {string} */
+                  status: "active" | "archived";
+                };
+                branches: {
+                  id: string;
+                  workId: string;
+                  name: string;
+                  headNodeId: string;
+                  /** @enum {string} */
+                  status: "active" | "archived";
+                }[];
+                readiness: {
+                  /** @enum {string} */
+                  status: "not_ready" | "partial" | "ready";
+                  completed: number;
+                  total: number;
+                  items: {
+                    /** @enum {string} */
+                    key: "main_branch" | "model_config" | "story_bible" | "outline";
+                    label: string;
+                    ready: boolean;
+                  }[];
+                };
+              };
+              chapters: {
+                id: string;
+                workId: string;
+                branchId: string;
+                number: number;
+                title: string;
+                /** @enum {string} */
+                status:
+                  | "planned"
+                  | "writing"
+                  | "waiting_review"
+                  | "changes_requested"
+                  | "approved"
+                  | "locked"
+                  | "published"
+                  | "rejected";
+                version: number;
+                wordCount: number;
+                currentVersionId: string;
+              }[];
+              chapterVersions: {
+                id: string;
+                chapterId: string;
+                version: number;
+                content: string;
+                contentHash: string;
+                versionNodeId: string;
+                parentNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Current user works */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_create: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Idempotency-Key"?: string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              /** @enum {string} */
+              mode: "idea";
+              idea: string;
+              title: string;
+              penName?: string;
+              /**
+               * @default xianxia
+               * @enum {string}
+               */
+              genre: "xianxia" | "history" | "urban";
+              /**
+               * @default long
+               * @enum {string}
+               */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              /** @default 3000 */
+              chapterLengthTarget: number;
+            }
+          | {
+              /** @enum {string} */
+              mode: "blank";
+              title: string;
+              penName?: string;
+              /**
+               * @default xianxia
+               * @enum {string}
+               */
+              genre: "xianxia" | "history" | "urban";
+              /**
+               * @default long
+               * @enum {string}
+               */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              /** @default 3000 */
+              chapterLengthTarget: number;
+            }
+          | {
+              /** @enum {string} */
+              mode: "template";
+              /** @enum {string} */
+              templateKey: "xianxia";
+              title: string;
+              penName?: string;
+              /**
+               * @default xianxia
+               * @enum {string}
+               */
+              genre: "xianxia" | "history" | "urban";
+              /**
+               * @default long
+               * @enum {string}
+               */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              /** @default 3000 */
+              chapterLengthTarget: number;
+            };
+      };
+    };
+    responses: {
+      /** @description Created work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work overview */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_branches: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work branches */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              name: string;
+              headNodeId: string;
+              /** @enum {string} */
+              status: "active" | "archived";
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsImportController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              text: string;
+              sourceName?: string;
+            }
+          | {
+              /** Format: binary */
+              file: string;
+              sourceName?: string;
+            };
+        "multipart/form-data":
+          | {
+              text: string;
+              sourceName?: string;
+            }
+          | {
+              /** Format: binary */
+              file: string;
+              sourceName?: string;
+            };
+      };
+    };
+    responses: {
+      /** @description Recognized settings candidates */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              status: "awaiting_confirmation" | "completed";
+              /** @enum {string} */
+              sourceKind: "paste" | "file";
+              sourceName: string | null;
+              report: {
+                accepted: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                  name: string;
+                  summary: string;
+                  sourceExcerpt: string;
+                  confidence: number;
+                  /** @enum {string} */
+                  status: "accepted" | "pending" | "conflict";
+                }[];
+                pending: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                  name: string;
+                  summary: string;
+                  sourceExcerpt: string;
+                  confidence: number;
+                  /** @enum {string} */
+                  status: "accepted" | "pending" | "conflict";
+                }[];
+                conflicts: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "contradictory_setting";
+                  summary: string;
+                  candidates: {
+                    id: string;
+                    /** @enum {string} */
+                    type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                    name: string;
+                    summary: string;
+                    sourceExcerpt: string;
+                    confidence: number;
+                    /** @enum {string} */
+                    status: "accepted" | "pending" | "conflict";
+                  }[];
+                  /** @enum {string} */
+                  decision: "pending" | "use_primary" | "use_secondary";
+                  /** Format: date-time */
+                  decidedAt: string | null;
+                }[];
+                unparsed: {
+                  sourceExcerpt: string;
+                  reason: string;
+                }[];
+              };
+              canConfirm: boolean;
+              confirmedWorkId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsImportController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Settings import report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              status: "awaiting_confirmation" | "completed";
+              /** @enum {string} */
+              sourceKind: "paste" | "file";
+              sourceName: string | null;
+              report: {
+                accepted: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                  name: string;
+                  summary: string;
+                  sourceExcerpt: string;
+                  confidence: number;
+                  /** @enum {string} */
+                  status: "accepted" | "pending" | "conflict";
+                }[];
+                pending: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                  name: string;
+                  summary: string;
+                  sourceExcerpt: string;
+                  confidence: number;
+                  /** @enum {string} */
+                  status: "accepted" | "pending" | "conflict";
+                }[];
+                conflicts: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "contradictory_setting";
+                  summary: string;
+                  candidates: {
+                    id: string;
+                    /** @enum {string} */
+                    type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                    name: string;
+                    summary: string;
+                    sourceExcerpt: string;
+                    confidence: number;
+                    /** @enum {string} */
+                    status: "accepted" | "pending" | "conflict";
+                  }[];
+                  /** @enum {string} */
+                  decision: "pending" | "use_primary" | "use_secondary";
+                  /** Format: date-time */
+                  decidedAt: string | null;
+                }[];
+                unparsed: {
+                  sourceExcerpt: string;
+                  reason: string;
+                }[];
+              };
+              canConfirm: boolean;
+              confirmedWorkId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsImportController_getReport: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Settings import report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              accepted: {
+                id: string;
+                /** @enum {string} */
+                type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                name: string;
+                summary: string;
+                sourceExcerpt: string;
+                confidence: number;
+                /** @enum {string} */
+                status: "accepted" | "pending" | "conflict";
+              }[];
+              pending: {
+                id: string;
+                /** @enum {string} */
+                type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                name: string;
+                summary: string;
+                sourceExcerpt: string;
+                confidence: number;
+                /** @enum {string} */
+                status: "accepted" | "pending" | "conflict";
+              }[];
+              conflicts: {
+                id: string;
+                /** @enum {string} */
+                type: "contradictory_setting";
+                summary: string;
+                candidates: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                  name: string;
+                  summary: string;
+                  sourceExcerpt: string;
+                  confidence: number;
+                  /** @enum {string} */
+                  status: "accepted" | "pending" | "conflict";
+                }[];
+                /** @enum {string} */
+                decision: "pending" | "use_primary" | "use_secondary";
+                /** Format: date-time */
+                decidedAt: string | null;
+              }[];
+              unparsed: {
+                sourceExcerpt: string;
+                reason: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsImportController_decideConflict: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+        conflictId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          decision: "use_primary" | "use_secondary";
+          reason?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated settings import */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              status: "awaiting_confirmation" | "completed";
+              /** @enum {string} */
+              sourceKind: "paste" | "file";
+              sourceName: string | null;
+              report: {
+                accepted: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                  name: string;
+                  summary: string;
+                  sourceExcerpt: string;
+                  confidence: number;
+                  /** @enum {string} */
+                  status: "accepted" | "pending" | "conflict";
+                }[];
+                pending: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                  name: string;
+                  summary: string;
+                  sourceExcerpt: string;
+                  confidence: number;
+                  /** @enum {string} */
+                  status: "accepted" | "pending" | "conflict";
+                }[];
+                conflicts: {
+                  id: string;
+                  /** @enum {string} */
+                  type: "contradictory_setting";
+                  summary: string;
+                  candidates: {
+                    id: string;
+                    /** @enum {string} */
+                    type: "character" | "faction" | "map" | "power_system" | "golden_finger";
+                    name: string;
+                    summary: string;
+                    sourceExcerpt: string;
+                    confidence: number;
+                    /** @enum {string} */
+                    status: "accepted" | "pending" | "conflict";
+                  }[];
+                  /** @enum {string} */
+                  decision: "pending" | "use_primary" | "use_secondary";
+                  /** Format: date-time */
+                  decidedAt: string | null;
+                }[];
+                unparsed: {
+                  sourceExcerpt: string;
+                  reason: string;
+                }[];
+              };
+              canConfirm: boolean;
+              confirmedWorkId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsImportController_confirm: {
+    parameters: {
+      query?: never;
+      header?: {
+        "Idempotency-Key"?: string;
+      };
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          title: string;
+          penName?: string;
+          /**
+           * @default xianxia
+           * @enum {string}
+           */
+          genre: "xianxia" | "history" | "urban";
+          /**
+           * @default long
+           * @enum {string}
+           */
+          scaleTarget: "short" | "medium" | "long" | "epic";
+          /** @default 3000 */
+          chapterLengthTarget: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Created work */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
             };
             /** Format: starts_with */
             requestId: string;
@@ -923,16 +4483,29 @@ export interface operations {
       };
     };
   };
-  WorksController_list: {
+  ReviewController_review: {
     parameters: {
       query?: never;
       header?: never;
-      path?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          action: "approve" | "reject";
+          version: number;
+          reason?: string;
+        };
+      };
+    };
     responses: {
-      /** @description Current user works */
+      /** @description Chapter review decision */
       200: {
         headers: {
           [name: string]: unknown;
@@ -940,54 +4513,293 @@ export interface operations {
         content: {
           "application/json": {
             data: {
-              id: string;
-              title: string;
-              penName: string;
-              /** @enum {string} */
-              genre: "xianxia" | "history" | "urban";
-              /** @enum {string} */
-              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
-              /** @enum {string} */
-              scaleTarget: "short" | "medium" | "long" | "epic";
-              chapterLengthTarget: number;
-              /** @enum {string} */
-              sourceMode: "idea" | "blank" | "template";
-              idea: string | null;
-              templatePack: {
+              chapter: {
                 id: string;
+                workId: string;
+                branchId: string;
+                number: number;
+                title: string;
                 /** @enum {string} */
-                key: "xianxia" | "history" | "urban";
+                status:
+                  | "planned"
+                  | "writing"
+                  | "waiting_review"
+                  | "changes_requested"
+                  | "approved"
+                  | "locked"
+                  | "published"
+                  | "rejected";
                 version: number;
-                label: string;
-                fields: {
-                  [key: string]: unknown;
+                wordCount: number;
+                currentVersionId: string | null;
+                currentVersion: {
+                  id: string;
+                  chapterId: string;
+                  version: number;
+                  content: string;
+                  contentHash: string;
+                  versionNodeId: string;
+                  parentNodeId: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                brief: {
+                  goal: string;
+                  pov: string;
+                  location: string;
+                  sceneBeats: string[];
+                  requiredFacts: string[];
+                } | null;
+                readiness: {
+                  /** @enum {string} */
+                  status: "not_ready" | "partial" | "ready";
+                  completed: number;
+                  /** @enum {number} */
+                  total: 3;
+                  canStartWriting: boolean;
+                  items: {
+                    /** @enum {string} */
+                    key: "story_bible" | "settings" | "brief";
+                    label: string;
+                    ready: boolean;
+                    missing: string[];
+                  }[];
                 };
-              } | null;
-              settings: {
-                [key: string]: unknown;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
               };
-              /** Format: date-time */
-              createdAt: string;
-              /** Format: date-time */
-              updatedAt: string;
-            }[];
+              decision: {
+                id: string;
+                chapterId: string;
+                /** @enum {string} */
+                action: "approve" | "reject";
+                actorId: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              };
+            };
             /** Format: starts_with */
             requestId: string;
+            /** @default {} */
             meta: {
-              nextCursor: string | null;
+              [key: string]: unknown;
             };
           };
         };
       };
     };
   };
-  WorksController_create: {
+  SettingsController_list: {
     parameters: {
       query?: never;
-      header?: {
-        "Idempotency-Key"?: string;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
       };
-      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Settings entities */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: (
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                }
+            )[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
       cookie?: never;
     };
     requestBody: {
@@ -995,65 +4807,501 @@ export interface operations {
         "application/json":
           | {
               /** @enum {string} */
-              mode: "idea";
-              idea: string;
-              title: string;
-              penName?: string;
-              /**
-               * @default xianxia
-               * @enum {string}
-               */
-              genre: "xianxia" | "history" | "urban";
-              /**
-               * @default long
-               * @enum {string}
-               */
-              scaleTarget: "short" | "medium" | "long" | "epic";
-              /** @default 3000 */
-              chapterLengthTarget: number;
+              type: "world_rule";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                rule: string;
+              };
             }
           | {
               /** @enum {string} */
-              mode: "blank";
-              title: string;
-              penName?: string;
-              /**
-               * @default xianxia
-               * @enum {string}
-               */
-              genre: "xianxia" | "history" | "urban";
-              /**
-               * @default long
-               * @enum {string}
-               */
-              scaleTarget: "short" | "medium" | "long" | "epic";
-              /** @default 3000 */
-              chapterLengthTarget: number;
+              type: "character";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                bodyState: string;
+                knowledgeBoundary: string;
+                relationshipSummary: string;
+              };
             }
           | {
               /** @enum {string} */
-              mode: "template";
+              type: "faction";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                details: string;
+              };
+            }
+          | {
               /** @enum {string} */
-              templateKey: "xianxia";
-              title: string;
-              penName?: string;
-              /**
-               * @default xianxia
-               * @enum {string}
-               */
-              genre: "xianxia" | "history" | "urban";
-              /**
-               * @default long
-               * @enum {string}
-               */
-              scaleTarget: "short" | "medium" | "long" | "epic";
-              /** @default 3000 */
-              chapterLengthTarget: number;
+              type: "map";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                details: string;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "power_system";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                details: string;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "golden_finger";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                rules: string;
+                cost: string;
+                limits: string;
+                growth: string;
+              };
             };
       };
     };
     responses: {
-      /** @description Created work */
+      /** @description Created setting */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data:
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Setting detail */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data:
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Deleted setting */
       200: {
         headers: {
           [name: string]: unknown;
@@ -1061,64 +5309,8 @@ export interface operations {
         content: {
           "application/json": {
             data: {
-              id: string;
-              title: string;
-              penName: string;
-              /** @enum {string} */
-              genre: "xianxia" | "history" | "urban";
-              /** @enum {string} */
-              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
-              /** @enum {string} */
-              scaleTarget: "short" | "medium" | "long" | "epic";
-              chapterLengthTarget: number;
-              /** @enum {string} */
-              sourceMode: "idea" | "blank" | "template";
-              idea: string | null;
-              templatePack: {
-                id: string;
-                /** @enum {string} */
-                key: "xianxia" | "history" | "urban";
-                version: number;
-                label: string;
-                fields: {
-                  [key: string]: unknown;
-                };
-              } | null;
-              settings: {
-                [key: string]: unknown;
-              };
-              /** Format: date-time */
-              createdAt: string;
-              /** Format: date-time */
-              updatedAt: string;
-              mainBranch: {
-                id: string;
-                workId: string;
-                name: string;
-                headNodeId: string;
-                /** @enum {string} */
-                status: "active" | "archived";
-              };
-              branches: {
-                id: string;
-                workId: string;
-                name: string;
-                headNodeId: string;
-                /** @enum {string} */
-                status: "active" | "archived";
-              }[];
-              readiness: {
-                /** @enum {string} */
-                status: "not_ready" | "partial" | "ready";
-                completed: number;
-                total: number;
-                items: {
-                  /** @enum {string} */
-                  key: "main_branch" | "model_config" | "story_bible" | "outline";
-                  label: string;
-                  ready: boolean;
-                }[];
-              };
+              /** @enum {boolean} */
+              deleted: true;
             };
             /** Format: starts_with */
             requestId: string;
@@ -1131,84 +5323,232 @@ export interface operations {
       };
     };
   };
-  WorksController_get: {
+  SettingsController_patch: {
     parameters: {
       query?: never;
       header?: never;
       path: {
         workId: string;
+        branchId: string;
+        entityId: string;
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          name?: string;
+          /** @default [] */
+          aliases?: string[];
+          summary?: string;
+          /** @default  */
+          description?: string;
+          /** @default [] */
+          tags?: string[];
+          data?:
+            | {
+                rule?: string;
+              }
+            | {
+                bodyState?: string;
+                knowledgeBoundary?: string;
+                relationshipSummary?: string;
+              }
+            | {
+                details?: string;
+              }
+            | {
+                details?: string;
+              }
+            | {
+                details?: string;
+              }
+            | {
+                rules?: string;
+                cost?: string;
+                limits?: string;
+                growth?: string;
+              };
+        };
+      };
+    };
     responses: {
-      /** @description Work overview */
+      /** @description Updated setting */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
           "application/json": {
-            data: {
-              id: string;
-              title: string;
-              penName: string;
-              /** @enum {string} */
-              genre: "xianxia" | "history" | "urban";
-              /** @enum {string} */
-              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
-              /** @enum {string} */
-              scaleTarget: "short" | "medium" | "long" | "epic";
-              chapterLengthTarget: number;
-              /** @enum {string} */
-              sourceMode: "idea" | "blank" | "template";
-              idea: string | null;
-              templatePack: {
-                id: string;
-                /** @enum {string} */
-                key: "xianxia" | "history" | "urban";
-                version: number;
-                label: string;
-                fields: {
-                  [key: string]: unknown;
-                };
-              } | null;
-              settings: {
-                [key: string]: unknown;
-              };
-              /** Format: date-time */
-              createdAt: string;
-              /** Format: date-time */
-              updatedAt: string;
-              mainBranch: {
-                id: string;
-                workId: string;
-                name: string;
-                headNodeId: string;
-                /** @enum {string} */
-                status: "active" | "archived";
-              };
-              branches: {
-                id: string;
-                workId: string;
-                name: string;
-                headNodeId: string;
-                /** @enum {string} */
-                status: "active" | "archived";
-              }[];
-              readiness: {
-                /** @enum {string} */
-                status: "not_ready" | "partial" | "ready";
-                completed: number;
-                total: number;
-                items: {
+            data:
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
                   /** @enum {string} */
-                  key: "main_branch" | "model_config" | "story_bible" | "outline";
-                  label: string;
-                  ready: boolean;
-                }[];
-              };
-            };
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                };
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
@@ -1220,18 +5560,277 @@ export interface operations {
       };
     };
   };
-  WorksController_branches: {
+  SettingsController_lock: {
     parameters: {
       query?: never;
       header?: never;
       path: {
         workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Locked setting */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data:
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "world_rule";
+                  data: {
+                    rule: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "character";
+                  data: {
+                    bodyState: string;
+                    knowledgeBoundary: string;
+                    relationshipSummary: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "faction";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "map";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "power_system";
+                  data: {
+                    details: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "golden_finger";
+                  data: {
+                    rules: string;
+                    cost: string;
+                    limits: string;
+                    growth: string;
+                  };
+                };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ConfirmedSettingsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
       };
       cookie?: never;
     };
     requestBody?: never;
     responses: {
-      /** @description Work branches */
+      /** @description Confirmed settings projection */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              kind?: "setting" | "fact";
+              id: string;
+              /** @enum {string} */
+              type:
+                "world_rule" | "character" | "faction" | "map" | "power_system" | "golden_finger";
+              name: string;
+              summary: string;
+              /** @enum {string} */
+              source: "author" | "import" | "ai" | "canon";
+              /** @enum {string} */
+              status: "locked";
+              version: number;
+              /** Format: date-time */
+              lockedAt: string;
+              sourceChapterId?: string;
+              sourceFactId?: string;
+              validFromChapter?: number;
+              validToChapter?: number | null;
+              predicate?: string;
+              object?: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Nine-card story bible */
       200: {
         headers: {
           [name: string]: unknown;
@@ -1241,11 +5840,62 @@ export interface operations {
             data: {
               id: string;
               workId: string;
-              name: string;
-              headNodeId: string;
+              branchId: string;
+              version: number;
               /** @enum {string} */
-              status: "active" | "archived";
-            }[];
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
@@ -1254,6 +5904,345 @@ export interface operations {
             };
           };
         };
+      };
+    };
+  };
+  StoryBibleController_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Updated story bible cards */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_readiness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Story bible readiness */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              status: "not_ready" | "partial" | "ready";
+              completed: number;
+              /** @enum {number} */
+              total: 9;
+              canLock: boolean;
+              missingCards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_generate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Generated story bible proposal */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_lock: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Locked story bible */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_deleteCard: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

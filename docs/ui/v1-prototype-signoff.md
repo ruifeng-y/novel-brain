@@ -14,6 +14,12 @@
 - 高风险门禁：冲突、合并、锁定内容、六维评审、导入冲突、导出后删除。
 - 1440 / 1180 / 900 / 390 四档响应式与页面内状态面板。
 
+## 2026-11-05 生产 Golden 基线签收
+
+签收人：ruifeng-y。作者已确认 M0 九个生产页面在 390 / 900 / 1180 / 1440 四档视口下的初始生产截图，并同意将其作为后续视觉回归基线。覆盖页面：auth、dashboard、new-project、account-settings、work-overview、bible、settings、outline、writing。
+
+生产截图来自真实生产 Web 路由与确定性验收数据，不复制原型图片。Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`，由 `apps/web/e2e/parity/m0-closeout.spec.ts` 使用 0.5% 像素差异容忍度进行比对。Linux/Chromium 基线更新证据：[Production CI #42005502769](https://github.com/ruifeng-y/novel-brain/actions/runs/42005502769)。该签收只覆盖 M0 九页；M1–M3 页面仍需按 ADR 0027 单独完成生产截图、比对和作者签收。
+
 ## 不包含
 
 - 真实后端数据、真实模型调用和真实大文件解析。

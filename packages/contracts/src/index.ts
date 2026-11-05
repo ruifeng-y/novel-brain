@@ -17,6 +17,7 @@ export const ERROR_CODES = [
   "MODEL_PROVIDER_ERROR",
   "BIBLE_NOT_READY",
   "BIBLE_LOCKED",
+  "SETTING_LOCKED",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
   "FACT_DECISION_REQUIRED",
@@ -220,7 +221,13 @@ export type WorkGenre = z.infer<typeof workGenreSchema>;
 export const workScaleTargetSchema = z.enum(["short", "medium", "long", "epic"]);
 export type WorkScaleTarget = z.infer<typeof workScaleTargetSchema>;
 
-export const workSourceModeSchema = z.enum(["idea", "blank", "template"]);
+export const workSourceModeSchema = z.enum([
+  "idea",
+  "blank",
+  "template",
+  "settings_import",
+  "manuscript_import",
+]);
 export type WorkSourceMode = z.infer<typeof workSourceModeSchema>;
 
 const workBaseInputShape = {
@@ -322,6 +329,845 @@ export const workListResponseSchema = z.object({
 });
 export const workBranchesResponseSchema = apiEnvelopeSchema(z.array(workBranchSchema));
 
+export const importCandidateTypeSchema = z.enum([
+  "character",
+  "faction",
+  "map",
+  "power_system",
+  "golden_finger",
+]);
+export type ImportCandidateType = z.infer<typeof importCandidateTypeSchema>;
+
+export const importCandidateStatusSchema = z.enum(["accepted", "pending", "conflict"]);
+export type ImportCandidateStatus = z.infer<typeof importCandidateStatusSchema>;
+
+export const importCandidateSchema = z.object({
+  id: uuidV7Schema,
+  type: importCandidateTypeSchema,
+  name: z.string().min(1),
+  summary: z.string(),
+  sourceExcerpt: z.string().min(1),
+  confidence: z.number().min(0).max(1),
+  status: importCandidateStatusSchema,
+});
+export type ImportCandidate = z.infer<typeof importCandidateSchema>;
+
+export const importUnparsedSchema = z.object({
+  sourceExcerpt: z.string().min(1),
+  reason: z.string().min(1),
+});
+export type ImportUnparsed = z.infer<typeof importUnparsedSchema>;
+
+export const importConflictSchema = z.object({
+  id: uuidV7Schema,
+  type: z.literal("contradictory_setting"),
+  summary: z.string().min(1),
+  candidates: z.array(importCandidateSchema).length(2),
+  decision: z.enum(["pending", "use_primary", "use_secondary"]),
+  decidedAt: z.string().datetime().nullable(),
+});
+export type ImportConflict = z.infer<typeof importConflictSchema>;
+
+export const importReportSchema = z.object({
+  accepted: z.array(importCandidateSchema),
+  pending: z.array(importCandidateSchema),
+  conflicts: z.array(importConflictSchema),
+  unparsed: z.array(importUnparsedSchema),
+});
+export type ImportReport = z.infer<typeof importReportSchema>;
+
+export const settingsImportStatusSchema = z.enum(["awaiting_confirmation", "completed"]);
+export type SettingsImportStatus = z.infer<typeof settingsImportStatusSchema>;
+
+export const settingsImportSourceKindSchema = z.enum(["paste", "file"]);
+export type SettingsImportSourceKind = z.infer<typeof settingsImportSourceKindSchema>;
+
+export const settingsImportSchema = z.object({
+  id: uuidV7Schema,
+  status: settingsImportStatusSchema,
+  sourceKind: settingsImportSourceKindSchema,
+  sourceName: z.string().nullable(),
+  report: importReportSchema,
+  canConfirm: z.boolean(),
+  confirmedWorkId: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+});
+export type SettingsImport = z.infer<typeof settingsImportSchema>;
+
+export const settingsImportCreateRequestSchema = z.object({
+  text: z.string().trim().min(1).max(100_000),
+  sourceName: z.string().trim().min(1).max(200).optional(),
+});
+export type SettingsImportCreateRequest = z.infer<typeof settingsImportCreateRequestSchema>;
+
+export const settingsImportConfirmRequestSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  penName: z.string().trim().min(1).max(50).optional(),
+  genre: workGenreSchema.default("xianxia"),
+  scaleTarget: workScaleTargetSchema.default("long"),
+  chapterLengthTarget: z.number().int().min(1000).max(10000).default(3000),
+});
+export type SettingsImportConfirmRequest = z.infer<typeof settingsImportConfirmRequestSchema>;
+
+export const settingsImportConflictDecisionRequestSchema = z.object({
+  decision: z.enum(["use_primary", "use_secondary"]),
+  reason: z.string().trim().min(1).max(500).optional(),
+});
+export type SettingsImportConflictDecisionRequest = z.infer<
+  typeof settingsImportConflictDecisionRequestSchema
+>;
+
+export const settingsImportResponseSchema = apiEnvelopeSchema(settingsImportSchema);
+export const importReportResponseSchema = apiEnvelopeSchema(importReportSchema);
+
+export const manuscriptImportFormatSchema = z.enum(["txt", "markdown"]);
+export type ManuscriptImportFormat = z.infer<typeof manuscriptImportFormatSchema>;
+
+export const manuscriptImportStatusSchema = z.enum(["ready", "partial", "empty"]);
+export type ManuscriptImportStatus = z.infer<typeof manuscriptImportStatusSchema>;
+
+export const manuscriptImportWarningSchema = z.object({
+  sourceExcerpt: z.string().min(1),
+  reason: z.string().min(1),
+});
+export type ManuscriptImportWarning = z.infer<typeof manuscriptImportWarningSchema>;
+
+export const manuscriptImportChapterSchema = z.object({
+  order: z.number().int().positive(),
+  title: z.string().trim().min(1).max(200),
+  content: z.string(),
+  wordCount: z.number().int().nonnegative(),
+});
+export type ManuscriptImportChapter = z.infer<typeof manuscriptImportChapterSchema>;
+
+export const manuscriptImportSchema = z.object({
+  id: uuidV7Schema,
+  status: manuscriptImportStatusSchema,
+  sourceName: z.string().min(1),
+  format: manuscriptImportFormatSchema,
+  chapters: z.array(manuscriptImportChapterSchema),
+  warnings: z.array(manuscriptImportWarningSchema),
+  canConfirm: z.boolean(),
+  confirmedWorkId: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+});
+export type ManuscriptImport = z.infer<typeof manuscriptImportSchema>;
+
+export const manuscriptImportResponseSchema = apiEnvelopeSchema(manuscriptImportSchema);
+
+export const STORY_BIBLE_CARD_KEYS = [
+  "oneSentence",
+  "sellingPoints",
+  "protagonist",
+  "goldenFinger",
+  "worldLaws",
+  "mainPlot",
+  "subplots",
+  "ending",
+  "readerPromise",
+] as const;
+
+export const storyBibleCardKeySchema = z.enum(STORY_BIBLE_CARD_KEYS);
+export type StoryBibleCardKey = z.infer<typeof storyBibleCardKeySchema>;
+
+export const STORY_BIBLE_CARD_TITLES: Record<StoryBibleCardKey, string> = {
+  oneSentence: "一句话故事",
+  sellingPoints: "核心卖点",
+  protagonist: "主角",
+  goldenFinger: "金手指",
+  worldLaws: "世界铁律",
+  mainPlot: "主线",
+  subplots: "支线",
+  ending: "结局方向",
+  readerPromise: "读者承诺",
+};
+
+export const storyBibleStatusSchema = z.enum(["draft", "proposed", "locked"]);
+export type StoryBibleStatus = z.infer<typeof storyBibleStatusSchema>;
+
+export const storyBibleCardSchema = z.object({
+  key: storyBibleCardKeySchema,
+  title: z.string().min(1),
+  content: z.string().max(20_000),
+  complete: z.boolean(),
+});
+export type StoryBibleCard = z.infer<typeof storyBibleCardSchema>;
+
+export const storyBibleMissingCardSchema = z.object({
+  key: storyBibleCardKeySchema,
+  title: z.string().min(1),
+});
+export type StoryBibleMissingCard = z.infer<typeof storyBibleMissingCardSchema>;
+
+export const storyBibleReadinessSchema = z.object({
+  status: z.enum(["not_ready", "partial", "ready"]),
+  completed: z.number().int().min(0).max(9),
+  total: z.literal(9),
+  canLock: z.boolean(),
+  missingCards: z.array(storyBibleMissingCardSchema).max(9),
+});
+export type StoryBibleReadiness = z.infer<typeof storyBibleReadinessSchema>;
+
+export const storyBibleProposalSchema = z.object({
+  generatedAt: z.string().datetime(),
+  source: z.literal("work_premise"),
+});
+export type StoryBibleProposal = z.infer<typeof storyBibleProposalSchema>;
+
+const storyBibleCardsSchema = z
+  .array(storyBibleCardSchema)
+  .length(9)
+  .superRefine((cards, context) => {
+    const keys = cards.map((card) => card.key);
+    if (new Set(keys).size !== keys.length) {
+      context.addIssue({ code: "custom", message: "Story bible card keys must be unique" });
+    }
+    for (const key of STORY_BIBLE_CARD_KEYS) {
+      if (!keys.includes(key)) {
+        context.addIssue({ code: "custom", message: `Story bible card ${key} is required` });
+      }
+    }
+  });
+
+export const storyBibleSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  version: z.number().int().positive(),
+  status: storyBibleStatusSchema,
+  cards: storyBibleCardsSchema,
+  readiness: storyBibleReadinessSchema,
+  proposal: storyBibleProposalSchema.nullable(),
+  lockedAt: z.string().datetime().nullable(),
+  lockedBy: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type StoryBible = z.infer<typeof storyBibleSchema>;
+
+export const storyBiblePatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    cards: z
+      .array(
+        z.object({
+          key: storyBibleCardKeySchema,
+          content: z.string().max(20_000),
+        }),
+      )
+      .min(1)
+      .max(9),
+  })
+  .superRefine((input, context) => {
+    const keys = input.cards.map((card) => card.key);
+    if (new Set(keys).size !== keys.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Story bible card updates must have unique keys",
+        path: ["cards"],
+      });
+    }
+  });
+export type StoryBiblePatchRequest = z.infer<typeof storyBiblePatchRequestSchema>;
+
+export const storyBibleGenerateRequestSchema = z.object({}).strict();
+export type StoryBibleGenerateRequest = z.infer<typeof storyBibleGenerateRequestSchema>;
+
+export const storyBibleLockRequestSchema = z.object({
+  version: z.number().int().positive(),
+});
+export type StoryBibleLockRequest = z.infer<typeof storyBibleLockRequestSchema>;
+
+export const storyBibleResponseSchema = apiEnvelopeSchema(storyBibleSchema);
+export const storyBibleReadinessResponseSchema = apiEnvelopeSchema(storyBibleReadinessSchema);
+export const storyBibleDeleteResponseSchema = apiEnvelopeSchema(
+  z.object({ deleted: z.literal(true) }),
+);
+
+export const settingEntityTypeSchema = z.enum([
+  "world_rule",
+  "character",
+  "faction",
+  "map",
+  "power_system",
+  "golden_finger",
+]);
+export type SettingEntityType = z.infer<typeof settingEntityTypeSchema>;
+
+export const settingStatusSchema = z.enum(["draft", "proposed", "locked", "discarded"]);
+export type SettingStatus = z.infer<typeof settingStatusSchema>;
+
+export const settingSourceSchema = z.enum(["author", "import", "ai", "canon"]);
+export type SettingSource = z.infer<typeof settingSourceSchema>;
+
+export const worldRuleDataSchema = z
+  .object({
+    rule: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type WorldRuleData = z.infer<typeof worldRuleDataSchema>;
+
+export const characterDataSchema = z
+  .object({
+    bodyState: z.string().trim().min(1).max(20_000),
+    knowledgeBoundary: z.string().trim().min(1).max(20_000),
+    relationshipSummary: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type CharacterData = z.infer<typeof characterDataSchema>;
+
+export const goldenFingerDataSchema = z
+  .object({
+    rules: z.string().trim().min(1).max(20_000),
+    cost: z.string().trim().min(1).max(20_000),
+    limits: z.string().trim().min(1).max(20_000),
+    growth: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type GoldenFingerData = z.infer<typeof goldenFingerDataSchema>;
+
+export const factionDataSchema = z
+  .object({
+    details: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type FactionData = z.infer<typeof factionDataSchema>;
+
+export const mapDataSchema = z
+  .object({
+    details: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type MapData = z.infer<typeof mapDataSchema>;
+
+export const powerSystemDataSchema = z
+  .object({
+    details: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type PowerSystemData = z.infer<typeof powerSystemDataSchema>;
+
+const settingEntityBaseShape = {
+  name: z.string().trim().min(1).max(120),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  summary: z.string().trim().min(1).max(500),
+  description: z.string().max(20_000).default(""),
+  tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+};
+
+export const settingEntityCreateRequestSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("world_rule"),
+    ...settingEntityBaseShape,
+    data: worldRuleDataSchema,
+  }),
+  z.object({
+    type: z.literal("character"),
+    ...settingEntityBaseShape,
+    data: characterDataSchema,
+  }),
+  z.object({
+    type: z.literal("faction"),
+    ...settingEntityBaseShape,
+    data: factionDataSchema,
+  }),
+  z.object({
+    type: z.literal("map"),
+    ...settingEntityBaseShape,
+    data: mapDataSchema,
+  }),
+  z.object({
+    type: z.literal("power_system"),
+    ...settingEntityBaseShape,
+    data: powerSystemDataSchema,
+  }),
+  z.object({
+    type: z.literal("golden_finger"),
+    ...settingEntityBaseShape,
+    data: goldenFingerDataSchema,
+  }),
+]);
+export type SettingEntityCreateRequest = z.infer<typeof settingEntityCreateRequestSchema>;
+
+export const settingEntityPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: settingEntityBaseShape.name.optional(),
+    aliases: settingEntityBaseShape.aliases.optional(),
+    summary: settingEntityBaseShape.summary.optional(),
+    description: settingEntityBaseShape.description.optional(),
+    tags: settingEntityBaseShape.tags.optional(),
+    data: z
+      .union([
+        worldRuleDataSchema.partial(),
+        characterDataSchema.partial(),
+        factionDataSchema.partial(),
+        mapDataSchema.partial(),
+        powerSystemDataSchema.partial(),
+        goldenFingerDataSchema.partial(),
+      ])
+      .optional(),
+  })
+  .refine(
+    (input) =>
+      input.name !== undefined ||
+      input.aliases !== undefined ||
+      input.summary !== undefined ||
+      input.description !== undefined ||
+      input.tags !== undefined ||
+      input.data !== undefined,
+    { message: "At least one setting field is required" },
+  );
+export type SettingEntityPatchRequest = z.infer<typeof settingEntityPatchRequestSchema>;
+
+export const settingEntityLockRequestSchema = z.object({
+  version: z.number().int().positive(),
+});
+export type SettingEntityLockRequest = z.infer<typeof settingEntityLockRequestSchema>;
+
+const settingEntityCommonShape = {
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  aliases: z.array(z.string()),
+  summary: z.string(),
+  description: z.string(),
+  tags: z.array(z.string()),
+  status: settingStatusSchema,
+  source: settingSourceSchema,
+  version: z.number().int().positive(),
+  lockedAt: z.string().datetime().nullable(),
+  lockedBy: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+};
+
+export const settingEntitySchema = z.discriminatedUnion("type", [
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("world_rule"),
+    data: worldRuleDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("character"),
+    data: characterDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("faction"),
+    data: factionDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("map"),
+    data: mapDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("power_system"),
+    data: powerSystemDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("golden_finger"),
+    data: goldenFingerDataSchema,
+  }),
+]);
+export type SettingEntity = z.infer<typeof settingEntitySchema>;
+
+export const settingEntityListQuerySchema = z.object({
+  type: settingEntityTypeSchema.optional(),
+  status: settingStatusSchema.optional(),
+});
+export type SettingEntityListQuery = z.infer<typeof settingEntityListQuerySchema>;
+
+export const settingEntityResponseSchema = apiEnvelopeSchema(settingEntitySchema);
+export const settingEntityListResponseSchema = apiEnvelopeSchema(z.array(settingEntitySchema));
+export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
+  z.object({ deleted: z.literal(true) }),
+);
+
+export const confirmedSettingSchema = z
+  .object({
+    kind: z.enum(["setting", "fact"]).optional(),
+    id: uuidV7Schema,
+    type: settingEntityTypeSchema,
+    name: z.string(),
+    summary: z.string(),
+    source: settingSourceSchema,
+    status: z.literal("locked"),
+    version: z.number().int().positive(),
+    lockedAt: z.string().datetime(),
+    sourceChapterId: uuidV7Schema.optional(),
+    sourceFactId: uuidV7Schema.optional(),
+    validFromChapter: z.number().int().positive().optional(),
+    validToChapter: z.number().int().positive().nullable().optional(),
+    predicate: z.string().optional(),
+    object: z.string().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.kind !== "fact") {
+      return;
+    }
+    const requiredFactFields = [
+      ["sourceChapterId", value.sourceChapterId],
+      ["validFromChapter", value.validFromChapter],
+      ["validToChapter", value.validToChapter],
+      ["predicate", value.predicate],
+      ["object", value.object],
+    ] as const;
+    for (const [field, fieldValue] of requiredFactFields) {
+      if (fieldValue === undefined) {
+        context.addIssue({
+          code: "custom",
+          path: [field],
+          message: `${field} is required for confirmed facts`,
+        });
+      }
+    }
+  });
+export type ConfirmedSetting = z.infer<typeof confirmedSettingSchema>;
+
+export const confirmedSettingListResponseSchema = apiEnvelopeSchema(
+  z.array(confirmedSettingSchema),
+);
+
+export const chapterStatusSchema = z.enum([
+  "planned",
+  "writing",
+  "waiting_review",
+  "changes_requested",
+  "approved",
+  "locked",
+  "published",
+  "rejected",
+]);
+export type ChapterStatus = z.infer<typeof chapterStatusSchema>;
+
+export const chapterSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  number: z.number().int().positive(),
+  title: z.string(),
+  status: chapterStatusSchema,
+  version: z.number().int().positive(),
+  wordCount: z.number().int().nonnegative(),
+  currentVersionId: uuidV7Schema,
+});
+export type Chapter = z.infer<typeof chapterSchema>;
+
+export const chapterBriefSchema = z
+  .object({
+    goal: z.string().trim().min(1).max(5_000),
+    pov: z.string().trim().min(1).max(200),
+    location: z.string().trim().min(1).max(200),
+    sceneBeats: z.array(z.string().trim().min(1).max(1_000)).min(1).max(50),
+    requiredFacts: z.array(z.string().trim().min(1).max(1_000)).min(1).max(50),
+  })
+  .strict();
+export type ChapterBrief = z.infer<typeof chapterBriefSchema>;
+
+export const chapterReadinessItemSchema = z.object({
+  key: z.enum(["story_bible", "settings", "brief"]),
+  label: z.string().min(1),
+  ready: z.boolean(),
+  missing: z.array(z.string().min(1)),
+});
+export type ChapterReadinessItem = z.infer<typeof chapterReadinessItemSchema>;
+
+export const chapterReadinessSchema = z.object({
+  status: z.enum(["not_ready", "partial", "ready"]),
+  completed: z.number().int().min(0).max(3),
+  total: z.literal(3),
+  canStartWriting: z.boolean(),
+  items: z.array(chapterReadinessItemSchema).length(3),
+});
+export type ChapterReadiness = z.infer<typeof chapterReadinessSchema>;
+
+export const chapterVersionSchema = z.object({
+  id: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  version: z.number().int().positive(),
+  content: z.string(),
+  contentHash: z.string().min(1),
+  versionNodeId: uuidV7Schema,
+  parentNodeId: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+});
+export type ChapterVersion = z.infer<typeof chapterVersionSchema>;
+
+export const chapterWorkspaceSchema = chapterSchema.omit({ currentVersionId: true }).extend({
+  currentVersionId: uuidV7Schema.nullable(),
+  currentVersion: chapterVersionSchema.nullable(),
+  brief: chapterBriefSchema.nullable(),
+  readiness: chapterReadinessSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type ChapterWorkspace = z.infer<typeof chapterWorkspaceSchema>;
+
+export const chapterCreateRequestSchema = z
+  .object({
+    number: z.number().int().positive().max(10_000),
+    title: z.string().trim().min(1).max(200),
+    brief: chapterBriefSchema,
+  })
+  .strict();
+export type ChapterCreateRequest = z.infer<typeof chapterCreateRequestSchema>;
+
+export const chapterPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(200).optional(),
+    brief: chapterBriefSchema.optional(),
+  })
+  .strict()
+  .refine((input) => input.title !== undefined || input.brief !== undefined, {
+    message: "At least one chapter field is required",
+  });
+export type ChapterPatchRequest = z.infer<typeof chapterPatchRequestSchema>;
+
+export const chapterVersionCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    content: z
+      .string()
+      .min(1)
+      .max(200_000)
+      .refine((content) => content.trim().length > 0, "Chapter content cannot be blank"),
+  })
+  .strict();
+export type ChapterVersionCreateRequest = z.infer<typeof chapterVersionCreateRequestSchema>;
+
+export const chapterWorkspaceListResponseSchema = apiEnvelopeSchema(
+  z.array(chapterWorkspaceSchema),
+);
+export const chapterWorkspaceResponseSchema = apiEnvelopeSchema(chapterWorkspaceSchema);
+export const chapterReadinessResponseSchema = apiEnvelopeSchema(chapterReadinessSchema);
+export const chapterVersionListResponseSchema = apiEnvelopeSchema(z.array(chapterVersionSchema));
+export const chapterVersionSaveDataSchema = z.object({
+  chapter: chapterWorkspaceSchema,
+  version: chapterVersionSchema,
+});
+export type ChapterVersionSaveData = z.infer<typeof chapterVersionSaveDataSchema>;
+export const chapterVersionSaveResponseSchema = apiEnvelopeSchema(chapterVersionSaveDataSchema);
+
+export const chapterReviewActionSchema = z.enum(["approve", "reject"]);
+export type ChapterReviewAction = z.infer<typeof chapterReviewActionSchema>;
+
+export const chapterReviewRequestSchema = z.object({
+  action: chapterReviewActionSchema,
+  version: z.number().int().positive(),
+  reason: z.string().trim().min(1).max(1_000).optional(),
+});
+export type ChapterReviewRequest = z.infer<typeof chapterReviewRequestSchema>;
+
+export const chapterReviewDecisionSchema = z.object({
+  id: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  action: chapterReviewActionSchema,
+  actorId: uuidV7Schema,
+  actorName: z.string().min(1),
+  reason: z.string().min(1),
+  decidedAt: z.string().datetime(),
+});
+export type ChapterReviewDecision = z.infer<typeof chapterReviewDecisionSchema>;
+
+export const chapterReviewDataSchema = z.object({
+  chapter: chapterWorkspaceSchema,
+  decision: chapterReviewDecisionSchema,
+});
+export type ChapterReviewData = z.infer<typeof chapterReviewDataSchema>;
+export const chapterReviewResponseSchema = apiEnvelopeSchema(chapterReviewDataSchema);
+
+export const canonCommitRequestSchema = z.object({
+  chapterVersionId: uuidV7Schema,
+});
+export type CanonCommitRequest = z.infer<typeof canonCommitRequestSchema>;
+
+export const factProposalStatusSchema = z.enum([
+  "proposed",
+  "confirmed",
+  "modified_confirmed",
+  "rejected",
+  "superseded",
+]);
+export type FactProposalStatus = z.infer<typeof factProposalStatusSchema>;
+
+export const factRiskSchema = z.enum(["low", "medium", "high"]);
+export type FactRisk = z.infer<typeof factRiskSchema>;
+
+export const factDecisionActionSchema = z.enum([
+  "confirm",
+  "modify_confirm",
+  "reject",
+  "supersede",
+]);
+export type FactDecisionAction = z.infer<typeof factDecisionActionSchema>;
+
+export const factDecisionSchema = z.object({
+  id: uuidV7Schema,
+  action: factDecisionActionSchema,
+  actorId: uuidV7Schema,
+  actorName: z.string().min(1),
+  reason: z.string().min(1),
+  decidedAt: z.string().datetime(),
+});
+export type FactDecision = z.infer<typeof factDecisionSchema>;
+
+export const factProposalSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  sourceVersionId: uuidV7Schema,
+  subject: z.string().min(1),
+  predicate: z.string().min(1),
+  object: z.string().min(1),
+  sourceSentence: z.string().min(1),
+  status: factProposalStatusSchema,
+  confidence: z.number().min(0).max(1),
+  risk: factRiskSchema,
+  required: z.boolean(),
+  decision: factDecisionSchema.nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type FactProposal = z.infer<typeof factProposalSchema>;
+
+export const factProposalModificationSchema = z
+  .object({
+    subject: z.string().trim().min(1).max(500).optional(),
+    predicate: z.string().trim().min(1).max(500).optional(),
+    object: z.string().trim().min(1).max(5_000).optional(),
+    risk: factRiskSchema.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one edited field is required",
+  });
+export type FactProposalModification = z.infer<typeof factProposalModificationSchema>;
+
+export const factProposalDecisionRequestSchema = z
+  .object({
+    action: factDecisionActionSchema,
+    reason: z.string().trim().min(1).max(1_000).optional(),
+    modified: factProposalModificationSchema.optional(),
+  })
+  .superRefine((input, context) => {
+    if (input.action === "modify_confirm" && !input.modified) {
+      context.addIssue({
+        code: "custom",
+        path: ["modified"],
+        message: "Modified confirmation requires at least one edited field",
+      });
+    }
+    if (input.action !== "modify_confirm" && input.modified) {
+      context.addIssue({
+        code: "custom",
+        path: ["modified"],
+        message: "Edited fields are only allowed for modified confirmation",
+      });
+    }
+  });
+export type FactProposalDecisionRequest = z.infer<typeof factProposalDecisionRequestSchema>;
+
+export const factProposalListResponseSchema = apiEnvelopeSchema(z.array(factProposalSchema));
+export const factProposalResponseSchema = apiEnvelopeSchema(factProposalSchema);
+
+export const canonCommitFactSchema = z.object({
+  id: uuidV7Schema,
+  proposalId: uuidV7Schema,
+  decisionId: uuidV7Schema,
+  sourceChapterId: uuidV7Schema,
+  validFromChapter: z.number().int().positive(),
+  validToChapter: z.number().int().positive().nullable(),
+  subject: z.string().min(1),
+  predicate: z.string().min(1),
+  object: z.string().min(1),
+  risk: factRiskSchema,
+  required: z.boolean(),
+  status: z.enum(["confirmed", "modified_confirmed"]),
+});
+export type CanonCommitFact = z.infer<typeof canonCommitFactSchema>;
+
+export const canonCommitDecisionSchema = z.object({
+  proposalId: uuidV7Schema,
+  decisionId: uuidV7Schema,
+  action: factDecisionActionSchema,
+  resultingStatus: factProposalStatusSchema,
+  subject: z.string().min(1),
+  predicate: z.string().min(1),
+  object: z.string().min(1),
+  risk: factRiskSchema,
+  required: z.boolean(),
+  sourceSentence: z.string().min(1),
+  actorName: z.string().min(1),
+  reason: z.string().min(1),
+  decidedAt: z.string().datetime(),
+});
+export type CanonCommitDecision = z.infer<typeof canonCommitDecisionSchema>;
+
+export const canonCommitSummarySchema = z.object({
+  factCount: z.number().int().nonnegative(),
+  rejectedCount: z.number().int().nonnegative(),
+  text: z.string().min(1),
+});
+export type CanonCommitSummary = z.infer<typeof canonCommitSummarySchema>;
+
+export const canonCommitSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  chapterVersionId: uuidV7Schema,
+  versionNodeId: uuidV7Schema,
+  sourceChapter: z.object({
+    id: uuidV7Schema,
+    number: z.number().int().positive(),
+    title: z.string().min(1),
+  }),
+  decisions: z.array(canonCommitDecisionSchema),
+  facts: z.array(canonCommitFactSchema),
+  summary: canonCommitSummarySchema,
+  createdAt: z.string().datetime(),
+});
+export type CanonCommit = z.infer<typeof canonCommitSchema>;
+
+export const canonCommitResponseSchema = apiEnvelopeSchema(canonCommitSchema);
+export const canonCommitListResponseSchema = apiEnvelopeSchema(z.array(canonCommitSchema));
+
+export const manuscriptImportConfirmRequestSchema = z.object({
+  title: z.string().trim().min(1).max(120),
+  penName: z.string().trim().min(1).max(50).optional(),
+  genre: workGenreSchema.default("xianxia"),
+  scaleTarget: workScaleTargetSchema.default("long"),
+  chapterLengthTarget: z.number().int().min(1000).max(10000).default(3000),
+  chapters: z
+    .array(
+      z.object({
+        title: z.string().trim().min(1).max(200),
+        content: z.string().min(1),
+      }),
+    )
+    .min(1)
+    .max(1_000),
+});
+export type ManuscriptImportConfirmRequest = z.infer<typeof manuscriptImportConfirmRequestSchema>;
+
+export const manuscriptImportConfirmDataSchema = z.object({
+  work: workOverviewSchema,
+  chapters: z.array(chapterSchema),
+  chapterVersions: z.array(chapterVersionSchema),
+});
+export type ManuscriptImportConfirmData = z.infer<typeof manuscriptImportConfirmDataSchema>;
+
+export const manuscriptImportConfirmResponseSchema = apiEnvelopeSchema(
+  manuscriptImportConfirmDataSchema,
+);
+
 export const serviceNameSchema = z.enum(["api", "worker"]);
 export type ServiceName = z.infer<typeof serviceNameSchema>;
 
@@ -374,6 +1220,7 @@ export const WORKER_JOB_STEPS = [
 ] as const;
 
 export const workerJobStepSchema = z.enum(WORKER_JOB_STEPS);
+export type WorkerJobStep = z.infer<typeof workerJobStepSchema>;
 
 export const generateChapterJobSchema = z.object({
   jobId: uuidV7Schema,
@@ -398,3 +1245,160 @@ export type GenerateChapterJob = z.infer<typeof generateChapterJobSchema>;
 
 export const workerJobSchema = z.discriminatedUnion("jobType", [generateChapterJobSchema]);
 export type WorkerJob = z.infer<typeof workerJobSchema>;
+
+export const generationBudgetSchema = generateChapterJobSchema.shape.budget;
+export type GenerationBudget = z.infer<typeof generationBudgetSchema>;
+
+export const generationJobStatusSchema = z.enum([
+  "queued",
+  "preparing",
+  "running",
+  "paused",
+  "waiting_review",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export type GenerationJobStatus = z.infer<typeof generationJobStatusSchema>;
+
+export const generationCostSchema = z.object({
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  totalTokens: z.number().int().nonnegative(),
+  costCny: z.number().nonnegative(),
+});
+export type GenerationCost = z.infer<typeof generationCostSchema>;
+
+export const generationCheckpointSchema = z.object({
+  step: workerJobStepSchema,
+  payload: z.record(z.string(), z.unknown()),
+});
+export type GenerationCheckpoint = z.infer<typeof generationCheckpointSchema>;
+
+export const generationJobErrorSchema = z.object({
+  code: errorCodeSchema,
+  message: z.string().min(1),
+});
+export type GenerationJobError = z.infer<typeof generationJobErrorSchema>;
+
+export const contextSourceTypeSchema = z.enum([
+  "story_bible",
+  "setting",
+  "chapter_brief",
+  "chapter_version",
+  "style",
+]);
+export type ContextSourceType = z.infer<typeof contextSourceTypeSchema>;
+
+export const contextSourceRefSchema = z.object({
+  sourceType: contextSourceTypeSchema,
+  sourceId: uuidV7Schema,
+  label: z.string().min(1),
+  citation: z.string().min(1),
+});
+export type ContextSourceRef = z.infer<typeof contextSourceRefSchema>;
+
+export const contextSourcePrioritySchema = z.enum(["required", "high", "normal"]);
+export type ContextSourcePriority = z.infer<typeof contextSourcePrioritySchema>;
+
+export const contextPackSelectedSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  priority: contextSourcePrioritySchema,
+  content: z.string().min(1),
+  tokenCount: z.number().int().positive(),
+  sourceRefs: z.array(contextSourceRefSchema).min(1),
+});
+export type ContextPackSelected = z.infer<typeof contextPackSelectedSchema>;
+
+export const contextPackEvictionSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  reason: z.literal("token_budget"),
+  tokenCount: z.number().int().positive(),
+});
+export type ContextPackEviction = z.infer<typeof contextPackEvictionSchema>;
+
+export const contextPackVersionSchema = z.object({
+  id: uuidV7Schema,
+  jobId: uuidV7Schema,
+  version: z.number().int().positive(),
+  compilerVersion: z.string().min(1),
+  tokenBudget: z.number().int().positive(),
+  tokenUsed: z.number().int().nonnegative(),
+  selected: z.array(contextPackSelectedSchema),
+  evicted: z.array(contextPackEvictionSchema),
+  sourceRefs: z.array(contextSourceRefSchema),
+  createdAt: z.string().datetime(),
+});
+export type ContextPackVersion = z.infer<typeof contextPackVersionSchema>;
+
+export const contextPackPreviewSchema = z.object({
+  compilerVersion: z.string().min(1),
+  tokenBudget: z.number().int().positive(),
+  tokenUsed: z.number().int().nonnegative(),
+  selected: z.array(contextPackSelectedSchema),
+  evicted: z.array(contextPackEvictionSchema),
+  sourceRefs: z.array(contextSourceRefSchema),
+});
+export type ContextPackPreview = z.infer<typeof contextPackPreviewSchema>;
+
+export const generationJobSchema = z.object({
+  id: uuidV7Schema,
+  type: z.literal(GENERATE_CHAPTER_JOB),
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  status: generationJobStatusSchema,
+  progress: z.number().int().min(0).max(100),
+  currentStep: workerJobStepSchema,
+  budget: generationBudgetSchema,
+  cost: generationCostSchema,
+  checkpoint: generationCheckpointSchema,
+  error: generationJobErrorSchema.nullable(),
+  contextPack: contextPackVersionSchema.nullable(),
+  createdAt: z.string().datetime(),
+  startedAt: z.string().datetime().nullable(),
+  finishedAt: z.string().datetime().nullable(),
+});
+export type GenerationJob = z.infer<typeof generationJobSchema>;
+
+export const generateChapterRequestSchema = z
+  .object({
+    budget: generationBudgetSchema.default({
+      maxCostCny: 2.5,
+      maxTokens: 30_000,
+      maxRevisionRounds: 2,
+    }),
+  })
+  .strict();
+export type GenerateChapterRequest = z.infer<typeof generateChapterRequestSchema>;
+
+export const jobEventTypeSchema = z.enum([
+  "job.created",
+  "job.preparing",
+  "job.step.started",
+  "job.step.succeeded",
+  "job.step.failed",
+  "job.progress",
+  "job.waiting_review",
+  "job.paused",
+  "job.resumed",
+  "job.canceled",
+  "job.completed",
+  "job.failed",
+]);
+export type JobEventType = z.infer<typeof jobEventTypeSchema>;
+
+export const jobEventSchema = z.object({
+  eventId: uuidV7Schema,
+  type: jobEventTypeSchema,
+  occurredAt: z.string().datetime(),
+  data: z.record(z.string(), z.unknown()),
+});
+export type JobEvent = z.infer<typeof jobEventSchema>;
+
+export const generationJobResponseSchema = apiEnvelopeSchema(generationJobSchema);
+export const generationJobListResponseSchema = apiEnvelopeSchema(z.array(generationJobSchema));
+export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
+export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);

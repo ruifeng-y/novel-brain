@@ -1,0 +1,24 @@
+{
+  "status": "succeeded",
+  "provider": "deepseek",
+  "model": "deepseek-flash",
+  "startedAt": "2026-11-05T08:47:41.679Z",
+  "finishedAt": "2026-11-05T08:47:42.597Z",
+  "latencyMs": 918,
+  "generation": {
+    "textHash": "884e700e1e13de3176fc2e5aa959a53f3774449125370ac3982418301af8d29a",
+    "textLength": 10,
+    "finishReason": "stop"
+  },
+  "usage": {
+    "inputTokens": 37,
+    "outputTokens": 8,
+    "totalTokens": 45
+  },
+  "cost": {
+    "estimatedCny": 0.00009,
+    "pricingBasis": "m0-usage-baseline"
+  },
+  "providerResponseId": "94eea13d-3784-4e0b-a6ac-83aa08368fa7",
+  "networkCalls": 1
+}

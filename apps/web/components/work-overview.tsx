@@ -108,15 +108,17 @@ export function WorkOverview({ workId }: { workId: string }) {
             <ArrowLeft size={15} aria-hidden="true" />
             返回工作台
           </Link>
-          <button
-            className="btn btn-primary"
-            disabled
-            title="写作台将在后续章节能力中开放"
-            type="button"
-          >
-            <PenLine size={15} aria-hidden="true" />
-            继续写作
-          </button>
+          {work.status === "archived" ? (
+            <button className="btn btn-primary" disabled type="button">
+              <PenLine size={15} aria-hidden="true" />
+              继续写作
+            </button>
+          ) : (
+            <Link className="btn btn-primary" href={`/workspace/${workId}/write`}>
+              <PenLine size={15} aria-hidden="true" />
+              继续写作
+            </Link>
+          )}
         </div>
       </section>
 
@@ -187,18 +189,31 @@ export function WorkOverview({ workId }: { workId: string }) {
           </div>
           <ul className="overview-next-list">
             <li>
-              <BookMarked size={16} aria-hidden="true" />
-              <div>
-                <strong>完善故事圣经</strong>
-                <small>九卡会在故事圣经能力中开放</small>
-              </div>
+              <Link className="overview-next-link" href={`/workspace/${workId}/bible`}>
+                <BookMarked size={16} aria-hidden="true" />
+                <div>
+                  <strong>完善故事圣经</strong>
+                  <small>生成、编辑并锁定九卡故事方向</small>
+                </div>
+              </Link>
             </li>
             <li>
-              <PenLine size={16} aria-hidden="true" />
-              <div>
-                <strong>准备第一章</strong>
-                <small>写作台会沿用当前主创作线</small>
-              </div>
+              <Link className="overview-next-link" href={`/workspace/${workId}/settings`}>
+                <BookMarked size={16} aria-hidden="true" />
+                <div>
+                  <strong>整理最小设定</strong>
+                  <small>世界规则、人物状态和金手指</small>
+                </div>
+              </Link>
+            </li>
+            <li>
+              <Link className="overview-next-link" href={`/workspace/${workId}/outline`}>
+                <PenLine size={16} aria-hidden="true" />
+                <div>
+                  <strong>准备第一章</strong>
+                  <small>先写章纲，再进入写作台</small>
+                </div>
+              </Link>
             </li>
           </ul>
         </aside>

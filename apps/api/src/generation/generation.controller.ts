@@ -1,0 +1,237 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  type MessageEvent,
+  Param,
+  Post,
+  Query,
+  Req,
+  Sse,
+  UseGuards,
+} from "@nestjs/common";
+import {
+  contextPackPreviewResponseSchema,
+  generateChapterRequestSchema,
+  generationJobListResponseSchema,
+  generationJobResponseSchema,
+  uuidV7Schema,
+  type JobEvent,
+} from "@novel-brain/contracts";
+import {
+  ApiAcceptedResponse,
+  ApiBody,
+  ApiHeader,
+  ApiOkResponse,
+  ApiTags,
+  type SchemaObject,
+} from "@nestjs/swagger";
+import { createRequestId } from "@novel-brain/core";
+import { map, type Observable } from "rxjs";
+import { z } from "zod";
+
+import type { AuthenticatedRequest } from "../auth/auth.types";
+import { CsrfGuard } from "../auth/csrf.guard";
+import { SessionAuthGuard } from "../auth/session.guard";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { GenerationService } from "./generation.service";
+
+function schemaOf(schema: z.ZodType, io: "input" | "output" = "output"): SchemaObject {
+  return z.toJSONSchema(schema, { target: "openapi-3.0", io }) as SchemaObject;
+}
+
+const generateBodyJsonSchema = schemaOf(generateChapterRequestSchema, "input");
+const jobJsonSchema = schemaOf(generationJobResponseSchema);
+const jobListJsonSchema = schemaOf(generationJobListResponseSchema);
+const contextPreviewJsonSchema = schemaOf(contextPackPreviewResponseSchema);
+
+@ApiTags("generation")
+@Controller("works/:workId/branches/:branchId")
+@UseGuards(SessionAuthGuard, CsrfGuard)
+export class GenerationController {
+  constructor(private readonly service: GenerationService) {}
+
+  @Post("chapters/:chapterId/generate")
+  @HttpCode(202)
+  @ApiBody({ schema: generateBodyJsonSchema })
+  @ApiHeader({
+    name: "Idempotency-Key",
+    required: true,
+    description: "Stable key for replaying the same chapter generation request",
+  })
+  @ApiAcceptedResponse({ description: "Queued chapter generation job", schema: jobJsonSchema })
+  async start(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("chapterId") chapterId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return generationJobResponseSchema.parse({
+      data: await this.service.start(
+        this.userId(request),
+        this.context(workId, branchId, chapterId),
+        idempotencyKey ?? "",
+        generateChapterRequestSchema.parse(body ?? {}),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Get("chapters/:chapterId/context-preview")
+  @ApiOkResponse({
+    description: "Compiled chapter context preview",
+    schema: contextPreviewJsonSchema,
+  })
+  async contextPreview(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("chapterId") chapterId: string,
+    @Query("tokenBudget") tokenBudget?: string,
+  ) {
+    const requestId = createRequestId();
+    return contextPackPreviewResponseSchema.parse({
+      data: await this.service.contextPreview(
+        this.userId(request),
+        this.context(workId, branchId, chapterId),
+        tokenBudget ? z.coerce.number().int().positive().parse(tokenBudget) : 30_000,
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Get("jobs")
+  @ApiOkResponse({ description: "Chapter generation jobs", schema: jobListJsonSchema })
+  async list(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Query("chapterId") chapterId: string,
+  ) {
+    const requestId = createRequestId();
+    return generationJobListResponseSchema.parse({
+      data: await this.service.list(
+        this.userId(request),
+        this.context(workId, branchId, chapterId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Get("jobs/:jobId")
+  @ApiOkResponse({ description: "Generation job and checkpoint", schema: jobJsonSchema })
+  async get(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("jobId") jobId: string,
+  ) {
+    const requestId = createRequestId();
+    return generationJobResponseSchema.parse({
+      data: await this.service.get(
+        this.userId(request),
+        this.branchContext(workId, branchId),
+        uuidV7Schema.parse(jobId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("jobs/:jobId/cancel")
+  @HttpCode(200)
+  @ApiOkResponse({ description: "Cancelled generation job", schema: jobJsonSchema })
+  async cancel(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("jobId") jobId: string,
+  ) {
+    const requestId = createRequestId();
+    return generationJobResponseSchema.parse({
+      data: await this.service.cancel(
+        this.userId(request),
+        this.branchContext(workId, branchId),
+        uuidV7Schema.parse(jobId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("jobs/:jobId/retry")
+  @HttpCode(202)
+  @ApiAcceptedResponse({ description: "Retried generation job", schema: jobJsonSchema })
+  async retry(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("jobId") jobId: string,
+  ) {
+    const requestId = createRequestId();
+    return generationJobResponseSchema.parse({
+      data: await this.service.retry(
+        this.userId(request),
+        this.branchContext(workId, branchId),
+        uuidV7Schema.parse(jobId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Sse("jobs/:jobId/events")
+  events(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("jobId") jobId: string,
+    @Headers("last-event-id") lastEventId?: string,
+  ): Observable<MessageEvent> {
+    return this.service
+      .streamEvents(
+        this.userId(request),
+        this.branchContext(workId, branchId),
+        uuidV7Schema.parse(jobId),
+        lastEventId ? uuidV7Schema.parse(lastEventId) : undefined,
+      )
+      .pipe(
+        map((event: JobEvent) => ({
+          id: event.eventId,
+          type: event.type,
+          data: event,
+        })),
+      );
+  }
+
+  private userId(request: AuthenticatedRequest): string {
+    if (!request.auth) {
+      throw new Error("Authenticated request is missing auth context");
+    }
+    return request.auth.user.id;
+  }
+
+  private context(workId: string, branchId: string, chapterId: string) {
+    return {
+      workId: uuidV7Schema.parse(workId),
+      branchId: uuidV7Schema.parse(branchId),
+      chapterId: uuidV7Schema.parse(chapterId),
+    };
+  }
+
+  private branchContext(workId: string, branchId: string) {
+    return {
+      workId: uuidV7Schema.parse(workId),
+      branchId: uuidV7Schema.parse(branchId),
+    };
+  }
+}

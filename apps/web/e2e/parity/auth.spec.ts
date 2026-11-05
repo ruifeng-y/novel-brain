@@ -26,6 +26,20 @@ test("auth page matches the shell at four viewports", async ({ page }, testInfo)
   }
 });
 
+test("shows loading and disabled states while sending a verification code", async ({ page }) => {
+  await page.route("**/api/v1/auth/register/send-code", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
+
+  await page.goto("/register");
+  await page.getByLabel("邮箱").fill(uniqueEmail("auth-loading"));
+  await page.getByRole("button", { name: "发送验证码" }).click();
+
+  await expect(page.getByRole("button", { name: "发送中" })).toBeDisabled();
+  await expect(page.getByText("验证码已发送，请检查邮箱。")).toBeVisible();
+});
+
 test("registers, enters the workspace and logs out", async ({ page }) => {
   const email = uniqueEmail("register");
   await page.goto("/register");

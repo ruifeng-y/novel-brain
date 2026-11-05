@@ -71,6 +71,90 @@
       "when": 1793806864017,
       "tag": "0009_overconfident_lifeguard",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793837305546,
+      "tag": "0010_magical_pepper_potts",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793837685614,
+      "tag": "0011_living_earthquake",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793841412034,
+      "tag": "0012_greedy_electro",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793841839338,
+      "tag": "0013_high_raider",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793843747710,
+      "tag": "0014_huge_kinsey_walden",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793846278167,
+      "tag": "0015_woozy_riptide",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793851153134,
+      "tag": "0016_generation_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793853687405,
+      "tag": "0017_common_triton",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793855678660,
+      "tag": "0018_third_beyonder",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793856029318,
+      "tag": "0019_odd_zodiak",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793856817678,
+      "tag": "0020_dry_rhodey",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1793862652017,
+      "tag": "0021_colorful_namora",
+      "breakpoints": true
     }
   ]
 }

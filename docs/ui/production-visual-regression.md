@@ -31,6 +31,14 @@ Suggested Playwright assertion (keep the same screenshot options for actual and 
 - scale: css
 - maxDiffPixelRatio: 0.005
 
+The current M0 baseline is rendered with Playwright 1.64.1 Chromium in the
+`Production CI` `ubuntu-latest` job, locale `zh-CN`, timezone `Asia/Shanghai`,
+light color scheme, reduced motion, device scale factor 1 and fixed API
+timestamps. The approved baseline evidence is
+[Production CI #42005502769](https://github.com/ruifeng-y/novel-brain/actions/runs/42005502769).
+Changing the runner image, font packages or browser revision requires a new
+controlled baseline update and author approval.
+
 The repository's installed Playwright version must be used consistently; do not silently upgrade the browser or screenshot renderer while refreshing baselines.
 
 ## 3. Tolerance and masks
@@ -50,6 +58,8 @@ The repository's installed Playwright version must be used consistently; do not 
 5. Obtain explicit author sign-off for the initial production baseline.
 6. Commit the four production Golden Screenshots and link the artifacts and sign-off in the owning issue.
 7. Thereafter, every PR that changes a page, shared component, design token or relevant behavior runs affected visual tests. An intentional baseline change must include updated images, diff artifacts and approval evidence in the same PR.
+
+The controlled update command is `pnpm test:e2e:update`. In CI, the `Production CI` workflow exposes the same operation through the `update_golden` workflow-dispatch input and uploads the regenerated `artifacts/ui/golden/` files as evidence. Normal pull-request runs never update baselines automatically.
 
 ## 5. CI failure artifacts
 

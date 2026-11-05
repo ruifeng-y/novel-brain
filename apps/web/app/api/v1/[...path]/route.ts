@@ -26,7 +26,9 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
     "accept",
     "content-type",
     "cookie",
+    "idempotency-key",
     "origin",
+    "last-event-id",
     "user-agent",
     "x-csrf-token",
   ]) {
@@ -43,7 +45,7 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
       headers: requestHeaders,
     };
     if (request.method !== "GET" && request.method !== "HEAD") {
-      init.body = await request.text();
+      init.body = await request.arrayBuffer();
     }
     const response = await fetch(target, init);
 
@@ -51,6 +53,10 @@ async function proxy(request: NextRequest, context: RouteContext): Promise<Respo
     const contentType = response.headers.get("content-type");
     if (contentType) {
       responseHeaders.set("content-type", contentType);
+    }
+    if (contentType?.includes("text/event-stream")) {
+      responseHeaders.set("cache-control", "no-cache, no-transform");
+      responseHeaders.set("x-accel-buffering", "no");
     }
     for (const cookie of response.headers.getSetCookie()) {
       responseHeaders.append("set-cookie", cookie);

@@ -13,14 +13,18 @@ import { Queue, Worker as BullWorker, type Job } from "bullmq";
 import Redis from "ioredis";
 import pino, { type Logger } from "pino";
 
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { GenerationJobProcessor } from "./generation/generation.processor";
+
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger: Logger;
   private readonly connection: Redis;
   private readonly queue: Queue<WorkerJob>;
-  private readonly worker: BullWorker<WorkerJob, never>;
+  private readonly worker: BullWorker<WorkerJob, void>;
 
-  constructor() {
+  constructor(private readonly processor: GenerationJobProcessor) {
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
       throw new Error("REDIS_URL is required");
@@ -37,7 +41,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     this.queue = new Queue<WorkerJob>(WORKER_QUEUE_NAME, {
       connection: this.connection,
     });
-    this.worker = new BullWorker<WorkerJob, never>(
+    this.worker = new BullWorker<WorkerJob, void>(
       WORKER_QUEUE_NAME,
       (job) => this.processJob(job),
       {
@@ -67,17 +71,17 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     }
   }
 
-  private async processJob(job: Job<WorkerJob>): Promise<never> {
+  private async processJob(job: Job<WorkerJob>): Promise<void> {
     const payload = workerJobSchema.parse(job.data);
-    this.logger.warn(
+    this.logger.info(
       {
-        event: "worker.job.execution_unavailable",
+        event: "worker.job.started",
         jobId: payload.jobId,
         jobType: payload.jobType,
         checkpointStep: payload.checkpoint.step,
       },
-      "Typed job received; durable execution belongs to a later ticket",
+      "Processing typed generation job",
     );
-    throw new Error("JOB_EXECUTION_NOT_IMPLEMENTED");
+    await this.processor.process(payload);
   }
 }

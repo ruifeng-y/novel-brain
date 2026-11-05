@@ -2,11 +2,14 @@
 
 import {
   Activity,
+  BookMarked,
   BookOpen,
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
+  ListTree,
   LogOut,
+  PenLine,
   Settings,
 } from "lucide-react";
 import type { AuthUser } from "@novel-brain/contracts";
@@ -21,6 +24,14 @@ const navigation = [
   { href: "/health", label: "服务状态", icon: Activity },
 ];
 
+const workNavigation = [
+  { suffix: "overview", label: "作品总览", icon: BookOpen },
+  { suffix: "bible", label: "故事圣经", icon: BookMarked },
+  { suffix: "settings", label: "设定中心", icon: Settings },
+  { suffix: "outline", label: "大纲工作台", icon: ListTree },
+  { suffix: "write", label: "写作台", icon: PenLine },
+];
+
 export function AppShell({
   children,
   user,
@@ -28,13 +39,24 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const workPathMatch = pathname.match(/^\/workspace\/([^/]+)\/([^/]+)/u);
+  const workId = workPathMatch?.[1];
+  const workSection = workPathMatch?.[2];
   const current = pathname.endsWith("/overview")
     ? "作品总览"
-    : pathname === "/workspace/new-project"
-      ? "新建作品"
-      : pathname.startsWith("/workspace")
-        ? "工作台"
-        : "服务状态";
+    : pathname.endsWith("/bible")
+      ? "故事圣经"
+      : pathname.endsWith("/settings") && pathname.startsWith("/workspace/")
+        ? "设定中心"
+        : pathname.endsWith("/outline")
+          ? "大纲工作台"
+          : pathname.endsWith("/write")
+            ? "写作台"
+            : pathname === "/workspace/new-project"
+              ? "新建作品"
+              : pathname.startsWith("/workspace")
+                ? "工作台"
+                : "服务状态";
 
   async function logout() {
     setLoggingOut(true);
@@ -95,6 +117,26 @@ export function AppShell({
               </Link>
             );
           })}
+          {workId ? (
+            <>
+              <p className="nav-label">当前作品</p>
+              {workNavigation.map((item) => {
+                const Icon = item.icon;
+                const active = workSection === item.suffix;
+                return (
+                  <Link
+                    className={`nav-item${active ? " active" : ""}`}
+                    href={`/workspace/${workId}/${item.suffix}`}
+                    key={item.suffix}
+                    aria-current={active ? "page" : undefined}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </>
+          ) : null}
         </nav>
 
         <div className="sidebar-bottom">

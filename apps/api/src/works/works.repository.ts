@@ -1,16 +1,20 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   auditLogs,
+  chapters,
   createDatabaseClient,
   createDatabasePool,
+  entities,
+  entityVersions,
   genrePacks,
   modelConfigs,
+  storyBibles,
   versionNodes,
   workBranches,
   works,
   type DatabaseClient,
 } from "@novel-brain/db";
-import type { WorkListQuery } from "@novel-brain/contracts";
+import type { ImportCandidateType, WorkListQuery } from "@novel-brain/contracts";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
@@ -26,6 +30,16 @@ export interface WorksAuditContext {
   requestId: string;
   ip: string;
   userAgent: string;
+}
+
+export interface InitialSettingEntity {
+  type: ImportCandidateType;
+  name: string;
+  summary: string;
+  description: string;
+  tags: string[];
+  attributes: Record<string, unknown>;
+  importCandidateId: string;
 }
 
 @Injectable()
@@ -140,6 +154,48 @@ export class WorksRepository implements OnModuleDestroy {
     });
   }
 
+  async isStoryBibleLocked(userId: string, workId: string, branchId: string): Promise<boolean> {
+    return this.withTenant(userId, async (transaction) => {
+      const [storyBible] = await transaction
+        .select({ id: storyBibles.id })
+        .from(storyBibles)
+        .where(
+          and(
+            eq(storyBibles.userId, userId),
+            eq(storyBibles.workId, workId),
+            eq(storyBibles.branchId, branchId),
+            eq(storyBibles.status, "locked"),
+          ),
+        )
+        .limit(1);
+      return Boolean(storyBible);
+    });
+  }
+
+  async hasReadyChapterBrief(userId: string, workId: string, branchId: string): Promise<boolean> {
+    return this.withTenant(userId, async (transaction) => {
+      const [chapter] = await transaction
+        .select({ id: chapters.id })
+        .from(chapters)
+        .where(
+          and(
+            eq(chapters.userId, userId),
+            eq(chapters.workId, workId),
+            eq(chapters.branchId, branchId),
+            sql`coalesce(${chapters.brief}->>'goal', '') <> ''`,
+            sql`coalesce(${chapters.brief}->>'pov', '') <> ''`,
+            sql`coalesce(${chapters.brief}->>'location', '') <> ''`,
+            sql`jsonb_typeof(${chapters.brief}->'sceneBeats') = 'array'`,
+            sql`jsonb_array_length(${chapters.brief}->'sceneBeats') > 0`,
+            sql`jsonb_typeof(${chapters.brief}->'requiredFacts') = 'array'`,
+            sql`jsonb_array_length(${chapters.brief}->'requiredFacts') > 0`,
+          ),
+        )
+        .limit(1);
+      return Boolean(chapter);
+    });
+  }
+
   async findGenrePackByKey(key: string, version = 1): Promise<GenrePackRecord | undefined> {
     const [pack] = await this.db
       .select()
@@ -170,6 +226,7 @@ export class WorksRepository implements OnModuleDestroy {
     idea: string | null;
     templatePackId: string | null;
     settings: Record<string, unknown>;
+    initialSettingEntities?: InitialSettingEntity[];
     idempotencyKey: string | null;
     audit: WorksAuditContext;
   }): Promise<{ work: WorkRecord; branch: WorkBranchRecord }> {
@@ -259,13 +316,101 @@ export class WorksRepository implements OnModuleDestroy {
         actorId: input.userId,
         message: "创建作品",
       });
-      const [branchWithHead] = await transaction
+      let [branchWithHead] = await transaction
         .update(workBranches)
         .set({ headNodeId: input.nodeId, updatedAt: new Date() })
         .where(eq(workBranches.id, branch.id))
         .returning();
       if (!branchWithHead) {
         throw new Error("Failed to set initial branch head");
+      }
+      let headNodeId = branchWithHead.headNodeId;
+      for (const setting of input.initialSettingEntities ?? []) {
+        const now = new Date();
+        const entityId = uuidv7();
+        const entityVersionId = uuidv7();
+        const versionNodeId = uuidv7();
+        const [entity] = await transaction
+          .insert(entities)
+          .values({
+            id: entityId,
+            workId: work.id,
+            branchId: branch.id,
+            userId: input.userId,
+            type: setting.type,
+            name: setting.name,
+            aliases: [],
+            summary: setting.summary,
+            description: setting.description,
+            attributes: setting.attributes,
+            tags: setting.tags,
+            status: "locked",
+            source: "import",
+            version: 1,
+            lockedAt: now,
+            lockedBy: input.userId,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .returning();
+        if (!entity) {
+          throw new Error("Failed to materialize imported setting");
+        }
+        const snapshot = {
+          type: entity.type,
+          name: entity.name,
+          aliases: entity.aliases,
+          summary: entity.summary,
+          description: entity.description,
+          attributes: entity.attributes,
+          tags: entity.tags,
+          status: entity.status,
+          source: entity.source,
+          version: entity.version,
+          lockedAt: entity.lockedAt?.toISOString() ?? null,
+          lockedBy: entity.lockedBy,
+          importCandidateId: setting.importCandidateId,
+        };
+        await transaction.insert(versionNodes).values({
+          id: versionNodeId,
+          workId: work.id,
+          branchId: branch.id,
+          userId: input.userId,
+          parentNodeId: headNodeId,
+          nodeType: "entity_version",
+          objectType: "setting",
+          objectId: entity.id,
+          objectVersion: 1,
+          snapshotId: entityVersionId,
+          payload: snapshot,
+          actorId: input.userId,
+          message: "导入设定",
+          createdAt: now,
+        });
+        await transaction.insert(entityVersions).values({
+          id: entityVersionId,
+          entityId: entity.id,
+          workId: work.id,
+          branchId: branch.id,
+          userId: input.userId,
+          version: 1,
+          snapshot,
+          versionNodeId,
+          createdBy: input.userId,
+          createdAt: now,
+        });
+        headNodeId = versionNodeId;
+      }
+      if (input.initialSettingEntities?.length) {
+        const [materializedBranch] = await transaction
+          .update(workBranches)
+          .set({ headNodeId, updatedAt: new Date() })
+          .where(eq(workBranches.id, branch.id))
+          .returning();
+        if (!materializedBranch) {
+          throw new Error("Failed to update branch head after materializing imported settings");
+        }
+        branchWithHead = materializedBranch;
       }
 
       await transaction.insert(auditLogs).values({
