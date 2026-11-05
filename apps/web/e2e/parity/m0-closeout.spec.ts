@@ -107,16 +107,17 @@ test("completes the full M0 author journey through the production UI", async ({
     await optionalFact.getByRole("button", { name: "驳回" }).click();
     await expect(optionalFact.getByText("已驳回", { exact: true })).toBeVisible();
 
-    await factsPanel
+    const highRiskFact = factsPanel
       .locator(".writing-fact-card")
-      .filter({ has: page.locator(".writing-fact-risk-high") })
-      .getByRole("button", { name: "确认", exact: true })
-      .click();
-    await factsPanel
+      .filter({ has: page.locator(".writing-fact-risk-high") });
+    await highRiskFact.getByRole("button", { name: "确认", exact: true }).click();
+    await expect(highRiskFact.getByText("已确认", { exact: true })).toBeVisible();
+
+    const mediumRiskFact = factsPanel
       .locator(".writing-fact-card")
-      .filter({ has: page.locator(".writing-fact-risk-medium") })
-      .getByRole("button", { name: "确认", exact: true })
-      .click();
+      .filter({ has: page.locator(".writing-fact-risk-medium") });
+    await mediumRiskFact.getByRole("button", { name: "确认", exact: true }).click();
+    await expect(mediumRiskFact.getByText("已确认", { exact: true })).toBeVisible();
     await expect(factsPanel.getByText("先批准本章，才能提交事实。")).toBeVisible();
     await factsPanel.getByRole("button", { name: "批准本章" }).click();
     await expect(factsPanel.getByRole("button", { name: "本章已批准" })).toBeDisabled();
