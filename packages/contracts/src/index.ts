@@ -17,6 +17,7 @@ export const ERROR_CODES = [
   "MODEL_PROVIDER_ERROR",
   "BIBLE_NOT_READY",
   "BIBLE_LOCKED",
+  "BIBLE_NOT_LOCKED",
   "SETTING_LOCKED",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
@@ -485,12 +486,40 @@ export const STORY_BIBLE_CARD_TITLES: Record<StoryBibleCardKey, string> = {
 export const storyBibleStatusSchema = z.enum(["draft", "proposed", "locked"]);
 export type StoryBibleStatus = z.infer<typeof storyBibleStatusSchema>;
 
-export const storyBibleCardSchema = z.object({
-  key: storyBibleCardKeySchema,
-  title: z.string().min(1),
-  content: z.string().max(20_000),
-  complete: z.boolean(),
+export const storyBibleWorldRuleSchema = z
+  .object({
+    id: uuidV7Schema,
+    name: z.string().trim().min(1).max(120),
+    constraint: z.string().trim().min(1).max(2_000),
+    scope: z.string().trim().min(1).max(500),
+    exceptions: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+  })
+  .strict();
+export type StoryBibleWorldRule = z.infer<typeof storyBibleWorldRuleSchema>;
+
+export const storyBibleWorldRuleInputSchema = storyBibleWorldRuleSchema.extend({
+  id: uuidV7Schema.optional(),
 });
+export type StoryBibleWorldRuleInput = z.infer<typeof storyBibleWorldRuleInputSchema>;
+
+export const storyBibleCardSchema = z
+  .object({
+    key: storyBibleCardKeySchema,
+    title: z.string().min(1),
+    content: z.string().max(20_000),
+    complete: z.boolean(),
+    worldRules: z.array(storyBibleWorldRuleSchema).max(20).default([]),
+  })
+  .strict()
+  .superRefine((card, context) => {
+    if (card.key !== "worldLaws" && card.worldRules.length > 0) {
+      context.addIssue({
+        code: "custom",
+        message: "worldRules are only allowed on worldLaws",
+        path: ["worldRules"],
+      });
+    }
+  });
 export type StoryBibleCard = z.infer<typeof storyBibleCardSchema>;
 
 export const storyBibleMissingCardSchema = z.object({
@@ -499,12 +528,21 @@ export const storyBibleMissingCardSchema = z.object({
 });
 export type StoryBibleMissingCard = z.infer<typeof storyBibleMissingCardSchema>;
 
+export const storyBibleIssueSchema = z.object({
+  code: z.enum(["missing_card", "missing_world_rule", "contradictory_world_rule"]),
+  key: storyBibleCardKeySchema,
+  title: z.string().min(1),
+  message: z.string().min(1),
+});
+export type StoryBibleIssue = z.infer<typeof storyBibleIssueSchema>;
+
 export const storyBibleReadinessSchema = z.object({
   status: z.enum(["not_ready", "partial", "ready"]),
   completed: z.number().int().min(0).max(9),
   total: z.literal(9),
   canLock: z.boolean(),
   missingCards: z.array(storyBibleMissingCardSchema).max(9),
+  issues: z.array(storyBibleIssueSchema).max(20),
 });
 export type StoryBibleReadiness = z.infer<typeof storyBibleReadinessSchema>;
 
@@ -548,11 +586,13 @@ export type StoryBible = z.infer<typeof storyBibleSchema>;
 export const storyBiblePatchRequestSchema = z
   .object({
     version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(500),
     cards: z
       .array(
         z.object({
           key: storyBibleCardKeySchema,
           content: z.string().max(20_000),
+          worldRules: z.array(storyBibleWorldRuleInputSchema).max(20).optional(),
         }),
       )
       .min(1)
@@ -567,6 +607,22 @@ export const storyBiblePatchRequestSchema = z
         path: ["cards"],
       });
     }
+    for (const card of input.cards) {
+      if (card.key === "worldLaws" && card.worldRules === undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "worldLaws card requires structured world rules",
+          path: ["cards"],
+        });
+      }
+      if (card.key !== "worldLaws" && card.worldRules !== undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "worldRules are only allowed on worldLaws",
+          path: ["cards"],
+        });
+      }
+    }
   });
 export type StoryBiblePatchRequest = z.infer<typeof storyBiblePatchRequestSchema>;
 
@@ -578,8 +634,103 @@ export const storyBibleLockRequestSchema = z.object({
 });
 export type StoryBibleLockRequest = z.infer<typeof storyBibleLockRequestSchema>;
 
+export const storyBibleUnlockRequestSchema = z.object({
+  version: z.number().int().positive(),
+  reason: z.string().trim().min(1).max(500),
+});
+export type StoryBibleUnlockRequest = z.infer<typeof storyBibleUnlockRequestSchema>;
+
+export const storyBibleVersionActionSchema = z.enum(["proposed", "edited", "locked", "unlocked"]);
+export type StoryBibleVersionAction = z.infer<typeof storyBibleVersionActionSchema>;
+
+export const storyBibleVersionSchema = z.object({
+  id: uuidV7Schema,
+  storyBibleId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  version: z.number().int().positive(),
+  action: storyBibleVersionActionSchema,
+  actorId: uuidV7Schema,
+  reason: z.string().min(1),
+  cards: storyBibleCardsSchema,
+  createdAt: z.string().datetime(),
+});
+export type StoryBibleVersion = z.infer<typeof storyBibleVersionSchema>;
+
+export const storyBibleChangeRequestCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    cardKey: storyBibleCardKeySchema,
+    title: z.string().trim().min(1).max(120),
+    reason: z.string().trim().min(1).max(500),
+    after: storyBibleCardSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.cardKey !== input.after.key) {
+      context.addIssue({
+        code: "custom",
+        message: "Change request card key must match the after card",
+        path: ["cardKey"],
+      });
+    }
+    if (input.cardKey === "worldLaws" && input.after.worldRules.length === 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Locked worldLaws change requests require structured world rules",
+        path: ["after", "worldRules"],
+      });
+    }
+  });
+export type StoryBibleChangeRequestCreateRequest = z.infer<
+  typeof storyBibleChangeRequestCreateRequestSchema
+>;
+
+export const storyBibleChangeRequestSchema = z.object({
+  id: uuidV7Schema,
+  storyBibleId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  cardKey: storyBibleCardKeySchema,
+  title: z.string().min(1),
+  reason: z.string().min(1),
+  before: storyBibleCardSchema,
+  after: storyBibleCardSchema,
+  status: z.enum(["pending", "analyzing", "approved", "rejected", "applied"]),
+  risk: z.enum(["low", "medium", "high"]),
+  source: z.enum(["author", "ai", "import", "batch"]),
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type StoryBibleChangeRequest = z.infer<typeof storyBibleChangeRequestSchema>;
+
 export const storyBibleResponseSchema = apiEnvelopeSchema(storyBibleSchema);
 export const storyBibleReadinessResponseSchema = apiEnvelopeSchema(storyBibleReadinessSchema);
+export const storyBibleVersionListQuerySchema = z.object({
+  cursor: uuidV7Schema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type StoryBibleVersionListQuery = z.infer<typeof storyBibleVersionListQuerySchema>;
+
+export const storyBibleWorldRuleListQuerySchema = z.object({
+  cursor: uuidV7Schema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(100),
+});
+export type StoryBibleWorldRuleListQuery = z.infer<typeof storyBibleWorldRuleListQuerySchema>;
+
+export const storyBibleVersionListResponseSchema = z.object({
+  data: z.array(storyBibleVersionSchema),
+  requestId: z.string().startsWith("req_"),
+  meta: z.object({ nextCursor: uuidV7Schema.nullable() }),
+});
+export const storyBibleWorldRuleListResponseSchema = z.object({
+  data: z.array(storyBibleWorldRuleSchema),
+  requestId: z.string().startsWith("req_"),
+  meta: z.object({ nextCursor: uuidV7Schema.nullable() }),
+});
+export const storyBibleChangeRequestResponseSchema = apiEnvelopeSchema(
+  storyBibleChangeRequestSchema,
+);
 export const storyBibleDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );

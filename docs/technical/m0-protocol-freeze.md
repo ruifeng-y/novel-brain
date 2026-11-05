@@ -93,6 +93,7 @@ M0 关键错误：
 - `MODEL_PROVIDER_ERROR`
 - `BIBLE_NOT_READY`
 - `BIBLE_LOCKED`
+- `BIBLE_NOT_LOCKED`
 - `JOB_BUDGET_EXCEEDED`
 - `JOB_CANCELLED`
 - `FACT_DECISION_REQUIRED`
@@ -154,6 +155,10 @@ M0 关键错误：
 | POST | `/api/v1/works/:workId/branches/:branchId/story-bible/generate` | 生成提案 |
 | PATCH | `/api/v1/works/:workId/branches/:branchId/story-bible` | 修改未锁定卡片 |
 | POST | `/api/v1/works/:workId/branches/:branchId/story-bible/lock` | 锁定并创建版本节点 |
+| POST | `/api/v1/works/:workId/branches/:branchId/story-bible/unlock` | 显式解锁并创建审计版本节点 |
+| GET | `/api/v1/works/:workId/branches/:branchId/story-bible/versions` | 不可变版本历史 |
+| GET | `/api/v1/works/:workId/branches/:branchId/story-bible/world-rules` | 查询结构化世界铁律 |
+| POST | `/api/v1/works/:workId/branches/:branchId/story-bible/change-requests` | 为锁定内容创建修改请求 |
 | GET | `/api/v1/works/:workId/branches/:branchId/story-bible/readiness` | 生成准备度 |
 | DELETE | `/api/v1/works/:workId/branches/:branchId/story-bible/cards/:cardKey` | 固定九卡不可直接删除；锁定后返回 `BIBLE_LOCKED` |
 | GET/POST | `/api/v1/works/:workId/branches/:branchId/entities` | 最小世界/人物/金手指实体 |
@@ -216,7 +221,11 @@ M0 关键错误：
 - `id`、`workId`、`branchId`、`version`、`status`、`cards`、`readiness`、`proposal`、`lockedAt`、`lockedBy`。
 - `cards` 固定九张：一句话故事、核心卖点、主角、金手指、世界铁律、主线、支线、结局方向、读者承诺。
 - `status`：`draft`、`proposed`、`locked`。
-- `readiness`：`not_ready`、`partial`、`ready`，并返回完成数、缺失卡片和是否可锁定。
+- `readiness`：`not_ready`、`partial`、`ready`，并返回完成数、缺失卡片、结构冲突和是否可锁定。
+- `worldLaws` 卡片输出结构化世界铁律：`id`、`name`、`constraint`、`scope`、`exceptions`；锁定前置校验要求至少一条规则且规则名称不得冲突。
+- 每次生成提案、卡片编辑、锁定和解锁都创建 `story_bible_version` 版本节点与不可变快照；编辑与解锁必须记录原因。
+- 锁定后的直接写操作返回 `BIBLE_LOCKED`；修改请求先记录旧值、新值、标题、原因和中等风险，等待后续影响分析。
+- `versions` 与 `world-rules` 使用 `cursor`/`limit` 列表分页并返回 `meta.nextCursor`；修改请求创建支持 `Idempotency-Key`。
 - `lockedBy` 为锁定操作者的用户 ID；锁定时间同时写入故事圣经、版本快照和版本节点。
 - M0 故事圣经仅对仙侠作品开放生成、编辑和锁定；其他题材读取空九卡，写操作返回 `VALIDATION_INVALID`。
 

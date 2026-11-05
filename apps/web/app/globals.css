@@ -2027,6 +2027,102 @@ a:focus-visible {
   text-align: right;
 }
 
+.story-bible-rule-summary,
+.story-bible-history,
+.story-bible-world-rules {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.story-bible-rule-summary > div,
+.story-bible-history li,
+.story-bible-world-rule {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--paper-2);
+}
+
+.story-bible-rule-summary strong,
+.story-bible-history strong {
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.story-bible-rule-summary span,
+.story-bible-rule-summary small,
+.story-bible-history span,
+.story-bible-history small {
+  color: var(--ink-3);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.story-bible-history {
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.story-bible-world-rule {
+  margin: 0;
+  padding: 12px;
+}
+
+.story-bible-world-rule legend {
+  padding: 0 5px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.story-bible-change-request {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 18px;
+}
+
+.story-bible-change-request h2 {
+  margin: 4px 0 6px;
+  font-size: 17px;
+}
+
+.story-bible-change-request p {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.story-bible-change-request label {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.story-bible-change-request input,
+.story-bible-change-request select,
+.story-bible-change-request textarea,
+.story-bible-world-rule input,
+.story-bible-world-rule textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+}
+
+.story-bible-change-request textarea,
+.story-bible-world-rule textarea {
+  resize: vertical;
+}
+
 .settings-head {
   align-items: flex-start;
 }
@@ -2649,6 +2745,7 @@ a:focus-visible {
 
 .story-bible-notice {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   align-items: flex-start;
   margin-bottom: 14px;
@@ -2656,6 +2753,10 @@ a:focus-visible {
   font-size: 12px;
   line-height: 1.6;
   border-radius: 7px;
+}
+
+.story-bible-notice .btn {
+  margin-left: auto;
 }
 
 .story-bible-notice.danger {

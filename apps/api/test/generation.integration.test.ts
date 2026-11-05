@@ -203,6 +203,7 @@ describe("generation HTTP integration", () => {
       ).body,
     ).data;
     expect(preview.selected.map((source) => source.key)).toContain("style:sample");
+    expect(preview.selected.map((source) => source.key)).toContain("story-bible:world-rules");
     expect(preview.selected.map((source) => source.label)).toContain("沈砚");
     expect(preview.selected.map((source) => source.label)).not.toContain("无关宗门");
     const job = await startGeneration(owner, token, branchPath, chapter.id, "generation-success");

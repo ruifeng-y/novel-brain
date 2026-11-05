@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -275,6 +276,13 @@ export const storyBibles = pgTable(
           title: string;
           content: string;
           complete: boolean;
+          worldRules?: Array<{
+            id: string;
+            name: string;
+            constraint: string;
+            scope: string;
+            exceptions: string[];
+          }>;
         }>
       >()
       .notNull(),
@@ -320,10 +328,19 @@ export const storyBibleVersions = pgTable(
           title: string;
           content: string;
           complete: boolean;
+          worldRules?: Array<{
+            id: string;
+            name: string;
+            constraint: string;
+            scope: string;
+            exceptions: string[];
+          }>;
         }>
       >()
       .notNull(),
     readiness: jsonb("readiness").$type<Record<string, unknown>>().notNull(),
+    action: text("action").notNull().default("locked"),
+    reason: text("reason").notNull().default("锁定故事圣经"),
     versionNodeId: uuid("version_node_id")
       .notNull()
       .references(() => versionNodes.id, { onDelete: "restrict" }),
@@ -337,6 +354,129 @@ export const storyBibleVersions = pgTable(
     uniqueIndex("story_bible_versions_node_unique").on(table.versionNodeId),
     index("story_bible_versions_user_work_idx").on(table.userId, table.workId),
     check("story_bible_versions_nine_cards_check", sql`jsonb_array_length(${table.cards}) = 9`),
+    check(
+      "story_bible_versions_action_check",
+      sql`${table.action} in ('proposed', 'edited', 'locked', 'unlocked')`,
+    ),
+    check("story_bible_versions_reason_check", sql`length(trim(${table.reason})) > 0`),
+  ],
+);
+
+export const storyBibleWorldRules = pgTable(
+  "story_bible_world_rules",
+  {
+    id: uuid("id").notNull(),
+    storyBibleVersionId: uuid("story_bible_version_id")
+      .notNull()
+      .references(() => storyBibleVersions.id, { onDelete: "cascade" }),
+    storyBibleId: uuid("story_bible_id")
+      .notNull()
+      .references(() => storyBibles.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    constraint: text("constraint").notNull(),
+    scope: text("scope").notNull(),
+    exceptions: jsonb("exceptions").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.id, table.storyBibleVersionId] }),
+    index("story_bible_world_rules_version_name_idx").on(table.storyBibleVersionId, table.name),
+    index("story_bible_world_rules_user_work_idx").on(table.userId, table.workId),
+    index("story_bible_world_rules_branch_idx").on(table.branchId),
+  ],
+);
+
+export const storyBibleChangeRequests = pgTable(
+  "story_bible_change_requests",
+  {
+    id: uuid("id").primaryKey(),
+    storyBibleId: uuid("story_bible_id")
+      .notNull()
+      .references(() => storyBibles.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    cardKey: text("card_key").notNull(),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    before: jsonb("before")
+      .$type<{
+        key: string;
+        title: string;
+        content: string;
+        complete: boolean;
+        worldRules?: Array<{
+          id: string;
+          name: string;
+          constraint: string;
+          scope: string;
+          exceptions: string[];
+        }>;
+      }>()
+      .notNull(),
+    after: jsonb("after")
+      .$type<{
+        key: string;
+        title: string;
+        content: string;
+        complete: boolean;
+        worldRules?: Array<{
+          id: string;
+          name: string;
+          constraint: string;
+          scope: string;
+          exceptions: string[];
+        }>;
+      }>()
+      .notNull(),
+    status: text("status").notNull().default("pending"),
+    risk: text("risk").notNull().default("medium"),
+    source: text("source").notNull().default("author"),
+    idempotencyKey: text("idempotency_key"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("story_bible_change_requests_user_work_idx").on(table.userId, table.workId),
+    index("story_bible_change_requests_status_idx").on(table.workId, table.branchId, table.status),
+    uniqueIndex("story_bible_change_requests_user_idempotency_unique").on(
+      table.userId,
+      table.storyBibleId,
+      table.idempotencyKey,
+    ),
+    check(
+      "story_bible_change_requests_card_key_check",
+      sql`${table.cardKey} in ('oneSentence', 'sellingPoints', 'protagonist', 'goldenFinger', 'worldLaws', 'mainPlot', 'subplots', 'ending', 'readerPromise')`,
+    ),
+    check(
+      "story_bible_change_requests_status_check",
+      sql`${table.status} in ('pending', 'analyzing', 'approved', 'rejected', 'applied')`,
+    ),
+    check(
+      "story_bible_change_requests_risk_check",
+      sql`${table.risk} in ('low', 'medium', 'high')`,
+    ),
+    check(
+      "story_bible_change_requests_source_check",
+      sql`${table.source} in ('author', 'ai', 'import', 'batch')`,
+    ),
   ],
 );
 

@@ -756,6 +756,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["StoryBibleController_versions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/world-rules": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["StoryBibleController_worldRules"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/story-bible/generate": {
     parameters: {
       query?: never;
@@ -766,6 +798,38 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["StoryBibleController_generate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/unlock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StoryBibleController_unlock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/story-bible/change-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StoryBibleController_createChangeRequest"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2185,6 +2249,7 @@ export interface operations {
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
@@ -2417,6 +2482,7 @@ export interface operations {
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
@@ -2579,6 +2645,7 @@ export interface operations {
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
@@ -2741,6 +2808,7 @@ export interface operations {
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
@@ -2903,6 +2971,7 @@ export interface operations {
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
@@ -5859,6 +5928,15 @@ export interface operations {
                 title: string;
                 content: string;
                 complete: boolean;
+                /** @default [] */
+                worldRules: {
+                  id: string;
+                  name: string;
+                  constraint: string;
+                  scope: string;
+                  /** @default [] */
+                  exceptions: string[];
+                }[];
               }[];
               readiness: {
                 /** @enum {string} */
@@ -5880,6 +5958,23 @@ export interface operations {
                     | "ending"
                     | "readerPromise";
                   title: string;
+                }[];
+                issues: {
+                  /** @enum {string} */
+                  code: "missing_card" | "missing_world_rule" | "contradictory_world_rule";
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                  message: string;
                 }[];
               };
               proposal: {
@@ -5948,6 +6043,15 @@ export interface operations {
                 title: string;
                 content: string;
                 complete: boolean;
+                /** @default [] */
+                worldRules: {
+                  id: string;
+                  name: string;
+                  constraint: string;
+                  scope: string;
+                  /** @default [] */
+                  exceptions: string[];
+                }[];
               }[];
               readiness: {
                 /** @enum {string} */
@@ -5969,6 +6073,23 @@ export interface operations {
                     | "ending"
                     | "readerPromise";
                   title: string;
+                }[];
+                issues: {
+                  /** @enum {string} */
+                  code: "missing_card" | "missing_world_rule" | "contradictory_world_rule";
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                  message: string;
                 }[];
               };
               proposal: {
@@ -6036,12 +6157,133 @@ export interface operations {
                   | "readerPromise";
                 title: string;
               }[];
+              issues: {
+                /** @enum {string} */
+                code: "missing_card" | "missing_world_rule" | "contradictory_world_rule";
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                message: string;
+              }[];
             };
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
             meta: {
               [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_versions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Immutable story bible version history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              storyBibleId: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              action: "proposed" | "edited" | "locked" | "unlocked";
+              actorId: string;
+              reason: string;
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+                /** @default [] */
+                worldRules: {
+                  id: string;
+                  name: string;
+                  constraint: string;
+                  scope: string;
+                  /** @default [] */
+                  exceptions: string[];
+                }[];
+              }[];
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_worldRules: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Structured world rule constraints */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              name: string;
+              constraint: string;
+              scope: string;
+              /** @default [] */
+              exceptions: string[];
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
             };
           };
         };
@@ -6089,6 +6331,15 @@ export interface operations {
                 title: string;
                 content: string;
                 complete: boolean;
+                /** @default [] */
+                worldRules: {
+                  id: string;
+                  name: string;
+                  constraint: string;
+                  scope: string;
+                  /** @default [] */
+                  exceptions: string[];
+                }[];
               }[];
               readiness: {
                 /** @enum {string} */
@@ -6111,6 +6362,23 @@ export interface operations {
                     | "readerPromise";
                   title: string;
                 }[];
+                issues: {
+                  /** @enum {string} */
+                  code: "missing_card" | "missing_world_rule" | "contradictory_world_rule";
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                  message: string;
+                }[];
               };
               proposal: {
                 /** Format: date-time */
@@ -6125,6 +6393,231 @@ export interface operations {
               createdAt: string;
               /** Format: date-time */
               updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_unlock: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Unlocked story bible */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked";
+              cards: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+                /** @default [] */
+                worldRules: {
+                  id: string;
+                  name: string;
+                  constraint: string;
+                  scope: string;
+                  /** @default [] */
+                  exceptions: string[];
+                }[];
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                /** @enum {number} */
+                total: 9;
+                canLock: boolean;
+                missingCards: {
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                }[];
+                issues: {
+                  /** @enum {string} */
+                  code: "missing_card" | "missing_world_rule" | "contradictory_world_rule";
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                  message: string;
+                }[];
+              };
+              proposal: {
+                /** Format: date-time */
+                generatedAt: string;
+                /** @enum {string} */
+                source: "work_premise";
+              } | null;
+              /** Format: date-time */
+              lockedAt: string | null;
+              lockedBy: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryBibleController_createChangeRequest: {
+    parameters: {
+      query?: never;
+      header: {
+        "idempotency-key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Pending change request for a locked story bible */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              storyBibleId: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              cardKey:
+                | "oneSentence"
+                | "sellingPoints"
+                | "protagonist"
+                | "goldenFinger"
+                | "worldLaws"
+                | "mainPlot"
+                | "subplots"
+                | "ending"
+                | "readerPromise";
+              title: string;
+              reason: string;
+              before: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+                /** @default [] */
+                worldRules: {
+                  id: string;
+                  name: string;
+                  constraint: string;
+                  scope: string;
+                  /** @default [] */
+                  exceptions: string[];
+                }[];
+              };
+              after: {
+                /** @enum {string} */
+                key:
+                  | "oneSentence"
+                  | "sellingPoints"
+                  | "protagonist"
+                  | "goldenFinger"
+                  | "worldLaws"
+                  | "mainPlot"
+                  | "subplots"
+                  | "ending"
+                  | "readerPromise";
+                title: string;
+                content: string;
+                complete: boolean;
+                /** @default [] */
+                worldRules: {
+                  id: string;
+                  name: string;
+                  constraint: string;
+                  scope: string;
+                  /** @default [] */
+                  exceptions: string[];
+                }[];
+              };
+              /** @enum {string} */
+              status: "pending" | "analyzing" | "approved" | "rejected" | "applied";
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              /** @enum {string} */
+              source: "author" | "ai" | "import" | "batch";
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
             };
             /** Format: starts_with */
             requestId: string;
@@ -6178,6 +6671,15 @@ export interface operations {
                 title: string;
                 content: string;
                 complete: boolean;
+                /** @default [] */
+                worldRules: {
+                  id: string;
+                  name: string;
+                  constraint: string;
+                  scope: string;
+                  /** @default [] */
+                  exceptions: string[];
+                }[];
               }[];
               readiness: {
                 /** @enum {string} */
@@ -6199,6 +6701,23 @@ export interface operations {
                     | "ending"
                     | "readerPromise";
                   title: string;
+                }[];
+                issues: {
+                  /** @enum {string} */
+                  code: "missing_card" | "missing_world_rule" | "contradictory_world_rule";
+                  /** @enum {string} */
+                  key:
+                    | "oneSentence"
+                    | "sellingPoints"
+                    | "protagonist"
+                    | "goldenFinger"
+                    | "worldLaws"
+                    | "mainPlot"
+                    | "subplots"
+                    | "ending"
+                    | "readerPromise";
+                  title: string;
+                  message: string;
                 }[];
               };
               proposal: {

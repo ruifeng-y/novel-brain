@@ -24,6 +24,8 @@ import {
   modelConfigs,
   refreshFactProposals,
   storyBibles,
+  storyBibleVersions,
+  storyBibleWorldRules,
   usageRecords,
   users,
   versionNodes,
@@ -52,6 +54,13 @@ export interface LoadedGenerationJob {
 export interface WorkerContextSources {
   chapter: InferSelectModel<typeof chapters>;
   storyBible: InferSelectModel<typeof storyBibles>;
+  worldRules: Array<{
+    id: string;
+    name: string;
+    constraint: string;
+    scope: string;
+    exceptions: string[];
+  }>;
   styleSample?: string;
   settings: Array<{
     id: string;
@@ -175,6 +184,29 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!storyBible) {
         return undefined;
       }
+      const [storyBibleVersion] = await transaction
+        .select({ id: storyBibleVersions.id })
+        .from(storyBibleVersions)
+        .where(
+          and(
+            eq(storyBibleVersions.storyBibleId, storyBible.id),
+            eq(storyBibleVersions.userId, payload.actorId),
+            eq(storyBibleVersions.version, storyBible.version),
+          ),
+        )
+        .limit(1);
+      const worldRules = storyBibleVersion
+        ? await transaction
+            .select()
+            .from(storyBibleWorldRules)
+            .where(
+              and(
+                eq(storyBibleWorldRules.storyBibleVersionId, storyBibleVersion.id),
+                eq(storyBibleWorldRules.userId, payload.actorId),
+              ),
+            )
+            .orderBy(asc(storyBibleWorldRules.name))
+        : [];
       const [work] = await transaction
         .select({ settings: works.settings })
         .from(works)
@@ -246,6 +278,13 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       return {
         chapter,
         storyBible,
+        worldRules: worldRules.map((rule) => ({
+          id: rule.id,
+          name: rule.name,
+          constraint: rule.constraint,
+          scope: rule.scope,
+          exceptions: rule.exceptions,
+        })),
         settings: [
           ...settings.map((setting) => ({
             id: setting.id,

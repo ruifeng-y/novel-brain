@@ -188,6 +188,58 @@ describe("context compiler", () => {
     );
   });
 
+  it("compiles structured world rules as a separately cited required source", () => {
+    const pack = compileChapterContext(
+      {
+        chapter: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c19",
+          number: 6,
+          title: "断碑",
+          brief: {
+            goal: "沈砚在断碑前越阶迎敌",
+            pov: "沈砚",
+            location: "断碑前",
+            sceneBeats: ["沈砚付出寿元代价。"],
+            requiredFacts: ["越阶必须付出代价"],
+          },
+        },
+        storyBible: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c20",
+          cards: [{ title: "世界铁律", content: "越阶必须付出代价。" }],
+          worldRules: [
+            {
+              id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c21",
+              name: "境界差距",
+              constraint: "越阶必须付出寿元、资源或关系代价。",
+              scope: "所有战斗与冲突",
+              exceptions: [],
+            },
+          ],
+        },
+        settings: [],
+        previousVersions: [],
+      },
+      200,
+    );
+
+    const worldRuleSource = pack.selected.find(
+      (source) => source.key === "story-bible:world-rules",
+    );
+    expect(worldRuleSource).toMatchObject({
+      label: "世界铁律",
+      priority: "required",
+      content: expect.stringContaining("境界差距：越阶必须付出寿元、资源或关系代价。"),
+    });
+    expect(worldRuleSource?.sourceRefs).toEqual([
+      {
+        sourceType: "story_bible",
+        sourceId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c20",
+        label: "故事圣经",
+        citation: "已锁定故事圣经",
+      },
+    ]);
+  });
+
   it("excludes confirmed facts outside their chapter validity window", () => {
     const pack = compileChapterContext(
       {

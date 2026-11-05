@@ -116,6 +116,13 @@ export interface ChapterContextInput {
   storyBible: {
     id: string;
     cards: Array<{ title: string; content: string }>;
+    worldRules?: Array<{
+      id: string;
+      name: string;
+      constraint: string;
+      scope: string;
+      exceptions: string[];
+    }>;
   };
   styleSample?: string;
   styleSampleId?: string;
@@ -230,6 +237,7 @@ export function compileChapterContext(
     label: "故事圣经",
     citation: "已锁定故事圣经",
   };
+  const hasStructuredWorldRules = (input.storyBible.worldRules ?? []).length > 0;
   const brief = input.chapter.brief;
   const sceneText = [
     input.chapter.title,
@@ -265,9 +273,30 @@ export function compileChapterContext(
       key: "story-bible:locked",
       label: "故事圣经",
       priority: "required",
-      content: input.storyBible.cards.map((card) => `${card.title}：${card.content}`).join("\n"),
+      content: input.storyBible.cards
+        .filter((card) => !(hasStructuredWorldRules && card.title === "世界铁律"))
+        .map((card) => `${card.title}：${card.content}`)
+        .join("\n"),
       sourceRefs: [bibleRef],
     },
+    ...((input.storyBible.worldRules ?? []).length > 0
+      ? [
+          {
+            key: "story-bible:world-rules",
+            label: "世界铁律",
+            priority: "required" as const,
+            content: (input.storyBible.worldRules ?? [])
+              .map(
+                (rule) =>
+                  `${rule.name}：${rule.constraint}\n适用范围：${rule.scope}${
+                    rule.exceptions.length > 0 ? `\n例外：${rule.exceptions.join("；")}` : ""
+                  }`,
+              )
+              .join("\n"),
+            sourceRefs: [bibleRef],
+          },
+        ]
+      : []),
     ...(input.styleSample?.trim()
       ? [
           {

@@ -188,6 +188,7 @@ export class GenerationJobProcessor {
             storyBible: {
               id: sources.storyBible.id,
               cards: sources.storyBible.cards,
+              worldRules: sources.worldRules,
             },
             ...(sources.styleSample ? { styleSample: sources.styleSample } : {}),
             styleSampleId: sources.chapter.workId,

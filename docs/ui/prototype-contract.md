@@ -12,7 +12,7 @@
 | dashboard | `/workspace` | 搜索、筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | 部分，缺长列表和页级错误 |
 | new-project | `/workspace/new-project` | 想法/空白/模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long | 导入报告 | 已含设定导入、旧稿双模式、冲突裁决和断点续跑 |
 | work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改 | loading/empty/error/readonly/archived | 生成摘要 | 部分，缺分支上下文和长内容 |
-| bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、锁定 | loading/empty/error/locked/proposal | AI 提案/证据 | 部分，缺来源引用和提案差异 |
+| bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | M1 生产实现，待作者视觉重新签收 |
 | settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | 部分，7 栏已改，状态流转和长列表待补 |
 | outline | `/workspace/[workId]/outline` | 树/看板/张力/账本、黄金三章 | loading/empty/error/locked/partial | 黄金三章候选 | 部分，候选/六维已加，锁定向导待补 |
 | foreshadows | `/workspace/[workId]/foreshadows` | 新增/编辑/回收/放弃/检查 | loading/empty/error/disabled/long | 逾期提醒 | 部分，缺长列表和证据详情 |

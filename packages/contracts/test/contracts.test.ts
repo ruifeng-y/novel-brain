@@ -39,7 +39,14 @@ import {
   logoutResponseSchema,
   STORY_BIBLE_CARD_KEYS,
   STORY_BIBLE_CARD_TITLES,
+  storyBibleChangeRequestCreateRequestSchema,
+  storyBibleChangeRequestSchema,
   storyBiblePatchRequestSchema,
+  storyBibleReadinessSchema,
+  storyBibleSchema,
+  storyBibleUnlockRequestSchema,
+  storyBibleVersionSchema,
+  storyBibleWorldRuleSchema,
   workBranchSchema,
   workCreateRequestSchema,
   workSchema,
@@ -643,6 +650,156 @@ describe("shared contracts", () => {
         cards: [{ key: "unknownCard", content: "未知卡片" }],
       }),
     ).toThrow();
+  });
+
+  it("requires structured world rules and edit reasons for story bible versions", () => {
+    const worldRule = storyBibleWorldRuleSchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c60",
+      name: "境界差距",
+      constraint: "境界差距不能靠情绪直接抹平，越阶必须付出寿元、资源或关系代价。",
+      scope: "所有战斗与冲突",
+      exceptions: ["主角在付出寿元代价时可以短暂抗衡一位境界。"],
+    });
+
+    expect(
+      storyBiblePatchRequestSchema.parse({
+        version: 2,
+        reason: "按开篇战斗规则收紧越阶条件。",
+        cards: [
+          {
+            key: "worldLaws",
+            content: "境界差距：境界差距不能靠情绪直接抹平，越阶必须付出寿元、资源或关系代价。",
+            worldRules: [worldRule],
+          },
+        ],
+      }),
+    ).toMatchObject({ reason: "按开篇战斗规则收紧越阶条件。" });
+
+    expect(() =>
+      storyBiblePatchRequestSchema.parse({
+        version: 2,
+        reason: "缺少结构化世界铁律。",
+        cards: [{ key: "worldLaws", content: "只有自然语言。" }],
+      }),
+    ).toThrow("worldLaws card requires structured world rules");
+    expect(() =>
+      storyBiblePatchRequestSchema.parse({
+        version: 2,
+        reason: "",
+        cards: [{ key: "oneSentence", content: "修改原因不能为空。" }],
+      }),
+    ).toThrow();
+    expect(() =>
+      storyBiblePatchRequestSchema.parse({
+        version: 2,
+        reason: "世界铁律不能挂到其他卡片。",
+        cards: [{ key: "oneSentence", content: "一句话故事", worldRules: [worldRule] }],
+      }),
+    ).toThrow("worldRules are only allowed on worldLaws");
+  });
+
+  it("exposes readiness issues, immutable version history and locked change requests", () => {
+    const worldRule = storyBibleWorldRuleSchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c71",
+      name: "越阶代价",
+      constraint: "越阶必须付出寿元或关系代价。",
+      scope: "战斗",
+      exceptions: [],
+    });
+    const readiness = storyBibleReadinessSchema.parse({
+      status: "partial",
+      completed: 8,
+      total: 9,
+      canLock: false,
+      missingCards: [{ key: "worldLaws", title: "世界铁律" }],
+      issues: [
+        {
+          code: "missing_world_rule",
+          key: "worldLaws",
+          title: "世界铁律",
+          message: "世界铁律卡片需要至少一条结构化规则。",
+        },
+      ],
+    });
+    expect(readiness.issues).toHaveLength(1);
+
+    const version = storyBibleVersionSchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c61",
+      storyBibleId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c62",
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c63",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c64",
+      version: 3,
+      action: "edited",
+      actorId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c65",
+      reason: "补齐主角动机。",
+      cards: STORY_BIBLE_CARD_KEYS.map((key) => ({
+        key,
+        title: STORY_BIBLE_CARD_TITLES[key],
+        content: "",
+        complete: false,
+        worldRules: [],
+      })),
+      createdAt: "2026-11-05T08:00:00.000Z",
+    });
+    expect(version).not.toHaveProperty("order");
+
+    expect(
+      storyBibleUnlockRequestSchema.parse({ version: 4, reason: "开篇前需要调整设定。" }),
+    ).toEqual({
+      version: 4,
+      reason: "开篇前需要调整设定。",
+    });
+
+    const request = storyBibleChangeRequestCreateRequestSchema.parse({
+      version: 4,
+      cardKey: "worldLaws",
+      title: "调整越阶代价",
+      reason: "第 3 章战斗需要更清晰的代价。",
+      after: {
+        key: "worldLaws",
+        title: "世界铁律",
+        content: "越阶必须付出寿元或关系代价。",
+        complete: true,
+        worldRules: [worldRule],
+      },
+    });
+    expect(
+      storyBibleChangeRequestSchema.parse({
+        ...request,
+        id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c66",
+        storyBibleId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c67",
+        workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c68",
+        branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c69",
+        before: {
+          key: "worldLaws",
+          title: "世界铁律",
+          content: "越阶必须有代价。",
+          complete: true,
+          worldRules: [],
+        },
+        status: "pending",
+        risk: "medium",
+        source: "author",
+        createdBy: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c70",
+        createdAt: "2026-11-05T08:00:00.000Z",
+      }),
+    ).toMatchObject({ status: "pending", risk: "medium" });
+    expect(() =>
+      storyBibleChangeRequestCreateRequestSchema.parse({
+        version: 4,
+        cardKey: "worldLaws",
+        title: "缺少结构化规则",
+        reason: "世界铁律请求必须保留结构化规则。",
+        after: {
+          key: "worldLaws",
+          title: "世界铁律",
+          content: "只有自然语言。",
+          complete: true,
+          worldRules: [],
+        },
+      }),
+    ).toThrow("Locked worldLaws change requests require structured world rules");
+    expect(storyBibleSchema.shape.cards).toBeDefined();
   });
 
   it("requires a complete ordered chapter brief before a chapter can be planned", () => {

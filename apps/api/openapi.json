@@ -3969,6 +3969,7 @@
                                 "MODEL_PROVIDER_ERROR",
                                 "BIBLE_NOT_READY",
                                 "BIBLE_LOCKED",
+                                "BIBLE_NOT_LOCKED",
                                 "SETTING_LOCKED",
                                 "JOB_BUDGET_EXCEEDED",
                                 "JOB_CANCELLED",
@@ -4646,6 +4647,7 @@
                                   "MODEL_PROVIDER_ERROR",
                                   "BIBLE_NOT_READY",
                                   "BIBLE_LOCKED",
+                                  "BIBLE_NOT_LOCKED",
                                   "SETTING_LOCKED",
                                   "JOB_BUDGET_EXCEEDED",
                                   "JOB_CANCELLED",
@@ -5095,6 +5097,7 @@
                                 "MODEL_PROVIDER_ERROR",
                                 "BIBLE_NOT_READY",
                                 "BIBLE_LOCKED",
+                                "BIBLE_NOT_LOCKED",
                                 "SETTING_LOCKED",
                                 "JOB_BUDGET_EXCEEDED",
                                 "JOB_CANCELLED",
@@ -5543,6 +5546,7 @@
                                 "MODEL_PROVIDER_ERROR",
                                 "BIBLE_NOT_READY",
                                 "BIBLE_LOCKED",
+                                "BIBLE_NOT_LOCKED",
                                 "SETTING_LOCKED",
                                 "JOB_BUDGET_EXCEEDED",
                                 "JOB_CANCELLED",
@@ -5991,6 +5995,7 @@
                                 "MODEL_PROVIDER_ERROR",
                                 "BIBLE_NOT_READY",
                                 "BIBLE_LOCKED",
+                                "BIBLE_NOT_LOCKED",
                                 "SETTING_LOCKED",
                                 "JOB_BUDGET_EXCEEDED",
                                 "JOB_CANCELLED",
@@ -15294,9 +15299,50 @@
                               },
                               "complete": {
                                 "type": "boolean"
+                              },
+                              "worldRules": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "constraint": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 2000
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "exceptions": {
+                                      "default": [],
+                                      "maxItems": 20,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      }
+                                    }
+                                  },
+                                  "required": ["id", "name", "constraint", "scope", "exceptions"],
+                                  "additionalProperties": false
+                                }
                               }
                             },
-                            "required": ["key", "title", "content", "complete"],
+                            "required": ["key", "title", "content", "complete", "worldRules"],
                             "additionalProperties": false
                           }
                         },
@@ -15347,9 +15393,57 @@
                                 "required": ["key", "title"],
                                 "additionalProperties": false
                               }
+                            },
+                            "issues": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "missing_card",
+                                      "missing_world_rule",
+                                      "contradictory_world_rule"
+                                    ]
+                                  },
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "message": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["code", "key", "title", "message"],
+                                "additionalProperties": false
+                              }
                             }
                           },
-                          "required": ["status", "completed", "total", "canLock", "missingCards"],
+                          "required": [
+                            "status",
+                            "completed",
+                            "total",
+                            "canLock",
+                            "missingCards",
+                            "issues"
+                          ],
                           "additionalProperties": false
                         },
                         "proposal": {
@@ -15511,9 +15605,50 @@
                               },
                               "complete": {
                                 "type": "boolean"
+                              },
+                              "worldRules": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "constraint": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 2000
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "exceptions": {
+                                      "default": [],
+                                      "maxItems": 20,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      }
+                                    }
+                                  },
+                                  "required": ["id", "name", "constraint", "scope", "exceptions"],
+                                  "additionalProperties": false
+                                }
                               }
                             },
-                            "required": ["key", "title", "content", "complete"],
+                            "required": ["key", "title", "content", "complete", "worldRules"],
                             "additionalProperties": false
                           }
                         },
@@ -15564,9 +15699,57 @@
                                 "required": ["key", "title"],
                                 "additionalProperties": false
                               }
+                            },
+                            "issues": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "missing_card",
+                                      "missing_world_rule",
+                                      "contradictory_world_rule"
+                                    ]
+                                  },
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "message": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["code", "key", "title", "message"],
+                                "additionalProperties": false
+                              }
                             }
                           },
-                          "required": ["status", "completed", "total", "canLock", "missingCards"],
+                          "required": [
+                            "status",
+                            "completed",
+                            "total",
+                            "canLock",
+                            "missingCards",
+                            "issues"
+                          ],
                           "additionalProperties": false
                         },
                         "proposal": {
@@ -15721,9 +15904,57 @@
                             "required": ["key", "title"],
                             "additionalProperties": false
                           }
+                        },
+                        "issues": {
+                          "maxItems": 20,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "missing_card",
+                                  "missing_world_rule",
+                                  "contradictory_world_rule"
+                                ]
+                              },
+                              "key": {
+                                "type": "string",
+                                "enum": [
+                                  "oneSentence",
+                                  "sellingPoints",
+                                  "protagonist",
+                                  "goldenFinger",
+                                  "worldLaws",
+                                  "mainPlot",
+                                  "subplots",
+                                  "ending",
+                                  "readerPromise"
+                                ]
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": ["code", "key", "title", "message"],
+                            "additionalProperties": false
+                          }
                         }
                       },
-                      "required": ["status", "completed", "total", "canLock", "missingCards"],
+                      "required": [
+                        "status",
+                        "completed",
+                        "total",
+                        "canLock",
+                        "missingCards",
+                        "issues"
+                      ],
                       "additionalProperties": false
                     },
                     "requestId": {
@@ -15735,6 +15966,297 @@
                       "default": {},
                       "type": "object",
                       "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["story-bible"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/story-bible/versions": {
+      "get": {
+        "operationId": "StoryBibleController_versions",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Immutable story bible version history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "storyBibleId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "workId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "branchId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "maximum": 9007199254740991
+                          },
+                          "action": {
+                            "type": "string",
+                            "enum": ["proposed", "edited", "locked", "unlocked"]
+                          },
+                          "actorId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 1
+                          },
+                          "cards": {
+                            "minItems": 9,
+                            "maxItems": 9,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string",
+                                  "enum": [
+                                    "oneSentence",
+                                    "sellingPoints",
+                                    "protagonist",
+                                    "goldenFinger",
+                                    "worldLaws",
+                                    "mainPlot",
+                                    "subplots",
+                                    "ending",
+                                    "readerPromise"
+                                  ]
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "content": {
+                                  "type": "string",
+                                  "maxLength": 20000
+                                },
+                                "complete": {
+                                  "type": "boolean"
+                                },
+                                "worldRules": {
+                                  "default": [],
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "name": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "constraint": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      },
+                                      "scope": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      },
+                                      "exceptions": {
+                                        "default": [],
+                                        "maxItems": 20,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 500
+                                        }
+                                      }
+                                    },
+                                    "required": ["id", "name", "constraint", "scope", "exceptions"],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": ["key", "title", "content", "complete", "worldRules"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "storyBibleId",
+                          "workId",
+                          "branchId",
+                          "version",
+                          "action",
+                          "actorId",
+                          "reason",
+                          "cards",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["story-bible"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/story-bible/world-rules": {
+      "get": {
+        "operationId": "StoryBibleController_worldRules",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Structured world rule constraints",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "constraint": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 2000
+                          },
+                          "scope": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "exceptions": {
+                            "default": [],
+                            "maxItems": 20,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            }
+                          }
+                        },
+                        "required": ["id", "name", "constraint", "scope", "exceptions"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -15832,9 +16354,50 @@
                               },
                               "complete": {
                                 "type": "boolean"
+                              },
+                              "worldRules": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "constraint": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 2000
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "exceptions": {
+                                      "default": [],
+                                      "maxItems": 20,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      }
+                                    }
+                                  },
+                                  "required": ["id", "name", "constraint", "scope", "exceptions"],
+                                  "additionalProperties": false
+                                }
                               }
                             },
-                            "required": ["key", "title", "content", "complete"],
+                            "required": ["key", "title", "content", "complete", "worldRules"],
                             "additionalProperties": false
                           }
                         },
@@ -15885,9 +16448,57 @@
                                 "required": ["key", "title"],
                                 "additionalProperties": false
                               }
+                            },
+                            "issues": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "missing_card",
+                                      "missing_world_rule",
+                                      "contradictory_world_rule"
+                                    ]
+                                  },
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "message": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["code", "key", "title", "message"],
+                                "additionalProperties": false
+                              }
                             }
                           },
-                          "required": ["status", "completed", "total", "canLock", "missingCards"],
+                          "required": [
+                            "status",
+                            "completed",
+                            "total",
+                            "canLock",
+                            "missingCards",
+                            "issues"
+                          ],
                           "additionalProperties": false
                         },
                         "proposal": {
@@ -15942,6 +16553,599 @@
                         "lockedBy",
                         "createdAt",
                         "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["story-bible"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/story-bible/unlock": {
+      "post": {
+        "operationId": "StoryBibleController_unlock",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Unlocked story bible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["draft", "proposed", "locked"]
+                        },
+                        "cards": {
+                          "minItems": 9,
+                          "maxItems": 9,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "enum": [
+                                  "oneSentence",
+                                  "sellingPoints",
+                                  "protagonist",
+                                  "goldenFinger",
+                                  "worldLaws",
+                                  "mainPlot",
+                                  "subplots",
+                                  "ending",
+                                  "readerPromise"
+                                ]
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "content": {
+                                "type": "string",
+                                "maxLength": 20000
+                              },
+                              "complete": {
+                                "type": "boolean"
+                              },
+                              "worldRules": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "constraint": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 2000
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "exceptions": {
+                                      "default": [],
+                                      "maxItems": 20,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      }
+                                    }
+                                  },
+                                  "required": ["id", "name", "constraint", "scope", "exceptions"],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": ["key", "title", "content", "complete", "worldRules"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "readiness": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": ["not_ready", "partial", "ready"]
+                            },
+                            "completed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9
+                            },
+                            "total": {
+                              "type": "number",
+                              "enum": [9]
+                            },
+                            "canLock": {
+                              "type": "boolean"
+                            },
+                            "missingCards": {
+                              "maxItems": 9,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["key", "title"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "issues": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "missing_card",
+                                      "missing_world_rule",
+                                      "contradictory_world_rule"
+                                    ]
+                                  },
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "message": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["code", "key", "title", "message"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "status",
+                            "completed",
+                            "total",
+                            "canLock",
+                            "missingCards",
+                            "issues"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "proposal": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "generatedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "source": {
+                              "type": "string",
+                              "enum": ["work_premise"]
+                            }
+                          },
+                          "required": ["generatedAt", "source"],
+                          "additionalProperties": false
+                        },
+                        "lockedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "lockedBy": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "version",
+                        "status",
+                        "cards",
+                        "readiness",
+                        "proposal",
+                        "lockedAt",
+                        "lockedBy",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["story-bible"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/story-bible/change-requests": {
+      "post": {
+        "operationId": "StoryBibleController_createChangeRequest",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "idempotency-key",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Pending change request for a locked story bible",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "storyBibleId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "cardKey": {
+                          "type": "string",
+                          "enum": [
+                            "oneSentence",
+                            "sellingPoints",
+                            "protagonist",
+                            "goldenFinger",
+                            "worldLaws",
+                            "mainPlot",
+                            "subplots",
+                            "ending",
+                            "readerPromise"
+                          ]
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "reason": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "before": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "enum": [
+                                "oneSentence",
+                                "sellingPoints",
+                                "protagonist",
+                                "goldenFinger",
+                                "worldLaws",
+                                "mainPlot",
+                                "subplots",
+                                "ending",
+                                "readerPromise"
+                              ]
+                            },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "content": {
+                              "type": "string",
+                              "maxLength": 20000
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "worldRules": {
+                              "default": [],
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "constraint": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "scope": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  },
+                                  "exceptions": {
+                                    "default": [],
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  }
+                                },
+                                "required": ["id", "name", "constraint", "scope", "exceptions"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["key", "title", "content", "complete", "worldRules"],
+                          "additionalProperties": false
+                        },
+                        "after": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "enum": [
+                                "oneSentence",
+                                "sellingPoints",
+                                "protagonist",
+                                "goldenFinger",
+                                "worldLaws",
+                                "mainPlot",
+                                "subplots",
+                                "ending",
+                                "readerPromise"
+                              ]
+                            },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "content": {
+                              "type": "string",
+                              "maxLength": 20000
+                            },
+                            "complete": {
+                              "type": "boolean"
+                            },
+                            "worldRules": {
+                              "default": [],
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "constraint": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "scope": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  },
+                                  "exceptions": {
+                                    "default": [],
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  }
+                                },
+                                "required": ["id", "name", "constraint", "scope", "exceptions"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["key", "title", "content", "complete", "worldRules"],
+                          "additionalProperties": false
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["pending", "analyzing", "approved", "rejected", "applied"]
+                        },
+                        "risk": {
+                          "type": "string",
+                          "enum": ["low", "medium", "high"]
+                        },
+                        "source": {
+                          "type": "string",
+                          "enum": ["author", "ai", "import", "batch"]
+                        },
+                        "createdBy": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "storyBibleId",
+                        "workId",
+                        "branchId",
+                        "cardKey",
+                        "title",
+                        "reason",
+                        "before",
+                        "after",
+                        "status",
+                        "risk",
+                        "source",
+                        "createdBy",
+                        "createdAt"
                       ],
                       "additionalProperties": false
                     },
@@ -16051,9 +17255,50 @@
                               },
                               "complete": {
                                 "type": "boolean"
+                              },
+                              "worldRules": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "name": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 120
+                                    },
+                                    "constraint": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 2000
+                                    },
+                                    "scope": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    },
+                                    "exceptions": {
+                                      "default": [],
+                                      "maxItems": 20,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      }
+                                    }
+                                  },
+                                  "required": ["id", "name", "constraint", "scope", "exceptions"],
+                                  "additionalProperties": false
+                                }
                               }
                             },
-                            "required": ["key", "title", "content", "complete"],
+                            "required": ["key", "title", "content", "complete", "worldRules"],
                             "additionalProperties": false
                           }
                         },
@@ -16104,9 +17349,57 @@
                                 "required": ["key", "title"],
                                 "additionalProperties": false
                               }
+                            },
+                            "issues": {
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "missing_card",
+                                      "missing_world_rule",
+                                      "contradictory_world_rule"
+                                    ]
+                                  },
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "oneSentence",
+                                      "sellingPoints",
+                                      "protagonist",
+                                      "goldenFinger",
+                                      "worldLaws",
+                                      "mainPlot",
+                                      "subplots",
+                                      "ending",
+                                      "readerPromise"
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "message": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["code", "key", "title", "message"],
+                                "additionalProperties": false
+                              }
                             }
                           },
-                          "required": ["status", "completed", "total", "canLock", "missingCards"],
+                          "required": [
+                            "status",
+                            "completed",
+                            "total",
+                            "canLock",
+                            "missingCards",
+                            "issues"
+                          ],
                           "additionalProperties": false
                         },
                         "proposal": {

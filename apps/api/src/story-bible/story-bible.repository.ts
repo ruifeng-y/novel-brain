@@ -1,21 +1,33 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
+import type {
+  StoryBibleCard,
+  StoryBibleCardKey,
+  StoryBibleVersionAction,
+  StoryBibleVersionListQuery,
+  StoryBibleWorldRule,
+  StoryBibleWorldRuleListQuery,
+} from "@novel-brain/contracts";
 import {
   auditLogs,
   createDatabaseClient,
   createDatabasePool,
+  storyBibleChangeRequests,
   storyBibles,
   storyBibleVersions,
+  storyBibleWorldRules,
   versionNodes,
   workBranches,
   works,
   type DatabaseClient,
 } from "@novel-brain/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, lt, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 export type StoryBibleRecord = InferSelectModel<typeof storyBibles>;
+export type StoryBibleVersionRecord = InferSelectModel<typeof storyBibleVersions>;
+export type StoryBibleChangeRequestRecord = InferSelectModel<typeof storyBibleChangeRequests>;
 type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
 
 export interface StoryBibleWorkContext {
@@ -31,6 +43,35 @@ export interface StoryBibleAuditContext {
   requestId: string;
   ip: string;
   userAgent: string;
+}
+
+interface AppendVersionInput {
+  userId: string;
+  storyBibleId: string;
+  expectedVersion: number;
+  cards: StoryBibleCard[];
+  status: StoryBibleRecord["status"];
+  action: StoryBibleVersionAction;
+  reason: string;
+  readiness: Record<string, unknown>;
+  proposalGeneratedAt?: Date | null;
+  requireLocked?: boolean;
+  audit: StoryBibleAuditContext;
+}
+
+interface CreateChangeRequestInput {
+  userId: string;
+  storyBibleId: string;
+  expectedVersion: number;
+  workId: string;
+  branchId: string;
+  cardKey: StoryBibleCardKey;
+  title: string;
+  reason: string;
+  before: StoryBibleCard;
+  after: StoryBibleCard;
+  audit: StoryBibleAuditContext;
+  idempotencyKey: string | null;
 }
 
 @Injectable()
@@ -118,86 +159,99 @@ export class StoryBibleRepository implements OnModuleDestroy {
     });
   }
 
-  async updateProposal(
+  async listVersions(
     userId: string,
     storyBibleId: string,
-    expectedVersion: number,
-    cards: StoryBibleRecord["cards"],
-    generatedAt: Date,
-  ): Promise<"not_found" | "locked" | "version_conflict" | StoryBibleRecord> {
-    return this.updateUnlocked(userId, storyBibleId, expectedVersion, cards, {
-      status: "proposed",
-      proposalGeneratedAt: generatedAt,
+    query: StoryBibleVersionListQuery,
+  ): Promise<{ versions: StoryBibleVersionRecord[]; nextCursor: string | null }> {
+    return this.withTenant(userId, async (transaction) => {
+      const rows = await transaction
+        .select()
+        .from(storyBibleVersions)
+        .where(
+          and(
+            eq(storyBibleVersions.userId, userId),
+            eq(storyBibleVersions.storyBibleId, storyBibleId),
+            query.cursor ? lt(storyBibleVersions.id, query.cursor) : undefined,
+          ),
+        )
+        .orderBy(desc(storyBibleVersions.id))
+        .limit(query.limit + 1);
+      const versions = rows.slice(0, query.limit);
+      return {
+        versions,
+        nextCursor: rows.length > query.limit ? (versions.at(-1)?.id ?? null) : null,
+      };
     });
   }
 
-  async updateCards(
+  async listWorldRules(
     userId: string,
     storyBibleId: string,
-    expectedVersion: number,
-    cards: StoryBibleRecord["cards"],
-  ): Promise<"not_found" | "locked" | "version_conflict" | StoryBibleRecord> {
-    return this.updateUnlocked(userId, storyBibleId, expectedVersion, cards);
+    query: StoryBibleWorldRuleListQuery,
+  ): Promise<{ worldRules: StoryBibleWorldRule[]; nextCursor: string | null }> {
+    return this.withTenant(userId, async (transaction) => {
+      const [latestVersion] = await transaction
+        .select({ id: storyBibleVersions.id })
+        .from(storyBibleVersions)
+        .where(
+          and(
+            eq(storyBibleVersions.userId, userId),
+            eq(storyBibleVersions.storyBibleId, storyBibleId),
+          ),
+        )
+        .orderBy(desc(storyBibleVersions.version))
+        .limit(1);
+      if (!latestVersion) {
+        return { worldRules: [], nextCursor: null };
+      }
+      const rows = await transaction
+        .select()
+        .from(storyBibleWorldRules)
+        .where(
+          and(
+            eq(storyBibleWorldRules.userId, userId),
+            eq(storyBibleWorldRules.storyBibleVersionId, latestVersion.id),
+            query.cursor ? lt(storyBibleWorldRules.id, query.cursor) : undefined,
+          ),
+        )
+        .orderBy(desc(storyBibleWorldRules.id))
+        .limit(query.limit + 1);
+      const worldRules = rows.slice(0, query.limit).map((rule) => ({
+        id: rule.id,
+        name: rule.name,
+        constraint: rule.constraint,
+        scope: rule.scope,
+        exceptions: rule.exceptions,
+      }));
+      return {
+        worldRules,
+        nextCursor: rows.length > query.limit ? (worldRules.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
-  private async updateUnlocked(
-    userId: string,
-    storyBibleId: string,
-    expectedVersion: number,
-    cards: StoryBibleRecord["cards"],
-    options?: { status: "proposed"; proposalGeneratedAt: Date },
-  ): Promise<"not_found" | "locked" | "version_conflict" | StoryBibleRecord> {
-    return this.withTenant(userId, async (transaction) => {
+  async appendVersion(
+    input: AppendVersionInput,
+  ): Promise<"not_found" | "locked" | "not_locked" | "version_conflict" | StoryBibleRecord> {
+    return this.withTenant(input.userId, async (transaction) => {
       const [current] = await transaction
         .select()
         .from(storyBibles)
-        .where(and(eq(storyBibles.id, storyBibleId), eq(storyBibles.userId, userId)))
+        .where(and(eq(storyBibles.id, input.storyBibleId), eq(storyBibles.userId, input.userId)))
         .for("update")
         .limit(1);
       if (!current) {
         return "not_found";
       }
-      if (current.status === "locked") {
+      if (input.requireLocked) {
+        if (current.status !== "locked") {
+          return "not_locked";
+        }
+      } else if (current.status === "locked") {
         return "locked";
       }
-      if (current.version !== expectedVersion) {
-        return "version_conflict";
-      }
-      const [updated] = await transaction
-        .update(storyBibles)
-        .set({
-          cards,
-          version: current.version + 1,
-          updatedAt: new Date(),
-          ...options,
-        })
-        .where(and(eq(storyBibles.id, current.id), eq(storyBibles.version, current.version)))
-        .returning();
-      return updated ?? "version_conflict";
-    });
-  }
-
-  async lock(
-    userId: string,
-    storyBibleId: string,
-    expectedVersion: number,
-    readiness: Record<string, unknown>,
-    audit: StoryBibleAuditContext,
-  ): Promise<"not_found" | "locked" | "version_conflict" | StoryBibleRecord> {
-    return this.withTenant(userId, async (transaction) => {
-      const [current] = await transaction
-        .select()
-        .from(storyBibles)
-        .where(and(eq(storyBibles.id, storyBibleId), eq(storyBibles.userId, userId)))
-        .for("update")
-        .limit(1);
-      if (!current) {
-        return "not_found";
-      }
-      if (current.status === "locked") {
-        return "locked";
-      }
-      if (current.version !== expectedVersion) {
+      if (current.version !== input.expectedVersion) {
         return "version_conflict";
       }
 
@@ -209,7 +263,7 @@ export class StoryBibleRepository implements OnModuleDestroy {
           and(
             eq(workBranches.id, current.branchId),
             eq(workBranches.workId, current.workId),
-            eq(workBranches.userId, userId),
+            eq(workBranches.userId, input.userId),
           ),
         )
         .for("update")
@@ -218,69 +272,174 @@ export class StoryBibleRepository implements OnModuleDestroy {
         throw new Error("Story bible branch is missing its version head");
       }
 
-      const lockedAt = new Date();
-      const bibleVersionId = uuidv7();
+      const createdAt = new Date();
+      const versionId = uuidv7();
       const versionNodeId = uuidv7();
+      const nextVersion = current.version + 1;
+      const locked = input.status === "locked";
+      const nextProposalGeneratedAt =
+        input.proposalGeneratedAt === undefined
+          ? current.proposalGeneratedAt
+          : input.proposalGeneratedAt;
       await transaction.insert(versionNodes).values({
         id: versionNodeId,
         workId: current.workId,
         branchId: current.branchId,
-        userId,
+        userId: input.userId,
         parentNodeId: branch.headNodeId,
         nodeType: "story_bible_version",
         objectType: "story_bible",
         objectId: current.id,
-        objectVersion: current.version,
-        snapshotId: bibleVersionId,
+        objectVersion: nextVersion,
+        snapshotId: versionId,
         payload: {
-          cards: current.cards,
-          readiness,
+          action: input.action,
+          reason: input.reason,
+          cards: input.cards,
+          readiness: input.readiness,
         },
-        actorId: userId,
-        message: "锁定故事圣经",
+        actorId: input.userId,
+        message: input.reason,
       });
       await transaction.insert(storyBibleVersions).values({
-        id: bibleVersionId,
+        id: versionId,
         storyBibleId: current.id,
         workId: current.workId,
         branchId: current.branchId,
-        userId,
-        version: current.version,
-        cards: current.cards,
-        readiness,
+        userId: input.userId,
+        version: nextVersion,
+        cards: input.cards,
+        readiness: input.readiness,
+        action: input.action,
+        reason: input.reason,
         versionNodeId,
-        createdBy: userId,
-        createdAt: lockedAt,
+        createdBy: input.userId,
+        createdAt,
       });
+      const worldRules = input.cards.find((card) => card.key === "worldLaws")?.worldRules ?? [];
+      if (worldRules.length > 0) {
+        await transaction.insert(storyBibleWorldRules).values(
+          worldRules.map((rule) => ({
+            id: rule.id,
+            storyBibleVersionId: versionId,
+            storyBibleId: current.id,
+            workId: current.workId,
+            branchId: current.branchId,
+            userId: input.userId,
+            name: rule.name,
+            constraint: rule.constraint,
+            scope: rule.scope,
+            exceptions: rule.exceptions,
+            createdAt,
+          })),
+        );
+      }
       await transaction
         .update(workBranches)
-        .set({ headNodeId: versionNodeId, updatedAt: lockedAt })
+        .set({ headNodeId: versionNodeId, updatedAt: createdAt })
         .where(eq(workBranches.id, branch.id));
-      const [locked] = await transaction
+      const [updated] = await transaction
         .update(storyBibles)
         .set({
-          status: "locked",
-          lockedAt,
-          lockedBy: userId,
-          updatedAt: lockedAt,
+          cards: input.cards,
+          version: nextVersion,
+          status: input.status,
+          proposalGeneratedAt: nextProposalGeneratedAt,
+          lockedAt: locked ? createdAt : null,
+          lockedBy: locked ? input.userId : null,
+          updatedAt: createdAt,
         })
         .where(and(eq(storyBibles.id, current.id), eq(storyBibles.version, current.version)))
         .returning();
-      if (!locked) {
-        return "version_conflict";
+      if (!updated) {
+        throw new Error("Story bible version update lost its row lock");
       }
       await transaction.insert(auditLogs).values({
         id: uuidv7(),
-        actorId: userId,
-        action: "story_bible.locked",
+        actorId: input.userId,
+        action: `story_bible.${input.action}`,
         targetType: "story_bible",
         targetId: current.id,
         decision: "allowed",
-        correlationId: audit.requestId,
-        ip: audit.ip,
-        userAgent: audit.userAgent,
+        correlationId: input.audit.requestId,
+        ip: input.audit.ip,
+        userAgent: input.audit.userAgent,
       });
-      return locked;
+      return updated;
+    });
+  }
+
+  async createChangeRequest(
+    input: CreateChangeRequestInput,
+  ): Promise<"not_locked" | "version_conflict" | StoryBibleChangeRequestRecord> {
+    return this.withTenant(input.userId, async (transaction) => {
+      await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${input.userId}))`);
+      const [storyBible] = await transaction
+        .select()
+        .from(storyBibles)
+        .where(and(eq(storyBibles.id, input.storyBibleId), eq(storyBibles.userId, input.userId)))
+        .for("update")
+        .limit(1);
+      if (!storyBible) {
+        throw new Error("Story bible disappeared while creating a change request");
+      }
+      if (input.idempotencyKey) {
+        const [existing] = await transaction
+          .select()
+          .from(storyBibleChangeRequests)
+          .where(
+            and(
+              eq(storyBibleChangeRequests.userId, input.userId),
+              eq(storyBibleChangeRequests.storyBibleId, input.storyBibleId),
+              eq(storyBibleChangeRequests.idempotencyKey, input.idempotencyKey),
+            ),
+          )
+          .limit(1);
+        if (existing) {
+          return existing;
+        }
+      }
+      if (storyBible.status !== "locked") {
+        return "not_locked";
+      }
+      if (storyBible.version !== input.expectedVersion) {
+        return "version_conflict";
+      }
+      const [request] = await transaction
+        .insert(storyBibleChangeRequests)
+        .values({
+          id: uuidv7(),
+          storyBibleId: input.storyBibleId,
+          workId: input.workId,
+          branchId: input.branchId,
+          userId: input.userId,
+          cardKey: input.cardKey,
+          title: input.title,
+          reason: input.reason,
+          before: input.before,
+          after: input.after,
+          status: "pending",
+          risk: "medium",
+          source: "author",
+          idempotencyKey: input.idempotencyKey,
+          createdBy: input.userId,
+        })
+        .returning();
+      if (!request) {
+        throw new Error("Failed to create story bible change request");
+      }
+      await transaction.insert(auditLogs).values({
+        id: uuidv7(),
+        actorId: input.userId,
+        action: "story_bible.change_requested",
+        targetType: "story_bible",
+        targetId: input.storyBibleId,
+        decision: "pending",
+        correlationId: input.audit.requestId,
+        ip: input.audit.ip,
+        userAgent: input.audit.userAgent,
+      });
+      return request;
     });
   }
 
