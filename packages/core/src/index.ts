@@ -53,3 +53,246 @@ export function resolveProxyIpSecret(
   }
   throw new Error("PROXY_IP_SECRET must be configured with a non-default secret");
 }
+
+export type ContextSourceType =
+  "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+export type ContextSourcePriority = "required" | "high" | "normal";
+
+export interface ContextSourceRef {
+  sourceType: ContextSourceType;
+  sourceId: string;
+  label: string;
+  citation: string;
+}
+
+export interface ContextCompilerSource {
+  key: string;
+  label: string;
+  priority: ContextSourcePriority;
+  content: string;
+  sourceRefs: ContextSourceRef[];
+}
+
+export interface CompileContextPackInput {
+  tokenBudget: number;
+  compilerVersion: string;
+  sources: ContextCompilerSource[];
+}
+
+export interface CompiledContextPack {
+  compilerVersion: string;
+  tokenBudget: number;
+  tokenUsed: number;
+  selected: Array<{
+    key: string;
+    label: string;
+    priority: ContextSourcePriority;
+    content: string;
+    tokenCount: number;
+    sourceRefs: ContextSourceRef[];
+  }>;
+  evicted: Array<{
+    key: string;
+    label: string;
+    reason: "token_budget";
+    tokenCount: number;
+  }>;
+  sourceRefs: ContextSourceRef[];
+}
+
+export interface ChapterContextInput {
+  chapter: {
+    id: string;
+    number: number;
+    title: string;
+    brief: {
+      goal?: string;
+      pov?: string;
+      location?: string;
+      sceneBeats?: string[];
+      requiredFacts?: string[];
+    };
+  };
+  storyBible: {
+    id: string;
+    cards: Array<{ title: string; content: string }>;
+  };
+  settings: Array<{
+    id: string;
+    name: string;
+    summary: string;
+    attributes: Record<string, unknown>;
+  }>;
+  previousVersions: Array<{
+    chapterId: string;
+    chapterNumber: number;
+    chapterTitle: string;
+    versionId: string;
+    content: string;
+  }>;
+}
+
+export class ContextBudgetExceededError extends Error {
+  constructor(
+    readonly requiredTokens: number,
+    readonly tokenBudget: number,
+  ) {
+    super("Required context exceeds the token budget");
+    this.name = "ContextBudgetExceededError";
+  }
+}
+
+export function estimateContextTokens(value: string): number {
+  return Math.max(1, Math.ceil(Array.from(value.replace(/\s/gu, "")).length / 2));
+}
+
+export function compileContextPack(input: CompileContextPackInput): CompiledContextPack {
+  const priorities: Record<ContextSourcePriority, number> = {
+    required: 0,
+    high: 1,
+    normal: 2,
+  };
+  const ranked = input.sources
+    .map((source, index) => ({
+      source,
+      index,
+      tokenCount: estimateContextTokens(source.content),
+    }))
+    .sort(
+      (left, right) =>
+        priorities[left.source.priority] - priorities[right.source.priority] ||
+        left.index - right.index,
+    );
+  const requiredTokens = ranked
+    .filter(({ source }) => source.priority === "required")
+    .reduce((total, source) => total + source.tokenCount, 0);
+  if (requiredTokens > input.tokenBudget) {
+    throw new ContextBudgetExceededError(requiredTokens, input.tokenBudget);
+  }
+
+  let tokenUsed = 0;
+  const selected: CompiledContextPack["selected"] = [];
+  const evicted: CompiledContextPack["evicted"] = [];
+  for (const source of ranked) {
+    if (tokenUsed + source.tokenCount <= input.tokenBudget) {
+      tokenUsed += source.tokenCount;
+      selected.push({
+        key: source.source.key,
+        label: source.source.label,
+        priority: source.source.priority,
+        content: source.source.content,
+        tokenCount: source.tokenCount,
+        sourceRefs: source.source.sourceRefs,
+      });
+      continue;
+    }
+    evicted.push({
+      key: source.source.key,
+      label: source.source.label,
+      reason: "token_budget",
+      tokenCount: source.tokenCount,
+    });
+  }
+
+  return {
+    compilerVersion: input.compilerVersion,
+    tokenBudget: input.tokenBudget,
+    tokenUsed,
+    selected,
+    evicted,
+    sourceRefs: uniqueSourceRefs(selected.flatMap((source) => source.sourceRefs)),
+  };
+}
+
+export function compileChapterContext(
+  input: ChapterContextInput,
+  tokenBudget: number,
+  compilerVersion = "m0-context-v1",
+): CompiledContextPack {
+  const chapterRef = {
+    sourceType: "chapter_brief" as const,
+    sourceId: input.chapter.id,
+    label: `第 ${input.chapter.number} 章章纲`,
+    citation: `第 ${input.chapter.number} 章 · 章纲`,
+  };
+  const bibleRef = {
+    sourceType: "story_bible" as const,
+    sourceId: input.storyBible.id,
+    label: "故事圣经",
+    citation: "已锁定故事圣经",
+  };
+  const brief = input.chapter.brief;
+  const candidates: ContextCompilerSource[] = [
+    {
+      key: "brief:required-facts",
+      label: "本章必用事实",
+      priority: "required",
+      content: (brief.requiredFacts ?? []).join("\n"),
+      sourceRefs: [chapterRef],
+    },
+    {
+      key: "brief:scene",
+      label: "本章章纲",
+      priority: "required",
+      content: [
+        `目标：${brief.goal ?? ""}`,
+        `视角：${brief.pov ?? ""}`,
+        `地点：${brief.location ?? ""}`,
+        ...(brief.sceneBeats ?? []).map((beat, index) => `${index + 1}. ${beat}`),
+      ].join("\n"),
+      sourceRefs: [chapterRef],
+    },
+    {
+      key: "story-bible:locked",
+      label: "故事圣经",
+      priority: "high",
+      content: input.storyBible.cards.map((card) => `${card.title}：${card.content}`).join("\n"),
+      sourceRefs: [bibleRef],
+    },
+    ...input.settings.map((setting) => ({
+      key: `setting:${setting.id}`,
+      label: setting.name,
+      priority: "high" as const,
+      content: `${setting.summary}\n${JSON.stringify(setting.attributes)}`,
+      sourceRefs: [
+        {
+          sourceType: "setting" as const,
+          sourceId: setting.id,
+          label: setting.name,
+          citation: `已确认设定 · ${setting.name}`,
+        },
+      ],
+    })),
+    ...input.previousVersions.map((version) => ({
+      key: `recent:${version.chapterId}`,
+      label: `第 ${version.chapterNumber} 章`,
+      priority: "normal" as const,
+      content: version.content,
+      sourceRefs: [
+        {
+          sourceType: "chapter_version" as const,
+          sourceId: version.versionId,
+          label: `第 ${version.chapterNumber} 章`,
+          citation: `第 ${version.chapterNumber} 章 · ${version.chapterTitle}`,
+        },
+      ],
+    })),
+  ];
+  return compileContextPack({
+    tokenBudget,
+    compilerVersion,
+    sources: candidates.filter((source) => source.content.trim().length > 0),
+  });
+}
+
+function uniqueSourceRefs(refs: ContextSourceRef[]): ContextSourceRef[] {
+  const seen = new Set<string>();
+  return refs.filter((ref) => {
+    const key = `${ref.sourceType}:${ref.sourceId}:${ref.citation}`;
+    if (seen.has(key)) {
+      return false;
+    }
+    seen.add(key);
+    return true;
+  });
+}

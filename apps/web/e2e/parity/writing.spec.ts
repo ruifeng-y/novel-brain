@@ -2,6 +2,7 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import { expectAuthorFacingLanguage } from "../helpers/ui";
+import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
 
@@ -65,6 +66,103 @@ async function createChapter(page: Page, work: { id: string; mainBranch: { id: s
     version: number;
     status: string;
   };
+}
+
+async function createModelConfig(page: Page) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post("/api/v1/model-configs", {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: {
+      provider: "deepseek",
+      label: "DeepSeek 正文",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "sk-fake-generation-1234",
+      purposes: ["writing"],
+      isDefault: true,
+    },
+  });
+  expect(response.status()).toBe(200);
+}
+
+async function lockBible(page: Page, work: { id: string; mainBranch: { id: string } }) {
+  const token = await getCsrf(page.request);
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const generated = await page.request.post(`${branchPath}/story-bible/generate`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: {},
+  });
+  expect(generated.status()).toBe(200);
+  const locked = await page.request.post(`${branchPath}/story-bible/lock`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: { version: (await generated.json()).data.version },
+  });
+  expect(locked.status()).toBe(200);
+}
+
+async function lockSettings(page: Page, work: { id: string; mainBranch: { id: string } }) {
+  const token = await getCsrf(page.request);
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const settings = [
+    {
+      type: "world_rule",
+      name: "天门只认完整记忆",
+      aliases: [],
+      summary: "失去关键记忆的人无法通过天门。",
+      description: "",
+      tags: [],
+      data: { rule: "主动抹除关键记忆会导致天门通行失败。" },
+    },
+    {
+      type: "character",
+      name: "沈砚",
+      aliases: [],
+      summary: "隐藏忘川书的外门杂役。",
+      description: "",
+      tags: [],
+      data: {
+        bodyState: "左臂骨折，不能双手结印。",
+        knowledgeBoundary: "不知道父母死于仇杀。",
+        relationshipSummary: "与顾青互相试探。",
+      },
+    },
+    {
+      type: "golden_finger",
+      name: "忘川书",
+      aliases: [],
+      summary: "以记忆换取前人经验。",
+      description: "",
+      tags: [],
+      data: {
+        rules: "每次只能借用一位前人的经验。",
+        cost: "永久失去一段重要记忆。",
+        limits: "每次使用消耗一页。",
+        growth: "缺失记忆会拼成完整人格。",
+      },
+    },
+  ] as const;
+  for (const setting of settings) {
+    const created = await page.request.post(`${branchPath}/entities`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: setting,
+    });
+    expect(created.status()).toBe(201);
+    const createdData = (await created.json()).data;
+    const locked = await page.request.post(`${branchPath}/entities/${createdData.id}/lock`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: { version: createdData.version },
+    });
+    expect(locked.status()).toBe(200);
+  }
+}
+
+async function prepareGenerationWork(page: Page) {
+  const work = await createWritingWork(page);
+  await createModelConfig(page);
+  await lockBible(page, work);
+  await lockSettings(page, work);
+  const chapter = await createChapter(page, work);
+  return { work, chapter };
 }
 
 test.beforeEach(async () => {
@@ -158,5 +256,87 @@ test("shows empty and error states and keeps the editor usable at four viewports
       body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
       contentType: "image/png",
     });
+  }
+});
+
+test("generates a chapter with progress, references, citations, cost and checkpoint", async ({
+  page,
+  context,
+}, testInfo) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const worker = await startWorker();
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    const generate = page.getByRole("button", { name: "生成整章" });
+    await expect(generate).toBeEnabled();
+    await generate.click();
+
+    const generationPanel = page.locator(".writing-generation");
+    await expect(generationPanel.getByRole("heading", { name: "已完成" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(generationPanel.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+    await expect(generationPanel.getByText("断点")).toBeVisible();
+    await expect(generationPanel.getByText("费用")).toBeVisible();
+    await expect(generationPanel.getByText("已锁定故事圣经")).toBeVisible();
+    await expect(generationPanel.locator(".writing-source-item").first()).toContainText("第 1 章");
+    await expect(page.getByRole("textbox", { name: "章节正文" })).toHaveValue(/修订稿/);
+    await expect(page.locator(".writing-version-list").getByText("第 2 版")).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+
+    for (const width of [390, 900, 1180, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(generationPanel).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+      await testInfo.attach(`writing-generation-${width}`, {
+        body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
+        contentType: "image/png",
+      });
+    }
+  } finally {
+    await worker.stop();
+  }
+});
+
+test("keeps the draft checkpoint after provider failure and resumes from revise", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const failingWorker = await startWorker({ failStep: "revise" });
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    await page.getByRole("button", { name: "生成整章" }).click();
+
+    const generationPanel = page.locator(".writing-generation");
+    await expect(generationPanel.getByRole("heading", { name: "生成失败" })).toBeVisible({
+      timeout: 15_000,
+    });
+    await expect(generationPanel.getByText("模型服务暂时不可用，草稿和检查点已保留")).toBeVisible();
+    await expect(generationPanel.getByText("MODEL_PROVIDER_ERROR")).toBeVisible();
+    await expect(generationPanel.getByRole("button", { name: "从断点重试" })).toBeVisible();
+    await expect(page.getByRole("textbox", { name: "章节正文" })).toHaveValue(/生成草稿/);
+  } finally {
+    await failingWorker.stop();
+  }
+
+  const recoveredWorker = await startWorker();
+  try {
+    await page.locator(".writing-generation").getByRole("button", { name: "从断点重试" }).click();
+    await expect(
+      page.locator(".writing-generation").getByRole("heading", { name: "已完成" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("textbox", { name: "章节正文" })).toHaveValue(/修订稿/);
+    await expect(page.locator(".writing-generation").getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "100",
+    );
+  } finally {
+    await recoveredWorker.stop();
   }
 });

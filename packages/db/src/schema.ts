@@ -489,13 +489,250 @@ export const chapterVersions = pgTable(
       .notNull()
       .references(() => versionNodes.id, { onDelete: "restrict" }),
     source: text("source").notNull().default("manual"),
+    generationJobId: uuid("generation_job_id").references((): AnyPgColumn => jobs.id, {
+      onDelete: "set null",
+    }),
+    generationStep: text("generation_step"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("chapter_versions_chapter_version_unique").on(table.chapterId, table.version),
     uniqueIndex("chapter_versions_node_unique").on(table.versionNodeId),
+    uniqueIndex("chapter_versions_generation_step_unique").on(
+      table.generationJobId,
+      table.generationStep,
+    ),
     index("chapter_versions_user_work_idx").on(table.userId, table.workId),
   ],
+);
+
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    modelConfigId: uuid("model_config_id")
+      .notNull()
+      .references(() => modelConfigs.id, { onDelete: "restrict" }),
+    type: text("type").notNull(),
+    status: text("status").notNull().default("queued"),
+    progress: integer("progress").notNull().default(0),
+    currentStep: text("current_step").notNull().default("prepare"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    budget: jsonb("budget").$type<Record<string, unknown>>().notNull(),
+    checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull(),
+    cost: jsonb("cost").$type<Record<string, unknown>>().notNull(),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("jobs_chapter_idempotency_unique").on(
+      table.userId,
+      table.chapterId,
+      table.idempotencyKey,
+    ),
+    index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
+    index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check("jobs_type_check", sql`${table.type} in ('generate_chapter')`),
+    check(
+      "jobs_status_check",
+      sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
+    ),
+    check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
+  ],
+);
+
+export const jobSteps = pgTable(
+  "job_steps",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stepKey: text("step_key").notNull(),
+    status: text("status").notNull().default("pending"),
+    attempt: integer("attempt").notNull().default(0),
+    inputHash: text("input_hash"),
+    output: jsonb("output").$type<Record<string, unknown>>().notNull().default({}),
+    cost: jsonb("cost").$type<Record<string, unknown>>().notNull().default({}),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_steps_job_step_unique").on(table.jobId, table.stepKey),
+    index("job_steps_job_status_idx").on(table.jobId, table.status),
+    check(
+      "job_steps_step_check",
+      sql`${table.stepKey} in ('prepare', 'compile_context', 'draft', 'verify', 'revise', 'extract_facts', 'await_review')`,
+    ),
+    check(
+      "job_steps_status_check",
+      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed', 'skipped')`,
+    ),
+  ],
+);
+
+export const jobCheckpoints = pgTable(
+  "job_checkpoints",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stepKey: text("step_key").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("job_checkpoints_job_created_idx").on(table.jobId, table.createdAt)],
+);
+
+export const jobEvents = pgTable(
+  "job_events",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    eventType: text("event_type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_events_job_sequence_unique").on(table.jobId, table.sequence),
+    index("job_events_job_occurred_idx").on(table.jobId, table.occurredAt),
+  ],
+);
+
+export const contextPackVersions = pgTable(
+  "context_pack_versions",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    compilerVersion: text("compiler_version").notNull(),
+    tokenBudget: integer("token_budget").notNull(),
+    tokenUsed: integer("token_used").notNull(),
+    selected: jsonb("selected").$type<unknown[]>().notNull(),
+    evicted: jsonb("evicted").$type<unknown[]>().notNull(),
+    sourceRefs: jsonb("source_refs").$type<unknown[]>().notNull(),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("context_pack_versions_job_version_unique").on(table.jobId, table.version),
+    index("context_pack_versions_chapter_created_idx").on(table.chapterId, table.createdAt),
+  ],
+);
+
+export const agentRuns = pgTable(
+  "agent_runs",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stepKey: text("step_key").notNull(),
+    role: text("role").notNull(),
+    status: text("status").notNull(),
+    inputHash: text("input_hash").notNull(),
+    output: text("output").notNull().default(""),
+    citations: jsonb("citations").$type<unknown[]>().notNull().default([]),
+    usage: jsonb("usage").$type<Record<string, unknown>>().notNull().default({}),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [index("agent_runs_job_step_idx").on(table.jobId, table.stepKey)],
+);
+
+export const usageRecords = pgTable(
+  "usage_records",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    model: text("model").notNull(),
+    promptTokens: integer("prompt_tokens").notNull(),
+    completionTokens: integer("completion_tokens").notNull(),
+    costCny: real("cost_cny").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("usage_records_job_created_idx").on(table.jobId, table.createdAt)],
 );
 
 export const importJobs = pgTable(

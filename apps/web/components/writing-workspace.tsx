@@ -5,14 +5,18 @@ import {
   Check,
   ChevronLeft,
   Circle,
+  Coins,
   FileText,
   Italic,
   LoaderCircle,
   Maximize2,
   Minimize2,
   Quote,
+  RefreshCw,
   Save,
+  Sparkles,
   TriangleAlert,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -21,10 +25,15 @@ import {
   chapterVersionListResponseSchema,
   chapterVersionSaveResponseSchema,
   chapterWorkspaceListResponseSchema,
+  chapterWorkspaceResponseSchema,
+  generationJobListResponseSchema,
+  generationJobResponseSchema,
+  jobEventSchema,
   workResponseSchema,
   type ChapterReadiness,
   type ChapterVersion,
   type ChapterWorkspace,
+  type GenerationJob,
   type WorkOverview,
 } from "@novel-brain/contracts";
 
@@ -40,6 +49,32 @@ const statusLabels: Record<ChapterWorkspace["status"], string> = {
   published: "已发布",
   rejected: "已驳回",
 };
+
+const generationStatusLabels: Record<GenerationJob["status"], string> = {
+  queued: "排队中",
+  preparing: "准备中",
+  running: "生成中",
+  paused: "已暂停",
+  waiting_review: "等待审阅",
+  completed: "已完成",
+  failed: "生成失败",
+  cancelled: "已取消",
+};
+
+const jobEventTypes = [
+  "job.created",
+  "job.preparing",
+  "job.step.started",
+  "job.step.succeeded",
+  "job.step.failed",
+  "job.progress",
+  "job.waiting_review",
+  "job.paused",
+  "job.resumed",
+  "job.canceled",
+  "job.completed",
+  "job.failed",
+] as const;
 
 export function WritingWorkspace({
   initialChapterId,
@@ -62,7 +97,10 @@ export function WritingWorkspace({
   const [focusMode, setFocusMode] = useState(false);
   const [leftVersionId, setLeftVersionId] = useState<string>("");
   const [rightVersionId, setRightVersionId] = useState<string>("");
+  const [generationJob, setGenerationJob] = useState<GenerationJob | null>(null);
+  const [generationBusy, setGenerationBusy] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -92,9 +130,13 @@ export function WritingWorkspace({
       setContent(selectedChapter?.currentVersion?.content ?? "");
       setSavedContent(selectedChapter?.currentVersion?.content ?? "");
       if (nextSelectedId && selectedChapter) {
-        await loadVersions(workData, nextSelectedId);
+        await Promise.all([
+          loadVersions(workData, nextSelectedId),
+          loadGenerationJob(workData, nextSelectedId),
+        ]);
       } else {
         setVersions([]);
+        setGenerationJob(null);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "写作台加载失败。");
@@ -107,12 +149,26 @@ export function WritingWorkspace({
     void load();
   }, [load]);
 
+  useEffect(
+    () => () => {
+      eventSourceRef.current?.close();
+    },
+    [],
+  );
+
   const selected = useMemo(
     () => chapters.find((chapter) => chapter.id === selectedId) ?? null,
     [chapters, selectedId],
   );
   const dirty = content !== savedContent;
   const canSave = Boolean(selected && content.trim() && dirty && !saving);
+  const generationActive = Boolean(
+    generationJob &&
+    ["queued", "preparing", "running", "paused", "waiting_review"].includes(generationJob.status),
+  );
+  const canGenerate = Boolean(
+    selected?.readiness.canStartWriting && !generationActive && !generationBusy,
+  );
   const comparisonLeft = versions.find((version) => version.id === leftVersionId);
   const comparisonRight = versions.find((version) => version.id === rightVersionId);
 
@@ -158,6 +214,177 @@ export function WritingWorkspace({
           ? current
           : (nextVersions[0]?.id ?? ""),
     );
+  }
+
+  async function loadGenerationJob(workData: WorkOverview, chapterId: string) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs?chapterId=${chapterId}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      throw new Error(await readError(response, "生成状态加载失败。"));
+    }
+    const jobs = generationJobListResponseSchema.parse(await response.json()).data;
+    const latest = jobs[0] ?? null;
+    setGenerationJob(latest);
+    if (latest && isActiveGeneration(latest.status)) {
+      watchGeneration(workData, latest.id);
+    } else {
+      closeGenerationStream();
+    }
+  }
+
+  async function startGeneration() {
+    if (!work || !selected || !canGenerate) {
+      return;
+    }
+    setGenerationBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}/generate`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            budget: {
+              maxCostCny: 2.5,
+              maxTokens: 30_000,
+              maxRevisionRounds: 2,
+            },
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "生成任务创建失败。"));
+      }
+      const job = generationJobResponseSchema.parse(await response.json()).data;
+      setGenerationJob(job);
+      watchGeneration(work, job.id);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "生成任务创建失败。");
+    } finally {
+      setGenerationBusy(false);
+    }
+  }
+
+  async function cancelGeneration() {
+    if (!work || !generationJob || !generationActive) {
+      return;
+    }
+    setGenerationBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/jobs/${generationJob.id}/cancel`,
+        {
+          method: "POST",
+          headers: {
+            "x-csrf-token": await getCsrfToken(),
+          },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "取消生成失败。"));
+      }
+      setGenerationJob(generationJobResponseSchema.parse(await response.json()).data);
+      closeGenerationStream();
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "取消生成失败。");
+    } finally {
+      setGenerationBusy(false);
+    }
+  }
+
+  async function retryGeneration() {
+    if (!work || !generationJob || generationJob.status !== "failed") {
+      return;
+    }
+    setGenerationBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/jobs/${generationJob.id}/retry`,
+        {
+          method: "POST",
+          headers: {
+            "x-csrf-token": await getCsrfToken(),
+          },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "重试生成失败。"));
+      }
+      const job = generationJobResponseSchema.parse(await response.json()).data;
+      setGenerationJob(job);
+      watchGeneration(work, job.id);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "重试生成失败。");
+    } finally {
+      setGenerationBusy(false);
+    }
+  }
+
+  function watchGeneration(workData: WorkOverview, jobId: string) {
+    closeGenerationStream();
+    const source = new EventSource(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs/${jobId}/events`,
+    );
+    eventSourceRef.current = source;
+    const handleEvent = (event: MessageEvent<string>) => {
+      const parsed = jobEventSchema.safeParse(JSON.parse(event.data));
+      if (!parsed.success) {
+        return;
+      }
+      void refreshGenerationJob(workData, jobId);
+    };
+    for (const eventType of jobEventTypes) {
+      source.addEventListener(eventType, handleEvent as EventListener);
+    }
+    source.onerror = () => {
+      if (source.readyState === EventSource.CLOSED) {
+        closeGenerationStream();
+      }
+    };
+  }
+
+  async function refreshGenerationJob(workData: WorkOverview, jobId: string) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs/${jobId}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      return;
+    }
+    const job = generationJobResponseSchema.parse(await response.json()).data;
+    setGenerationJob(job);
+    if (!isActiveGeneration(job.status)) {
+      closeGenerationStream();
+      const chapterResponse = await fetch(
+        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${job.chapterId}`,
+        { cache: "no-store" },
+      );
+      if (chapterResponse.ok) {
+        const chapter = chapterWorkspaceResponseSchema.parse(await chapterResponse.json()).data;
+        if (chapter) {
+          setChapters((current) =>
+            current.map((item) => (item.id === chapter.id ? chapter : item)),
+          );
+          setContent(chapter.currentVersion?.content ?? "");
+          setSavedContent(chapter.currentVersion?.content ?? "");
+          await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
+        }
+      }
+    }
+  }
+
+  function closeGenerationStream() {
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
   }
 
   async function saveVersion() {
@@ -300,6 +527,31 @@ export function WritingWorkspace({
             )}
             {focusMode ? "退出专注" : "专注模式"}
           </button>
+          {generationActive ? (
+            <button
+              className="btn btn-ghost"
+              disabled={generationBusy}
+              onClick={() => void cancelGeneration()}
+              type="button"
+            >
+              <XCircle size={15} aria-hidden="true" />
+              取消生成
+            </button>
+          ) : (
+            <button
+              className="btn btn-primary"
+              disabled={!canGenerate}
+              onClick={() => void startGeneration()}
+              type="button"
+            >
+              {generationBusy ? (
+                <LoaderCircle className="spin" size={15} aria-hidden="true" />
+              ) : (
+                <Sparkles size={15} aria-hidden="true" />
+              )}
+              生成整章
+            </button>
+          )}
         </div>
       </section>
 
@@ -417,6 +669,110 @@ export function WritingWorkspace({
         </section>
 
         <aside className="writing-notes" aria-label="章节信息">
+          <section className="panel writing-generation" aria-labelledby="writing-generation-title">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">生成进度</span>
+                <h2 id="writing-generation-title">
+                  {generationJob ? generationStatusLabels[generationJob.status] : "尚未生成"}
+                </h2>
+              </div>
+              {generationJob ? (
+                <span className={`badge generation-status-${generationJob.status}`}>
+                  {generationJob.progress}%
+                </span>
+              ) : null}
+            </div>
+            {generationJob ? (
+              <>
+                <div
+                  aria-label={`生成进度 ${generationJob.progress}%`}
+                  aria-valuemax={100}
+                  aria-valuemin={0}
+                  aria-valuenow={generationJob.progress}
+                  className="writing-generation-progress"
+                  role="progressbar"
+                >
+                  <span style={{ width: `${generationJob.progress}%` }} />
+                </div>
+                <div className="writing-generation-meta">
+                  <div>
+                    <span>当前步骤</span>
+                    <strong>{generationStepLabel(generationJob.currentStep)}</strong>
+                  </div>
+                  <div>
+                    <span>断点</span>
+                    <strong>{generationStepLabel(generationJob.checkpoint.step)}</strong>
+                  </div>
+                  <div>
+                    <span>费用</span>
+                    <strong>{formatCost(generationJob.cost.costCny)}</strong>
+                  </div>
+                </div>
+                {generationJob.error ? (
+                  <div className="writing-generation-error" role="alert">
+                    <TriangleAlert size={15} aria-hidden="true" />
+                    <div>
+                      <strong>{generationJob.error.message}</strong>
+                      <small>{generationJob.error.code}</small>
+                    </div>
+                  </div>
+                ) : null}
+                {generationJob.status === "failed" ? (
+                  <button
+                    className="btn btn-ghost btn-small"
+                    disabled={generationBusy}
+                    onClick={() => void retryGeneration()}
+                    type="button"
+                  >
+                    <RefreshCw size={14} aria-hidden="true" />
+                    从断点重试
+                  </button>
+                ) : null}
+                {generationJob.contextPack ? (
+                  <div className="writing-context-pack">
+                    <div className="writing-context-pack-head">
+                      <span>
+                        <Coins size={14} aria-hidden="true" />
+                        参考预算
+                      </span>
+                      <strong>
+                        {generationJob.contextPack.tokenUsed.toLocaleString("zh-CN")} /{" "}
+                        {generationJob.contextPack.tokenBudget.toLocaleString("zh-CN")}
+                      </strong>
+                    </div>
+                    <div className="writing-source-list">
+                      {generationJob.contextPack.sourceRefs.map((ref) => (
+                        <div
+                          className="writing-source-item"
+                          key={`${ref.sourceType}-${ref.sourceId}`}
+                        >
+                          <span>{ref.label}</span>
+                          <small>{ref.citation}</small>
+                        </div>
+                      ))}
+                    </div>
+                    {generationJob.contextPack.evicted.length > 0 ? (
+                      <details className="writing-evictions">
+                        <summary>未纳入 {generationJob.contextPack.evicted.length} 项参考</summary>
+                        <ul>
+                          {generationJob.contextPack.evicted.map((item) => (
+                            <li key={item.key}>
+                              <span>{item.label}</span>
+                              <small>超出参考预算</small>
+                            </li>
+                          ))}
+                        </ul>
+                      </details>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            ) : (
+              <p className="writing-generation-empty">本章还没有生成记录。</p>
+            )}
+          </section>
+
           <section className="panel writing-readiness">
             <div className="panel-head">
               <div>
@@ -554,6 +910,27 @@ function readinessLabel(readiness: ChapterReadiness): string {
     return "部分就绪";
   }
   return "未就绪";
+}
+
+function isActiveGeneration(status: GenerationJob["status"]): boolean {
+  return ["queued", "preparing", "running", "paused", "waiting_review"].includes(status);
+}
+
+function generationStepLabel(step: GenerationJob["currentStep"]): string {
+  const labels: Record<GenerationJob["currentStep"], string> = {
+    prepare: "准备",
+    compile_context: "整理参考",
+    draft: "起草",
+    verify: "检查",
+    revise: "修订",
+    extract_facts: "整理本章事实",
+    await_review: "等待审阅",
+  };
+  return labels[step];
+}
+
+function formatCost(value: number): string {
+  return `¥${value.toFixed(4)}`;
 }
 
 function wordCount(value: string): number {
