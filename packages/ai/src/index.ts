@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 export interface GenerationRequest {
   prompt: string;
   system?: string;
@@ -37,6 +39,196 @@ export class AiProviderError extends Error {
     super(message);
     this.name = "AiProviderError";
   }
+}
+
+export const M0_COST_PER_TOKEN_CNY = 0.000002;
+
+interface DeepSeekProviderOptions {
+  apiKey: string;
+  baseUrl?: string;
+  model?: string;
+  fetchImpl?: typeof fetch;
+  timeoutMs?: number;
+}
+
+interface DeepSeekResponse {
+  id?: string;
+  model?: string;
+  choices?: Array<{
+    message?: { content?: string };
+    finish_reason?: string;
+  }>;
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+}
+
+export class DeepSeekProvider implements AiGateway {
+  private readonly apiKey: string;
+  private readonly baseUrl: string;
+  private readonly defaultModel: string;
+  private readonly fetchImpl: typeof fetch;
+  private readonly timeoutMs: number;
+  private lastResponseId: string | undefined;
+
+  constructor(options: DeepSeekProviderOptions) {
+    this.apiKey = options.apiKey;
+    this.baseUrl = (options.baseUrl ?? "https://api.deepseek.com").replace(/\/$/, "");
+    this.defaultModel = options.model ?? "deepseek-chat";
+    this.fetchImpl = options.fetchImpl ?? fetch;
+    this.timeoutMs = options.timeoutMs ?? 30_000;
+  }
+
+  async generateText(input: GenerationRequest): Promise<GenerationResult> {
+    const model = input.model ?? this.defaultModel;
+    const response = await this.fetchImpl(`${this.baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${this.apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          ...(input.system ? [{ role: "system", content: input.system }] : []),
+          { role: "user", content: input.prompt },
+        ],
+        max_tokens: input.maxTokens ?? 2_000,
+        stream: false,
+      }),
+      redirect: "error",
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+    const payload = (await response.json().catch(() => ({}))) as DeepSeekResponse;
+    if (!response.ok) {
+      throw new AiProviderError(`DeepSeek request failed with status ${response.status}`);
+    }
+    const text = payload.choices?.[0]?.message?.content;
+    const inputTokens = payload.usage?.prompt_tokens;
+    const outputTokens = payload.usage?.completion_tokens;
+    if (
+      typeof text !== "string" ||
+      typeof inputTokens !== "number" ||
+      typeof outputTokens !== "number"
+    ) {
+      throw new AiProviderError("DeepSeek returned an incomplete generation response");
+    }
+    this.lastResponseId = payload.id;
+    return {
+      text,
+      model: payload.model ?? model,
+      finishReason: "stop",
+      usage: { inputTokens, outputTokens },
+    };
+  }
+
+  async *streamText(input: GenerationRequest): AsyncIterable<GenerationChunk> {
+    const result = await this.generateText(input);
+    const middle = Math.ceil(result.text.length / 2);
+    yield { text: result.text.slice(0, middle), done: false };
+    yield { text: result.text.slice(middle), done: true };
+  }
+
+  getLastResponseId(): string | undefined {
+    return this.lastResponseId;
+  }
+}
+
+interface DeepSeekSmokeOptions {
+  env: Record<string, string | undefined>;
+  fetchImpl?: typeof fetch;
+  now?: () => Date;
+}
+
+export type DeepSeekSmokeEvidence =
+  | {
+      status: "skipped";
+      reason: "DEEPSEEK_API_KEY_MISSING";
+      provider: "deepseek";
+      checkedAt: string;
+      networkCalls: 0;
+    }
+  | {
+      status: "succeeded";
+      provider: "deepseek";
+      model: string;
+      startedAt: string;
+      finishedAt: string;
+      latencyMs: number;
+      generation: {
+        textHash: string;
+        textLength: number;
+        finishReason: "stop";
+      };
+      usage: {
+        inputTokens: number;
+        outputTokens: number;
+        totalTokens: number;
+      };
+      cost: {
+        estimatedCny: number;
+        pricingBasis: "m0-usage-baseline";
+      };
+      providerResponseId?: string;
+      networkCalls: 1;
+    };
+
+export async function runDeepSeekSmoke(
+  options: DeepSeekSmokeOptions,
+): Promise<DeepSeekSmokeEvidence> {
+  const now = options.now ?? (() => new Date());
+  const apiKey = options.env.DEEPSEEK_API_KEY?.trim();
+  if (!apiKey) {
+    return {
+      status: "skipped",
+      reason: "DEEPSEEK_API_KEY_MISSING",
+      provider: "deepseek",
+      checkedAt: now().toISOString(),
+      networkCalls: 0,
+    };
+  }
+
+  const startedAt = now();
+  const provider = new DeepSeekProvider({
+    apiKey,
+    ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+  });
+  const result = await provider.generateText({
+    system: "你是 NovelBrain M0 验收助手。只输出一句不超过三十字的仙侠正文。",
+    prompt: "写一句包含山门、雨和一个人物的测试正文。",
+    maxTokens: 64,
+    operation: "draft",
+  });
+  const finishedAt = now();
+  const totalTokens = result.usage.inputTokens + result.usage.outputTokens;
+  const providerResponseId = provider.getLastResponseId();
+
+  return {
+    status: "succeeded",
+    provider: "deepseek",
+    model: result.model,
+    startedAt: startedAt.toISOString(),
+    finishedAt: finishedAt.toISOString(),
+    latencyMs: Math.max(0, finishedAt.getTime() - startedAt.getTime()),
+    generation: {
+      textHash: createHash("sha256").update(result.text).digest("hex"),
+      textLength: Array.from(result.text).length,
+      finishReason: result.finishReason,
+    },
+    usage: {
+      inputTokens: result.usage.inputTokens,
+      outputTokens: result.usage.outputTokens,
+      totalTokens,
+    },
+    cost: {
+      estimatedCny: Number((totalTokens * M0_COST_PER_TOKEN_CNY).toFixed(8)),
+      pricingBasis: "m0-usage-baseline",
+    },
+    ...(providerResponseId ? { providerResponseId } : {}),
+    networkCalls: 1,
+  };
 }
 
 function stableHash(value: string): string {

@@ -4,7 +4,7 @@
 
 ## 1. What is ready now
 
-The repository contains product/technical documentation, accepted ADRs, a signed-off static prototype and prototype Playwright tests. It does not yet contain the production Web/API/Worker application source. The first implementation unit is therefore the M0 walking skeleton, not a feature patch to the prototype.
+The repository contains product/technical documentation, accepted ADRs, a signed-off static prototype, the M0 production Web/API/Worker source, and automated M0 acceptance evidence. M0 closeout evidence is recorded in `docs/implementation/m0-13-m0-closeout.md`.
 
 - M0 parent spec: #66; leaf implementation tickets: #67–#79.
 - M1 parent spec: #80; package/integration issues: #84–#90; leaf issues: #106–#119 and #141–#148.

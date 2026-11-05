@@ -63,6 +63,17 @@ pnpm stack:smoke
 pnpm --filter @novel-brain/api openapi:generate
 ```
 
+有真实 DeepSeek 凭据时运行 gated smoke；命令只报告凭据是否存在，不打印凭据值：
+
+```bash
+pnpm smoke:deepseek
+```
+
+缺少凭据时 smoke 记录 `skipped` 并以成功退出；演示前强制要求真实证据时设置
+`REQUIRE_DEEPSEEK_SMOKE=1`。证据输出到 `artifacts/playwright/deepseek-smoke.json`。
+
+M0 内部演示步骤见 `docs/demo/m0-author-demo.md`。
+
 ## 结构
 
 ```text
