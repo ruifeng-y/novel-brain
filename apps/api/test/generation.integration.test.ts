@@ -408,7 +408,7 @@ describe("generation HTTP integration", () => {
       chapter.id,
       "generation-invalid-key",
     );
-    await databasePool.query("UPDATE model_configs SET encrypted_api_key = $2 WHERE id = $1", [
+    await databasePool.query("UPDATE model_configs SET encrypted_key = $2 WHERE id = $1", [
       config.id,
       "not-an-encrypted-key",
     ]);
@@ -440,8 +440,9 @@ describe("generation HTTP integration", () => {
     await createModelConfig(owner, token);
     await databasePool.query(
       `UPDATE story_bibles
-       SET cards = jsonb_build_array(
-         jsonb_build_object('title', '世界铁律', 'content', $2::text)
+       SET cards = (
+         SELECT jsonb_agg(jsonb_set(card, '{content}', to_jsonb($2::text)))
+         FROM jsonb_array_elements(cards) AS card
        )
        WHERE work_id = $1`,
       [work.id, "不可淘汰的故事圣经硬约束。".repeat(1_000)],

@@ -99,7 +99,10 @@ test("creates, edits and locks a minimal setting, then views confirmed settings 
   await expect(page.locator(".settings-detail-rail").getByRole("button")).toHaveCount(0);
 
   for (const column of ["势力", "地图", "物品功法", "时间线"]) {
-    await page.getByRole("button", { name: new RegExp(`^${column}`) }).click();
+    await page
+      .locator(".settings-column-nav")
+      .getByRole("button", { name: new RegExp(`^${column}`) })
+      .click();
     await expect(page.getByText("这个栏目将在后续能力中开放。")).toBeVisible();
   }
 

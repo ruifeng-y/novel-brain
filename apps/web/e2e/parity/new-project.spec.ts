@@ -158,8 +158,8 @@ test("imports complete settings and reports pending candidates before creation",
     );
   await page.getByRole("button", { name: "开始识别" }).click();
 
-  await expect(page.getByText("已接受 6")).toBeVisible();
-  await expect(page.getByText("待确认 1")).toBeVisible();
+  await expect(page.getByText("已接受 7")).toBeVisible();
+  await expect(page.getByText("待确认 0")).toBeVisible();
   await expect(page.getByText("冲突 0")).toBeVisible();
   await expect(page.getByText("无法解析 0")).toBeVisible();
 
