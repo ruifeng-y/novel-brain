@@ -3509,6 +3509,170 @@ a:focus-visible {
   margin-top: 16px;
 }
 
+.writing-generation-empty {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.writing-generation-progress {
+  height: 7px;
+  margin-top: 14px;
+  overflow: hidden;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.writing-generation-progress > span {
+  display: block;
+  height: 100%;
+  background: var(--cinnabar);
+  border-radius: inherit;
+  transition: width 180ms ease;
+}
+
+.writing-generation-meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.writing-generation-meta > div {
+  min-width: 0;
+  padding: 9px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.writing-generation-meta span,
+.writing-generation-meta strong {
+  display: block;
+}
+
+.writing-generation-meta span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.writing-generation-meta strong {
+  margin-top: 4px;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.writing-generation-error {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  margin-top: 12px;
+  padding: 10px;
+  color: var(--cinnabar);
+  background: var(--cinnabar-soft);
+  border: 1px solid rgba(178, 58, 43, 0.2);
+  border-radius: 7px;
+}
+
+.writing-generation-error > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.writing-generation-error strong {
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.writing-generation-error small {
+  color: var(--muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.writing-context-pack {
+  margin-top: 14px;
+  padding-top: 13px;
+  border-top: 1px solid var(--line);
+}
+
+.writing-context-pack-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.writing-context-pack-head span {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+}
+
+.writing-source-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.writing-source-item {
+  display: grid;
+  gap: 2px;
+  padding: 8px 9px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.writing-source-item span {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.writing-source-item small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.writing-evictions {
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.writing-evictions summary {
+  cursor: pointer;
+}
+
+.writing-evictions ul {
+  display: grid;
+  gap: 5px;
+  padding: 8px 0 0;
+  margin: 0;
+  list-style: none;
+}
+
+.writing-evictions li {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+}
+
+.writing-evictions small {
+  color: var(--gold);
+}
+
 .outline-detail-head,
 .outline-form-actions,
 .writing-editor-toolbar,
@@ -3521,6 +3685,7 @@ a:focus-visible {
 
 .outline-detail-head h2,
 .outline-brief-form h2,
+.writing-generation h2,
 .writing-readiness h2,
 .writing-context h2,
 .writing-versions h2 {
@@ -3723,6 +3888,26 @@ a:focus-visible {
   background: var(--cinnabar-soft);
 }
 
+.generation-status-completed {
+  color: var(--jade);
+  background: var(--jade-soft);
+}
+
+.generation-status-queued,
+.generation-status-preparing,
+.generation-status-running,
+.generation-status-paused,
+.generation-status-waiting_review {
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.generation-status-failed,
+.generation-status-cancelled {
+  color: var(--cinnabar);
+  background: var(--cinnabar-soft);
+}
+
 .writing-workspace {
   display: grid;
   grid-template-columns: 210px minmax(0, 1fr) 330px;
@@ -3732,6 +3917,7 @@ a:focus-visible {
 
 .writing-chapter-rail,
 .writing-editor,
+.writing-generation,
 .writing-readiness,
 .writing-context,
 .writing-versions {
@@ -3995,6 +4181,10 @@ a:focus-visible {
     grid-column: 1 / -1;
   }
 
+  .writing-generation {
+    grid-column: 1 / -1;
+  }
+
   .writing-editor {
     min-height: 620px;
   }
@@ -4015,8 +4205,13 @@ a:focus-visible {
   }
 
   .outline-form-wide,
+  .writing-generation,
   .writing-versions {
     grid-column: 1;
+  }
+
+  .writing-generation-meta {
+    grid-template-columns: 1fr;
   }
 
   .outline-form-actions,

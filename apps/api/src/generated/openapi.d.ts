@@ -180,6 +180,118 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/generate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GenerationController_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/context-preview": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenerationController_contextPreview"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenerationController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenerationController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GenerationController_cancel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GenerationController_retry"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenerationController_events"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/health": {
     parameters: {
       query?: never;
@@ -1481,6 +1593,929 @@ export interface operations {
             };
           };
         };
+      };
+    };
+  };
+  GenerationController_start: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same chapter generation request */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /**
+           * @default {
+           *       "maxCostCny": 2.5,
+           *       "maxTokens": 30000,
+           *       "maxRevisionRounds": 2
+           *     }
+           */
+          budget?: {
+            maxCostCny: number;
+            maxTokens: number;
+            maxRevisionRounds: number;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Queued chapter generation job */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_contextPreview: {
+    parameters: {
+      query: {
+        tokenBudget: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Compiled chapter context preview */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              compilerVersion: string;
+              tokenBudget: number;
+              tokenUsed: number;
+              selected: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                priority: "required" | "high" | "normal";
+                content: string;
+                tokenCount: number;
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+              }[];
+              evicted: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                reason: "token_budget";
+                tokenCount: number;
+              }[];
+              sourceRefs: {
+                /** @enum {string} */
+                sourceType:
+                  "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                sourceId: string;
+                label: string;
+                citation: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_list: {
+    parameters: {
+      query: {
+        chapterId: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter generation jobs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Generation job and checkpoint */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancelled generation job */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_retry: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Retried generation job */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "generate_chapter";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep:
+                | "prepare"
+                | "compile_context"
+                | "draft"
+                | "verify"
+                | "revise"
+                | "extract_facts"
+                | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /** @enum {string} */
+                step:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  priority: "required" | "high" | "normal";
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  reason: "token_budget";
+                  tokenCount: number;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_events: {
+    parameters: {
+      query?: never;
+      header: {
+        "last-event-id": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

@@ -970,3 +970,160 @@ export type GenerateChapterJob = z.infer<typeof generateChapterJobSchema>;
 
 export const workerJobSchema = z.discriminatedUnion("jobType", [generateChapterJobSchema]);
 export type WorkerJob = z.infer<typeof workerJobSchema>;
+
+export const generationBudgetSchema = generateChapterJobSchema.shape.budget;
+export type GenerationBudget = z.infer<typeof generationBudgetSchema>;
+
+export const generationJobStatusSchema = z.enum([
+  "queued",
+  "preparing",
+  "running",
+  "paused",
+  "waiting_review",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export type GenerationJobStatus = z.infer<typeof generationJobStatusSchema>;
+
+export const generationCostSchema = z.object({
+  inputTokens: z.number().int().nonnegative(),
+  outputTokens: z.number().int().nonnegative(),
+  totalTokens: z.number().int().nonnegative(),
+  costCny: z.number().nonnegative(),
+});
+export type GenerationCost = z.infer<typeof generationCostSchema>;
+
+export const generationCheckpointSchema = z.object({
+  step: workerJobStepSchema,
+  payload: z.record(z.string(), z.unknown()),
+});
+export type GenerationCheckpoint = z.infer<typeof generationCheckpointSchema>;
+
+export const generationJobErrorSchema = z.object({
+  code: errorCodeSchema,
+  message: z.string().min(1),
+});
+export type GenerationJobError = z.infer<typeof generationJobErrorSchema>;
+
+export const contextSourceTypeSchema = z.enum([
+  "story_bible",
+  "setting",
+  "chapter_brief",
+  "chapter_version",
+  "style",
+]);
+export type ContextSourceType = z.infer<typeof contextSourceTypeSchema>;
+
+export const contextSourceRefSchema = z.object({
+  sourceType: contextSourceTypeSchema,
+  sourceId: uuidV7Schema,
+  label: z.string().min(1),
+  citation: z.string().min(1),
+});
+export type ContextSourceRef = z.infer<typeof contextSourceRefSchema>;
+
+export const contextSourcePrioritySchema = z.enum(["required", "high", "normal"]);
+export type ContextSourcePriority = z.infer<typeof contextSourcePrioritySchema>;
+
+export const contextPackSelectedSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  priority: contextSourcePrioritySchema,
+  content: z.string().min(1),
+  tokenCount: z.number().int().positive(),
+  sourceRefs: z.array(contextSourceRefSchema).min(1),
+});
+export type ContextPackSelected = z.infer<typeof contextPackSelectedSchema>;
+
+export const contextPackEvictionSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  reason: z.literal("token_budget"),
+  tokenCount: z.number().int().positive(),
+});
+export type ContextPackEviction = z.infer<typeof contextPackEvictionSchema>;
+
+export const contextPackVersionSchema = z.object({
+  id: uuidV7Schema,
+  jobId: uuidV7Schema,
+  version: z.number().int().positive(),
+  compilerVersion: z.string().min(1),
+  tokenBudget: z.number().int().positive(),
+  tokenUsed: z.number().int().nonnegative(),
+  selected: z.array(contextPackSelectedSchema),
+  evicted: z.array(contextPackEvictionSchema),
+  sourceRefs: z.array(contextSourceRefSchema),
+  createdAt: z.string().datetime(),
+});
+export type ContextPackVersion = z.infer<typeof contextPackVersionSchema>;
+
+export const contextPackPreviewSchema = z.object({
+  compilerVersion: z.string().min(1),
+  tokenBudget: z.number().int().positive(),
+  tokenUsed: z.number().int().nonnegative(),
+  selected: z.array(contextPackSelectedSchema),
+  evicted: z.array(contextPackEvictionSchema),
+  sourceRefs: z.array(contextSourceRefSchema),
+});
+export type ContextPackPreview = z.infer<typeof contextPackPreviewSchema>;
+
+export const generationJobSchema = z.object({
+  id: uuidV7Schema,
+  type: z.literal(GENERATE_CHAPTER_JOB),
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  status: generationJobStatusSchema,
+  progress: z.number().int().min(0).max(100),
+  currentStep: workerJobStepSchema,
+  budget: generationBudgetSchema,
+  cost: generationCostSchema,
+  checkpoint: generationCheckpointSchema,
+  error: generationJobErrorSchema.nullable(),
+  contextPack: contextPackVersionSchema.nullable(),
+  createdAt: z.string().datetime(),
+  startedAt: z.string().datetime().nullable(),
+  finishedAt: z.string().datetime().nullable(),
+});
+export type GenerationJob = z.infer<typeof generationJobSchema>;
+
+export const generateChapterRequestSchema = z
+  .object({
+    budget: generationBudgetSchema.default({
+      maxCostCny: 2.5,
+      maxTokens: 30_000,
+      maxRevisionRounds: 2,
+    }),
+  })
+  .strict();
+export type GenerateChapterRequest = z.infer<typeof generateChapterRequestSchema>;
+
+export const jobEventTypeSchema = z.enum([
+  "job.created",
+  "job.preparing",
+  "job.step.started",
+  "job.step.succeeded",
+  "job.step.failed",
+  "job.progress",
+  "job.waiting_review",
+  "job.paused",
+  "job.resumed",
+  "job.canceled",
+  "job.completed",
+  "job.failed",
+]);
+export type JobEventType = z.infer<typeof jobEventTypeSchema>;
+
+export const jobEventSchema = z.object({
+  eventId: uuidV7Schema,
+  type: jobEventTypeSchema,
+  occurredAt: z.string().datetime(),
+  data: z.record(z.string(), z.unknown()),
+});
+export type JobEvent = z.infer<typeof jobEventSchema>;
+
+export const generationJobResponseSchema = apiEnvelopeSchema(generationJobSchema);
+export const generationJobListResponseSchema = apiEnvelopeSchema(z.array(generationJobSchema));
+export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
+export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);

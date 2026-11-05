@@ -7,9 +7,13 @@ import {
   chapterReadinessSchema,
   chapterVersionCreateRequestSchema,
   chapterWorkspaceSchema,
+  contextPackVersionSchema,
   csrfResponseSchema,
+  generateChapterRequestSchema,
+  generationJobSchema,
   GENERATE_CHAPTER_JOB,
   generateChapterJobSchema,
+  jobEventSchema,
   importReportSchema,
   loginRequestSchema,
   manuscriptImportConfirmRequestSchema,
@@ -77,6 +81,82 @@ describe("shared contracts", () => {
     });
 
     expect(job.jobType).toBe("generate_chapter");
+  });
+
+  it("accepts generation jobs, context packs and replayable job events", () => {
+    const job = generationJobSchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
+      type: GENERATE_CHAPTER_JOB,
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c13",
+      chapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c14",
+      status: "queued",
+      progress: 0,
+      currentStep: "prepare",
+      budget: { maxCostCny: 2.5, maxTokens: 30_000, maxRevisionRounds: 2 },
+      cost: { inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 },
+      checkpoint: { step: "prepare", payload: {} },
+      error: null,
+      contextPack: null,
+      createdAt: "2026-11-05T08:00:00.000Z",
+      startedAt: null,
+      finishedAt: null,
+    });
+    const contextPack = contextPackVersionSchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c15",
+      jobId: job.id,
+      version: 1,
+      compilerVersion: "m0-context-v1",
+      tokenBudget: 30_000,
+      tokenUsed: 7,
+      selected: [
+        {
+          key: "brief:required-facts",
+          label: "本章必用事实",
+          priority: "required",
+          content: "左臂骨折",
+          tokenCount: 2,
+          sourceRefs: [
+            {
+              sourceType: "chapter_brief",
+              sourceId: job.chapterId,
+              label: "章纲",
+              citation: "第 1 章 · 必用事实",
+            },
+          ],
+        },
+      ],
+      evicted: [
+        {
+          key: "setting:style",
+          label: "文风样本",
+          reason: "token_budget",
+          tokenCount: 12,
+        },
+      ],
+      sourceRefs: [
+        {
+          sourceType: "chapter_brief",
+          sourceId: job.chapterId,
+          label: "章纲",
+          citation: "第 1 章 · 必用事实",
+        },
+      ],
+      createdAt: "2026-11-05T08:00:01.000Z",
+    });
+    const event = jobEventSchema.parse({
+      eventId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c16",
+      type: "job.step.succeeded",
+      occurredAt: "2026-11-05T08:00:02.000Z",
+      data: { step: "compile_context", progress: 30 },
+    });
+
+    expect(job.status).toBe("queued");
+    expect(contextPack.selected[0]?.sourceRefs[0]?.citation).toContain("必用事实");
+    expect(event.type).toBe("job.step.succeeded");
+    expect(generateChapterRequestSchema.parse({})).toEqual({
+      budget: { maxCostCny: 2.5, maxTokens: 30_000, maxRevisionRounds: 2 },
+    });
   });
 
   it("rejects a job without an idempotency key", () => {
