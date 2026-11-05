@@ -23,6 +23,9 @@ import {
   settingsImportConfirmRequestSchema,
   settingsImportConflictDecisionRequestSchema,
   logoutResponseSchema,
+  STORY_BIBLE_CARD_KEYS,
+  STORY_BIBLE_CARD_TITLES,
+  storyBiblePatchRequestSchema,
   workBranchSchema,
   workCreateRequestSchema,
   workSchema,
@@ -378,6 +381,46 @@ describe("shared contracts", () => {
     expect(workSourceModeSchema.parse("manuscript_import")).toBe("manuscript_import");
     expect(() =>
       manuscriptImportConfirmRequestSchema.parse({ title: "空章节", chapters: [] }),
+    ).toThrow();
+  });
+
+  it("freezes the nine story bible cards and rejects duplicate or unknown card keys", () => {
+    expect(STORY_BIBLE_CARD_KEYS).toEqual([
+      "oneSentence",
+      "sellingPoints",
+      "protagonist",
+      "goldenFinger",
+      "worldLaws",
+      "mainPlot",
+      "subplots",
+      "ending",
+      "readerPromise",
+    ]);
+    expect(STORY_BIBLE_CARD_KEYS.map((key) => STORY_BIBLE_CARD_TITLES[key])).toEqual([
+      "一句话故事",
+      "核心卖点",
+      "主角",
+      "金手指",
+      "世界铁律",
+      "主线",
+      "支线",
+      "结局方向",
+      "读者承诺",
+    ]);
+    expect(() =>
+      storyBiblePatchRequestSchema.parse({
+        version: 1,
+        cards: [
+          { key: "oneSentence", content: "第一份内容" },
+          { key: "oneSentence", content: "重复内容" },
+        ],
+      }),
+    ).toThrow();
+    expect(() =>
+      storyBiblePatchRequestSchema.parse({
+        version: 1,
+        cards: [{ key: "unknownCard", content: "未知卡片" }],
+      }),
     ).toThrow();
   });
 });

@@ -454,6 +454,135 @@ export type ManuscriptImport = z.infer<typeof manuscriptImportSchema>;
 
 export const manuscriptImportResponseSchema = apiEnvelopeSchema(manuscriptImportSchema);
 
+export const STORY_BIBLE_CARD_KEYS = [
+  "oneSentence",
+  "sellingPoints",
+  "protagonist",
+  "goldenFinger",
+  "worldLaws",
+  "mainPlot",
+  "subplots",
+  "ending",
+  "readerPromise",
+] as const;
+
+export const storyBibleCardKeySchema = z.enum(STORY_BIBLE_CARD_KEYS);
+export type StoryBibleCardKey = z.infer<typeof storyBibleCardKeySchema>;
+
+export const STORY_BIBLE_CARD_TITLES: Record<StoryBibleCardKey, string> = {
+  oneSentence: "一句话故事",
+  sellingPoints: "核心卖点",
+  protagonist: "主角",
+  goldenFinger: "金手指",
+  worldLaws: "世界铁律",
+  mainPlot: "主线",
+  subplots: "支线",
+  ending: "结局方向",
+  readerPromise: "读者承诺",
+};
+
+export const storyBibleStatusSchema = z.enum(["draft", "proposed", "locked"]);
+export type StoryBibleStatus = z.infer<typeof storyBibleStatusSchema>;
+
+export const storyBibleCardSchema = z.object({
+  key: storyBibleCardKeySchema,
+  title: z.string().min(1),
+  content: z.string().max(20_000),
+  complete: z.boolean(),
+});
+export type StoryBibleCard = z.infer<typeof storyBibleCardSchema>;
+
+export const storyBibleMissingCardSchema = z.object({
+  key: storyBibleCardKeySchema,
+  title: z.string().min(1),
+});
+export type StoryBibleMissingCard = z.infer<typeof storyBibleMissingCardSchema>;
+
+export const storyBibleReadinessSchema = z.object({
+  status: z.enum(["not_ready", "partial", "ready"]),
+  completed: z.number().int().min(0).max(9),
+  total: z.literal(9),
+  canLock: z.boolean(),
+  missingCards: z.array(storyBibleMissingCardSchema).max(9),
+});
+export type StoryBibleReadiness = z.infer<typeof storyBibleReadinessSchema>;
+
+export const storyBibleProposalSchema = z.object({
+  generatedAt: z.string().datetime(),
+  source: z.literal("work_premise"),
+});
+export type StoryBibleProposal = z.infer<typeof storyBibleProposalSchema>;
+
+const storyBibleCardsSchema = z
+  .array(storyBibleCardSchema)
+  .length(9)
+  .superRefine((cards, context) => {
+    const keys = cards.map((card) => card.key);
+    if (new Set(keys).size !== keys.length) {
+      context.addIssue({ code: "custom", message: "Story bible card keys must be unique" });
+    }
+    for (const key of STORY_BIBLE_CARD_KEYS) {
+      if (!keys.includes(key)) {
+        context.addIssue({ code: "custom", message: `Story bible card ${key} is required` });
+      }
+    }
+  });
+
+export const storyBibleSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  version: z.number().int().positive(),
+  status: storyBibleStatusSchema,
+  cards: storyBibleCardsSchema,
+  readiness: storyBibleReadinessSchema,
+  proposal: storyBibleProposalSchema.nullable(),
+  lockedAt: z.string().datetime().nullable(),
+  lockedBy: uuidV7Schema.nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type StoryBible = z.infer<typeof storyBibleSchema>;
+
+export const storyBiblePatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    cards: z
+      .array(
+        z.object({
+          key: storyBibleCardKeySchema,
+          content: z.string().max(20_000),
+        }),
+      )
+      .min(1)
+      .max(9),
+  })
+  .superRefine((input, context) => {
+    const keys = input.cards.map((card) => card.key);
+    if (new Set(keys).size !== keys.length) {
+      context.addIssue({
+        code: "custom",
+        message: "Story bible card updates must have unique keys",
+        path: ["cards"],
+      });
+    }
+  });
+export type StoryBiblePatchRequest = z.infer<typeof storyBiblePatchRequestSchema>;
+
+export const storyBibleGenerateRequestSchema = z.object({}).strict();
+export type StoryBibleGenerateRequest = z.infer<typeof storyBibleGenerateRequestSchema>;
+
+export const storyBibleLockRequestSchema = z.object({
+  version: z.number().int().positive(),
+});
+export type StoryBibleLockRequest = z.infer<typeof storyBibleLockRequestSchema>;
+
+export const storyBibleResponseSchema = apiEnvelopeSchema(storyBibleSchema);
+export const storyBibleReadinessResponseSchema = apiEnvelopeSchema(storyBibleReadinessSchema);
+export const storyBibleDeleteResponseSchema = apiEnvelopeSchema(
+  z.object({ deleted: z.literal(true) }),
+);
+
 export const chapterStatusSchema = z.enum([
   "planned",
   "writing",

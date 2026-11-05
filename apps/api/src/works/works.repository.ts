@@ -5,6 +5,7 @@ import {
   createDatabasePool,
   genrePacks,
   modelConfigs,
+  storyBibles,
   versionNodes,
   workBranches,
   works,
@@ -137,6 +138,24 @@ export class WorksRepository implements OnModuleDestroy {
         .where(and(eq(modelConfigs.userId, userId), isNull(modelConfigs.deletedAt)))
         .limit(1);
       return Boolean(config);
+    });
+  }
+
+  async isStoryBibleLocked(userId: string, workId: string, branchId: string): Promise<boolean> {
+    return this.withTenant(userId, async (transaction) => {
+      const [storyBible] = await transaction
+        .select({ id: storyBibles.id })
+        .from(storyBibles)
+        .where(
+          and(
+            eq(storyBibles.userId, userId),
+            eq(storyBibles.workId, workId),
+            eq(storyBibles.branchId, branchId),
+            eq(storyBibles.status, "locked"),
+          ),
+        )
+        .limit(1);
+      return Boolean(storyBible);
     });
   }
 

@@ -139,6 +139,11 @@ export class WorksService {
       throw new Error("Work is missing its main branch head");
     }
     const modelConfigReady = await this.repository.hasModelConfig(userId);
+    const storyBibleReady = await this.repository.isStoryBibleLocked(
+      userId,
+      work.id,
+      mainBranch.id,
+    );
     const templatePack =
       suppliedTemplatePack ??
       (work.templatePackId
@@ -148,7 +153,7 @@ export class WorksService {
       ...this.toContract(work, templatePack),
       mainBranch: this.toBranchContract(mainBranch),
       branches: branches.map((branch) => this.toBranchContract(branch)),
-      readiness: readiness(modelConfigReady),
+      readiness: readiness(modelConfigReady, storyBibleReady),
     };
   }
 
@@ -192,11 +197,11 @@ export class WorksService {
   }
 }
 
-function readiness(modelConfigReady: boolean): WorkReadiness {
+function readiness(modelConfigReady: boolean, storyBibleReady: boolean): WorkReadiness {
   const items: WorkReadiness["items"] = [
     { key: "main_branch", label: "主创作线", ready: true },
     { key: "model_config", label: "模型配置", ready: modelConfigReady },
-    { key: "story_bible", label: "故事圣经", ready: false },
+    { key: "story_bible", label: "故事圣经", ready: storyBibleReady },
     { key: "outline", label: "大纲", ready: false },
   ];
   const completed = items.filter((item) => item.ready).length;

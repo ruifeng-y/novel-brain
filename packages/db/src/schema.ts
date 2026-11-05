@@ -248,8 +248,95 @@ export const versionNodes = pgTable(
     index("version_nodes_user_work_idx").on(table.userId, table.workId),
     check(
       "version_nodes_node_type_check",
-      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
+      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'story_bible_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
     ),
+  ],
+);
+
+export const storyBibles = pgTable(
+  "story_bibles",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    version: integer("version").notNull().default(1),
+    status: text("status").notNull().default("draft"),
+    cards: jsonb("cards")
+      .$type<
+        Array<{
+          key: string;
+          title: string;
+          content: string;
+          complete: boolean;
+        }>
+      >()
+      .notNull(),
+    proposalGeneratedAt: timestamp("proposal_generated_at", { withTimezone: true }),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedBy: uuid("locked_by").references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("story_bibles_work_branch_unique").on(table.workId, table.branchId),
+    index("story_bibles_user_work_idx").on(table.userId, table.workId),
+    check("story_bibles_status_check", sql`${table.status} in ('draft', 'proposed', 'locked')`),
+    check("story_bibles_nine_cards_check", sql`jsonb_array_length(${table.cards}) = 9`),
+    check(
+      "story_bibles_lock_metadata_check",
+      sql`(${table.status} = 'locked' and ${table.lockedAt} is not null and ${table.lockedBy} is not null) or (${table.status} <> 'locked' and ${table.lockedAt} is null and ${table.lockedBy} is null)`,
+    ),
+  ],
+);
+
+export const storyBibleVersions = pgTable(
+  "story_bible_versions",
+  {
+    id: uuid("id").primaryKey(),
+    storyBibleId: uuid("story_bible_id")
+      .notNull()
+      .references(() => storyBibles.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    cards: jsonb("cards")
+      .$type<
+        Array<{
+          key: string;
+          title: string;
+          content: string;
+          complete: boolean;
+        }>
+      >()
+      .notNull(),
+    readiness: jsonb("readiness").$type<Record<string, unknown>>().notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("story_bible_versions_bible_version_unique").on(table.storyBibleId, table.version),
+    uniqueIndex("story_bible_versions_node_unique").on(table.versionNodeId),
+    index("story_bible_versions_user_work_idx").on(table.userId, table.workId),
+    check("story_bible_versions_nine_cards_check", sql`jsonb_array_length(${table.cards}) = 9`),
   ],
 );
 

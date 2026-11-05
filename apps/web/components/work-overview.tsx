@@ -187,11 +187,13 @@ export function WorkOverview({ workId }: { workId: string }) {
           </div>
           <ul className="overview-next-list">
             <li>
-              <BookMarked size={16} aria-hidden="true" />
-              <div>
-                <strong>完善故事圣经</strong>
-                <small>九卡会在故事圣经能力中开放</small>
-              </div>
+              <Link className="overview-next-link" href={`/workspace/${workId}/bible`}>
+                <BookMarked size={16} aria-hidden="true" />
+                <div>
+                  <strong>完善故事圣经</strong>
+                  <small>生成、编辑并锁定九卡故事方向</small>
+                </div>
+              </Link>
             </li>
             <li>
               <PenLine size={16} aria-hidden="true" />

@@ -5,6 +5,7 @@ import { HealthModule } from "./health/health.module";
 import { ManuscriptImportModule } from "./imports/manuscript-import.module";
 import { SettingsImportModule } from "./imports/settings-import.module";
 import { ModelConfigModule } from "./model-config/model-config.module";
+import { StoryBibleModule } from "./story-bible/story-bible.module";
 import { WorksModule } from "./works/works.module";
 
 @Module({
@@ -14,6 +15,7 @@ import { WorksModule } from "./works/works.module";
     ManuscriptImportModule,
     SettingsImportModule,
     ModelConfigModule,
+    StoryBibleModule,
     WorksModule,
   ],
 })
