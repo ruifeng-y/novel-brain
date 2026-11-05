@@ -85,6 +85,20 @@
       "when": 1793837685614,
       "tag": "0011_living_earthquake",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793841412034,
+      "tag": "0012_greedy_electro",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793841839338,
+      "tag": "0013_high_raider",
+      "breakpoints": true
     }
   ]
 }

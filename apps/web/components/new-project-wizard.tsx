@@ -13,15 +13,17 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { ManuscriptImportPanel } from "./manuscript-import-panel";
 import { SettingsImportPanel } from "./settings-import-panel";
 
-type CreationMode = WorkCreateRequest["mode"] | "settings_import";
+type CreationMode = WorkCreateRequest["mode"] | "settings_import" | "manuscript_import";
 
 const modeLabels: Array<{ value: CreationMode; label: string }> = [
   { value: "idea", label: "一句话想法" },
   { value: "blank", label: "空白作品" },
   { value: "template", label: "题材模板" },
   { value: "settings_import", label: "导入设定" },
+  { value: "manuscript_import", label: "导入旧稿" },
 ];
 
 export function NewProjectWizard() {
@@ -40,7 +42,7 @@ export function NewProjectWizard() {
 
   async function createWork(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (mode === "settings_import") {
+    if (mode === "settings_import" || mode === "manuscript_import") {
       return;
     }
     setBusy(true);
@@ -116,6 +118,23 @@ export function NewProjectWizard() {
 
       {mode === "settings_import" ? (
         <SettingsImportPanel
+          chapterLengthTarget={chapterLengthTarget}
+          genre={genre}
+          onCreated={(workId) => {
+            router.push(`/workspace/${workId}/overview`);
+            router.refresh();
+          }}
+          penName={penName}
+          scaleTarget={scaleTarget}
+          setChapterLengthTarget={setChapterLengthTarget}
+          setGenre={setGenre}
+          setPenName={setPenName}
+          setScaleTarget={setScaleTarget}
+          setTitle={setTitle}
+          title={title}
+        />
+      ) : mode === "manuscript_import" ? (
+        <ManuscriptImportPanel
           chapterLengthTarget={chapterLengthTarget}
           genre={genre}
           onCreated={(workId) => {

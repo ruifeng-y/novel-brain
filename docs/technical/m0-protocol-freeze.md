@@ -142,6 +142,9 @@ M0 关键错误：
 | GET | `/api/v1/imports/:importId/report` | 导入报告和冲突 |
 | POST | `/api/v1/imports/:importId/conflicts/:conflictId/decision` | 记录导入冲突裁决 |
 | POST | `/api/v1/imports/:importId/confirm` | 冲突全部裁决后创建新作品和 main 分支 |
+| POST | `/api/v1/imports/manuscripts` | 从小型 TXT/Markdown 旧稿识别章节切分，不创建作品 |
+| GET | `/api/v1/imports/manuscripts/:importId` | 旧稿章节切分预览 |
+| POST | `/api/v1/imports/manuscripts/:importId/confirm` | 确认调整后的章节，创建新作品、main 分支和有序章节版本 |
 
 ### 5.4 故事圣经与最小设定
 
@@ -217,6 +220,13 @@ M0 关键错误：
 
 - `id`、`workId`、`branchId`、`number`、`title`、`status`、`version`、`brief`、`wordCount`。
 - Chapter status：`planned`、`writing`、`waiting_review`、`changes_requested`、`approved`、`locked`、`published`、`rejected`。
+
+### ManuscriptImport
+
+- `id`、`status`、`sourceName`、`format`、`chapters`、`warnings`、`canConfirm`、`confirmedWorkId`、`createdAt`。
+- `status`：`ready`、`partial`、`empty`；编码无法解析或文件类型不支持返回 `VALIDATION_INVALID`。
+- `chapters` 为按原文顺序排列的 `order`、`title`、`content`、`wordCount`；默认文本导入不创建候选或已确认设定。
+- 确认请求提交调整后的 `title` 和 `content` 序列；服务端必须验证这些内容按顺序拼接后与原文完全一致。
 
 ### FactProposal / Fact
 
