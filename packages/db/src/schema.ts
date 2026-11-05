@@ -506,6 +506,96 @@ export const chapterVersions = pgTable(
   ],
 );
 
+export const factProposals = pgTable(
+  "fact_proposals",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "cascade" }),
+    extractionKey: text("extraction_key").notNull(),
+    subject: text("subject").notNull(),
+    predicate: text("predicate").notNull(),
+    object: text("object").notNull(),
+    sourceSentence: text("source_sentence").notNull(),
+    status: text("status").notNull().default("proposed"),
+    confidence: real("confidence").notNull(),
+    risk: text("risk").notNull(),
+    required: boolean("required").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("fact_proposals_source_extraction_unique").on(
+      table.chapterId,
+      table.sourceVersionId,
+      table.extractionKey,
+    ),
+    index("fact_proposals_user_work_status_idx").on(table.userId, table.workId, table.status),
+    index("fact_proposals_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check(
+      "fact_proposals_status_check",
+      sql`${table.status} in ('proposed', 'confirmed', 'modified_confirmed', 'rejected', 'superseded')`,
+    ),
+    check("fact_proposals_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
+    check(
+      "fact_proposals_confidence_check",
+      sql`${table.confidence} >= 0 and ${table.confidence} <= 1`,
+    ),
+  ],
+);
+
+export const factDecisions = pgTable(
+  "fact_decisions",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    factProposalId: uuid("fact_proposal_id")
+      .notNull()
+      .references(() => factProposals.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    actorName: text("actor_name").notNull(),
+    reason: text("reason").notNull(),
+    originalPayload: jsonb("original_payload").$type<Record<string, unknown>>().notNull(),
+    resultingPayload: jsonb("resulting_payload").$type<Record<string, unknown>>().notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("fact_decisions_proposal_decided_idx").on(table.factProposalId, table.decidedAt),
+    index("fact_decisions_user_work_idx").on(table.userId, table.workId),
+    check(
+      "fact_decisions_action_check",
+      sql`${table.action} in ('confirm', 'modify_confirm', 'reject', 'supersede')`,
+    ),
+  ],
+);
+
 export const jobs = pgTable(
   "jobs",
   {

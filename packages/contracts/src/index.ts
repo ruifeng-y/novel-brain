@@ -865,6 +865,95 @@ export const chapterVersionSaveDataSchema = z.object({
 export type ChapterVersionSaveData = z.infer<typeof chapterVersionSaveDataSchema>;
 export const chapterVersionSaveResponseSchema = apiEnvelopeSchema(chapterVersionSaveDataSchema);
 
+export const factProposalStatusSchema = z.enum([
+  "proposed",
+  "confirmed",
+  "modified_confirmed",
+  "rejected",
+  "superseded",
+]);
+export type FactProposalStatus = z.infer<typeof factProposalStatusSchema>;
+
+export const factRiskSchema = z.enum(["low", "medium", "high"]);
+export type FactRisk = z.infer<typeof factRiskSchema>;
+
+export const factDecisionActionSchema = z.enum([
+  "confirm",
+  "modify_confirm",
+  "reject",
+  "supersede",
+]);
+export type FactDecisionAction = z.infer<typeof factDecisionActionSchema>;
+
+export const factDecisionSchema = z.object({
+  id: uuidV7Schema,
+  action: factDecisionActionSchema,
+  actorId: uuidV7Schema,
+  actorName: z.string().min(1),
+  reason: z.string().min(1),
+  decidedAt: z.string().datetime(),
+});
+export type FactDecision = z.infer<typeof factDecisionSchema>;
+
+export const factProposalSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  sourceVersionId: uuidV7Schema,
+  subject: z.string().min(1),
+  predicate: z.string().min(1),
+  object: z.string().min(1),
+  sourceSentence: z.string().min(1),
+  status: factProposalStatusSchema,
+  confidence: z.number().min(0).max(1),
+  risk: factRiskSchema,
+  required: z.boolean(),
+  decision: factDecisionSchema.nullable(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type FactProposal = z.infer<typeof factProposalSchema>;
+
+export const factProposalModificationSchema = z
+  .object({
+    subject: z.string().trim().min(1).max(500).optional(),
+    predicate: z.string().trim().min(1).max(500).optional(),
+    object: z.string().trim().min(1).max(5_000).optional(),
+    risk: factRiskSchema.optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: "At least one edited field is required",
+  });
+export type FactProposalModification = z.infer<typeof factProposalModificationSchema>;
+
+export const factProposalDecisionRequestSchema = z
+  .object({
+    action: factDecisionActionSchema,
+    reason: z.string().trim().min(1).max(1_000).optional(),
+    modified: factProposalModificationSchema.optional(),
+  })
+  .superRefine((input, context) => {
+    if (input.action === "modify_confirm" && !input.modified) {
+      context.addIssue({
+        code: "custom",
+        path: ["modified"],
+        message: "Modified confirmation requires at least one edited field",
+      });
+    }
+    if (input.action !== "modify_confirm" && input.modified) {
+      context.addIssue({
+        code: "custom",
+        path: ["modified"],
+        message: "Edited fields are only allowed for modified confirmation",
+      });
+    }
+  });
+export type FactProposalDecisionRequest = z.infer<typeof factProposalDecisionRequestSchema>;
+
+export const factProposalListResponseSchema = apiEnvelopeSchema(z.array(factProposalSchema));
+export const factProposalResponseSchema = apiEnvelopeSchema(factProposalSchema);
+
 export const manuscriptImportConfirmRequestSchema = z.object({
   title: z.string().trim().min(1).max(120),
   penName: z.string().trim().min(1).max(50).optional(),

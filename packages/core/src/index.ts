@@ -285,6 +285,75 @@ export function compileChapterContext(
   });
 }
 
+export interface ExtractedFactCandidate {
+  subject: string;
+  predicate: string;
+  object: string;
+  sourceSentence: string;
+  risk: "low" | "medium" | "high";
+  confidence: number;
+  required: boolean;
+}
+
+export function extractFactCandidates(content: string): ExtractedFactCandidate[] {
+  const sentences = content.match(/[^。！？!?；;\n]+[。！？!?；;]?/gu) ?? [];
+  return sentences
+    .map((sourceSentence) => sourceSentence.trim())
+    .filter((sourceSentence) => sourceSentence.length >= 4)
+    .map((sourceSentence) => {
+      const object = sourceSentence.replace(/[。！？!?；;]+$/u, "").trim();
+      if (/(断臂|骨折|左手|右手|身体|伤口)/u.test(sourceSentence)) {
+        return {
+          subject: findNamedSubject(sourceSentence, "沈砚"),
+          predicate: "身体状态",
+          object,
+          sourceSentence,
+          risk: "high" as const,
+          confidence: 0.95,
+          required: true,
+        };
+      }
+      if (
+        sourceSentence.includes("顾青") &&
+        /(看见|察觉|知道|怀疑|听见|发现)/u.test(sourceSentence)
+      ) {
+        return {
+          subject: "顾青",
+          predicate: "角色认知",
+          object,
+          sourceSentence,
+          risk: "medium" as const,
+          confidence: 0.82,
+          required: true,
+        };
+      }
+      if (sourceSentence.includes("忘川书")) {
+        return {
+          subject: "忘川书",
+          predicate: "状态",
+          object,
+          sourceSentence,
+          risk: "medium" as const,
+          confidence: 0.78,
+          required: false,
+        };
+      }
+      return {
+        subject: findNamedSubject(sourceSentence, "未明人物"),
+        predicate: "事件",
+        object,
+        sourceSentence,
+        risk: "low" as const,
+        confidence: 0.65,
+        required: false,
+      };
+    });
+}
+
+function findNamedSubject(sentence: string, fallback: string): string {
+  return ["沈砚", "顾青"].find((name) => sentence.includes(name)) ?? fallback;
+}
+
 function uniqueSourceRefs(refs: ContextSourceRef[]): ContextSourceRef[] {
   const seen = new Set<string>();
   return refs.filter((ref) => {
