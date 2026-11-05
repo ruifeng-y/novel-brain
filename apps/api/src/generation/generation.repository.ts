@@ -6,6 +6,7 @@ import {
   createDatabaseClient,
   createDatabasePool,
   entities,
+  facts as canonicalFacts,
   jobEvents,
   jobs,
   modelConfigs,
@@ -44,7 +45,7 @@ export interface GenerationBranchContext {
 export interface GenerationSources {
   chapter: InferSelectModel<typeof chapters>;
   storyBible: InferSelectModel<typeof storyBibles>;
-  settings: Array<InferSelectModel<typeof entities>>;
+  settings: GenerationSettingSource[];
   previousVersions: Array<{
     chapterId: string;
     chapterNumber: number;
@@ -53,6 +54,15 @@ export interface GenerationSources {
     content: string;
   }>;
   modelConfig: InferSelectModel<typeof modelConfigs>;
+}
+
+export interface GenerationSettingSource {
+  id: string;
+  type: string;
+  name: string;
+  summary: string;
+  attributes: Record<string, unknown>;
+  source: string;
 }
 
 export interface JobWithContextPack {
@@ -159,6 +169,18 @@ export class GenerationRepository implements OnModuleDestroy {
           ),
         )
         .orderBy(asc(entities.type), asc(entities.name));
+      const submittedFacts = await transaction
+        .select()
+        .from(canonicalFacts)
+        .where(
+          and(
+            eq(canonicalFacts.workId, context.workId),
+            eq(canonicalFacts.branchId, context.branchId),
+            eq(canonicalFacts.userId, userId),
+            eq(canonicalFacts.status, "active"),
+          ),
+        )
+        .orderBy(asc(canonicalFacts.createdAt));
       const previousVersions = await transaction
         .select({
           chapterId: chapters.id,
@@ -198,7 +220,30 @@ export class GenerationRepository implements OnModuleDestroy {
       return {
         chapter,
         storyBible,
-        settings,
+        settings: [
+          ...settings.map((setting) => ({
+            id: setting.id,
+            type: setting.type,
+            name: setting.name,
+            summary: setting.summary,
+            attributes: setting.attributes,
+            source: setting.source,
+          })),
+          ...submittedFacts.map((fact) => ({
+            id: fact.id,
+            type: "fact",
+            name: fact.subject,
+            summary: `${fact.predicate}：${fact.object}`,
+            attributes: {
+              subject: fact.subject,
+              predicate: fact.predicate,
+              object: fact.object,
+              risk: fact.risk,
+              sourceChapterId: fact.chapterId,
+            },
+            source: "canon",
+          })),
+        ],
         previousVersions,
         modelConfig,
       };

@@ -1,0 +1,1 @@
+CREATE INDEX "facts_canon_commit_idx" ON "facts" USING btree ("canon_commit_id");

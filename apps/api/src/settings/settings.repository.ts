@@ -1,6 +1,7 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   auditLogs,
+  facts as canonicalFacts,
   createDatabaseClient,
   createDatabasePool,
   entities,
@@ -21,6 +22,7 @@ import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 export type SettingEntityRecord = InferSelectModel<typeof entities>;
+export type CanonFactRecord = InferSelectModel<typeof canonicalFacts>;
 
 type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
 
@@ -98,6 +100,23 @@ export class SettingsRepository implements OnModuleDestroy {
           ),
         )
         .orderBy(asc(entities.createdAt)),
+    );
+  }
+
+  async listCanonFacts(userId: string, context: SettingsWorkContext): Promise<CanonFactRecord[]> {
+    return this.withTenant(userId, async (transaction) =>
+      transaction
+        .select()
+        .from(canonicalFacts)
+        .where(
+          and(
+            eq(canonicalFacts.userId, userId),
+            eq(canonicalFacts.workId, context.workId),
+            eq(canonicalFacts.branchId, context.branchId),
+            eq(canonicalFacts.status, "active"),
+          ),
+        )
+        .orderBy(asc(canonicalFacts.createdAt)),
     );
   }
 

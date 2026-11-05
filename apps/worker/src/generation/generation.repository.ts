@@ -14,6 +14,7 @@ import {
   createDatabaseClient,
   createDatabasePool,
   entities,
+  facts as canonicalFacts,
   jobCheckpoints,
   jobEvents,
   jobSteps,
@@ -48,7 +49,14 @@ export interface LoadedGenerationJob {
 export interface WorkerContextSources {
   chapter: InferSelectModel<typeof chapters>;
   storyBible: InferSelectModel<typeof storyBibles>;
-  settings: Array<InferSelectModel<typeof entities>>;
+  settings: Array<{
+    id: string;
+    type: string;
+    name: string;
+    summary: string;
+    attributes: Record<string, unknown>;
+    source: string;
+  }>;
   previousVersions: ChapterContextInput["previousVersions"];
 }
 
@@ -142,6 +150,18 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           ),
         )
         .orderBy(asc(entities.type), asc(entities.name));
+      const submittedFacts = await transaction
+        .select()
+        .from(canonicalFacts)
+        .where(
+          and(
+            eq(canonicalFacts.workId, payload.workId),
+            eq(canonicalFacts.branchId, payload.branchId),
+            eq(canonicalFacts.userId, payload.actorId),
+            eq(canonicalFacts.status, "active"),
+          ),
+        )
+        .orderBy(asc(canonicalFacts.createdAt));
       const previousVersions = await transaction
         .select({
           chapterId: chapters.id,
@@ -162,7 +182,35 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         )
         .orderBy(desc(chapters.number))
         .limit(3);
-      return { chapter, storyBible, settings, previousVersions };
+      return {
+        chapter,
+        storyBible,
+        settings: [
+          ...settings.map((setting) => ({
+            id: setting.id,
+            type: setting.type,
+            name: setting.name,
+            summary: setting.summary,
+            attributes: setting.attributes,
+            source: setting.source,
+          })),
+          ...submittedFacts.map((fact) => ({
+            id: fact.id,
+            type: "fact",
+            name: fact.subject,
+            summary: `${fact.predicate}：${fact.object}`,
+            attributes: {
+              subject: fact.subject,
+              predicate: fact.predicate,
+              object: fact.object,
+              risk: fact.risk,
+              sourceChapterId: fact.chapterId,
+            },
+            source: "canon",
+          })),
+        ],
+        previousVersions,
+      };
     });
   }
 
@@ -457,6 +505,20 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!completed) {
         return;
       }
+      await transaction
+        .update(chapters)
+        .set({
+          status: "waiting_review",
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(chapters.id, payload.chapterId),
+            eq(chapters.userId, payload.actorId),
+            eq(chapters.workId, payload.workId),
+            eq(chapters.branchId, payload.branchId),
+          ),
+        );
       await appendEvent(transaction, completed, "job.waiting_review", {
         status: "waiting_review",
         progress: 100,

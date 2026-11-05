@@ -100,6 +100,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CanonController_submit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/canon/commits": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CanonController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters": {
     parameters: {
       query?: never;
@@ -612,6 +644,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/review": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ReviewController_review"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/entities": {
     parameters: {
       query?: never;
@@ -1014,6 +1062,181 @@ export interface operations {
               /** @enum {boolean} */
               loggedOut: true;
             };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CanonController_submit: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          chapterVersionId: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Submitted chapter facts */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              chapterVersionId: string;
+              versionNodeId: string;
+              sourceChapter: {
+                id: string;
+                number: number;
+                title: string;
+              };
+              decisions: {
+                proposalId: string;
+                decisionId: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                /** @enum {string} */
+                resultingStatus:
+                  "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+                subject: string;
+                predicate: string;
+                object: string;
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                required: boolean;
+                sourceSentence: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              }[];
+              facts: {
+                id: string;
+                proposalId: string;
+                decisionId: string;
+                subject: string;
+                predicate: string;
+                object: string;
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                required: boolean;
+                /** @enum {string} */
+                status: "confirmed" | "modified_confirmed";
+              }[];
+              summary: {
+                factCount: number;
+                rejectedCount: number;
+                text: string;
+              };
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CanonController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Canon commits */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              chapterVersionId: string;
+              versionNodeId: string;
+              sourceChapter: {
+                id: string;
+                number: number;
+                title: string;
+              };
+              decisions: {
+                proposalId: string;
+                decisionId: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                /** @enum {string} */
+                resultingStatus:
+                  "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+                subject: string;
+                predicate: string;
+                object: string;
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                required: boolean;
+                sourceSentence: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              }[];
+              facts: {
+                id: string;
+                proposalId: string;
+                decisionId: string;
+                subject: string;
+                predicate: string;
+                object: string;
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                required: boolean;
+                /** @enum {string} */
+                status: "confirmed" | "modified_confirmed";
+              }[];
+              summary: {
+                factCount: number;
+                rejectedCount: number;
+                text: string;
+              };
+              /** Format: date-time */
+              createdAt: string;
+            }[];
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
@@ -4254,6 +4477,116 @@ export interface operations {
       };
     };
   };
+  ReviewController_review: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          action: "approve" | "reject";
+          version: number;
+          reason?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Chapter review decision */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              chapter: {
+                id: string;
+                workId: string;
+                branchId: string;
+                order: number;
+                title: string;
+                /** @enum {string} */
+                status:
+                  | "planned"
+                  | "writing"
+                  | "waiting_review"
+                  | "changes_requested"
+                  | "approved"
+                  | "locked"
+                  | "published"
+                  | "rejected";
+                version: number;
+                wordCount: number;
+                currentVersionId: string | null;
+                currentVersion: {
+                  id: string;
+                  chapterId: string;
+                  version: number;
+                  content: string;
+                  contentHash: string;
+                  versionNodeId: string;
+                  parentNodeId: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                brief: {
+                  goal: string;
+                  pov: string;
+                  location: string;
+                  sceneBeats: string[];
+                  requiredFacts: string[];
+                } | null;
+                readiness: {
+                  /** @enum {string} */
+                  status: "not_ready" | "partial" | "ready";
+                  completed: number;
+                  /** @enum {number} */
+                  total: 3;
+                  canStartWriting: boolean;
+                  items: {
+                    /** @enum {string} */
+                    key: "story_bible" | "settings" | "brief";
+                    label: string;
+                    ready: boolean;
+                    missing: string[];
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              };
+              decision: {
+                id: string;
+                chapterId: string;
+                /** @enum {string} */
+                action: "approve" | "reject";
+                actorId: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   SettingsController_list: {
     parameters: {
       query?: never;
@@ -4987,6 +5320,8 @@ export interface operations {
         content: {
           "application/json": {
             data: {
+              /** @enum {string} */
+              kind?: "setting" | "fact";
               id: string;
               /** @enum {string} */
               type: "world_rule" | "character" | "golden_finger";
@@ -4999,6 +5334,10 @@ export interface operations {
               version: number;
               /** Format: date-time */
               lockedAt: string;
+              sourceChapterId?: string;
+              sourceFactId?: string;
+              predicate?: string;
+              object?: string;
             }[];
             /** Format: starts_with */
             requestId: string;

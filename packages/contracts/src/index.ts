@@ -729,6 +729,7 @@ export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
 );
 
 export const confirmedSettingSchema = z.object({
+  kind: z.enum(["setting", "fact"]).optional(),
   id: uuidV7Schema,
   type: settingEntityTypeSchema,
   name: z.string(),
@@ -737,6 +738,10 @@ export const confirmedSettingSchema = z.object({
   status: z.literal("locked"),
   version: z.number().int().positive(),
   lockedAt: z.string().datetime(),
+  sourceChapterId: uuidV7Schema.optional(),
+  sourceFactId: uuidV7Schema.optional(),
+  predicate: z.string().optional(),
+  object: z.string().optional(),
 });
 export type ConfirmedSetting = z.infer<typeof confirmedSettingSchema>;
 
@@ -865,6 +870,39 @@ export const chapterVersionSaveDataSchema = z.object({
 export type ChapterVersionSaveData = z.infer<typeof chapterVersionSaveDataSchema>;
 export const chapterVersionSaveResponseSchema = apiEnvelopeSchema(chapterVersionSaveDataSchema);
 
+export const chapterReviewActionSchema = z.enum(["approve", "reject"]);
+export type ChapterReviewAction = z.infer<typeof chapterReviewActionSchema>;
+
+export const chapterReviewRequestSchema = z.object({
+  action: chapterReviewActionSchema,
+  version: z.number().int().positive(),
+  reason: z.string().trim().min(1).max(1_000).optional(),
+});
+export type ChapterReviewRequest = z.infer<typeof chapterReviewRequestSchema>;
+
+export const chapterReviewDecisionSchema = z.object({
+  id: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  action: chapterReviewActionSchema,
+  actorId: uuidV7Schema,
+  actorName: z.string().min(1),
+  reason: z.string().min(1),
+  decidedAt: z.string().datetime(),
+});
+export type ChapterReviewDecision = z.infer<typeof chapterReviewDecisionSchema>;
+
+export const chapterReviewDataSchema = z.object({
+  chapter: chapterWorkspaceSchema,
+  decision: chapterReviewDecisionSchema,
+});
+export type ChapterReviewData = z.infer<typeof chapterReviewDataSchema>;
+export const chapterReviewResponseSchema = apiEnvelopeSchema(chapterReviewDataSchema);
+
+export const canonCommitRequestSchema = z.object({
+  chapterVersionId: uuidV7Schema,
+});
+export type CanonCommitRequest = z.infer<typeof canonCommitRequestSchema>;
+
 export const factProposalStatusSchema = z.enum([
   "proposed",
   "confirmed",
@@ -953,6 +991,65 @@ export type FactProposalDecisionRequest = z.infer<typeof factProposalDecisionReq
 
 export const factProposalListResponseSchema = apiEnvelopeSchema(z.array(factProposalSchema));
 export const factProposalResponseSchema = apiEnvelopeSchema(factProposalSchema);
+
+export const canonCommitFactSchema = z.object({
+  id: uuidV7Schema,
+  proposalId: uuidV7Schema,
+  decisionId: uuidV7Schema,
+  subject: z.string().min(1),
+  predicate: z.string().min(1),
+  object: z.string().min(1),
+  risk: factRiskSchema,
+  required: z.boolean(),
+  status: z.enum(["confirmed", "modified_confirmed"]),
+});
+export type CanonCommitFact = z.infer<typeof canonCommitFactSchema>;
+
+export const canonCommitDecisionSchema = z.object({
+  proposalId: uuidV7Schema,
+  decisionId: uuidV7Schema,
+  action: factDecisionActionSchema,
+  resultingStatus: factProposalStatusSchema,
+  subject: z.string().min(1),
+  predicate: z.string().min(1),
+  object: z.string().min(1),
+  risk: factRiskSchema,
+  required: z.boolean(),
+  sourceSentence: z.string().min(1),
+  actorName: z.string().min(1),
+  reason: z.string().min(1),
+  decidedAt: z.string().datetime(),
+});
+export type CanonCommitDecision = z.infer<typeof canonCommitDecisionSchema>;
+
+export const canonCommitSummarySchema = z.object({
+  factCount: z.number().int().nonnegative(),
+  rejectedCount: z.number().int().nonnegative(),
+  text: z.string().min(1),
+});
+export type CanonCommitSummary = z.infer<typeof canonCommitSummarySchema>;
+
+export const canonCommitSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  chapterId: uuidV7Schema,
+  chapterVersionId: uuidV7Schema,
+  versionNodeId: uuidV7Schema,
+  sourceChapter: z.object({
+    id: uuidV7Schema,
+    number: z.number().int().positive(),
+    title: z.string().min(1),
+  }),
+  decisions: z.array(canonCommitDecisionSchema),
+  facts: z.array(canonCommitFactSchema),
+  summary: canonCommitSummarySchema,
+  createdAt: z.string().datetime(),
+});
+export type CanonCommit = z.infer<typeof canonCommitSchema>;
+
+export const canonCommitResponseSchema = apiEnvelopeSchema(canonCommitSchema);
+export const canonCommitListResponseSchema = apiEnvelopeSchema(z.array(canonCommitSchema));
 
 export const manuscriptImportConfirmRequestSchema = z.object({
   title: z.string().trim().min(1).max(120),

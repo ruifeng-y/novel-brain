@@ -61,17 +61,37 @@ export class SettingsService {
 
   async confirmed(userId: string, workId: string, branchId: string): Promise<ConfirmedSetting[]> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const records = await this.repository.list(userId, context, { status: "locked" });
-    return records.map((record) => ({
-      id: record.id,
-      type: record.type as ConfirmedSetting["type"],
-      name: record.name,
-      summary: record.summary,
-      source: record.source as ConfirmedSetting["source"],
-      status: "locked",
-      version: record.version,
-      lockedAt: record.lockedAt?.toISOString() ?? new Date(0).toISOString(),
-    }));
+    const [records, canonFacts] = await Promise.all([
+      this.repository.list(userId, context, { status: "locked" }),
+      this.repository.listCanonFacts(userId, context),
+    ]);
+    return [
+      ...records.map((record) => ({
+        id: record.id,
+        type: record.type as ConfirmedSetting["type"],
+        name: record.name,
+        summary: record.summary,
+        source: record.source as ConfirmedSetting["source"],
+        status: "locked" as const,
+        version: record.version,
+        lockedAt: record.lockedAt?.toISOString() ?? new Date(0).toISOString(),
+      })),
+      ...canonFacts.map((fact) => ({
+        kind: "fact" as const,
+        id: fact.id,
+        type: factType(fact.predicate),
+        name: fact.subject,
+        summary: `${fact.predicate}：${fact.object}`,
+        source: "canon" as const,
+        status: "locked" as const,
+        version: 1,
+        lockedAt: fact.createdAt.toISOString(),
+        sourceChapterId: fact.chapterId,
+        sourceFactId: fact.id,
+        predicate: fact.predicate,
+        object: fact.object,
+      })),
+    ];
   }
 
   async patch(
@@ -226,6 +246,16 @@ export class SettingsService {
       updatedAt: record.updatedAt.toISOString(),
     };
   }
+}
+
+function factType(predicate: string): ConfirmedSetting["type"] {
+  if (predicate.includes("身体") || predicate.includes("认知") || predicate.includes("关系")) {
+    return "character";
+  }
+  if (predicate.includes("金手指") || predicate.includes("能力")) {
+    return "golden_finger";
+  }
+  return "world_rule";
 }
 
 function requireMatchingSettingData(

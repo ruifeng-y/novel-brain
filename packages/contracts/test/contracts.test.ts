@@ -3,10 +3,14 @@ import { describe, expect, it } from "vitest";
 import {
   authPasswordSchema,
   authSessionResponseSchema,
+  canonCommitRequestSchema,
+  canonCommitSchema,
   chapterBriefSchema,
   chapterReadinessSchema,
+  chapterReviewRequestSchema,
   chapterVersionCreateRequestSchema,
   chapterWorkspaceSchema,
+  confirmedSettingSchema,
   contextPackVersionSchema,
   csrfResponseSchema,
   factProposalDecisionRequestSchema,
@@ -87,6 +91,86 @@ describe("shared contracts", () => {
         modified: { object: "不能借确认动作偷偷修改事实" },
       }),
     ).toThrow("Edited fields are only allowed for modified confirmation");
+  });
+
+  it("validates chapter review, canon submission and submitted fact contracts", () => {
+    expect(chapterReviewRequestSchema.parse({ action: "approve", version: 2 })).toEqual({
+      action: "approve",
+      version: 2,
+    });
+    expect(
+      canonCommitRequestSchema.parse({
+        chapterVersionId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c25",
+      }),
+    ).toEqual({ chapterVersionId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c25" });
+
+    const commit = canonCommitSchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c31",
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c32",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c33",
+      chapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c34",
+      chapterVersionId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c35",
+      versionNodeId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c36",
+      sourceChapter: {
+        id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c34",
+        number: 1,
+        title: "一只手也能结印",
+      },
+      decisions: [
+        {
+          proposalId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c37",
+          decisionId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c38",
+          action: "confirm",
+          resultingStatus: "confirmed",
+          subject: "沈砚",
+          predicate: "身体状态",
+          object: "左臂骨折",
+          risk: "high",
+          required: true,
+          sourceSentence: "沈砚把断臂藏进衣袍。",
+          actorName: "写作台作者",
+          reason: "与正文一致",
+          decidedAt: "2026-11-05T08:00:00.000Z",
+        },
+      ],
+      facts: [
+        {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c39",
+          proposalId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c37",
+          decisionId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c38",
+          subject: "沈砚",
+          predicate: "身体状态",
+          object: "左臂骨折",
+          risk: "high",
+          required: true,
+          status: "confirmed",
+        },
+      ],
+      summary: {
+        factCount: 1,
+        rejectedCount: 0,
+        text: "第 1 章「一只手也能结印」：提交 1 条事实。",
+      },
+      createdAt: "2026-11-05T08:00:00.000Z",
+    });
+    expect(commit.summary.factCount).toBe(1);
+    expect(
+      confirmedSettingSchema.parse({
+        kind: "fact",
+        id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c39",
+        type: "character",
+        name: "沈砚",
+        summary: "身体状态：左臂骨折",
+        source: "canon",
+        status: "locked",
+        version: 1,
+        lockedAt: "2026-11-05T08:00:00.000Z",
+        sourceChapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c34",
+        sourceFactId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c39",
+        predicate: "身体状态",
+        object: "左臂骨折",
+      }),
+    ).toMatchObject({ kind: "fact", source: "canon" });
   });
 
   it("accepts the readiness envelope shared by Web and API", () => {
