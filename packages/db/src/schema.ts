@@ -248,7 +248,7 @@ export const versionNodes = pgTable(
     index("version_nodes_user_work_idx").on(table.userId, table.workId),
     check(
       "version_nodes_node_type_check",
-      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'story_bible_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
+      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
     ),
   ],
 );
@@ -337,6 +337,92 @@ export const storyBibleVersions = pgTable(
     uniqueIndex("story_bible_versions_node_unique").on(table.versionNodeId),
     index("story_bible_versions_user_work_idx").on(table.userId, table.workId),
     check("story_bible_versions_nine_cards_check", sql`jsonb_array_length(${table.cards}) = 9`),
+  ],
+);
+
+export const entities = pgTable(
+  "entities",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    name: text("name").notNull(),
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+    summary: text("summary").notNull(),
+    description: text("description").notNull().default(""),
+    attributes: jsonb("attributes").$type<Record<string, unknown>>().notNull().default({}),
+    tags: jsonb("tags").$type<string[]>().notNull().default([]),
+    status: text("status").notNull().default("draft"),
+    source: text("source").notNull().default("author"),
+    version: integer("version").notNull().default(1),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedBy: uuid("locked_by").references(() => users.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("entities_user_work_type_status_idx").on(
+      table.userId,
+      table.workId,
+      table.type,
+      table.status,
+    ),
+    index("entities_branch_type_idx").on(table.branchId, table.type),
+    check(
+      "entities_type_check",
+      sql`${table.type} in ('world_rule', 'character', 'golden_finger')`,
+    ),
+    check(
+      "entities_status_check",
+      sql`${table.status} in ('draft', 'proposed', 'locked', 'discarded')`,
+    ),
+    check("entities_source_check", sql`${table.source} in ('author', 'import', 'ai', 'canon')`),
+    check(
+      "entities_lock_metadata_check",
+      sql`(${table.status} = 'locked' and ${table.lockedAt} is not null and ${table.lockedBy} is not null) or (${table.status} <> 'locked' and ${table.lockedAt} is null and ${table.lockedBy} is null)`,
+    ),
+  ],
+);
+
+export const entityVersions = pgTable(
+  "entity_versions",
+  {
+    id: uuid("id").primaryKey(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    snapshot: jsonb("snapshot").$type<Record<string, unknown>>().notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("entity_versions_entity_version_unique").on(table.entityId, table.version),
+    uniqueIndex("entity_versions_node_unique").on(table.versionNodeId),
+    index("entity_versions_user_work_idx").on(table.userId, table.workId),
   ],
 );
 

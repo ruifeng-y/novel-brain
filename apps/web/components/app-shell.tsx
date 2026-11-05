@@ -32,11 +32,13 @@ export function AppShell({
     ? "作品总览"
     : pathname.endsWith("/bible")
       ? "故事圣经"
-      : pathname === "/workspace/new-project"
-        ? "新建作品"
-        : pathname.startsWith("/workspace")
-          ? "工作台"
-          : "服务状态";
+      : pathname.endsWith("/settings") && pathname.startsWith("/workspace/")
+        ? "设定中心"
+        : pathname === "/workspace/new-project"
+          ? "新建作品"
+          : pathname.startsWith("/workspace")
+            ? "工作台"
+            : "服务状态";
 
   async function logout() {
     setLoggingOut(true);
