@@ -273,7 +273,7 @@ test("generates a chapter with progress, references, citations, cost and checkpo
     await generate.click();
 
     const generationPanel = page.locator(".writing-generation");
-    await expect(generationPanel.getByRole("heading", { name: "已完成" })).toBeVisible({
+    await expect(generationPanel.getByRole("heading", { name: "等待审阅" })).toBeVisible({
       timeout: 15_000,
     });
     await expect(generationPanel.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
@@ -297,6 +297,50 @@ test("generates a chapter with progress, references, citations, cost and checkpo
         contentType: "image/png",
       });
     }
+  } finally {
+    await worker.stop();
+  }
+});
+
+test("confirms two fact proposals without changing confirmed settings", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const settingsBefore = await page.request.get(`${branchPath}/facts`);
+  expect(settingsBefore.ok()).toBe(true);
+  const settingsDataBefore = (await settingsBefore.json()).data;
+  const worker = await startWorker();
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    await expect(page.getByRole("heading", { name: "写作台" })).toBeVisible();
+    const generate = page.getByRole("button", { name: "生成整章" });
+    await expect(generate).toBeEnabled();
+    await generate.click();
+
+    await expect(
+      page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
+    ).toBeVisible({ timeout: 15_000 });
+    const factsPanel = page.getByRole("region", { name: "本章事实" });
+    await expect(factsPanel).toBeVisible();
+    await expect(factsPanel.getByText("待确认", { exact: true }).first()).toBeVisible();
+    await expect(factsPanel.getByText(/来源句：/).first()).toBeVisible();
+
+    const confirmButtons = factsPanel.getByRole("button", { name: "确认", exact: true });
+    expect(await confirmButtons.count()).toBeGreaterThanOrEqual(2);
+    await confirmButtons.first().click();
+    await expect(factsPanel.getByText("已确认", { exact: true })).toHaveCount(1);
+    await confirmButtons.first().click();
+    await expect(factsPanel.getByText("已确认", { exact: true })).toHaveCount(2);
+    await expect(factsPanel.getByText("来源句：").first()).toBeVisible();
+    await expect(page.locator("body")).not.toContainText("已写入已确认设定");
+    await expectAuthorFacingLanguage(page);
+
+    const settingsAfter = await page.request.get(`${branchPath}/facts`);
+    expect(settingsAfter.ok()).toBe(true);
+    expect((await settingsAfter.json()).data).toEqual(settingsDataBefore);
   } finally {
     await worker.stop();
   }
@@ -329,7 +373,7 @@ test("keeps the draft checkpoint after provider failure and resumes from revise"
   try {
     await page.locator(".writing-generation").getByRole("button", { name: "从断点重试" }).click();
     await expect(
-      page.locator(".writing-generation").getByRole("heading", { name: "已完成" }),
+      page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
     ).toBeVisible({ timeout: 15_000 });
     await expect(page.getByRole("textbox", { name: "章节正文" })).toHaveValue(/修订稿/);
     await expect(page.locator(".writing-generation").getByRole("progressbar")).toHaveAttribute(

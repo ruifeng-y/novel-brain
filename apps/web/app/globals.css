@@ -3673,6 +3673,184 @@ a:focus-visible {
   color: var(--gold);
 }
 
+.writing-facts-loading {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.writing-facts-summary {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.writing-fact-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.writing-fact-card {
+  padding: 12px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.writing-fact-card.writing-fact-rejected,
+.writing-fact-card.writing-fact-superseded {
+  opacity: 0.72;
+}
+
+.writing-fact-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.writing-fact-risk {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.writing-fact-risk-high {
+  color: var(--cinnabar);
+}
+
+.writing-fact-risk-medium {
+  color: var(--gold);
+}
+
+.writing-fact-card h3 {
+  margin: 9px 0 4px;
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.writing-fact-card > p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.writing-fact-source {
+  display: block;
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.writing-fact-card blockquote {
+  margin: 9px 0 0;
+  padding: 8px 9px;
+  color: var(--ink-3);
+  font-size: 11px;
+  line-height: 1.65;
+  background: var(--paper);
+  border-left: 2px solid var(--line-strong);
+  overflow-wrap: anywhere;
+}
+
+.writing-fact-status-confirmed,
+.writing-fact-status-modified_confirmed {
+  color: var(--jade);
+  background: var(--jade-soft);
+}
+
+.writing-fact-status-proposed {
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.writing-fact-status-rejected,
+.writing-fact-status-superseded {
+  color: var(--muted);
+  background: #eef1ec;
+}
+
+.writing-fact-decision {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 8px;
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+
+.writing-fact-decision strong {
+  color: var(--ink-2);
+}
+
+.writing-fact-decision span {
+  color: var(--muted);
+  text-align: right;
+}
+
+.writing-fact-decision small {
+  grid-column: 1 / -1;
+  color: var(--ink-3);
+  line-height: 1.55;
+}
+
+.writing-fact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+
+.writing-fact-modify {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.writing-fact-modify summary {
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.writing-fact-modify form {
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.writing-fact-modify label {
+  display: grid;
+  gap: 4px;
+}
+
+.writing-fact-modify input,
+.writing-fact-modify textarea,
+.writing-fact-modify select {
+  width: 100%;
+  padding: 8px 9px;
+  color: var(--ink);
+  font: inherit;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.writing-fact-modify textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
 .outline-detail-head,
 .outline-form-actions,
 .writing-editor-toolbar,
@@ -3686,6 +3864,7 @@ a:focus-visible {
 .outline-detail-head h2,
 .outline-brief-form h2,
 .writing-generation h2,
+.writing-facts h2,
 .writing-readiness h2,
 .writing-context h2,
 .writing-versions h2 {
@@ -3918,6 +4097,7 @@ a:focus-visible {
 .writing-chapter-rail,
 .writing-editor,
 .writing-generation,
+.writing-facts,
 .writing-readiness,
 .writing-context,
 .writing-versions {
@@ -4185,6 +4365,10 @@ a:focus-visible {
     grid-column: 1 / -1;
   }
 
+  .writing-facts {
+    grid-column: 1 / -1;
+  }
+
   .writing-editor {
     min-height: 620px;
   }
@@ -4206,6 +4390,7 @@ a:focus-visible {
 
   .outline-form-wide,
   .writing-generation,
+  .writing-facts,
   .writing-versions {
     grid-column: 1;
   }

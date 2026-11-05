@@ -180,10 +180,11 @@ describe("generation HTTP integration", () => {
     const completed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
     const completedJob = generationJobResponseSchema.parse(completed.body).data;
     expect(completedJob).toMatchObject({
-      status: "completed",
+      status: "waiting_review",
       progress: 100,
       error: null,
-      checkpoint: { step: "revise" },
+      currentStep: "await_review",
+      checkpoint: { step: "await_review" },
     });
     expect(completedJob.cost.totalTokens).toBeGreaterThan(0);
     expect(completedJob.contextPack).toMatchObject({
@@ -216,7 +217,7 @@ describe("generation HTTP integration", () => {
     const events = await owner.get(`${branchPath}/jobs/${job.id}/events`).expect(200);
     expect(events.headers["content-type"]).toContain("text/event-stream");
     expect(events.text).toContain("job.step.succeeded");
-    expect(events.text).toContain("job.completed");
+    expect(events.text).toContain("job.waiting_review");
   });
 
   it("preserves the draft checkpoint and resumes from the failed revise step", async () => {
@@ -302,8 +303,9 @@ describe("generation HTTP integration", () => {
 
     const completed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
     expect(generationJobResponseSchema.parse(completed.body).data).toMatchObject({
-      status: "completed",
+      status: "waiting_review",
       progress: 100,
+      currentStep: "await_review",
     });
     const versions = await databasePool.query<{
       id: string;

@@ -19,12 +19,15 @@ import {
   jobSteps,
   jobs,
   modelConfigs,
+  refreshFactProposals,
   storyBibles,
   usageRecords,
+  users,
   versionNodes,
   workBranches,
   works,
   type DatabaseClient,
+  type FactProposalCandidate,
 } from "@novel-brain/db";
 import type { ChapterContextInput, CompiledContextPack } from "@novel-brain/core";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
@@ -176,6 +179,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       }
       if (
         current.status === "completed" ||
+        current.status === "waiting_review" ||
         current.status === "failed" ||
         current.status === "cancelled"
       ) {
@@ -442,10 +446,10 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       const [completed] = await transaction
         .update(jobs)
         .set({
-          status: "completed",
+          status: "waiting_review",
           progress: 100,
-          currentStep: "revise",
-          finishedAt: now,
+          currentStep: "await_review",
+          finishedAt: null,
           updatedAt: now,
         })
         .where(eq(jobs.id, job.id))
@@ -453,8 +457,8 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!completed) {
         return;
       }
-      await appendEvent(transaction, completed, "job.completed", {
-        status: "completed",
+      await appendEvent(transaction, completed, "job.waiting_review", {
+        status: "waiting_review",
         progress: 100,
         checkpoint: completed.checkpoint,
       });
@@ -699,6 +703,53 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         )
         .limit(1);
       return version?.content;
+    });
+  }
+
+  async findLatestGeneratedVersion(
+    payload: GenerateChapterJob,
+  ): Promise<{ id: string; content: string } | undefined> {
+    return this.withTenant(payload.actorId, async (transaction) => {
+      const [version] = await transaction
+        .select({ id: chapterVersions.id, content: chapterVersions.content })
+        .from(chapterVersions)
+        .where(eq(chapterVersions.generationJobId, payload.jobId))
+        .orderBy(desc(chapterVersions.version))
+        .limit(1);
+      return version;
+    });
+  }
+
+  async persistFactProposals(input: {
+    payload: GenerateChapterJob;
+    sourceVersionId: string;
+    candidates: FactProposalCandidate[];
+  }): Promise<string[]> {
+    return this.withTenant(input.payload.actorId, async (transaction) => {
+      await transaction.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${input.payload.chapterId}))`,
+      );
+      const [actor] = await transaction
+        .select({ displayName: users.displayName })
+        .from(users)
+        .where(and(eq(users.id, input.payload.actorId), isNull(users.deletedAt)))
+        .limit(1);
+      if (!actor) {
+        throw new Error("Generation actor no longer exists");
+      }
+      const proposals = await refreshFactProposals(transaction, {
+        workId: input.payload.workId,
+        branchId: input.payload.branchId,
+        userId: input.payload.actorId,
+        chapterId: input.payload.chapterId,
+        sourceVersionId: input.sourceVersionId,
+        actorName: actor.displayName,
+        candidates: input.candidates,
+        newId: uuidv7,
+      });
+      return proposals
+        .filter((proposal) => proposal.sourceVersionId === input.sourceVersionId)
+        .map((proposal) => proposal.id);
     });
   }
 

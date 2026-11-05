@@ -9,6 +9,7 @@ import {
 import {
   compileChapterContext,
   ContextBudgetExceededError,
+  extractFactCandidates,
   type CompiledContextPack,
 } from "@novel-brain/core";
 
@@ -28,8 +29,18 @@ const STEP_PROGRESS = {
   draft: 55,
   verify: 75,
   revise: 90,
+  extract_facts: 96,
+  await_review: 100,
 } as const;
-const EXECUTED_STEPS = ["prepare", "compile_context", "draft", "verify", "revise"] as const;
+const EXECUTED_STEPS = [
+  "prepare",
+  "compile_context",
+  "draft",
+  "verify",
+  "revise",
+  "extract_facts",
+  "await_review",
+] as const;
 type ExecutedStep = (typeof EXECUTED_STEPS)[number];
 const COST_PER_TOKEN_CNY = 0.000002;
 
@@ -234,6 +245,35 @@ export class GenerationJobProcessor {
           output: { chapterVersionId: version.id, version: version.version },
           cost: toCost(result),
           checkpointPayload: { chapterVersionId: version.id },
+        };
+      }
+      case "extract_facts": {
+        const version = await this.repository.findLatestGeneratedVersion(input.payload);
+        if (!version) {
+          throw new Error("Generated chapter version is missing");
+        }
+        const candidates = extractFactCandidates(version.content);
+        const proposalIds = await this.repository.persistFactProposals({
+          payload: input.payload,
+          sourceVersionId: version.id,
+          candidates,
+        });
+        return {
+          output: { sourceVersionId: version.id, proposalIds, proposalCount: proposalIds.length },
+          cost: zeroCost(),
+          checkpointPayload: { sourceVersionId: version.id, proposalIds },
+        };
+      }
+      case "await_review": {
+        const extraction = await this.repository.findStepOutput(input.payload, "extract_facts");
+        const proposalIds = extraction?.proposalIds;
+        if (!Array.isArray(proposalIds) || proposalIds.length === 0) {
+          throw new Error("Fact extraction checkpoint is missing");
+        }
+        return {
+          output: { proposalCount: proposalIds.length, awaiting: "fact_review" },
+          cost: zeroCost(),
+          checkpointPayload: { proposalIds },
         };
       }
     }

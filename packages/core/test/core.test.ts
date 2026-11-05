@@ -4,6 +4,7 @@ import {
   compileContextPack,
   createRequestId,
   elapsedMilliseconds,
+  extractFactCandidates,
   resolveProxyIpSecret,
   signClientIp,
   verifyClientIp,
@@ -99,5 +100,40 @@ describe("context compiler", () => {
       },
     ]);
     expect(pack.sourceRefs).toEqual([requiredRef, settingRef]);
+  });
+});
+
+describe("fact extraction", () => {
+  it("keeps exact source sentences and assigns risk by fact type", () => {
+    const content = [
+      "血从袖口滴下来，落在荒寺外的青石板上。",
+      "沈砚把断臂藏进衣袍，只用右手结印。",
+      "顾青看见书页一角，却没有点破，只把追兵引向山道另一侧。",
+    ].join("\n\n");
+
+    const candidates = extractFactCandidates(content);
+
+    expect(candidates).toEqual(
+      expect.arrayContaining([
+        {
+          subject: "沈砚",
+          predicate: "身体状态",
+          object: "沈砚把断臂藏进衣袍，只用右手结印",
+          sourceSentence: "沈砚把断臂藏进衣袍，只用右手结印。",
+          risk: "high",
+          confidence: 0.95,
+          required: true,
+        },
+        {
+          subject: "顾青",
+          predicate: "角色认知",
+          object: "顾青看见书页一角，却没有点破，只把追兵引向山道另一侧",
+          sourceSentence: "顾青看见书页一角，却没有点破，只把追兵引向山道另一侧。",
+          risk: "medium",
+          confidence: 0.82,
+          required: true,
+        },
+      ]),
+    );
   });
 });

@@ -9,6 +9,8 @@ import {
   chapterWorkspaceSchema,
   contextPackVersionSchema,
   csrfResponseSchema,
+  factProposalDecisionRequestSchema,
+  factProposalSchema,
   generateChapterRequestSchema,
   generationJobSchema,
   GENERATE_CHAPTER_JOB,
@@ -41,6 +43,52 @@ import {
 } from "../src";
 
 describe("shared contracts", () => {
+  it("accepts typed fact proposals with source evidence and decisions", () => {
+    const proposal = factProposalSchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c21",
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c22",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c23",
+      chapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c24",
+      sourceVersionId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c25",
+      subject: "沈砚",
+      predicate: "身体状态",
+      object: "左臂骨折，不能双手结印",
+      sourceSentence: "沈砚把断臂藏进衣袍，只用右手结印。",
+      status: "confirmed",
+      confidence: 0.92,
+      risk: "high",
+      required: true,
+      decision: {
+        id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c26",
+        action: "confirm",
+        actorId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c27",
+        actorName: "写作台作者",
+        reason: "与正文一致",
+        decidedAt: "2026-11-05T08:00:00.000Z",
+      },
+      createdAt: "2026-11-05T07:59:00.000Z",
+      updatedAt: "2026-11-05T08:00:00.000Z",
+    });
+
+    expect(proposal.status).toBe("confirmed");
+    expect(proposal.risk).toBe("high");
+    expect(proposal.sourceSentence).toContain("断臂");
+    expect(factProposalDecisionRequestSchema.parse({ action: "reject" })).toEqual({
+      action: "reject",
+    });
+    expect(() =>
+      factProposalDecisionRequestSchema.parse({
+        action: "modify_confirm",
+      }),
+    ).toThrow("Modified confirmation requires at least one edited field");
+    expect(() =>
+      factProposalDecisionRequestSchema.parse({
+        action: "confirm",
+        modified: { object: "不能借确认动作偷偷修改事实" },
+      }),
+    ).toThrow("Edited fields are only allowed for modified confirmation");
+  });
+
   it("accepts the readiness envelope shared by Web and API", () => {
     const response = readinessResponseSchema.parse({
       data: {

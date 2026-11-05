@@ -563,5 +563,10 @@ async function appendEvent(
 }
 
 export function isTerminal(status: string): boolean {
-  return status === "completed" || status === "failed" || status === "cancelled";
+  return (
+    status === "completed" ||
+    status === "waiting_review" ||
+    status === "failed" ||
+    status === "cancelled"
+  );
 }

@@ -180,6 +180,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/extract-facts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["FactsController_extract"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/fact-proposals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["FactsController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/fact-proposals/{factProposalId}/decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["FactsController_decide"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/generate": {
     parameters: {
       query?: never;
@@ -1584,6 +1632,207 @@ export interface operations {
                 /** Format: date-time */
                 createdAt: string;
               };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  FactsController_extract: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Extracted fact proposals */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              subject: string;
+              predicate: string;
+              object: string;
+              sourceSentence: string;
+              /** @enum {string} */
+              status: "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+              confidence: number;
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              required: boolean;
+              decision: {
+                id: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                actorId: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  FactsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chapter fact proposals */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              subject: string;
+              predicate: string;
+              object: string;
+              sourceSentence: string;
+              /** @enum {string} */
+              status: "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+              confidence: number;
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              required: boolean;
+              decision: {
+                id: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                actorId: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  FactsController_decide: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        factProposalId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          action: "confirm" | "modify_confirm" | "reject" | "supersede";
+          reason?: string;
+          modified?: {
+            subject?: string;
+            predicate?: string;
+            object?: string;
+            /** @enum {string} */
+            risk?: "low" | "medium" | "high";
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated fact proposal */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              subject: string;
+              predicate: string;
+              object: string;
+              sourceSentence: string;
+              /** @enum {string} */
+              status: "proposed" | "confirmed" | "modified_confirmed" | "rejected" | "superseded";
+              confidence: number;
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              required: boolean;
+              decision: {
+                id: string;
+                /** @enum {string} */
+                action: "confirm" | "modify_confirm" | "reject" | "supersede";
+                actorId: string;
+                actorName: string;
+                reason: string;
+                /** Format: date-time */
+                decidedAt: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
             };
             /** Format: starts_with */
             requestId: string;

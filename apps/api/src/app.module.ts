@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { AuthModule } from "./auth/auth.module";
 import { ChaptersModule } from "./chapters/chapters.module";
+import { FactsModule } from "./facts/facts.module";
 import { GenerationModule } from "./generation/generation.module";
 import { HealthModule } from "./health/health.module";
 import { ManuscriptImportModule } from "./imports/manuscript-import.module";
@@ -15,6 +16,7 @@ import { WorksModule } from "./works/works.module";
   imports: [
     AuthModule,
     ChaptersModule,
+    FactsModule,
     GenerationModule,
     HealthModule,
     ManuscriptImportModule,

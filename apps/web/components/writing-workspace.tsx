@@ -26,6 +26,8 @@ import {
   chapterVersionSaveResponseSchema,
   chapterWorkspaceListResponseSchema,
   chapterWorkspaceResponseSchema,
+  factProposalListResponseSchema,
+  factProposalResponseSchema,
   generationJobListResponseSchema,
   generationJobResponseSchema,
   jobEventSchema,
@@ -33,6 +35,7 @@ import {
   type ChapterReadiness,
   type ChapterVersion,
   type ChapterWorkspace,
+  type FactProposal,
   type GenerationJob,
   type WorkOverview,
 } from "@novel-brain/contracts";
@@ -59,6 +62,20 @@ const generationStatusLabels: Record<GenerationJob["status"], string> = {
   completed: "已完成",
   failed: "生成失败",
   cancelled: "已取消",
+};
+
+const factStatusLabels: Record<FactProposal["status"], string> = {
+  proposed: "待确认",
+  confirmed: "已确认",
+  modified_confirmed: "已修改确认",
+  rejected: "已驳回",
+  superseded: "已替代",
+};
+
+const factRiskLabels: Record<FactProposal["risk"], string> = {
+  low: "低风险",
+  medium: "中风险",
+  high: "高风险",
 };
 
 const jobEventTypes = [
@@ -99,6 +116,9 @@ export function WritingWorkspace({
   const [rightVersionId, setRightVersionId] = useState<string>("");
   const [generationJob, setGenerationJob] = useState<GenerationJob | null>(null);
   const [generationBusy, setGenerationBusy] = useState(false);
+  const [factProposals, setFactProposals] = useState<FactProposal[]>([]);
+  const [factsLoading, setFactsLoading] = useState(false);
+  const [factBusyId, setFactBusyId] = useState<string | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -133,10 +153,12 @@ export function WritingWorkspace({
         await Promise.all([
           loadVersions(workData, nextSelectedId),
           loadGenerationJob(workData, nextSelectedId),
+          loadFactProposals(workData, nextSelectedId),
         ]);
       } else {
         setVersions([]);
         setGenerationJob(null);
+        setFactProposals([]);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "写作台加载失败。");
@@ -163,8 +185,7 @@ export function WritingWorkspace({
   const dirty = content !== savedContent;
   const canSave = Boolean(selected && content.trim() && dirty && !saving);
   const generationActive = Boolean(
-    generationJob &&
-    ["queued", "preparing", "running", "paused", "waiting_review"].includes(generationJob.status),
+    generationJob && ["queued", "preparing", "running", "paused"].includes(generationJob.status),
   );
   const canGenerate = Boolean(
     selected?.readiness.canStartWriting && !generationActive && !generationBusy,
@@ -180,9 +201,9 @@ export function WritingWorkspace({
     setSaved(false);
     if (work) {
       try {
-        await loadVersions(work, chapter.id);
+        await Promise.all([loadVersions(work, chapter.id), loadFactProposals(work, chapter.id)]);
       } catch (caught) {
-        setActionError(caught instanceof Error ? caught.message : "版本加载失败。");
+        setActionError(caught instanceof Error ? caught.message : "章节资料加载失败。");
       }
     }
   }
@@ -231,6 +252,22 @@ export function WritingWorkspace({
       watchGeneration(workData, latest.id);
     } else {
       closeGenerationStream();
+    }
+  }
+
+  async function loadFactProposals(workData: WorkOverview, chapterId: string) {
+    setFactsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/fact-proposals`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "本章事实加载失败。"));
+      }
+      setFactProposals(factProposalListResponseSchema.parse(await response.json()).data);
+    } finally {
+      setFactsLoading(false);
     }
   }
 
@@ -377,8 +414,53 @@ export function WritingWorkspace({
           setContent(chapter.currentVersion?.content ?? "");
           setSavedContent(chapter.currentVersion?.content ?? "");
           await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
+          await loadFactProposals(workData, chapter.id);
         }
       }
+    }
+  }
+
+  async function decideFact(
+    proposal: FactProposal,
+    body: {
+      action: "confirm" | "modify_confirm" | "reject";
+      reason?: string;
+      modified?: {
+        subject?: string;
+        predicate?: string;
+        object?: string;
+        risk?: FactProposal["risk"];
+      };
+    },
+  ) {
+    if (!work || factBusyId) {
+      return;
+    }
+    setFactBusyId(proposal.id);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/fact-proposals/${proposal.id}/decision`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify(body),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "事实决策保存失败。"));
+      }
+      const updated = factProposalResponseSchema.parse(await response.json()).data;
+      setFactProposals((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "事实决策保存失败。");
+    } finally {
+      setFactBusyId(null);
     }
   }
 
@@ -773,6 +855,163 @@ export function WritingWorkspace({
             )}
           </section>
 
+          <section className="panel writing-facts" aria-labelledby="writing-facts-title">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">逐条确认</span>
+                <h2 id="writing-facts-title">本章事实</h2>
+              </div>
+              <span className="badge">{factProposals.length}</span>
+            </div>
+            {factsLoading ? (
+              <div className="writing-facts-loading" role="status">
+                <LoaderCircle className="spin" size={15} aria-hidden="true" />
+                正在加载本章事实
+              </div>
+            ) : factProposals.length === 0 ? (
+              <p className="writing-generation-empty">
+                生成正文后会在这里整理本章事实，等待你逐条确认。
+              </p>
+            ) : (
+              <>
+                <p className="writing-facts-summary">
+                  待确认 {factProposals.filter((item) => item.status === "proposed").length} 条 ·
+                  已处理 {factProposals.filter((item) => item.status !== "proposed").length} 条
+                </p>
+                <div className="writing-fact-list">
+                  {factProposals.map((proposal) => (
+                    <article
+                      className={`writing-fact-card writing-fact-${proposal.status}`}
+                      key={proposal.id}
+                    >
+                      <div className="writing-fact-head">
+                        <span className={`badge writing-fact-status-${proposal.status}`}>
+                          {factStatusLabels[proposal.status]}
+                        </span>
+                        <span className={`writing-fact-risk writing-fact-risk-${proposal.risk}`}>
+                          {factRiskLabels[proposal.risk]}
+                        </span>
+                      </div>
+                      <h3>{proposal.object}</h3>
+                      <p>
+                        {proposal.subject} · {proposal.predicate}
+                      </p>
+                      <small className="writing-fact-source">来源：第 {selected.order} 章</small>
+                      <blockquote>来源句：“{proposal.sourceSentence}”</blockquote>
+                      {proposal.decision ? (
+                        <div className="writing-fact-decision">
+                          <strong>{proposal.decision.actorName}</strong>
+                          <span>{formatDateTime(proposal.decision.decidedAt)}</span>
+                          <small>{proposal.decision.reason}</small>
+                        </div>
+                      ) : null}
+                      {proposal.status === "proposed" ? (
+                        <div className="writing-fact-actions">
+                          <button
+                            className="btn btn-primary btn-small"
+                            disabled={factBusyId === proposal.id}
+                            onClick={() => void decideFact(proposal, { action: "confirm" })}
+                            type="button"
+                          >
+                            {factBusyId === proposal.id ? (
+                              <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                            ) : (
+                              <Check size={13} aria-hidden="true" />
+                            )}
+                            确认
+                          </button>
+                          <button
+                            className="btn btn-ghost btn-small"
+                            disabled={factBusyId === proposal.id}
+                            onClick={() => void decideFact(proposal, { action: "reject" })}
+                            type="button"
+                          >
+                            <XCircle size={13} aria-hidden="true" />
+                            驳回
+                          </button>
+                          <details className="writing-fact-modify">
+                            <summary>修改后确认</summary>
+                            <form
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                const form = new FormData(event.currentTarget);
+                                const modified: {
+                                  subject?: string;
+                                  predicate?: string;
+                                  object?: string;
+                                  risk?: FactProposal["risk"];
+                                } = {
+                                  risk: String(form.get("risk") ?? "") as FactProposal["risk"],
+                                };
+                                const subject = String(form.get("subject") ?? "").trim();
+                                const predicate = String(form.get("predicate") ?? "").trim();
+                                const object = String(form.get("object") ?? "").trim();
+                                if (subject) {
+                                  modified.subject = subject;
+                                }
+                                if (predicate) {
+                                  modified.predicate = predicate;
+                                }
+                                if (object) {
+                                  modified.object = object;
+                                }
+                                const decision: {
+                                  action: "modify_confirm";
+                                  reason?: string;
+                                  modified: typeof modified;
+                                } = {
+                                  action: "modify_confirm",
+                                  modified,
+                                };
+                                const reason = String(form.get("reason") ?? "").trim();
+                                if (reason) {
+                                  decision.reason = reason;
+                                }
+                                void decideFact(proposal, decision);
+                              }}
+                            >
+                              <label>
+                                <span>主体</span>
+                                <input defaultValue={proposal.subject} name="subject" />
+                              </label>
+                              <label>
+                                <span>关系</span>
+                                <input defaultValue={proposal.predicate} name="predicate" />
+                              </label>
+                              <label>
+                                <span>事实</span>
+                                <textarea defaultValue={proposal.object} name="object" />
+                              </label>
+                              <label>
+                                <span>风险</span>
+                                <select defaultValue={proposal.risk} name="risk">
+                                  <option value="low">低风险</option>
+                                  <option value="medium">中风险</option>
+                                  <option value="high">高风险</option>
+                                </select>
+                              </label>
+                              <label>
+                                <span>修改原因</span>
+                                <input name="reason" placeholder="说明为什么需要修改" />
+                              </label>
+                              <button
+                                className="btn btn-primary btn-small"
+                                disabled={factBusyId === proposal.id}
+                                type="submit"
+                              >
+                                保存修改并确认
+                              </button>
+                            </form>
+                          </details>
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
+
           <section className="panel writing-readiness">
             <div className="panel-head">
               <div>
@@ -913,7 +1152,7 @@ function readinessLabel(readiness: ChapterReadiness): string {
 }
 
 function isActiveGeneration(status: GenerationJob["status"]): boolean {
-  return ["queued", "preparing", "running", "paused", "waiting_review"].includes(status);
+  return ["queued", "preparing", "running", "paused"].includes(status);
 }
 
 function generationStepLabel(step: GenerationJob["currentStep"]): string {
