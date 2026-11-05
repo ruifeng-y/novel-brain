@@ -169,6 +169,7 @@ test("checks every M0 parity page at all signed-off viewports and author languag
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/login");
     await expect(page.getByRole("heading", { name: "欢迎回来" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "登录" })).toBeEnabled();
     await expectAuthorFacingLanguage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const overflow = await page.evaluate(
