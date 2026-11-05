@@ -1,6 +1,7 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   auditLogs,
+  chapters,
   createDatabaseClient,
   createDatabasePool,
   genrePacks,
@@ -156,6 +157,30 @@ export class WorksRepository implements OnModuleDestroy {
         )
         .limit(1);
       return Boolean(storyBible);
+    });
+  }
+
+  async hasReadyChapterBrief(userId: string, workId: string, branchId: string): Promise<boolean> {
+    return this.withTenant(userId, async (transaction) => {
+      const [chapter] = await transaction
+        .select({ id: chapters.id })
+        .from(chapters)
+        .where(
+          and(
+            eq(chapters.userId, userId),
+            eq(chapters.workId, workId),
+            eq(chapters.branchId, branchId),
+            sql`coalesce(${chapters.brief}->>'goal', '') <> ''`,
+            sql`coalesce(${chapters.brief}->>'pov', '') <> ''`,
+            sql`coalesce(${chapters.brief}->>'location', '') <> ''`,
+            sql`jsonb_typeof(${chapters.brief}->'sceneBeats') = 'array'`,
+            sql`jsonb_array_length(${chapters.brief}->'sceneBeats') > 0`,
+            sql`jsonb_typeof(${chapters.brief}->'requiredFacts') = 'array'`,
+            sql`jsonb_array_length(${chapters.brief}->'requiredFacts') > 0`,
+          ),
+        )
+        .limit(1);
+      return Boolean(chapter);
     });
   }
 

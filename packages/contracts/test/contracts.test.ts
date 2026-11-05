@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   authPasswordSchema,
   authSessionResponseSchema,
+  chapterBriefSchema,
+  chapterReadinessSchema,
+  chapterVersionCreateRequestSchema,
+  chapterWorkspaceSchema,
   csrfResponseSchema,
   GENERATE_CHAPTER_JOB,
   generateChapterJobSchema,
@@ -420,6 +424,123 @@ describe("shared contracts", () => {
       storyBiblePatchRequestSchema.parse({
         version: 1,
         cards: [{ key: "unknownCard", content: "未知卡片" }],
+      }),
+    ).toThrow();
+  });
+
+  it("requires a complete ordered chapter brief before a chapter can be planned", () => {
+    const brief = chapterBriefSchema.parse({
+      goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",
+      pov: "沈砚",
+      location: "荒寺外山道",
+      sceneBeats: [
+        "沈砚藏起断臂，被顾青撞见。",
+        "血河宗追兵逼近，两人被迫联手。",
+        "沈砚单手结印，忘川书短暂显形。",
+      ],
+      requiredFacts: ["左臂骨折，不能双手结印", "顾青不知道忘川书完整来历"],
+    });
+
+    expect(brief.sceneBeats).toEqual([
+      "沈砚藏起断臂，被顾青撞见。",
+      "血河宗追兵逼近，两人被迫联手。",
+      "沈砚单手结印，忘川书短暂显形。",
+    ]);
+    for (const field of ["goal", "pov", "location", "sceneBeats", "requiredFacts"] as const) {
+      expect(() =>
+        chapterBriefSchema.parse({
+          ...brief,
+          [field]: "",
+        }),
+      ).toThrow();
+    }
+    expect(() =>
+      chapterBriefSchema.parse({
+        ...brief,
+        sceneBeats: [],
+      }),
+    ).toThrow();
+    expect(() =>
+      chapterBriefSchema.parse({
+        ...brief,
+        requiredFacts: [],
+      }),
+    ).toThrow();
+  });
+
+  it("exposes chapter readiness and append-only manual-save contracts", () => {
+    const readiness = chapterReadinessSchema.parse({
+      status: "partial",
+      completed: 2,
+      total: 3,
+      canStartWriting: false,
+      items: [
+        {
+          key: "story_bible",
+          label: "故事圣经",
+          ready: true,
+          missing: [],
+        },
+        {
+          key: "settings",
+          label: "已确认设定",
+          ready: true,
+          missing: [],
+        },
+        {
+          key: "brief",
+          label: "章纲",
+          ready: false,
+          missing: ["缺少场景节拍"],
+        },
+      ],
+    });
+    const chapter = chapterWorkspaceSchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11",
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c13",
+      order: 1,
+      title: "一只手也能结印",
+      status: "planned",
+      version: 1,
+      wordCount: 0,
+      currentVersionId: null,
+      currentVersion: null,
+      brief: {
+        goal: "让沈砚找到新的战斗方式。",
+        pov: "沈砚",
+        location: "荒寺外山道",
+        sceneBeats: ["沈砚藏起断臂。"],
+        requiredFacts: ["左臂骨折"],
+      },
+      readiness,
+      createdAt: "2026-11-05T08:00:00.000Z",
+      updatedAt: "2026-11-05T08:00:00.000Z",
+    });
+    const save = chapterVersionCreateRequestSchema.parse({
+      version: 1,
+      content: "血从袖口滴下来，落在青石板上。",
+    });
+
+    expect(chapter.readiness.items.map((item) => item.key)).toEqual([
+      "story_bible",
+      "settings",
+      "brief",
+    ]);
+    expect(save).toEqual({
+      version: 1,
+      content: "血从袖口滴下来，落在青石板上。",
+    });
+    expect(
+      chapterVersionCreateRequestSchema.parse({
+        version: 1,
+        content: "  第一段\n\n第二段  ",
+      }).content,
+    ).toBe("  第一段\n\n第二段  ");
+    expect(() =>
+      chapterVersionCreateRequestSchema.parse({
+        version: 1,
+        content: "",
       }),
     ).toThrow();
   });

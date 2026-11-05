@@ -108,15 +108,10 @@ export function WorkOverview({ workId }: { workId: string }) {
             <ArrowLeft size={15} aria-hidden="true" />
             返回工作台
           </Link>
-          <button
-            className="btn btn-primary"
-            disabled
-            title="写作台将在后续章节能力中开放"
-            type="button"
-          >
+          <Link className="btn btn-primary" href={`/workspace/${workId}/write`}>
             <PenLine size={15} aria-hidden="true" />
             继续写作
-          </button>
+          </Link>
         </div>
       </section>
 
@@ -205,11 +200,13 @@ export function WorkOverview({ workId }: { workId: string }) {
               </Link>
             </li>
             <li>
-              <PenLine size={16} aria-hidden="true" />
-              <div>
-                <strong>准备第一章</strong>
-                <small>写作台会沿用当前主创作线</small>
-              </div>
+              <Link className="overview-next-link" href={`/workspace/${workId}/outline`}>
+                <PenLine size={16} aria-hidden="true" />
+                <div>
+                  <strong>准备第一章</strong>
+                  <small>先写章纲，再进入写作台</small>
+                </div>
+              </Link>
             </li>
           </ul>
         </aside>

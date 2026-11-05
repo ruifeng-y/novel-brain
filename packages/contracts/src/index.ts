@@ -769,6 +769,34 @@ export const chapterSchema = z.object({
 });
 export type Chapter = z.infer<typeof chapterSchema>;
 
+export const chapterBriefSchema = z
+  .object({
+    goal: z.string().trim().min(1).max(5_000),
+    pov: z.string().trim().min(1).max(200),
+    location: z.string().trim().min(1).max(200),
+    sceneBeats: z.array(z.string().trim().min(1).max(1_000)).min(1).max(50),
+    requiredFacts: z.array(z.string().trim().min(1).max(1_000)).min(1).max(50),
+  })
+  .strict();
+export type ChapterBrief = z.infer<typeof chapterBriefSchema>;
+
+export const chapterReadinessItemSchema = z.object({
+  key: z.enum(["story_bible", "settings", "brief"]),
+  label: z.string().min(1),
+  ready: z.boolean(),
+  missing: z.array(z.string().min(1)),
+});
+export type ChapterReadinessItem = z.infer<typeof chapterReadinessItemSchema>;
+
+export const chapterReadinessSchema = z.object({
+  status: z.enum(["not_ready", "partial", "ready"]),
+  completed: z.number().int().min(0).max(3),
+  total: z.literal(3),
+  canStartWriting: z.boolean(),
+  items: z.array(chapterReadinessItemSchema).length(3),
+});
+export type ChapterReadiness = z.infer<typeof chapterReadinessSchema>;
+
 export const chapterVersionSchema = z.object({
   id: uuidV7Schema,
   chapterId: uuidV7Schema,
@@ -780,6 +808,62 @@ export const chapterVersionSchema = z.object({
   createdAt: z.string().datetime(),
 });
 export type ChapterVersion = z.infer<typeof chapterVersionSchema>;
+
+export const chapterWorkspaceSchema = chapterSchema.omit({ currentVersionId: true }).extend({
+  currentVersionId: uuidV7Schema.nullable(),
+  currentVersion: chapterVersionSchema.nullable(),
+  brief: chapterBriefSchema.nullable(),
+  readiness: chapterReadinessSchema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type ChapterWorkspace = z.infer<typeof chapterWorkspaceSchema>;
+
+export const chapterCreateRequestSchema = z
+  .object({
+    order: z.number().int().positive().max(10_000),
+    title: z.string().trim().min(1).max(200),
+    brief: chapterBriefSchema,
+  })
+  .strict();
+export type ChapterCreateRequest = z.infer<typeof chapterCreateRequestSchema>;
+
+export const chapterPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(200).optional(),
+    brief: chapterBriefSchema.optional(),
+  })
+  .strict()
+  .refine((input) => input.title !== undefined || input.brief !== undefined, {
+    message: "At least one chapter field is required",
+  });
+export type ChapterPatchRequest = z.infer<typeof chapterPatchRequestSchema>;
+
+export const chapterVersionCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    content: z
+      .string()
+      .min(1)
+      .max(200_000)
+      .refine((content) => content.trim().length > 0, "Chapter content cannot be blank"),
+  })
+  .strict();
+export type ChapterVersionCreateRequest = z.infer<typeof chapterVersionCreateRequestSchema>;
+
+export const chapterWorkspaceListResponseSchema = apiEnvelopeSchema(
+  z.array(chapterWorkspaceSchema),
+);
+export const chapterWorkspaceResponseSchema = apiEnvelopeSchema(chapterWorkspaceSchema);
+export const chapterReadinessResponseSchema = apiEnvelopeSchema(chapterReadinessSchema);
+export const chapterVersionListResponseSchema = apiEnvelopeSchema(z.array(chapterVersionSchema));
+export const chapterVersionSaveDataSchema = z.object({
+  chapter: chapterWorkspaceSchema,
+  version: chapterVersionSchema,
+});
+export type ChapterVersionSaveData = z.infer<typeof chapterVersionSaveDataSchema>;
+export const chapterVersionSaveResponseSchema = apiEnvelopeSchema(chapterVersionSaveDataSchema);
 
 export const manuscriptImportConfirmRequestSchema = z.object({
   title: z.string().trim().min(1).max(120),
