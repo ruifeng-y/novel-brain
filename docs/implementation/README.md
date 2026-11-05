@@ -107,7 +107,7 @@ The capability ledger contains **119 IDs**: the 117 original manifest entries pl
 
 ## 7. UI parity and prototype evidence
 
-The signed-off prototype contains 18 screens: 17 production page contracts plus one prototype-only states gallery. Production Web/API/Worker code and production golden screenshots do not yet exist.
+The signed-off prototype contains 18 screens: 17 production page contracts plus one prototype-only states gallery. Production Web/API/Worker code exists for M0, and its nine pages have committed production golden screenshots; M1–M3 page evidence is still pending.
 
 Prototype regression remains independently runnable from prototype/:
 
@@ -116,7 +116,7 @@ Prototype regression remains independently runnable from prototype/:
     pnpm exec playwright install chromium
     pnpm test:parity
 
-The prototype suite is not a substitute for production Web/API/Worker or production screenshot-parity tests. Production page owners, Playwright spec paths, four viewport sizes and future golden artifact locations are registered in docs/ui/v1-ui-parity-matrix.md. Production golden images are generated only after the initial production page has been accepted by the author; do not copy prototype images into the production golden folder. Follow `docs/ui/production-visual-regression.md` and ADR 0027 for pinned rendering, 0.5% pixel tolerance, deterministic fixtures, CI diff artifacts and baseline approval.
+The prototype suite is not a substitute for production Web/API/Worker or production screenshot-parity tests. Production page owners, Playwright spec paths, four viewport sizes and golden artifact locations are registered in docs/ui/v1-ui-parity-matrix.md. M0 golden images are committed under `artifacts/ui/golden/` after author approval; future pages must follow the same process, and prototype images must not be copied into the production golden folder. Follow `docs/ui/production-visual-regression.md` and ADR 0027 for pinned rendering, 0.5% pixel tolerance, deterministic fixtures, CI diff artifacts and baseline approval.
 
 ## 8. Scale and quality gates
 

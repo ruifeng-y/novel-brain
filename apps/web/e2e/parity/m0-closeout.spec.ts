@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import { getCsrf, mailCode, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import {
@@ -11,6 +11,14 @@ import { expectAuthorFacingLanguage } from "../helpers/ui";
 import { startWorker } from "../helpers/worker";
 
 const viewports = [390, 900, 1180, 1440] as const;
+const frozenTimestamp = "2026-11-05T08:50:00.000Z";
+const screenshotOptions = {
+  animations: "disabled",
+  caret: "hide",
+  fullPage: true,
+  maxDiffPixelRatio: 0.005,
+  scale: "css",
+} as const;
 
 test.describe.configure({ timeout: 120_000 });
 
@@ -153,9 +161,10 @@ test("checks every M0 parity page at all signed-off viewports and author languag
   page,
   context,
   request,
-}, testInfo) => {
+}) => {
   const email = uniqueEmail("m0-parity");
   const session = await registerUser(request, email, "StrongPassword123", "M0 验收作者");
+  await freezeApiTimestamps(page);
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/login");
@@ -166,10 +175,7 @@ test("checks every M0 parity page at all signed-off viewports and author languag
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(1);
-    await testInfo.attach(`auth-${width}`, {
-      body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
-      contentType: "image/png",
-    });
+    await expect(page).toHaveScreenshot(["auth", `auth-${width}.png`], screenshotOptions);
   }
   await context.addCookies([
     {
@@ -184,21 +190,48 @@ test("checks every M0 parity page at all signed-off viewports and author languag
   const work = await seedM0Work(request);
   const chapter = await createM0Chapter(request, work);
   const pages = [
-    { id: "dashboard", path: "/workspace", heading: "工作台" },
-    { id: "new-project", path: "/workspace/new-project", heading: "把一个想法，长成一本书" },
-    { id: "account-settings", path: "/workspace/settings/account", heading: "把写作环境准备好" },
+    { id: "dashboard", path: "/workspace", heading: "工作台", ready: ".project-card" },
+    {
+      id: "new-project",
+      path: "/workspace/new-project",
+      heading: "把一个想法，长成一本书",
+      ready: ".mode-switch",
+    },
+    {
+      id: "account-settings",
+      path: "/workspace/settings/account",
+      heading: "把写作环境准备好",
+      ready: ".model-config-row, .model-empty",
+    },
     {
       id: "work-overview",
       path: `/workspace/${work.id}/overview`,
       heading: work.title,
+      ready: ".overview-hero",
     },
-    { id: "bible", path: `/workspace/${work.id}/bible`, heading: work.title },
-    { id: "settings", path: `/workspace/${work.id}/settings`, heading: "设定中心" },
-    { id: "outline", path: `/workspace/${work.id}/outline`, heading: "大纲工作台" },
+    {
+      id: "bible",
+      path: `/workspace/${work.id}/bible`,
+      heading: work.title,
+      ready: ".story-bible-layout",
+    },
+    {
+      id: "settings",
+      path: `/workspace/${work.id}/settings`,
+      heading: "设定中心",
+      ready: ".settings-workspace-grid",
+    },
+    {
+      id: "outline",
+      path: `/workspace/${work.id}/outline`,
+      heading: "大纲工作台",
+      ready: ".outline-workspace-grid",
+    },
     {
       id: "writing",
       path: `/workspace/${work.id}/write?chapterId=${chapter.id}`,
       heading: "写作台",
+      ready: ".writing-editor",
     },
   ] as const;
 
@@ -207,19 +240,65 @@ test("checks every M0 parity page at all signed-off viewports and author languag
       await page.setViewportSize({ width, height: 900 });
       await page.goto(pageContract.path);
       await expect(page.getByRole("heading", { name: pageContract.heading }).first()).toBeVisible();
+      await expect(page.locator(pageContract.ready).first()).toBeVisible();
       await expectAuthorFacingLanguage(page);
       await page.evaluate(() => document.fonts.ready.then(() => undefined));
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow).toBeLessThanOrEqual(1);
-      await testInfo.attach(`${pageContract.id}-${width}`, {
-        body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
-        contentType: "image/png",
-      });
+      await expect(page).toHaveScreenshot(
+        [pageContract.id, `${pageContract.id}-${width}.png`],
+        screenshotOptions,
+      );
     }
   }
 
   const csrf = await getCsrf(request);
   expect(csrf.length).toBeGreaterThan(20);
 });
+
+async function freezeApiTimestamps(page: Page) {
+  await page.route("**/api/v1/**", async (route) => {
+    const response = await route.fetch();
+    const contentType = response.headers()["content-type"] ?? "";
+    if (!contentType.includes("application/json")) {
+      await route.fulfill({ response });
+      return;
+    }
+
+    const text = await response.text();
+    if (!text) {
+      await route.fulfill({ response });
+      return;
+    }
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      await route.fulfill({ response, body: text });
+      return;
+    }
+
+    await route.fulfill({ response, json: freezeTimestamps(payload) });
+  });
+}
+
+function freezeTimestamps(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(freezeTimestamps);
+  }
+  if (!value || typeof value !== "object") {
+    return value;
+  }
+
+  return Object.fromEntries(
+    Object.entries(value).map(([key, entry]) => [
+      key,
+      /(At|timestamp)$/u.test(key) && typeof entry === "string"
+        ? frozenTimestamp
+        : freezeTimestamps(entry),
+    ]),
+  );
+}

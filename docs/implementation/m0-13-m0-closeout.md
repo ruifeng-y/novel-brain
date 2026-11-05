@@ -56,19 +56,19 @@ pnpm smoke:deepseek
 - 缺少凭据时写入 `artifacts/playwright/deepseek-smoke.json`，状态为 `skipped`，`networkCalls` 为 `0`。
 - 存在凭据时调用 DeepSeek 官方兼容接口，记录 `textHash`、`textLength`、模型、token、延迟、成本估算和 provider response ID。
 - 演示前强制要求真实证据时设置 `REQUIRE_DEEPSEEK_SMOKE=1`；缺少凭据会以失败退出。
-- 2026-11-05 已使用真实凭据完成一次 smoke：模型 `deepseek-flash`，网络调用 1 次，45 tokens，延迟 918ms，估算成本 ¥0.00009，provider response ID `94eea13d-3784-4e0b-a6ac-83aa08368fa7`。证据只记录文本哈希与长度，不记录 Key 或生成正文。
+- 2026-11-05 已使用真实凭据完成一次 smoke：模型 `deepseek-flash`，网络调用 1 次，45 tokens，延迟 918ms，估算成本 ¥0.00009，provider response ID `94eea13d-3784-4e0b-a6ac-83aa08368fa7`。证据只记录文本哈希与长度，不记录 Key 或生成正文；脱敏记录见 `docs/implementation/evidence/deepseek-smoke-2026-11-05.json`。
 
 ## UI Parity 状态
 
-自动化证据覆盖全部 M0 页面和四档视口，但 ADR 0027 还要求作者对照初始生产截图并签收 golden baseline。当前提交不伪造作者签收，也不把自动化通过写成 `parity-verified`。
+自动化证据覆盖全部 M0 页面和四档视口。2026-11-05 作者已对照初始生产截图并签收 M0 九页 golden baseline；36 张生产截图已提交到 `artifacts/ui/golden/`，并由 `m0-closeout.spec.ts` 以 0.5% 像素差异容忍度进行回归比对。Linux/Chromium 基线更新证据：[Production CI #42005502769](https://github.com/ruifeng-y/novel-brain/actions/runs/42005502769)。
 
-因此 M0 页面保持 `production-built`；生产 golden 与作者签收是演示前剩余门禁。
+因此 auth、dashboard、new-project、account-settings、work-overview、bible、settings、outline、writing 已标记为 `parity-verified`。M1–M3 页面仍需按 ADR 0027 单独完成生产截图、比对和作者签收。
 
 ## 验证结果
 
 - `pnpm check`：7 个测试文件、40 项测试通过；格式、lint、类型检查通过。
 - `pnpm test:integration`：9 个集成测试文件、55 项测试通过。
-- `pnpm test:e2e`：53 项 Playwright Chromium 测试通过，包含全链路和 M0 九页 × 四档视口。
+- `pnpm test:e2e`：59 项 Playwright Chromium 测试通过，包含全链路、M0 九页 × 四档视口和页面状态补充断言。
 - `pnpm --filter @novel-brain/api openapi:check`：OpenAPI 与生成类型无漂移。
 - `node scripts/validate-readiness.mjs`：119 个能力、119 个主 issue 映射、85 节点依赖图通过。
 - `pnpm stack:smoke`：Web、API readiness、Mailpit、Postgres、Redis 和 Worker 消费队列通过。
@@ -76,5 +76,5 @@ pnpm smoke:deepseek
 
 ## 待补证据与风险
 
-- 生产 golden 截图尚未由作者签收。
 - Docker 镜像重建在 Corepack 下载 pnpm 时停滞；stack smoke 使用已有镜像完成服务级检查，当前源码由本地 check、integration 和 E2E 验证。
+- M1–M3 生产页面的 golden 截图与签收仍待各自页面 ticket 完成。

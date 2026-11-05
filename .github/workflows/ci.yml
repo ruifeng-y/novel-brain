@@ -1,6 +1,13 @@
 name: Production CI
 
 on:
+  workflow_dispatch:
+    inputs:
+      update_golden:
+        description: "Update production golden screenshots"
+        required: false
+        default: false
+        type: boolean
   pull_request:
   push:
     branches:
@@ -111,7 +118,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - run: pnpm test:e2e
+      - name: Update production golden screenshots
+        if: github.event_name == 'workflow_dispatch' && inputs.update_golden == true
+        run: pnpm test:e2e:update
+
+      - name: Run Playwright
+        if: github.event_name != 'workflow_dispatch' || inputs.update_golden != true
+        run: pnpm test:e2e
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -120,4 +133,5 @@ jobs:
           path: |
             playwright-report
             test-results
+            artifacts/ui/golden
           if-no-files-found: ignore

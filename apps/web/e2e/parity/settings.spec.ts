@@ -174,3 +174,100 @@ test("holds the seven-column settings layout at all four viewports", async ({
     });
   }
 });
+
+test("shows loading and recoverable error states", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const entitiesPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+
+  await page.route(`**${entitiesPath}`, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
+  await page.goto(`/workspace/${work.id}/settings`);
+  await expect(page.getByText("正在加载设定中心")).toBeVisible();
+  await page.unroute(`**${entitiesPath}`);
+  await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
+
+  await page.route(`**${entitiesPath}`, async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "设定加载失败。",
+          details: {},
+          requestId: "req_settings_error",
+        },
+      }),
+    });
+  });
+  await page.reload();
+  await expect(page.getByText("设定加载失败。")).toBeVisible();
+  await page.unroute(`**${entitiesPath}`);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
+});
+
+test("renders a proposed setting state", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const entitiesPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+  const token = await getCsrf(page.request);
+  const created = await page.request.post(entitiesPath, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: {
+      type: "world_rule",
+      name: "天门只认完整记忆",
+      aliases: [],
+      summary: "失去关键记忆的人无法通过天门。",
+      description: "",
+      tags: [],
+      data: { rule: "主动抹除关键记忆会导致天门通行失败。" },
+    },
+  });
+  expect(created.status()).toBe(201);
+  const entity = (await created.json()).data as { id: string };
+
+  await page.route(`**${entitiesPath}`, async (route) => {
+    const response = await route.fetch();
+    const payload = (await response.json()) as { data: Array<{ id: string; status: string }> };
+    payload.data = payload.data.map((item) =>
+      item.id === entity.id ? { ...item, status: "proposed" } : item,
+    );
+    await route.fulfill({ response, json: payload });
+  });
+  await page.goto(`/workspace/${work.id}/settings`);
+  await expect(page.locator(".settings-status-proposed").first()).toHaveText("待确认");
+});
+
+test("keeps a long settings list usable at the narrow viewport", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const token = await getCsrf(page.request);
+  const entitiesPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+  for (let index = 1; index <= 10; index += 1) {
+    const response = await page.request.post(entitiesPath, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        type: "world_rule",
+        name: `第 ${index} 条世界规则`,
+        aliases: [],
+        summary: "这是一条用于验证长列表和窄视口布局的世界规则。",
+        description: "规则内容需要保持可读，并且不能把页面横向撑开。",
+        tags: [],
+        data: { rule: "所有角色都必须遵守这条规则。" },
+      },
+    });
+    expect(response.status()).toBe(201);
+  }
+
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`/workspace/${work.id}/settings`);
+  await expect(page.locator(".settings-entity-card")).toHaveCount(10);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});

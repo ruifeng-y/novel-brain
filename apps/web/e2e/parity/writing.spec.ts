@@ -259,6 +259,62 @@ test("shows empty and error states and keeps the editor usable at four viewports
   }
 });
 
+test("shows loading and recoverable version conflict states", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWritingWork(page);
+  const chapter = await createChapter(page, work);
+  const chapters = chaptersPath(work);
+
+  await page.route(`**${chapters}`, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
+  await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+  await expect(page.getByText("正在加载写作台")).toBeVisible();
+  await page.unroute(`**${chapters}`);
+  await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+  await expect(page.getByRole("heading", { name: "一只手也能结印" })).toBeVisible();
+
+  await page.getByRole("textbox", { name: "章节正文" }).fill("沈砚把断臂藏进袖中。");
+  const versionsPath = `${chapters}/${chapter.id}/versions`;
+  await page.route(`**${versionsPath}`, async (route) => {
+    if (route.request().method() === "POST") {
+      await route.fulfill({
+        status: 409,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "VERSION_CONFLICT",
+            message: "章节版本已变化，请刷新后重试。",
+            details: {},
+            requestId: "req_writing_conflict",
+          },
+        }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.getByRole("button", { name: "保存版本" }).click();
+  await expect(page.getByText("章节版本已变化，请刷新后重试。")).toBeVisible();
+});
+
+test("keeps a long chapter usable at the narrow viewport", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWritingWork(page);
+  const chapter = await createChapter(page, work);
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+
+  const editor = page.getByRole("textbox", { name: "章节正文" });
+  await editor.fill("沈砚把断臂藏进袖中。".repeat(800));
+  await expect(editor).toHaveValue(/沈砚把断臂藏进袖中。/);
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("generates a chapter with progress, references, citations, cost and checkpoint", async ({
   page,
   context,

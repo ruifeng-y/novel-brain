@@ -7,6 +7,7 @@ const redisUrl = process.env.E2E_REDIS_URL ?? "redis://localhost:6379/1";
 
 export default defineConfig({
   testDir: "./apps/web/e2e",
+  snapshotPathTemplate: "artifacts/ui/golden/{arg}{ext}",
   fullyParallel: false,
   workers: 1,
   forbidOnly: Boolean(process.env.CI),
@@ -15,7 +16,9 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:3000",
     colorScheme: "light",
+    deviceScaleFactor: 1,
     locale: "zh-CN",
+    reducedMotion: "reduce",
     timezoneId: "Asia/Shanghai",
     trace: "retain-on-failure",
   },

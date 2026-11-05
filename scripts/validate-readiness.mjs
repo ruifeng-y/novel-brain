@@ -6,6 +6,17 @@ const requireCheck = (condition, message) => {
   if (!condition) errors.push(message);
 };
 const pipeCells = (line) => line.split('|').map((cell) => cell.trim());
+const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const isValidGolden = (path, viewport) => {
+  try {
+    const image = readFileSync(new URL(`../${path}`, import.meta.url));
+    return image.length >= 24 &&
+      image.subarray(0, pngSignature.length).equals(pngSignature) &&
+      image.readUInt32BE(16) === Number(viewport);
+  } catch {
+    return false;
+  }
+};
 
 const manifest = read('../docs/planning/v1-capability-manifest.md');
 const traceability = read('../docs/planning/v1-capability-traceability.md');
@@ -97,8 +108,30 @@ for (const cells of productionRows) {
     `Production page ${page} has no production Playwright spec path.`);
   requireCheck(cells[11]?.includes('artifacts/ui/golden/'),
     `Production page ${page} has no production golden path.`);
-  requireCheck(['production-pending', 'production-built'].includes(cells[12]),
-    `Production page ${page} cannot be marked verified before production evidence exists.`);
+  const status = cells[12];
+  requireCheck(
+    ['production-pending', 'production-built', 'parity-verified', 'deviation-approved'].includes(status),
+    `Production page ${page} has an unknown status "${status}".`);
+
+  if (status === 'parity-verified') {
+    const goldenTemplate = cells[11]?.match(/`([^`]+)`/)?.[1] ?? '';
+    const viewportPlaceholder = goldenTemplate.match(/\{([^}]+)\}/);
+    const viewports = viewportPlaceholder?.[1].split(',').map((value) => value.trim()) ?? [];
+    requireCheck(
+      viewports.length === 4 && ['390', '900', '1180', '1440'].every((value) => viewports.includes(value)),
+      `Production page ${page} must declare golden files for 390/900/1180/1440 before parity-verified.`,
+    );
+
+    for (const viewport of viewports) {
+      const goldenPath = viewportPlaceholder
+        ? goldenTemplate.replace(viewportPlaceholder[0], viewport)
+        : '';
+      requireCheck(
+        Boolean(goldenPath) && isValidGolden(goldenPath, viewport),
+        `Production page ${page} is parity-verified but has an invalid ${viewport}px golden artifact ${goldenPath || '(unknown path)'}.`,
+      );
+    }
+  }
 }
 
 if (prototypeOnlyRows[0]) {
