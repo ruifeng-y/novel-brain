@@ -38,6 +38,7 @@ import {
   chapterWorkspaceResponseSchema,
   factProposalListResponseSchema,
   factProposalResponseSchema,
+  generationReadinessResponseSchema,
   generationJobListResponseSchema,
   generationJobResponseSchema,
   jobEventSchema,
@@ -51,12 +52,14 @@ import {
   type FactProposal,
   type AgentRunTrace,
   type GenerationJob,
+  type GenerationReadiness,
   type WorkOverview,
   type WritingActionJob,
   type WritingActionRequest,
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { ReadinessRemediation } from "./readiness-remediation";
 
 const statusLabels: Record<ChapterWorkspace["status"], string> = {
   planned: "已规划",
@@ -154,6 +157,7 @@ export function WritingWorkspace({
   const [leftVersionId, setLeftVersionId] = useState<string>("");
   const [rightVersionId, setRightVersionId] = useState<string>("");
   const [generationJob, setGenerationJob] = useState<GenerationJob | null>(null);
+  const [readiness, setReadiness] = useState<GenerationReadiness | null>(null);
   const [runTraces, setRunTraces] = useState<AgentRunTrace[]>([]);
   const [generationBusy, setGenerationBusy] = useState(false);
   const [writingActionJob, setWritingActionJob] = useState<WritingActionJob | null>(null);
@@ -205,6 +209,7 @@ export function WritingWorkspace({
           loadWritingActions(workData, nextSelectedId),
           loadFactProposals(workData, nextSelectedId),
           loadCanonCommit(workData, nextSelectedId),
+          loadReadiness(workData, nextSelectedId),
         ]);
       } else {
         setVersions([]);
@@ -213,6 +218,7 @@ export function WritingWorkspace({
         setRunTraces([]);
         setFactProposals([]);
         setCanonCommit(null);
+        await loadReadiness(workData, null);
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "写作台加载失败。");
@@ -254,7 +260,10 @@ export function WritingWorkspace({
     !generationActive,
   );
   const canGenerate = Boolean(
-    selected?.readiness.canStartWriting && !generationActive && !generationBusy,
+    selected &&
+    (readiness ? readiness.canProceed : selected.readiness.canStartWriting) &&
+    !generationActive &&
+    !generationBusy,
   );
   const currentFactProposals = factProposals.filter(
     (proposal) =>
@@ -421,6 +430,23 @@ export function WritingWorkspace({
     setCanonCommit(commits.find((commit) => commit.chapterId === chapterId) ?? null);
   }
 
+  async function loadReadiness(
+    workData: WorkOverview,
+    chapterId: string | null,
+  ): Promise<GenerationReadiness> {
+    const query = chapterId ? `?chapterId=${chapterId}` : "";
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/readiness${query}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      throw new Error(await readError(response, "准备度加载失败。"));
+    }
+    const data = generationReadinessResponseSchema.parse(await response.json()).data;
+    setReadiness(data);
+    return data;
+  }
+
   async function startGeneration() {
     if (!work || !selected || !canGenerate) {
       return;
@@ -428,6 +454,14 @@ export function WritingWorkspace({
     setGenerationBusy(true);
     setActionError("");
     try {
+      const currentReadiness = await loadReadiness(work, selected.id);
+      if (!currentReadiness.canProceed) {
+        const firstBlocker = currentReadiness.items.find(
+          (item) => item.severity === "blocker" && !item.ready,
+        );
+        setActionError(firstBlocker?.reason ?? "还有准备项未完成，暂时不能生成正文。");
+        return;
+      }
       const response = await fetch(
         `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}/generate`,
         {
@@ -1588,7 +1622,11 @@ export function WritingWorkspace({
             )}
           </section>
 
-          <section className="panel writing-facts" aria-labelledby="writing-facts-title">
+          <section
+            className="panel writing-facts"
+            aria-labelledby="writing-facts-title"
+            id="writing-facts"
+          >
             <div className="panel-head">
               <div>
                 <span className="panel-kicker">逐条确认</span>
@@ -1797,7 +1835,7 @@ export function WritingWorkspace({
             )}
           </section>
 
-          <section className="panel writing-readiness">
+          <section className="panel writing-readiness" id="writing-readiness">
             <div className="panel-head">
               <div>
                 <span className="panel-kicker">写前检查</span>
@@ -1827,6 +1865,15 @@ export function WritingWorkspace({
                 </div>
               ))}
             </div>
+            {readiness ? (
+              <div className="writing-readiness-remediation">
+                <h3>缺项与提醒</h3>
+                <ReadinessRemediation
+                  readiness={readiness}
+                  readyText="所有准备项已就绪，可以生成正文。"
+                />
+              </div>
+            ) : null}
           </section>
 
           <section className="panel writing-context">

@@ -1,7 +1,7 @@
 # M1-05e 分层摘要、失效传播与索引重建
 
-> Issue: #113  
-> Capability: AGENT-008  
+> Issue: #113
+> Capability: AGENT-008
 > Branch: `codex/m1-113`
 
 ## Delivered

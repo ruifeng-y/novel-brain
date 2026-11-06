@@ -6,12 +6,14 @@ import type {
   WorkCreateRequest,
   WorkListQuery,
   WorkOverview,
-  WorkReadiness,
   SettingsImportConfirmRequest,
 } from "@novel-brain/contracts";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ReadinessService } from "../readiness/readiness.service";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorksRepository } from "./works.repository";
@@ -21,7 +23,10 @@ import type { GenrePackRecord } from "./works.repository";
 
 @Injectable()
 export class WorksService {
-  constructor(private readonly repository: WorksRepository) {}
+  constructor(
+    private readonly repository: WorksRepository,
+    private readonly readiness: ReadinessService,
+  ) {}
 
   async create(
     userId: string,
@@ -146,11 +151,7 @@ export class WorksService {
     if (!mainBranch?.headNodeId) {
       throw new Error("Work is missing its main branch head");
     }
-    const [modelConfigReady, storyBibleReady, outlineReady] = await Promise.all([
-      this.repository.hasModelConfig(userId),
-      this.repository.isStoryBibleLocked(userId, work.id, mainBranch.id),
-      this.repository.hasReadyChapterBrief(userId, work.id, mainBranch.id),
-    ]);
+    const readiness = await this.readiness.workReadiness(userId, work.id, mainBranch.id);
     const templatePack =
       suppliedTemplatePack ??
       (work.templatePackId
@@ -160,7 +161,7 @@ export class WorksService {
       ...this.toContract(work, templatePack),
       mainBranch: this.toBranchContract(mainBranch),
       branches: branches.map((branch) => this.toBranchContract(branch)),
-      readiness: readiness(modelConfigReady, storyBibleReady, outlineReady),
+      readiness,
     };
   }
 
@@ -237,25 +238,5 @@ function toInitialSettingEntity(candidate: ImportedSettingCandidate): InitialSet
     tags: ["导入"],
     attributes,
     importCandidateId: candidate.id,
-  };
-}
-
-function readiness(
-  modelConfigReady: boolean,
-  storyBibleReady: boolean,
-  outlineReady: boolean,
-): WorkReadiness {
-  const items: WorkReadiness["items"] = [
-    { key: "main_branch", label: "主创作线", ready: true },
-    { key: "model_config", label: "模型配置", ready: modelConfigReady },
-    { key: "story_bible", label: "故事圣经", ready: storyBibleReady },
-    { key: "outline", label: "大纲", ready: outlineReady },
-  ];
-  const completed = items.filter((item) => item.ready).length;
-  return {
-    status: completed === items.length ? "ready" : completed === 0 ? "not_ready" : "partial",
-    completed,
-    total: items.length,
-    items,
   };
 }

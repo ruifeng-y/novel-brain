@@ -31,6 +31,9 @@ import { Observable } from "rxjs";
 import { ApiError } from "../common/api-error";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ReadinessService } from "../readiness/readiness.service";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
   GenerationRepository,
   JobNotRecoverableError,
@@ -54,6 +57,7 @@ export class GenerationService {
   constructor(
     private readonly repository: GenerationRepository,
     private readonly queue: GenerationQueue,
+    private readonly readiness: ReadinessService,
   ) {}
 
   async start(
@@ -69,6 +73,19 @@ export class GenerationService {
     const existing = await this.repository.findByIdempotencyKey(userId, context, normalizedKey);
     if (existing) {
       return this.toJobContract(existing);
+    }
+    const readiness = await this.readiness.evaluate(userId, context.workId, context.branchId, {
+      chapterId: context.chapterId,
+      maxCostCny: request.budget.maxCostCny,
+      maxTokens: request.budget.maxTokens,
+      maxRevisionRounds: request.budget.maxRevisionRounds,
+    });
+    if (!readiness.canProceed) {
+      throw new ApiError(409, "GEN_READINESS_BLOCKED", "准备度未通过，补齐阻断项后再生成", {
+        ruleVersion: readiness.ruleVersion,
+        dependencyFingerprint: readiness.dependencyFingerprint,
+        items: readiness.items.filter((item) => item.severity === "blocker" && !item.ready),
+      });
     }
     const sources = await this.requireSources(userId, context);
     try {

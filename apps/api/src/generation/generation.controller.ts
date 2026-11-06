@@ -25,6 +25,7 @@ import {
 import {
   ApiAcceptedResponse,
   ApiBody,
+  ApiConflictResponse,
   ApiHeader,
   ApiOkResponse,
   ApiTags,
@@ -68,6 +69,9 @@ export class GenerationController {
     description: "Stable key for replaying the same chapter generation request",
   })
   @ApiAcceptedResponse({ description: "Queued chapter generation job", schema: jobJsonSchema })
+  @ApiConflictResponse({
+    description: "Generation readiness blockers must be resolved before queueing",
+  })
   async start(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,

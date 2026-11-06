@@ -423,7 +423,7 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
         </div>
       ) : null}
       {locked ? (
-        <div className="story-bible-notice locked">
+        <div className="story-bible-notice locked" id="story-bible-change-requests">
           <Lock size={16} aria-hidden="true" />
           <span>故事圣经已锁定，修改需要发起修改请求。</span>
           <button className="btn btn-ghost" onClick={openChangeRequest} type="button">
@@ -798,6 +798,7 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
           <section
             className="panel story-bible-readiness"
             aria-labelledby="story-bible-readiness-title"
+            id="story-bible-readiness"
           >
             <div className="panel-head">
               <div>
