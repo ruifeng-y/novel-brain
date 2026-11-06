@@ -14,10 +14,14 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   apiErrorSchema,
+  generationReadinessResponseSchema,
   workResponseSchema,
+  type GenerationReadiness,
   type Work,
   type WorkOverview as WorkOverviewData,
 } from "@novel-brain/contracts";
+
+import { ReadinessRemediation } from "./readiness-remediation";
 
 const statusLabels: Record<Work["status"], string> = {
   draft: "草稿",
@@ -43,6 +47,7 @@ const genreLabels: Record<Work["genre"], string> = {
 
 export function WorkOverview({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverviewData | null>(null);
+  const [readiness, setReadiness] = useState<GenerationReadiness | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -54,7 +59,16 @@ export function WorkOverview({ workId }: { workId: string }) {
       if (!response.ok) {
         throw new Error(await readError(response));
       }
-      setWork(workResponseSchema.parse(await response.json()).data);
+      const workData = workResponseSchema.parse(await response.json()).data;
+      const readinessResponse = await fetch(
+        `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/readiness`,
+        { cache: "no-store" },
+      );
+      if (!readinessResponse.ok) {
+        throw new Error(await readError(readinessResponse));
+      }
+      setWork(workData);
+      setReadiness(generationReadinessResponseSchema.parse(await readinessResponse.json()).data);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "作品总览加载失败。");
     } finally {
@@ -181,6 +195,20 @@ export function WorkOverview({ workId }: { workId: string }) {
               </div>
             ))}
           </div>
+          {readiness ? (
+            <div className="overview-remediation">
+              <div className="panel-head">
+                <div>
+                  <span className="panel-kicker">下一步</span>
+                  <h3>缺项与提醒</h3>
+                </div>
+                <span className="badge">
+                  {readiness.blockers} 阻断 · {readiness.warnings} 提醒
+                </span>
+              </div>
+              <ReadinessRemediation readiness={readiness} />
+            </div>
+          ) : null}
         </article>
 
         <aside className="panel compact-panel">

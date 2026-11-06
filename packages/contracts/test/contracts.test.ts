@@ -31,6 +31,8 @@ import {
   factionRelationshipCreateRequestSchema,
   generateChapterRequestSchema,
   generationJobSchema,
+  generationReadinessQuerySchema,
+  generationReadinessSchema,
   GENERATE_CHAPTER_JOB,
   generateChapterJobSchema,
   jobEventSchema,
@@ -1224,6 +1226,91 @@ describe("shared contracts", () => {
       chapterVersionCreateRequestSchema.parse({
         version: 1,
         content: "",
+      }),
+    ).toThrow();
+  });
+
+  it("validates versioned readiness results, evidence and exact remediation targets", () => {
+    const readiness = generationReadinessSchema.parse({
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d01",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d02",
+      chapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d03",
+      ruleVersion: "readiness-v1",
+      status: "not_ready",
+      canProceed: false,
+      completed: 0,
+      total: 1,
+      blockers: 1,
+      warnings: 0,
+      dependencyFingerprint: "a".repeat(64),
+      dependencies: [
+        {
+          key: "branch",
+          version: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d04",
+        },
+      ],
+      items: [
+        {
+          key: "story_bible",
+          label: "故事圣经",
+          severity: "blocker",
+          state: "unlocked",
+          ready: false,
+          reason: "故事圣经尚未锁定",
+          resource: {
+            type: "story_bible",
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d05",
+            version: "3",
+            label: "故事圣经",
+          },
+          evidence: [
+            {
+              kind: "resource_state",
+              summary: "第 3 版仍为草稿",
+              resource: {
+                type: "story_bible",
+                id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d05",
+                version: "3",
+                label: "故事圣经",
+              },
+            },
+          ],
+          remediation: {
+            action: "lock",
+            label: "去锁定故事圣经",
+            href: "/workspace/0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d01/bible#story-bible-readiness",
+          },
+        },
+      ],
+    });
+
+    expect(readiness.items[0]?.resource.id).toBe("0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d05");
+    expect(readiness.items[0]?.remediation?.href).toContain("/bible#story-bible-readiness");
+    expect(
+      generationReadinessQuerySchema.parse({
+        chapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d03",
+        maxCostCny: "2.5",
+        maxTokens: "30000",
+        maxRevisionRounds: "2",
+      }),
+    ).toMatchObject({
+      maxCostCny: 2.5,
+      maxTokens: 30_000,
+      maxRevisionRounds: 2,
+    });
+    expect(() =>
+      generationReadinessSchema.parse({
+        ...readiness,
+        items: [
+          {
+            ...readiness.items[0],
+            remediation: {
+              action: "lock",
+              label: "去锁定故事圣经",
+              href: "javascript:alert(1)",
+            },
+          },
+        ],
       }),
     ).toThrow();
   });

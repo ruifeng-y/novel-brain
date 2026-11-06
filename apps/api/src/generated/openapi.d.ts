@@ -372,6 +372,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/readiness": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ReadinessController_readiness"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/characters": {
     parameters: {
       query?: never;
@@ -3267,6 +3283,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -3562,6 +3579,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -4495,6 +4513,118 @@ export interface operations {
                 /** Format: date-time */
                 createdAt: string;
               };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ReadinessController_readiness: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Versioned opening and chapter generation readiness */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              chapterId: string | null;
+              /** @enum {string} */
+              ruleVersion: "readiness-v1";
+              /** @enum {string} */
+              status: "not_ready" | "partial" | "ready";
+              canProceed: boolean;
+              completed: number;
+              total: number;
+              blockers: number;
+              warnings: number;
+              dependencyFingerprint: string;
+              dependencies: {
+                key: string;
+                version: string;
+              }[];
+              items: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                severity: "blocker" | "warning";
+                /** @enum {string} */
+                state: "ready" | "missing" | "unlocked" | "invalid" | "conflict" | "pending";
+                ready: boolean;
+                reason: string;
+                resource: {
+                  /** @enum {string} */
+                  type:
+                    | "story_bible"
+                    | "story_bible_card"
+                    | "world_rule"
+                    | "setting"
+                    | "character"
+                    | "outline_node"
+                    | "chapter"
+                    | "required_facts"
+                    | "model_config"
+                    | "budget"
+                    | "risk_approval";
+                  id: string | null;
+                  version: string | null;
+                  label: string;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind:
+                    | "resource_state"
+                    | "missing_dependency"
+                    | "conflict"
+                    | "configuration"
+                    | "budget"
+                    | "pending_approval";
+                  summary: string;
+                  resource: {
+                    /** @enum {string} */
+                    type:
+                      | "story_bible"
+                      | "story_bible_card"
+                      | "world_rule"
+                      | "setting"
+                      | "character"
+                      | "outline_node"
+                      | "chapter"
+                      | "required_facts"
+                      | "model_config"
+                      | "budget"
+                      | "risk_approval";
+                    id: string | null;
+                    version: string | null;
+                    label: string;
+                  };
+                }[];
+                remediation: {
+                  /** @enum {string} */
+                  action: "complete" | "lock" | "resolve" | "configure" | "review";
+                  label: string;
+                  href: string;
+                } | null;
+              }[];
             };
             /** Format: starts_with */
             requestId: string;
@@ -7397,6 +7527,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -7627,6 +7758,13 @@ export interface operations {
             };
           };
         };
+      };
+      /** @description Generation readiness blockers must be resolved before queueing */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
@@ -7906,6 +8044,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -8251,6 +8390,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -8596,6 +8736,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -8941,6 +9082,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -9295,6 +9437,7 @@ export interface operations {
                     | "MODEL_POLICY_BLOCKED"
                     | "MODEL_RESPONSE_INVALID"
                     | "MODEL_PROVIDER_ERROR"
+                    | "GEN_READINESS_BLOCKED"
                     | "BIBLE_NOT_READY"
                     | "BIBLE_LOCKED"
                     | "BIBLE_NOT_LOCKED"
@@ -24278,6 +24421,7 @@ export interface operations {
                     | "MODEL_POLICY_BLOCKED"
                     | "MODEL_RESPONSE_INVALID"
                     | "MODEL_PROVIDER_ERROR"
+                    | "GEN_READINESS_BLOCKED"
                     | "BIBLE_NOT_READY"
                     | "BIBLE_LOCKED"
                     | "BIBLE_NOT_LOCKED"
@@ -24452,6 +24596,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -24602,6 +24747,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -34347,6 +34493,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -35031,6 +35178,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -35534,6 +35682,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -36037,6 +36186,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
@@ -36540,6 +36690,7 @@ export interface operations {
                   | "MODEL_POLICY_BLOCKED"
                   | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
