@@ -335,7 +335,7 @@ test("shows six-dimension evidence and completes a finding dismiss/reopen lifecy
   await page.getByRole("button", { name: "保存版本" }).click();
   await expect(page.getByText("已保存")).toBeVisible();
 
-  await page.getByRole("button", { name: "检查本章" }).click();
+  await page.getByRole("button", { name: "检查本章", exact: true }).click();
   const quality = page.locator(".writing-quality");
   await expect(quality.getByRole("heading", { name: "质量报告" })).toBeVisible();
   await expect(quality.locator(".quality-dimension")).toHaveCount(6);
