@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { AuthModule } from "./auth/auth.module";
+import { AgentRuntimeModule } from "./agent-runtime/agent-runtime.module";
 import { CanonModule } from "./canon/canon.module";
 import { ChaptersModule } from "./chapters/chapters.module";
 import { FactsModule } from "./facts/facts.module";
@@ -17,6 +18,7 @@ import { WorksModule } from "./works/works.module";
 @Module({
   imports: [
     AuthModule,
+    AgentRuntimeModule,
     CanonModule,
     ChaptersModule,
     FactsModule,

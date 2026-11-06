@@ -1,5 +1,8 @@
 import { Module } from "@nestjs/common";
 
+import { AgentGrantStore } from "@novel-brain/db";
+
+import { AgentGrantGuard, WorkerAgentGrantStore } from "./agent-runtime/agent-grant.guard";
 import { GenerationJobProcessor } from "./generation/generation.processor";
 import { WorkerGenerationRepository } from "./generation/generation.repository";
 import { AI_GATEWAY } from "./generation/generation.tokens";
@@ -12,6 +15,11 @@ import { WorkerService } from "./worker.service";
 @Module({
   providers: [
     WorkerService,
+    AgentGrantGuard,
+    {
+      provide: AgentGrantStore,
+      useClass: WorkerAgentGrantStore,
+    },
     WorkerGenerationRepository,
     GenerationJobProcessor,
     {

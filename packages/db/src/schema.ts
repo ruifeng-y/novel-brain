@@ -1289,6 +1289,105 @@ export const usageRecords = pgTable(
   ],
 );
 
+export const agentGrants = pgTable(
+  "agent_grants",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id").notNull(),
+    role: text("role").notNull(),
+    status: text("status").notNull().default("active"),
+    toolNames: jsonb("tool_names").$type<string[]>().notNull(),
+    resourceScope: jsonb("resource_scope").$type<Record<string, unknown>>().notNull(),
+    budget: jsonb("budget").$type<Record<string, unknown>>().notNull(),
+    maxImpact: jsonb("max_impact").$type<Record<string, unknown>>().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    issuedBy: uuid("issued_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => users.id, { onDelete: "restrict" }),
+    revocationReason: text("revocation_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("agent_grants_user_work_idx").on(table.userId, table.workId),
+    index("agent_grants_branch_task_idx").on(table.branchId, table.taskId),
+    index("agent_grants_expires_idx").on(table.expiresAt),
+    check(
+      "agent_grants_role_check",
+      sql`${table.role} in ('planner', 'context_curator', 'writer', 'critic', 'reviser', 'fact_extractor', 'canon_curator')`,
+    ),
+    check("agent_grants_status_check", sql`${table.status} in ('active', 'revoked')`),
+    check(
+      "agent_grants_revocation_check",
+      sql`(${table.status} = 'active' and ${table.revokedAt} is null and ${table.revokedBy} is null and ${table.revocationReason} is null) or (${table.status} = 'revoked' and ${table.revokedAt} is not null and ${table.revokedBy} is not null and ${table.revocationReason} is not null)`,
+    ),
+  ],
+);
+
+export const agentToolCalls = pgTable(
+  "agent_tool_calls",
+  {
+    id: uuid("id").primaryKey(),
+    grantId: uuid("grant_id")
+      .notNull()
+      .references(() => agentGrants.id, { onDelete: "cascade" }),
+    agentRunId: uuid("agent_run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id").notNull(),
+    toolName: text("tool_name").notNull(),
+    sideEffect: text("side_effect"),
+    decision: text("decision").notNull(),
+    reason: text("reason").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: uuid("resource_id"),
+    inputHash: text("input_hash").notNull(),
+    inputSummary: jsonb("input_summary").$type<Record<string, unknown>>().notNull(),
+    outputSummary: jsonb("output_summary").$type<Record<string, unknown>>(),
+    affectedResources: integer("affected_resources").notNull(),
+    estimatedCostCny: real("estimated_cost_cny").notNull(),
+    estimatedTokens: integer("estimated_tokens").notNull(),
+    status: text("status").notNull(),
+    errorCode: text("error_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("agent_tool_calls_grant_created_idx").on(table.grantId, table.createdAt),
+    index("agent_tool_calls_user_work_idx").on(table.userId, table.workId),
+    check("agent_tool_calls_decision_check", sql`${table.decision} in ('allow', 'deny')`),
+    check(
+      "agent_tool_calls_side_effect_check",
+      sql`${table.sideEffect} is null or ${table.sideEffect} in ('S0', 'S1', 'S2', 'S3', 'S4')`,
+    ),
+    check(
+      "agent_tool_calls_status_check",
+      sql`${table.status} in ('authorized', 'denied', 'succeeded', 'failed')`,
+    ),
+    check("agent_tool_calls_affected_check", sql`${table.affectedResources} > 0`),
+    check("agent_tool_calls_cost_check", sql`${table.estimatedCostCny} >= 0`),
+    check("agent_tool_calls_tokens_check", sql`${table.estimatedTokens} >= 0`),
+  ],
+);
+
 export const importJobs = pgTable(
   "import_jobs",
   {
