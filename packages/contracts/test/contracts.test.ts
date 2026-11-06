@@ -13,6 +13,7 @@ import {
   confirmedSettingSchema,
   contextPackVersionSchema,
   csrfResponseSchema,
+  customFieldDefinitionCreateRequestSchema,
   factProposalDecisionRequestSchema,
   factProposalSchema,
   generateChapterRequestSchema,
@@ -36,6 +37,10 @@ import {
   sendRegistrationCodeResponseSchema,
   settingsImportConfirmRequestSchema,
   settingsImportConflictDecisionRequestSchema,
+  settingChangeRequestCreateRequestSchema,
+  settingEntityCreateRequestSchema,
+  settingEntitySchema,
+  settingProposalCreateRequestSchema,
   logoutResponseSchema,
   STORY_BIBLE_CARD_KEYS,
   STORY_BIBLE_CARD_TITLES,
@@ -963,5 +968,146 @@ describe("shared contracts", () => {
         object: "左臂骨折",
       }),
     ).toThrow();
+  });
+
+  it("validates seven-column setting entities, custom fields and proposal evidence", () => {
+    const item = settingEntityCreateRequestSchema.parse({
+      type: "item",
+      name: "听潮剑",
+      aliases: ["潮生"],
+      summary: "会记录持剑者杀意的法器。",
+      description: "",
+      tags: ["法器"],
+      data: {
+        category: "兵器",
+        grade: "玄阶",
+        effect: "剑身会记录杀意。",
+        cost: "杀意过重会反噬。",
+        ownership: "顾青",
+        limits: "不能离开主人超过七日。",
+      },
+    });
+    expect(item.type).toBe("item");
+
+    const timelineEvent = settingEntityCreateRequestSchema.parse({
+      type: "timeline_event",
+      name: "忘川村灭门",
+      aliases: [],
+      summary: "改变沈砚命运的事件。",
+      description: "",
+      tags: [],
+      data: {
+        era: "大玄历",
+        storyTime: "十六年前",
+        duration: "一夜",
+        event: "沈砚父母被杀。",
+      },
+    });
+    expect(timelineEvent.type).toBe("timeline_event");
+    expect(() =>
+      settingEntityCreateRequestSchema.parse({
+        ...item,
+        data: { ...item.data, bodyState: "物品不能有身体状态。" },
+      }),
+    ).toThrow();
+
+    expect(
+      customFieldDefinitionCreateRequestSchema.parse({
+        key: "fate",
+        label: "命格",
+        fieldType: "single_select",
+        appliesTo: "character",
+        required: true,
+        options: ["剑骨", "凡骨"],
+        relationTarget: null,
+      }),
+    ).toMatchObject({ key: "fate", required: true });
+    expect(() =>
+      customFieldDefinitionCreateRequestSchema.parse({
+        key: "fate",
+        label: "命格",
+        fieldType: "single_select",
+        appliesTo: "character",
+        options: [],
+      }),
+    ).toThrow("Select fields require at least one option");
+    expect(() =>
+      customFieldDefinitionCreateRequestSchema.parse({
+        key: "relic",
+        label: "关联物品",
+        fieldType: "relation_ref",
+        appliesTo: "character",
+        options: [],
+        relationTarget: null,
+      }),
+    ).toThrow("Relation fields require a target type");
+    expect(() =>
+      customFieldDefinitionCreateRequestSchema.parse({
+        key: "note",
+        label: "备注",
+        fieldType: "text",
+        appliesTo: "character",
+        options: ["不应有选项"],
+      }),
+    ).toThrow("Only select fields can define options");
+
+    expect(() =>
+      settingProposalCreateRequestSchema.parse({
+        version: 1,
+        reason: "缺少证据",
+        conflictType: "none",
+        evidence: [],
+      }),
+    ).toThrow();
+    expect(() =>
+      settingChangeRequestCreateRequestSchema.parse({
+        version: 1,
+        title: "缺少修改内容",
+        reason: "必须至少包含一个字段",
+        after: {},
+        conflictType: "none",
+        evidence: [
+          {
+            kind: "author_note",
+            label: "作者说明",
+            quote: "需要修改。",
+          },
+        ],
+      }),
+    ).toThrow("At least one setting field is required");
+
+    const response = settingEntitySchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c81",
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c82",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c83",
+      type: "item",
+      name: "听潮剑",
+      aliases: [],
+      summary: "会记录持剑者杀意的法器。",
+      description: "",
+      tags: [],
+      customFields: { fate: "剑骨", charges: 3, hidden: false, marks: ["潮"] },
+      status: "draft",
+      source: "author",
+      version: 1,
+      data: {
+        category: "兵器",
+        grade: "玄阶",
+        effect: "剑身会记录杀意。",
+        cost: "",
+        ownership: "顾青",
+        limits: "",
+      },
+      lockedAt: null,
+      lockedBy: null,
+      createdAt: "2026-11-06T08:00:00.000Z",
+      updatedAt: "2026-11-06T08:00:00.000Z",
+    });
+    expect(response.customFields).toEqual({
+      fate: "剑骨",
+      charges: 3,
+      hidden: false,
+      marks: ["潮"],
+    });
   });
 });

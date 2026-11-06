@@ -19,6 +19,15 @@ export const ERROR_CODES = [
   "BIBLE_LOCKED",
   "BIBLE_NOT_LOCKED",
   "SETTING_LOCKED",
+  "SETTING_NAME_CONFLICT",
+  "SETTING_ALIAS_CONFLICT",
+  "SETTING_CONFLICT_UNRESOLVED",
+  "SETTING_PROPOSAL_STATE",
+  "SETTING_NOT_LOCKED",
+  "CUSTOM_FIELD_REQUIRED",
+  "CUSTOM_FIELD_INVALID",
+  "CUSTOM_FIELD_IMMUTABLE",
+  "CUSTOM_FIELD_DUPLICATE",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
   "FACT_DECISION_REQUIRED",
@@ -742,6 +751,8 @@ export const settingEntityTypeSchema = z.enum([
   "map",
   "power_system",
   "golden_finger",
+  "item",
+  "timeline_event",
 ]);
 export type SettingEntityType = z.infer<typeof settingEntityTypeSchema>;
 
@@ -750,6 +761,190 @@ export type SettingStatus = z.infer<typeof settingStatusSchema>;
 
 export const settingSourceSchema = z.enum(["author", "import", "ai", "canon"]);
 export type SettingSource = z.infer<typeof settingSourceSchema>;
+
+export const customFieldTypeSchema = z.enum([
+  "text",
+  "long_text",
+  "number",
+  "date",
+  "single_select",
+  "multi_select",
+  "boolean",
+  "relation_ref",
+]);
+export type CustomFieldType = z.infer<typeof customFieldTypeSchema>;
+
+export const customFieldAppliesToSchema = z.enum([
+  "all",
+  "world_rule",
+  "character",
+  "faction",
+  "map",
+  "power_system",
+  "golden_finger",
+  "item",
+  "timeline_event",
+]);
+export type CustomFieldAppliesTo = z.infer<typeof customFieldAppliesToSchema>;
+
+const customFieldOptionsSchema = z.array(z.string().trim().min(1).max(80)).max(100).default([]);
+
+const customFieldDefinitionBaseShape = {
+  label: z.string().trim().min(1).max(80),
+  fieldType: customFieldTypeSchema,
+  appliesTo: customFieldAppliesToSchema,
+  required: z.boolean().default(false),
+  options: customFieldOptionsSchema,
+  relationTarget: settingEntityTypeSchema.nullable().default(null),
+  sortOrder: z.number().int().min(0).max(10_000).default(0),
+};
+
+export const customFieldDefinitionCreateRequestSchema = z
+  .object({
+    key: z
+      .string()
+      .trim()
+      .regex(/^[a-z][a-z0-9_]{0,63}$/, "Expected a lowercase field key"),
+    ...customFieldDefinitionBaseShape,
+  })
+  .strict()
+  .superRefine(validateCustomFieldDefinitionShape);
+export type CustomFieldDefinitionCreateRequest = z.infer<
+  typeof customFieldDefinitionCreateRequestSchema
+>;
+
+export const customFieldDefinitionPatchRequestSchema = z
+  .object({
+    schemaVersion: z.number().int().positive(),
+    key: z.string().trim().optional(),
+    label: z.string().trim().min(1).max(80).optional(),
+    fieldType: customFieldTypeSchema.optional(),
+    appliesTo: customFieldAppliesToSchema.optional(),
+    required: z.boolean().optional(),
+    options: z.array(z.string().trim().min(1).max(80)).max(100).optional(),
+    relationTarget: settingEntityTypeSchema.nullable().optional(),
+    enabled: z.boolean().optional(),
+    sortOrder: z.number().int().min(0).max(10_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "schemaVersion"), {
+    message: "At least one custom field change is required",
+  });
+export type CustomFieldDefinitionPatchRequest = z.infer<
+  typeof customFieldDefinitionPatchRequestSchema
+>;
+
+export const customFieldDefinitionSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  key: z.string(),
+  label: z.string(),
+  fieldType: customFieldTypeSchema,
+  appliesTo: customFieldAppliesToSchema,
+  required: z.boolean(),
+  options: z.array(z.string()),
+  relationTarget: settingEntityTypeSchema.nullable(),
+  enabled: z.boolean(),
+  schemaVersion: z.number().int().positive(),
+  sortOrder: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type CustomFieldDefinition = z.infer<typeof customFieldDefinitionSchema>;
+
+export const customFieldValueSchema = z.union([
+  z.string(),
+  z.number().finite(),
+  z.boolean(),
+  z.array(z.string()),
+]);
+export type CustomFieldValue = z.infer<typeof customFieldValueSchema>;
+
+export const customFieldValuesSchema = z.record(z.string().trim().min(1).max(80), z.unknown());
+export type CustomFieldValues = z.infer<typeof customFieldValuesSchema>;
+
+export const customFieldDefinitionResponseSchema = apiEnvelopeSchema(customFieldDefinitionSchema);
+export const customFieldDefinitionListResponseSchema = apiEnvelopeSchema(
+  z.array(customFieldDefinitionSchema),
+);
+
+export const settingConflictTypeSchema = z.enum([
+  "none",
+  "duplicate_name",
+  "alias_collision",
+  "contradictory_fact",
+  "import_candidate",
+  "ai_disagreement",
+]);
+export type SettingConflictType = z.infer<typeof settingConflictTypeSchema>;
+
+export const settingEvidenceKindSchema = z.enum([
+  "chapter",
+  "entity",
+  "import",
+  "author_note",
+  "ai_suggestion",
+]);
+export type SettingEvidenceKind = z.infer<typeof settingEvidenceKindSchema>;
+
+export const settingEvidenceSchema = z
+  .object({
+    kind: settingEvidenceKindSchema,
+    sourceId: uuidV7Schema.nullable().default(null),
+    label: z.string().trim().min(1).max(200),
+    quote: z.string().max(5_000).default(""),
+    locator: z.string().max(500).default(""),
+    confidence: z.number().min(0).max(1).nullable().default(null),
+  })
+  .strict();
+export type SettingEvidence = z.infer<typeof settingEvidenceSchema>;
+
+export const settingProposalCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingProposalCreateRequest = z.infer<typeof settingProposalCreateRequestSchema>;
+
+export const settingProposalDecisionRequestSchema = z
+  .object({
+    decision: z.enum(["accept", "reject"]),
+    reason: z.string().trim().min(1).max(1_000),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingProposalDecisionRequest = z.infer<typeof settingProposalDecisionRequestSchema>;
+
+export const settingProposalStatusSchema = z.enum(["pending", "accepted", "rejected"]);
+export type SettingProposalStatus = z.infer<typeof settingProposalStatusSchema>;
+
+export const settingProposalSchema = z.object({
+  id: uuidV7Schema,
+  entityId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  entityVersion: z.number().int().positive(),
+  status: settingProposalStatusSchema,
+  conflictType: settingConflictTypeSchema,
+  evidence: z.array(settingEvidenceSchema),
+  reason: z.string(),
+  proposedBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+  decidedBy: uuidV7Schema.nullable(),
+  decidedAt: z.string().datetime().nullable(),
+  decisionReason: z.string().nullable(),
+  decisionEvidence: z.array(settingEvidenceSchema),
+  decisionConflictType: settingConflictTypeSchema.nullable(),
+});
+export type SettingProposal = z.infer<typeof settingProposalSchema>;
+
+export const settingProposalResponseSchema = apiEnvelopeSchema(settingProposalSchema);
+export const settingProposalListResponseSchema = apiEnvelopeSchema(z.array(settingProposalSchema));
 
 export const worldRuleDataSchema = z
   .object({
@@ -798,6 +993,28 @@ export const powerSystemDataSchema = z
   .strict();
 export type PowerSystemData = z.infer<typeof powerSystemDataSchema>;
 
+export const itemDataSchema = z
+  .object({
+    category: z.string().trim().min(1).max(200),
+    grade: z.string().trim().max(200).default(""),
+    effect: z.string().trim().min(1).max(20_000),
+    cost: z.string().trim().max(20_000).default(""),
+    ownership: z.string().trim().max(500).default(""),
+    limits: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type ItemData = z.infer<typeof itemDataSchema>;
+
+export const timelineEventDataSchema = z
+  .object({
+    era: z.string().trim().max(200).default(""),
+    storyTime: z.string().trim().min(1).max(500),
+    duration: z.string().trim().max(500).default(""),
+    event: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type TimelineEventData = z.infer<typeof timelineEventDataSchema>;
+
 const settingEntityBaseShape = {
   name: z.string().trim().min(1).max(120),
   aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
@@ -806,36 +1023,62 @@ const settingEntityBaseShape = {
   tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
 };
 
+const settingEntityPatchShape = {
+  name: z.string().trim().min(1).max(120).optional(),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  summary: z.string().trim().min(1).max(500).optional(),
+  description: z.string().max(20_000).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+};
+
 export const settingEntityCreateRequestSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("world_rule"),
     ...settingEntityBaseShape,
     data: worldRuleDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("character"),
     ...settingEntityBaseShape,
     data: characterDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("faction"),
     ...settingEntityBaseShape,
     data: factionDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("map"),
     ...settingEntityBaseShape,
     data: mapDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("power_system"),
     ...settingEntityBaseShape,
     data: powerSystemDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("golden_finger"),
     ...settingEntityBaseShape,
     data: goldenFingerDataSchema,
+    customFields: customFieldValuesSchema.default({}),
+  }),
+  z.object({
+    type: z.literal("item"),
+    ...settingEntityBaseShape,
+    data: itemDataSchema,
+    customFields: customFieldValuesSchema.default({}),
+  }),
+  z.object({
+    type: z.literal("timeline_event"),
+    ...settingEntityBaseShape,
+    data: timelineEventDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
 ]);
 export type SettingEntityCreateRequest = z.infer<typeof settingEntityCreateRequestSchema>;
@@ -843,11 +1086,8 @@ export type SettingEntityCreateRequest = z.infer<typeof settingEntityCreateReque
 export const settingEntityPatchRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    name: settingEntityBaseShape.name.optional(),
-    aliases: settingEntityBaseShape.aliases.optional(),
-    summary: settingEntityBaseShape.summary.optional(),
-    description: settingEntityBaseShape.description.optional(),
-    tags: settingEntityBaseShape.tags.optional(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
     data: z
       .union([
         worldRuleDataSchema.partial(),
@@ -856,6 +1096,8 @@ export const settingEntityPatchRequestSchema = z
         mapDataSchema.partial(),
         powerSystemDataSchema.partial(),
         goldenFingerDataSchema.partial(),
+        itemDataSchema.partial(),
+        timelineEventDataSchema.partial(),
       ])
       .optional(),
   })
@@ -866,10 +1108,83 @@ export const settingEntityPatchRequestSchema = z
       input.summary !== undefined ||
       input.description !== undefined ||
       input.tags !== undefined ||
+      input.customFields !== undefined ||
       input.data !== undefined,
     { message: "At least one setting field is required" },
   );
 export type SettingEntityPatchRequest = z.infer<typeof settingEntityPatchRequestSchema>;
+
+export const settingChangeRequestCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(120),
+    reason: z.string().trim().min(1).max(1_000),
+    after: z
+      .object({
+        ...settingEntityPatchShape,
+        customFields: customFieldValuesSchema.optional(),
+        data: z
+          .union([
+            worldRuleDataSchema.partial(),
+            characterDataSchema.partial(),
+            factionDataSchema.partial(),
+            mapDataSchema.partial(),
+            powerSystemDataSchema.partial(),
+            goldenFingerDataSchema.partial(),
+            itemDataSchema.partial(),
+            timelineEventDataSchema.partial(),
+          ])
+          .optional(),
+      })
+      .refine(
+        (input) =>
+          input.name !== undefined ||
+          input.aliases !== undefined ||
+          input.summary !== undefined ||
+          input.description !== undefined ||
+          input.tags !== undefined ||
+          input.customFields !== undefined ||
+          input.data !== undefined,
+        { message: "At least one setting field is required" },
+      ),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingChangeRequestCreateRequest = z.infer<
+  typeof settingChangeRequestCreateRequestSchema
+>;
+
+export const settingChangeRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "applied",
+]);
+export type SettingChangeRequestStatus = z.infer<typeof settingChangeRequestStatusSchema>;
+
+export const settingChangeRequestSchema = z.object({
+  id: uuidV7Schema,
+  entityId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  entityVersion: z.number().int().positive(),
+  title: z.string(),
+  reason: z.string(),
+  before: z.record(z.string(), z.unknown()),
+  after: z.record(z.string(), z.unknown()),
+  status: settingChangeRequestStatusSchema,
+  conflictType: settingConflictTypeSchema,
+  evidence: z.array(settingEvidenceSchema),
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type SettingChangeRequest = z.infer<typeof settingChangeRequestSchema>;
+
+export const settingChangeRequestResponseSchema = apiEnvelopeSchema(settingChangeRequestSchema);
+export const settingChangeRequestListResponseSchema = apiEnvelopeSchema(
+  z.array(settingChangeRequestSchema),
+);
 
 export const settingEntityLockRequestSchema = z.object({
   version: z.number().int().positive(),
@@ -885,6 +1200,7 @@ const settingEntityCommonShape = {
   summary: z.string(),
   description: z.string(),
   tags: z.array(z.string()),
+  customFields: z.record(z.string(), customFieldValueSchema),
   status: settingStatusSchema,
   source: settingSourceSchema,
   version: z.number().int().positive(),
@@ -925,6 +1241,16 @@ export const settingEntitySchema = z.discriminatedUnion("type", [
     type: z.literal("golden_finger"),
     data: goldenFingerDataSchema,
   }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("item"),
+    data: itemDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("timeline_event"),
+    data: timelineEventDataSchema,
+  }),
 ]);
 export type SettingEntity = z.infer<typeof settingEntitySchema>;
 
@@ -939,6 +1265,48 @@ export const settingEntityListResponseSchema = apiEnvelopeSchema(z.array(setting
 export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
+
+function validateCustomFieldDefinitionShape(
+  input: Pick<CustomFieldDefinitionCreateRequest, "fieldType" | "options" | "relationTarget">,
+  context: z.RefinementCtx,
+): void {
+  const selectField = input.fieldType === "single_select" || input.fieldType === "multi_select";
+  if (selectField && input.options.length === 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Select fields require at least one option",
+    });
+  }
+  if (!selectField && input.options.length > 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Only select fields can define options",
+    });
+  }
+  if (new Set(input.options).size !== input.options.length) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Select field options must be unique",
+    });
+  }
+  if (input.fieldType === "relation_ref" && input.relationTarget === null) {
+    context.addIssue({
+      code: "custom",
+      path: ["relationTarget"],
+      message: "Relation fields require a target type",
+    });
+  }
+  if (input.fieldType !== "relation_ref" && input.relationTarget !== null) {
+    context.addIssue({
+      code: "custom",
+      path: ["relationTarget"],
+      message: "Only relation fields can define a target type",
+    });
+  }
+}
 
 export const confirmedSettingSchema = z
   .object({

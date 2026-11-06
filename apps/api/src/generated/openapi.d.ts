@@ -692,6 +692,54 @@ export interface paths {
     patch: operations["SettingsController_patch"];
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/proposals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_proposals"];
+    put?: never;
+    post: operations["SettingsController_createProposal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/proposals/{proposalId}/decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsController_decideProposal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/change-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_changeRequests"];
+    put?: never;
+    post: operations["SettingsController_createChangeRequest"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/lock": {
     parameters: {
       query?: never;
@@ -722,6 +770,38 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/custom-fields": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CustomFieldsController_list"];
+    put?: never;
+    post: operations["CustomFieldsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/custom-fields/{fieldId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["CustomFieldsController_update"];
     trace?: never;
   };
   "/api/v1/works/{workId}/branches/{branchId}/story-bible": {
@@ -2251,6 +2331,15 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2484,6 +2573,15 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2647,6 +2745,15 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2810,6 +2917,15 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2973,6 +3089,15 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -4691,6 +4816,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4718,6 +4846,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4747,6 +4878,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4774,6 +4908,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4801,6 +4938,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4828,6 +4968,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4847,6 +4990,80 @@ export interface operations {
                     cost: string;
                     limits: string;
                     growth: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    /** @default  */
+                    duration: string;
+                    event: string;
                   };
                 }
             )[];
@@ -4888,6 +5105,10 @@ export interface operations {
               data: {
                 rule: string;
               };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
             }
           | {
               /** @enum {string} */
@@ -4905,6 +5126,10 @@ export interface operations {
                 knowledgeBoundary: string;
                 relationshipSummary: string;
               };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
             }
           | {
               /** @enum {string} */
@@ -4919,6 +5144,10 @@ export interface operations {
               tags?: string[];
               data: {
                 details: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
               };
             }
           | {
@@ -4935,6 +5164,10 @@ export interface operations {
               data: {
                 details: string;
               };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
             }
           | {
               /** @enum {string} */
@@ -4949,6 +5182,10 @@ export interface operations {
               tags?: string[];
               data: {
                 details: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
               };
             }
           | {
@@ -4967,6 +5204,62 @@ export interface operations {
                 cost: string;
                 limits: string;
                 growth: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "item";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                category: string;
+                /** @default  */
+                grade?: string;
+                effect: string;
+                /** @default  */
+                cost?: string;
+                /** @default  */
+                ownership?: string;
+                /** @default  */
+                limits?: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "timeline_event";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                /** @default  */
+                era?: string;
+                storyTime: string;
+                /** @default  */
+                duration?: string;
+                event: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
               };
             };
       };
@@ -4989,6 +5282,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5016,6 +5312,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5045,6 +5344,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5072,6 +5374,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5099,6 +5404,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5126,6 +5434,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5145,6 +5456,80 @@ export interface operations {
                     cost: string;
                     limits: string;
                     growth: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    /** @default  */
+                    duration: string;
+                    event: string;
                   };
                 };
             /** Format: starts_with */
@@ -5188,6 +5573,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5215,6 +5603,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5244,6 +5635,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5271,6 +5665,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5298,6 +5695,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5325,6 +5725,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5344,6 +5747,80 @@ export interface operations {
                     cost: string;
                     limits: string;
                     growth: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    /** @default  */
+                    duration: string;
+                    event: string;
                   };
                 };
             /** Format: starts_with */
@@ -5408,13 +5885,13 @@ export interface operations {
         "application/json": {
           version: number;
           name?: string;
-          /** @default [] */
           aliases?: string[];
           summary?: string;
-          /** @default  */
           description?: string;
-          /** @default [] */
           tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
           data?:
             | {
                 rule?: string;
@@ -5438,6 +5915,26 @@ export interface operations {
                 cost?: string;
                 limits?: string;
                 growth?: string;
+              }
+            | {
+                category?: string;
+                /** @default  */
+                grade?: string;
+                effect?: string;
+                /** @default  */
+                cost?: string;
+                /** @default  */
+                ownership?: string;
+                /** @default  */
+                limits?: string;
+              }
+            | {
+                /** @default  */
+                era?: string;
+                storyTime?: string;
+                /** @default  */
+                duration?: string;
+                event?: string;
               };
         };
       };
@@ -5460,6 +5957,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5487,6 +5987,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5516,6 +6019,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5543,6 +6049,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5570,6 +6079,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5597,6 +6109,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5617,7 +6132,641 @@ export interface operations {
                     limits: string;
                     growth: string;
                   };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    /** @default  */
+                    duration: string;
+                    event: string;
+                  };
                 };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_proposals: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Setting proposal history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              /** @enum {string} */
+              status: "pending" | "accepted" | "rejected";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              reason: string;
+              proposedBy: string;
+              /** Format: date-time */
+              createdAt: string;
+              decidedBy: string | null;
+              /** Format: date-time */
+              decidedAt: string | null;
+              decisionReason: string | null;
+              decisionEvidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              /** @enum {string|null} */
+              decisionConflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement"
+                | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_createProposal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          reason: string;
+          /** @enum {string} */
+          conflictType:
+            | "none"
+            | "duplicate_name"
+            | "alias_collision"
+            | "contradictory_fact"
+            | "import_candidate"
+            | "ai_disagreement";
+          evidence: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Setting proposal */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              /** @enum {string} */
+              status: "pending" | "accepted" | "rejected";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              reason: string;
+              proposedBy: string;
+              /** Format: date-time */
+              createdAt: string;
+              decidedBy: string | null;
+              /** Format: date-time */
+              decidedAt: string | null;
+              decisionReason: string | null;
+              decisionEvidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              /** @enum {string|null} */
+              decisionConflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement"
+                | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_decideProposal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+        proposalId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          decision: "accept" | "reject";
+          reason: string;
+          /** @enum {string} */
+          conflictType:
+            | "none"
+            | "duplicate_name"
+            | "alias_collision"
+            | "contradictory_fact"
+            | "import_candidate"
+            | "ai_disagreement";
+          evidence: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Decided setting proposal */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              /** @enum {string} */
+              status: "pending" | "accepted" | "rejected";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              reason: string;
+              proposedBy: string;
+              /** Format: date-time */
+              createdAt: string;
+              decidedBy: string | null;
+              /** Format: date-time */
+              decidedAt: string | null;
+              decisionReason: string | null;
+              decisionEvidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              /** @enum {string|null} */
+              decisionConflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement"
+                | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_changeRequests: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Setting change request history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              title: string;
+              reason: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              status: "pending" | "approved" | "rejected" | "applied";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_createChangeRequest: {
+    parameters: {
+      query?: never;
+      header: {
+        "idempotency-key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          title: string;
+          reason: string;
+          after: {
+            name?: string;
+            aliases?: string[];
+            summary?: string;
+            description?: string;
+            tags?: string[];
+            customFields?: {
+              [key: string]: unknown;
+            };
+            data?:
+              | {
+                  rule?: string;
+                }
+              | {
+                  bodyState?: string;
+                  knowledgeBoundary?: string;
+                  relationshipSummary?: string;
+                }
+              | {
+                  details?: string;
+                }
+              | {
+                  details?: string;
+                }
+              | {
+                  details?: string;
+                }
+              | {
+                  rules?: string;
+                  cost?: string;
+                  limits?: string;
+                  growth?: string;
+                }
+              | {
+                  category?: string;
+                  /** @default  */
+                  grade?: string;
+                  effect?: string;
+                  /** @default  */
+                  cost?: string;
+                  /** @default  */
+                  ownership?: string;
+                  /** @default  */
+                  limits?: string;
+                }
+              | {
+                  /** @default  */
+                  era?: string;
+                  storyTime?: string;
+                  /** @default  */
+                  duration?: string;
+                  event?: string;
+                };
+          };
+          /** @enum {string} */
+          conflictType:
+            | "none"
+            | "duplicate_name"
+            | "alias_collision"
+            | "contradictory_fact"
+            | "import_candidate"
+            | "ai_disagreement";
+          evidence: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Pending setting change request */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              title: string;
+              reason: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              status: "pending" | "approved" | "rejected" | "applied";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
@@ -5665,6 +6814,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5692,6 +6844,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5721,6 +6876,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5748,6 +6906,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5775,6 +6936,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5802,6 +6966,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5821,6 +6988,80 @@ export interface operations {
                     cost: string;
                     limits: string;
                     growth: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    /** @default  */
+                    duration: string;
+                    event: string;
                   };
                 };
             /** Format: starts_with */
@@ -5859,7 +7100,14 @@ export interface operations {
               id: string;
               /** @enum {string} */
               type:
-                "world_rule" | "character" | "faction" | "map" | "power_system" | "golden_finger";
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event";
               name: string;
               summary: string;
               /** @enum {string} */
@@ -5876,6 +7124,333 @@ export interface operations {
               predicate?: string;
               object?: string;
             }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CustomFieldsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Custom field definitions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              key: string;
+              label: string;
+              /** @enum {string} */
+              fieldType:
+                | "text"
+                | "long_text"
+                | "number"
+                | "date"
+                | "single_select"
+                | "multi_select"
+                | "boolean"
+                | "relation_ref";
+              /** @enum {string} */
+              appliesTo:
+                | "all"
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event";
+              required: boolean;
+              options: string[];
+              /** @enum {string|null} */
+              relationTarget:
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event"
+                | null;
+              enabled: boolean;
+              schemaVersion: number;
+              sortOrder: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CustomFieldsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          key: string;
+          label: string;
+          /** @enum {string} */
+          fieldType:
+            | "text"
+            | "long_text"
+            | "number"
+            | "date"
+            | "single_select"
+            | "multi_select"
+            | "boolean"
+            | "relation_ref";
+          /** @enum {string} */
+          appliesTo:
+            | "all"
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event";
+          /** @default false */
+          required?: boolean;
+          /** @default [] */
+          options?: string[];
+          /**
+           * @default null
+           * @enum {string|null}
+           */
+          relationTarget?:
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event"
+            | null;
+          /** @default 0 */
+          sortOrder?: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Created custom field definition */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              key: string;
+              label: string;
+              /** @enum {string} */
+              fieldType:
+                | "text"
+                | "long_text"
+                | "number"
+                | "date"
+                | "single_select"
+                | "multi_select"
+                | "boolean"
+                | "relation_ref";
+              /** @enum {string} */
+              appliesTo:
+                | "all"
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event";
+              required: boolean;
+              options: string[];
+              /** @enum {string|null} */
+              relationTarget:
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event"
+                | null;
+              enabled: boolean;
+              schemaVersion: number;
+              sortOrder: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CustomFieldsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        fieldId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          schemaVersion: number;
+          key?: string;
+          label?: string;
+          /** @enum {string} */
+          fieldType?:
+            | "text"
+            | "long_text"
+            | "number"
+            | "date"
+            | "single_select"
+            | "multi_select"
+            | "boolean"
+            | "relation_ref";
+          /** @enum {string} */
+          appliesTo?:
+            | "all"
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event";
+          required?: boolean;
+          options?: string[];
+          /** @enum {string|null} */
+          relationTarget?:
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event"
+            | null;
+          enabled?: boolean;
+          sortOrder?: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated custom field definition */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              key: string;
+              label: string;
+              /** @enum {string} */
+              fieldType:
+                | "text"
+                | "long_text"
+                | "number"
+                | "date"
+                | "single_select"
+                | "multi_select"
+                | "boolean"
+                | "relation_ref";
+              /** @enum {string} */
+              appliesTo:
+                | "all"
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event";
+              required: boolean;
+              options: string[];
+              /** @enum {string|null} */
+              relationTarget:
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event"
+                | null;
+              enabled: boolean;
+              schemaVersion: number;
+              sortOrder: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
             /** Format: starts_with */
             requestId: string;
             /** @default {} */

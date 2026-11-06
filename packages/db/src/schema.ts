@@ -519,7 +519,7 @@ export const entities = pgTable(
     index("entities_branch_type_idx").on(table.branchId, table.type),
     check(
       "entities_type_check",
-      sql`${table.type} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger')`,
+      sql`${table.type} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
     ),
     check(
       "entities_status_check",
@@ -563,6 +563,193 @@ export const entityVersions = pgTable(
     uniqueIndex("entity_versions_entity_version_unique").on(table.entityId, table.version),
     uniqueIndex("entity_versions_node_unique").on(table.versionNodeId),
     index("entity_versions_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
+export const customFieldDefinitions = pgTable(
+  "custom_field_definitions",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    fieldType: text("field_type").notNull(),
+    appliesTo: text("applies_to").notNull(),
+    required: boolean("required").notNull().default(false),
+    options: jsonb("options").$type<string[]>().notNull().default([]),
+    relationTarget: text("relation_target"),
+    enabled: boolean("enabled").notNull().default(true),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("custom_field_definitions_scope_key_unique").on(
+      table.workId,
+      table.branchId,
+      table.key,
+    ),
+    index("custom_field_definitions_user_work_idx").on(table.userId, table.workId),
+    check(
+      "custom_field_definitions_type_check",
+      sql`${table.fieldType} in ('text', 'long_text', 'number', 'date', 'single_select', 'multi_select', 'boolean', 'relation_ref')`,
+    ),
+    check(
+      "custom_field_definitions_applies_to_check",
+      sql`${table.appliesTo} in ('all', 'world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
+    ),
+    check(
+      "custom_field_definitions_relation_target_check",
+      sql`${table.relationTarget} is null or ${table.relationTarget} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
+    ),
+    check("custom_field_definitions_schema_version_check", sql`${table.schemaVersion} > 0`),
+  ],
+);
+
+export const customFieldValues = pgTable(
+  "custom_field_values",
+  {
+    id: uuid("id").primaryKey(),
+    fieldDefinitionId: uuid("field_definition_id")
+      .notNull()
+      .references(() => customFieldDefinitions.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    value: jsonb("value").$type<unknown>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("custom_field_values_field_entity_unique").on(
+      table.fieldDefinitionId,
+      table.entityId,
+    ),
+    index("custom_field_values_entity_idx").on(table.entityId),
+    index("custom_field_values_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
+export const settingProposals = pgTable(
+  "setting_proposals",
+  {
+    id: uuid("id").primaryKey(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entityVersion: integer("entity_version").notNull(),
+    status: text("status").notNull().default("pending"),
+    conflictType: text("conflict_type").notNull().default("none"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull(),
+    reason: text("reason").notNull(),
+    proposedBy: uuid("proposed_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "restrict" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionReason: text("decision_reason"),
+    decisionEvidence: jsonb("decision_evidence")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
+    decisionConflictType: text("decision_conflict_type"),
+  },
+  (table) => [
+    index("setting_proposals_entity_idx").on(table.entityId),
+    index("setting_proposals_user_work_status_idx").on(table.userId, table.workId, table.status),
+    check(
+      "setting_proposals_status_check",
+      sql`${table.status} in ('pending', 'accepted', 'rejected')`,
+    ),
+    check(
+      "setting_proposals_conflict_type_check",
+      sql`${table.conflictType} in ('none', 'duplicate_name', 'alias_collision', 'contradictory_fact', 'import_candidate', 'ai_disagreement')`,
+    ),
+    check(
+      "setting_proposals_decision_conflict_type_check",
+      sql`${table.decisionConflictType} is null or ${table.decisionConflictType} in ('none', 'duplicate_name', 'alias_collision', 'contradictory_fact', 'import_candidate', 'ai_disagreement')`,
+    ),
+    check(
+      "setting_proposals_decision_metadata_check",
+      sql`(${table.status} = 'pending' and ${table.decidedBy} is null and ${table.decidedAt} is null and ${table.decisionReason} is null) or (${table.status} <> 'pending' and ${table.decidedBy} is not null and ${table.decidedAt} is not null and ${table.decisionReason} is not null)`,
+    ),
+  ],
+);
+
+export const settingChangeRequests = pgTable(
+  "setting_change_requests",
+  {
+    id: uuid("id").primaryKey(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entityVersion: integer("entity_version").notNull(),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    before: jsonb("before").$type<Record<string, unknown>>().notNull(),
+    after: jsonb("after").$type<Record<string, unknown>>().notNull(),
+    status: text("status").notNull().default("pending"),
+    conflictType: text("conflict_type").notNull().default("none"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull(),
+    idempotencyKey: text("idempotency_key"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("setting_change_requests_entity_idx").on(table.entityId, table.status),
+    index("setting_change_requests_user_work_idx").on(table.userId, table.workId),
+    uniqueIndex("setting_change_requests_user_entity_idempotency_unique").on(
+      table.userId,
+      table.entityId,
+      table.idempotencyKey,
+    ),
+    check(
+      "setting_change_requests_status_check",
+      sql`${table.status} in ('pending', 'approved', 'rejected', 'applied')`,
+    ),
+    check(
+      "setting_change_requests_conflict_type_check",
+      sql`${table.conflictType} in ('none', 'duplicate_name', 'alias_collision', 'contradictory_fact', 'import_candidate', 'ai_disagreement')`,
+    ),
   ],
 );
 

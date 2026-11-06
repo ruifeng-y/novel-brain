@@ -162,6 +162,13 @@
       "when": 1793892199417,
       "tag": "0022_story_bible_m1",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1793926905874,
+      "tag": "0023_settings_center",
+      "breakpoints": true
     }
   ]
 }

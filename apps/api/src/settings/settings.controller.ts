@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   Param,
   Patch,
@@ -26,6 +27,13 @@ import {
   settingEntityLockRequestSchema,
   settingEntityPatchRequestSchema,
   settingEntityResponseSchema,
+  settingChangeRequestCreateRequestSchema,
+  settingChangeRequestListResponseSchema,
+  settingChangeRequestResponseSchema,
+  settingProposalCreateRequestSchema,
+  settingProposalDecisionRequestSchema,
+  settingProposalListResponseSchema,
+  settingProposalResponseSchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
@@ -48,6 +56,16 @@ const patchBodyJsonSchema = schemaOf(settingEntityPatchRequestSchema, "input");
 const lockBodyJsonSchema = schemaOf(settingEntityLockRequestSchema, "input");
 const listResponseJsonSchema = schemaOf(settingEntityListResponseSchema, "output");
 const entityResponseJsonSchema = schemaOf(settingEntityResponseSchema, "output");
+const proposalResponseJsonSchema = schemaOf(settingProposalResponseSchema, "output");
+const proposalListResponseJsonSchema = schemaOf(settingProposalListResponseSchema, "output");
+const proposalCreateBodyJsonSchema = schemaOf(settingProposalCreateRequestSchema, "input");
+const proposalDecisionBodyJsonSchema = schemaOf(settingProposalDecisionRequestSchema, "input");
+const changeRequestResponseJsonSchema = schemaOf(settingChangeRequestResponseSchema, "output");
+const changeRequestListResponseJsonSchema = schemaOf(
+  settingChangeRequestListResponseSchema,
+  "output",
+);
+const changeRequestBodyJsonSchema = schemaOf(settingChangeRequestCreateRequestSchema, "input");
 
 @ApiTags("settings")
 @Controller("works/:workId/branches/:branchId/entities")
@@ -140,6 +158,145 @@ export class SettingsController {
         uuidV7Schema.parse(entityId),
         settingEntityPatchRequestSchema.parse(body),
         this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Get(":entityId/proposals")
+  @ApiOkResponse({
+    description: "Setting proposal history",
+    schema: proposalListResponseJsonSchema,
+  })
+  async proposals(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("entityId") entityId: string,
+  ) {
+    const requestId = createRequestId();
+    return settingProposalListResponseSchema.parse({
+      data: await this.service.listProposals(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(entityId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":entityId/proposals")
+  @HttpCode(201)
+  @ApiBody({ schema: proposalCreateBodyJsonSchema })
+  @ApiCreatedResponse({
+    description: "Setting proposal",
+    schema: proposalResponseJsonSchema,
+  })
+  async createProposal(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("entityId") entityId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return settingProposalResponseSchema.parse({
+      data: await this.service.createProposal(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(entityId),
+        settingProposalCreateRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":entityId/proposals/:proposalId/decision")
+  @HttpCode(200)
+  @ApiBody({ schema: proposalDecisionBodyJsonSchema })
+  @ApiOkResponse({
+    description: "Decided setting proposal",
+    schema: proposalResponseJsonSchema,
+  })
+  async decideProposal(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("entityId") entityId: string,
+    @Param("proposalId") proposalId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return settingProposalResponseSchema.parse({
+      data: await this.service.decideProposal(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(entityId),
+        uuidV7Schema.parse(proposalId),
+        settingProposalDecisionRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Get(":entityId/change-requests")
+  @ApiOkResponse({
+    description: "Setting change request history",
+    schema: changeRequestListResponseJsonSchema,
+  })
+  async changeRequests(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("entityId") entityId: string,
+  ) {
+    const requestId = createRequestId();
+    return settingChangeRequestListResponseSchema.parse({
+      data: await this.service.listChangeRequests(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(entityId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":entityId/change-requests")
+  @HttpCode(201)
+  @ApiBody({ schema: changeRequestBodyJsonSchema })
+  @ApiCreatedResponse({
+    description: "Pending setting change request",
+    schema: changeRequestResponseJsonSchema,
+  })
+  async createChangeRequest(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("entityId") entityId: string,
+    @Body() body: unknown,
+    @Headers("idempotency-key") idempotencyKey?: string,
+  ) {
+    const requestId = createRequestId();
+    return settingChangeRequestResponseSchema.parse({
+      data: await this.service.createChangeRequest(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(entityId),
+        settingChangeRequestCreateRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+        idempotencyKey?.trim() || undefined,
       ),
       requestId,
       meta: {},
