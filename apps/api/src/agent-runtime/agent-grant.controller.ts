@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import {
   agentGrantCreateRequestSchema,
   agentGrantListResponseSchema,
@@ -8,6 +18,7 @@ import {
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
 import {
+  ApiHeader,
   ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
@@ -41,11 +52,13 @@ export class AgentGrantController {
 
   @Post()
   @ApiBody({ schema: createBodySchema })
+  @ApiHeader({ name: "Idempotency-Key", required: true })
   @ApiCreatedResponse({ description: "Issued agent grant", schema: grantResponseSchema })
   async create(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
@@ -54,6 +67,7 @@ export class AgentGrantController {
         this.userId(request),
         this.scope(workId, branchId),
         agentGrantCreateRequestSchema.parse(body),
+        idempotencyKey ?? "",
         this.audit(request, requestId),
       ),
       requestId,

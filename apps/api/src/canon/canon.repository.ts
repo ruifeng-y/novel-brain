@@ -13,9 +13,10 @@ import {
   versionNodes,
   workBranches,
   works,
+  withTenantTransaction,
   type DatabaseClient,
 } from "@novel-brain/db";
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -38,6 +39,7 @@ type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[
 export type CanonSubmissionResult =
   | { kind: "not_found" }
   | { kind: "version_conflict" }
+  | { kind: "idempotency_conflict"; commitId: string; chapterVersionId: string }
   | { kind: "chapter_not_approved"; chapterStatus: string }
   | {
       kind: "quality_blocked";
@@ -79,10 +81,20 @@ export class CanonRepository implements OnModuleDestroy {
     idempotencyKey: string,
     audit: WorksAuditContext,
   ): Promise<CanonSubmissionResult> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
       const existing = await findCommit(transaction, userId, workId, branchId, chapterId);
       if (existing) {
+        if (existing.chapterVersionId !== chapterVersionId) {
+          return { kind: "version_conflict" };
+        }
+        if (existing.idempotencyKey !== idempotencyKey) {
+          return {
+            kind: "idempotency_conflict",
+            commitId: existing.id,
+            chapterVersionId: existing.chapterVersionId,
+          };
+        }
         const chapter = await findChapter(transaction, userId, workId, branchId, chapterId);
         if (!chapter) {
           return { kind: "not_found" };
@@ -233,8 +245,15 @@ export class CanonRepository implements OnModuleDestroy {
     userId: string,
     workId: string,
     branchId: string,
-  ): Promise<Array<Extract<CanonSubmissionResult, { kind: "committed" }>> | "not_found"> {
-    return this.withTenant(userId, async (transaction) => {
+    page: { cursor?: string | undefined; limit: number },
+  ): Promise<
+    | {
+        commits: Array<Extract<CanonSubmissionResult, { kind: "committed" }>>;
+        nextCursor: string | null;
+      }
+    | "not_found"
+  > {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       const [context] = await transaction
         .select({ branchId: workBranches.id })
         .from(works)
@@ -262,11 +281,16 @@ export class CanonRepository implements OnModuleDestroy {
             eq(canonCommits.userId, userId),
             eq(canonCommits.workId, workId),
             eq(canonCommits.branchId, branchId),
+            page.cursor ? lt(canonCommits.id, page.cursor) : undefined,
           ),
         )
-        .orderBy(desc(canonCommits.createdAt));
-      if (commits.length === 0) {
-        return [];
+        .orderBy(desc(canonCommits.id))
+        .limit(page.limit + 1);
+      const hasMore = commits.length > page.limit;
+      const pageCommits = hasMore ? commits.slice(0, page.limit) : commits;
+      const nextCursor = hasMore ? (pageCommits.at(-1)?.id ?? null) : null;
+      if (pageCommits.length === 0) {
+        return { commits: [], nextCursor: null };
       }
       const chapterRows = await transaction
         .select()
@@ -274,7 +298,7 @@ export class CanonRepository implements OnModuleDestroy {
         .where(
           inArray(
             chapters.id,
-            commits.map((commit) => commit.chapterId),
+            pageCommits.map((commit) => commit.chapterId),
           ),
         );
       const chapterById = new Map(chapterRows.map((chapter) => [chapter.id, chapter]));
@@ -288,7 +312,7 @@ export class CanonRepository implements OnModuleDestroy {
         .where(
           inArray(
             canonicalFacts.canonCommitId,
-            commits.map((commit) => commit.id),
+            pageCommits.map((commit) => commit.id),
           ),
         )
         .orderBy(canonicalFacts.createdAt);
@@ -302,35 +326,28 @@ export class CanonRepository implements OnModuleDestroy {
         });
         factsByCommit.set(row.fact.canonCommitId, facts);
       }
-      return commits.flatMap((commit) => {
-        const chapter = chapterById.get(commit.chapterId);
-        if (!chapter) {
-          return [];
-        }
-        return [
-          {
-            kind: "committed" as const,
-            chapter,
-            commit,
-            facts: factsByCommit.get(commit.id) ?? [],
-          },
-        ];
-      });
+      return {
+        nextCursor,
+        commits: pageCommits.flatMap((commit) => {
+          const chapter = chapterById.get(commit.chapterId);
+          if (!chapter) {
+            return [];
+          }
+          return [
+            {
+              kind: "committed" as const,
+              chapter,
+              commit,
+              facts: factsByCommit.get(commit.id) ?? [],
+            },
+          ];
+        }),
+      };
     });
   }
 
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
-  }
-
-  private async withTenant<T>(
-    userId: string,
-    operation: (transaction: DatabaseTransaction) => Promise<T>,
-  ): Promise<T> {
-    return this.db.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
-      return operation(transaction);
-    });
   }
 }
 
@@ -389,6 +406,8 @@ async function evaluateSubmission(
   const qualityGate = await qualityGateForChapterVersion(
     transaction,
     userId,
+    workId,
+    branchId,
     row.chapter.id,
     row.version.id,
   );

@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import {
   volumeAuditReportResponseSchema,
   volumeAuditRunRequestSchema,
@@ -9,6 +19,7 @@ import {
 import {
   ApiBody,
   ApiCreatedResponse,
+  ApiHeader,
   ApiOkResponse,
   ApiTags,
   type SchemaObject,
@@ -20,6 +31,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiError } from "../common/api-error";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { VolumeAuditService } from "./volume-audit.service";
@@ -59,12 +71,14 @@ export class VolumeAuditController {
 
   @Post()
   @HttpCode(201)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
   @ApiBody({ schema: runBodySchema })
   @ApiCreatedResponse({ description: "Volume audit report", schema: reportSchema })
   async run(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
@@ -74,6 +88,7 @@ export class VolumeAuditController {
         uuidV7Schema.parse(workId),
         uuidV7Schema.parse(branchId),
         volumeAuditRunRequestSchema.parse(body),
+        idempotencyKey ?? "",
         this.auditContext(request, requestId),
       ),
       requestId,
@@ -83,6 +98,7 @@ export class VolumeAuditController {
 
   @Post(":auditId/signoff")
   @HttpCode(200)
+  @ApiHeader({ name: "If-Match", required: false })
   @ApiBody({ schema: signoffBodySchema })
   @ApiOkResponse({ description: "Signed volume audit report", schema: reportSchema })
   async signoff(
@@ -90,16 +106,24 @@ export class VolumeAuditController {
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("auditId") auditId: string,
+    @Headers("if-match") ifMatch: string | undefined,
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
+    const input = volumeAuditSignoffRequestSchema.parse(body);
+    if (ifMatch) {
+      const expectedVersion = Number(ifMatch.replace(/[^0-9]/gu, ""));
+      if (!Number.isInteger(expectedVersion) || expectedVersion !== input.version) {
+        throw new ApiError(409, "VERSION_CONFLICT", "卷末审计报告已更新，请刷新后重试");
+      }
+    }
     return volumeAuditReportResponseSchema.parse({
       data: await this.service.signoff(
         this.userId(request),
         uuidV7Schema.parse(workId),
         uuidV7Schema.parse(branchId),
         uuidV7Schema.parse(auditId),
-        volumeAuditSignoffRequestSchema.parse(body),
+        input,
         this.auditContext(request, requestId),
       ),
       requestId,

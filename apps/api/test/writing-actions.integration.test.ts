@@ -240,6 +240,25 @@ describe("writing action HTTP and worker integration", () => {
       ).body,
     ).data;
     expect(listed).toHaveLength(9);
+    const firstPage = writingActionJobListResponseSchema.parse(
+      (
+        await owner
+          .get(`${fixture.branchPath}/chapters/${fixture.chapterId}/write-actions?limit=2`)
+          .expect(200)
+      ).body,
+    );
+    expect(firstPage.data).toHaveLength(2);
+    expect(firstPage.meta.nextCursor).toEqual(expect.any(String));
+    const secondPage = writingActionJobListResponseSchema.parse(
+      (
+        await owner
+          .get(
+            `${fixture.branchPath}/chapters/${fixture.chapterId}/write-actions?limit=2&cursor=${firstPage.meta.nextCursor}`,
+          )
+          .expect(200)
+      ).body,
+    );
+    expect(secondPage.data.map((job) => job.id)).not.toEqual(firstPage.data.map((job) => job.id));
 
     const versions = chapterVersionListResponseSchema.parse(
       (await owner.get(`${fixture.branchPath}/chapters/${fixture.chapterId}/versions`).expect(200))

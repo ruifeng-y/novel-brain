@@ -64,6 +64,7 @@ export const ERROR_CODES = [
   "FACT_DECISION_REQUIRED",
   "FACT_SUBMISSION_BLOCKED",
   "CANON_CHAPTER_NOT_APPROVED",
+  "CANON_IDEMPOTENCY_CONFLICT",
   "IMPORT_CONFLICT_UNRESOLVED",
   "OUTLINE_STRUCTURE_INVALID",
   "OUTLINE_NODE_LOCKED",
@@ -77,6 +78,7 @@ export const ERROR_CODES = [
   "GOLDEN_THREE_SELECTION_REQUIRED",
   "GOLDEN_THREE_ALREADY_LOCKED",
   "GOLDEN_THREE_OVERRIDE_INVALID",
+  "GOLDEN_THREE_CHAPTERS_EMPTY",
   "LEDGER_TRANSITION_INVALID",
   "LEDGER_SOURCE_REQUIRED",
   "LEDGER_EVIDENCE_REQUIRED",
@@ -146,6 +148,23 @@ export type ApiEnvelope<T> = {
   requestId: string;
   meta: Record<string, unknown>;
 };
+
+export const cursorPageQuerySchema = z.object({
+  cursor: uuidV7Schema.optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type CursorPageQuery = z.infer<typeof cursorPageQuerySchema>;
+
+export const cursorPageMetaSchema = z.object({
+  nextCursor: uuidV7Schema.nullable(),
+});
+
+export const cursorListResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
+  z.object({
+    data: dataSchema,
+    requestId: z.string().startsWith("req_"),
+    meta: cursorPageMetaSchema,
+  });
 
 export const authEmailSchema = z.string().trim().toLowerCase().email().max(254);
 export const authPasswordSchema = z
@@ -1350,6 +1369,28 @@ export const settingChangeRequestStatusSchema = z.enum([
 ]);
 export type SettingChangeRequestStatus = z.infer<typeof settingChangeRequestStatusSchema>;
 
+export const settingChangeImpactResourceSchema = z
+  .object({
+    type: z.enum(["chapter", "setting", "version_node"]),
+    id: uuidV7Schema,
+    label: z.string().trim().min(1).max(200),
+  })
+  .strict();
+export type SettingChangeImpactResource = z.infer<typeof settingChangeImpactResourceSchema>;
+
+export const settingChangeImpactSchema = z
+  .object({
+    chapterCount: z.number().int().nonnegative(),
+    settingRefCount: z.number().int().nonnegative(),
+    versionRefCount: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    hasImpact: z.boolean(),
+    message: z.string().trim().min(1).max(1_000),
+    resources: z.array(settingChangeImpactResourceSchema).max(50),
+  })
+  .strict();
+export type SettingChangeImpact = z.infer<typeof settingChangeImpactSchema>;
+
 export const settingChangeRequestSchema = z.object({
   id: uuidV7Schema,
   entityId: uuidV7Schema,
@@ -1363,6 +1404,7 @@ export const settingChangeRequestSchema = z.object({
   status: settingChangeRequestStatusSchema,
   conflictType: settingConflictTypeSchema,
   evidence: z.array(settingEvidenceSchema),
+  impact: settingChangeImpactSchema,
   createdBy: uuidV7Schema,
   createdAt: z.string().datetime(),
 });
@@ -4309,7 +4351,7 @@ export const canonCommitSchema = z.object({
 export type CanonCommit = z.infer<typeof canonCommitSchema>;
 
 export const canonCommitResponseSchema = apiEnvelopeSchema(canonCommitSchema);
-export const canonCommitListResponseSchema = apiEnvelopeSchema(z.array(canonCommitSchema));
+export const canonCommitListResponseSchema = cursorListResponseSchema(z.array(canonCommitSchema));
 
 export const manuscriptImportConfirmRequestSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -5309,7 +5351,7 @@ export type JobEvent = z.infer<typeof jobEventSchema>;
 export const generationJobResponseSchema = apiEnvelopeSchema(generationJobSchema);
 export const generationJobListResponseSchema = apiEnvelopeSchema(z.array(generationJobSchema));
 export const writingActionJobResponseSchema = apiEnvelopeSchema(writingActionJobSchema);
-export const writingActionJobListResponseSchema = apiEnvelopeSchema(
+export const writingActionJobListResponseSchema = cursorListResponseSchema(
   z.array(writingActionJobSchema),
 );
 export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
@@ -5527,6 +5569,7 @@ export const agentGrantSchema = z
     revokedAt: z.string().datetime().nullable(),
     revokedBy: uuidV7Schema.nullable(),
     revocationReason: z.string().min(1).max(500).nullable(),
+    version: z.number().int().positive(),
     createdAt: z.string().datetime(),
   })
   .strict()
@@ -5552,6 +5595,7 @@ export type AgentGrant = z.infer<typeof agentGrantSchema>;
 export const agentGrantRevokeRequestSchema = z
   .object({
     reason: z.string().trim().min(1).max(500),
+    version: z.number().int().positive(),
   })
   .strict();
 export type AgentGrantRevokeRequest = z.infer<typeof agentGrantRevokeRequestSchema>;
@@ -5800,7 +5844,9 @@ export const agentRunTraceSchema = z
   .strict();
 export type AgentRunTrace = z.infer<typeof agentRunTraceSchema>;
 
-export const agentRunTraceListResponseSchema = apiEnvelopeSchema(z.array(agentRunTraceSchema));
+export const agentRunTraceListResponseSchema = cursorListResponseSchema(
+  z.array(agentRunTraceSchema),
+);
 export const agentRunTraceResponseSchema = apiEnvelopeSchema(agentRunTraceSchema);
 
 export const ORCHESTRATOR_CONTRACT_VERSION = 1 as const;
@@ -6343,6 +6389,13 @@ export type GoldenThreeCandidateBatchRequest = z.infer<
   typeof goldenThreeCandidateBatchRequestSchema
 >;
 
+export const goldenThreeGenerateRequestSchema = z
+  .object({
+    candidateCount: z.union([z.literal(2), z.literal(3)]).default(3),
+  })
+  .strict();
+export type GoldenThreeGenerateRequest = z.infer<typeof goldenThreeGenerateRequestSchema>;
+
 export const goldenThreeReviewInputSchema = z
   .object({
     dimension: goldenThreeReviewDimensionSchema,
@@ -6564,6 +6617,13 @@ export type CriticFindingDimension = z.infer<typeof criticFindingDimensionSchema
 
 export const criticSeveritySchema = z.enum(["P0", "P1", "P2", "P3"]);
 export type CriticSeverity = z.infer<typeof criticSeveritySchema>;
+
+export const CRITIC_SEVERITY_LABELS: Record<CriticSeverity, string> = {
+  P0: "阻断",
+  P1: "高风险",
+  P2: "提醒",
+  P3: "建议",
+};
 
 export const criticFindingStatusSchema = z.enum(["open", "dismissed", "superseded"]);
 export type CriticFindingStatus = z.infer<typeof criticFindingStatusSchema>;
@@ -6790,10 +6850,15 @@ export const qualityGateBlockerSchema = z
   .strict();
 export type QualityGateBlocker = z.infer<typeof qualityGateBlockerSchema>;
 
+export const qualityReportStateSchema = z.enum(["fresh", "missing", "stale"]);
+export type QualityReportState = z.infer<typeof qualityReportStateSchema>;
+
 export const qualityGateSchema = z
   .object({
     canApprove: z.boolean(),
     canCommitCanon: z.boolean(),
+    reportState: qualityReportStateSchema,
+    reportId: uuidV7Schema.nullable(),
     blockers: z.array(qualityGateBlockerSchema),
   })
   .strict();
@@ -7507,7 +7572,7 @@ export const revisionPlanWorkspaceSchema = z
 export type RevisionPlanWorkspace = z.infer<typeof revisionPlanWorkspaceSchema>;
 
 export const revisionPlanWorkspaceResponseSchema = apiEnvelopeSchema(revisionPlanWorkspaceSchema);
-export const revisionPlanWorkspaceListResponseSchema = apiEnvelopeSchema(
+export const revisionPlanWorkspaceListResponseSchema = cursorListResponseSchema(
   z.array(revisionPlanWorkspaceSchema),
 );
 

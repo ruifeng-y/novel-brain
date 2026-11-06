@@ -7,11 +7,13 @@ import {
   type MessageEvent,
   Param,
   Post,
+  Query,
   Req,
   Sse,
   UseGuards,
 } from "@nestjs/common";
 import {
+  cursorPageQuerySchema,
   writingActionJobListResponseSchema,
   writingActionJobResponseSchema,
   writingActionRequestSchema,
@@ -23,6 +25,7 @@ import {
   ApiBody,
   ApiHeader,
   ApiOkResponse,
+  ApiQuery,
   ApiTags,
   type SchemaObject,
 } from "@nestjs/swagger";
@@ -84,21 +87,27 @@ export class WritingActionController {
   }
 
   @Get("chapters/:chapterId/write-actions")
+  @ApiQuery({ name: "cursor", required: false })
+  @ApiQuery({ name: "limit", required: false })
   @ApiOkResponse({ description: "Writing actions for one chapter", schema: jobListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("chapterId") chapterId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = cursorPageQuerySchema.parse(query);
+    const result = await this.service.list(
+      this.userId(request),
+      this.context(workId, branchId, chapterId),
+      page,
+    );
     return writingActionJobListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        this.context(workId, branchId, chapterId),
-      ),
+      data: result.jobs,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 

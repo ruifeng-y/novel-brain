@@ -1,11 +1,15 @@
+import { createHash } from "node:crypto";
+
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import type {
   GoldenThreeCandidateBatchRequest,
   GoldenThreeChapterPinInput,
   GoldenThreeGateBlockerCode,
+  GoldenThreeGenerateRequest,
   GoldenThreeLockRequest,
   GoldenThreeReviewDimension,
   GoldenThreeReviewBatchRequest,
+  GoldenThreeStrategy,
   GoldenThreeSelectionRequest,
   GoldenThreeWorkspace,
 } from "@novel-brain/contracts";
@@ -19,8 +23,11 @@ import {
   goldenThreeCandidates,
   goldenThreeLocks,
   goldenThreeReviews,
+  findIdempotentResource,
+  rememberIdempotentResource,
   styleBaselines,
   versionNodes,
+  withTenantTransaction,
   workBranches,
   works,
   type DatabaseClient,
@@ -33,6 +40,15 @@ import { uuidv7 } from "uuidv7";
 
 import { countWords } from "../imports/manuscript-import.parser";
 import type { WorksAuditContext } from "../works/works.repository";
+
+const goldenThreeGenerationStrategies: Array<{
+  strategy: GoldenThreeStrategy;
+  label: string;
+}> = [
+  { strategy: "hook_focus", label: "候选 A · 钩子优先" },
+  { strategy: "character_focus", label: "候选 B · 人物优先" },
+  { strategy: "world_focus", label: "候选 C · 世界规则优先" },
+];
 
 type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[0]>[0];
 
@@ -50,6 +66,7 @@ export type GoldenThreeWriteResult<T> =
   | { kind: "ok"; value: T }
   | { kind: "not_found" }
   | { kind: "candidates_exist" }
+  | { kind: "chapters_empty"; chapterNumbers: number[] }
   | { kind: "reference_invalid"; message: string }
   | { kind: "evidence_invalid"; message: string }
   | { kind: "version_conflict" }
@@ -78,7 +95,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     workId: string,
     branchId: string,
   ): Promise<GoldenThreeContext | undefined> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       const [context] = await transaction
         .select({ workId: works.id, branchId: workBranches.id })
         .from(works)
@@ -100,7 +117,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
   }
 
   async workspace(userId: string, context: GoldenThreeContext): Promise<GoldenThreeWorkspace> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       const candidateRows = await transaction
         .select()
         .from(goldenThreeCandidates)
@@ -309,7 +326,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     input: GoldenThreeCandidateBatchRequest,
     audit: WorksAuditContext,
   ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const existingForKey = await transaction
         .select({ batchId: goldenThreeCandidates.batchId })
@@ -451,6 +468,222 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     });
   }
 
+  async generateCandidates(
+    userId: string,
+    context: GoldenThreeContext,
+    idempotencyKey: string,
+    input: GoldenThreeGenerateRequest,
+    audit: WorksAuditContext,
+  ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
+      await lockBranch(transaction, context.branchId);
+      const existingKey = await findIdempotentResource(
+        transaction,
+        userId,
+        "golden-three-generate",
+        idempotencyKey,
+      );
+      if (existingKey) {
+        return { kind: "ok", value: { batchId: existingKey.resourceId } };
+      }
+      const [existingCandidate] = await transaction
+        .select({ id: goldenThreeCandidates.id })
+        .from(goldenThreeCandidates)
+        .where(
+          and(
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
+          ),
+        )
+        .limit(1);
+      if (existingCandidate) {
+        return { kind: "candidates_exist" };
+      }
+      const chapterRows = await transaction
+        .select({ chapter: chapters, version: chapterVersions })
+        .from(chapters)
+        .leftJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
+        .where(
+          and(
+            eq(chapters.userId, userId),
+            eq(chapters.workId, context.workId),
+            eq(chapters.branchId, context.branchId),
+            inArray(chapters.number, [1, 2, 3]),
+          ),
+        )
+        .orderBy(asc(chapters.number));
+      const chapterByNumber = new Map(chapterRows.map((row) => [row.chapter.number, row]));
+      const emptyChapterNumbers = [1, 2, 3].filter((number) => {
+        const row = chapterByNumber.get(number);
+        return !row?.version || row.version.content.trim().length === 0;
+      });
+      if (emptyChapterNumbers.length > 0) {
+        return { kind: "chapters_empty", chapterNumbers: emptyChapterNumbers };
+      }
+      const chapterIds = chapterRows.map((row) => row.chapter.id);
+      const versionRows = await transaction
+        .select({
+          chapterId: chapterVersions.chapterId,
+          maxVersion: sql<number>`coalesce(max(${chapterVersions.version}), 0)`,
+        })
+        .from(chapterVersions)
+        .where(inArray(chapterVersions.chapterId, chapterIds))
+        .groupBy(chapterVersions.chapterId);
+      const nextVersionByChapter = new Map(
+        versionRows.map((row) => [row.chapterId, Number(row.maxVersion) + 1]),
+      );
+      const strategies = goldenThreeGenerationStrategies.slice(0, input.candidateCount);
+      const now = new Date();
+      const batchId = uuidv7();
+      const candidateIds: string[] = [];
+      let headNodeId = await requireBranchHead(transaction, userId, context);
+      for (const strategy of strategies) {
+        const pins: GoldenThreeChapterPinJson[] = [];
+        for (const number of [1, 2, 3]) {
+          const row = chapterByNumber.get(number)!;
+          const versionNumber = nextVersionByChapter.get(row.chapter.id) ?? 1;
+          nextVersionByChapter.set(row.chapter.id, versionNumber + 1);
+          const content = generateCandidateChapterContent(
+            strategy.strategy,
+            row.chapter.title,
+            row.version!.content,
+          );
+          const contentHash = createHash("sha256").update(content).digest("hex");
+          const wordCount = countWords(content);
+          const versionId = uuidv7();
+          const versionNodeId = uuidv7();
+          await transaction.insert(versionNodes).values({
+            id: versionNodeId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            parentNodeId: headNodeId,
+            nodeType: "chapter_version",
+            objectType: "chapter",
+            objectId: row.chapter.id,
+            objectVersion: versionNumber,
+            payload: {
+              contentHash,
+              wordCount,
+              source: "golden_three_generation",
+              strategy: strategy.strategy,
+              candidateBatchId: batchId,
+            },
+            actorId: userId,
+            message: `生成第 ${number} 章黄金三章候选`,
+            createdAt: now,
+          });
+          await transaction.insert(chapterVersions).values({
+            id: versionId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            chapterId: row.chapter.id,
+            version: versionNumber,
+            content,
+            contentHash,
+            versionNodeId,
+            source: "golden_three_generation",
+            createdAt: now,
+          });
+          headNodeId = versionNodeId;
+          pins.push({
+            chapterId: row.chapter.id,
+            chapterNumber: row.chapter.number,
+            chapterTitle: row.chapter.title,
+            chapterVersionId: versionId,
+            chapterVersion: versionNumber,
+            versionNodeId,
+            contentHash,
+            wordCount,
+            content,
+          });
+        }
+        const candidateId = uuidv7();
+        candidateIds.push(candidateId);
+        const promptHash = createHash("sha256")
+          .update(`golden-three-generate:${strategy.strategy}:v1`)
+          .digest("hex");
+        const manifestHash = createHash("sha256")
+          .update(
+            `${strategy.strategy}:${pins
+              .map((pin) => `${pin.chapterId}:${pin.contentHash}`)
+              .join("|")}`,
+          )
+          .digest("hex");
+        await transaction.insert(goldenThreeCandidates).values({
+          id: candidateId,
+          batchId,
+          workId: context.workId,
+          branchId: context.branchId,
+          userId,
+          idempotencyKey,
+          label: strategy.label,
+          strategy: strategy.strategy,
+          status: "reviewed",
+          version: 1,
+          promptKey: "golden-three-generate",
+          promptVersion: 1,
+          promptHash,
+          modelProvider: "deterministic",
+          model: "deterministic-golden-three-v1",
+          modelParameters: { strategy: strategy.strategy, temperature: 0 },
+          contextPackVersionId: null,
+          contextManifestHash: manifestHash,
+          chapterPins: pins,
+          createdAt: now,
+          updatedAt: now,
+        });
+        for (const review of automaticGoldenThreeReviews(pins)) {
+          await transaction.insert(goldenThreeReviews).values({
+            id: uuidv7(),
+            candidateId,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            dimension: review.dimension,
+            score: review.score,
+            evidenceChapterId: review.pin.chapterId,
+            evidenceChapterVersionId: review.pin.chapterVersionId,
+            evidencePassage: review.pin.content.slice(0, 200),
+            evidenceLocator: `第 ${review.pin.chapterNumber} 章 · 生成候选`,
+            reviewerOrigin: "model",
+            required: true,
+            createdAt: now,
+            updatedAt: now,
+          });
+        }
+      }
+      const batchNodeId = uuidv7();
+      await transaction.insert(versionNodes).values({
+        id: batchNodeId,
+        workId: context.workId,
+        branchId: context.branchId,
+        userId,
+        parentNodeId: headNodeId,
+        nodeType: "outline_version",
+        objectType: "golden_three_candidate_batch",
+        objectId: batchId,
+        objectVersion: 1,
+        payload: { action: "golden_three.candidates_generated", candidateIds },
+        actorId: userId,
+        message: "生成黄金三章候选",
+        createdAt: now,
+      });
+      await advanceBranchHead(transaction, context, batchNodeId, now);
+      await writeAudit(transaction, userId, audit, "golden_three.candidates_generated", batchId);
+      await rememberIdempotentResource(
+        transaction,
+        userId,
+        "golden-three-generate",
+        idempotencyKey,
+        { resourceType: "golden_three_batch", resourceId: batchId },
+      );
+      return { kind: "ok", value: { batchId } };
+    });
+  }
+
   async submitReviews(
     userId: string,
     context: GoldenThreeContext,
@@ -458,7 +691,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     input: GoldenThreeReviewBatchRequest,
     audit: WorksAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string }>> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const [candidate] = await transaction
         .select()
@@ -581,7 +814,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     input: GoldenThreeSelectionRequest,
     audit: WorksAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string }>> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const [candidate] = await transaction
         .select()
@@ -680,7 +913,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     input: GoldenThreeLockRequest,
     audit: WorksAuditContext,
   ): Promise<GoldenThreeWriteResult<{ candidateId: string; alreadyLocked: boolean }>> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const [existingLock] = await transaction
         .select()
@@ -868,16 +1101,6 @@ export class GoldenThreeRepository implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
   }
-
-  private async withTenant<T>(
-    userId: string,
-    operation: (transaction: DatabaseTransaction) => Promise<T>,
-  ): Promise<T> {
-    return this.db.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
-      return operation(transaction);
-    });
-  }
 }
 
 async function resolvePins(
@@ -993,4 +1216,44 @@ async function writeAudit(
     ip: audit.ip,
     userAgent: audit.userAgent,
   });
+}
+
+function generateCandidateChapterContent(
+  strategy: GoldenThreeStrategy,
+  chapterTitle: string,
+  content: string,
+): string {
+  const firstSentence =
+    content
+      .split(/[。！？\n]/u)
+      .find((part) => part.trim())
+      ?.trim() ?? content;
+  switch (strategy) {
+    case "hook_focus":
+      return `【${chapterTitle}】${firstSentence}。\n\n${content}`;
+    case "character_focus":
+      return `沈砚把这一章的代价压在心里。\n\n${content}`;
+    case "world_focus":
+      return `天门只认完整记忆的规则在碑文上浮现。\n\n${content}`;
+  }
+}
+
+function automaticGoldenThreeReviews(pins: GoldenThreeChapterPinJson[]): Array<{
+  dimension: GoldenThreeReviewDimension;
+  score: number;
+  pin: GoldenThreeChapterPinJson;
+}> {
+  const mapping: Array<[GoldenThreeReviewDimension, number]> = [
+    ["opening_hook", 0],
+    ["protagonist_appeal", 1],
+    ["world_rules", 2],
+    ["core_conflict", 1],
+    ["reader_promise", 0],
+    ["chapter_end_hook", 2],
+  ];
+  return mapping.map(([dimension, index]) => ({
+    dimension,
+    score: 4,
+    pin: pins[index]!,
+  }));
 }

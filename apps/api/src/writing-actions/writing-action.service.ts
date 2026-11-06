@@ -105,8 +105,16 @@ export class WritingActionService {
     return toWritingActionJobContract(result.value);
   }
 
-  async list(userId: string, context: WritingActionWorkContext): Promise<WritingActionJob[]> {
-    return (await this.repository.list(userId, context)).map(toWritingActionJobContract);
+  async list(
+    userId: string,
+    context: WritingActionWorkContext,
+    page: { cursor?: string | undefined; limit: number },
+  ): Promise<{ jobs: WritingActionJob[]; nextCursor: string | null }> {
+    const result = await this.repository.list(userId, context, page);
+    return {
+      jobs: result.jobs.map(toWritingActionJobContract),
+      nextCursor: result.nextCursor,
+    };
   }
 
   async get(

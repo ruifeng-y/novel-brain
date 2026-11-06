@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   Param,
   Patch,
@@ -17,7 +18,7 @@ import {
   qualityWorkspaceResponseSchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
-import { ApiBody, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
+import { ApiBody, ApiHeader, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
 import { createRequestId } from "@novel-brain/core";
 import { z } from "zod";
 
@@ -47,6 +48,7 @@ export class QualityController {
 
   @Post("chapters/:chapterId/verify")
   @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
   @ApiBody({ schema: verifyBodySchema })
   @ApiOkResponse({ description: "Six-dimension critic report", schema: workspaceSchema })
   async verify(
@@ -54,6 +56,7 @@ export class QualityController {
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("chapterId") chapterId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
@@ -64,6 +67,7 @@ export class QualityController {
         uuidV7Schema.parse(branchId),
         uuidV7Schema.parse(chapterId),
         criticVerifyRequestSchema.parse(body ?? {}),
+        idempotencyKey ?? "",
         this.auditContext(request, requestId),
       ),
       requestId,

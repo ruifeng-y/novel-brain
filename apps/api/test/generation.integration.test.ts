@@ -316,6 +316,9 @@ describe("generation HTTP integration", () => {
     const tracesResponse = await owner.get(`${branchPath}/agent-runs?jobId=${job.id}`).expect(200);
     const traces = agentRunTraceListResponseSchema.parse(tracesResponse.body).data;
     expect(traces.map((trace) => trace.run.stepKey)).toEqual(["draft", "verify", "revise"]);
+    expect((tracesResponse.body as { meta: { nextCursor: string | null } }).meta).toHaveProperty(
+      "nextCursor",
+    );
     expect(traces.every((trace) => trace.run.status === "succeeded")).toBe(true);
     expect(traces.every((trace) => trace.modelCalls.length === 1)).toBe(true);
     expect(traces.every((trace) => trace.costReservations[0]?.status === "settled")).toBe(true);
@@ -351,6 +354,7 @@ describe("generation HTTP integration", () => {
       .post(`${branchPath}/agent-grants`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({
         taskId: uuidv7(),
         role: "writer",

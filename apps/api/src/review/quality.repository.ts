@@ -31,12 +31,15 @@ import {
   createDatabasePool,
   entities,
   facts as canonicalFacts,
+  findIdempotentResource,
   mapNodes,
   outlineNodes,
   qualityFindings,
   qualityReports,
+  rememberIdempotentResource,
   styleBaselines,
   timelineEvents,
+  withTenantTransaction,
   workBranches,
   works,
   type DatabaseClient,
@@ -95,9 +98,10 @@ export class QualityRepository implements OnModuleDestroy {
     branchId: string,
     chapterId: string,
     input: CriticVerifyRequest,
+    idempotencyKey: string,
     audit: WorksAuditContext,
   ): Promise<QualityVerifyResult> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
       const chapter = await loadChapter(transaction, userId, workId, branchId, chapterId, true);
       if (!chapter) {
@@ -108,6 +112,35 @@ export class QualityRepository implements OnModuleDestroy {
       }
       if (input.chapterVersionId && input.chapterVersionId !== chapter.version.id) {
         return { kind: "version_conflict" };
+      }
+      const existing = await findIdempotentResource(
+        transaction,
+        userId,
+        "quality-verify",
+        idempotencyKey,
+      );
+      if (existing) {
+        const [report] = await transaction
+          .select()
+          .from(qualityReports)
+          .where(
+            and(
+              eq(qualityReports.id, existing.resourceId),
+              eq(qualityReports.userId, userId),
+              eq(qualityReports.workId, workId),
+              eq(qualityReports.branchId, branchId),
+              eq(qualityReports.chapterId, chapterId),
+              eq(qualityReports.chapterVersionId, chapter.version.id),
+            ),
+          )
+          .limit(1);
+        if (!report) {
+          return { kind: "version_conflict" };
+        }
+        return {
+          kind: "ok",
+          workspace: await buildWorkspace(transaction, userId, report, chapter),
+        };
       }
 
       const criticInput = await loadCriticInput(
@@ -200,6 +233,10 @@ export class QualityRepository implements OnModuleDestroy {
         ip: audit.ip,
         userAgent: audit.userAgent,
       });
+      await rememberIdempotentResource(transaction, userId, "quality-verify", idempotencyKey, {
+        resourceType: "quality_report",
+        resourceId: report.id,
+      });
       return {
         kind: "ok",
         workspace: await buildWorkspace(transaction, userId, report, chapter),
@@ -213,7 +250,7 @@ export class QualityRepository implements OnModuleDestroy {
     branchId: string,
     chapterId: string,
   ): Promise<QualityReadResult> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       const chapter = await loadChapter(transaction, userId, workId, branchId, chapterId, false);
       if (!chapter) {
         return { kind: "not_found" };
@@ -234,7 +271,7 @@ export class QualityRepository implements OnModuleDestroy {
     branchId: string,
     chapterId: string,
   ): Promise<{ kind: "not_found" } | { kind: "ok"; annotations: CriticAnnotation[] }> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       const chapter = await loadChapter(transaction, userId, workId, branchId, chapterId, false);
       if (!chapter) {
         return { kind: "not_found" };
@@ -263,7 +300,7 @@ export class QualityRepository implements OnModuleDestroy {
     input: CriticAnnotationPatchRequest,
     audit: WorksAuditContext,
   ): Promise<AnnotationUpdateResult> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
       const [row] = await transaction
         .select()
@@ -338,16 +375,6 @@ export class QualityRepository implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
-  }
-
-  private async withTenant<T>(
-    userId: string,
-    operation: (transaction: DatabaseTransaction) => Promise<T>,
-  ): Promise<T> {
-    return this.db.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
-      return operation(transaction);
-    });
   }
 }
 
@@ -696,7 +723,19 @@ async function buildWorkspace(
   const openFindings: OpenQualityFinding[] = chapter.version
     ? await listOpenQualityFindings(transaction, userId, chapter.chapter.id, chapter.version.id)
     : [];
-  const gate = qualityGateFromFindings(openFindings);
+  const gate = qualityGateFromFindings(
+    openFindings,
+    report
+      ? {
+          state:
+            report.rubricVersion === QUALITY_RUBRIC_VERSION &&
+            report.ruleVersion === CRITIC_RULE_VERSION
+              ? "fresh"
+              : "stale",
+          reportId: report.id,
+        }
+      : { state: "missing", reportId: null },
+  );
   return {
     report: report ? toReport(report) : null,
     findings: reportFindings.map(toFinding),

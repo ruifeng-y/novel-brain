@@ -169,6 +169,7 @@ describe("volume audit HTTP integration", () => {
           .post(fixture.volumeAuditPath)
           .set("Origin", origin)
           .set("X-CSRF-Token", otherToken)
+          .set("Idempotency-Key", crypto.randomUUID())
           .send({ volumeNodeId: fixture.volumeNodeId })
           .expect(403)
       ).body.error.code,
@@ -237,6 +238,7 @@ describe("volume audit HTTP integration", () => {
       .post(fixture.volumeAuditPath)
       .set("Origin", origin)
       .set("X-CSRF-Token", fixture.token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({ volumeNodeId: clean.volumeNodeId })
       .expect(201);
     const cleanReport = volumeAuditReportResponseSchema.parse(cleanRun.body).data;
@@ -262,6 +264,7 @@ describe("volume audit HTTP integration", () => {
       .post(fixture.volumeAuditPath)
       .set("Origin", origin)
       .set("X-CSRF-Token", fixture.token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({ volumeNodeId: fixture.volumeNodeId })
       .expect(201);
     const parsed = volumeAuditReportResponseSchema.parse(response.body).data;
@@ -320,6 +323,7 @@ describe("volume audit HTTP integration", () => {
         .post(`${branchPath}/chapters/${chapter.id}/verify`)
         .set("Origin", origin)
         .set("X-CSRF-Token", token)
+        .set("Idempotency-Key", crypto.randomUUID())
         .send({ chapterVersionId: chapter.versionId })
         .expect(200);
     }
@@ -840,6 +844,7 @@ describe("volume audit HTTP integration", () => {
       .post(`${branchPath}/ledger/entries`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({
         kind: "foreshadow",
         title: "父母之死",

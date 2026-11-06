@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  CRITIC_SEVERITY_LABELS,
   apiErrorSchema,
   volumeAuditReportResponseSchema,
   volumeAuditWorkspaceResponseSchema,
@@ -21,13 +22,6 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
-
-const severityLabels: Record<VolumeAuditFinding["severity"], string> = {
-  P0: "阻断",
-  P1: "阻断",
-  P2: "提醒",
-  P3: "关注",
-};
 
 const codeLabels: Record<VolumeAuditFinding["code"], string> = {
   FACT_CONTRADICTION: "事实冲突",
@@ -99,6 +93,7 @@ export function VolumeAuditPanel({ branchId, workId }: { branchId: string; workI
         method: "POST",
         headers: {
           "content-type": "application/json",
+          "idempotency-key": crypto.randomUUID(),
           "x-csrf-token": await getCsrfToken(),
         },
         body: JSON.stringify({ volumeNodeId: selectedVolumeId }),
@@ -273,7 +268,7 @@ export function VolumeAuditPanel({ branchId, workId }: { branchId: string; workI
                     >
                       <div className="volume-audit-finding-head">
                         <span className={`badge critic-severity-${finding.severity.toLowerCase()}`}>
-                          {severityLabels[finding.severity]}
+                          {CRITIC_SEVERITY_LABELS[finding.severity]}
                         </span>
                         <strong>{codeLabels[finding.code]}</strong>
                         {finding.chapterNumber ? <span>第 {finding.chapterNumber} 章</span> : null}

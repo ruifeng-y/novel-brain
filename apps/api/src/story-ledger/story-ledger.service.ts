@@ -42,10 +42,17 @@ export class StoryLedgerService {
     workId: string,
     branchId: string,
     input: StoryLedgerEntryCreateRequest,
+    idempotencyKey: string,
     audit: StoryLedgerAuditContext,
   ): Promise<StoryLedgerMutationData> {
+    const normalizedKey = idempotencyKey.trim();
+    if (!normalizedKey || normalizedKey.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");
+    }
     const context = await this.requireContext(userId, workId, branchId);
-    const record = unwrap(await this.repository.create(userId, context, input, audit));
+    const record = unwrap(
+      await this.repository.create(userId, context, input, normalizedKey, audit),
+    );
     return this.buildMutation(userId, context, record);
   }
 

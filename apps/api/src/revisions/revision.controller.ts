@@ -6,10 +6,12 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
+  cursorPageQuerySchema,
   revisionFeedbackCreateRequestSchema,
   revisionPlanCreateRequestSchema,
   revisionPlanWorkspaceListResponseSchema,
@@ -17,7 +19,14 @@ import {
   revisionRoundCreateRequestSchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
-import { ApiAcceptedResponse, ApiBody, ApiHeader, ApiOkResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiAcceptedResponse,
+  ApiBody,
+  ApiHeader,
+  ApiOkResponse,
+  ApiQuery,
+  ApiTags,
+} from "@nestjs/swagger";
 import { createRequestId } from "@novel-brain/core";
 import type { SchemaObject } from "@nestjs/swagger";
 import { z } from "zod";
@@ -81,21 +90,27 @@ export class RevisionController {
   }
 
   @Get("chapters/:chapterId/revisions")
+  @ApiQuery({ name: "cursor", required: false })
+  @ApiQuery({ name: "limit", required: false })
   @ApiOkResponse({ description: "Revision plans for one chapter", schema: workspaceListSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("chapterId") chapterId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = cursorPageQuerySchema.parse(query);
+    const result = await this.service.list(
+      this.userId(request),
+      this.context(workId, branchId, chapterId),
+      page,
+    );
     return revisionPlanWorkspaceListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        this.context(workId, branchId, chapterId),
-      ),
+      data: result.plans,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 

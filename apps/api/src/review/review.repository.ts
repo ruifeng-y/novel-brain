@@ -9,6 +9,7 @@ import {
   users,
   workBranches,
   works,
+  withTenantTransaction,
   type DatabaseClient,
 } from "@novel-brain/db";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
@@ -17,7 +18,7 @@ import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 import type { WorksAuditContext } from "../works/works.repository";
-import { qualityGateForChapterVersion } from "./quality-gate";
+import { qualityGateForChapterVersion, qualityGateFromFindings } from "./quality-gate";
 
 export type ReviewDecisionRecord = InferSelectModel<typeof reviewDecisions>;
 
@@ -56,7 +57,7 @@ export class ReviewRepository implements OnModuleDestroy {
     input: ChapterReviewRequest,
     audit: WorksAuditContext,
   ): Promise<ReviewResult> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
       const [row] = await transaction
         .select({
@@ -92,13 +93,17 @@ export class ReviewRepository implements OnModuleDestroy {
       if (row.chapter.version !== input.version) {
         return { kind: "version_conflict" };
       }
-      if (input.action === "approve" && row.chapter.currentVersionId) {
-        const gate = await qualityGateForChapterVersion(
-          transaction,
-          userId,
-          row.chapter.id,
-          row.chapter.currentVersionId,
-        );
+      if (input.action === "approve") {
+        const gate = row.chapter.currentVersionId
+          ? await qualityGateForChapterVersion(
+              transaction,
+              userId,
+              workId,
+              branchId,
+              row.chapter.id,
+              row.chapter.currentVersionId,
+            )
+          : qualityGateFromFindings([], { state: "missing", reportId: null });
         if (!gate.canApprove) {
           return { kind: "quality_blocked", gate };
         }
@@ -163,16 +168,6 @@ export class ReviewRepository implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
-  }
-
-  private async withTenant<T>(
-    userId: string,
-    operation: (transaction: DatabaseTransaction) => Promise<T>,
-  ): Promise<T> {
-    return this.db.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
-      return operation(transaction);
-    });
   }
 }
 

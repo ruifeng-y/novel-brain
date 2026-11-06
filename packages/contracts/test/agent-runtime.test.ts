@@ -134,6 +134,7 @@ describe("agent runtime contracts", () => {
       revokedAt: "2026-11-06T10:00:00.000Z",
       revokedBy: USER_ID,
       revocationReason: "作者取消本次生成",
+      version: 2,
       createdAt: "2026-11-06T09:00:00.000Z",
     };
 
@@ -145,9 +146,12 @@ describe("agent runtime contracts", () => {
         budget: { ...grant.budget, spentTokens: 12_001 },
       }),
     ).toThrow();
-    expect(agentGrantRevokeRequestSchema.parse({ reason: "作者取消本次生成" })).toEqual({
-      reason: "作者取消本次生成",
-    });
+    expect(agentGrantRevokeRequestSchema.parse({ reason: "作者取消本次生成", version: 1 })).toEqual(
+      {
+        reason: "作者取消本次生成",
+        version: 1,
+      },
+    );
     expect(() => agentGrantRevokeRequestSchema.parse({ reason: "", actorId: USER_ID })).toThrow();
   });
 

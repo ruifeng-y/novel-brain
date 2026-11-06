@@ -472,6 +472,7 @@ describe("story ledger HTTP integration", () => {
       .post(`${ledgerPath}/entries`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send(body);
     expect(response.status, JSON.stringify(response.body)).toBe(201);
     return storyLedgerMutationResponseSchema.parse(response.body).data.entry;

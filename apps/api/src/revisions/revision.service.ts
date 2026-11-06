@@ -94,8 +94,12 @@ export class RevisionService {
     return this.requireWorkspace(await this.repository.getPlan(userId, context, planId));
   }
 
-  async list(userId: string, context: RevisionContext): Promise<RevisionPlanWorkspace[]> {
-    return this.repository.listPlans(userId, context);
+  async list(
+    userId: string,
+    context: RevisionContext,
+    page: { cursor?: string | undefined; limit: number },
+  ): Promise<{ plans: RevisionPlanWorkspace[]; nextCursor: string | null }> {
+    return this.repository.listPlans(userId, context, page);
   }
 
   private async startRound(

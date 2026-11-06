@@ -747,6 +747,38 @@ describe("settings center HTTP integration", () => {
       .send({ version: 1 })
       .expect(200);
 
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await owner
+      .post(`${branchPath}/entities`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "world_rule",
+        name: "天门前律注",
+        aliases: [],
+        summary: "完整记忆律也被记在残碑背面。",
+        description: "",
+        tags: [],
+        data: { rule: "残碑会复述完整记忆律。" },
+      })
+      .expect(201);
+    await owner
+      .post(`${branchPath}/chapters`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        number: 1,
+        title: "断碑夜雨",
+        brief: {
+          goal: "让沈砚发现完整记忆律。",
+          pov: "沈砚",
+          location: "荒寺",
+          sceneBeats: ["发现碑文"],
+          requiredFacts: ["完整记忆律"],
+        },
+      })
+      .expect(201);
+
     const changeRequest = await owner
       .post(`${path}/${locked.body.data.id}/change-requests`)
       .set("Origin", origin)
@@ -793,7 +825,16 @@ describe("settings center HTTP integration", () => {
           quote: "天门前律，只认完整记忆。",
         },
       ],
+      impact: expect.objectContaining({
+        chapterCount: 1,
+        settingRefCount: 1,
+        versionRefCount: expect.any(Number),
+        hasImpact: true,
+      }),
     });
+    expect((changeRequest.body.data as { impact: { message: string } }).impact.message).toContain(
+      "影响",
+    );
 
     const listed = await owner.get(`${path}/${locked.body.data.id}/change-requests`).expect(200);
     expect(listed.body.data).toHaveLength(1);

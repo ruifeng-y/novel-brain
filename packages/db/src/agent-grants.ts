@@ -14,6 +14,7 @@ import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 import { createDatabaseClient, createDatabasePool, type DatabaseClient } from "./client";
+import { findIdempotentResource, rememberIdempotentResource } from "./idempotency";
 import { agentGrants, agentToolCalls, auditLogs, workBranches, works } from "./schema";
 
 export type AgentGrantRecord = InferSelectModel<typeof agentGrants>;
@@ -32,6 +33,8 @@ export interface AgentGrantAudit {
   ip: string;
   userAgent: string;
 }
+
+export type AgentGrantRevokeResult = AgentGrantRecord | "not_found" | "version_conflict";
 
 export interface AgentToolAuthorizationDecision {
   decision: "allow" | "deny";
@@ -96,10 +99,32 @@ export class AgentGrantStore {
     scope: AgentGrantScope;
     request: AgentGrantCreateRequest;
     audit: AgentGrantAudit;
+    idempotencyKey: string;
   }): Promise<AgentGrantRecord | null> {
     return this.withTenant(input.userId, async (transaction) => {
       if (!(await this.lockScope(transaction, input.userId, input.scope))) {
         return null;
+      }
+      const existing = await findIdempotentResource(
+        transaction,
+        input.userId,
+        "agent-grants",
+        input.idempotencyKey,
+      );
+      if (existing) {
+        const [record] = await transaction
+          .select()
+          .from(agentGrants)
+          .where(
+            and(
+              eq(agentGrants.id, existing.resourceId),
+              eq(agentGrants.userId, input.userId),
+              eq(agentGrants.workId, input.scope.workId),
+              eq(agentGrants.branchId, input.scope.branchId),
+            ),
+          )
+          .limit(1);
+        return record ?? null;
       }
       const id = uuidv7();
       const [record] = await transaction
@@ -135,6 +160,13 @@ export class AgentGrantStore {
         decision: "allow",
         audit: input.audit,
       });
+      await rememberIdempotentResource(
+        transaction,
+        input.userId,
+        "agent-grants",
+        input.idempotencyKey,
+        { resourceType: "agent_grant", resourceId: record.id },
+      );
       return record;
     });
   }
@@ -182,8 +214,9 @@ export class AgentGrantStore {
     scope: AgentGrantScope;
     grantId: string;
     reason: string;
+    version: number;
     audit: AgentGrantAudit;
-  }): Promise<AgentGrantRecord | null> {
+  }): Promise<AgentGrantRevokeResult> {
     return this.withTenant(input.userId, async (transaction) => {
       const [existing] = await transaction
         .select()
@@ -199,10 +232,13 @@ export class AgentGrantStore {
         .for("update")
         .limit(1);
       if (!existing) {
-        return null;
+        return "not_found";
       }
       if (existing.status === "revoked") {
-        return existing;
+        return existing.revocationReason === input.reason ? existing : "version_conflict";
+      }
+      if (existing.version !== input.version) {
+        return "version_conflict";
       }
       const now = new Date();
       const [record] = await transaction
@@ -212,9 +248,10 @@ export class AgentGrantStore {
           revokedAt: now,
           revokedBy: input.userId,
           revocationReason: input.reason,
+          version: existing.version + 1,
           updatedAt: now,
         })
-        .where(eq(agentGrants.id, input.grantId))
+        .where(and(eq(agentGrants.id, input.grantId), eq(agentGrants.version, existing.version)))
         .returning();
       if (!record) {
         throw new Error("Agent grant revocation returned no row");
@@ -479,6 +516,7 @@ export function toAgentGrantContract(record: AgentGrantRecord, now = new Date())
     revokedAt: record.revokedAt?.toISOString() ?? null,
     revokedBy: record.revokedBy,
     revocationReason: record.revocationReason,
+    version: record.version,
     createdAt: record.createdAt.toISOString(),
   });
 }

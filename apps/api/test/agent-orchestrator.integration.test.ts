@@ -448,7 +448,7 @@ describe("agent orchestrator integration", () => {
         .post(`${branchPath}/agent-grants/${grant.id}/revoke`)
         .set("Origin", origin)
         .set("X-CSRF-Token", token)
-        .send({ reason: "执行前撤销" })
+        .send({ reason: "执行前撤销", version: grant.version })
         .expect(200);
       const replay = await orchestrator.schedule(command, audit("gate-replay"));
       expect(replay.runId).toBe(scheduled.runId);
@@ -524,6 +524,7 @@ describe("agent orchestrator integration", () => {
       .post(`${branchPath}/agent-grants`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send(body)
       .expect(201);
     return agentGrantResponseSchema.parse(response.body).data;

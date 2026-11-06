@@ -700,6 +700,11 @@ test("approves, confirms required facts and submits the chapter end to end", asy
     expect(proposalsBeforeApproval.ok()).toBe(true);
     const proposalsDataBeforeApproval = (await proposalsBeforeApproval.json()).data;
 
+    await expect(factsPanel.getByRole("button", { name: "批准本章" })).toBeDisabled();
+    await page.getByRole("button", { name: "检查本章", exact: true }).click();
+    await expect(
+      page.locator(".writing-quality").getByText("当前版本没有阻断级质量问题。"),
+    ).toBeVisible();
     await factsPanel.getByRole("button", { name: "批准本章" }).click();
     await expect(factsPanel.getByRole("button", { name: "本章已批准" })).toBeDisabled();
     await expect(submit).toBeDisabled();

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type {
   GoldenThreeCandidateBatchRequest,
+  GoldenThreeGenerateRequest,
   GoldenThreeLockRequest,
   GoldenThreeReviewBatchRequest,
   GoldenThreeSelectionRequest,
@@ -77,6 +78,32 @@ export class GoldenThreeService {
     return this.repository.workspace(userId, context);
   }
 
+  async generateCandidates(
+    userId: string,
+    workId: string,
+    branchId: string,
+    idempotencyKey: string | undefined,
+    input: GoldenThreeGenerateRequest,
+    audit: WorksAuditContext,
+  ): Promise<GoldenThreeWorkspace> {
+    const normalizedKey = idempotencyKey?.trim();
+    if (!normalizedKey || normalizedKey.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");
+    }
+    const context = await this.requireContext(userId, workId, branchId);
+    const result = await this.repository.generateCandidates(
+      userId,
+      context,
+      normalizedKey,
+      input,
+      audit,
+    );
+    if (result.kind !== "ok") {
+      throw this.writeError(result);
+    }
+    return this.repository.workspace(userId, context);
+  }
+
   async selectCandidate(
     userId: string,
     workId: string,
@@ -138,6 +165,13 @@ export class GoldenThreeService {
           409,
           "GOLDEN_THREE_CANDIDATES_EXIST",
           "当前创作线已经有黄金三章候选，请在新创作线中重新生成",
+        );
+      case "chapters_empty":
+        return new ApiError(
+          409,
+          "GOLDEN_THREE_CHAPTERS_EMPTY",
+          `第 ${result.chapterNumbers.join("、")} 章还没有正文，请先保存章节版本再生成候选`,
+          { chapterNumbers: result.chapterNumbers, retryable: true },
         );
       case "reference_invalid":
         return new ApiError(400, "GOLDEN_THREE_INVALID_CANDIDATES", result.message);

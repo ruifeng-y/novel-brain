@@ -30,6 +30,7 @@ import {
   createDatabaseClient,
   createDatabasePool,
   entities,
+  findIdempotentResource,
   foreshadows,
   goldenThreeLocks,
   outlineNodes,
@@ -37,9 +38,11 @@ import {
   powerRealms,
   qualityFindings,
   qualityReports,
+  rememberIdempotentResource,
   timelineEvents,
   users,
   volumeAuditReports,
+  withTenantTransaction,
   workBranches,
   works,
   type DatabaseClient,
@@ -98,7 +101,7 @@ export class VolumeAuditRepository implements OnModuleDestroy {
     workId: string,
     branchId: string,
   ): Promise<VolumeAuditReadResult> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       const context = await loadContext(transaction, userId, workId, branchId);
       if (!context) {
         return { kind: "not_found" };
@@ -115,13 +118,42 @@ export class VolumeAuditRepository implements OnModuleDestroy {
     workId: string,
     branchId: string,
     volumeNodeId: string,
+    idempotencyKey: string,
     audit: WorksAuditContext,
   ): Promise<VolumeAuditRunResult> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, branchId);
       const context = await loadContext(transaction, userId, workId, branchId);
       if (!context) {
         return { kind: "not_found" };
+      }
+      const existing = await findIdempotentResource(
+        transaction,
+        userId,
+        "volume-audit",
+        idempotencyKey,
+      );
+      if (existing) {
+        const [report] = await transaction
+          .select()
+          .from(volumeAuditReports)
+          .where(
+            and(
+              eq(volumeAuditReports.id, existing.resourceId),
+              eq(volumeAuditReports.userId, userId),
+              eq(volumeAuditReports.workId, context.workId),
+              eq(volumeAuditReports.branchId, context.branchId),
+            ),
+          )
+          .limit(1);
+        if (report) {
+          const [volume] = await transaction
+            .select({ title: outlineNodes.title })
+            .from(outlineNodes)
+            .where(eq(outlineNodes.id, report.volumeNodeId))
+            .limit(1);
+          return { kind: "ok", report: toReport(report, volume?.title ?? "卷") };
+        }
       }
       const nodes = await loadNodes(transaction, userId, context);
       const volumeNode = nodes.find((node) => node.id === volumeNodeId);
@@ -348,6 +380,10 @@ export class VolumeAuditRepository implements OnModuleDestroy {
         ip: audit.ip,
         userAgent: audit.userAgent,
       });
+      await rememberIdempotentResource(transaction, userId, "volume-audit", idempotencyKey, {
+        resourceType: "volume_audit_report",
+        resourceId: reportId,
+      });
       return { kind: "ok", report: toReport(record, volumeNode.title) };
     });
   }
@@ -360,7 +396,7 @@ export class VolumeAuditRepository implements OnModuleDestroy {
     input: VolumeAuditSignoffRequest,
     audit: WorksAuditContext,
   ): Promise<VolumeAuditSignoffResult> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, branchId);
       const context = await loadContext(transaction, userId, workId, branchId);
       if (!context) {
@@ -512,16 +548,6 @@ export class VolumeAuditRepository implements OnModuleDestroy {
       latestReport: latestRecord ? toReport(latestRecord, latestVolumeTitle ?? "卷") : null,
       signoffUser: signer,
     };
-  }
-
-  private async withTenant<T>(
-    userId: string,
-    operation: (transaction: DatabaseTransaction) => Promise<T>,
-  ): Promise<T> {
-    return this.db.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
-      return operation(transaction);
-    });
   }
 }
 

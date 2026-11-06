@@ -740,6 +740,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates/generate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GoldenThreeController_generateCandidates"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates/{candidateId}/reviews": {
     parameters: {
       query?: never;
@@ -3007,6 +3023,7 @@ export interface operations {
               revokedAt: string | null;
               revokedBy: string | null;
               revocationReason: string | null;
+              version: number;
               /** Format: date-time */
               createdAt: string;
             }[];
@@ -3024,7 +3041,9 @@ export interface operations {
   AgentGrantController_create: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
       path: {
         workId: string;
         branchId: string;
@@ -3116,6 +3135,7 @@ export interface operations {
               revokedAt: string | null;
               revokedBy: string | null;
               revocationReason: string | null;
+              version: number;
               /** Format: date-time */
               createdAt: string;
             };
@@ -3193,6 +3213,7 @@ export interface operations {
               revokedAt: string | null;
               revokedBy: string | null;
               revocationReason: string | null;
+              version: number;
               /** Format: date-time */
               createdAt: string;
             };
@@ -3222,6 +3243,7 @@ export interface operations {
       content: {
         "application/json": {
           reason: string;
+          version: number;
         };
       };
     };
@@ -3276,6 +3298,7 @@ export interface operations {
               revokedAt: string | null;
               revokedBy: string | null;
               revocationReason: string | null;
+              version: number;
               /** Format: date-time */
               createdAt: string;
             };
@@ -3295,6 +3318,7 @@ export interface operations {
       query?: {
         chapterId?: string;
         jobId?: string;
+        cursor?: string;
         limit?: string;
       };
       header?: never;
@@ -3490,6 +3514,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -3503,6 +3528,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -3597,9 +3623,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -3803,6 +3828,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -3816,6 +3842,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -4016,7 +4043,10 @@ export interface operations {
   };
   CanonController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: unknown;
+        cursor?: unknown;
+      };
       header?: never;
       path: {
         workId: string;
@@ -4091,9 +4121,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -7768,6 +7797,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -7781,6 +7811,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -8302,6 +8333,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -8315,6 +8347,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -8665,6 +8698,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -8678,6 +8712,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -9028,6 +9063,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -9041,6 +9077,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -9391,6 +9428,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -9404,6 +9442,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -9763,6 +9802,7 @@ export interface operations {
                     | "FACT_DECISION_REQUIRED"
                     | "FACT_SUBMISSION_BLOCKED"
                     | "CANON_CHAPTER_NOT_APPROVED"
+                    | "CANON_IDEMPOTENCY_CONFLICT"
                     | "IMPORT_CONFLICT_UNRESOLVED"
                     | "OUTLINE_STRUCTURE_INVALID"
                     | "OUTLINE_NODE_LOCKED"
@@ -9776,6 +9816,7 @@ export interface operations {
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
+                    | "GOLDEN_THREE_CHAPTERS_EMPTY"
                     | "LEDGER_TRANSITION_INVALID"
                     | "LEDGER_SOURCE_REQUIRED"
                     | "LEDGER_EVIDENCE_REQUIRED"
@@ -10266,6 +10307,214 @@ export interface operations {
     };
     responses: {
       /** @description Golden three candidate workspace */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              candidates: {
+                id: string;
+                batchId: string;
+                workId: string;
+                branchId: string;
+                label: string;
+                /** @enum {string} */
+                strategy: "hook_focus" | "character_focus" | "world_focus";
+                /** @enum {string} */
+                status: "draft" | "reviewed" | "selected" | "locked";
+                version: number;
+                prompt: {
+                  key: string;
+                  version: number;
+                  hash: string;
+                };
+                model: {
+                  provider: string;
+                  model: string;
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                context: {
+                  packVersionId: string | null;
+                  manifestHash: string;
+                };
+                pins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                reviews: {
+                  /** @enum {string} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook";
+                  score: number;
+                  evidence: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    passage: string;
+                    locator: string;
+                  };
+                  /** @enum {string} */
+                  reviewerOrigin: "model" | "author" | "critic";
+                  id: string;
+                  candidateId: string;
+                  required: boolean;
+                  passed: boolean;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                }[];
+                reviewSummary: {
+                  completed: number;
+                  /** @enum {number} */
+                  total: 6;
+                  requiredFailed: number;
+                  failedDimensions: (
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                  )[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              selectedCandidateId: string | null;
+              lock: {
+                id: string;
+                workId: string;
+                branchId: string;
+                candidateId: string;
+                versionNodeId: string;
+                styleBaselineId: string;
+                chapterPins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                override: {
+                  /** @enum {string} */
+                  policy: "author_override_v1";
+                  rationale: string;
+                } | null;
+                lockedBy: string;
+                /** Format: date-time */
+                lockedAt: string;
+              } | null;
+              styleBaseline: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                sourceType: "golden_three";
+                sourceId: string;
+                version: number;
+                versionNodeId: string;
+                profile: {
+                  /** @enum {string} */
+                  strategy: "hook_focus" | "character_focus" | "world_focus";
+                  candidateLabel: string;
+                  excerpts: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              gate: {
+                candidateId: string | null;
+                canLock: boolean;
+                blockers: {
+                  /** @enum {string} */
+                  code:
+                    | "NO_CANDIDATES"
+                    | "NO_SELECTION"
+                    | "REVIEW_INCOMPLETE"
+                    | "REQUIRED_DIMENSION_FAILED"
+                    | "CANDIDATE_LOCKED";
+                  message: string;
+                  /** @enum {string|null} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                    | null;
+                }[];
+                failedDimensions: (
+                  | "opening_hook"
+                  | "protagonist_appeal"
+                  | "world_rules"
+                  | "core_conflict"
+                  | "reader_promise"
+                  | "chapter_end_hook"
+                )[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GoldenThreeController_generateCandidates: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @default 3 */
+          candidateCount?: 2 | 3;
+        };
+      };
+    };
+    responses: {
+      /** @description Generated golden three candidates with reviews */
       201: {
         headers: {
           [name: string]: unknown;
@@ -15448,7 +15697,9 @@ export interface operations {
   QualityController_verify: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
       path: {
         workId: string;
         branchId: string;
@@ -15645,6 +15896,9 @@ export interface operations {
               gate: {
                 canApprove: boolean;
                 canCommitCanon: boolean;
+                /** @enum {string} */
+                reportState: "fresh" | "missing" | "stale";
+                reportId: string | null;
                 blockers: {
                   findingId: string;
                   /** @enum {string} */
@@ -15869,6 +16123,9 @@ export interface operations {
               gate: {
                 canApprove: boolean;
                 canCommitCanon: boolean;
+                /** @enum {string} */
+                reportState: "fresh" | "missing" | "stale";
+                reportId: string | null;
                 blockers: {
                   findingId: string;
                   /** @enum {string} */
@@ -16229,7 +16486,9 @@ export interface operations {
   VolumeAuditController_run: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
       path: {
         workId: string;
         branchId: string;
@@ -16403,7 +16662,9 @@ export interface operations {
   VolumeAuditController_signoff: {
     parameters: {
       query?: never;
-      header?: never;
+      header?: {
+        "If-Match"?: string;
+      };
       path: {
         workId: string;
         branchId: string;
@@ -18649,6 +18910,20 @@ export interface operations {
                 /** @default null */
                 confidence: number | null;
               }[];
+              impact: {
+                chapterCount: number;
+                settingRefCount: number;
+                versionRefCount: number;
+                total: number;
+                hasImpact: boolean;
+                message: string;
+                resources: {
+                  /** @enum {string} */
+                  type: "chapter" | "setting" | "version_node";
+                  id: string;
+                  label: string;
+                }[];
+              };
               createdBy: string;
               /** Format: date-time */
               createdAt: string;
@@ -18883,6 +19158,20 @@ export interface operations {
                 /** @default null */
                 confidence: number | null;
               }[];
+              impact: {
+                chapterCount: number;
+                settingRefCount: number;
+                versionRefCount: number;
+                total: number;
+                hasImpact: boolean;
+                message: string;
+                resources: {
+                  /** @enum {string} */
+                  type: "chapter" | "setting" | "version_node";
+                  id: string;
+                  label: string;
+                }[];
+              };
               createdBy: string;
               /** Format: date-time */
               createdAt: string;
@@ -21032,7 +21321,9 @@ export interface operations {
   StoryLedgerController_create: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
       path: {
         workId: string;
         branchId: string;
@@ -25477,7 +25768,9 @@ export interface operations {
   StyleController_createProfile: {
     parameters: {
       query?: never;
-      header?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
       path: {
         workId: string;
         branchId: string;
@@ -25923,6 +26216,7 @@ export interface operations {
                     | "FACT_DECISION_REQUIRED"
                     | "FACT_SUBMISSION_BLOCKED"
                     | "CANON_CHAPTER_NOT_APPROVED"
+                    | "CANON_IDEMPOTENCY_CONFLICT"
                     | "IMPORT_CONFLICT_UNRESOLVED"
                     | "OUTLINE_STRUCTURE_INVALID"
                     | "OUTLINE_NODE_LOCKED"
@@ -25936,6 +26230,7 @@ export interface operations {
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
+                    | "GOLDEN_THREE_CHAPTERS_EMPTY"
                     | "LEDGER_TRANSITION_INVALID"
                     | "LEDGER_SOURCE_REQUIRED"
                     | "LEDGER_EVIDENCE_REQUIRED"
@@ -26115,6 +26410,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -26128,6 +26424,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -26283,6 +26580,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -26296,6 +26594,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -35595,7 +35894,10 @@ export interface operations {
   };
   WritingActionController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: unknown;
+        cursor?: unknown;
+      };
       header?: never;
       path: {
         workId: string;
@@ -36051,6 +36353,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -36064,6 +36367,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -36110,9 +36414,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -36801,6 +37104,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -36814,6 +37118,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -37327,6 +37632,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -37340,6 +37646,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -37853,6 +38160,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -37866,6 +38174,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -38379,6 +38688,7 @@ export interface operations {
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
+                  | "CANON_IDEMPOTENCY_CONFLICT"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "OUTLINE_STRUCTURE_INVALID"
                   | "OUTLINE_NODE_LOCKED"
@@ -38392,6 +38702,7 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "GOLDEN_THREE_CHAPTERS_EMPTY"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -38472,7 +38783,10 @@ export interface operations {
   };
   RevisionController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        limit?: unknown;
+        cursor?: unknown;
+      };
       header?: never;
       path: {
         workId: string;
@@ -38662,9 +38976,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };

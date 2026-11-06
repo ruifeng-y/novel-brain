@@ -23,7 +23,11 @@ export async function createStyleChapter(
   const token = await getCsrf(page.request);
   const base = styleBranchPath(work);
   const created = await page.request.post(`${base}/chapters`, {
-    headers: { Origin: origin, "X-CSRF-Token": token },
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
     data: {
       number,
       title,

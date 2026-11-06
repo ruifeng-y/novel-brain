@@ -3054,6 +3054,50 @@ a:focus-visible {
   margin-top: 10px;
 }
 
+.settings-change-impact {
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.settings-change-impact.is-empty {
+  background: var(--paper-2);
+}
+
+.settings-change-impact strong {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.settings-change-impact p {
+  margin: 0;
+}
+
+.settings-change-impact ul {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11px;
+}
+
+.settings-change-impact li {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.settings-change-impact li span {
+  flex: none;
+  color: var(--muted);
+}
+
 @media (max-width: 1180px) {
   .settings-workspace-grid {
     grid-template-columns: 210px minmax(0, 1fr);

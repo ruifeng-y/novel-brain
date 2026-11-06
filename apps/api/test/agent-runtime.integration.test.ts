@@ -91,6 +91,7 @@ describe("agent runtime HTTP integration", () => {
       .post(`${branchPath}/agent-grants`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send(request)
       .expect(201);
     const grant = agentGrantResponseSchema.parse(created.body).data;
@@ -114,6 +115,7 @@ describe("agent runtime HTTP integration", () => {
       .post(`${branchPath}/agent-grants`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({ ...request, issuedBy: grant.issuedBy })
       .expect(400);
     expect(rejectedUnknown.body.error.code).toBe("VALIDATION_INVALID");
@@ -122,6 +124,7 @@ describe("agent runtime HTTP integration", () => {
       .post(`${branchPath}/agent-grants`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({ ...request, role: "critic" })
       .expect(400);
     expect(rejectedEscalation.body.error.code).toBe("AGENT_GRANT_INVALID");
@@ -130,6 +133,7 @@ describe("agent runtime HTTP integration", () => {
       .post(`${branchPath}/agent-grants`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({ ...request, tools: ["grant.issue"] })
       .expect(400);
     expect(rejectedTool.body.error.code).toBe("AGENT_GRANT_INVALID");
@@ -150,7 +154,7 @@ describe("agent runtime HTTP integration", () => {
           .post(`${branchPath}/agent-grants/${grant.id}/revoke`)
           .set("Origin", origin)
           .set("X-CSRF-Token", otherToken)
-          .send({ reason: "越权撤销" })
+          .send({ reason: "越权撤销", version: grant.version })
           .expect(403)
       ).body.error.code,
     ).toBe("FORBIDDEN_TENANT_ACCESS");
@@ -159,7 +163,7 @@ describe("agent runtime HTTP integration", () => {
       .post(`${branchPath}/agent-grants/${grant.id}/revoke`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
-      .send({ reason: "作者取消本次生成" })
+      .send({ reason: "作者取消本次生成", version: grant.version })
       .expect(200);
     const revokedGrant = agentGrantResponseSchema.parse(revoked.body).data;
     expect(revokedGrant).toMatchObject({
@@ -268,7 +272,7 @@ describe("agent runtime HTTP integration", () => {
         .post(`${branchPath}/agent-grants/${grant.id}/revoke`)
         .set("Origin", origin)
         .set("X-CSRF-Token", token)
-        .send({ reason: "运行中撤销" })
+        .send({ reason: "运行中撤销", version: grant.version })
         .expect(200);
 
       await expect(
@@ -498,6 +502,7 @@ describe("agent runtime HTTP integration", () => {
       .post(`${branchPath}/agent-grants`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send(body)
       .expect(201);
     return agentGrantResponseSchema.parse(response.body).data;

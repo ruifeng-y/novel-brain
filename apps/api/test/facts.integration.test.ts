@@ -3,6 +3,7 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  canonCommitListResponseSchema,
   chapterWorkspaceResponseSchema,
   confirmedSettingListResponseSchema,
   contextPackPreviewResponseSchema,
@@ -366,6 +367,7 @@ describe("fact proposal HTTP integration", () => {
       (await owner.get(`${branchPath}/facts`).expect(200)).body,
     ).data;
 
+    await verifyQuality(owner, token, branchPath, chapter.id, waitingChapter.currentVersionId);
     const approved = await owner
       .post(`${branchPath}/chapters/${chapter.id}/review`)
       .set("Origin", origin)
@@ -438,6 +440,7 @@ describe("fact proposal HTTP integration", () => {
       details: { chapterStatus: "waiting_review" },
     });
 
+    await verifyQuality(owner, token, branchPath, chapter.id, waitingChapter.currentVersionId);
     await owner
       .post(`${branchPath}/chapters/${chapter.id}/review`)
       .set("Origin", origin)
@@ -507,6 +510,7 @@ describe("fact proposal HTTP integration", () => {
     const proposalsBeforeSubmission = factProposalListResponseSchema.parse(
       (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
     ).data;
+    await verifyQuality(owner, token, branchPath, chapter.id, waitingChapter.currentVersionId);
     const approved = await owner
       .post(`${branchPath}/chapters/${chapter.id}/review`)
       .set("Origin", origin)
@@ -557,6 +561,52 @@ describe("fact proposal HTTP integration", () => {
     expect(commit.decisions.map((decision) => decision.proposalId)).toEqual(
       expect.arrayContaining(requiredProposals.map((proposal) => proposal.id)),
     );
+    const commitsPage = canonCommitListResponseSchema.parse(
+      (await owner.get(`${branchPath}/canon/commits?limit=1`).expect(200)).body,
+    );
+    expect(commitsPage.data).toHaveLength(1);
+    expect(commitsPage.meta).toHaveProperty("nextCursor");
+    const replay = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success")
+      .send(submissionBody)
+      .expect(200);
+    expect((replay.body.data as { id: string }).id).toBe(commit.id);
+    const conflictingKey = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success-second-key")
+      .send(submissionBody)
+      .expect(409);
+    expect(conflictingKey.body.error.code).toBe("CANON_IDEMPOTENCY_CONFLICT");
+    await databasePool.query("UPDATE chapters SET status = 'writing' WHERE id = $1", [chapter.id]);
+    const nextVersion = await saveChapterVersion(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      `${generatedContent}\n\n新的段落。`,
+      approved.body.data.chapter.version,
+    );
+    const versionConflict = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success-new-version")
+      .send({ chapterVersionId: nextVersion.id })
+      .expect(409);
+    expect(versionConflict.body.error.code).toBe("VERSION_CONFLICT");
+    await databasePool.query(
+      "UPDATE chapters SET status = 'approved', current_version_id = $2 WHERE id = $1",
+      [chapter.id, waitingChapter.currentVersionId],
+    );
+    await databasePool.query("UPDATE work_branches SET head_node_id = $2 WHERE id = $1", [
+      work.mainBranch.id,
+      commit.versionNodeId,
+    ]);
     expect(
       factProposalListResponseSchema.parse(
         (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
@@ -1027,6 +1077,22 @@ describe("fact proposal HTTP integration", () => {
         purposes: ["writing"],
         isDefault: true,
       })
+      .expect(200);
+  }
+
+  async function verifyQuality(
+    agent: SuperAgentTest,
+    token: string,
+    branchPath: string,
+    chapterId: string,
+    chapterVersionId: string,
+  ): Promise<void> {
+    await agent
+      .post(`${branchPath}/chapters/${chapterId}/verify`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
+      .send({ chapterVersionId })
       .expect(200);
   }
 

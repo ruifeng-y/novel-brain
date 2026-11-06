@@ -22,9 +22,22 @@ export class QualityService {
     branchId: string,
     chapterId: string,
     input: CriticVerifyRequest,
+    idempotencyKey: string,
     audit: WorksAuditContext,
   ): Promise<QualityWorkspace> {
-    const result = await this.repository.verify(userId, workId, branchId, chapterId, input, audit);
+    const normalizedKey = idempotencyKey.trim();
+    if (!normalizedKey || normalizedKey.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");
+    }
+    const result = await this.repository.verify(
+      userId,
+      workId,
+      branchId,
+      chapterId,
+      input,
+      normalizedKey,
+      audit,
+    );
     if (result.kind === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "章节不存在或无权访问");
     }

@@ -29,9 +29,21 @@ export class VolumeAuditService {
     workId: string,
     branchId: string,
     input: VolumeAuditRunRequest,
+    idempotencyKey: string,
     audit: WorksAuditContext,
   ): Promise<VolumeAuditReport> {
-    const result = await this.repository.run(userId, workId, branchId, input.volumeNodeId, audit);
+    const normalizedKey = idempotencyKey.trim();
+    if (!normalizedKey || normalizedKey.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");
+    }
+    const result = await this.repository.run(
+      userId,
+      workId,
+      branchId,
+      input.volumeNodeId,
+      normalizedKey,
+      audit,
+    );
     switch (result.kind) {
       case "not_found":
         throw tenantError();

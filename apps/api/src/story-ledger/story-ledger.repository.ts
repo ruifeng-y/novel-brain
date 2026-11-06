@@ -6,8 +6,10 @@ import {
   createDatabaseClient,
   createDatabasePool,
   entities,
+  findIdempotentResource,
   foreshadows,
   plotThreads,
+  rememberIdempotentResource,
   timelineEvents,
   versionNodes,
   workBranches,
@@ -134,10 +136,48 @@ export class StoryLedgerRepository implements OnModuleDestroy {
     userId: string,
     context: StoryLedgerWorkContext,
     input: StoryLedgerEntryCreateRequest,
+    idempotencyKey: string,
     audit: StoryLedgerAuditContext,
   ): Promise<StoryLedgerWriteResult<StoryLedgerMutationRecord>> {
     return this.withTenant(userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
+      const existing = await findIdempotentResource(
+        transaction,
+        userId,
+        "story-ledger-create",
+        idempotencyKey,
+      );
+      if (existing) {
+        const ledger = await this.loadLedger(transaction, userId, context);
+        const entry = ledger.entries.find((candidate) => candidate.id === existing.resourceId);
+        if (entry) {
+          const [node] = await transaction
+            .select({ id: versionNodes.id })
+            .from(versionNodes)
+            .where(
+              and(
+                eq(versionNodes.objectId, entry.id),
+                sql`${versionNodes.payload}->>'action' = 'ledger.entry_created'`,
+              ),
+            )
+            .orderBy(asc(versionNodes.createdAt))
+            .limit(1);
+          const [auditRow] = await transaction
+            .select({ id: auditLogs.id })
+            .from(auditLogs)
+            .where(
+              and(eq(auditLogs.targetId, entry.id), eq(auditLogs.action, "ledger.entry_created")),
+            )
+            .orderBy(asc(auditLogs.createdAt))
+            .limit(1);
+          if (node && auditRow) {
+            return {
+              kind: "ok",
+              value: { entry, versionNodeId: node.id, auditId: auditRow.id },
+            };
+          }
+        }
+      }
       const parentNodeId = await requireBranchHead(transaction, userId, context);
       const maps = await loadReferenceMaps(transaction, userId, context, {
         chapterIds: compact([input.sourceChapterId]),
@@ -254,6 +294,10 @@ export class StoryLedgerRepository implements OnModuleDestroy {
       if (!entry) {
         throw new Error("Created ledger entry could not be read");
       }
+      await rememberIdempotentResource(transaction, userId, "story-ledger-create", idempotencyKey, {
+        resourceType: "story_ledger_entry",
+        resourceId: entry.id,
+      });
       return { kind: "ok", value: { entry, versionNodeId, auditId } };
     });
   }

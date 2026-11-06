@@ -1708,6 +1708,7 @@ export function ForeshadowsWorkspace({ workId }: { workId: string }) {
       method,
       headers: {
         "content-type": "application/json",
+        ...(method === "POST" ? { "idempotency-key": crypto.randomUUID() } : {}),
         "x-csrf-token": await getCsrfToken(),
       },
       body: JSON.stringify(body),
