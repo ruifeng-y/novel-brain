@@ -228,6 +228,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/agent-runs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AgentTraceController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/agent-runs/{runId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AgentTraceController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
     parameters: {
       query?: never;
@@ -2334,6 +2366,527 @@ export interface operations {
               revocationReason: string | null;
               /** Format: date-time */
               createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentTraceController_list: {
+    parameters: {
+      query?: {
+        chapterId?: string;
+        jobId?: string;
+        limit?: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tenant-scoped run traces */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              run: {
+                id: string;
+                jobId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string | null;
+                stepKey: string;
+                /** @enum {string} */
+                role:
+                  | "planner"
+                  | "context_curator"
+                  | "writer"
+                  | "critic"
+                  | "reviser"
+                  | "fact_extractor"
+                  | "canon_curator";
+                /** @enum {string} */
+                status: "running" | "succeeded" | "failed";
+                /** @enum {string|null} */
+                failureClass:
+                  | "provider"
+                  | "timeout"
+                  | "rate_limit"
+                  | "schema"
+                  | "policy"
+                  | "budget"
+                  | "cancelled"
+                  | "unknown"
+                  | null;
+                escalationReason: string | null;
+                inputHash: string;
+                outputHash: string | null;
+                inputTokens: number;
+                outputTokens: number;
+                costCny: number;
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              };
+              replay: {
+                modelConfigId: string | null;
+                provider: string;
+                model: string;
+                parameters: {
+                  [key: string]: unknown;
+                };
+                configHash: string;
+                promptVersion: {
+                  id: string;
+                  key: string;
+                  version: number;
+                  promptHash: string;
+                  systemHash: string;
+                  inputHash: string;
+                };
+              } | null;
+              promptVersions: {
+                id: string;
+                jobId: string;
+                stepKey: string;
+                key: string;
+                version: number;
+                /** @enum {string} */
+                role:
+                  | "planner"
+                  | "context_curator"
+                  | "writer"
+                  | "critic"
+                  | "reviser"
+                  | "fact_extractor"
+                  | "canon_curator";
+                promptHash: string;
+                systemHash: string;
+                inputHash: string;
+                contextPackId: string | null;
+                compilerVersion: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              modelCalls: {
+                id: string;
+                agentRunId: string;
+                promptVersionId: string;
+                costReservationId: string;
+                stepKey: string;
+                attempt: number;
+                /** @enum {string} */
+                status: "started" | "succeeded" | "failed";
+                provider: string;
+                model: string;
+                parameters: {
+                  [key: string]: unknown;
+                };
+                configHash: string;
+                inputHash: string;
+                outputHash: string | null;
+                inputTokens: number;
+                outputTokens: number;
+                costCny: number;
+                /** @enum {string|null} */
+                failureClass:
+                  | "provider"
+                  | "timeout"
+                  | "rate_limit"
+                  | "schema"
+                  | "policy"
+                  | "budget"
+                  | "cancelled"
+                  | "unknown"
+                  | null;
+                /** @enum {string|null} */
+                errorCode:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR"
+                  | null;
+                escalationReason: string | null;
+                providerRequestId: string | null;
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              toolCalls: {
+                id: string;
+                toolName: string;
+                /** @enum {string|null} */
+                sideEffect: "S0" | "S1" | "S2" | "S3" | "S4" | null;
+                /** @enum {string} */
+                decision: "allow" | "deny";
+                /** @enum {string} */
+                status: "authorized" | "denied" | "succeeded" | "failed";
+                reason: string;
+                inputHash: string;
+                inputSummary: {
+                  [key: string]: unknown;
+                };
+                outputSummary: {
+                  [key: string]: unknown;
+                } | null;
+                estimatedCostCny: number;
+                estimatedTokens: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              costReservations: {
+                id: string;
+                /** @enum {string} */
+                status: "reserved" | "settled" | "released";
+                reservedTokens: number;
+                reservedCostCny: number;
+                settledTokens: number;
+                settledCostCny: number;
+                /** @enum {string|null} */
+                failureClass:
+                  | "provider"
+                  | "timeout"
+                  | "rate_limit"
+                  | "schema"
+                  | "policy"
+                  | "budget"
+                  | "cancelled"
+                  | "unknown"
+                  | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                settledAt: string | null;
+              }[];
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentTraceController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Run trace with replay metadata */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              run: {
+                id: string;
+                jobId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string | null;
+                stepKey: string;
+                /** @enum {string} */
+                role:
+                  | "planner"
+                  | "context_curator"
+                  | "writer"
+                  | "critic"
+                  | "reviser"
+                  | "fact_extractor"
+                  | "canon_curator";
+                /** @enum {string} */
+                status: "running" | "succeeded" | "failed";
+                /** @enum {string|null} */
+                failureClass:
+                  | "provider"
+                  | "timeout"
+                  | "rate_limit"
+                  | "schema"
+                  | "policy"
+                  | "budget"
+                  | "cancelled"
+                  | "unknown"
+                  | null;
+                escalationReason: string | null;
+                inputHash: string;
+                outputHash: string | null;
+                inputTokens: number;
+                outputTokens: number;
+                costCny: number;
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              };
+              replay: {
+                modelConfigId: string | null;
+                provider: string;
+                model: string;
+                parameters: {
+                  [key: string]: unknown;
+                };
+                configHash: string;
+                promptVersion: {
+                  id: string;
+                  key: string;
+                  version: number;
+                  promptHash: string;
+                  systemHash: string;
+                  inputHash: string;
+                };
+              } | null;
+              promptVersions: {
+                id: string;
+                jobId: string;
+                stepKey: string;
+                key: string;
+                version: number;
+                /** @enum {string} */
+                role:
+                  | "planner"
+                  | "context_curator"
+                  | "writer"
+                  | "critic"
+                  | "reviser"
+                  | "fact_extractor"
+                  | "canon_curator";
+                promptHash: string;
+                systemHash: string;
+                inputHash: string;
+                contextPackId: string | null;
+                compilerVersion: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              modelCalls: {
+                id: string;
+                agentRunId: string;
+                promptVersionId: string;
+                costReservationId: string;
+                stepKey: string;
+                attempt: number;
+                /** @enum {string} */
+                status: "started" | "succeeded" | "failed";
+                provider: string;
+                model: string;
+                parameters: {
+                  [key: string]: unknown;
+                };
+                configHash: string;
+                inputHash: string;
+                outputHash: string | null;
+                inputTokens: number;
+                outputTokens: number;
+                costCny: number;
+                /** @enum {string|null} */
+                failureClass:
+                  | "provider"
+                  | "timeout"
+                  | "rate_limit"
+                  | "schema"
+                  | "policy"
+                  | "budget"
+                  | "cancelled"
+                  | "unknown"
+                  | null;
+                /** @enum {string|null} */
+                errorCode:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CANCELLED"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR"
+                  | null;
+                escalationReason: string | null;
+                providerRequestId: string | null;
+                /** Format: date-time */
+                startedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              toolCalls: {
+                id: string;
+                toolName: string;
+                /** @enum {string|null} */
+                sideEffect: "S0" | "S1" | "S2" | "S3" | "S4" | null;
+                /** @enum {string} */
+                decision: "allow" | "deny";
+                /** @enum {string} */
+                status: "authorized" | "denied" | "succeeded" | "failed";
+                reason: string;
+                inputHash: string;
+                inputSummary: {
+                  [key: string]: unknown;
+                };
+                outputSummary: {
+                  [key: string]: unknown;
+                } | null;
+                estimatedCostCny: number;
+                estimatedTokens: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              costReservations: {
+                id: string;
+                /** @enum {string} */
+                status: "reserved" | "settled" | "released";
+                reservedTokens: number;
+                reservedCostCny: number;
+                settledTokens: number;
+                settledCostCny: number;
+                /** @enum {string|null} */
+                failureClass:
+                  | "provider"
+                  | "timeout"
+                  | "rate_limit"
+                  | "schema"
+                  | "policy"
+                  | "budget"
+                  | "cancelled"
+                  | "unknown"
+                  | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                settledAt: string | null;
+              }[];
             };
             /** Format: starts_with */
             requestId: string;
@@ -5988,6 +6541,8 @@ export interface operations {
                   | "MODEL_CONNECTION_FAILED"
                   | "MODEL_RATE_LIMITED"
                   | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
@@ -6249,6 +6804,8 @@ export interface operations {
                   | "MODEL_CONNECTION_FAILED"
                   | "MODEL_RATE_LIMITED"
                   | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
@@ -6440,6 +6997,8 @@ export interface operations {
                   | "MODEL_CONNECTION_FAILED"
                   | "MODEL_RATE_LIMITED"
                   | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
@@ -6631,6 +7190,8 @@ export interface operations {
                   | "MODEL_CONNECTION_FAILED"
                   | "MODEL_RATE_LIMITED"
                   | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"
@@ -6822,6 +7383,8 @@ export interface operations {
                   | "MODEL_CONNECTION_FAILED"
                   | "MODEL_RATE_LIMITED"
                   | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
                   | "MODEL_PROVIDER_ERROR"
                   | "BIBLE_NOT_READY"
                   | "BIBLE_LOCKED"

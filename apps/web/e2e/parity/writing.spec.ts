@@ -335,6 +335,9 @@ test("generates a chapter with progress, references, citations, cost and checkpo
     await expect(generationPanel.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
     await expect(generationPanel.getByText("断点")).toBeVisible();
     await expect(generationPanel.getByText("费用")).toBeVisible();
+    await expect(generationPanel.getByText("生成记录")).toBeVisible();
+    await expect(generationPanel.locator(".writing-run-trace-item")).toHaveCount(3);
+    await expect(generationPanel.getByText(/用量 /).first()).toBeVisible();
     await expect(generationPanel.getByText("已锁定故事圣经")).toBeVisible();
     await expect(generationPanel.locator(".writing-source-item").first()).toContainText("第 1 章");
     await expect(page.getByRole("textbox", { name: "章节正文" })).toHaveValue(/修订稿/);
@@ -488,6 +491,8 @@ test("keeps the draft checkpoint after provider failure and resumes from revise"
     });
     await expect(generationPanel.getByText("模型服务暂时不可用，草稿和检查点已保留")).toBeVisible();
     await expect(generationPanel.getByText("MODEL_PROVIDER_ERROR")).toBeVisible();
+    await expect(generationPanel.getByText(/模型服务异常/).first()).toBeVisible();
+    await expect(generationPanel.getByText("模型服务异常，请稍后从断点重试")).toBeVisible();
     await expect(generationPanel.getByRole("button", { name: "从断点重试" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "章节正文" })).toHaveValue(/生成草稿/);
   } finally {

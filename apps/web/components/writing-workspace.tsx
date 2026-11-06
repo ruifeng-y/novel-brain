@@ -23,6 +23,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  agentRunTraceListResponseSchema,
   apiErrorSchema,
   canonCommitListResponseSchema,
   canonCommitResponseSchema,
@@ -42,6 +43,7 @@ import {
   type ChapterVersion,
   type ChapterWorkspace,
   type FactProposal,
+  type AgentRunTrace,
   type GenerationJob,
   type WorkOverview,
 } from "@novel-brain/contracts";
@@ -68,6 +70,17 @@ const generationStatusLabels: Record<GenerationJob["status"], string> = {
   completed: "已完成",
   failed: "生成失败",
   cancelled: "已取消",
+};
+
+const failureClassLabels: Record<NonNullable<AgentRunTrace["run"]["failureClass"]>, string> = {
+  provider: "模型服务异常",
+  timeout: "模型响应超时",
+  rate_limit: "模型服务限流",
+  schema: "模型返回格式异常",
+  policy: "模型拒绝请求",
+  budget: "本章预算不足",
+  cancelled: "生成已取消",
+  unknown: "未知异常",
 };
 
 const factStatusLabels: Record<FactProposal["status"], string> = {
@@ -121,6 +134,7 @@ export function WritingWorkspace({
   const [leftVersionId, setLeftVersionId] = useState<string>("");
   const [rightVersionId, setRightVersionId] = useState<string>("");
   const [generationJob, setGenerationJob] = useState<GenerationJob | null>(null);
+  const [runTraces, setRunTraces] = useState<AgentRunTrace[]>([]);
   const [generationBusy, setGenerationBusy] = useState(false);
   const [factProposals, setFactProposals] = useState<FactProposal[]>([]);
   const [factsLoading, setFactsLoading] = useState(false);
@@ -169,6 +183,7 @@ export function WritingWorkspace({
       } else {
         setVersions([]);
         setGenerationJob(null);
+        setRunTraces([]);
         setFactProposals([]);
         setCanonCommit(null);
       }
@@ -233,6 +248,9 @@ export function WritingWorkspace({
   );
   const comparisonLeft = versions.find((version) => version.id === leftVersionId);
   const comparisonRight = versions.find((version) => version.id === rightVersionId);
+  const traceCalls = runTraces.flatMap((trace) => trace.modelCalls);
+  const traceCost = traceCalls.reduce((sum, call) => sum + call.costCny, 0);
+  const failedTrace = runTraces.find((trace) => trace.run.status === "failed");
 
   async function selectChapter(chapter: ChapterWorkspace) {
     setSelectedId(chapter.id);
@@ -244,6 +262,7 @@ export function WritingWorkspace({
       try {
         await Promise.all([
           loadVersions(work, chapter.id),
+          loadGenerationJob(work, chapter.id),
           loadFactProposals(work, chapter.id),
           loadCanonCommit(work, chapter.id),
         ]);
@@ -293,11 +312,27 @@ export function WritingWorkspace({
     const jobs = generationJobListResponseSchema.parse(await response.json()).data;
     const latest = jobs[0] ?? null;
     setGenerationJob(latest);
+    if (latest) {
+      await loadRunTraces(workData, latest.id);
+    } else {
+      setRunTraces([]);
+    }
     if (latest && isActiveGeneration(latest.status)) {
       watchGeneration(workData, latest.id);
     } else {
       closeGenerationStream();
     }
+  }
+
+  async function loadRunTraces(workData: WorkOverview, jobId: string) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/agent-runs?jobId=${jobId}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      return;
+    }
+    setRunTraces(agentRunTraceListResponseSchema.parse(await response.json()).data);
   }
 
   async function loadFactProposals(workData: WorkOverview, chapterId: string) {
@@ -456,6 +491,7 @@ export function WritingWorkspace({
     }
     const job = generationJobResponseSchema.parse(await response.json()).data;
     setGenerationJob(job);
+    await loadRunTraces(workData, job.id);
     if (!isActiveGeneration(job.status)) {
       closeGenerationStream();
       const chapterResponse = await fetch(
@@ -929,8 +965,43 @@ export function WritingWorkspace({
                     <TriangleAlert size={15} aria-hidden="true" />
                     <div>
                       <strong>{generationJob.error.message}</strong>
-                      <small>{generationJob.error.code}</small>
+                      <small>
+                        {failedTrace?.run.failureClass
+                          ? `${failureClassLabels[failedTrace.run.failureClass]} · `
+                          : ""}
+                        {generationJob.error.code}
+                      </small>
                     </div>
+                  </div>
+                ) : null}
+                {traceCalls.length > 0 ? (
+                  <div className="writing-run-trace" aria-label="生成记录">
+                    <div className="writing-run-trace-head">
+                      <span>
+                        <Coins size={14} aria-hidden="true" />
+                        生成记录
+                      </span>
+                      <strong>
+                        {traceCalls.length} 次调用 · {formatCost(traceCost)}
+                      </strong>
+                    </div>
+                    <div className="writing-run-trace-list">
+                      {runTraces.map((trace) =>
+                        trace.modelCalls.map((call) => (
+                          <div className="writing-run-trace-item" key={call.id}>
+                            <span>{traceStepLabel(call.stepKey)}</span>
+                            <small>
+                              {call.model} · 用量{" "}
+                              {(call.inputTokens + call.outputTokens).toLocaleString("zh-CN")} ·{" "}
+                              {formatCost(call.costCny)}
+                            </small>
+                          </div>
+                        )),
+                      )}
+                    </div>
+                    {failedTrace?.run.escalationReason ? (
+                      <p className="writing-run-trace-note">{failedTrace.run.escalationReason}</p>
+                    ) : null}
                   </div>
                 ) : null}
                 {generationJob.status === "failed" ? (
@@ -1351,6 +1422,15 @@ function generationStepLabel(step: GenerationJob["currentStep"]): string {
     await_review: "等待审阅",
   };
   return labels[step];
+}
+
+function traceStepLabel(step: string): string {
+  const labels: Record<string, string> = {
+    draft: "起草",
+    verify: "检查",
+    revise: "修订",
+  };
+  return labels[step] ?? step;
 }
 
 function formatCost(value: number): string {

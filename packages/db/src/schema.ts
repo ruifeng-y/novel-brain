@@ -2107,6 +2107,55 @@ export const contextPackVersions = pgTable(
   ],
 );
 
+export const promptVersions = pgTable(
+  "prompt_versions",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stepKey: text("step_key").notNull(),
+    key: text("key").notNull(),
+    version: integer("version").notNull(),
+    role: text("role").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    systemHash: text("system_hash").notNull(),
+    inputHash: text("input_hash").notNull(),
+    contextPackId: uuid("context_pack_id").references(() => contextPackVersions.id, {
+      onDelete: "set null",
+    }),
+    compilerVersion: text("compiler_version"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("prompt_versions_job_step_hash_unique").on(
+      table.jobId,
+      table.stepKey,
+      table.key,
+      table.promptHash,
+    ),
+    index("prompt_versions_user_work_idx").on(table.userId, table.workId),
+    index("prompt_versions_job_created_idx").on(table.jobId, table.createdAt),
+    check(
+      "prompt_versions_role_check",
+      sql`${table.role} in ('planner', 'context_curator', 'writer', 'critic', 'reviser', 'fact_extractor', 'canon_curator')`,
+    ),
+    check("prompt_versions_version_check", sql`${table.version} > 0`),
+  ],
+);
+
 export const agentRuns = pgTable(
   "agent_runs",
   {
@@ -2123,19 +2172,165 @@ export const agentRuns = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    promptVersionId: uuid("prompt_version_id").references(() => promptVersions.id, {
+      onDelete: "set null",
+    }),
+    modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
+      onDelete: "set null",
+    }),
     stepKey: text("step_key").notNull(),
     role: text("role").notNull(),
     status: text("status").notNull(),
+    provider: text("provider"),
+    model: text("model"),
     inputHash: text("input_hash").notNull(),
+    outputHash: text("output_hash"),
     output: text("output").notNull().default(""),
+    inputSummary: jsonb("input_summary").$type<Record<string, unknown>>().notNull().default({}),
+    outputSummary: jsonb("output_summary").$type<Record<string, unknown>>().notNull().default({}),
     citations: jsonb("citations").$type<unknown[]>().notNull().default([]),
     usage: jsonb("usage").$type<Record<string, unknown>>().notNull().default({}),
+    failureClass: text("failure_class"),
+    escalationReason: text("escalation_reason"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
     uniqueIndex("agent_runs_job_step_unique").on(table.jobId, table.stepKey),
     index("agent_runs_job_step_idx").on(table.jobId, table.stepKey),
+    index("agent_runs_chapter_created_idx").on(table.chapterId, table.startedAt),
+    index("agent_runs_user_work_idx").on(table.userId, table.workId),
+    check("agent_runs_status_check", sql`${table.status} in ('running', 'succeeded', 'failed')`),
+    check(
+      "agent_runs_role_check",
+      sql`${table.role} in ('planner', 'context_curator', 'writer', 'critic', 'reviser', 'fact_extractor', 'canon_curator')`,
+    ),
+    check(
+      "agent_runs_failure_class_check",
+      sql`${table.failureClass} is null or ${table.failureClass} in ('provider', 'timeout', 'rate_limit', 'schema', 'policy', 'budget', 'cancelled', 'unknown')`,
+    ),
+  ],
+);
+
+export const costReservations = pgTable(
+  "cost_reservations",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    agentRunId: uuid("agent_run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    status: text("status").notNull().default("reserved"),
+    reservedTokens: integer("reserved_tokens").notNull(),
+    reservedCostCny: real("reserved_cost_cny").notNull(),
+    settledTokens: integer("settled_tokens").notNull().default(0),
+    settledCostCny: real("settled_cost_cny").notNull().default(0),
+    failureClass: text("failure_class"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("cost_reservations_job_idempotency_unique").on(table.jobId, table.idempotencyKey),
+    index("cost_reservations_job_status_idx").on(table.jobId, table.status),
+    index("cost_reservations_user_work_idx").on(table.userId, table.workId),
+    index("cost_reservations_agent_run_idx").on(table.agentRunId),
+    check(
+      "cost_reservations_status_check",
+      sql`${table.status} in ('reserved', 'settled', 'released')`,
+    ),
+    check(
+      "cost_reservations_amounts_check",
+      sql`${table.reservedTokens} >= 0 and ${table.reservedCostCny} >= 0 and ${table.settledTokens} >= 0 and ${table.settledCostCny} >= 0`,
+    ),
+    check(
+      "cost_reservations_failure_class_check",
+      sql`${table.failureClass} is null or ${table.failureClass} in ('provider', 'timeout', 'rate_limit', 'schema', 'policy', 'budget', 'cancelled', 'unknown')`,
+    ),
+    check(
+      "cost_reservations_evidence_check",
+      sql`(${table.status} = 'settled' and ${table.settledAt} is not null) or (${table.status} <> 'settled' and ${table.settledAt} is null)`,
+    ),
+  ],
+);
+
+export const modelCalls = pgTable(
+  "model_calls",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    agentRunId: uuid("agent_run_id")
+      .notNull()
+      .references(() => agentRuns.id, { onDelete: "cascade" }),
+    promptVersionId: uuid("prompt_version_id")
+      .notNull()
+      .references(() => promptVersions.id, { onDelete: "restrict" }),
+    costReservationId: uuid("cost_reservation_id")
+      .notNull()
+      .references(() => costReservations.id, { onDelete: "restrict" }),
+    stepKey: text("step_key").notNull(),
+    attempt: integer("attempt").notNull(),
+    status: text("status").notNull().default("started"),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    parameters: jsonb("parameters").$type<Record<string, unknown>>().notNull(),
+    configHash: text("config_hash").notNull(),
+    inputHash: text("input_hash").notNull(),
+    outputHash: text("output_hash"),
+    inputSummary: jsonb("input_summary").$type<Record<string, unknown>>().notNull().default({}),
+    outputSummary: jsonb("output_summary").$type<Record<string, unknown>>().notNull().default({}),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costCny: real("cost_cny").notNull().default(0),
+    failureClass: text("failure_class"),
+    errorCode: text("error_code"),
+    escalationReason: text("escalation_reason"),
+    providerRequestId: text("provider_request_id"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("model_calls_job_step_attempt_unique").on(
+      table.jobId,
+      table.stepKey,
+      table.attempt,
+    ),
+    uniqueIndex("model_calls_cost_reservation_unique").on(table.costReservationId),
+    index("model_calls_job_created_idx").on(table.jobId, table.createdAt),
+    index("model_calls_chapter_created_idx").on(table.chapterId, table.createdAt),
+    index("model_calls_user_work_idx").on(table.userId, table.workId),
+    check("model_calls_status_check", sql`${table.status} in ('started', 'succeeded', 'failed')`),
+    check(
+      "model_calls_failure_class_check",
+      sql`${table.failureClass} is null or ${table.failureClass} in ('provider', 'timeout', 'rate_limit', 'schema', 'policy', 'budget', 'cancelled', 'unknown')`,
+    ),
+    check(
+      "model_calls_usage_check",
+      sql`${table.inputTokens} >= 0 and ${table.outputTokens} >= 0 and ${table.costCny} >= 0`,
+    ),
   ],
 );
 

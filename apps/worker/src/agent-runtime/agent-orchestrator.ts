@@ -22,8 +22,11 @@ import {
 import { uuidv7 } from "uuidv7";
 
 import { AgentGrantViolation } from "./agent-grant.guard";
-import type { AgentGrantGuard } from "./agent-grant.guard";
-import type { AgentOrchestratorRepository } from "./agent-orchestrator.repository";
+// Nest uses runtime class references for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { AgentGrantGuard } from "./agent-grant.guard";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { AgentOrchestratorRepository } from "./agent-orchestrator.repository";
 
 export interface OrchestratorToolExecutorInput {
   task: OrchestratorTaskState;
