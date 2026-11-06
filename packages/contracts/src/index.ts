@@ -93,6 +93,10 @@ export const ERROR_CODES = [
   "CRITIC_VERSION_REQUIRED",
   "CRITIC_FINDING_NOT_DISMISSIBLE",
   "QUALITY_GATE_BLOCKED",
+  "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+  "VOLUME_AUDIT_BLOCKED",
+  "VOLUME_AUDIT_STALE",
+  "GOLDEN_THREE_LOCK_REQUIRED",
   "STYLE_SOURCE_NOT_APPROVED",
   "STYLE_BASELINE_UNAPPROVED",
   "STYLE_BASELINE_REQUIRED",
@@ -6625,6 +6629,7 @@ export const criticSourceRefTypeSchema = z.enum([
   "chapter",
   "chapter_version",
   "story_bible",
+  "story_ledger_entry",
 ]);
 export type CriticSourceRefType = z.infer<typeof criticSourceRefTypeSchema>;
 
@@ -6651,6 +6656,7 @@ export const criticAffectedObjectTypeSchema = z.enum([
   "map",
   "map_node",
   "style_baseline",
+  "story_ledger_entry",
 ]);
 export type CriticAffectedObjectType = z.infer<typeof criticAffectedObjectTypeSchema>;
 
@@ -6840,6 +6846,165 @@ export const criticAnnotationListResponseSchema = apiEnvelopeSchema(
   z.array(criticAnnotationSchema),
 );
 export const criticAnnotationResponseSchema = apiEnvelopeSchema(criticAnnotationSchema);
+
+export const VOLUME_AUDIT_RULE_VERSION = "m1-volume-audit-v1" as const;
+
+export const VOLUME_AUDIT_FINDING_CODES = [
+  ...criticFindingCodeSchema.options,
+  "UNRESOLVED_LEDGER_ENTRY",
+  "ANTAGONIST_UNDERESTIMATION",
+  "POWER_INFLATION",
+  "VOLUME_CHAPTER_UNAUDITED",
+] as const;
+
+export const volumeAuditFindingCodeSchema = z.enum(VOLUME_AUDIT_FINDING_CODES);
+export type VolumeAuditFindingCode = z.infer<typeof volumeAuditFindingCodeSchema>;
+
+export const volumeAuditFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    chapterVersionId: uuidV7Schema.nullable(),
+    chapterNumber: z.number().int().positive().nullable(),
+    dimension: criticFindingDimensionSchema,
+    qualityDimension: qualityDimensionSchema,
+    severity: criticSeveritySchema,
+    structural: z.boolean(),
+    code: volumeAuditFindingCodeSchema,
+    evidence: z.array(criticEvidenceSchema).min(1).max(5),
+    sourceRefs: z.array(criticSourceRefSchema).min(1).max(10),
+    affectedObjects: z.array(criticAffectedObjectSchema).min(1).max(10),
+    recommendation: z.string().trim().min(1).max(2_000),
+    upstreamFindingId: uuidV7Schema.nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type VolumeAuditFinding = z.infer<typeof volumeAuditFindingSchema>;
+
+export const volumeAuditCoverageItemSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    title: z.string().trim().min(1).max(200),
+    chapterVersionId: uuidV7Schema.nullable(),
+    wordCount: z.number().int().nonnegative(),
+    qualityReportId: uuidV7Schema.nullable(),
+    qualityFindingCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type VolumeAuditCoverageItem = z.infer<typeof volumeAuditCoverageItemSchema>;
+
+export const volumeAuditSummarySchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    blockers: z.number().int().nonnegative(),
+    warnings: z.number().int().nonnegative(),
+    unresolvedLedger: z.number().int().nonnegative(),
+    motivation: z.number().int().nonnegative(),
+    antagonist: z.number().int().nonnegative(),
+    powerInflation: z.number().int().nonnegative(),
+    mapTime: z.number().int().nonnegative(),
+    knowledgeLeak: z.number().int().nonnegative(),
+    other: z.number().int().nonnegative(),
+  })
+  .strict();
+export type VolumeAuditSummary = z.infer<typeof volumeAuditSummarySchema>;
+
+export const volumeAuditSignoffSchema = z
+  .object({
+    decision: z.enum(["accepted", "changes_requested"]),
+    rationale: z.string().trim().min(10).max(2_000),
+    signedOffBy: uuidV7Schema,
+    signedOffAt: z.string().datetime(),
+  })
+  .strict();
+export type VolumeAuditSignoff = z.infer<typeof volumeAuditSignoffSchema>;
+
+export const volumeAuditStatusSchema = z.enum(["passed", "warnings", "blocked"]);
+export type VolumeAuditStatus = z.infer<typeof volumeAuditStatusSchema>;
+
+export const volumeAuditReportSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    volumeNodeId: uuidV7Schema,
+    volumeTitle: z.string().trim().min(1).max(200),
+    chapterFrom: z.number().int().positive(),
+    chapterTo: z.number().int().positive(),
+    ruleVersion: z.literal(VOLUME_AUDIT_RULE_VERSION),
+    sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+    status: volumeAuditStatusSchema,
+    findings: z.array(volumeAuditFindingSchema),
+    coverage: z.array(volumeAuditCoverageItemSchema),
+    summary: volumeAuditSummarySchema,
+    signoff: volumeAuditSignoffSchema.nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((report, context) => {
+    if (report.chapterTo < report.chapterFrom) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterTo"],
+        message: "Volume audit chapter range is invalid",
+      });
+    }
+  });
+export type VolumeAuditReport = z.infer<typeof volumeAuditReportSchema>;
+
+export const volumeAuditSummaryVolumeSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    title: z.string().trim().min(1).max(200),
+    chapterFrom: z.number().int().positive(),
+    chapterTo: z.number().int().positive(),
+    chapterCount: z.number().int().positive(),
+    writtenChapters: z.number().int().nonnegative(),
+    latestReportId: uuidV7Schema.nullable(),
+  })
+  .strict();
+export type VolumeAuditSummaryVolume = z.infer<typeof volumeAuditSummaryVolumeSchema>;
+
+export const volumeAuditWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    goldenThreeLocked: z.boolean(),
+    volumes: z.array(volumeAuditSummaryVolumeSchema),
+    latestReport: volumeAuditReportSchema.nullable(),
+    signoffUser: z
+      .object({
+        id: uuidV7Schema,
+        displayName: z.string().trim().min(1).max(120),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+export type VolumeAuditWorkspace = z.infer<typeof volumeAuditWorkspaceSchema>;
+
+export const volumeAuditRunRequestSchema = z
+  .object({
+    volumeNodeId: uuidV7Schema,
+  })
+  .strict();
+export type VolumeAuditRunRequest = z.infer<typeof volumeAuditRunRequestSchema>;
+
+export const volumeAuditSignoffRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    decision: z.enum(["accepted", "changes_requested"]),
+    rationale: z.string().trim().min(10).max(2_000),
+  })
+  .strict();
+export type VolumeAuditSignoffRequest = z.infer<typeof volumeAuditSignoffRequestSchema>;
+
+export const volumeAuditWorkspaceResponseSchema = apiEnvelopeSchema(volumeAuditWorkspaceSchema);
+export const volumeAuditReportResponseSchema = apiEnvelopeSchema(volumeAuditReportSchema);
 
 export const STYLE_DRIFT_RULE_VERSION = "m1-style-drift-v1" as const;
 

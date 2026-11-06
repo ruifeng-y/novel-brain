@@ -4186,6 +4186,104 @@ export const qualityFindings = pgTable(
   ],
 );
 
+export type VolumeAuditFindingJson = {
+  id: string;
+  chapterId: string | null;
+  chapterVersionId: string | null;
+  chapterNumber: number | null;
+  dimension: string;
+  qualityDimension: string;
+  severity: string;
+  structural: boolean;
+  code: string;
+  evidence: Array<Record<string, unknown>>;
+  sourceRefs: Array<Record<string, unknown>>;
+  affectedObjects: Array<Record<string, unknown>>;
+  recommendation: string;
+  upstreamFindingId: string | null;
+  createdAt: string;
+};
+
+export type VolumeAuditCoverageJson = {
+  chapterId: string;
+  chapterNumber: number;
+  title: string;
+  chapterVersionId: string | null;
+  wordCount: number;
+  qualityReportId: string | null;
+  qualityFindingCount: number;
+};
+
+export type VolumeAuditSummaryJson = {
+  total: number;
+  blockers: number;
+  warnings: number;
+  unresolvedLedger: number;
+  motivation: number;
+  antagonist: number;
+  powerInflation: number;
+  mapTime: number;
+  knowledgeLeak: number;
+  other: number;
+};
+
+export const volumeAuditReports = pgTable(
+  "volume_audit_reports",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    volumeNodeId: uuid("volume_node_id")
+      .notNull()
+      .references(() => outlineNodes.id, { onDelete: "cascade" }),
+    chapterFrom: integer("chapter_from").notNull(),
+    chapterTo: integer("chapter_to").notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    status: text("status").notNull(),
+    findings: jsonb("findings").$type<VolumeAuditFindingJson[]>().notNull(),
+    coverage: jsonb("coverage").$type<VolumeAuditCoverageJson[]>().notNull(),
+    summary: jsonb("summary").$type<VolumeAuditSummaryJson>().notNull(),
+    signoffDecision: text("signoff_decision"),
+    signoffRationale: text("signoff_rationale"),
+    signedOffBy: uuid("signed_off_by").references(() => users.id, { onDelete: "restrict" }),
+    signedOffAt: timestamp("signed_off_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("volume_audit_reports_user_work_idx").on(table.userId, table.workId),
+    index("volume_audit_reports_volume_created_idx").on(table.volumeNodeId, table.createdAt),
+    check("volume_audit_reports_range_check", sql`${table.chapterTo} >= ${table.chapterFrom}`),
+    check(
+      "volume_audit_reports_rule_version_check",
+      sql`${table.ruleVersion} = 'm1-volume-audit-v1'`,
+    ),
+    check("volume_audit_reports_source_hash_check", sql`${table.sourceHash} ~ '^[a-f0-9]{64}$'`),
+    check(
+      "volume_audit_reports_status_check",
+      sql`${table.status} in ('passed', 'warnings', 'blocked')`,
+    ),
+    check(
+      "volume_audit_reports_signoff_check",
+      sql`(${table.signoffDecision} is null and ${table.signoffRationale} is null and ${table.signedOffBy} is null and ${table.signedOffAt} is null) or (${table.signoffDecision} in ('accepted', 'changes_requested') and length(trim(${table.signoffRationale})) >= 10 and ${table.signedOffBy} is not null and ${table.signedOffAt} is not null)`,
+    ),
+    check("volume_audit_reports_version_check", sql`${table.version} > 0`),
+    check("volume_audit_reports_findings_check", sql`jsonb_typeof(${table.findings}) = 'array'`),
+    check("volume_audit_reports_coverage_check", sql`jsonb_typeof(${table.coverage}) = 'array'`),
+  ],
+);
+
 export type StyleProfileJson = {
   guides: string[];
   samples: Array<{

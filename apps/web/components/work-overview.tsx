@@ -31,6 +31,7 @@ import {
 
 import { ReadinessRemediation } from "./readiness-remediation";
 import { StyleDriftFindings } from "./style-drift-findings";
+import { VolumeAuditPanel } from "./volume-audit-panel";
 import { getCsrfToken } from "../lib/csrf-client";
 
 const statusLabels: Record<Work["status"], string> = {
@@ -500,6 +501,8 @@ export function WorkOverview({ workId }: { workId: string }) {
           <p className="style-drift-empty">正在读取声线与风格样本。</p>
         )}
       </section>
+
+      <VolumeAuditPanel branchId={work.mainBranch.id} workId={work.id} />
     </>
   );
 }

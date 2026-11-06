@@ -1300,6 +1300,38 @@ export interface paths {
     patch: operations["QualityController_patchAnnotation"];
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/volume-audits": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["VolumeAuditController_workspace"];
+    put?: never;
+    post: operations["VolumeAuditController_run"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/volume-audits/{auditId}/signoff": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["VolumeAuditController_signoff"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/retrieval/search": {
     parameters: {
       query?: never;
@@ -3487,6 +3519,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -3796,6 +3832,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -7757,6 +7797,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -8287,6 +8331,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -8646,6 +8694,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -9005,6 +9057,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -9364,6 +9420,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -9732,6 +9792,10 @@ export interface operations {
                     | "CRITIC_VERSION_REQUIRED"
                     | "CRITIC_FINDING_NOT_DISMISSIBLE"
                     | "QUALITY_GATE_BLOCKED"
+                    | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                    | "VOLUME_AUDIT_BLOCKED"
+                    | "VOLUME_AUDIT_STALE"
+                    | "GOLDEN_THREE_LOCK_REQUIRED"
                     | "STYLE_SOURCE_NOT_APPROVED"
                     | "STYLE_BASELINE_UNAPPROVED"
                     | "STYLE_BASELINE_REQUIRED"
@@ -15508,7 +15572,8 @@ export interface operations {
                     | "golden_finger"
                     | "chapter"
                     | "chapter_version"
-                    | "story_bible";
+                    | "story_bible"
+                    | "story_ledger_entry";
                   id: string;
                   versionId: string | null;
                   label: string;
@@ -15527,7 +15592,8 @@ export interface operations {
                     | "outline_node"
                     | "map"
                     | "map_node"
-                    | "style_baseline";
+                    | "style_baseline"
+                    | "story_ledger_entry";
                   id: string;
                   label: string | null;
                 }[];
@@ -15730,7 +15796,8 @@ export interface operations {
                     | "golden_finger"
                     | "chapter"
                     | "chapter_version"
-                    | "story_bible";
+                    | "story_bible"
+                    | "story_ledger_entry";
                   id: string;
                   versionId: string | null;
                   label: string;
@@ -15749,7 +15816,8 @@ export interface operations {
                     | "outline_node"
                     | "map"
                     | "map_node"
-                    | "style_baseline";
+                    | "style_baseline"
+                    | "story_ledger_entry";
                   id: string;
                   label: string | null;
                 }[];
@@ -15960,6 +16028,544 @@ export interface operations {
               status: "open" | "dismissed" | "superseded";
               ignoredReason: string | null;
               version: number;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  VolumeAuditController_workspace: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Volume audit workspace */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              goldenThreeLocked: boolean;
+              volumes: {
+                nodeId: string;
+                title: string;
+                chapterFrom: number;
+                chapterTo: number;
+                chapterCount: number;
+                writtenChapters: number;
+                latestReportId: string | null;
+              }[];
+              latestReport: {
+                id: string;
+                workId: string;
+                branchId: string;
+                volumeNodeId: string;
+                volumeTitle: string;
+                chapterFrom: number;
+                chapterTo: number;
+                /** @enum {string} */
+                ruleVersion: "m1-volume-audit-v1";
+                sourceHash: string;
+                /** @enum {string} */
+                status: "passed" | "warnings" | "blocked";
+                findings: {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  chapterId: string | null;
+                  chapterVersionId: string | null;
+                  chapterNumber: number | null;
+                  /** @enum {string} */
+                  dimension: "continuity" | "style" | "reader_experience";
+                  /** @enum {string} */
+                  qualityDimension:
+                    | "hook"
+                    | "pacing"
+                    | "information_density"
+                    | "character_voice"
+                    | "prose"
+                    | "continuity";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  structural: boolean;
+                  /** @enum {string} */
+                  code:
+                    | "FACT_CONTRADICTION"
+                    | "TIMELINE_CONFLICT"
+                    | "UNDISCLOSED_KNOWLEDGE"
+                    | "MOTIVATION_BREAK"
+                    | "LOCATION_CONFLICT"
+                    | "STYLE_DRIFT"
+                    | "WEAK_CHAPTER_END_HOOK"
+                    | "UNRESOLVED_LEDGER_ENTRY"
+                    | "ANTAGONIST_UNDERESTIMATION"
+                    | "POWER_INFLATION"
+                    | "VOLUME_CHAPTER_UNAUDITED";
+                  evidence: {
+                    /** @enum {string} */
+                    kind:
+                      "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                    sourceId: string | null;
+                    sourceVersionId: string | null;
+                    chapterId: string;
+                    chapterVersionId: string | null;
+                    quote: string;
+                    startOffset: number;
+                    endOffset: number;
+                    locator: string;
+                    explanation: string;
+                  }[];
+                  sourceRefs: {
+                    /** @enum {string} */
+                    type:
+                      | "fact"
+                      | "timeline_event"
+                      | "character_knowledge"
+                      | "outline_node"
+                      | "map"
+                      | "map_node"
+                      | "style_baseline"
+                      | "character"
+                      | "world_rule"
+                      | "golden_finger"
+                      | "chapter"
+                      | "chapter_version"
+                      | "story_bible"
+                      | "story_ledger_entry";
+                    id: string;
+                    versionId: string | null;
+                    label: string;
+                  }[];
+                  affectedObjects: {
+                    /** @enum {string} */
+                    type:
+                      | "chapter"
+                      | "chapter_version"
+                      | "fact"
+                      | "timeline_event"
+                      | "character"
+                      | "world_rule"
+                      | "golden_finger"
+                      | "character_knowledge"
+                      | "outline_node"
+                      | "map"
+                      | "map_node"
+                      | "style_baseline"
+                      | "story_ledger_entry";
+                    id: string;
+                    label: string | null;
+                  }[];
+                  recommendation: string;
+                  upstreamFindingId: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                coverage: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  title: string;
+                  chapterVersionId: string | null;
+                  wordCount: number;
+                  qualityReportId: string | null;
+                  qualityFindingCount: number;
+                }[];
+                summary: {
+                  total: number;
+                  blockers: number;
+                  warnings: number;
+                  unresolvedLedger: number;
+                  motivation: number;
+                  antagonist: number;
+                  powerInflation: number;
+                  mapTime: number;
+                  knowledgeLeak: number;
+                  other: number;
+                };
+                signoff: {
+                  /** @enum {string} */
+                  decision: "accepted" | "changes_requested";
+                  rationale: string;
+                  signedOffBy: string;
+                  /** Format: date-time */
+                  signedOffAt: string;
+                } | null;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              signoffUser: {
+                id: string;
+                displayName: string;
+              } | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  VolumeAuditController_run: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          volumeNodeId: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Volume audit report */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              volumeNodeId: string;
+              volumeTitle: string;
+              chapterFrom: number;
+              chapterTo: number;
+              /** @enum {string} */
+              ruleVersion: "m1-volume-audit-v1";
+              sourceHash: string;
+              /** @enum {string} */
+              status: "passed" | "warnings" | "blocked";
+              findings: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string | null;
+                chapterVersionId: string | null;
+                chapterNumber: number | null;
+                /** @enum {string} */
+                dimension: "continuity" | "style" | "reader_experience";
+                /** @enum {string} */
+                qualityDimension:
+                  | "hook"
+                  | "pacing"
+                  | "information_density"
+                  | "character_voice"
+                  | "prose"
+                  | "continuity";
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2" | "P3";
+                structural: boolean;
+                /** @enum {string} */
+                code:
+                  | "FACT_CONTRADICTION"
+                  | "TIMELINE_CONFLICT"
+                  | "UNDISCLOSED_KNOWLEDGE"
+                  | "MOTIVATION_BREAK"
+                  | "LOCATION_CONFLICT"
+                  | "STYLE_DRIFT"
+                  | "WEAK_CHAPTER_END_HOOK"
+                  | "UNRESOLVED_LEDGER_ENTRY"
+                  | "ANTAGONIST_UNDERESTIMATION"
+                  | "POWER_INFLATION"
+                  | "VOLUME_CHAPTER_UNAUDITED";
+                evidence: {
+                  /** @enum {string} */
+                  kind:
+                    "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                  sourceId: string | null;
+                  sourceVersionId: string | null;
+                  chapterId: string;
+                  chapterVersionId: string | null;
+                  quote: string;
+                  startOffset: number;
+                  endOffset: number;
+                  locator: string;
+                  explanation: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "fact"
+                    | "timeline_event"
+                    | "character_knowledge"
+                    | "outline_node"
+                    | "map"
+                    | "map_node"
+                    | "style_baseline"
+                    | "character"
+                    | "world_rule"
+                    | "golden_finger"
+                    | "chapter"
+                    | "chapter_version"
+                    | "story_bible"
+                    | "story_ledger_entry";
+                  id: string;
+                  versionId: string | null;
+                  label: string;
+                }[];
+                affectedObjects: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter"
+                    | "chapter_version"
+                    | "fact"
+                    | "timeline_event"
+                    | "character"
+                    | "world_rule"
+                    | "golden_finger"
+                    | "character_knowledge"
+                    | "outline_node"
+                    | "map"
+                    | "map_node"
+                    | "style_baseline"
+                    | "story_ledger_entry";
+                  id: string;
+                  label: string | null;
+                }[];
+                recommendation: string;
+                upstreamFindingId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              coverage: {
+                chapterId: string;
+                chapterNumber: number;
+                title: string;
+                chapterVersionId: string | null;
+                wordCount: number;
+                qualityReportId: string | null;
+                qualityFindingCount: number;
+              }[];
+              summary: {
+                total: number;
+                blockers: number;
+                warnings: number;
+                unresolvedLedger: number;
+                motivation: number;
+                antagonist: number;
+                powerInflation: number;
+                mapTime: number;
+                knowledgeLeak: number;
+                other: number;
+              };
+              signoff: {
+                /** @enum {string} */
+                decision: "accepted" | "changes_requested";
+                rationale: string;
+                signedOffBy: string;
+                /** Format: date-time */
+                signedOffAt: string;
+              } | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  VolumeAuditController_signoff: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        auditId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          /** @enum {string} */
+          decision: "accepted" | "changes_requested";
+          rationale: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Signed volume audit report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              volumeNodeId: string;
+              volumeTitle: string;
+              chapterFrom: number;
+              chapterTo: number;
+              /** @enum {string} */
+              ruleVersion: "m1-volume-audit-v1";
+              sourceHash: string;
+              /** @enum {string} */
+              status: "passed" | "warnings" | "blocked";
+              findings: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string | null;
+                chapterVersionId: string | null;
+                chapterNumber: number | null;
+                /** @enum {string} */
+                dimension: "continuity" | "style" | "reader_experience";
+                /** @enum {string} */
+                qualityDimension:
+                  | "hook"
+                  | "pacing"
+                  | "information_density"
+                  | "character_voice"
+                  | "prose"
+                  | "continuity";
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2" | "P3";
+                structural: boolean;
+                /** @enum {string} */
+                code:
+                  | "FACT_CONTRADICTION"
+                  | "TIMELINE_CONFLICT"
+                  | "UNDISCLOSED_KNOWLEDGE"
+                  | "MOTIVATION_BREAK"
+                  | "LOCATION_CONFLICT"
+                  | "STYLE_DRIFT"
+                  | "WEAK_CHAPTER_END_HOOK"
+                  | "UNRESOLVED_LEDGER_ENTRY"
+                  | "ANTAGONIST_UNDERESTIMATION"
+                  | "POWER_INFLATION"
+                  | "VOLUME_CHAPTER_UNAUDITED";
+                evidence: {
+                  /** @enum {string} */
+                  kind:
+                    "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                  sourceId: string | null;
+                  sourceVersionId: string | null;
+                  chapterId: string;
+                  chapterVersionId: string | null;
+                  quote: string;
+                  startOffset: number;
+                  endOffset: number;
+                  locator: string;
+                  explanation: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "fact"
+                    | "timeline_event"
+                    | "character_knowledge"
+                    | "outline_node"
+                    | "map"
+                    | "map_node"
+                    | "style_baseline"
+                    | "character"
+                    | "world_rule"
+                    | "golden_finger"
+                    | "chapter"
+                    | "chapter_version"
+                    | "story_bible"
+                    | "story_ledger_entry";
+                  id: string;
+                  versionId: string | null;
+                  label: string;
+                }[];
+                affectedObjects: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter"
+                    | "chapter_version"
+                    | "fact"
+                    | "timeline_event"
+                    | "character"
+                    | "world_rule"
+                    | "golden_finger"
+                    | "character_knowledge"
+                    | "outline_node"
+                    | "map"
+                    | "map_node"
+                    | "style_baseline"
+                    | "story_ledger_entry";
+                  id: string;
+                  label: string | null;
+                }[];
+                recommendation: string;
+                upstreamFindingId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              coverage: {
+                chapterId: string;
+                chapterNumber: number;
+                title: string;
+                chapterVersionId: string | null;
+                wordCount: number;
+                qualityReportId: string | null;
+                qualityFindingCount: number;
+              }[];
+              summary: {
+                total: number;
+                blockers: number;
+                warnings: number;
+                unresolvedLedger: number;
+                motivation: number;
+                antagonist: number;
+                powerInflation: number;
+                mapTime: number;
+                knowledgeLeak: number;
+                other: number;
+              };
+              signoff: {
+                /** @enum {string} */
+                decision: "accepted" | "changes_requested";
+                rationale: string;
+                signedOffBy: string;
+                /** Format: date-time */
+                signedOffAt: string;
+              } | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
             };
             /** Format: starts_with */
             requestId: string;
@@ -25346,6 +25952,10 @@ export interface operations {
                     | "CRITIC_VERSION_REQUIRED"
                     | "CRITIC_FINDING_NOT_DISMISSIBLE"
                     | "QUALITY_GATE_BLOCKED"
+                    | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                    | "VOLUME_AUDIT_BLOCKED"
+                    | "VOLUME_AUDIT_STALE"
+                    | "GOLDEN_THREE_LOCK_REQUIRED"
                     | "STYLE_SOURCE_NOT_APPROVED"
                     | "STYLE_BASELINE_UNAPPROVED"
                     | "STYLE_BASELINE_REQUIRED"
@@ -25534,6 +26144,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -25698,6 +26312,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -35462,6 +36080,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -36208,6 +36830,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -36730,6 +37356,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -37252,6 +37882,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
@@ -37774,6 +38408,10 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "VOLUME_AUDIT_VOLUME_NOT_FOUND"
+                  | "VOLUME_AUDIT_BLOCKED"
+                  | "VOLUME_AUDIT_STALE"
+                  | "GOLDEN_THREE_LOCK_REQUIRED"
                   | "STYLE_SOURCE_NOT_APPROVED"
                   | "STYLE_BASELINE_UNAPPROVED"
                   | "STYLE_BASELINE_REQUIRED"
