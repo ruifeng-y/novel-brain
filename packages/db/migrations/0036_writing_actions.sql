@@ -30,6 +30,7 @@ CREATE TABLE "writing_actions" (
 ALTER TABLE "jobs" DROP CONSTRAINT "jobs_type_check";--> statement-breakpoint
 ALTER TABLE "jobs" DROP CONSTRAINT "jobs_required_scope_check";--> statement-breakpoint
 ALTER TABLE "version_nodes" DROP CONSTRAINT "version_nodes_node_type_check";--> statement-breakpoint
+DROP INDEX "jobs_chapter_idempotency_unique";--> statement-breakpoint
 ALTER TABLE "jobs" ADD COLUMN "source_version_id" uuid;--> statement-breakpoint
 ALTER TABLE "jobs" ADD COLUMN "action" text;--> statement-breakpoint
 ALTER TABLE "jobs" ADD COLUMN "action_input" jsonb;--> statement-breakpoint
@@ -46,6 +47,7 @@ CREATE UNIQUE INDEX "writing_actions_chapter_version_unique" ON "writing_actions
 CREATE INDEX "writing_actions_user_work_idx" ON "writing_actions" USING btree ("user_id","work_id");--> statement-breakpoint
 CREATE INDEX "writing_actions_chapter_created_idx" ON "writing_actions" USING btree ("chapter_id","created_at");--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_source_version_id_chapter_versions_id_fk" FOREIGN KEY ("source_version_id") REFERENCES "public"."chapter_versions"("id") ON DELETE restrict ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "jobs_chapter_idempotency_unique" ON "jobs" USING btree ("user_id","chapter_id","type","idempotency_key");--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_writing_action_scope_check" CHECK (("jobs"."type" = 'write_action' and "jobs"."action" is not null and "jobs"."source_version_id" is not null and "jobs"."action_input" is not null) or ("jobs"."type" <> 'write_action' and "jobs"."action" is null and "jobs"."source_version_id" is null and "jobs"."action_input" is null));--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_type_check" CHECK ("jobs"."type" in ('generate_chapter', 'agent_workflow', 'write_action'));--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_required_scope_check" CHECK (("jobs"."type" = 'agent_workflow') or ("jobs"."type" in ('generate_chapter', 'write_action') and "jobs"."chapter_id" is not null and "jobs"."model_config_id" is not null));--> statement-breakpoint

@@ -1,5 +1,5 @@
 {
-  "id": "1fbc5da5-4080-4e69-a314-7e59ee24a675",
+  "id": "413ba405-8df0-4ccf-915e-9f913641423b",
   "prevId": "0bb7798b-63a8-438d-b3b0-11a1b413f8fc",
   "version": "7",
   "dialect": "postgresql",
@@ -10087,12 +10087,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "source_version_id": {
-          "name": "source_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
         "model_config_id": {
           "name": "model_config_id",
           "type": "uuid",
@@ -10160,18 +10154,6 @@
         },
         "orchestration": {
           "name": "orchestration",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "action": {
-          "name": "action",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "action_input": {
-          "name": "action_input",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
@@ -10385,19 +10367,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "jobs_source_version_id_chapter_versions_id_fk": {
-          "name": "jobs_source_version_id_chapter_versions_id_fk",
-          "tableFrom": "jobs",
-          "tableTo": "chapter_versions",
-          "columnsFrom": [
-            "source_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
         "jobs_model_config_id_model_configs_id_fk": {
           "name": "jobs_model_config_id_model_configs_id_fk",
           "tableFrom": "jobs",
@@ -10418,15 +10387,11 @@
       "checkConstraints": {
         "jobs_type_check": {
           "name": "jobs_type_check",
-          "value": "\"jobs\".\"type\" in ('generate_chapter', 'agent_workflow', 'write_action')"
+          "value": "\"jobs\".\"type\" in ('generate_chapter', 'agent_workflow')"
         },
         "jobs_required_scope_check": {
           "name": "jobs_required_scope_check",
-          "value": "(\"jobs\".\"type\" = 'agent_workflow') or (\"jobs\".\"type\" in ('generate_chapter', 'write_action') and \"jobs\".\"chapter_id\" is not null and \"jobs\".\"model_config_id\" is not null)"
-        },
-        "jobs_writing_action_scope_check": {
-          "name": "jobs_writing_action_scope_check",
-          "value": "(\"jobs\".\"type\" = 'write_action' and \"jobs\".\"action\" is not null and \"jobs\".\"source_version_id\" is not null and \"jobs\".\"action_input\" is not null) or (\"jobs\".\"type\" <> 'write_action' and \"jobs\".\"action\" is null and \"jobs\".\"source_version_id\" is null and \"jobs\".\"action_input\" is null)"
+          "value": "(\"jobs\".\"type\" = 'agent_workflow') or (\"jobs\".\"chapter_id\" is not null and \"jobs\".\"model_config_id\" is not null)"
         },
         "jobs_status_check": {
           "name": "jobs_status_check",
@@ -15291,6 +15256,350 @@
       },
       "isRLSEnabled": false
     },
+    "public.search_documents": {
+      "name": "search_documents",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "content": {
+          "name": "content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "aliases": {
+          "name": "aliases",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "version_node_id": {
+          "name": "version_node_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "object_version": {
+          "name": "object_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_chapter_id": {
+          "name": "source_chapter_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "from_chapter": {
+          "name": "from_chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_chapter": {
+          "name": "to_chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "from_era": {
+          "name": "from_era",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "from_story_time_label": {
+          "name": "from_story_time_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "from_story_sort_key": {
+          "name": "from_story_sort_key",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "to_era": {
+          "name": "to_era",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "to_story_time_label": {
+          "name": "to_story_time_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "to_story_sort_key": {
+          "name": "to_story_sort_key",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "search_documents_source_version_unique": {
+          "name": "search_documents_source_version_unique",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "version_node_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "search_documents_user_work_branch_idx": {
+          "name": "search_documents_user_work_branch_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "search_documents_branch_chapter_idx": {
+          "name": "search_documents_branch_chapter_idx",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "from_chapter",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "to_chapter",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "search_documents_work_id_works_id_fk": {
+          "name": "search_documents_work_id_works_id_fk",
+          "tableFrom": "search_documents",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "search_documents_branch_id_work_branches_id_fk": {
+          "name": "search_documents_branch_id_work_branches_id_fk",
+          "tableFrom": "search_documents",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "search_documents_user_id_users_id_fk": {
+          "name": "search_documents_user_id_users_id_fk",
+          "tableFrom": "search_documents",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "search_documents_version_node_id_version_nodes_id_fk": {
+          "name": "search_documents_version_node_id_version_nodes_id_fk",
+          "tableFrom": "search_documents",
+          "tableTo": "version_nodes",
+          "columnsFrom": [
+            "version_node_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "search_documents_source_chapter_id_chapters_id_fk": {
+          "name": "search_documents_source_chapter_id_chapters_id_fk",
+          "tableFrom": "search_documents",
+          "tableTo": "chapters",
+          "columnsFrom": [
+            "source_chapter_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "search_documents_source_type_check": {
+          "name": "search_documents_source_type_check",
+          "value": "\"search_documents\".\"source_type\" in ('entity', 'fact', 'timeline_event', 'map_node')"
+        },
+        "search_documents_entity_type_check": {
+          "name": "search_documents_entity_type_check",
+          "value": "\"search_documents\".\"entity_type\" is null or \"search_documents\".\"entity_type\" in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')"
+        },
+        "search_documents_validity_check": {
+          "name": "search_documents_validity_check",
+          "value": "\"search_documents\".\"to_chapter\" is null or \"search_documents\".\"to_chapter\" >= \"search_documents\".\"from_chapter\""
+        },
+        "search_documents_from_story_time_check": {
+          "name": "search_documents_from_story_time_check",
+          "value": "(\"search_documents\".\"from_era\" is null and \"search_documents\".\"from_story_time_label\" is null and \"search_documents\".\"from_story_sort_key\" is null) or (\"search_documents\".\"from_era\" is not null and \"search_documents\".\"from_story_time_label\" is not null and \"search_documents\".\"from_story_sort_key\" is not null)"
+        },
+        "search_documents_to_story_time_check": {
+          "name": "search_documents_to_story_time_check",
+          "value": "(\"search_documents\".\"to_era\" is null and \"search_documents\".\"to_story_time_label\" is null and \"search_documents\".\"to_story_sort_key\" is null) or (\"search_documents\".\"from_era\" is not null and \"search_documents\".\"to_era\" is not null and \"search_documents\".\"to_story_time_label\" is not null and \"search_documents\".\"to_story_sort_key\" is not null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.sessions": {
       "name": "sessions",
       "schema": "",
@@ -18244,7 +18553,7 @@
       "checkConstraints": {
         "version_nodes_node_type_check": {
           "name": "version_nodes_node_type_check",
-          "value": "\"version_nodes\".\"node_type\" in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'writing_action_output', 'snapshot', 'change_apply', 'branch_merge', 'rollback')"
+          "value": "\"version_nodes\".\"node_type\" in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')"
         }
       },
       "isRLSEnabled": false
@@ -18832,352 +19141,6 @@
         "works_source_mode_check": {
           "name": "works_source_mode_check",
           "value": "\"works\".\"source_mode\" in ('idea', 'blank', 'template', 'settings_import', 'manuscript_import')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.writing_actions": {
-      "name": "writing_actions",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "job_id": {
-          "name": "job_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "chapter_id": {
-          "name": "chapter_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "action": {
-          "name": "action",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_version_id": {
-          "name": "source_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "output_kind": {
-          "name": "output_kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version_node_id": {
-          "name": "version_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "chapter_version_id": {
-          "name": "chapter_version_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "affected_range": {
-          "name": "affected_range",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "artifact": {
-          "name": "artifact",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prompt_key": {
-          "name": "prompt_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prompt_version": {
-          "name": "prompt_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "prompt_hash": {
-          "name": "prompt_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "model_provider": {
-          "name": "model_provider",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "model": {
-          "name": "model",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "model_parameters": {
-          "name": "model_parameters",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "writing_actions_job_unique": {
-          "name": "writing_actions_job_unique",
-          "columns": [
-            {
-              "expression": "job_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "writing_actions_chapter_version_unique": {
-          "name": "writing_actions_chapter_version_unique",
-          "columns": [
-            {
-              "expression": "chapter_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "version",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "writing_actions_user_work_idx": {
-          "name": "writing_actions_user_work_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "writing_actions_chapter_created_idx": {
-          "name": "writing_actions_chapter_created_idx",
-          "columns": [
-            {
-              "expression": "chapter_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "writing_actions_job_id_jobs_id_fk": {
-          "name": "writing_actions_job_id_jobs_id_fk",
-          "tableFrom": "writing_actions",
-          "tableTo": "jobs",
-          "columnsFrom": [
-            "job_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "writing_actions_work_id_works_id_fk": {
-          "name": "writing_actions_work_id_works_id_fk",
-          "tableFrom": "writing_actions",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "writing_actions_branch_id_work_branches_id_fk": {
-          "name": "writing_actions_branch_id_work_branches_id_fk",
-          "tableFrom": "writing_actions",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "writing_actions_user_id_users_id_fk": {
-          "name": "writing_actions_user_id_users_id_fk",
-          "tableFrom": "writing_actions",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "writing_actions_chapter_id_chapters_id_fk": {
-          "name": "writing_actions_chapter_id_chapters_id_fk",
-          "tableFrom": "writing_actions",
-          "tableTo": "chapters",
-          "columnsFrom": [
-            "chapter_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "writing_actions_source_version_id_chapter_versions_id_fk": {
-          "name": "writing_actions_source_version_id_chapter_versions_id_fk",
-          "tableFrom": "writing_actions",
-          "tableTo": "chapter_versions",
-          "columnsFrom": [
-            "source_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "writing_actions_version_node_id_version_nodes_id_fk": {
-          "name": "writing_actions_version_node_id_version_nodes_id_fk",
-          "tableFrom": "writing_actions",
-          "tableTo": "version_nodes",
-          "columnsFrom": [
-            "version_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "writing_actions_chapter_version_id_chapter_versions_id_fk": {
-          "name": "writing_actions_chapter_version_id_chapter_versions_id_fk",
-          "tableFrom": "writing_actions",
-          "tableTo": "chapter_versions",
-          "columnsFrom": [
-            "chapter_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "writing_actions_action_check": {
-          "name": "writing_actions_action_check",
-          "value": "\"writing_actions\".\"action\" in ('continue', 'rewrite', 'expand', 'condense', 'change_pov', 'add_hook', 'generate_title', 'generate_summary', 'selection_rewrite')"
-        },
-        "writing_actions_output_kind_check": {
-          "name": "writing_actions_output_kind_check",
-          "value": "\"writing_actions\".\"output_kind\" in ('chapter_text', 'title_options', 'summary', 'hooks')"
-        },
-        "writing_actions_version_check": {
-          "name": "writing_actions_version_check",
-          "value": "\"writing_actions\".\"version\" > 0"
-        },
-        "writing_actions_chapter_output_check": {
-          "name": "writing_actions_chapter_output_check",
-          "value": "(\"writing_actions\".\"output_kind\" = 'chapter_text' and \"writing_actions\".\"chapter_version_id\" is not null) or (\"writing_actions\".\"output_kind\" <> 'chapter_text' and \"writing_actions\".\"chapter_version_id\" is null)"
-        },
-        "writing_actions_prompt_hash_check": {
-          "name": "writing_actions_prompt_hash_check",
-          "value": "\"writing_actions\".\"prompt_hash\" ~ '^[a-f0-9]{64}$'"
         }
       },
       "isRLSEnabled": false

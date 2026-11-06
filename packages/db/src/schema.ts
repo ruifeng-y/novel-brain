@@ -3301,6 +3301,85 @@ export const sceneCards = pgTable(
   ],
 );
 
+export const searchDocuments = pgTable(
+  "search_documents",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    entityType: text("entity_type"),
+    title: text("title").notNull().default(""),
+    content: text("content").notNull().default(""),
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "cascade" }),
+    objectVersion: integer("object_version").notNull(),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    fromChapter: integer("from_chapter").notNull(),
+    toChapter: integer("to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("search_documents_source_version_unique").on(
+      table.branchId,
+      table.sourceType,
+      table.sourceId,
+      table.versionNodeId,
+    ),
+    index("search_documents_user_work_branch_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.sourceType,
+    ),
+    index("search_documents_branch_chapter_idx").on(
+      table.branchId,
+      table.fromChapter,
+      table.toChapter,
+    ),
+    check(
+      "search_documents_source_type_check",
+      sql`${table.sourceType} in ('entity', 'fact', 'timeline_event', 'map_node')`,
+    ),
+    check(
+      "search_documents_entity_type_check",
+      sql`${table.entityType} is null or ${table.entityType} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
+    ),
+    check(
+      "search_documents_validity_check",
+      sql`${table.toChapter} is null or ${table.toChapter} >= ${table.fromChapter}`,
+    ),
+    check(
+      "search_documents_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "search_documents_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
 export type StoryLedgerEvidenceJson = {
   kind: string;
   sourceId: string | null;
