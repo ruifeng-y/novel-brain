@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
+  contextPackManifestSchema,
   contextPackVersionSchema,
   WORKER_JOB_STEPS,
+  type ContextPackManifest,
   type GenerateChapterJob,
   type GenerationCost,
   type WorkerJobStep,
@@ -12,6 +14,7 @@ import {
   agentRuns,
   chapterVersions,
   chapters,
+  characterKnowledgeStates,
   contextPackVersions,
   costReservations,
   createDatabaseClient,
@@ -46,7 +49,6 @@ import {
   outputRefsFromStepOutput,
   resolveRecoveryStep,
   type ChapterContextInput,
-  type CompiledContextPack,
   type RecoveryStepStatus,
 } from "@novel-brain/core";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
@@ -67,6 +69,11 @@ export interface LoadedGenerationJob {
 
 export interface WorkerContextSources {
   chapter: InferSelectModel<typeof chapters>;
+  branch: {
+    id: string;
+    status: "active" | "archived";
+    headNodeId: string | null;
+  };
   storyBible: InferSelectModel<typeof storyBibles>;
   worldRules: Array<{
     id: string;
@@ -91,6 +98,24 @@ export interface WorkerContextSources {
     validToChapter?: number | null;
   }>;
   previousVersions: ChapterContextInput["previousVersions"];
+  povCharacterId?: string;
+  knowledge?: {
+    facts: Array<{
+      id: string;
+      subject: string;
+      predicate: string;
+      object: string;
+      validFromChapter: number;
+      validToChapter: number | null;
+    }>;
+    states: Array<{
+      objectiveFactId: string;
+      state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+      claimedContent: string | null;
+      validFromChapter: number;
+      validToChapter: number | null;
+    }>;
+  };
 }
 
 export interface StartedModelCall {
@@ -190,6 +215,24 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         )
         .limit(1);
       if (!chapter) {
+        return undefined;
+      }
+      const [branch] = await transaction
+        .select({
+          id: workBranches.id,
+          status: workBranches.status,
+          headNodeId: workBranches.headNodeId,
+        })
+        .from(workBranches)
+        .where(
+          and(
+            eq(workBranches.id, payload.branchId),
+            eq(workBranches.workId, payload.workId),
+            eq(workBranches.userId, payload.actorId),
+          ),
+        )
+        .limit(1);
+      if (!branch) {
         return undefined;
       }
       const [storyBible] = await transaction
@@ -298,8 +341,33 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         )
         .orderBy(desc(chapters.number))
         .limit(3);
+      const povName = chapter.brief?.pov;
+      const hasPov = typeof povName === "string" && povName.trim().length > 0;
+      const povCharacter =
+        typeof povName === "string"
+          ? settings.find((setting) => setting.type === "character" && setting.name === povName)
+          : undefined;
+      const knowledgeStates = povCharacter
+        ? await transaction
+            .select()
+            .from(characterKnowledgeStates)
+            .where(
+              and(
+                eq(characterKnowledgeStates.characterId, povCharacter.id),
+                eq(characterKnowledgeStates.workId, payload.workId),
+                eq(characterKnowledgeStates.branchId, payload.branchId),
+                eq(characterKnowledgeStates.userId, payload.actorId),
+              ),
+            )
+            .orderBy(asc(characterKnowledgeStates.validFromChapter))
+        : [];
       return {
         chapter,
+        branch: {
+          id: branch.id,
+          status: branch.status === "archived" ? "archived" : "active",
+          headNodeId: branch.headNodeId,
+        },
         storyBible,
         worldRules: worldRules.map((rule) => ({
           id: rule.id,
@@ -346,6 +414,29 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           ? { styleSample: work.settings.styleSample }
           : {}),
         previousVersions,
+        ...(povCharacter ? { povCharacterId: povCharacter.id } : {}),
+        ...(hasPov
+          ? {
+              knowledge: {
+                facts: submittedFacts.map(({ fact }) => ({
+                  id: fact.id,
+                  subject: fact.subject,
+                  predicate: fact.predicate,
+                  object: fact.object,
+                  validFromChapter: fact.validFromChapter,
+                  validToChapter: fact.validToChapter,
+                })),
+                states: knowledgeStates.map((state) => ({
+                  objectiveFactId: state.objectiveFactId,
+                  state: state.state as
+                    "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown",
+                  claimedContent: state.claimedContent,
+                  validFromChapter: state.validFromChapter,
+                  validToChapter: state.validToChapter,
+                })),
+              },
+            }
+          : {}),
       };
     });
   }
@@ -831,7 +922,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
 
   async persistContextPack(input: {
     payload: GenerateChapterJob;
-    pack: CompiledContextPack;
+    pack: ContextPackManifest;
   }): Promise<string> {
     return this.withTenant(input.payload.actorId, async (transaction) => {
       const [existing] = await transaction
@@ -858,14 +949,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         selected: input.pack.selected,
         evicted: input.pack.evicted,
         sourceRefs: input.pack.sourceRefs,
-        snapshot: {
-          compilerVersion: input.pack.compilerVersion,
-          tokenBudget: input.pack.tokenBudget,
-          tokenUsed: input.pack.tokenUsed,
-          selected: input.pack.selected,
-          evicted: input.pack.evicted,
-          sourceRefs: input.pack.sourceRefs,
-        },
+        snapshot: input.pack,
       });
       return id;
     });
@@ -1495,7 +1579,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   async loadContextPack(
     payload: GenerateChapterJob,
     contextPackId: string,
-  ): Promise<CompiledContextPack | undefined> {
+  ): Promise<ContextPackManifest | undefined> {
     return this.withTenant(payload.actorId, async (transaction) => {
       const [pack] = await transaction
         .select()
@@ -1511,6 +1595,10 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!pack) {
         return undefined;
       }
+      const snapshot = pack.snapshot as Record<string, unknown>;
+      if (typeof snapshot.manifestHash === "string") {
+        return contextPackManifestSchema.parse(snapshot);
+      }
       const contract = contextPackVersionSchema.parse({
         id: pack.id,
         jobId: pack.jobId,
@@ -1523,14 +1611,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         sourceRefs: pack.sourceRefs,
         createdAt: pack.createdAt.toISOString(),
       });
-      return {
-        compilerVersion: contract.compilerVersion,
-        tokenBudget: contract.tokenBudget,
-        tokenUsed: contract.tokenUsed,
-        selected: contract.selected,
-        evicted: contract.evicted,
-        sourceRefs: contract.sourceRefs,
-      };
+      return legacyManifest(payload, contract);
     });
   }
 
@@ -1547,6 +1628,56 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       return operation(transaction);
     });
   }
+}
+
+function legacyManifest(
+  payload: GenerateChapterJob,
+  contract: {
+    compilerVersion: string;
+    tokenBudget: number;
+    tokenUsed: number;
+    selected: ContextPackManifest["selected"];
+    evicted: ContextPackManifest["evicted"];
+    sourceRefs: ContextPackManifest["sourceRefs"];
+  },
+): ContextPackManifest {
+  const emptyLayer = {
+    selectedCount: 0,
+    selectedTokens: 0,
+    evictedCount: 0,
+    evictedTokens: 0,
+  };
+  return {
+    compilerVersion: contract.compilerVersion,
+    manifestHash: "0".repeat(64),
+    task: "chapter_draft",
+    chapterId: payload.chapterId,
+    chapterNumber: 1,
+    povCharacterId: null,
+    branchId: payload.branchId,
+    tokenBudget: contract.tokenBudget,
+    tokenUsed: contract.tokenUsed,
+    effectiveTokenBudget: contract.tokenBudget,
+    selected: contract.selected,
+    evicted: contract.evicted,
+    sourceRefs: contract.sourceRefs,
+    budget: {
+      requestedTokenBudget: contract.tokenBudget,
+      effectiveTokenBudget: contract.tokenBudget,
+      modelContextWindowTokens: null,
+      reservedOutputTokens: 0,
+      tokenUsed: contract.tokenUsed,
+      tokenRemaining: Math.max(0, contract.tokenBudget - contract.tokenUsed),
+      tokenEstimator: "legacy",
+      layers: {
+        P0: emptyLayer,
+        P1: emptyLayer,
+        P2: emptyLayer,
+        P3: emptyLayer,
+        P4: emptyLayer,
+      },
+    },
+  };
 }
 
 async function appendEvent(

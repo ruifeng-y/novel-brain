@@ -50,6 +50,8 @@ export const ERROR_CODES = [
   "EQUIPMENT_SLOT_CONFLICT",
   "ITEM_NOT_EQUIPMENT",
   "JOB_BUDGET_EXCEEDED",
+  "JOB_CONTEXT_BRANCH_STALE",
+  "JOB_CONTEXT_WINDOW_TOO_SMALL",
   "JOB_CANCELLED",
   "JOB_NOT_RECOVERABLE",
   "JOB_RECOVERY_CONFLICT",
@@ -3535,23 +3537,106 @@ export type ContextSourceRef = z.infer<typeof contextSourceRefSchema>;
 export const contextSourcePrioritySchema = z.enum(["required", "high", "normal"]);
 export type ContextSourcePriority = z.infer<typeof contextSourcePrioritySchema>;
 
+export const contextLayerSchema = z.enum(["P0", "P1", "P2", "P3", "P4"]);
+export type ContextLayer = z.infer<typeof contextLayerSchema>;
+
+export const contextTaskSchema = z.enum([
+  "chapter_draft",
+  "chapter_revision",
+  "continuity_check",
+  "fact_extraction",
+]);
+export type ContextTask = z.infer<typeof contextTaskSchema>;
+
+export const contextInclusionReasonSchema = z.enum([
+  "p0_hard_constraint",
+  "scene_relevant_canon",
+  "recent_narrative",
+  "style_and_promise",
+  "optional_reference",
+]);
+export type ContextInclusionReason = z.infer<typeof contextInclusionReasonSchema>;
+
+export const contextEvictionReasonSchema = z.enum([
+  "token_budget",
+  "stale_branch",
+  "task_mismatch",
+  "pov_mismatch",
+  "future_fact",
+  "expired_fact",
+  "time_window",
+  "knowledge_boundary",
+  "empty_content",
+  "missing_source",
+]);
+export type ContextEvictionReason = z.infer<typeof contextEvictionReasonSchema>;
+
 export const contextPackSelectedSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
-  priority: contextSourcePrioritySchema,
+  layer: contextLayerSchema.optional(),
+  priority: z.union([contextSourcePrioritySchema, contextLayerSchema]),
   content: z.string().min(1),
   tokenCount: z.number().int().positive(),
   sourceRefs: z.array(contextSourceRefSchema).min(1),
+  reason: contextInclusionReasonSchema.optional(),
 });
 export type ContextPackSelected = z.infer<typeof contextPackSelectedSchema>;
 
 export const contextPackEvictionSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
-  reason: z.literal("token_budget"),
+  layer: contextLayerSchema.optional(),
+  reason: contextEvictionReasonSchema,
   tokenCount: z.number().int().positive(),
+  sourceRefs: z.array(contextSourceRefSchema).optional(),
+  detail: z.string().optional(),
 });
 export type ContextPackEviction = z.infer<typeof contextPackEvictionSchema>;
+
+export const contextLayerAccountingSchema = z.object({
+  selectedCount: z.number().int().nonnegative(),
+  selectedTokens: z.number().int().nonnegative(),
+  evictedCount: z.number().int().nonnegative(),
+  evictedTokens: z.number().int().nonnegative(),
+});
+export type ContextLayerAccounting = z.infer<typeof contextLayerAccountingSchema>;
+
+export const contextBudgetAccountingSchema = z.object({
+  requestedTokenBudget: z.number().int().positive(),
+  effectiveTokenBudget: z.number().int().positive(),
+  modelContextWindowTokens: z.number().int().positive().nullable(),
+  reservedOutputTokens: z.number().int().nonnegative(),
+  tokenUsed: z.number().int().nonnegative(),
+  tokenRemaining: z.number().int().nonnegative(),
+  tokenEstimator: z.string().min(1),
+  layers: z.object({
+    P0: contextLayerAccountingSchema,
+    P1: contextLayerAccountingSchema,
+    P2: contextLayerAccountingSchema,
+    P3: contextLayerAccountingSchema,
+    P4: contextLayerAccountingSchema,
+  }),
+});
+export type ContextBudgetAccounting = z.infer<typeof contextBudgetAccountingSchema>;
+
+export const contextPackManifestSchema = z.object({
+  compilerVersion: z.string().min(1),
+  manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
+  task: contextTaskSchema,
+  chapterId: uuidV7Schema,
+  chapterNumber: z.number().int().positive(),
+  povCharacterId: uuidV7Schema.nullable(),
+  branchId: uuidV7Schema,
+  tokenBudget: z.number().int().positive(),
+  tokenUsed: z.number().int().nonnegative(),
+  effectiveTokenBudget: z.number().int().positive(),
+  selected: z.array(contextPackSelectedSchema),
+  evicted: z.array(contextPackEvictionSchema),
+  sourceRefs: z.array(contextSourceRefSchema),
+  budget: contextBudgetAccountingSchema,
+});
+export type ContextPackManifest = z.infer<typeof contextPackManifestSchema>;
 
 export const contextPackVersionSchema = z.object({
   id: uuidV7Schema,
@@ -3564,6 +3649,17 @@ export const contextPackVersionSchema = z.object({
   evicted: z.array(contextPackEvictionSchema),
   sourceRefs: z.array(contextSourceRefSchema),
   createdAt: z.string().datetime(),
+  manifestHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  task: contextTaskSchema.optional(),
+  chapterId: uuidV7Schema.optional(),
+  chapterNumber: z.number().int().positive().optional(),
+  povCharacterId: uuidV7Schema.nullable().optional(),
+  branchId: uuidV7Schema.optional(),
+  effectiveTokenBudget: z.number().int().positive().optional(),
+  budget: contextBudgetAccountingSchema.optional(),
 });
 export type ContextPackVersion = z.infer<typeof contextPackVersionSchema>;
 
@@ -3574,6 +3670,17 @@ export const contextPackPreviewSchema = z.object({
   selected: z.array(contextPackSelectedSchema),
   evicted: z.array(contextPackEvictionSchema),
   sourceRefs: z.array(contextSourceRefSchema),
+  manifestHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  task: contextTaskSchema.optional(),
+  chapterId: uuidV7Schema.optional(),
+  chapterNumber: z.number().int().positive().optional(),
+  povCharacterId: uuidV7Schema.nullable().optional(),
+  branchId: uuidV7Schema.optional(),
+  effectiveTokenBudget: z.number().int().positive().optional(),
+  budget: contextBudgetAccountingSchema.optional(),
 });
 export type ContextPackPreview = z.infer<typeof contextPackPreviewSchema>;
 
