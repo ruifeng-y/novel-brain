@@ -42,6 +42,12 @@ export class ReviewService {
         status: result.status,
       });
     }
+    if (result.kind === "quality_blocked") {
+      throw new ApiError(409, "QUALITY_GATE_BLOCKED", "本章还有阻断级质量问题，请修订后再批准", {
+        gate: "chapter_approval",
+        blockers: result.gate.blockers,
+      });
+    }
     return {
       chapter: await this.chapters.get(userId, workId, branchId, chapterId),
       decision: toDecision(result.decision),

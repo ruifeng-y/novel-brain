@@ -17,6 +17,7 @@ import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 import type { WorksAuditContext } from "../works/works.repository";
+import { qualityGateForChapterVersion } from "./quality-gate";
 
 export type ReviewDecisionRecord = InferSelectModel<typeof reviewDecisions>;
 
@@ -26,6 +27,7 @@ export type ReviewResult =
   | { kind: "not_found" }
   | { kind: "version_conflict" }
   | { kind: "invalid_state"; status: string }
+  | { kind: "quality_blocked"; gate: Awaited<ReturnType<typeof qualityGateForChapterVersion>> }
   | {
       kind: "reviewed";
       chapterId: string;
@@ -89,6 +91,17 @@ export class ReviewRepository implements OnModuleDestroy {
       }
       if (row.chapter.version !== input.version) {
         return { kind: "version_conflict" };
+      }
+      if (input.action === "approve" && row.chapter.currentVersionId) {
+        const gate = await qualityGateForChapterVersion(
+          transaction,
+          userId,
+          row.chapter.id,
+          row.chapter.currentVersionId,
+        );
+        if (!gate.canApprove) {
+          return { kind: "quality_blocked", gate };
+        }
       }
       if (input.action === "approve" && row.chapter.status === "approved") {
         const existing = await findLatestDecision(transaction, row.chapter.id, "approve");

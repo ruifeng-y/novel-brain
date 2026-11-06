@@ -21,6 +21,7 @@ import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 import type { WorksAuditContext } from "../works/works.repository";
+import { qualityGateForChapterVersion } from "../review/quality-gate";
 
 export type ChapterRecord = InferSelectModel<typeof chapters>;
 export type ChapterVersionRecord = InferSelectModel<typeof chapterVersions>;
@@ -38,6 +39,10 @@ export type CanonSubmissionResult =
   | { kind: "not_found" }
   | { kind: "version_conflict" }
   | { kind: "chapter_not_approved"; chapterStatus: string }
+  | {
+      kind: "quality_blocked";
+      gate: Awaited<ReturnType<typeof qualityGateForChapterVersion>>;
+    }
   | {
       kind: "blocked";
       pendingRequiredFactIds: string[];
@@ -380,6 +385,15 @@ async function evaluateSubmission(
   }
   if (row.chapter.status !== "approved" && row.chapter.status !== "locked") {
     return { kind: "chapter_not_approved", chapterStatus: row.chapter.status };
+  }
+  const qualityGate = await qualityGateForChapterVersion(
+    transaction,
+    userId,
+    row.chapter.id,
+    row.version.id,
+  );
+  if (!qualityGate.canCommitCanon) {
+    return { kind: "quality_blocked", gate: qualityGate };
   }
 
   const proposals = await transaction

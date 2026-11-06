@@ -7089,6 +7089,235 @@ a:focus-visible {
   font-size: 12px;
 }
 
+.writing-quality-summary {
+  margin: 0 0 10px;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.quality-dimensions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.quality-dimension {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+}
+
+.quality-dimension > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quality-dimension strong {
+  font-size: 12px;
+}
+
+.quality-dimension span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.quality-dimension p {
+  margin: 6px 0;
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.quality-dimension blockquote {
+  margin: 0;
+  padding-left: 8px;
+  overflow: hidden;
+  border-left: 2px solid var(--line);
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+  text-overflow: ellipsis;
+}
+
+.writing-quality-gate {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, var(--cinnabar) 30%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cinnabar) 7%, transparent);
+  color: var(--cinnabar);
+}
+
+.writing-quality-gate div {
+  display: grid;
+  gap: 3px;
+}
+
+.writing-quality-gate strong {
+  font-size: 12px;
+}
+
+.writing-quality-gate small {
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.writing-quality-gate-ok {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  color: var(--jade);
+  font-size: 12px;
+}
+
+.writing-quality-findings {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.writing-quality-findings h3 {
+  margin: 0;
+  font-size: 13px;
+}
+
+.writing-quality-finding {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.writing-quality-finding.severity-p0,
+.writing-quality-finding.severity-p1 {
+  border-left-color: var(--cinnabar);
+}
+
+.writing-quality-finding.severity-p2 {
+  border-left-color: var(--gold);
+}
+
+.writing-quality-finding.severity-p3 {
+  border-left-color: var(--blue);
+}
+
+.writing-quality-finding-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.critic-severity-p0,
+.critic-severity-p1 {
+  color: var(--cinnabar);
+  border-color: color-mix(in srgb, var(--cinnabar) 35%, var(--line));
+}
+
+.critic-severity-p2 {
+  color: var(--gold);
+}
+
+.critic-severity-p3 {
+  color: var(--blue);
+}
+
+.writing-quality-finding h4 {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.writing-quality-finding blockquote {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px;
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.writing-quality-finding blockquote span,
+.writing-quality-finding blockquote small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.writing-quality-sources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.writing-quality-sources span {
+  max-width: 100%;
+  padding: 2px 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.writing-quality-ignore-reason {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.writing-quality-dismiss {
+  display: grid;
+  gap: 8px;
+}
+
+.writing-quality-dismiss label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.writing-quality-dismiss textarea {
+  min-height: 64px;
+  padding: 8px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+}
+
+.writing-quality-dismiss > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
 @media (max-width: 900px) {
   .writing-action-menu {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -7116,5 +7345,9 @@ a:focus-visible {
 
   .writing-action-pov input {
     width: 100%;
+  }
+
+  .quality-dimensions {
+    grid-template-columns: 1fr;
   }
 }

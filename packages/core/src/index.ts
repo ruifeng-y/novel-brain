@@ -587,3 +587,4 @@ export * from "./recovery";
 export * from "./story-ledger";
 export * from "./summary";
 export * from "./writing-actions";
+export * from "./critic";

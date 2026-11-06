@@ -315,6 +315,61 @@ test("keeps a long chapter usable at the narrow viewport", async ({ page, contex
   expect(overflow).toBeLessThanOrEqual(0);
 });
 
+test("shows six-dimension evidence and completes a finding dismiss/reopen lifecycle", async ({
+  page,
+  context,
+}, testInfo) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+
+  await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+  const editor = page.getByRole("textbox", { name: "章节正文" });
+  await editor.fill("沈砚双手结印，断臂竟毫无妨碍。\n\n风停了，山道上没有声音。");
+  await page.getByRole("button", { name: "保存版本" }).click();
+  await expect(page.getByText("已保存")).toBeVisible();
+
+  await page.getByRole("button", { name: "检查本章" }).click();
+  const quality = page.locator(".writing-quality");
+  await expect(quality.getByRole("heading", { name: "质量报告" })).toBeVisible();
+  await expect(quality.locator(".quality-dimension")).toHaveCount(6);
+  await expect(quality.locator('[data-quality-dimension="continuity"]')).toBeVisible();
+  await expect(quality.locator('[data-quality-dimension="hook"]')).toBeVisible();
+  await expect(quality.locator('[data-critic-finding="FACT_CONTRADICTION"]')).toBeVisible();
+  await expect(
+    quality
+      .locator('[data-critic-finding="FACT_CONTRADICTION"]')
+      .getByText("阻断", { exact: true }),
+  ).toBeVisible();
+  await expect(quality.locator('[data-critic-finding="WEAK_CHAPTER_END_HOOK"]')).toBeVisible();
+  await expectAuthorFacingLanguage(page);
+
+  const dismissible = quality.locator('[data-critic-finding="WEAK_CHAPTER_END_HOOK"]');
+  await dismissible.getByRole("button", { name: "忽略误报" }).click();
+  await dismissible
+    .getByRole("textbox", { name: "忽略理由" })
+    .fill("章末留白是有意处理，不按误报修订。");
+  await dismissible.getByRole("button", { name: "记录理由并忽略" }).click();
+  await expect(dismissible).toHaveAttribute("data-critic-status", "dismissed");
+  await expect(dismissible.getByText("已记录理由忽略")).toBeVisible();
+  await expect(dismissible.getByText("章末留白是有意处理，不按误报修订。")).toBeVisible();
+  await dismissible.getByRole("button", { name: "恢复问题" }).click();
+  await expect(dismissible).toHaveAttribute("data-critic-status", "open");
+
+  for (const width of [390, 900, 1180, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(quality).toBeVisible();
+    await expect(quality.locator(".quality-dimension")).toHaveCount(6);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    await testInfo.attach(`writing-quality-${width}`, {
+      body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
+      contentType: "image/png",
+    });
+  }
+});
+
 test("generates a chapter with progress, references, citations, cost and checkpoint", async ({
   page,
   context,

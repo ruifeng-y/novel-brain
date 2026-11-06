@@ -36,12 +36,14 @@ import {
   chapterReviewResponseSchema,
   chapterWorkspaceListResponseSchema,
   chapterWorkspaceResponseSchema,
+  criticAnnotationResponseSchema,
   factProposalListResponseSchema,
   factProposalResponseSchema,
   generationReadinessResponseSchema,
   generationJobListResponseSchema,
   generationJobResponseSchema,
   jobEventSchema,
+  qualityWorkspaceResponseSchema,
   writingActionJobListResponseSchema,
   writingActionJobResponseSchema,
   workResponseSchema,
@@ -52,6 +54,7 @@ import {
   type FactProposal,
   type AgentRunTrace,
   type GenerationJob,
+  type QualityWorkspace,
   type GenerationReadiness,
   type WorkOverview,
   type WritingActionJob,
@@ -120,6 +123,38 @@ const factRiskLabels: Record<FactProposal["risk"], string> = {
   high: "高风险",
 };
 
+const criticSeverityLabels: Record<QualityWorkspace["findings"][number]["severity"], string> = {
+  P0: "阻断",
+  P1: "高风险",
+  P2: "提醒",
+  P3: "建议",
+};
+
+const criticStatusLabels: Record<QualityWorkspace["findings"][number]["status"], string> = {
+  open: "待处理",
+  dismissed: "已记录理由忽略",
+  superseded: "已被新版本替代",
+};
+
+const criticDimensionLabels: Record<QualityWorkspace["findings"][number]["dimension"], string> = {
+  continuity: "连续性",
+  style: "文风",
+  reader_experience: "读者体验",
+};
+
+const criticEvidenceLabels: Record<
+  QualityWorkspace["findings"][number]["evidence"][number]["kind"],
+  string
+> = {
+  fact: "事实",
+  timeline: "时间线",
+  knowledge: "角色认知",
+  outline: "章纲",
+  location: "地点",
+  voice: "声线",
+  text: "正文",
+};
+
 const jobEventTypes = [
   "job.created",
   "job.preparing",
@@ -170,6 +205,11 @@ export function WritingWorkspace({
   const [canonCommit, setCanonCommit] = useState<CanonCommit | null>(null);
   const [reviewBusy, setReviewBusy] = useState(false);
   const [submissionBusy, setSubmissionBusy] = useState(false);
+  const [qualityWorkspace, setQualityWorkspace] = useState<QualityWorkspace | null>(null);
+  const [qualityBusy, setQualityBusy] = useState(false);
+  const [annotationBusyId, setAnnotationBusyId] = useState<string | null>(null);
+  const [dismissingId, setDismissingId] = useState<string | null>(null);
+  const [dismissReason, setDismissReason] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const writingActionEventSourceRef = useRef<EventSource | null>(null);
@@ -209,6 +249,7 @@ export function WritingWorkspace({
           loadWritingActions(workData, nextSelectedId),
           loadFactProposals(workData, nextSelectedId),
           loadCanonCommit(workData, nextSelectedId),
+          loadQuality(workData, nextSelectedId),
           loadReadiness(workData, nextSelectedId),
         ]);
       } else {
@@ -218,6 +259,7 @@ export function WritingWorkspace({
         setRunTraces([]);
         setFactProposals([]);
         setCanonCommit(null);
+        setQualityWorkspace(null);
         await loadReadiness(workData, null);
       }
     } catch (caught) {
@@ -285,7 +327,11 @@ export function WritingWorkspace({
     canonCommit.chapterId === selected.id &&
     canonCommit.chapterVersionId === selected.currentVersionId,
   );
-  const canApprove = Boolean(selected?.status === "waiting_review" && !reviewBusy);
+  const canApprove = Boolean(
+    selected?.status === "waiting_review" &&
+    !reviewBusy &&
+    (qualityWorkspace?.gate.canApprove ?? true),
+  );
   const canSubmit = Boolean(
     selected?.currentVersionId &&
     chapterApproved &&
@@ -299,6 +345,9 @@ export function WritingWorkspace({
   const traceCalls = runTraces.flatMap((trace) => trace.modelCalls);
   const traceCost = traceCalls.reduce((sum, call) => sum + call.costCny, 0);
   const failedTrace = runTraces.find((trace) => trace.run.status === "failed");
+  const canCheckQuality = Boolean(
+    selected?.currentVersionId && !dirty && !qualityBusy && !generationActive,
+  );
 
   async function selectChapter(chapter: ChapterWorkspace) {
     setSelectedId(chapter.id);
@@ -314,6 +363,7 @@ export function WritingWorkspace({
           loadWritingActions(work, chapter.id),
           loadFactProposals(work, chapter.id),
           loadCanonCommit(work, chapter.id),
+          loadQuality(work, chapter.id),
         ]);
       } catch (caught) {
         setActionError(caught instanceof Error ? caught.message : "章节资料加载失败。");
@@ -428,6 +478,17 @@ export function WritingWorkspace({
     }
     const commits = canonCommitListResponseSchema.parse(await response.json()).data;
     setCanonCommit(commits.find((commit) => commit.chapterId === chapterId) ?? null);
+  }
+
+  async function loadQuality(workData: WorkOverview, chapterId: string) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/quality`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      throw new Error(await readError(response, "质量报告加载失败。"));
+    }
+    setQualityWorkspace(qualityWorkspaceResponseSchema.parse(await response.json()).data);
   }
 
   async function loadReadiness(
@@ -704,6 +765,7 @@ export function WritingWorkspace({
     setContent(chapter.currentVersion?.content ?? "");
     setSavedContent(chapter.currentVersion?.content ?? "");
     await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
+    await loadQuality(workData, chapter.id);
   }
 
   function closeWritingActionStream() {
@@ -849,6 +911,7 @@ export function WritingWorkspace({
           await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
           await loadFactProposals(workData, chapter.id);
           await loadCanonCommit(workData, chapter.id);
+          await loadQuality(workData, chapter.id);
         }
       }
     }
@@ -895,6 +958,74 @@ export function WritingWorkspace({
       setActionError(caught instanceof Error ? caught.message : "事实决策保存失败。");
     } finally {
       setFactBusyId(null);
+    }
+  }
+
+  async function checkQuality() {
+    if (!work || !selected?.currentVersionId || !canCheckQuality) {
+      return;
+    }
+    setQualityBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}/verify`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({ chapterVersionId: selected.currentVersionId }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "本章检查失败。"));
+      }
+      setQualityWorkspace(qualityWorkspaceResponseSchema.parse(await response.json()).data);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "本章检查失败。");
+    } finally {
+      setQualityBusy(false);
+    }
+  }
+
+  async function updateAnnotation(
+    annotation: QualityWorkspace["annotations"][number],
+    action: "dismiss" | "reopen",
+  ) {
+    if (!work || annotationBusyId) {
+      return;
+    }
+    setAnnotationBusyId(annotation.findingId);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/annotations/${annotation.findingId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            action,
+            version: annotation.version,
+            ...(action === "dismiss" ? { reason: dismissReason.trim() } : {}),
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "问题状态更新失败。"));
+      }
+      criticAnnotationResponseSchema.parse(await response.json());
+      setDismissingId(null);
+      setDismissReason("");
+      await loadQuality(work, annotation.chapterId);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "问题状态更新失败。");
+    } finally {
+      setAnnotationBusyId(null);
     }
   }
 
@@ -1010,6 +1141,7 @@ export function WritingWorkspace({
       setSavedContent(content);
       setSaved(true);
       await loadVersions(work, result.chapter.id, result.version.id);
+      await loadQuality(work, result.chapter.id);
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "版本保存失败。");
     } finally {
@@ -1622,6 +1754,203 @@ export function WritingWorkspace({
             )}
           </section>
 
+          <section className="panel writing-quality" aria-labelledby="writing-quality-title">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">结构化审校</span>
+                <h2 id="writing-quality-title">质量报告</h2>
+              </div>
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={!canCheckQuality}
+                onClick={() => void checkQuality()}
+                type="button"
+              >
+                {qualityBusy ? (
+                  <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                ) : (
+                  <Sparkles size={14} aria-hidden="true" />
+                )}
+                {qualityWorkspace?.report ? "重新检查" : "检查本章"}
+              </button>
+            </div>
+            {!qualityWorkspace?.report ? (
+              <p className="writing-generation-empty">
+                保存当前版本后检查连续性、文风和读者体验，结果会定位到正文证据。
+              </p>
+            ) : (
+              <>
+                <p className="writing-quality-summary">{qualityWorkspace.report.summary}</p>
+                <div className="quality-dimensions" aria-label="六维质量证据">
+                  {qualityWorkspace.report.dimensions.map((dimension) => (
+                    <article
+                      className="quality-dimension"
+                      data-quality-dimension={dimension.dimension}
+                      key={dimension.dimension}
+                    >
+                      <div>
+                        <strong>{dimension.label}</strong>
+                        <span>{dimension.score}/5</span>
+                      </div>
+                      <p>{dimension.rationale}</p>
+                      <blockquote>“{dimension.evidence[0]?.quote}”</blockquote>
+                    </article>
+                  ))}
+                </div>
+                {qualityWorkspace.gate.blockers.length > 0 ? (
+                  <div className="writing-quality-gate" role="alert">
+                    <TriangleAlert size={15} aria-hidden="true" />
+                    <div>
+                      <strong>
+                        {qualityWorkspace.gate.canApprove
+                          ? "仍有结构问题，暂不能提交本章事实"
+                          : "仍有阻断问题，暂不能批准或提交本章事实"}
+                      </strong>
+                      <small>
+                        {qualityWorkspace.gate.blockers
+                          .map((blocker) => blocker.message)
+                          .join("；")}
+                      </small>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="writing-quality-gate-ok">
+                    <Check size={14} aria-hidden="true" />
+                    当前版本没有阻断级质量问题。
+                  </p>
+                )}
+                <div className="writing-quality-findings">
+                  <h3>本章问题</h3>
+                  {qualityWorkspace.findings.length === 0 ? (
+                    <p className="writing-generation-empty">本次检查没有发现问题。</p>
+                  ) : (
+                    qualityWorkspace.findings.map((finding) => {
+                      const evidence = finding.evidence[0];
+                      const canDismiss =
+                        finding.status === "open" &&
+                        (finding.severity === "P2" || finding.severity === "P3") &&
+                        !finding.structural;
+                      return (
+                        <article
+                          className={`writing-quality-finding severity-${finding.severity.toLowerCase()}`}
+                          data-critic-finding={finding.code}
+                          data-critic-status={finding.status}
+                          key={finding.id}
+                        >
+                          <div className="writing-quality-finding-head">
+                            <span
+                              className={`badge critic-severity-${finding.severity.toLowerCase()}`}
+                            >
+                              {criticSeverityLabels[finding.severity]}
+                            </span>
+                            <span>{criticDimensionLabels[finding.dimension]}</span>
+                            <small>{criticStatusLabels[finding.status]}</small>
+                          </div>
+                          <h4>{finding.recommendation}</h4>
+                          {evidence ? (
+                            <blockquote>
+                              <span>
+                                {criticEvidenceLabels[evidence.kind]} · {evidence.locator}
+                              </span>
+                              “{evidence.quote}”<small>{evidence.explanation}</small>
+                            </blockquote>
+                          ) : null}
+                          <div className="writing-quality-sources">
+                            {finding.sourceRefs.slice(0, 3).map((source) => (
+                              <span key={`${source.type}-${source.id}`}>{source.label}</span>
+                            ))}
+                          </div>
+                          {finding.ignoredReason ? (
+                            <p className="writing-quality-ignore-reason">
+                              忽略理由：{finding.ignoredReason}
+                            </p>
+                          ) : null}
+                          {canDismiss ? (
+                            dismissingId === finding.id ? (
+                              <form
+                                className="writing-quality-dismiss"
+                                onSubmit={(event) => {
+                                  event.preventDefault();
+                                  const annotation = qualityWorkspace.annotations.find(
+                                    (item) => item.findingId === finding.id,
+                                  );
+                                  if (annotation) {
+                                    void updateAnnotation(annotation, "dismiss");
+                                  }
+                                }}
+                              >
+                                <label>
+                                  <span>忽略理由</span>
+                                  <textarea
+                                    aria-label="忽略理由"
+                                    onChange={(event) => setDismissReason(event.target.value)}
+                                    placeholder="说明为什么这是误报或有意处理"
+                                    value={dismissReason}
+                                  />
+                                </label>
+                                <div>
+                                  <button
+                                    className="btn btn-primary btn-small"
+                                    disabled={
+                                      !dismissReason.trim() || annotationBusyId === finding.id
+                                    }
+                                    type="submit"
+                                  >
+                                    记录理由并忽略
+                                  </button>
+                                  <button
+                                    className="btn btn-ghost btn-small"
+                                    onClick={() => {
+                                      setDismissingId(null);
+                                      setDismissReason("");
+                                    }}
+                                    type="button"
+                                  >
+                                    取消
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <button
+                                className="btn btn-ghost btn-small"
+                                onClick={() => {
+                                  setDismissingId(finding.id);
+                                  setDismissReason("");
+                                }}
+                                type="button"
+                              >
+                                <XCircle size={13} aria-hidden="true" />
+                                忽略误报
+                              </button>
+                            )
+                          ) : null}
+                          {finding.status === "dismissed" ? (
+                            <button
+                              className="btn btn-ghost btn-small"
+                              disabled={annotationBusyId === finding.id}
+                              onClick={() => {
+                                const annotation = qualityWorkspace.annotations.find(
+                                  (item) => item.findingId === finding.id,
+                                );
+                                if (annotation) {
+                                  void updateAnnotation(annotation, "reopen");
+                                }
+                              }}
+                              type="button"
+                            >
+                              <RefreshCw size={13} aria-hidden="true" />
+                              恢复问题
+                            </button>
+                          ) : null}
+                        </article>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            )}
+          </section>
+
           <section
             className="panel writing-facts"
             aria-labelledby="writing-facts-title"
@@ -1785,15 +2114,17 @@ export function WritingWorkspace({
                     <small>
                       {factsSubmitted
                         ? "事实已提交，后续修改需要发起修改请求。"
-                        : !chapterApproved
-                          ? pendingRequiredFacts.length > 0
-                            ? `先批准本章，再确认剩余 ${pendingRequiredFacts.length} 条事实。`
-                            : "先批准本章，才能提交事实。"
-                          : pendingRequiredFacts.length > 0
-                            ? `还有 ${pendingRequiredFacts.length} 条事实待确认。`
-                            : unresolvedHighRiskFacts.length > 0
-                              ? "还有高风险事实待处理。"
-                              : "已满足提交条件，可以提交本章事实。"}
+                        : qualityWorkspace && !qualityWorkspace.gate.canApprove
+                          ? "先处理阻断级质量问题，再批准本章。"
+                          : !chapterApproved
+                            ? pendingRequiredFacts.length > 0
+                              ? `先批准本章，再确认剩余 ${pendingRequiredFacts.length} 条事实。`
+                              : "先批准本章，才能提交事实。"
+                            : pendingRequiredFacts.length > 0
+                              ? `还有 ${pendingRequiredFacts.length} 条事实待确认。`
+                              : unresolvedHighRiskFacts.length > 0
+                                ? "还有高风险事实待处理。"
+                                : "已满足提交条件，可以提交本章事实。"}
                     </small>
                   </div>
                   <div className="writing-submit-actions">

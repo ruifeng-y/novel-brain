@@ -52,6 +52,12 @@ export class CanonService {
         chapterStatus: result.chapterStatus,
       });
     }
+    if (result.kind === "quality_blocked") {
+      throw new ApiError(409, "QUALITY_GATE_BLOCKED", "本章还有阻断级质量问题，不能提交正史", {
+        gate: "canon_commit",
+        blockers: result.gate.blockers,
+      });
+    }
     if (result.kind === "blocked") {
       throw new ApiError(409, "FACT_SUBMISSION_BLOCKED", "本章仍有必填事实待确认", {
         pendingRequiredFactIds: result.pendingRequiredFactIds,
