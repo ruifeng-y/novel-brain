@@ -7,6 +7,7 @@ import {
   GENERATE_CHAPTER_JOB,
   SUMMARY_REBUILD_JOB,
   WORKER_QUEUE_NAME,
+  WRITE_ACTION_JOB,
   workerJobSchema,
   type WorkerJob,
 } from "@novel-brain/contracts";
@@ -20,6 +21,9 @@ import { GenerationJobProcessor } from "./generation/generation.processor";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -31,6 +35,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
   constructor(
     private readonly processor: GenerationJobProcessor,
     private readonly summaryProcessor: SummaryRebuildProcessor,
+    private readonly writingActionProcessor: WritingActionProcessor,
   ) {
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
@@ -43,6 +48,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     });
     this.processor.setTraceLogger(this.logger);
     this.processor.configureRecovery({ maxAutomaticAttempts: 3 });
+    this.writingActionProcessor.setTraceLogger(this.logger);
     this.connection = new Redis(redisUrl, {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
@@ -65,7 +71,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     await this.queue.waitUntilReady();
     await this.worker.waitUntilReady();
     this.logger.info(
-      { event: "worker.ready", queue: WORKER_QUEUE_NAME, jobType: GENERATE_CHAPTER_JOB },
+      {
+        event: "worker.ready",
+        queue: WORKER_QUEUE_NAME,
+        jobTypes: [GENERATE_CHAPTER_JOB, WRITE_ACTION_JOB, SUMMARY_REBUILD_JOB],
+      },
       "Worker is consuming its queue",
     );
   }
@@ -94,6 +104,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     );
     if (payload.jobType === SUMMARY_REBUILD_JOB) {
       await this.summaryProcessor.process(payload);
+      return;
+    }
+    if (payload.jobType === WRITE_ACTION_JOB) {
+      await this.writingActionProcessor.process(payload);
       return;
     }
     await this.processor.process(payload);

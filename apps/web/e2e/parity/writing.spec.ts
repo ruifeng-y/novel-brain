@@ -361,6 +361,78 @@ test("generates a chapter with progress, references, citations, cost and checkpo
   }
 });
 
+test("rewrites only the selected draft and applies a generated title at four viewports", async ({
+  page,
+  context,
+}, testInfo) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const worker = await startWorker();
+  const source = "风停。\n\nSELECTED_BLOCK\n\n钟声未响。";
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    const editor = page.getByRole("textbox", { name: "章节正文" });
+    await editor.fill(source);
+    await page.getByRole("button", { name: "保存版本" }).click();
+    await expect(page.getByText("已保存")).toBeVisible();
+    await expect(page.locator(".writing-version-list").getByText("第 1 版")).toBeVisible();
+
+    await editor.evaluate(
+      (element, range) => {
+        const textarea = element as HTMLTextAreaElement;
+        textarea.focus();
+        textarea.setSelectionRange(range.start, range.end);
+      },
+      {
+        start: source.indexOf("SELECTED_BLOCK"),
+        end: source.indexOf("SELECTED_BLOCK") + "SELECTED_BLOCK".length,
+      },
+    );
+    await page.getByRole("button", { name: "改写选中" }).click();
+
+    const actionPanel = page.locator(".writing-action-panel");
+    await expect(actionPanel.getByText("改写选中", { exact: true })).toBeVisible();
+    await expect(
+      actionPanel.locator(".writing-action-summary").getByText("等待审阅", { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(editor).toHaveValue(/风停。\n\n改写片段/);
+    await expect(editor).not.toHaveValue(/SELECTED_BLOCK/);
+    await expect(editor).toHaveValue(/钟声未响。$/);
+    await expect(actionPanel.getByText(/改写范围：第 \d+–\d+ 字/)).toBeVisible();
+    await expect(actionPanel.getByText("新版本已生成，原稿保留在版本历史")).toBeVisible();
+    await expect(page.locator(".writing-version-list").getByText("第 1 版")).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+
+    await page.getByRole("button", { name: "更多生成" }).click();
+    await page.getByRole("button", { name: "生成标题" }).click();
+    await expect(actionPanel.getByText("生成标题", { exact: true })).toBeVisible();
+    await expect(
+      actionPanel.locator(".writing-action-summary").getByText("等待审阅", { exact: true }),
+    ).toBeVisible({ timeout: 15_000 });
+    const titleButtons = actionPanel.locator(".writing-action-title-options button");
+    await expect(titleButtons.first()).toBeVisible();
+    const generatedTitle = (await titleButtons.first().innerText()).trim();
+    await titleButtons.first().click();
+    await expect(page.locator("#writing-chapter-title")).toHaveText(generatedTitle);
+    await expectAuthorFacingLanguage(page);
+
+    for (const width of [390, 900, 1180, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(actionPanel).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+      await testInfo.attach(`writing-actions-${width}`, {
+        body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
+        contentType: "image/png",
+      });
+    }
+  } finally {
+    await worker.stop();
+  }
+});
+
 test("confirms two fact proposals without changing confirmed settings", async ({
   page,
   context,
