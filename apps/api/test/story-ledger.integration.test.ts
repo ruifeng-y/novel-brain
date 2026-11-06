@@ -1,5 +1,7 @@
 import "reflect-metadata";
 
+import { randomBytes } from "node:crypto";
+
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
@@ -18,7 +20,7 @@ import { ApiExceptionFilter } from "../src/common/api-exception.filter";
 
 const databaseUrl =
   process.env.TEST_DATABASE_URL ??
-  "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_test_146";
+  `postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_test_146_${randomBytes(4).toString("hex")}`;
 const redisUrl = process.env.TEST_REDIS_URL ?? "redis://localhost:6379/13";
 const origin = "http://localhost:3000";
 
