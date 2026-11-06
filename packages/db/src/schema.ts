@@ -2917,3 +2917,188 @@ export const importReports = pgTable(
   },
   (table) => [uniqueIndex("import_reports_job_unique").on(table.importJobId)],
 );
+
+export type SceneBeatJson = {
+  id: string;
+  order: number;
+  description: string;
+};
+
+export type SceneInformationReleaseJson = {
+  id: string;
+  order: number;
+  description: string;
+  constraint: string | null;
+};
+
+export type VolumePlotLineJson = {
+  name: string;
+  status: string;
+  note: string;
+};
+
+export const outlineNodes = pgTable(
+  "outline_nodes",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    level: text("level").notNull(),
+    parentId: uuid("parent_id").references((): AnyPgColumn => outlineNodes.id, {
+      onDelete: "restrict",
+    }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("planned"),
+    locked: boolean("locked").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
+    tension: integer("tension"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("outline_nodes_user_work_idx").on(table.userId, table.workId),
+    index("outline_nodes_branch_parent_idx").on(table.branchId, table.parentId, table.sortOrder),
+    uniqueIndex("outline_nodes_parent_order_unique").on(
+      table.branchId,
+      sql`coalesce(${table.parentId}::text, 'root')`,
+      table.sortOrder,
+    ),
+    uniqueIndex("outline_nodes_branch_chapter_unique")
+      .on(table.branchId, table.chapterId)
+      .where(sql`${table.chapterId} is not null`),
+    uniqueIndex("outline_nodes_branch_book_unique")
+      .on(table.branchId)
+      .where(sql`${table.level} = 'book'`),
+    check(
+      "outline_nodes_level_check",
+      sql`${table.level} in ('book', 'volume', 'act', 'chapter', 'scene')`,
+    ),
+    check("outline_nodes_status_check", sql`${table.status} in ('planned', 'active', 'done')`),
+    check(
+      "outline_nodes_tension_check",
+      sql`${table.tension} is null or (${table.tension} >= 0 and ${table.tension} <= 100)`,
+    ),
+    check(
+      "outline_nodes_parent_check",
+      sql`(${table.level} = 'book' and ${table.parentId} is null) or (${table.level} <> 'book' and ${table.parentId} is not null)`,
+    ),
+    check(
+      "outline_nodes_chapter_check",
+      sql`(${table.level} = 'chapter' and ${table.chapterId} is not null) or (${table.level} <> 'chapter' and ${table.chapterId} is null)`,
+    ),
+  ],
+);
+
+export const volumeContracts = pgTable(
+  "volume_contracts",
+  {
+    id: uuid("id").primaryKey(),
+    nodeId: uuid("node_id")
+      .notNull()
+      .references(() => outlineNodes.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    objective: text("objective").notNull(),
+    conflict: text("conflict").notNull(),
+    turningPoints: jsonb("turning_points").$type<string[]>().notNull().default([]),
+    exitConditions: jsonb("exit_conditions").$type<string[]>().notNull().default([]),
+    plotLines: jsonb("plot_lines").$type<VolumePlotLineJson[]>().notNull().default([]),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("volume_contracts_node_unique").on(table.nodeId),
+    index("volume_contracts_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
+export const sceneCards = pgTable(
+  "scene_cards",
+  {
+    id: uuid("id").primaryKey(),
+    nodeId: uuid("node_id")
+      .notNull()
+      .references(() => outlineNodes.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    povType: text("pov_type"),
+    povId: uuid("pov_id"),
+    povBranchId: uuid("pov_branch_id"),
+    povLabel: text("pov_label"),
+    povVersionNodeId: uuid("pov_version_node_id"),
+    povObjectVersion: integer("pov_object_version"),
+    locationType: text("location_type"),
+    locationId: uuid("location_id"),
+    locationBranchId: uuid("location_branch_id"),
+    locationLabel: text("location_label"),
+    locationVersionNodeId: uuid("location_version_node_id"),
+    locationObjectVersion: integer("location_object_version"),
+    storyEra: text("story_era"),
+    storyTimeLabel: text("story_time_label"),
+    storySortKey: integer("story_sort_key"),
+    beats: jsonb("beats").$type<SceneBeatJson[]>().notNull().default([]),
+    informationReleases: jsonb("information_releases")
+      .$type<SceneInformationReleaseJson[]>()
+      .notNull()
+      .default([]),
+    tension: integer("tension"),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("scene_cards_node_unique").on(table.nodeId),
+    index("scene_cards_user_work_idx").on(table.userId, table.workId),
+    check(
+      "scene_cards_pov_check",
+      sql`(${table.povType} is null and ${table.povId} is null and ${table.povBranchId} is null) or (${table.povType} is not null and ${table.povId} is not null and ${table.povBranchId} is not null)`,
+    ),
+    check(
+      "scene_cards_location_check",
+      sql`(${table.locationType} is null and ${table.locationId} is null and ${table.locationBranchId} is null) or (${table.locationType} is not null and ${table.locationId} is not null and ${table.locationBranchId} is not null)`,
+    ),
+    check(
+      "scene_cards_story_time_check",
+      sql`(${table.storyEra} is null and ${table.storyTimeLabel} is null and ${table.storySortKey} is null) or (${table.storyEra} is not null and ${table.storyTimeLabel} is not null and ${table.storySortKey} is not null)`,
+    ),
+    check(
+      "scene_cards_tension_check",
+      sql`${table.tension} is null or (${table.tension} >= 0 and ${table.tension} <= 100)`,
+    ),
+  ],
+);

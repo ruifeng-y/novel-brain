@@ -11,6 +11,7 @@ import { HealthModule } from "./health/health.module";
 import { ManuscriptImportModule } from "./imports/manuscript-import.module";
 import { SettingsImportModule } from "./imports/settings-import.module";
 import { ModelConfigModule } from "./model-config/model-config.module";
+import { OutlineModule } from "./outline/outline.module";
 import { ReviewModule } from "./review/review.module";
 import { SettingsModule } from "./settings/settings.module";
 import { StoryBibleModule } from "./story-bible/story-bible.module";
@@ -31,6 +32,7 @@ import { WorldModule } from "./world/world.module";
     ManuscriptImportModule,
     SettingsImportModule,
     ModelConfigModule,
+    OutlineModule,
     ReviewModule,
     SettingsModule,
     StoryBibleModule,

@@ -5220,3 +5220,457 @@ a:focus-visible {
     margin-left: 0;
   }
 }
+
+.outline-plan-page {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.outline-plan-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.outline-plan-toolbar .outline-view-tabs {
+  margin: 0;
+}
+
+.outline-plan-toolbar .seg {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.outline-plan-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.outline-plan-stats > span {
+  padding: 3px 8px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.outline-plan-grid {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr) 320px;
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+}
+
+.outline-plan-panel {
+  min-width: 0;
+  padding: 16px;
+}
+
+.outline-plan-tree-panel,
+.outline-plan-side {
+  position: sticky;
+  top: 82px;
+}
+
+.outline-plan-tree {
+  display: grid;
+  gap: 3px;
+  max-height: calc(100vh - 260px);
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.outline-plan-tree-item {
+  display: grid;
+  grid-template-columns: 14px 18px minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding-top: 7px;
+  padding-right: 8px;
+  padding-bottom: 7px;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: grab;
+  background: transparent;
+  border: 1px solid transparent;
+  border-left: 3px solid transparent;
+  border-radius: 6px;
+}
+
+.outline-plan-tree-item:hover {
+  background: var(--paper-2);
+  border-color: var(--line);
+}
+
+.outline-plan-tree-item.active {
+  background: var(--cinnabar-soft);
+  border-color: rgba(178, 58, 43, 0.25);
+  border-left-color: var(--cinnabar);
+}
+
+.outline-plan-tree-item.locked {
+  cursor: default;
+  opacity: 0.78;
+}
+
+.outline-plan-tree-item.level-book {
+  border-left-color: var(--ink-3);
+}
+
+.outline-plan-tree-item.level-volume {
+  border-left-color: var(--jade);
+}
+
+.outline-plan-tree-item.level-act {
+  border-left-color: var(--gold);
+}
+
+.outline-plan-tree-item.level-chapter {
+  border-left-color: var(--blue);
+}
+
+.outline-plan-tree-item.level-scene {
+  border-left-color: var(--muted);
+}
+
+.outline-plan-grip {
+  color: var(--muted);
+  opacity: 0.65;
+}
+
+.outline-plan-node-icon {
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.outline-plan-node-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.outline-plan-node-copy strong,
+.outline-plan-node-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.outline-plan-node-copy strong {
+  font-size: 12px;
+}
+
+.outline-plan-node-copy small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.outline-plan-detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.outline-plan-detail-head > div:first-child {
+  min-width: 0;
+}
+
+.outline-plan-detail-head h2 {
+  margin: 3px 0 5px;
+  overflow-wrap: anywhere;
+  font-size: 22px;
+}
+
+.outline-plan-detail-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.outline-plan-detail-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.outline-plan-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-items: center;
+  margin: 12px 0;
+}
+
+.outline-plan-actions .btn {
+  min-height: 32px;
+}
+
+.outline-plan-form {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.outline-plan-form h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.outline-plan-form select {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  color: var(--ink-2);
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.outline-plan-form select:focus {
+  border-color: var(--jade);
+  outline: none;
+}
+
+.outline-plan-form input:disabled,
+.outline-plan-form textarea:disabled,
+.outline-plan-form select:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  background: var(--paper);
+}
+
+.outline-plan-create {
+  margin-top: 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: 7px;
+}
+
+.outline-plan-create > summary {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+}
+
+.outline-plan-create > summary::-webkit-details-marker {
+  display: none;
+}
+
+.outline-plan-create[open] > summary {
+  border-bottom: 1px solid var(--line);
+}
+
+.outline-plan-create .outline-plan-form {
+  margin: 0;
+  padding: 12px;
+  border-top: 0;
+}
+
+.outline-plan-create .outline-form-actions {
+  align-items: flex-start;
+}
+
+.outline-plan-readiness {
+  display: grid;
+  gap: 8px;
+}
+
+.outline-plan-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+
+.outline-plan-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  margin-top: 14px;
+}
+
+.outline-plan-inline-form label {
+  display: grid;
+  gap: 5px;
+  min-width: 180px;
+}
+
+.outline-plan-inline-form label > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.outline-plan-inline-form input {
+  min-height: 36px;
+  padding: 8px 10px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.outline-lock-notice {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 9px 11px;
+  color: var(--gold);
+  font-size: 12px;
+  background: var(--gold-soft);
+  border: 1px solid rgba(164, 123, 67, 0.25);
+  border-radius: 6px;
+}
+
+.outline-readiness-item.severity-blocker:not(.ready) small {
+  color: var(--cinnabar);
+}
+
+.outline-readiness-item.severity-warning:not(.ready) small {
+  color: var(--gold);
+}
+
+.outline-plan-board {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: start;
+  min-width: 0;
+}
+
+.outline-plan-board .board-column {
+  min-width: 0;
+}
+
+.outline-plan-board .board-card {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.outline-plan-board .board-card strong,
+.outline-plan-board .board-card small {
+  overflow-wrap: anywhere;
+}
+
+.tension-events button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px;
+  color: var(--ink-2);
+  text-align: left;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.tension-events button:hover,
+.tension-events button.active {
+  background: var(--paper-2);
+  border-color: var(--line);
+}
+
+.tension-events button.active {
+  border-color: rgba(47, 111, 94, 0.3);
+}
+
+@media (max-width: 1180px) {
+  .outline-plan-grid {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .outline-plan-side {
+    position: static;
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 14px;
+    align-items: start;
+  }
+}
+
+@media (max-width: 900px) {
+  .outline-plan-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .outline-plan-tree-panel,
+  .outline-plan-side {
+    position: static;
+  }
+
+  .outline-plan-tree {
+    max-height: 320px;
+  }
+
+  .outline-plan-side {
+    grid-template-columns: 1fr;
+  }
+
+  .outline-plan-board {
+    grid-template-columns: 1fr;
+  }
+
+  .outline-plan-detail-head {
+    flex-direction: column;
+  }
+
+  .outline-plan-detail-badges {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 560px) {
+  .outline-plan-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .outline-plan-toolbar .outline-view-tabs {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .outline-plan-actions .btn,
+  .outline-plan-inline-form .btn {
+    width: 100%;
+  }
+
+  .outline-plan-inline-form label {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .outline-plan-detail-head h2 {
+    font-size: 19px;
+  }
+}

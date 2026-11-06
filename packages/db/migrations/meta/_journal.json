@@ -218,6 +218,13 @@
       "when": 1793940021777,
       "tag": "0030_power_items",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793942828337,
+      "tag": "0031_brief_human_cannonball",
+      "breakpoints": true
     }
   ]
 }

@@ -59,9 +59,16 @@ import {
   settingEntityCreateRequestSchema,
   settingEntitySchema,
   settingProposalCreateRequestSchema,
+  outlineNodeCreateRequestSchema,
+  outlineNodeSchema,
+  outlineReadinessSchema,
+  outlineReplanResultSchema,
+  outlineSceneCardWriteRequestSchema,
+  sceneCardSchema,
   timelineEraCreateRequestSchema,
   timelineEventCreateRequestSchema,
   territoryCreateRequestSchema,
+  volumeContractSchema,
   logoutResponseSchema,
   STORY_BIBLE_CARD_KEYS,
   STORY_BIBLE_CARD_TITLES,
@@ -1329,6 +1336,202 @@ describe("shared contracts", () => {
       hidden: false,
       marks: ["潮"],
     });
+  });
+});
+
+describe("outline planning contracts", () => {
+  const branchId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c11";
+  const nodeId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12";
+  const chapterId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c13";
+  const versionNodeId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c14";
+  const characterRef = {
+    type: "character" as const,
+    id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c15",
+    branchId,
+    label: "沈砚",
+    version: null,
+  };
+  const locationRef = {
+    type: "map" as const,
+    id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c16",
+    branchId,
+    label: "荒寺外山道",
+    version: null,
+  };
+
+  it("requires exactly one chapter source for chapter outline nodes", () => {
+    expect(
+      outlineNodeCreateRequestSchema.safeParse({
+        level: "chapter",
+        parentId: nodeId,
+        title: "一只手也能结印",
+      }).success,
+    ).toBe(false);
+    expect(
+      outlineNodeCreateRequestSchema.safeParse({
+        level: "chapter",
+        parentId: nodeId,
+        chapterId,
+      }).success,
+    ).toBe(true);
+    expect(
+      outlineNodeCreateRequestSchema.safeParse({
+        level: "chapter",
+        parentId: nodeId,
+        chapterId,
+        chapterCreate: {
+          number: 1,
+          title: "一只手也能结印",
+          brief: {
+            goal: "目标",
+            pov: "沈砚",
+            location: "荒寺外山道",
+            sceneBeats: ["节拍"],
+            requiredFacts: ["左臂骨折"],
+          },
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      outlineNodeCreateRequestSchema.safeParse({
+        level: "volume",
+        parentId: nodeId,
+        title: "第一卷",
+        chapterId,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("keeps scene cards ordered, versioned and strict", () => {
+    const card = outlineSceneCardWriteRequestSchema.parse({
+      title: "藏起断臂",
+      pov: characterRef,
+      location: locationRef,
+      storyTime: { era: "大玄历", label: "雨夜", sortKey: 100 },
+      beats: [{ description: "沈砚藏起断臂。" }, { description: "顾青撞见。" }],
+      informationReleases: [
+        { description: "顾青看见书页一角", constraint: "顾青不能知道完整来历" },
+      ],
+      tension: 72,
+    });
+    expect(card.beats.map((beat) => beat.description)).toEqual(["沈砚藏起断臂。", "顾青撞见。"]);
+    expect(card.pov?.label).toBe("沈砚");
+    expect(
+      outlineSceneCardWriteRequestSchema.safeParse({
+        ...card,
+        ignored: true,
+      }).success,
+    ).toBe(false);
+  });
+
+  it("parses outline nodes, readiness and replan results as stable shapes", () => {
+    const node = outlineNodeSchema.parse({
+      id: nodeId,
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c17",
+      branchId,
+      level: "chapter",
+      parentId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c18",
+      sortOrder: 0,
+      title: "一只手也能结印",
+      summary: "",
+      status: "planned",
+      locked: false,
+      version: 1,
+      chapter: {
+        id: chapterId,
+        number: 48,
+        title: "一只手也能结印",
+        status: "planned",
+        version: 1,
+        wordCount: 0,
+      },
+      tension: 72,
+      versionNodeId,
+      createdAt: "2026-11-06T00:00:00.000Z",
+      updatedAt: "2026-11-06T00:00:00.000Z",
+    });
+    expect(node.chapter?.number).toBe(48);
+
+    const readiness = outlineReadinessSchema.parse({
+      ruleVersion: "outline-readiness-v1",
+      status: "partial",
+      canProceed: true,
+      completed: 2,
+      total: 3,
+      items: [
+        {
+          key: "scene_information:scene",
+          label: "信息释放",
+          severity: "warning",
+          ready: false,
+          resourceType: "outline_node",
+          resourceId: nodeId,
+          remediation: "补信息释放和知情边界",
+        },
+      ],
+    });
+    expect(readiness.ruleVersion).toBe("outline-readiness-v1");
+
+    const replan = outlineReplanResultSchema.parse({
+      ruleVersion: "outline-replan-v1",
+      nodeId,
+      canApply: true,
+      impacted: {
+        nodeIds: [nodeId],
+        chapterIds: [chapterId],
+        sceneNodeIds: [],
+        lockedNodeIds: [],
+      },
+      blockers: [],
+      warnings: [],
+    });
+    expect(replan.impacted.chapterIds).toEqual([chapterId]);
+  });
+
+  it("parses volume contracts and scene cards returned by the API", () => {
+    expect(
+      volumeContractSchema.parse({
+        id: nodeId,
+        nodeId,
+        workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c17",
+        branchId,
+        objective: "进入天门",
+        conflict: "血河宗追捕",
+        turningPoints: ["断臂"],
+        exitConditions: ["离开南境"],
+        plotLines: [{ name: "天门将开", status: "active", note: "主线" }],
+        version: 1,
+        versionNodeId,
+        createdAt: "2026-11-06T00:00:00.000Z",
+        updatedAt: "2026-11-06T00:00:00.000Z",
+      }).objective,
+    ).toBe("进入天门");
+    expect(
+      sceneCardSchema.parse({
+        id: nodeId,
+        nodeId,
+        workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c17",
+        branchId,
+        title: "藏起断臂",
+        pov: characterRef,
+        location: locationRef,
+        storyTime: { era: "大玄历", label: "雨夜", sortKey: 100 },
+        beats: [{ id: versionNodeId, order: 1, description: "沈砚藏起断臂。" }],
+        informationReleases: [
+          {
+            id: versionNodeId,
+            order: 1,
+            description: "顾青看见书页一角",
+            constraint: "顾青不能知道完整来历",
+          },
+        ],
+        tension: 72,
+        version: 1,
+        versionNodeId,
+        createdAt: "2026-11-06T00:00:00.000Z",
+        updatedAt: "2026-11-06T00:00:00.000Z",
+      }).beats[0]?.order,
+    ).toBe(1);
   });
 });
 
