@@ -15,6 +15,7 @@ import { ModelConfigModule } from "./model-config/model-config.module";
 import { OutlineModule } from "./outline/outline.module";
 import { ReadinessModule } from "./readiness/readiness.module";
 import { ReviewModule } from "./review/review.module";
+import { RevisionModule } from "./revisions/revision.module";
 import { RetrievalModule } from "./retrieval/retrieval.module";
 import { SettingsModule } from "./settings/settings.module";
 import { StoryBibleModule } from "./story-bible/story-bible.module";
@@ -53,6 +54,7 @@ import { WritingActionModule } from "./writing-actions/writing-action.module";
     WorksModule,
     WorldModule,
     WritingActionModule,
+    RevisionModule,
   ],
 })
 export class AppModule {}

@@ -2389,7 +2389,7 @@ export const writingActions = pgTable(
     index("writing_actions_chapter_created_idx").on(table.chapterId, table.createdAt),
     check(
       "writing_actions_action_check",
-      sql`${table.action} in ('continue', 'rewrite', 'expand', 'condense', 'change_pov', 'add_hook', 'generate_title', 'generate_summary', 'selection_rewrite')`,
+      sql`${table.action} in ('continue', 'rewrite', 'expand', 'condense', 'change_pov', 'add_hook', 'generate_title', 'generate_summary', 'selection_rewrite', 'targeted_revision')`,
     ),
     check(
       "writing_actions_output_kind_check",
@@ -4438,5 +4438,205 @@ export const styleDriftFindings = pgTable(
       "style_drift_findings_growth_check",
       sql`(${table.classification} = 'intentional_development' and ${table.code} = 'INTENTIONAL_CHARACTER_DEVELOPMENT' and ${table.growthEvidence} is not null) or (${table.classification} = 'drift' and ${table.code} <> 'INTENTIONAL_CHARACTER_DEVELOPMENT' and ${table.growthEvidence} is null)`,
     ),
+  ],
+);
+
+export type RevisionSelectedFindingJson = {
+  findingId: string;
+  code: string;
+  severity: string;
+  qualityDimension: string;
+  recommendation: string;
+  evidence: QualityDimensionEvidenceJson[];
+};
+
+export type RevisionBlockJson = {
+  id: string;
+  start: number;
+  end: number;
+  label?: string;
+};
+
+export type RevisionConstraintsJson = {
+  preserveOutsideSelection: true;
+  protectLockedContent: true;
+  authorInstruction?: string;
+};
+
+export type RevisionDiffJson = {
+  sourceVersionId: string;
+  resultVersionId: string;
+  beforeHash: string;
+  afterHash: string;
+  changes: Array<{
+    blockId: string;
+    beforeStart: number;
+    beforeEnd: number;
+    afterStart: number;
+    afterEnd: number;
+    before: string;
+    after: string;
+  }>;
+  unresolvedFindingIds: string[];
+};
+
+export const revisionPlans = pgTable(
+  "revision_plans",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    status: text("status").notNull().default("active"),
+    maxRounds: integer("max_rounds").notNull(),
+    maxCostCny: real("max_cost_cny").notNull(),
+    maxTokens: integer("max_tokens").notNull(),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("revision_plans_chapter_idempotency_unique").on(
+      table.userId,
+      table.chapterId,
+      table.idempotencyKey,
+    ),
+    index("revision_plans_user_work_idx").on(table.userId, table.workId),
+    index("revision_plans_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check(
+      "revision_plans_status_check",
+      sql`${table.status} in ('active', 'awaiting_feedback', 'completed', 'rejected')`,
+    ),
+    check("revision_plans_max_rounds_check", sql`${table.maxRounds} between 1 and 2`),
+    check("revision_plans_budget_check", sql`${table.maxCostCny} > 0 and ${table.maxTokens} > 0`),
+    check("revision_plans_version_check", sql`${table.version} > 0`),
+  ],
+);
+
+export const revisionRounds = pgTable(
+  "revision_rounds",
+  {
+    id: uuid("id").primaryKey(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => revisionPlans.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    roundNumber: integer("round_number").notNull(),
+    status: text("status").notNull().default("queued"),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    resultVersionId: uuid("result_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    versionNodeId: uuid("version_node_id").references(() => versionNodes.id, {
+      onDelete: "restrict",
+    }),
+    selectedFindings: jsonb("selected_findings").$type<RevisionSelectedFindingJson[]>().notNull(),
+    blocks: jsonb("blocks").$type<RevisionBlockJson[]>().notNull(),
+    constraints: jsonb("constraints").$type<RevisionConstraintsJson>().notNull(),
+    diff: jsonb("diff").$type<RevisionDiffJson>(),
+    unresolvedFindingIds: jsonb("unresolved_finding_ids").$type<string[]>().notNull().default([]),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("revision_rounds_plan_round_unique").on(table.planId, table.roundNumber),
+    uniqueIndex("revision_rounds_job_unique").on(table.jobId),
+    index("revision_rounds_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check("revision_rounds_round_number_check", sql`${table.roundNumber} between 1 and 2`),
+    check(
+      "revision_rounds_status_check",
+      sql`${table.status} in ('queued', 'running', 'waiting_review', 'accepted', 'rejected', 'rewrite_requested', 'failed')`,
+    ),
+    check(
+      "revision_rounds_selected_findings_check",
+      sql`jsonb_typeof(${table.selectedFindings}) = 'array' and jsonb_array_length(${table.selectedFindings}) > 0`,
+    ),
+    check(
+      "revision_rounds_blocks_check",
+      sql`jsonb_typeof(${table.blocks}) = 'array' and jsonb_array_length(${table.blocks}) > 0`,
+    ),
+    check(
+      "revision_rounds_unresolved_check",
+      sql`jsonb_typeof(${table.unresolvedFindingIds}) = 'array'`,
+    ),
+    check("revision_rounds_version_check", sql`${table.version} > 0`),
+  ],
+);
+
+export const revisionFeedbackEvents = pgTable(
+  "revision_feedback_events",
+  {
+    id: uuid("id").primaryKey(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => revisionPlans.id, { onDelete: "cascade" }),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => revisionRounds.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    findingId: uuid("finding_id").references(() => qualityFindings.id, {
+      onDelete: "set null",
+    }),
+    action: text("action").notNull(),
+    reason: text("reason").notNull(),
+    targetVersionId: uuid("target_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    evaluationOptIn: boolean("evaluation_opt_in").notNull().default(false),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("revision_feedback_plan_created_idx").on(table.planId, table.createdAt),
+    index("revision_feedback_round_created_idx").on(table.roundId, table.createdAt),
+    index("revision_feedback_chapter_finding_idx").on(table.chapterId, table.findingId),
+    check(
+      "revision_feedback_action_check",
+      sql`${table.action} in ('accept', 'reject', 'rewrite')`,
+    ),
+    check("revision_feedback_reason_check", sql`length(trim(${table.reason})) > 0`),
   ],
 );

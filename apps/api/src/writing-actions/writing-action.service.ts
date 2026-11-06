@@ -39,7 +39,15 @@ export class WritingActionService {
     idempotencyKey: string,
     request: WritingActionRequest,
     audit: WritingActionAuditContext,
+    options: { allowTargetedRevision?: boolean } = {},
   ): Promise<WritingActionJob> {
+    if (request.action === "targeted_revision" && !options.allowTargetedRevision) {
+      throw new ApiError(
+        409,
+        "WRITING_ACTION_SELECTION_INVALID",
+        "定向修订必须从修订计划启动，不能绕过轮次和反馈约束",
+      );
+    }
     const normalizedKey = idempotencyKey.trim();
     if (!normalizedKey || normalizedKey.length > 200) {
       throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");

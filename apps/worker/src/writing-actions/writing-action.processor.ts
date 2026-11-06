@@ -21,6 +21,7 @@ import {
   ContextBudgetExceededError,
   decideStepRecovery,
   resolveModelContextWindow,
+  TargetedRevisionError,
   WRITING_ACTION_SPECS,
 } from "@novel-brain/core";
 
@@ -117,6 +118,7 @@ export class WritingActionProcessor {
         continue;
       }
       if (await this.repository.isCancelled(durable)) {
+        await this.repository.markRevisionRoundFailed(durable, "JOB_CANCELLED");
         return;
       }
       while (true) {
@@ -165,6 +167,7 @@ export class WritingActionProcessor {
             terminal: decision.terminal,
           });
           if (decision.terminal) {
+            await this.repository.markRevisionRoundFailed(durable, failure.code);
             return;
           }
           this.traceLogger?.warn(
@@ -270,10 +273,23 @@ export class WritingActionProcessor {
         if (!pack) {
           throw new WritingActionSourceInvalidError();
         }
+        const revision =
+          input.payload.input.action === "targeted_revision"
+            ? {
+                sourceContent: source.version.content,
+                blocks: input.payload.input.blocks,
+                findings: await this.repository.loadRevisionFindings(
+                  input.payload,
+                  input.payload.input.findingIds,
+                ),
+                constraints: input.payload.input.constraints,
+              }
+            : undefined;
         const prompt = compileWritingActionPrompt({
           action: input.payload.action,
           sourceContent: source.version.content,
           sourceRefs: pack.sourceRefs.map((reference) => reference.citation),
+          ...(revision ? { revision } : {}),
           ...(input.payload.input.action === "selection_rewrite"
             ? {
                 selection: input.payload.input.selection,
@@ -584,6 +600,13 @@ function toFailure(error: unknown) {
     return {
       code: "WRITING_ACTION_SOURCE_VERSION_INVALID",
       message: "源版本或选区已变化，原稿和检查点已保留",
+      failureClass: "schema" as const,
+    };
+  }
+  if (error instanceof TargetedRevisionError) {
+    return {
+      code: "WRITING_ACTION_SOURCE_VERSION_INVALID",
+      message: "修订结果没有覆盖所选正文块，原稿和检查点已保留",
       failureClass: "schema" as const,
     };
   }

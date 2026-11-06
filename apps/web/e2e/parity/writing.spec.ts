@@ -439,6 +439,78 @@ test("checks character voice drift, locates evidence and never rewrites the draf
   }
 });
 
+test("runs a targeted revision, records feedback and keeps approval gates intact", async ({
+  page,
+  context,
+}, testInfo) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const worker = await startWorker();
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    const editor = page.getByRole("textbox", { name: "章节正文" });
+    await editor.fill("沈砚双手结印，断臂竟毫无妨碍。\n\n风停了，山道上没有声音。");
+    await page.getByRole("button", { name: "保存版本" }).click();
+    await expect(page.getByText("已保存")).toBeVisible();
+    await page.getByRole("button", { name: "检查本章", exact: true }).click();
+
+    const revisions = page.locator(".writing-revisions");
+    await expect(revisions.getByRole("heading", { name: "定向修订" })).toBeVisible();
+    const candidate = revisions.locator('[data-revision-finding="WEAK_CHAPTER_END_HOOK"]');
+    await expect(candidate).toBeVisible();
+    await candidate.getByRole("checkbox").check();
+    await revisions.getByRole("button", { name: "开始定向修订" }).click();
+
+    const round = revisions.locator(".writing-revision-round").first();
+    await expect(round.getByText("等待作者反馈")).toBeVisible({ timeout: 15_000 });
+    await expect(round.locator(".writing-revision-diff pre").first()).toBeVisible();
+    await expect(round.locator(".writing-revision-diff")).toContainText("修订前");
+    await expect(round.locator(".writing-revision-diff")).toContainText("修订后");
+    await expect(editor).toHaveValue(/修订块/);
+    await expect(page.getByText("写作中", { exact: true })).toBeVisible();
+
+    await round.getByLabel("原因").fill("接受这轮定向修订，不改动事实。");
+    await round.getByRole("button", { name: "记录反馈" }).click();
+    await expect(revisions.getByText("接受修订", { exact: true })).toBeVisible();
+    await expect(revisions.getByText("仅保留在本作品", { exact: true })).toBeVisible();
+
+    const chapterResponse = await page.request.get(`${chaptersPath(work)}/${chapter.id}`);
+    expect(chapterResponse.ok()).toBe(true);
+    const chapterData = (await chapterResponse.json()).data as {
+      currentVersionId: string;
+    };
+    const blocked = await page.request.post(
+      `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${chapter.id}/canon/commit`,
+      {
+        headers: {
+          Origin: origin,
+          "X-CSRF-Token": await getCsrf(page.request),
+          "Idempotency-Key": `revision-e2e-${Date.now()}`,
+        },
+        data: { chapterVersionId: chapterData.currentVersionId },
+      },
+    );
+    expect(blocked.status()).toBe(409);
+    expect((await blocked.json()).error.code).toBe("CANON_CHAPTER_NOT_APPROVED");
+    await expectAuthorFacingLanguage(page);
+
+    for (const width of [390, 900, 1180, 1440]) {
+      await page.setViewportSize({ width, height: 900 });
+      await expect(revisions).toBeVisible();
+      const overflow = await page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+      expect(overflow).toBeLessThanOrEqual(0);
+      await testInfo.attach(`writing-revision-${width}`, {
+        body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
+        contentType: "image/png",
+      });
+    }
+  } finally {
+    await worker.stop();
+  }
+});
+
 test("generates a chapter with progress, references, citations, cost and checkpoint", async ({
   page,
   context,

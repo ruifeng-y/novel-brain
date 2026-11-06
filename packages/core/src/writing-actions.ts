@@ -4,6 +4,8 @@ import type {
   WritingActionAffectedRange,
 } from "@novel-brain/contracts";
 
+import { compileTargetedRevisionPrompt, type TargetedRevisionPromptInput } from "./revision";
+
 export interface WritingActionSpec {
   promptKey: string;
   promptVersion: 1;
@@ -96,6 +98,15 @@ export const WRITING_ACTION_SPECS = {
     outputKind: "chapter_text",
     chapterVersion: true,
   },
+  targeted_revision: {
+    promptKey: "writing.targeted_revision",
+    promptVersion: 1,
+    role: "reviser",
+    toolName: "draft.write_version",
+    permission: "chapter.write",
+    outputKind: "chapter_text",
+    chapterVersion: true,
+  },
 } as const satisfies Record<WritingActionKind, WritingActionSpec>;
 
 export class WritingActionSelectionError extends Error {
@@ -149,6 +160,7 @@ export interface WritingActionPromptInput {
   pov?: string;
   hookStyle?: string;
   maxLength?: number;
+  revision?: TargetedRevisionPromptInput;
 }
 
 export interface WritingActionPrompt {
@@ -157,6 +169,12 @@ export interface WritingActionPrompt {
 }
 
 export function compileWritingActionPrompt(input: WritingActionPromptInput): WritingActionPrompt {
+  if (input.action === "targeted_revision") {
+    if (!input.revision) {
+      throw new WritingActionSelectionError("Targeted revision requires selected blocks");
+    }
+    return compileTargetedRevisionPrompt(input.revision);
+  }
   const selected =
     input.selection === undefined
       ? input.sourceContent
@@ -177,6 +195,7 @@ export function compileWritingActionPrompt(input: WritingActionPromptInput): Wri
     generate_title: "根据正文生成最多三个章节标题，每行一个，不要编号或解释。",
     generate_summary: `根据正文写一段不超过 ${input.maxLength ?? 200} 字的章节摘要，只输出摘要。`,
     selection_rewrite: "只重写选中的正文片段，保持未选中部分不变。只输出改写后的选中文本。",
+    targeted_revision: "按评审问题修订选中文本块，只返回 JSON。",
   };
 
   return {
