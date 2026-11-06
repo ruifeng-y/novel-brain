@@ -1950,6 +1950,7 @@ export const jobs = pgTable(
     idempotencyKey: text("idempotency_key").notNull(),
     budget: jsonb("budget").$type<Record<string, unknown>>().notNull(),
     checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull(),
+    checkpointVersion: integer("checkpoint_version").notNull().default(0),
     orchestration: jsonb("orchestration").$type<Record<string, unknown>>(),
     cost: jsonb("cost").$type<Record<string, unknown>>().notNull(),
     errorCode: text("error_code"),
@@ -2004,6 +2005,10 @@ export const jobSteps = pgTable(
     attempt: integer("attempt").notNull().default(0),
     inputHash: text("input_hash"),
     output: jsonb("output").$type<Record<string, unknown>>().notNull().default({}),
+    outputRefs: jsonb("output_refs")
+      .$type<Array<{ type: string; id: string }>>()
+      .notNull()
+      .default([]),
     cost: jsonb("cost").$type<Record<string, unknown>>().notNull().default({}),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
@@ -2019,6 +2024,54 @@ export const jobSteps = pgTable(
       "job_steps_status_check",
       sql`${table.status} in ('pending', 'running', 'succeeded', 'failed', 'skipped', 'cancelled')`,
     ),
+  ],
+);
+
+export const jobStepAttempts = pgTable(
+  "job_step_attempts",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stepKey: text("step_key").notNull(),
+    attempt: integer("attempt").notNull(),
+    status: text("status").notNull().default("running"),
+    inputHash: text("input_hash"),
+    outputRefs: jsonb("output_refs")
+      .$type<Array<{ type: string; id: string }>>()
+      .notNull()
+      .default([]),
+    checkpointRevision: integer("checkpoint_revision").notNull().default(0),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_step_attempts_job_step_attempt_unique").on(
+      table.jobId,
+      table.stepKey,
+      table.attempt,
+    ),
+    index("job_step_attempts_job_step_started_idx").on(table.jobId, table.stepKey, table.startedAt),
+    check("job_step_attempts_step_check", sql`${table.stepKey} ~ '^[a-z][a-z0-9_.-]{0,99}$'`),
+    check(
+      "job_step_attempts_status_check",
+      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed', 'skipped', 'cancelled')`,
+    ),
+    check("job_step_attempts_attempt_check", sql`${table.attempt} > 0`),
+    check("job_step_attempts_checkpoint_revision_check", sql`${table.checkpointRevision} >= 0`),
   ],
 );
 
@@ -2039,10 +2092,76 @@ export const jobCheckpoints = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     stepKey: text("step_key").notNull(),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    revision: integer("revision").notNull().default(0),
+    attempt: integer("attempt").notNull().default(0),
+    inputHash: text("input_hash"),
+    outputRefs: jsonb("output_refs")
+      .$type<Array<{ type: string; id: string }>>()
+      .notNull()
+      .default([]),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("job_checkpoints_job_created_idx").on(table.jobId, table.createdAt)],
+  (table) => [
+    uniqueIndex("job_checkpoints_job_revision_unique").on(table.jobId, table.revision),
+    index("job_checkpoints_job_created_idx").on(table.jobId, table.createdAt),
+    check("job_checkpoints_schema_version_check", sql`${table.schemaVersion} > 0`),
+    check("job_checkpoints_revision_check", sql`${table.revision} >= 0`),
+    check("job_checkpoints_attempt_check", sql`${table.attempt} >= 0`),
+  ],
+);
+
+export const jobRecoveries = pgTable(
+  "job_recoveries",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    action: text("action").notNull(),
+    reason: text("reason").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    fromStatus: text("from_status").notNull(),
+    fromCheckpointVersion: integer("from_checkpoint_version").notNull(),
+    checkpointVersion: integer("checkpoint_version").notNull(),
+    resumeStep: text("resume_step").notNull(),
+    correlationId: text("correlation_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_recoveries_job_idempotency_unique").on(table.jobId, table.idempotencyKey),
+    index("job_recoveries_user_work_idx").on(table.userId, table.workId),
+    index("job_recoveries_job_created_idx").on(table.jobId, table.createdAt),
+    check("job_recoveries_action_check", sql`${table.action} in ('retry', 'resume')`),
+    check("job_recoveries_reason_check", sql`length(trim(${table.reason})) > 0`),
+    check(
+      "job_recoveries_from_status_check",
+      sql`${table.fromStatus} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
+    ),
+    check(
+      "job_recoveries_versions_check",
+      sql`${table.fromCheckpointVersion} >= 0 and ${table.checkpointVersion} > ${table.fromCheckpointVersion}`,
+    ),
+    check(
+      "job_recoveries_resume_step_check",
+      sql`${table.resumeStep} ~ '^[a-z][a-z0-9_.-]{0,99}$'`,
+    ),
+  ],
 );
 
 export const jobEvents = pgTable(

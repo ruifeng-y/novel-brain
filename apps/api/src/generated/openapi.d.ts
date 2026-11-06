@@ -660,6 +660,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/recover": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GenerationController_recover"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/events": {
     parameters: {
       query?: never;
@@ -2557,6 +2573,9 @@ export interface operations {
                   | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -2816,6 +2835,9 @@ export interface operations {
                   | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -6512,6 +6534,13 @@ export interface operations {
                 costCny: number;
               };
               checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
                 /** @enum {string} */
                 step:
                   | "prepare"
@@ -6521,6 +6550,20 @@ export interface operations {
                   | "revise"
                   | "extract_facts"
                   | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
                 payload: {
                   [key: string]: unknown;
                 };
@@ -6570,6 +6613,9 @@ export interface operations {
                   | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -6775,6 +6821,13 @@ export interface operations {
                 costCny: number;
               };
               checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
                 /** @enum {string} */
                 step:
                   | "prepare"
@@ -6784,6 +6837,20 @@ export interface operations {
                   | "revise"
                   | "extract_facts"
                   | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
                 payload: {
                   [key: string]: unknown;
                 };
@@ -6833,6 +6900,9 @@ export interface operations {
                   | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -6968,6 +7038,13 @@ export interface operations {
                 costCny: number;
               };
               checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
                 /** @enum {string} */
                 step:
                   | "prepare"
@@ -6977,6 +7054,20 @@ export interface operations {
                   | "revise"
                   | "extract_facts"
                   | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
                 payload: {
                   [key: string]: unknown;
                 };
@@ -7026,6 +7117,9 @@ export interface operations {
                   | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -7161,6 +7255,13 @@ export interface operations {
                 costCny: number;
               };
               checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
                 /** @enum {string} */
                 step:
                   | "prepare"
@@ -7170,6 +7271,20 @@ export interface operations {
                   | "revise"
                   | "extract_facts"
                   | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
                 payload: {
                   [key: string]: unknown;
                 };
@@ -7219,6 +7334,9 @@ export interface operations {
                   | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -7354,6 +7472,13 @@ export interface operations {
                 costCny: number;
               };
               checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
                 /** @enum {string} */
                 step:
                   | "prepare"
@@ -7363,6 +7488,20 @@ export interface operations {
                   | "revise"
                   | "extract_facts"
                   | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
                 payload: {
                   [key: string]: unknown;
                 };
@@ -7412,6 +7551,9 @@ export interface operations {
                   | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -7476,6 +7618,265 @@ export interface operations {
               startedAt: string | null;
               /** Format: date-time */
               finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenerationController_recover: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        jobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          reason: string;
+          idempotencyKey: string;
+          expectedCheckpointVersion?: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Recovered generation job with an audit record */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              job: {
+                id: string;
+                /** @enum {string} */
+                type: "generate_chapter";
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                /** @enum {string} */
+                status:
+                  | "queued"
+                  | "preparing"
+                  | "running"
+                  | "paused"
+                  | "waiting_review"
+                  | "completed"
+                  | "failed"
+                  | "cancelled";
+                progress: number;
+                /** @enum {string} */
+                currentStep:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                budget: {
+                  maxCostCny: number;
+                  maxTokens: number;
+                  maxRevisionRounds: number;
+                };
+                cost: {
+                  inputTokens: number;
+                  outputTokens: number;
+                  totalTokens: number;
+                  costCny: number;
+                };
+                checkpoint: {
+                  /**
+                   * @default 1
+                   * @enum {number}
+                   */
+                  schemaVersion: 1;
+                  /** @default 0 */
+                  revision: number;
+                  /** @enum {string} */
+                  step:
+                    | "prepare"
+                    | "compile_context"
+                    | "draft"
+                    | "verify"
+                    | "revise"
+                    | "extract_facts"
+                    | "await_review";
+                  /** @default null */
+                  inputHash: string | null;
+                  /** @default [] */
+                  outputRefs: {
+                    /** @enum {string} */
+                    type:
+                      | "chapter_version"
+                      | "context_pack"
+                      | "fact_proposal"
+                      | "canon_commit"
+                      | "artifact";
+                    id: string;
+                  }[];
+                  /** @default {} */
+                  payload: {
+                    [key: string]: unknown;
+                  };
+                };
+                error: {
+                  /** @enum {string} */
+                  code:
+                    | "VALIDATION_INVALID"
+                    | "AUTH_CODE_INVALID"
+                    | "AUTH_RATE_LIMITED"
+                    | "AUTH_EMAIL_TAKEN"
+                    | "AUTH_PASSWORD_WEAK"
+                    | "AUTH_LOGIN_FAILED"
+                    | "AUTH_SESSION_INVALID"
+                    | "AUTH_CSRF_INVALID"
+                    | "AUTH_ORIGIN_INVALID"
+                    | "MODEL_KEY_INVALID"
+                    | "MODEL_CONNECTION_FAILED"
+                    | "MODEL_RATE_LIMITED"
+                    | "MODEL_TIMEOUT"
+                    | "MODEL_POLICY_BLOCKED"
+                    | "MODEL_RESPONSE_INVALID"
+                    | "MODEL_PROVIDER_ERROR"
+                    | "BIBLE_NOT_READY"
+                    | "BIBLE_LOCKED"
+                    | "BIBLE_NOT_LOCKED"
+                    | "SETTING_LOCKED"
+                    | "SETTING_NAME_CONFLICT"
+                    | "SETTING_ALIAS_CONFLICT"
+                    | "SETTING_CONFLICT_UNRESOLVED"
+                    | "SETTING_PROPOSAL_STATE"
+                    | "SETTING_NOT_LOCKED"
+                    | "CUSTOM_FIELD_REQUIRED"
+                    | "CUSTOM_FIELD_INVALID"
+                    | "CUSTOM_FIELD_IMMUTABLE"
+                    | "CUSTOM_FIELD_DUPLICATE"
+                    | "CHARACTER_STATE_OVERLAP"
+                    | "MAP_NODE_PARENT_MISMATCH"
+                    | "MAP_LAYER_MISMATCH"
+                    | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                    | "MAP_ROUTE_DISCONNECTED"
+                    | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                    | "CONTROL_AREA_OVERLAP"
+                    | "TIMELINE_EVENT_OVERLAP"
+                    | "TIMELINE_ERA_NOT_FOUND"
+                    | "ITINERARY_TIME_ORDER"
+                    | "ITINERARY_OVERLAP"
+                    | "JOB_BUDGET_EXCEEDED"
+                    | "JOB_CANCELLED"
+                    | "JOB_NOT_RECOVERABLE"
+                    | "JOB_RECOVERY_CONFLICT"
+                    | "JOB_ATTEMPTS_EXHAUSTED"
+                    | "FACT_DECISION_REQUIRED"
+                    | "FACT_SUBMISSION_BLOCKED"
+                    | "CANON_CHAPTER_NOT_APPROVED"
+                    | "IMPORT_CONFLICT_UNRESOLVED"
+                    | "VERSION_CONFLICT"
+                    | "AGENT_CONTRACT_INVALID"
+                    | "AGENT_GRANT_INVALID"
+                    | "AGENT_GRANT_EXPIRED"
+                    | "AGENT_GRANT_REVOKED"
+                    | "AGENT_TOOL_NOT_REGISTERED"
+                    | "AGENT_TOOL_DENIED"
+                    | "AGENT_BUDGET_EXCEEDED"
+                    | "AGENT_APPROVAL_REQUIRED"
+                    | "FORBIDDEN_TENANT_ACCESS"
+                    | "INTERNAL_ERROR";
+                  message: string;
+                } | null;
+                contextPack: {
+                  id: string;
+                  jobId: string;
+                  version: number;
+                  compilerVersion: string;
+                  tokenBudget: number;
+                  tokenUsed: number;
+                  selected: {
+                    key: string;
+                    label: string;
+                    /** @enum {string} */
+                    priority: "required" | "high" | "normal";
+                    content: string;
+                    tokenCount: number;
+                    sourceRefs: {
+                      /** @enum {string} */
+                      sourceType:
+                        "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      sourceId: string;
+                      label: string;
+                      citation: string;
+                    }[];
+                  }[];
+                  evicted: {
+                    key: string;
+                    label: string;
+                    /** @enum {string} */
+                    reason: "token_budget";
+                    tokenCount: number;
+                  }[];
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                startedAt: string | null;
+                /** Format: date-time */
+                finishedAt: string | null;
+              };
+              recovery: {
+                id: string;
+                jobId: string;
+                actorId: string;
+                /** @enum {string} */
+                action: "retry" | "resume";
+                reason: string;
+                idempotencyKey: string;
+                /** @enum {string} */
+                fromStatus:
+                  | "queued"
+                  | "preparing"
+                  | "running"
+                  | "paused"
+                  | "waiting_review"
+                  | "completed"
+                  | "failed"
+                  | "cancelled";
+                fromCheckpointVersion: number;
+                /** @enum {string} */
+                resumeStep:
+                  | "prepare"
+                  | "compile_context"
+                  | "draft"
+                  | "verify"
+                  | "revise"
+                  | "extract_facts"
+                  | "await_review";
+                checkpointVersion: number;
+                /** Format: date-time */
+                createdAt: string;
+              };
             };
             /** Format: starts_with */
             requestId: string;

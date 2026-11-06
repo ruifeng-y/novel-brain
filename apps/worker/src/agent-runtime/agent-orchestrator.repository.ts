@@ -8,6 +8,7 @@ import {
   type OrchestratorRunState,
 } from "@novel-brain/contracts";
 import { createDatabasePool } from "@novel-brain/db";
+import { outputRefsFromStepOutput } from "@novel-brain/core";
 import type { Pool, PoolClient } from "pg";
 import { uuidv7 } from "uuidv7";
 
@@ -401,6 +402,7 @@ async function syncSteps(
       }
       const stepKey = `${task.key}.${step.key}`;
       const inputHash = createHash("sha256").update(stableStringify(step.input)).digest("hex");
+      const outputRefs = outputRefsFromStepOutput(step.output);
       const startedAt =
         step.status === "running" || step.status === "succeeded" || step.status === "failed"
           ? new Date()
@@ -411,16 +413,18 @@ async function syncSteps(
       await transaction.query(
         `INSERT INTO job_steps (
            id, job_id, work_id, branch_id, user_id, step_key, status, attempt,
-           input_hash, output, cost, error_code, error_message, started_at, finished_at
+           input_hash, output, output_refs, cost, error_code, error_message,
+           started_at, finished_at
          ) VALUES (
            $1, $2, $3, $4, $5, $6, $7, $8,
-           $9, $10::jsonb, $11::jsonb, $12, $13, $14, $15
+           $9, $10::jsonb, $11::jsonb, $12::jsonb, $13, $14, $15, $16
          )
          ON CONFLICT (job_id, step_key) DO UPDATE SET
            status = EXCLUDED.status,
            attempt = EXCLUDED.attempt,
            input_hash = EXCLUDED.input_hash,
            output = EXCLUDED.output,
+           output_refs = EXCLUDED.output_refs,
            error_code = EXCLUDED.error_code,
            error_message = EXCLUDED.error_message,
            started_at = COALESCE(job_steps.started_at, EXCLUDED.started_at),
@@ -436,10 +440,43 @@ async function syncSteps(
           step.attempt,
           inputHash,
           JSON.stringify(step.output),
+          JSON.stringify(outputRefs),
           JSON.stringify({ estimatedCostCny: step.estimatedCostCny }),
           step.errorCode,
           step.errorMessage,
           startedAt,
+          finishedAt,
+        ],
+      );
+      await transaction.query(
+        `INSERT INTO job_step_attempts (
+           id, job_id, work_id, branch_id, user_id, step_key, attempt, status,
+           input_hash, output_refs, checkpoint_revision, error_code, error_message,
+           started_at, finished_at, created_at
+         ) VALUES (
+           $1, $2, $3, $4, $5, $6, $7, $8,
+           $9, $10::jsonb, 0, $11, $12, $13, $14, now()
+         )
+         ON CONFLICT (job_id, step_key, attempt) DO UPDATE SET
+           status = EXCLUDED.status,
+           output_refs = EXCLUDED.output_refs,
+           error_code = EXCLUDED.error_code,
+           error_message = EXCLUDED.error_message,
+           finished_at = EXCLUDED.finished_at`,
+        [
+          uuidv7(),
+          state.runId,
+          state.workId,
+          state.branchId,
+          state.ownerId,
+          stepKey,
+          Math.max(1, step.attempt),
+          step.status,
+          inputHash,
+          JSON.stringify(outputRefs),
+          step.errorCode,
+          step.errorMessage,
+          startedAt ?? new Date(),
           finishedAt,
         ],
       );
@@ -452,10 +489,30 @@ async function appendCheckpoint(
   state: OrchestratorRunState,
   currentStep: string,
 ): Promise<void> {
+  const result = await transaction.query<{ checkpoint_version: number }>(
+    "SELECT checkpoint_version FROM jobs WHERE id = $1 FOR UPDATE",
+    [state.runId],
+  );
+  const revision = Number(result.rows[0]?.checkpoint_version ?? 0) + 1;
+  const outputRefs = state.tasks.flatMap((task) =>
+    task.steps.flatMap((step) => outputRefsFromStepOutput(step.output)),
+  );
+  const inputHash = createHash("sha256").update(stableStringify(state)).digest("hex");
+  const checkpoint = {
+    schemaVersion: 1,
+    revision,
+    step: currentStep,
+    inputHash,
+    outputRefs,
+    payload: { status: state.status, lastSequence: state.lastSequence },
+  };
   await transaction.query(
     `INSERT INTO job_checkpoints (
-       id, job_id, work_id, branch_id, user_id, step_key, payload, created_at
-     ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, now())`,
+       id, job_id, work_id, branch_id, user_id, step_key, schema_version,
+       revision, attempt, input_hash, output_refs, payload, created_at
+     ) VALUES (
+       $1, $2, $3, $4, $5, $6, 1, $7, 0, $8, $9::jsonb, $10::jsonb, now()
+     )`,
     [
       uuidv7(),
       state.runId,
@@ -463,8 +520,19 @@ async function appendCheckpoint(
       state.branchId,
       state.ownerId,
       currentStep,
-      JSON.stringify({ status: state.status, lastSequence: state.lastSequence }),
+      revision,
+      inputHash,
+      JSON.stringify(outputRefs),
+      JSON.stringify(checkpoint),
     ],
+  );
+  await transaction.query(
+    "UPDATE jobs SET checkpoint = $2::jsonb, checkpoint_version = $3 WHERE id = $1",
+    [state.runId, JSON.stringify(checkpoint), revision],
+  );
+  await transaction.query(
+    "UPDATE job_step_attempts SET checkpoint_revision = $2 WHERE job_id = $1",
+    [state.runId, revision],
   );
 }
 

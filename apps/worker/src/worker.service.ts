@@ -35,6 +35,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       base: { service: "worker" },
     });
     this.processor.setTraceLogger(this.logger);
+    this.processor.configureRecovery({ maxAutomaticAttempts: 3 });
     this.connection = new Redis(redisUrl, {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,

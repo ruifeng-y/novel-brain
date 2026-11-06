@@ -43,6 +43,9 @@ export const ERROR_CODES = [
   "ITINERARY_OVERLAP",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
+  "JOB_NOT_RECOVERABLE",
+  "JOB_RECOVERY_CONFLICT",
+  "JOB_ATTEMPTS_EXHAUSTED",
   "FACT_DECISION_REQUIRED",
   "FACT_SUBMISSION_BLOCKED",
   "CANON_CHAPTER_NOT_APPROVED",
@@ -2894,6 +2897,32 @@ export const WORKER_JOB_STEPS = [
 export const workerJobStepSchema = z.enum(WORKER_JOB_STEPS);
 export type WorkerJobStep = z.infer<typeof workerJobStepSchema>;
 
+export const RECOVERY_CHECKPOINT_SCHEMA_VERSION = 1 as const;
+
+export const checkpointOutputRefSchema = z
+  .object({
+    type: z.enum(["chapter_version", "context_pack", "fact_proposal", "canon_commit", "artifact"]),
+    id: z.string().min(1).max(200),
+  })
+  .strict();
+export type CheckpointOutputRef = z.infer<typeof checkpointOutputRefSchema>;
+
+export const generationCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(RECOVERY_CHECKPOINT_SCHEMA_VERSION).default(1),
+    revision: z.number().int().nonnegative().default(0),
+    step: workerJobStepSchema,
+    inputHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable()
+      .default(null),
+    outputRefs: z.array(checkpointOutputRefSchema).max(100).default([]),
+    payload: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type GenerationCheckpoint = z.infer<typeof generationCheckpointSchema>;
+
 export const generateChapterJobSchema = z.object({
   jobId: uuidV7Schema,
   jobType: z.literal(GENERATE_CHAPTER_JOB),
@@ -2908,10 +2937,7 @@ export const generateChapterJobSchema = z.object({
     maxTokens: z.number().int().positive(),
     maxRevisionRounds: z.number().int().nonnegative(),
   }),
-  checkpoint: z.object({
-    step: workerJobStepSchema,
-    payload: z.record(z.string(), z.unknown()),
-  }),
+  checkpoint: generationCheckpointSchema,
 });
 export type GenerateChapterJob = z.infer<typeof generateChapterJobSchema>;
 
@@ -2940,12 +2966,6 @@ export const generationCostSchema = z.object({
   costCny: z.number().nonnegative(),
 });
 export type GenerationCost = z.infer<typeof generationCostSchema>;
-
-export const generationCheckpointSchema = z.object({
-  step: workerJobStepSchema,
-  payload: z.record(z.string(), z.unknown()),
-});
-export type GenerationCheckpoint = z.infer<typeof generationCheckpointSchema>;
 
 export const generationJobErrorSchema = z.object({
   code: errorCodeSchema,
@@ -3035,6 +3055,42 @@ export const generationJobSchema = z.object({
 });
 export type GenerationJob = z.infer<typeof generationJobSchema>;
 
+export const jobRecoveryActionSchema = z.enum(["retry", "resume"]);
+export type JobRecoveryAction = z.infer<typeof jobRecoveryActionSchema>;
+
+export const jobRecoveryRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(1_000),
+    idempotencyKey: z.string().trim().min(1).max(200),
+    expectedCheckpointVersion: z.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type JobRecoveryRequest = z.infer<typeof jobRecoveryRequestSchema>;
+
+export const jobRecoveryRecordSchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    action: jobRecoveryActionSchema,
+    reason: z.string().min(1),
+    idempotencyKey: z.string().min(1),
+    fromStatus: generationJobStatusSchema,
+    fromCheckpointVersion: z.number().int().nonnegative(),
+    resumeStep: workerJobStepSchema,
+    checkpointVersion: z.number().int().nonnegative(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type JobRecoveryRecord = z.infer<typeof jobRecoveryRecordSchema>;
+
+export const jobRecoveryResponseSchema = apiEnvelopeSchema(
+  z.object({
+    job: generationJobSchema,
+    recovery: jobRecoveryRecordSchema,
+  }),
+);
+
 export const generateChapterRequestSchema = z
   .object({
     budget: generationBudgetSchema.default({
@@ -3056,6 +3112,7 @@ export const jobEventTypeSchema = z.enum([
   "job.waiting_review",
   "job.paused",
   "job.resumed",
+  "job.recovered",
   "job.canceled",
   "job.completed",
   "job.failed",

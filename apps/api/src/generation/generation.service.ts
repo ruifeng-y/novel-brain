@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { Injectable } from "@nestjs/common";
 import {
   contextPackPreviewSchema,
@@ -13,6 +15,8 @@ import {
   type GenerateChapterRequest,
   type GenerationJob,
   type JobEvent,
+  type JobRecoveryRecord,
+  type JobRecoveryRequest,
 } from "@novel-brain/contracts";
 import { compileChapterContext, ContextBudgetExceededError } from "@novel-brain/core";
 import { Observable } from "rxjs";
@@ -22,7 +26,10 @@ import { ApiError } from "../common/api-error";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
   GenerationRepository,
+  JobNotRecoverableError,
+  JobRecoveryConflictError,
   isTerminal,
+  type GenerationAuditContext,
   type GenerationBranchContext,
   type GenerationSources,
   type GenerationWorkContext,
@@ -136,15 +143,55 @@ export class GenerationService {
     userId: string,
     context: GenerationBranchContext,
     jobId: string,
+    audit: GenerationAuditContext,
   ): Promise<GenerationJob> {
-    const record = await this.repository.retryJob(userId, context, jobId);
-    if (!record) {
-      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "生成任务不存在或无权访问");
+    const result = await this.recover(
+      userId,
+      context,
+      jobId,
+      {
+        reason: "作者手动重试生成任务",
+        idempotencyKey: `retry:${jobId}:${randomUUID()}`,
+      },
+      audit,
+    );
+    return result.job;
+  }
+
+  async recover(
+    userId: string,
+    context: GenerationBranchContext,
+    jobId: string,
+    request: JobRecoveryRequest,
+    audit: GenerationAuditContext,
+  ): Promise<{ job: GenerationJob; recovery: JobRecoveryRecord }> {
+    try {
+      const result = await this.repository.recoverJob({
+        userId,
+        context,
+        jobId,
+        request,
+        audit,
+      });
+      if (!result) {
+        throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "生成任务不存在或无权访问");
+      }
+      if (result.job.job.status === "queued") {
+        await this.queue.enqueue(toWorkerJob(userId, result.job));
+      }
+      return {
+        job: this.toJobContract(result.job),
+        recovery: result.recovery,
+      };
+    } catch (error) {
+      if (error instanceof JobRecoveryConflictError) {
+        throw new ApiError(409, "JOB_RECOVERY_CONFLICT", "生成检查点已更新，请刷新后重试");
+      }
+      if (error instanceof JobNotRecoverableError) {
+        throw new ApiError(409, "JOB_NOT_RECOVERABLE", "当前任务状态不能执行人工恢复");
+      }
+      throw error;
     }
-    if (record.job.status === "queued") {
-      await this.queue.enqueue(toWorkerJob(userId, record));
-    }
-    return this.toJobContract(record);
   }
 
   streamEvents(

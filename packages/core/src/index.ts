@@ -588,3 +588,4 @@ export * from "./agent-runtime";
 export * from "./world-simulation";
 export * from "./orchestrator";
 export * from "./logging";
+export * from "./recovery";
