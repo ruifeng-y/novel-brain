@@ -83,6 +83,221 @@ async function createMap(
   return (await response.json()).data as { id: string };
 }
 
+async function createFaction(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  name: string,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/factions`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        name,
+        aliases: [],
+        summary: `${name}控制北域山脉。`,
+        description: "",
+        tags: ["仙门"],
+        profile: {
+          overview: `${name}以剑阵和灵脉立宗。`,
+          goals: name === "太玄门" ? "守住天门" : "夺取灵脉",
+          resources: "剑阵、灵脉与内门弟子。",
+          doctrine: "门人不得私入禁地。",
+        },
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+  return (await response.json()).data as {
+    faction: { id: string };
+    version: number;
+  };
+}
+
+async function createLayer(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  mapId: string,
+  name: string,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/maps/${mapId}/layers`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        name,
+        parentLayerId: null,
+        sortOrder: 0,
+        minScale: 0,
+        maxScale: 100,
+        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+  return (await response.json()).data as { id: string };
+}
+
+async function createNode(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  mapId: string,
+  input: {
+    name: string;
+    nodeType: string;
+    layerId: string | null;
+    parentNodeId?: string | null;
+    x?: number | null;
+    y?: number | null;
+  },
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/maps/${mapId}/nodes`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        layerId: input.layerId,
+        parentNodeId: input.parentNodeId ?? null,
+        name: input.name,
+        nodeType: input.nodeType,
+        summary: `${input.name}的地点说明。`,
+        x: input.x ?? null,
+        y: input.y ?? null,
+        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+  return (await response.json()).data as { id: string };
+}
+
+async function createEdge(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  mapId: string,
+  fromNodeId: string,
+  toNodeId: string,
+  travelMinutes: number,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/maps/${mapId}/edges`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        layerId: null,
+        fromNodeId,
+        toNodeId,
+        routeType: "road",
+        bidirectional: true,
+        travelMinutes,
+        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+}
+
+async function createMarker(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  mapId: string,
+  nodeId: string,
+  label: string,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/maps/${mapId}/markers`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        layerId: null,
+        nodeId,
+        label,
+        markerType: "danger",
+        x: 0.5,
+        y: 0.4,
+        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+}
+
+async function createTimeline(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  map: { villageId: string; sectId: string },
+  characterId: string,
+) {
+  const token = await getCsrf(page.request);
+  const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  await page.request
+    .post(`${base}/world/timeline/eras`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        name: "大玄历",
+        orderIndex: 1,
+        startSortKey: 0,
+        endSortKey: null,
+        description: "大玄王朝纪年。",
+      },
+    })
+    .then((response) => expect(response.status()).toBe(201));
+  await page.request
+    .post(`${base}/world/timeline/events`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        name: "忘川村灭门",
+        aliases: [],
+        summary: "十六年前改变沈砚命运的事件。",
+        description: "",
+        tags: [],
+        era: "大玄历",
+        storyTime: { era: "大玄历", label: "十六年前", sortKey: 100 },
+        durationMinutes: 720,
+        durationLabel: "一夜",
+        event: "仇家屠村后伪装成自尽。",
+        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      },
+    })
+    .then((response) => expect(response.status()).toBe(201));
+  await page.request
+    .post(`${base}/world/timeline/itineraries`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        character: {
+          type: "character",
+          id: characterId,
+          branchId: work.mainBranch.id,
+          label: "沈砚",
+        },
+        fromNode: {
+          type: "map_node",
+          id: map.villageId,
+          branchId: work.mainBranch.id,
+          label: "忘川村",
+        },
+        toNode: {
+          type: "map_node",
+          id: map.sectId,
+          branchId: work.mainBranch.id,
+          label: "太玄门",
+        },
+        departure: { era: "大玄历", label: "第一日辰时", sortKey: 1000 },
+        arrival: { era: "大玄历", label: "第一日酉时", sortKey: 1180 },
+        travelMinutes: 180,
+        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        sourceChapterId: null,
+        evidence: [],
+      },
+    })
+    .then((response) => expect(response.status()).toBe(201));
+}
+
 async function addRelationship(
   page: Page,
   work: { id: string; mainBranch: { id: string } },
@@ -177,6 +392,17 @@ async function createProposal(
 async function openCharacter(page: Page, work: { id: string }, name = "沈砚") {
   await page.goto(`/workspace/${work.id}/settings`);
   await page.getByRole("button", { name: /^人物/ }).click();
+  await page
+    .locator(".settings-entity-card")
+    .filter({ has: page.getByRole("heading", { name, exact: true }) })
+    .getByRole("button", { name: "查看设定详情" })
+    .click();
+  return page.locator(".settings-entity-detail");
+}
+
+async function openEntity(page: Page, work: { id: string }, column: RegExp, name: string) {
+  await page.goto(`/workspace/${work.id}/settings`);
+  await page.getByRole("button", { name: column }).click();
   await page
     .locator(".settings-entity-card")
     .filter({ has: page.getByRole("heading", { name, exact: true }) })
@@ -419,5 +645,245 @@ test("holds long relationships and state history at all four viewports", async (
     await expect(detail.getByText("能力 · seal_7")).toBeVisible();
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-long-${width}`);
+  }
+});
+
+test("loads faction, map and timeline domain details at all four viewports", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const map = await createMap(page, work, "北域");
+  const layer = await createLayer(page, work, map.id, "外域");
+  const village = await createNode(page, work, map.id, {
+    name: "忘川村",
+    nodeType: "settlement",
+    layerId: layer.id,
+    x: 0.1,
+    y: 0.8,
+  });
+  const sect = await createNode(page, work, map.id, {
+    name: "太玄门",
+    nodeType: "sect",
+    layerId: layer.id,
+    parentNodeId: village.id,
+    x: 0.5,
+    y: 0.4,
+  });
+  await createEdge(page, work, map.id, village.id, sect.id, 180);
+  await createMarker(page, work, map.id, sect.id, "护山大阵");
+
+  const taiXuan = await createFaction(page, work, "太玄门");
+  const bloodRiver = await createFaction(page, work, "血河宗");
+  const token = await getCsrf(page.request);
+  const relationship = await page.request.post(
+    `${base}/world/factions/${taiXuan.faction.id}/relationships`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        target: {
+          type: "faction",
+          id: bloodRiver.faction.id,
+          branchId: work.mainBranch.id,
+          label: "血河宗",
+        },
+        relationType: "enemy",
+        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        sourceChapterId: null,
+      },
+    },
+  );
+  expect(relationship.status()).toBe(201);
+  const territory = await page.request.post(
+    `${base}/world/factions/${taiXuan.faction.id}/territories`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        node: {
+          type: "map_node",
+          id: village.id,
+          branchId: work.mainBranch.id,
+          label: "忘川村",
+        },
+        controlLevel: "direct",
+        validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        evidence: [
+          {
+            kind: "chapter",
+            sourceId: null,
+            label: "第 1 章",
+            quote: "村口插着太玄门的青旗。",
+            locator: "第 1 章 · 第 2 段",
+            confidence: 0.94,
+          },
+        ],
+      },
+    },
+  );
+  expect(territory.status()).toBe(201);
+
+  const character = await createCharacter(page, work, "沈砚");
+  await createTimeline(
+    page,
+    work,
+    {
+      villageId: village.id,
+      sectId: sect.id,
+    },
+    character.character.id,
+  );
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+
+    const factionDetail = await openEntity(page, work, /^势力/, "太玄门");
+    await expect(factionDetail.getByText("组织目标")).toBeVisible();
+    await expect(factionDetail.getByText("守住天门")).toBeVisible();
+    await expect(factionDetail.getByText("敌对 · 血河宗")).toBeVisible();
+    await expect(factionDetail.getByText("忘川村 · 直辖")).toBeVisible();
+    await expect(factionDetail.getByText("设定体检")).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-faction-${width}`);
+
+    const mapDetail = await openEntity(page, work, /^地图/, "北域");
+    await expect(mapDetail.getByText("地图图层")).toBeVisible();
+    await expect(mapDetail.getByText("外域")).toBeVisible();
+    await expect(mapDetail.getByText("忘川村 · 聚落")).toBeVisible();
+    await expect(mapDetail.getByText("路线与旅行时间")).toBeVisible();
+    await expect(mapDetail.getByText(/忘川村.*太玄门/).first()).toBeVisible();
+    await expect(mapDetail.getByText("地图标记")).toBeVisible();
+    await expect(mapDetail.getByText("护山大阵 · 危险")).toBeVisible();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-map-${width}`);
+
+    const timelineDetail = await openEntity(page, work, /^时间线/, "忘川村灭门");
+    await expect(timelineDetail.getByText("事件序列")).toBeVisible();
+    await expect(timelineDetail.getByText("大玄历 · 十六年前")).toBeVisible();
+    await expect(timelineDetail.getByText("仇家屠村后伪装成自尽。").first()).toBeVisible();
+    await expect(timelineDetail.getByText("角色行程")).toBeVisible();
+    await expect(timelineDetail.getByText(/沈砚.*忘川村.*太玄门/)).toBeVisible();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-timeline-${width}`);
+  }
+});
+
+test("shows world detail loading and recoverable error states at all four viewports", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(60_000);
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  const faction = await createFaction(page, work, "太玄门");
+  const detailPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/factions/${faction.faction.id}`;
+
+  await page.setViewportSize({ width: 900, height: 1000 });
+  await page.route(`**${detailPath}`, async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await route.continue();
+  });
+  const loaded = page.waitForResponse(
+    (response) =>
+      response.url().includes(detailPath) &&
+      response.request().method() === "GET" &&
+      response.status() === 200,
+  );
+  await openEntity(page, work, /^势力/, "太玄门");
+  await expect(page.getByText("正在加载势力档案")).toBeVisible();
+  await loaded;
+  await expect(page.getByText("组织目标")).toBeVisible();
+  await page.unroute(`**${detailPath}`);
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.route(`**${detailPath}`, async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "势力档案加载失败。",
+            details: {},
+            requestId: "req_world_detail_error",
+          },
+        }),
+      });
+    });
+    const detail = await openEntity(page, work, /^势力/, "太玄门");
+    await expect(detail.getByText("势力档案加载失败。")).toBeVisible();
+    await expect(detail.getByRole("button", { name: "重试" })).toBeEnabled();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-world-error-${width}`);
+    await page.unroute(`**${detailPath}`);
+  }
+});
+
+test("holds locked faction and long map details at all four viewports", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const faction = await createFaction(page, work, "太玄门");
+  const token = await getCsrf(page.request);
+  const locked = await page.request.post(`${base}/entities/${faction.faction.id}/lock`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: { version: faction.version },
+  });
+  expect(locked.status(), await locked.text()).toBe(200);
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    const detail = await openEntity(page, work, /^势力/, "太玄门");
+    await expect(detail.getByText("已锁定").first()).toBeVisible();
+    await expect(detail.getByText("组织目标")).toBeVisible();
+    await expect(detail.getByRole("button", { name: "已锁定 · 编辑需修改请求" })).toBeDisabled();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-world-locked-${width}`);
+  }
+
+  const map = await createMap(page, work, "长卷地图");
+  const layer = await createLayer(page, work, map.id, "全域");
+  for (let index = 1; index <= 10; index += 1) {
+    await createNode(page, work, map.id, {
+      name: `地点 ${index}`,
+      nodeType: "landmark",
+      layerId: layer.id,
+    });
+  }
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    const detail = await openEntity(page, work, /^地图/, "长卷地图");
+    await expect(detail.getByText("地点 10 · 地标")).toBeVisible();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-world-long-${width}`);
   }
 });

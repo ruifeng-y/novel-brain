@@ -29,6 +29,16 @@ export const ERROR_CODES = [
   "CUSTOM_FIELD_IMMUTABLE",
   "CUSTOM_FIELD_DUPLICATE",
   "CHARACTER_STATE_OVERLAP",
+  "MAP_NODE_PARENT_MISMATCH",
+  "MAP_LAYER_MISMATCH",
+  "MAP_ROUTE_ENDPOINT_MISMATCH",
+  "MAP_ROUTE_DISCONNECTED",
+  "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+  "CONTROL_AREA_OVERLAP",
+  "TIMELINE_EVENT_OVERLAP",
+  "TIMELINE_ERA_NOT_FOUND",
+  "ITINERARY_TIME_ORDER",
+  "ITINERARY_OVERLAP",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
   "FACT_DECISION_REQUIRED",
@@ -1018,6 +1028,7 @@ export const timelineEventDataSchema = z
   .object({
     era: z.string().trim().max(200).default(""),
     storyTime: z.string().trim().min(1).max(500),
+    storySortKey: z.number().int().optional(),
     duration: z.string().trim().max(500).default(""),
     event: z.string().trim().min(1).max(20_000),
   })
@@ -1279,11 +1290,17 @@ export const domainRefTypeSchema = z.enum([
   "character",
   "faction",
   "map",
+  "map_layer",
   "map_node",
+  "map_edge",
+  "map_marker",
+  "territory",
   "power_system",
   "golden_finger",
   "item",
   "timeline_event",
+  "timeline_era",
+  "itinerary",
   "fact",
   "chapter",
   "character_relationship",
@@ -1751,6 +1768,549 @@ export const characterChangeRequestResponseSchema = apiEnvelopeSchema(characterC
 export const characterChangeRequestListResponseSchema = apiEnvelopeSchema(
   z.array(characterChangeRequestSchema),
 );
+
+export const domainHealthFindingSchema = z.object({
+  code: z.string().min(1),
+  severity: z.enum(["info", "warning", "blocker"]),
+  message: z.string().min(1),
+  relatedIds: z.array(uuidV7Schema).max(20).default([]),
+});
+export type DomainHealthFinding = z.infer<typeof domainHealthFindingSchema>;
+
+const worldEntityBaseShape = {
+  name: z.string().trim().min(1).max(120),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  summary: z.string().trim().min(1).max(500),
+  description: z.string().max(20_000).default(""),
+  tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+};
+
+export const factionProfileSchema = z
+  .object({
+    overview: z.string().trim().max(20_000).default(""),
+    goals: z.string().trim().max(20_000).default(""),
+    resources: z.string().trim().max(20_000).default(""),
+    doctrine: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type FactionProfile = z.infer<typeof factionProfileSchema>;
+
+export const factionProfilePatchSchema = z
+  .object({
+    overview: z.string().trim().max(20_000).optional(),
+    goals: z.string().trim().max(20_000).optional(),
+    resources: z.string().trim().max(20_000).optional(),
+    doctrine: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one faction profile field is required",
+  });
+export type FactionProfilePatch = z.infer<typeof factionProfilePatchSchema>;
+
+export const factionProfileUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    profile: factionProfilePatchSchema,
+  })
+  .strict();
+export type FactionProfileUpdateRequest = z.infer<typeof factionProfileUpdateRequestSchema>;
+
+export const factionCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    profile: factionProfileSchema.default({
+      overview: "",
+      goals: "",
+      resources: "",
+      doctrine: "",
+    }),
+  })
+  .strict();
+export type FactionCreateRequest = z.infer<typeof factionCreateRequestSchema>;
+
+export const mapCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    details: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type MapCreateRequest = z.infer<typeof mapCreateRequestSchema>;
+
+export const factionRelationTypeSchema = z.enum([
+  "ally",
+  "enemy",
+  "vassal",
+  "overlord",
+  "trade",
+  "neutral",
+]);
+export type FactionRelationType = z.infer<typeof factionRelationTypeSchema>;
+
+export const factionRelationshipCreateRequestSchema = z
+  .object({
+    target: domainRefSchema,
+    relationType: factionRelationTypeSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.target.type !== "faction") {
+      context.addIssue({
+        code: "custom",
+        path: ["target", "type"],
+        message: "Faction relationships must target another faction",
+      });
+    }
+  });
+export type FactionRelationshipCreateRequest = z.infer<
+  typeof factionRelationshipCreateRequestSchema
+>;
+
+export const factionRelationshipSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  sourceFactionId: uuidV7Schema,
+  target: domainRefSchema,
+  relationType: factionRelationTypeSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type FactionRelationship = z.infer<typeof factionRelationshipSchema>;
+export const factionRelationshipResponseSchema = apiEnvelopeSchema(factionRelationshipSchema);
+
+export const territoryControlLevelSchema = z.enum(["direct", "military", "influence", "contested"]);
+export type TerritoryControlLevel = z.infer<typeof territoryControlLevelSchema>;
+
+export const territoryCreateRequestSchema = z
+  .object({
+    node: domainRefSchema,
+    controlLevel: territoryControlLevelSchema,
+    validity: validityIntervalSchema,
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.node.type !== "map_node" && input.node.type !== "map") {
+      context.addIssue({
+        code: "custom",
+        path: ["node", "type"],
+        message: "Territory control must reference a map or map node",
+      });
+    }
+  });
+export type TerritoryCreateRequest = z.infer<typeof territoryCreateRequestSchema>;
+
+export const territorySchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  factionId: uuidV7Schema,
+  node: domainRefSchema,
+  controlLevel: territoryControlLevelSchema,
+  validity: validityIntervalSchema,
+  evidence: z.array(settingEvidenceSchema),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type Territory = z.infer<typeof territorySchema>;
+export const territoryResponseSchema = apiEnvelopeSchema(territorySchema);
+
+export const mapLayerCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    parentLayerId: uuidV7Schema.nullable().default(null),
+    sortOrder: z.number().int().nonnegative().default(0),
+    minScale: z.number().finite().nonnegative().default(0),
+    maxScale: z.number().finite().nonnegative().default(100),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.maxScale < input.minScale) {
+      context.addIssue({
+        code: "custom",
+        path: ["maxScale"],
+        message: "Map layer maximum scale cannot be below its minimum",
+      });
+    }
+  });
+export type MapLayerCreateRequest = z.infer<typeof mapLayerCreateRequestSchema>;
+
+export const mapLayerSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  parentLayerId: uuidV7Schema.nullable(),
+  sortOrder: z.number().int().nonnegative(),
+  minScale: z.number(),
+  maxScale: z.number(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapLayer = z.infer<typeof mapLayerSchema>;
+export const mapLayerResponseSchema = apiEnvelopeSchema(mapLayerSchema);
+
+export const mapNodeTypeSchema = z.enum([
+  "region",
+  "settlement",
+  "landmark",
+  "passage",
+  "battlefield",
+  "sect",
+  "dungeon",
+  "other",
+]);
+export type MapNodeType = z.infer<typeof mapNodeTypeSchema>;
+
+const mapCoordinateSchema = z.number().finite().min(0).max(1);
+
+export const mapNodeCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    parentNodeId: uuidV7Schema.nullable().default(null),
+    name: z.string().trim().min(1).max(120),
+    nodeType: mapNodeTypeSchema,
+    summary: z.string().trim().max(5_000).default(""),
+    x: mapCoordinateSchema.nullable().default(null),
+    y: mapCoordinateSchema.nullable().default(null),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if ((input.x === null) !== (input.y === null)) {
+      context.addIssue({
+        code: "custom",
+        path: ["x"],
+        message: "Map node coordinates require both x and y",
+      });
+    }
+  });
+export type MapNodeCreateRequest = z.infer<typeof mapNodeCreateRequestSchema>;
+
+export const mapNodeSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  parentNodeId: uuidV7Schema.nullable(),
+  name: z.string(),
+  nodeType: mapNodeTypeSchema,
+  summary: z.string(),
+  x: z.number().nullable(),
+  y: z.number().nullable(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapNode = z.infer<typeof mapNodeSchema>;
+export const mapNodeResponseSchema = apiEnvelopeSchema(mapNodeSchema);
+
+export const mapRouteTypeSchema = z.enum(["road", "trail", "water", "air", "teleport", "secret"]);
+export type MapRouteType = z.infer<typeof mapRouteTypeSchema>;
+
+export const mapEdgeCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    fromNodeId: uuidV7Schema,
+    toNodeId: uuidV7Schema,
+    routeType: mapRouteTypeSchema,
+    bidirectional: z.boolean().default(true),
+    travelMinutes: z.number().int().positive(),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.fromNodeId === input.toNodeId) {
+      context.addIssue({
+        code: "custom",
+        path: ["toNodeId"],
+        message: "Route endpoints must differ",
+      });
+    }
+    if (input.travelMinutes <= 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["travelMinutes"],
+        message: "Travel time must be positive",
+      });
+    }
+  });
+export type MapEdgeCreateRequest = z.infer<typeof mapEdgeCreateRequestSchema>;
+
+export const mapEdgeSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  fromNodeId: uuidV7Schema,
+  toNodeId: uuidV7Schema,
+  routeType: mapRouteTypeSchema,
+  bidirectional: z.boolean(),
+  travelMinutes: z.number().int().positive(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapEdge = z.infer<typeof mapEdgeSchema>;
+export const mapEdgeResponseSchema = apiEnvelopeSchema(mapEdgeSchema);
+
+export const mapMarkerTypeSchema = z.enum(["danger", "event", "resource", "note", "character"]);
+export type MapMarkerType = z.infer<typeof mapMarkerTypeSchema>;
+
+export const mapMarkerCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    nodeId: uuidV7Schema.nullable().default(null),
+    label: z.string().trim().min(1).max(120),
+    markerType: mapMarkerTypeSchema,
+    x: mapCoordinateSchema,
+    y: mapCoordinateSchema,
+    validity: validityIntervalSchema,
+  })
+  .strict();
+export type MapMarkerCreateRequest = z.infer<typeof mapMarkerCreateRequestSchema>;
+
+export const mapMarkerSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  nodeId: uuidV7Schema.nullable(),
+  label: z.string(),
+  markerType: mapMarkerTypeSchema,
+  x: z.number(),
+  y: z.number(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapMarker = z.infer<typeof mapMarkerSchema>;
+export const mapMarkerResponseSchema = apiEnvelopeSchema(mapMarkerSchema);
+
+export const mapRouteQuerySchema = z
+  .object({
+    fromNodeId: uuidV7Schema,
+    toNodeId: uuidV7Schema,
+    chapterNumber: z.coerce.number().int().positive().optional(),
+  })
+  .strict();
+export type MapRouteQuery = z.infer<typeof mapRouteQuerySchema>;
+
+export const mapRouteSchema = z.object({
+  mapId: uuidV7Schema,
+  fromNodeId: uuidV7Schema,
+  toNodeId: uuidV7Schema,
+  pathNodeIds: z.array(uuidV7Schema),
+  edgeIds: z.array(uuidV7Schema),
+  travelMinutes: z.number().int().nonnegative(),
+});
+export type MapRoute = z.infer<typeof mapRouteSchema>;
+export const mapRouteResponseSchema = apiEnvelopeSchema(mapRouteSchema);
+
+export const timelineEraCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    orderIndex: z.number().int().nonnegative(),
+    startSortKey: z.number().int(),
+    endSortKey: z.number().int().nullable().default(null),
+    description: z.string().trim().max(20_000).default(""),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endSortKey !== null && input.endSortKey < input.startSortKey) {
+      context.addIssue({
+        code: "custom",
+        path: ["endSortKey"],
+        message: "Timeline era end cannot precede its start",
+      });
+    }
+  });
+export type TimelineEraCreateRequest = z.infer<typeof timelineEraCreateRequestSchema>;
+
+export const timelineEraSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  orderIndex: z.number().int().nonnegative(),
+  startSortKey: z.number().int(),
+  endSortKey: z.number().int().nullable(),
+  description: z.string(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type TimelineEra = z.infer<typeof timelineEraSchema>;
+export const timelineEraResponseSchema = apiEnvelopeSchema(timelineEraSchema);
+
+export const timelineEventCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    era: z.string().trim().min(1).max(120),
+    storyTime: storyTimePointSchema,
+    durationMinutes: z.number().int().nonnegative().default(0),
+    durationLabel: z.string().trim().max(200).default(""),
+    event: z.string().trim().min(1).max(20_000),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  });
+export type TimelineEventCreateRequest = z.infer<typeof timelineEventCreateRequestSchema>;
+
+export const timelineEventDetailSchema = z.object({
+  event: domainRefSchema,
+  era: z.string(),
+  storyTime: storyTimePointSchema,
+  durationMinutes: z.number().int().nonnegative(),
+  durationLabel: z.string(),
+  eventText: z.string(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type TimelineEventDetail = z.infer<typeof timelineEventDetailSchema>;
+export const timelineEventResponseSchema = apiEnvelopeSchema(timelineEventDetailSchema);
+
+export const characterItineraryCreateRequestSchema = z
+  .object({
+    character: domainRefSchema,
+    fromNode: domainRefSchema,
+    toNode: domainRefSchema,
+    departure: storyTimePointSchema,
+    arrival: storyTimePointSchema,
+    travelMinutes: z.number().int().positive(),
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.character.type !== "character") {
+      context.addIssue({
+        code: "custom",
+        path: ["character", "type"],
+        message: "Itineraries must reference a character",
+      });
+    }
+    if (input.fromNode.type !== "map_node" || input.toNode.type !== "map_node") {
+      context.addIssue({
+        code: "custom",
+        path: ["fromNode", "type"],
+        message: "Itineraries must reference map nodes",
+      });
+    }
+    if (
+      input.departure.era === input.arrival.era &&
+      input.arrival.sortKey <= input.departure.sortKey
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["arrival"],
+        message: "Itinerary arrival must follow departure",
+      });
+    }
+  });
+export type CharacterItineraryCreateRequest = z.infer<typeof characterItineraryCreateRequestSchema>;
+
+export const characterItinerarySchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  character: domainRefSchema,
+  fromNode: domainRefSchema,
+  toNode: domainRefSchema,
+  departure: storyTimePointSchema,
+  arrival: storyTimePointSchema,
+  routeTravelMinutes: z.number().int().positive(),
+  travelMinutes: z.number().int().positive(),
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  evidence: z.array(settingEvidenceSchema),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterItinerary = z.infer<typeof characterItinerarySchema>;
+export const characterItineraryResponseSchema = apiEnvelopeSchema(characterItinerarySchema);
+
+export const factionDetailSchema = z.object({
+  faction: domainRefSchema,
+  profile: factionProfileSchema,
+  relationships: z.array(factionRelationshipSchema),
+  territories: z.array(territorySchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type FactionDetail = z.infer<typeof factionDetailSchema>;
+export const factionDetailResponseSchema = apiEnvelopeSchema(factionDetailSchema);
+export const factionListResponseSchema = apiEnvelopeSchema(z.array(factionDetailSchema));
+
+export const mapDetailSchema = z.object({
+  map: domainRefSchema,
+  layers: z.array(mapLayerSchema),
+  nodes: z.array(mapNodeSchema),
+  edges: z.array(mapEdgeSchema),
+  markers: z.array(mapMarkerSchema),
+  controlAreas: z.array(territorySchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type MapDetail = z.infer<typeof mapDetailSchema>;
+export const mapDetailResponseSchema = apiEnvelopeSchema(mapDetailSchema);
+export const mapListResponseSchema = apiEnvelopeSchema(z.array(mapDetailSchema));
+
+export const worldTimelineSchema = z.object({
+  eras: z.array(timelineEraSchema),
+  events: z.array(timelineEventDetailSchema),
+  itineraries: z.array(characterItinerarySchema),
+  health: z.array(domainHealthFindingSchema),
+  latestVersionNodeId: uuidV7Schema,
+});
+export type WorldTimeline = z.infer<typeof worldTimelineSchema>;
+export const worldTimelineResponseSchema = apiEnvelopeSchema(worldTimelineSchema);
+
+export const worldSnapshotQuerySchema = z
+  .object({
+    versionNodeId: uuidV7Schema.optional(),
+    chapterNumber: z.coerce.number().int().positive().optional(),
+  })
+  .strict();
+export type WorldSnapshotQuery = z.infer<typeof worldSnapshotQuerySchema>;
+
+export const worldSnapshotSchema = z.object({
+  at: z.object({
+    versionNodeId: uuidV7Schema.nullable(),
+    chapterNumber: z.number().int().positive().nullable(),
+  }),
+  factions: z.array(factionDetailSchema),
+  maps: z.array(mapDetailSchema),
+  timeline: worldTimelineSchema,
+});
+export type WorldSnapshot = z.infer<typeof worldSnapshotSchema>;
+export const worldSnapshotResponseSchema = apiEnvelopeSchema(worldSnapshotSchema);
 
 function validateCustomFieldDefinitionShape(
   input: Pick<CustomFieldDefinitionCreateRequest, "fieldType" | "options" | "relationTarget">,
