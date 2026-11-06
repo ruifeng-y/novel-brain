@@ -2476,6 +2476,111 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.settings-character-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+.settings-character-grid > div {
+  min-width: 0;
+  padding: 9px 10px;
+  background: var(--paper-2);
+  border-radius: 7px;
+}
+
+.settings-character-grid dt,
+.settings-character-grid dd {
+  margin: 0;
+}
+
+.settings-character-grid dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.settings-character-grid dd {
+  margin-top: 4px;
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.settings-character-records,
+.settings-health-list {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-character-records li,
+.settings-health-list li {
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-character-records li:last-child,
+.settings-health-list li:last-child {
+  border-bottom: 0;
+}
+
+.settings-character-records li > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.settings-character-records strong {
+  color: var(--ink-2);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.settings-character-records span,
+.settings-character-records small {
+  color: var(--muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.settings-character-records p {
+  margin-top: 4px;
+}
+
+.settings-health-list li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.settings-health-list li > span {
+  flex: none;
+  padding: 2px 6px;
+  color: var(--muted);
+  font-size: 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.settings-health-list p {
+  margin: 0;
+}
+
+.settings-character-loading,
+.settings-character-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .settings-detail-actions {
   display: flex;
   flex-wrap: wrap;
@@ -4747,7 +4852,8 @@ a:focus-visible {
   .writing-chapter-list,
   .writing-notes,
   .writing-version-selects,
-  .writing-version-diff {
+  .writing-version-diff,
+  .settings-character-grid {
     grid-template-columns: 1fr;
   }
 

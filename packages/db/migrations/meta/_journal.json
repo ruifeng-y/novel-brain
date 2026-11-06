@@ -176,6 +176,13 @@
       "when": 1793930201509,
       "tag": "0024_secret_wiccan",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793931589386,
+      "tag": "0025_nostalgic_ma_gnuci",
+      "breakpoints": true
     }
   ]
 }

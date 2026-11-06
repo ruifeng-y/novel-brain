@@ -1051,6 +1051,303 @@ export const facts = pgTable(
   ],
 );
 
+export const characterProfiles = pgTable(
+  "character_profiles",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    desire: text("desire").notNull().default(""),
+    fear: text("fear").notNull().default(""),
+    goal: text("goal").notNull().default(""),
+    voiceSample: text("voice_sample").notNull().default(""),
+    voiceGuide: text("voice_guide").notNull().default(""),
+    disguise: text("disguise").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_profiles_user_work_idx").on(table.userId, table.workId),
+    index("character_profiles_branch_idx").on(table.branchId),
+  ],
+);
+
+export const characterRelationships = pgTable(
+  "character_relationships",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceCharacterId: uuid("source_character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    targetLabel: text("target_label"),
+    relationType: text("relation_type").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_relationships_source_valid_idx").on(
+      table.sourceCharacterId,
+      table.validFromChapter,
+    ),
+    index("character_relationships_user_work_idx").on(table.userId, table.workId),
+    check(
+      "character_relationships_relation_type_check",
+      sql`${table.relationType} in ('kinship', 'ally', 'enemy', 'mentor', 'student', 'subordinate', 'superior', 'member_of', 'located_at', 'controls', 'owns')`,
+    ),
+    check(
+      "character_relationships_target_type_check",
+      sql`${table.targetType} in ('character', 'faction', 'map', 'map_node', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
+    ),
+    check(
+      "character_relationships_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+    check(
+      "character_relationships_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "character_relationships_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const characterStateTransitions = pgTable(
+  "character_state_transitions",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    stateKind: text("state_kind").notNull(),
+    stateKey: text("state_key").notNull(),
+    value: text("value").notNull(),
+    targetType: text("target_type"),
+    targetId: uuid("target_id"),
+    targetLabel: text("target_label"),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_state_transitions_character_valid_idx").on(
+      table.characterId,
+      table.validFromChapter,
+    ),
+    index("character_state_transitions_user_work_idx").on(table.userId, table.workId),
+    check(
+      "character_state_transitions_kind_check",
+      sql`${table.stateKind} in ('body', 'limb', 'location', 'ability', 'disguise')`,
+    ),
+    check(
+      "character_state_transitions_key_check",
+      sql`${table.stateKey} ~ '^[a-z][a-z0-9_]{0,63}$'`,
+    ),
+    check(
+      "character_state_transitions_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+    check(
+      "character_state_transitions_target_check",
+      sql`(${table.stateKind} = 'location' and ${table.targetType} in ('map', 'map_node') and ${table.targetId} is not null) or (${table.stateKind} <> 'location' and ${table.targetType} is null and ${table.targetId} is null and ${table.targetLabel} is null)`,
+    ),
+    check(
+      "character_state_transitions_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "character_state_transitions_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const characterKnowledgeStates = pgTable(
+  "character_knowledge_states",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    objectiveFactId: uuid("objective_fact_id")
+      .notNull()
+      .references(() => facts.id, { onDelete: "restrict" }),
+    state: text("state").notNull(),
+    claimedContent: text("claimed_content"),
+    sourceKind: text("source_kind").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_knowledge_states_character_valid_idx").on(
+      table.characterId,
+      table.validFromChapter,
+    ),
+    index("character_knowledge_states_fact_idx").on(table.objectiveFactId),
+    index("character_knowledge_states_user_work_idx").on(table.userId, table.workId),
+    check(
+      "character_knowledge_states_state_check",
+      sql`${table.state} in ('knowledge', 'belief', 'suspicion', 'misbelief', 'unknown')`,
+    ),
+    check(
+      "character_knowledge_states_source_kind_check",
+      sql`${table.sourceKind} in ('observed', 'told', 'inferred', 'read', 'assumed')`,
+    ),
+    check(
+      "character_knowledge_states_content_check",
+      sql`(${table.state} = 'unknown' and ${table.claimedContent} is null) or (${table.state} <> 'unknown' and length(trim(coalesce(${table.claimedContent}, ''))) > 0)`,
+    ),
+    check(
+      "character_knowledge_states_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+    check(
+      "character_knowledge_states_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "character_knowledge_states_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const characterChangeRequests = pgTable(
+  "character_change_requests",
+  {
+    id: uuid("id").primaryKey(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    before: jsonb("before").$type<Record<string, unknown>>().notNull().default({}),
+    after: jsonb("after").$type<Record<string, unknown>>().notNull(),
+    status: text("status").notNull().default("pending"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull(),
+    idempotencyKey: text("idempotency_key"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_change_requests_character_idx").on(table.characterId, table.status),
+    index("character_change_requests_user_work_idx").on(table.userId, table.workId),
+    uniqueIndex("character_change_requests_user_idempotency_unique").on(
+      table.userId,
+      table.characterId,
+      table.idempotencyKey,
+    ),
+    check(
+      "character_change_requests_kind_check",
+      sql`${table.kind} in ('profile', 'relationship', 'state_transition', 'knowledge_state')`,
+    ),
+    check(
+      "character_change_requests_status_check",
+      sql`${table.status} in ('pending', 'approved', 'rejected', 'applied')`,
+    ),
+    check("character_change_requests_version_check", sql`${table.version} > 0`),
+  ],
+);
+
 export const jobs = pgTable(
   "jobs",
   {

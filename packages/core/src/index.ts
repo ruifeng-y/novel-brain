@@ -381,6 +381,128 @@ function isSceneRelevantSetting(
   return identifiers.some((identifier) => sceneText.includes(identifier));
 }
 
+export interface CharacterKnowledgeFact {
+  id: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  validFromChapter: number;
+  validToChapter: number | null;
+}
+
+export interface CharacterKnowledgeStateInput {
+  objectiveFactId: string;
+  state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+  claimedContent: string | null;
+  validFromChapter: number;
+  validToChapter: number | null;
+}
+
+export interface CharacterKnowledgeProjection {
+  knownFacts: CharacterKnowledgeFact[];
+  beliefs: Array<{
+    objectiveFactId: string;
+    state: Exclude<CharacterKnowledgeStateInput["state"], "knowledge">;
+    claimedContent: string | null;
+  }>;
+  hiddenFactIds: string[];
+}
+
+export function projectCharacterKnowledgeAtChapter(
+  facts: CharacterKnowledgeFact[],
+  states: CharacterKnowledgeStateInput[],
+  chapterNumber: number,
+): CharacterKnowledgeProjection {
+  const activeFacts = facts.filter((fact) =>
+    chapterWithinValidity(fact.validFromChapter, fact.validToChapter, chapterNumber),
+  );
+  const latestStateByFact = new Map<string, CharacterKnowledgeStateInput>();
+  for (const state of [...states].sort(
+    (left, right) => left.validFromChapter - right.validFromChapter,
+  )) {
+    if (chapterWithinValidity(state.validFromChapter, state.validToChapter, chapterNumber)) {
+      latestStateByFact.set(state.objectiveFactId, state);
+    }
+  }
+
+  const knownFacts = activeFacts.filter(
+    (fact) => latestStateByFact.get(fact.id)?.state === "knowledge",
+  );
+  const knownFactIds = new Set(knownFacts.map((fact) => fact.id));
+  const beliefs = [...latestStateByFact.values()].flatMap((state) => {
+    if (
+      state.state === "knowledge" ||
+      !activeFacts.some((fact) => fact.id === state.objectiveFactId)
+    ) {
+      return [];
+    }
+    return [
+      {
+        objectiveFactId: state.objectiveFactId,
+        state: state.state,
+        claimedContent: state.claimedContent,
+      },
+    ];
+  });
+
+  return {
+    knownFacts,
+    beliefs,
+    hiddenFactIds: activeFacts.filter((fact) => !knownFactIds.has(fact.id)).map((fact) => fact.id),
+  };
+}
+
+export interface CharacterStateTransitionInput {
+  stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+  stateKey: string;
+  value: string;
+  validFromChapter: number;
+  validToChapter: number | null;
+}
+
+export function projectCharacterStateAtChapter<T extends CharacterStateTransitionInput>(
+  transitions: T[],
+  chapterNumber: number,
+): Record<string, T> {
+  const active: Record<string, T> = {};
+  for (const transition of [...transitions].sort(
+    (left, right) => left.validFromChapter - right.validFromChapter,
+  )) {
+    if (
+      chapterWithinValidity(transition.validFromChapter, transition.validToChapter, chapterNumber)
+    ) {
+      active[`${transition.stateKind}:${transition.stateKey}`] = transition;
+    }
+  }
+  return active;
+}
+
+export interface CharacterRelationshipValidity {
+  validFromChapter: number;
+  validToChapter: number | null;
+}
+
+export function projectActiveRelationshipsAtChapter<T extends CharacterRelationshipValidity>(
+  relationships: T[],
+  chapterNumber: number,
+): T[] {
+  return relationships.filter((relationship) =>
+    chapterWithinValidity(
+      relationship.validFromChapter,
+      relationship.validToChapter,
+      chapterNumber,
+    ),
+  );
+}
+
+function chapterWithinValidity(
+  fromChapter: number,
+  toChapter: number | null,
+  chapterNumber: number,
+): boolean {
+  return fromChapter <= chapterNumber && (toChapter === null || toChapter >= chapterNumber);
+}
+
 export interface ExtractedFactCandidate {
   subject: string;
   predicate: string;
