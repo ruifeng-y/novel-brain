@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   Param,
   Patch,
@@ -13,6 +14,7 @@ import {
 import {
   ApiBody,
   ApiCreatedResponse,
+  ApiHeader,
   ApiOkResponse,
   ApiTags,
   type SchemaObject,
@@ -76,12 +78,14 @@ export class StoryLedgerController {
 
   @Post("entries")
   @HttpCode(201)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
   @ApiBody({ schema: createBodyJsonSchema })
   @ApiCreatedResponse({ description: "Created ledger entry", schema: mutationJsonSchema })
   async create(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
@@ -91,6 +95,7 @@ export class StoryLedgerController {
         uuidV7Schema.parse(workId),
         uuidV7Schema.parse(branchId),
         storyLedgerEntryCreateRequestSchema.parse(body),
+        idempotencyKey ?? "",
         this.auditContext(request, requestId),
       ),
       requestId,

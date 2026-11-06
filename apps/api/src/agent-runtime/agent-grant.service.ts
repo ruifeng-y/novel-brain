@@ -20,8 +20,13 @@ export class AgentGrantService {
     userId: string,
     scope: AgentGrantScope,
     request: AgentGrantCreateRequest,
+    idempotencyKey: string,
     audit: AgentGrantAudit,
   ): Promise<AgentGrant> {
+    const normalizedKey = idempotencyKey.trim();
+    if (!normalizedKey || normalizedKey.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");
+    }
     if (Date.parse(request.expiresAt) <= Date.now()) {
       throw new ApiError(400, "AGENT_GRANT_INVALID", "授权到期时间必须晚于当前时间");
     }
@@ -38,7 +43,13 @@ export class AgentGrantService {
         );
       }
     }
-    const record = await this.repository.createGrant({ userId, scope, request, audit });
+    const record = await this.repository.createGrant({
+      userId,
+      scope,
+      request,
+      audit,
+      idempotencyKey: normalizedKey,
+    });
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品或分支不存在，无权签发授权");
     }
@@ -74,10 +85,14 @@ export class AgentGrantService {
       scope,
       grantId,
       reason: request.reason,
+      version: request.version,
       audit,
     });
-    if (!record) {
+    if (record === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "授权不存在或无权撤销");
+    }
+    if (record === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "授权已被其他操作更新，请刷新后重试");
     }
     return toAgentGrantContract(record);
   }

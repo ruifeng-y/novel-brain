@@ -32,7 +32,7 @@ import {
   type RevisionConstraintsJson,
   type RevisionSelectedFindingJson,
 } from "@novel-brain/db";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -540,7 +540,11 @@ export class RevisionRepository implements OnModuleDestroy {
     });
   }
 
-  async listPlans(userId: string, context: RevisionContext): Promise<RevisionPlanWorkspace[]> {
+  async listPlans(
+    userId: string,
+    context: RevisionContext,
+    page: { cursor?: string | undefined; limit: number },
+  ): Promise<{ plans: RevisionPlanWorkspace[]; nextCursor: string | null }> {
     return this.withTenant(userId, async (transaction) => {
       const plans = await transaction
         .select()
@@ -551,10 +555,19 @@ export class RevisionRepository implements OnModuleDestroy {
             eq(revisionPlans.workId, context.workId),
             eq(revisionPlans.branchId, context.branchId),
             eq(revisionPlans.chapterId, context.chapterId),
+            page.cursor ? lt(revisionPlans.id, page.cursor) : undefined,
           ),
         )
-        .orderBy(desc(revisionPlans.createdAt));
-      return Promise.all(plans.map((plan) => buildWorkspace(transaction, plan, userId)));
+        .orderBy(desc(revisionPlans.id))
+        .limit(page.limit + 1);
+      const hasMore = plans.length > page.limit;
+      const pagePlans = hasMore ? plans.slice(0, page.limit) : plans;
+      return {
+        plans: await Promise.all(
+          pagePlans.map((plan) => buildWorkspace(transaction, plan, userId)),
+        ),
+        nextCursor: hasMore ? (pagePlans.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

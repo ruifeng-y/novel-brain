@@ -5,6 +5,7 @@ import { Test } from "@nestjs/testing";
 import {
   chapterVersionSaveResponseSchema,
   qualityWorkspaceResponseSchema,
+  revisionPlanWorkspaceListResponseSchema,
   revisionPlanWorkspaceResponseSchema,
   writeActionJobSchema,
 } from "@novel-brain/contracts";
@@ -12,6 +13,7 @@ import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import { FakeAiProvider } from "@novel-brain/ai";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
+import { uuidv7 } from "uuidv7";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
@@ -114,6 +116,15 @@ describe("targeted revision HTTP and worker integration", () => {
       selectedFindings: [{ findingId: style.id, severity: "P2" }],
     });
     expect(created.rounds[0]?.jobId).toBeTruthy();
+    const listedPlans = revisionPlanWorkspaceListResponseSchema.parse(
+      (
+        await owner
+          .get(`${fixture.branchPath}/chapters/${fixture.chapterId}/revisions?limit=1`)
+          .expect(200)
+      ).body,
+    );
+    expect(listedPlans.data).toHaveLength(1);
+    expect(listedPlans.meta).toHaveProperty("nextCursor");
 
     await runWorker(created.rounds[0]!.jobId!);
     const first = await getPlan(owner, fixture, created.plan.id);
@@ -146,23 +157,47 @@ describe("targeted revision HTTP and worker integration", () => {
     expect(blockedCanon.body.error.code).toBe("CANON_CHAPTER_NOT_APPROVED");
 
     const chapter = await chapterState(fixture.chapterId);
-    await setChapterStatus(fixture.chapterId, "waiting_review");
-    await owner
-      .post(`${fixture.branchPath}/chapters/${fixture.chapterId}/review`)
+    await setChapterStatus(fixture.chapterId, "writing");
+    const cleanSaved = await owner
+      .post(`${fixture.branchPath}/chapters/${fixture.chapterId}/versions`)
       .set("Origin", origin)
       .set("X-CSRF-Token", fixture.token)
-      .send({ action: "approve", version: chapter.version })
-      .expect(200);
+      .send({ version: chapter.version, content: "沈砚只用右手结印。\n\n风停了。" })
+      .expect(201);
+    const clean = chapterVersionSaveResponseSchema.parse(cleanSaved.body).data;
+    const [sourceReport] = (
+      await databasePool.query<{ id: string }>(
+        `SELECT id FROM quality_reports WHERE chapter_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [fixture.chapterId],
+      )
+    ).rows;
+    if (!sourceReport) {
+      throw new Error("Revision fixture is missing its source quality report");
+    }
+    await databasePool.query(
+      `INSERT INTO quality_reports
+         (id, work_id, branch_id, user_id, chapter_id, chapter_version_id, rubric_version,
+          rule_version, source_hash, dimensions, summary, created_by, created_at)
+       SELECT $1, work_id, branch_id, user_id, chapter_id, $2, rubric_version, rule_version,
+              $3, dimensions, summary, created_by, now()
+       FROM quality_reports WHERE id = $4`,
+      [uuidv7(), clean.version.id, "0".repeat(64), sourceReport.id],
+    );
+    await setChapterStatus(fixture.chapterId, "approved");
     const noFacts = await owner
       .post(`${fixture.branchPath}/chapters/${fixture.chapterId}/canon/commit`)
       .set("Origin", origin)
       .set("X-CSRF-Token", fixture.token)
       .set("Idempotency-Key", "revision-canon-without-facts")
-      .send({ chapterVersionId: resultVersionId })
+      .send({ chapterVersionId: clean.version.id })
       .expect(409);
     expect(noFacts.body.error.code).toBe("FACT_SUBMISSION_BLOCKED");
 
     await setChapterStatus(fixture.chapterId, "writing");
+    await databasePool.query("UPDATE chapters SET current_version_id = $2 WHERE id = $1", [
+      fixture.chapterId,
+      resultVersionId,
+    ]);
     const rewritten = await feedback(owner, fixture, created.plan.id, first.rounds[0]!.id, {
       action: "rewrite",
       reason: "保留当前方向，再收紧一次句长。",
@@ -194,7 +229,7 @@ describe("targeted revision HTTP and worker integration", () => {
         "SELECT count(*)::text AS count FROM chapter_versions WHERE chapter_id = $1",
         [fixture.chapterId],
       ),
-    ).toBe(3);
+    ).toBe(4);
 
     const rewriteSecond = await feedback(owner, fixture, created.plan.id, completed.rounds[1]!.id, {
       action: "rewrite",
@@ -498,6 +533,7 @@ describe("targeted revision HTTP and worker integration", () => {
           .post(`${branchPath}/chapters/${chapter.id}/verify`)
           .set("Origin", origin)
           .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", crypto.randomUUID())
           .send({ chapterVersionId: savedData.version.id })
           .expect(200)
       ).body,

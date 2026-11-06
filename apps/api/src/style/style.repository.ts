@@ -26,7 +26,9 @@ import {
   createDatabaseClient,
   createDatabasePool,
   entities,
+  findIdempotentResource,
   goldenThreeLocks,
+  rememberIdempotentResource,
   styleBaselines,
   styleDriftFindings,
   styleDriftReports,
@@ -34,6 +36,7 @@ import {
   versionNodes,
   workBranches,
   works,
+  withTenantTransaction,
   type DatabaseClient,
   type StyleDriftGrowthEvidenceJson,
   type StyleProfileJson,
@@ -104,7 +107,7 @@ export class StyleRepository implements OnModuleDestroy {
     workId: string,
     branchId: string,
   ): Promise<StyleWorkContext | undefined> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       const [context] = await transaction
         .select({ workId: works.id, branchId: workBranches.id })
         .from(works)
@@ -126,7 +129,7 @@ export class StyleRepository implements OnModuleDestroy {
   }
 
   async workspace(userId: string, context: StyleWorkContext): Promise<StyleDriftWorkspace> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       const profileRows = await transaction
         .select()
         .from(styleProfiles)
@@ -158,10 +161,34 @@ export class StyleRepository implements OnModuleDestroy {
     userId: string,
     context: StyleWorkContext,
     input: StyleProfileCreateRequest,
+    idempotencyKey: string,
     audit: WorksAuditContext,
   ): Promise<StyleWriteResult<StyleProfile>> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
+      const existing = await findIdempotentResource(
+        transaction,
+        userId,
+        "style-profiles",
+        idempotencyKey,
+      );
+      if (existing) {
+        const [profile] = await transaction
+          .select()
+          .from(styleProfiles)
+          .where(
+            and(
+              eq(styleProfiles.id, existing.resourceId),
+              eq(styleProfiles.userId, userId),
+              eq(styleProfiles.workId, context.workId),
+              eq(styleProfiles.branchId, context.branchId),
+            ),
+          )
+          .limit(1);
+        if (profile) {
+          return { kind: "ok", value: toProfile(profile) };
+        }
+      }
       if (input.scope === "character") {
         const [character] = await transaction
           .select()
@@ -265,6 +292,10 @@ export class StyleRepository implements OnModuleDestroy {
       }
       await advanceBranchHead(transaction, context, versionNodeId, now);
       await writeAudit(transaction, userId, audit, "style.profile_created", created.id);
+      await rememberIdempotentResource(transaction, userId, "style-profiles", idempotencyKey, {
+        resourceType: "style_profile",
+        resourceId: created.id,
+      });
       return { kind: "ok", value: toProfile(created) };
     });
   }
@@ -276,7 +307,7 @@ export class StyleRepository implements OnModuleDestroy {
     input: StyleProfileApproveRequest,
     audit: WorksAuditContext,
   ): Promise<StyleWriteResult<StyleProfile>> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const [profile] = await transaction
         .select()
@@ -375,7 +406,7 @@ export class StyleRepository implements OnModuleDestroy {
     input: StyleDriftCheckRequest,
     audit: WorksAuditContext,
   ): Promise<StyleWriteResult<StyleDriftReport>> {
-    return this.withTenant(userId, async (transaction) => {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const loaded = await loadChaptersForCheck(transaction, userId, context, input);
       if (loaded.kind !== "ok") {
@@ -510,16 +541,6 @@ export class StyleRepository implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
-  }
-
-  private async withTenant<T>(
-    userId: string,
-    operation: (transaction: DatabaseTransaction) => Promise<T>,
-  ): Promise<T> {
-    return this.db.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
-      return operation(transaction);
-    });
   }
 }
 

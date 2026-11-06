@@ -208,6 +208,15 @@ const changeRequestStatusLabels: Record<SettingChangeRequest["status"], string> 
   applied: "已应用",
 };
 
+const impactResourceTypeLabels: Record<
+  SettingChangeRequest["impact"]["resources"][number]["type"],
+  string
+> = {
+  chapter: "章节",
+  setting: "设定",
+  version_node: "版本节点",
+};
+
 const powerLifespanModeLabels: Record<PowerSystem["lifespanPolicy"]["mode"], string> = {
   none: "不绑定寿命",
   realm: "按境界绑定",
@@ -681,7 +690,7 @@ export function SettingsCenter({
         );
         setChangeRequests((current) => [...current, request]);
         setEditor(null);
-        setNotice(`“${request.title}”已提交，等待影响分析。`);
+        setNotice(`“${request.title}”已提交。${request.impact.message}`);
         await refreshDetail(editor.entityId, editor.type);
         return;
       }
@@ -2441,6 +2450,23 @@ function EntityDetail({
                   <dd>{formatDateTime(request.createdAt)}</dd>
                 </div>
               </dl>
+              <div
+                className={`settings-change-impact${request.impact.hasImpact ? "" : " is-empty"}`}
+                role="status"
+              >
+                <strong>影响提示</strong>
+                <p>{request.impact.message}</p>
+                {request.impact.resources.length > 0 ? (
+                  <ul>
+                    {request.impact.resources.map((resource) => (
+                      <li key={`${request.id}:${resource.type}:${resource.id}`}>
+                        <span>{impactResourceTypeLabels[resource.type]}</span>
+                        {resource.label}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
               <ul className="settings-evidence-list">
                 {request.evidence.map((evidence, index) => (
                   <li key={`${request.id}-${index}`}>

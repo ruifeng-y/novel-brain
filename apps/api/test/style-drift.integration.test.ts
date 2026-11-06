@@ -101,6 +101,7 @@ describe("style baseline and drift HTTP integration", () => {
       .post(`${base}/style/profiles`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({
         scope: "character",
         scopeId: character.id,
@@ -122,6 +123,7 @@ describe("style baseline and drift HTTP integration", () => {
           .post(`${base}/style/profiles`)
           .set("Origin", origin)
           .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", crypto.randomUUID())
           .send({
             scope: "character",
             scopeId: character.id,
@@ -489,6 +491,7 @@ describe("style baseline and drift HTTP integration", () => {
       .post(`${base}/ledger/entries`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({
         kind: "character_arc",
         title: "沈砚不再压住情绪",

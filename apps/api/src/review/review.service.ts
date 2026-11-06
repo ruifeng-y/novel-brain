@@ -43,10 +43,19 @@ export class ReviewService {
       });
     }
     if (result.kind === "quality_blocked") {
-      throw new ApiError(409, "QUALITY_GATE_BLOCKED", "本章还有阻断级质量问题，请修订后再批准", {
-        gate: "chapter_approval",
-        blockers: result.gate.blockers,
-      });
+      const reportReady = result.gate.reportState === "fresh";
+      throw new ApiError(
+        409,
+        "QUALITY_GATE_BLOCKED",
+        reportReady
+          ? "本章还有阻断级质量问题，请修订后再批准"
+          : "请先检查本章，生成当前版本的质量报告后再批准",
+        {
+          gate: "chapter_approval",
+          reportState: result.gate.reportState,
+          blockers: result.gate.blockers,
+        },
+      );
     }
     return {
       chapter: await this.chapters.get(userId, workId, branchId, chapterId),

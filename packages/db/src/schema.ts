@@ -179,6 +179,30 @@ export const auditLogs = pgTable(
   ],
 );
 
+export const idempotencyRecords = pgTable(
+  "idempotency_records",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: uuid("resource_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idempotency_records_user_scope_key_unique").on(
+      table.userId,
+      table.scope,
+      table.idempotencyKey,
+    ),
+    index("idempotency_records_resource_idx").on(table.resourceType, table.resourceId),
+    check("idempotency_records_key_check", sql`length(trim(${table.idempotencyKey})) > 0`),
+  ],
+);
+
 export const genrePacks = pgTable(
   "genre_packs",
   {
@@ -777,6 +801,7 @@ export const settingChangeRequests = pgTable(
     status: text("status").notNull().default("pending"),
     conflictType: text("conflict_type").notNull().default("none"),
     evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull(),
+    impact: jsonb("impact").$type<Record<string, unknown>>().notNull().default({}),
     idempotencyKey: text("idempotency_key"),
     createdBy: uuid("created_by")
       .notNull()
@@ -2928,6 +2953,7 @@ export const agentGrants = pgTable(
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     revokedBy: uuid("revoked_by").references(() => users.id, { onDelete: "restrict" }),
     revocationReason: text("revocation_reason"),
+    version: integer("version").notNull().default(1),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -2940,6 +2966,7 @@ export const agentGrants = pgTable(
       sql`${table.role} in ('planner', 'context_curator', 'writer', 'critic', 'reviser', 'fact_extractor', 'canon_curator')`,
     ),
     check("agent_grants_status_check", sql`${table.status} in ('active', 'revoked')`),
+    check("agent_grants_version_check", sql`${table.version} > 0`),
     check(
       "agent_grants_revocation_check",
       sql`(${table.status} = 'active' and ${table.revokedAt} is null and ${table.revokedBy} is null and ${table.revocationReason} is null) or (${table.status} = 'revoked' and ${table.revokedAt} is not null and ${table.revokedBy} is not null and ${table.revocationReason} is not null)`,

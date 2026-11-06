@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import {
   styleDriftCheckRequestSchema,
   styleDriftReportResponseSchema,
@@ -11,6 +21,7 @@ import {
 import {
   ApiBody,
   ApiCreatedResponse,
+  ApiHeader,
   ApiOkResponse,
   ApiTags,
   type SchemaObject,
@@ -66,12 +77,14 @@ export class StyleController {
 
   @Post("profiles")
   @HttpCode(201)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
   @ApiBody({ schema: createProfileBodySchema })
   @ApiCreatedResponse({ description: "Created style profile", schema: profileSchema })
   async createProfile(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
@@ -81,6 +94,7 @@ export class StyleController {
         uuidV7Schema.parse(workId),
         uuidV7Schema.parse(branchId),
         styleProfileCreateRequestSchema.parse(body),
+        idempotencyKey ?? "",
         this.auditContext(request, requestId),
       ),
       requestId,

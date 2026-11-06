@@ -101,6 +101,30 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
     }
   }
 
+  async function generateCandidates() {
+    setBusy("generate");
+    setActionError("");
+    try {
+      const response = await fetch(`${path}/candidates/generate`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "idempotency-key": crypto.randomUUID(),
+          "x-csrf-token": await getCsrfToken(),
+        },
+        body: JSON.stringify({ candidateCount: 3 }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response, "候选生成失败。"));
+      }
+      setWorkspace(goldenThreeWorkspaceResponseSchema.parse(await response.json()).data);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "候选生成失败。");
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (loading) {
     return (
       <section className="panel works-loading" aria-label="正在加载黄金三章">
@@ -159,7 +183,18 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
       {workspace.candidates.length === 0 ? (
         <div className="golden-three-empty">
           <h3>还没有黄金三章候选</h3>
-          <p>候选生成完成后，会在这里并排展示章节内容、六维评分和证据。</p>
+          <p>用第 1–3 章的当前版本生成 2–3 个方向，再并排比较章节内容、六维评分和证据。</p>
+          <button
+            className="btn btn-primary"
+            disabled={busy === "generate"}
+            onClick={() => void generateCandidates()}
+            type="button"
+          >
+            {busy === "generate" ? (
+              <LoaderCircle className="spin" size={15} aria-hidden="true" />
+            ) : null}
+            生成 3 个候选
+          </button>
         </div>
       ) : (
         <>

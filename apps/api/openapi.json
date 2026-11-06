@@ -926,6 +926,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -1223,6 +1231,12 @@
                           "minLength": 1,
                           "maxLength": 500
                         },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -1246,6 +1260,7 @@
                         "revokedAt",
                         "revokedBy",
                         "revocationReason",
+                        "version",
                         "createdAt"
                       ],
                       "additionalProperties": false
@@ -1465,6 +1480,12 @@
                             "minLength": 1,
                             "maxLength": 500
                           },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "maximum": 9007199254740991
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -1488,6 +1509,7 @@
                           "revokedAt",
                           "revokedBy",
                           "revocationReason",
+                          "version",
                           "createdAt"
                         ],
                         "additionalProperties": false
@@ -1716,6 +1738,12 @@
                           "minLength": 1,
                           "maxLength": 500
                         },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -1739,6 +1767,7 @@
                         "revokedAt",
                         "revokedBy",
                         "revocationReason",
+                        "version",
                         "createdAt"
                       ],
                       "additionalProperties": false
@@ -1804,9 +1833,15 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 500
+                  },
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
                   }
                 },
-                "required": ["reason"],
+                "required": ["reason", "version"],
                 "additionalProperties": false
               }
             }
@@ -1985,6 +2020,12 @@
                           "minLength": 1,
                           "maxLength": 500
                         },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
                         "createdAt": {
                           "type": "string",
                           "format": "date-time",
@@ -2008,6 +2049,7 @@
                         "revokedAt",
                         "revokedBy",
                         "revocationReason",
+                        "version",
                         "createdAt"
                       ],
                       "additionalProperties": false
@@ -2063,6 +2105,14 @@
           },
           {
             "name": "jobId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
             "required": false,
             "in": "query",
             "schema": {
@@ -2536,6 +2586,7 @@
                                     "FACT_DECISION_REQUIRED",
                                     "FACT_SUBMISSION_BLOCKED",
                                     "CANON_CHAPTER_NOT_APPROVED",
+                                    "CANON_IDEMPOTENCY_CONFLICT",
                                     "IMPORT_CONFLICT_UNRESOLVED",
                                     "OUTLINE_STRUCTURE_INVALID",
                                     "OUTLINE_NODE_LOCKED",
@@ -2549,6 +2600,7 @@
                                     "GOLDEN_THREE_SELECTION_REQUIRED",
                                     "GOLDEN_THREE_ALREADY_LOCKED",
                                     "GOLDEN_THREE_OVERRIDE_INVALID",
+                                    "GOLDEN_THREE_CHAPTERS_EMPTY",
                                     "LEDGER_TRANSITION_INVALID",
                                     "LEDGER_SOURCE_REQUIRED",
                                     "LEDGER_EVIDENCE_REQUIRED",
@@ -2810,9 +2862,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -3310,6 +3369,7 @@
                                   "FACT_DECISION_REQUIRED",
                                   "FACT_SUBMISSION_BLOCKED",
                                   "CANON_CHAPTER_NOT_APPROVED",
+                                  "CANON_IDEMPOTENCY_CONFLICT",
                                   "IMPORT_CONFLICT_UNRESOLVED",
                                   "OUTLINE_STRUCTURE_INVALID",
                                   "OUTLINE_NODE_LOCKED",
@@ -3323,6 +3383,7 @@
                                   "GOLDEN_THREE_SELECTION_REQUIRED",
                                   "GOLDEN_THREE_ALREADY_LOCKED",
                                   "GOLDEN_THREE_OVERRIDE_INVALID",
+                                  "GOLDEN_THREE_CHAPTERS_EMPTY",
                                   "LEDGER_TRANSITION_INVALID",
                                   "LEDGER_SOURCE_REQUIRED",
                                   "LEDGER_EVIDENCE_REQUIRED",
@@ -3947,6 +4008,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {}
           }
         ],
         "responses": {
@@ -4213,9 +4286,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -14954,6 +15034,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -14967,6 +15048,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -16441,6 +16523,7 @@
                                   "FACT_DECISION_REQUIRED",
                                   "FACT_SUBMISSION_BLOCKED",
                                   "CANON_CHAPTER_NOT_APPROVED",
+                                  "CANON_IDEMPOTENCY_CONFLICT",
                                   "IMPORT_CONFLICT_UNRESOLVED",
                                   "OUTLINE_STRUCTURE_INVALID",
                                   "OUTLINE_NODE_LOCKED",
@@ -16454,6 +16537,7 @@
                                   "GOLDEN_THREE_SELECTION_REQUIRED",
                                   "GOLDEN_THREE_ALREADY_LOCKED",
                                   "GOLDEN_THREE_OVERRIDE_INVALID",
+                                  "GOLDEN_THREE_CHAPTERS_EMPTY",
                                   "LEDGER_TRANSITION_INVALID",
                                   "LEDGER_SOURCE_REQUIRED",
                                   "LEDGER_EVIDENCE_REQUIRED",
@@ -17362,6 +17446,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -17375,6 +17460,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -18282,6 +18368,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -18295,6 +18382,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -19202,6 +19290,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -19215,6 +19304,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -20154,6 +20244,7 @@
                                     "FACT_DECISION_REQUIRED",
                                     "FACT_SUBMISSION_BLOCKED",
                                     "CANON_CHAPTER_NOT_APPROVED",
+                                    "CANON_IDEMPOTENCY_CONFLICT",
                                     "IMPORT_CONFLICT_UNRESOLVED",
                                     "OUTLINE_STRUCTURE_INVALID",
                                     "OUTLINE_NODE_LOCKED",
@@ -20167,6 +20258,7 @@
                                     "GOLDEN_THREE_SELECTION_REQUIRED",
                                     "GOLDEN_THREE_ALREADY_LOCKED",
                                     "GOLDEN_THREE_OVERRIDE_INVALID",
+                                    "GOLDEN_THREE_CHAPTERS_EMPTY",
                                     "LEDGER_TRANSITION_INVALID",
                                     "LEDGER_SOURCE_REQUIRED",
                                     "LEDGER_EVIDENCE_REQUIRED",
@@ -21777,6 +21869,742 @@
         "responses": {
           "201": {
             "description": "Golden three candidate workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "candidates": {
+                          "maxItems": 3,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "batchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "strategy": {
+                                "type": "string",
+                                "enum": ["hook_focus", "character_focus", "world_focus"]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["draft", "reviewed", "selected", "locked"]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "prompt": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "hash": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": ["key", "version", "hash"],
+                                "additionalProperties": false
+                              },
+                              "model": {
+                                "type": "object",
+                                "properties": {
+                                  "provider": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "model": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "parameters": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                  }
+                                },
+                                "required": ["provider", "model", "parameters"],
+                                "additionalProperties": false
+                              },
+                              "context": {
+                                "type": "object",
+                                "properties": {
+                                  "packVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "manifestHash": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": ["packVersionId", "manifestHash"],
+                                "additionalProperties": false
+                              },
+                              "pins": {
+                                "minItems": 3,
+                                "maxItems": 3,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "chapterId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "chapterNumber": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "chapterTitle": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "chapterVersionId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "chapterVersion": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "versionNodeId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "contentHash": {
+                                      "type": "string",
+                                      "pattern": "^[a-f0-9]{64}$"
+                                    },
+                                    "wordCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "content": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "chapterId",
+                                    "chapterNumber",
+                                    "chapterTitle",
+                                    "chapterVersionId",
+                                    "chapterVersion",
+                                    "versionNodeId",
+                                    "contentHash",
+                                    "wordCount",
+                                    "content"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "reviews": {
+                                "maxItems": 6,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "dimension": {
+                                      "type": "string",
+                                      "enum": [
+                                        "opening_hook",
+                                        "protagonist_appeal",
+                                        "world_rules",
+                                        "core_conflict",
+                                        "reader_promise",
+                                        "chapter_end_hook"
+                                      ]
+                                    },
+                                    "score": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 5
+                                    },
+                                    "evidence": {
+                                      "type": "object",
+                                      "properties": {
+                                        "chapterId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "chapterVersionId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "passage": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 2000
+                                        },
+                                        "locator": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "chapterId",
+                                        "chapterVersionId",
+                                        "passage",
+                                        "locator"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "reviewerOrigin": {
+                                      "type": "string",
+                                      "enum": ["model", "author", "critic"]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "candidateId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "passed": {
+                                      "type": "boolean"
+                                    },
+                                    "createdAt": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    "updatedAt": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    }
+                                  },
+                                  "required": [
+                                    "dimension",
+                                    "score",
+                                    "evidence",
+                                    "reviewerOrigin",
+                                    "id",
+                                    "candidateId",
+                                    "required",
+                                    "passed",
+                                    "createdAt",
+                                    "updatedAt"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "reviewSummary": {
+                                "type": "object",
+                                "properties": {
+                                  "completed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 6
+                                  },
+                                  "total": {
+                                    "type": "number",
+                                    "enum": [6]
+                                  },
+                                  "requiredFailed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 6
+                                  },
+                                  "failedDimensions": {
+                                    "maxItems": 6,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "enum": [
+                                        "opening_hook",
+                                        "protagonist_appeal",
+                                        "world_rules",
+                                        "core_conflict",
+                                        "reader_promise",
+                                        "chapter_end_hook"
+                                      ]
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "completed",
+                                  "total",
+                                  "requiredFailed",
+                                  "failedDimensions"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "batchId",
+                              "workId",
+                              "branchId",
+                              "label",
+                              "strategy",
+                              "status",
+                              "version",
+                              "prompt",
+                              "model",
+                              "context",
+                              "pins",
+                              "reviews",
+                              "reviewSummary",
+                              "createdAt",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "selectedCandidateId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "lock": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "candidateId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "versionNodeId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "styleBaselineId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "chapterPins": {
+                              "minItems": 3,
+                              "maxItems": 3,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "chapterTitle": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersion": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "versionNodeId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "contentHash": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  },
+                                  "wordCount": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "content": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "chapterId",
+                                  "chapterNumber",
+                                  "chapterTitle",
+                                  "chapterVersionId",
+                                  "chapterVersion",
+                                  "versionNodeId",
+                                  "contentHash",
+                                  "wordCount",
+                                  "content"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "override": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "policy": {
+                                  "type": "string",
+                                  "enum": ["author_override_v1"]
+                                },
+                                "rationale": {
+                                  "type": "string",
+                                  "minLength": 10,
+                                  "maxLength": 2000
+                                }
+                              },
+                              "required": ["policy", "rationale"],
+                              "additionalProperties": false
+                            },
+                            "lockedBy": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "lockedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "workId",
+                            "branchId",
+                            "candidateId",
+                            "versionNodeId",
+                            "styleBaselineId",
+                            "chapterPins",
+                            "override",
+                            "lockedBy",
+                            "lockedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "styleBaseline": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "sourceType": {
+                              "type": "string",
+                              "enum": ["golden_three"]
+                            },
+                            "sourceId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "versionNodeId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "profile": {
+                              "type": "object",
+                              "properties": {
+                                "strategy": {
+                                  "type": "string",
+                                  "enum": ["hook_focus", "character_focus", "world_focus"]
+                                },
+                                "candidateLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "excerpts": {
+                                  "minItems": 3,
+                                  "maxItems": 3,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "chapterId": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "chapterVersionId": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "excerpt": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": ["chapterId", "chapterVersionId", "excerpt"],
+                                    "additionalProperties": false
+                                  }
+                                }
+                              },
+                              "required": ["strategy", "candidateLabel", "excerpts"],
+                              "additionalProperties": false
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "workId",
+                            "branchId",
+                            "sourceType",
+                            "sourceId",
+                            "version",
+                            "versionNodeId",
+                            "profile",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "gate": {
+                          "type": "object",
+                          "properties": {
+                            "candidateId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "canLock": {
+                              "type": "boolean"
+                            },
+                            "blockers": {
+                              "maxItems": 6,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "NO_CANDIDATES",
+                                      "NO_SELECTION",
+                                      "REVIEW_INCOMPLETE",
+                                      "REQUIRED_DIMENSION_FAILED",
+                                      "CANDIDATE_LOCKED"
+                                    ]
+                                  },
+                                  "message": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "dimension": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "enum": [
+                                      "opening_hook",
+                                      "protagonist_appeal",
+                                      "world_rules",
+                                      "core_conflict",
+                                      "reader_promise",
+                                      "chapter_end_hook"
+                                    ]
+                                  }
+                                },
+                                "required": ["code", "message", "dimension"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "failedDimensions": {
+                              "maxItems": 6,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "opening_hook",
+                                  "protagonist_appeal",
+                                  "world_rules",
+                                  "core_conflict",
+                                  "reader_promise",
+                                  "chapter_end_hook"
+                                ]
+                              }
+                            }
+                          },
+                          "required": ["candidateId", "canLock", "blockers", "failedDimensions"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "workId",
+                        "branchId",
+                        "candidates",
+                        "selectedCandidateId",
+                        "lock",
+                        "styleBaseline",
+                        "gate"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["golden-three"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates/generate": {
+      "post": {
+        "operationId": "GoldenThreeController_generateCandidates",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "candidateCount": {
+                    "default": 3,
+                    "anyOf": [
+                      {
+                        "type": "number",
+                        "enum": [2]
+                      },
+                      {
+                        "type": "number",
+                        "enum": [3]
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Generated golden three candidates with reviews",
             "content": {
               "application/json": {
                 "schema": {
@@ -39162,6 +39990,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -39776,6 +40612,15 @@
                             "canCommitCanon": {
                               "type": "boolean"
                             },
+                            "reportState": {
+                              "type": "string",
+                              "enum": ["fresh", "missing", "stale"]
+                            },
+                            "reportId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
                             "blockers": {
                               "type": "array",
                               "items": {
@@ -39816,7 +40661,13 @@
                               }
                             }
                           },
-                          "required": ["canApprove", "canCommitCanon", "blockers"],
+                          "required": [
+                            "canApprove",
+                            "canCommitCanon",
+                            "reportState",
+                            "reportId",
+                            "blockers"
+                          ],
                           "additionalProperties": false
                         }
                       },
@@ -40468,6 +41319,15 @@
                             "canCommitCanon": {
                               "type": "boolean"
                             },
+                            "reportState": {
+                              "type": "string",
+                              "enum": ["fresh", "missing", "stale"]
+                            },
+                            "reportId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
                             "blockers": {
                               "type": "array",
                               "items": {
@@ -40508,7 +41368,13 @@
                               }
                             }
                           },
-                          "required": ["canApprove", "canCommitCanon", "blockers"],
+                          "required": [
+                            "canApprove",
+                            "canCommitCanon",
+                            "reportState",
+                            "reportId",
+                            "blockers"
+                          ],
                           "additionalProperties": false
                         }
                       },
@@ -41556,6 +42422,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -42130,6 +43004,14 @@
             "name": "auditId",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Match",
+            "in": "header",
+            "required": false,
             "schema": {
               "type": "string"
             }
@@ -50048,6 +50930,73 @@
                               "additionalProperties": false
                             }
                           },
+                          "impact": {
+                            "type": "object",
+                            "properties": {
+                              "chapterCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "settingRefCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "versionRefCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "total": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "hasImpact": {
+                                "type": "boolean"
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              },
+                              "resources": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": ["chapter", "setting", "version_node"]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "required": ["type", "id", "label"],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "chapterCount",
+                              "settingRefCount",
+                              "versionRefCount",
+                              "total",
+                              "hasImpact",
+                              "message",
+                              "resources"
+                            ],
+                            "additionalProperties": false
+                          },
                           "createdBy": {
                             "type": "string",
                             "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
@@ -50071,6 +51020,7 @@
                           "status",
                           "conflictType",
                           "evidence",
+                          "impact",
                           "createdBy",
                           "createdAt"
                         ],
@@ -50737,6 +51687,73 @@
                             "additionalProperties": false
                           }
                         },
+                        "impact": {
+                          "type": "object",
+                          "properties": {
+                            "chapterCount": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "settingRefCount": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "versionRefCount": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "hasImpact": {
+                              "type": "boolean"
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1000
+                            },
+                            "resources": {
+                              "maxItems": 50,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["chapter", "setting", "version_node"]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": ["type", "id", "label"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": [
+                            "chapterCount",
+                            "settingRefCount",
+                            "versionRefCount",
+                            "total",
+                            "hasImpact",
+                            "message",
+                            "resources"
+                          ],
+                          "additionalProperties": false
+                        },
                         "createdBy": {
                           "type": "string",
                           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
@@ -50760,6 +51777,7 @@
                         "status",
                         "conflictType",
                         "evidence",
+                        "impact",
                         "createdBy",
                         "createdAt"
                       ],
@@ -57098,6 +58116,14 @@
             "name": "branchId",
             "required": true,
             "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
             "schema": {
               "type": "string"
             }
@@ -72769,6 +73795,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -74125,6 +75159,7 @@
                                       "FACT_DECISION_REQUIRED",
                                       "FACT_SUBMISSION_BLOCKED",
                                       "CANON_CHAPTER_NOT_APPROVED",
+                                      "CANON_IDEMPOTENCY_CONFLICT",
                                       "IMPORT_CONFLICT_UNRESOLVED",
                                       "OUTLINE_STRUCTURE_INVALID",
                                       "OUTLINE_NODE_LOCKED",
@@ -74138,6 +75173,7 @@
                                       "GOLDEN_THREE_SELECTION_REQUIRED",
                                       "GOLDEN_THREE_ALREADY_LOCKED",
                                       "GOLDEN_THREE_OVERRIDE_INVALID",
+                                      "GOLDEN_THREE_CHAPTERS_EMPTY",
                                       "LEDGER_TRANSITION_INVALID",
                                       "LEDGER_SOURCE_REQUIRED",
                                       "LEDGER_EVIDENCE_REQUIRED",
@@ -74475,6 +75511,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -74488,6 +75525,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -74760,6 +75798,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -74773,6 +75812,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -103818,6 +104858,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -103831,6 +104872,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -103963,6 +105005,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {}
           }
         ],
         "responses": {
@@ -105335,6 +106389,7 @@
                                   "FACT_DECISION_REQUIRED",
                                   "FACT_SUBMISSION_BLOCKED",
                                   "CANON_CHAPTER_NOT_APPROVED",
+                                  "CANON_IDEMPOTENCY_CONFLICT",
                                   "IMPORT_CONFLICT_UNRESOLVED",
                                   "OUTLINE_STRUCTURE_INVALID",
                                   "OUTLINE_NODE_LOCKED",
@@ -105348,6 +106403,7 @@
                                   "GOLDEN_THREE_SELECTION_REQUIRED",
                                   "GOLDEN_THREE_ALREADY_LOCKED",
                                   "GOLDEN_THREE_OVERRIDE_INVALID",
+                                  "GOLDEN_THREE_CHAPTERS_EMPTY",
                                   "LEDGER_TRANSITION_INVALID",
                                   "LEDGER_SOURCE_REQUIRED",
                                   "LEDGER_EVIDENCE_REQUIRED",
@@ -105441,9 +106497,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -106853,6 +107916,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -106866,6 +107930,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -108370,6 +109435,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -108383,6 +109449,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -109887,6 +110954,7 @@
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
+                                "CANON_IDEMPOTENCY_CONFLICT",
                                 "IMPORT_CONFLICT_UNRESOLVED",
                                 "OUTLINE_STRUCTURE_INVALID",
                                 "OUTLINE_NODE_LOCKED",
@@ -109900,6 +110968,7 @@
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "GOLDEN_THREE_CHAPTERS_EMPTY",
                                 "LEDGER_TRANSITION_INVALID",
                                 "LEDGER_SOURCE_REQUIRED",
                                 "LEDGER_EVIDENCE_REQUIRED",
@@ -110920,6 +111989,18 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {}
           }
         ],
         "responses": {
@@ -111605,9 +112686,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],

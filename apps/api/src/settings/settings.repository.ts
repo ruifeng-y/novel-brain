@@ -1,6 +1,8 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   auditLogs,
+  chapters,
+  chapterVersions,
   characterProfiles,
   customFieldDefinitions,
   customFieldValues,
@@ -30,13 +32,14 @@ import {
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
   type SettingChangeRequestCreateRequest,
+  type SettingChangeImpact,
   type SettingProposalCreateRequest,
   type SettingProposalDecisionRequest,
   type SettingEntityCreateRequest,
   type SettingEntityListQuery,
   type SettingEntityPatchRequest,
 } from "@novel-brain/contracts";
-import { and, asc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -734,6 +737,7 @@ export class SettingsRepository implements OnModuleDestroy {
         customFields: proposedCustomFields.values,
       };
       const now = new Date();
+      const impact = await computeSettingImpact(transaction, userId, context, current);
       const [request] = await transaction
         .insert(settingChangeRequests)
         .values({
@@ -750,6 +754,7 @@ export class SettingsRepository implements OnModuleDestroy {
           status: "pending",
           conflictType: input.conflictType,
           evidence: input.evidence,
+          impact,
           idempotencyKey: idempotencyKey ?? null,
           createdBy: userId,
           createdAt: now,
@@ -1746,4 +1751,139 @@ function settingAttributeNumber(value: unknown): number | undefined {
 
 function normalizeSettingIdentifier(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
+}
+
+async function computeSettingImpact(
+  transaction: DatabaseTransaction,
+  userId: string,
+  context: SettingsWorkContext,
+  entity: SettingEntityRecord,
+): Promise<SettingChangeImpact> {
+  const names = [...new Set([entity.name, ...entity.aliases])]
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+  const chapterRows = await transaction
+    .select({
+      id: chapters.id,
+      number: chapters.number,
+      title: chapters.title,
+      brief: chapters.brief,
+      currentVersionId: chapters.currentVersionId,
+    })
+    .from(chapters)
+    .where(
+      and(
+        eq(chapters.userId, userId),
+        eq(chapters.workId, context.workId),
+        eq(chapters.branchId, context.branchId),
+      ),
+    )
+    .orderBy(asc(chapters.number));
+  const currentVersionIds = chapterRows.flatMap((chapter) =>
+    chapter.currentVersionId ? [chapter.currentVersionId] : [],
+  );
+  const versionRows =
+    currentVersionIds.length > 0
+      ? await transaction
+          .select({ id: chapterVersions.id, content: chapterVersions.content })
+          .from(chapterVersions)
+          .where(inArray(chapterVersions.id, currentVersionIds))
+      : [];
+  const versionContentById = new Map(versionRows.map((version) => [version.id, version.content]));
+  const matchedChapters = chapterRows.filter((chapter) => {
+    const content = chapter.currentVersionId
+      ? (versionContentById.get(chapter.currentVersionId) ?? "")
+      : "";
+    return referencesSetting([JSON.stringify(chapter.brief), content], names);
+  });
+
+  const entityRows = await transaction
+    .select({
+      id: entities.id,
+      name: entities.name,
+      aliases: entities.aliases,
+      summary: entities.summary,
+      description: entities.description,
+      attributes: entities.attributes,
+    })
+    .from(entities)
+    .where(
+      and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        ne(entities.id, entity.id),
+        isNull(entities.deletedAt),
+      ),
+    )
+    .orderBy(asc(entities.name));
+  const matchedSettings = entityRows.filter((candidate) =>
+    referencesSetting(
+      [
+        candidate.name,
+        candidate.aliases.join(" "),
+        candidate.summary,
+        candidate.description,
+        JSON.stringify(candidate.attributes),
+      ],
+      names,
+    ),
+  );
+
+  const versionRowsForEntity = await transaction
+    .select({
+      id: versionNodes.id,
+      objectType: versionNodes.objectType,
+    })
+    .from(versionNodes)
+    .where(
+      and(
+        eq(versionNodes.userId, userId),
+        eq(versionNodes.workId, context.workId),
+        eq(versionNodes.branchId, context.branchId),
+        or(
+          eq(versionNodes.objectId, entity.id),
+          sql`${versionNodes.payload}::text ilike ${`%${entity.id}%`}`,
+        ),
+      ),
+    )
+    .orderBy(asc(versionNodes.createdAt));
+
+  const chapterCount = matchedChapters.length;
+  const settingRefCount = matchedSettings.length;
+  const versionRefCount = versionRowsForEntity.length;
+  const total = chapterCount + settingRefCount + versionRefCount;
+  return {
+    chapterCount,
+    settingRefCount,
+    versionRefCount,
+    total,
+    hasImpact: total > 0,
+    message:
+      total === 0
+        ? "未发现影响：当前没有章节、设定或版本图引用这条设定。"
+        : `影响 ${chapterCount} 章、${settingRefCount} 条设定引用、${versionRefCount} 个版本节点。`,
+    resources: [
+      ...matchedChapters.map((chapter) => ({
+        type: "chapter" as const,
+        id: chapter.id,
+        label: `第 ${chapter.number} 章 · ${chapter.title}`,
+      })),
+      ...matchedSettings.map((candidate) => ({
+        type: "setting" as const,
+        id: candidate.id,
+        label: candidate.name,
+      })),
+      ...versionRowsForEntity.map((node) => ({
+        type: "version_node" as const,
+        id: node.id,
+        label: `${node.objectType} 版本`,
+      })),
+    ].slice(0, 50),
+  };
+}
+
+function referencesSetting(values: string[], names: string[]): boolean {
+  const text = values.join("\n").normalize("NFKC").toLowerCase();
+  return names.some((name) => text.includes(name.normalize("NFKC").toLowerCase()));
 }

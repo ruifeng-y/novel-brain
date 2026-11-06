@@ -33,7 +33,7 @@ import {
   type WritingActionRequest,
 } from "@novel-brain/contracts";
 import { resolveRecoveryStep, type RecoveryStepStatus } from "@novel-brain/core";
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -329,7 +329,8 @@ export class WritingActionRepository implements OnModuleDestroy {
   async list(
     userId: string,
     context: WritingActionWorkContext,
-  ): Promise<WritingActionWithOutput[]> {
+    page: { cursor?: string | undefined; limit: number },
+  ): Promise<{ jobs: WritingActionWithOutput[]; nextCursor: string | null }> {
     return this.withTenant(userId, async (transaction) => {
       const rows = await transaction
         .select()
@@ -341,10 +342,17 @@ export class WritingActionRepository implements OnModuleDestroy {
             eq(jobs.branchId, context.branchId),
             eq(jobs.chapterId, context.chapterId),
             eq(jobs.type, WRITE_ACTION_JOB),
+            page.cursor ? lt(jobs.id, page.cursor) : undefined,
           ),
         )
-        .orderBy(desc(jobs.createdAt));
-      return Promise.all(rows.map((job) => this.hydrateJob(transaction, job)));
+        .orderBy(desc(jobs.id))
+        .limit(page.limit + 1);
+      const hasMore = rows.length > page.limit;
+      const pageRows = hasMore ? rows.slice(0, page.limit) : rows;
+      return {
+        jobs: await Promise.all(pageRows.map((job) => this.hydrateJob(transaction, job))),
+        nextCursor: hasMore ? (pageRows.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

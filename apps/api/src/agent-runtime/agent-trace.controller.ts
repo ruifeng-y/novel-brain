@@ -32,6 +32,7 @@ export class AgentTraceController {
   @Get()
   @ApiQuery({ name: "chapterId", required: false })
   @ApiQuery({ name: "jobId", required: false })
+  @ApiQuery({ name: "cursor", required: false })
   @ApiQuery({ name: "limit", required: false })
   @ApiOkResponse({ description: "Tenant-scoped run traces", schema: traceListJsonSchema })
   async list(
@@ -40,24 +41,27 @@ export class AgentTraceController {
     @Param("branchId") branchId: string,
     @Query("chapterId") chapterId?: string,
     @Query("jobId") jobId?: string,
+    @Query("cursor") cursor?: string,
     @Query("limit") limit?: string,
   ) {
     const requestId = createRequestId();
+    const result = await this.service.list(
+      this.userId(request),
+      {
+        workId: uuidV7Schema.parse(workId),
+        branchId: uuidV7Schema.parse(branchId),
+      },
+      {
+        ...(chapterId ? { chapterId: uuidV7Schema.parse(chapterId) } : {}),
+        ...(jobId ? { jobId: uuidV7Schema.parse(jobId) } : {}),
+        ...(cursor ? { cursor: uuidV7Schema.parse(cursor) } : {}),
+        limit: limit ? z.coerce.number().int().min(1).max(200).parse(limit) : 50,
+      },
+    );
     return agentRunTraceListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        {
-          workId: uuidV7Schema.parse(workId),
-          branchId: uuidV7Schema.parse(branchId),
-        },
-        {
-          ...(chapterId ? { chapterId: uuidV7Schema.parse(chapterId) } : {}),
-          ...(jobId ? { jobId: uuidV7Schema.parse(jobId) } : {}),
-          limit: limit ? z.coerce.number().int().min(1).max(200).parse(limit) : 50,
-        },
-      ),
+      data: result.traces,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 

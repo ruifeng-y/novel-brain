@@ -32,13 +32,15 @@ export class AgentTraceService {
     userId: string,
     scope: AgentTraceScope,
     filter: AgentTraceFilter,
-  ): Promise<AgentRunTrace[]> {
+  ): Promise<{ traces: AgentRunTrace[]; nextCursor: string | null }> {
     if (!(await this.repository.scopeExists(userId, scope))) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品或分支不存在，无权访问生成记录");
     }
-    return (await this.repository.listTraces(userId, scope, filter)).map((trace) =>
-      this.toContract(trace),
-    );
+    const result = await this.repository.listTraces(userId, scope, filter);
+    return {
+      traces: result.traces.map((trace) => this.toContract(trace)),
+      nextCursor: result.nextCursor,
+    };
   }
 
   async get(userId: string, scope: AgentTraceScope, runId: string): Promise<AgentRunTrace> {

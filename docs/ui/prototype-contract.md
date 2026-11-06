@@ -11,7 +11,7 @@
 | auth | `/login`、`/register`、`/forgot-password`、`/reset-password` | 登录、注册、验证码、找回 | loading/error/disabled/rate-limit/session-expired | 无 | 部分，缺会话过期和网络错误 |
 | dashboard | `/workspace` | 搜索、筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | 部分，缺长列表和页级错误 |
 | new-project | `/workspace/new-project` | 想法/空白/模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long | 导入报告 | 已含设定导入、旧稿双模式、冲突裁决和断点续跑 |
-| work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改 | loading/empty/error/readonly/archived | 生成摘要 | 部分，缺分支上下文和长内容 |
+| work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改、跨卷风格检查、卷末审计与签收 | loading/empty/error/readonly/archived | 生成摘要/风格证据/卷审计证据 | 部分，缺分支上下文和长内容 |
 | bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | M1 生产实现，待作者视觉重新签收 |
 | settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | M1 生产实现，待作者视觉重新签收 |
 | outline | `/workspace/[workId]/outline` | 树/看板/张力/账本、黄金三章 | loading/empty/error/locked/partial | 黄金三章候选 | 五层大纲、卷契约、场景卡、剧情账本与黄金三章候选比较/选择/失败阻断/锁定已实现；视觉基线待重新签收 |

@@ -20,6 +20,7 @@ import {
   type SettingEntityPatchRequest,
   type SettingChangeRequest,
   type SettingChangeRequestCreateRequest,
+  type SettingChangeImpact,
   type SettingProposal,
   type SettingProposalCreateRequest,
   type SettingProposalDecisionRequest,
@@ -618,10 +619,54 @@ export class SettingsService {
       status: record.status as SettingChangeRequest["status"],
       conflictType: record.conflictType as SettingChangeRequest["conflictType"],
       evidence: record.evidence as SettingChangeRequest["evidence"],
+      impact: normalizeSettingChangeImpact(record.impact),
       createdBy: record.createdBy,
       createdAt: record.createdAt.toISOString(),
     };
   }
+}
+
+function normalizeSettingChangeImpact(value: unknown): SettingChangeImpact {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return noSettingChangeImpact();
+  }
+  const impact = value as Partial<SettingChangeImpact>;
+  const chapterCount = nonNegativeInteger(impact.chapterCount);
+  const settingRefCount = nonNegativeInteger(impact.settingRefCount);
+  const versionRefCount = nonNegativeInteger(impact.versionRefCount);
+  const total = chapterCount + settingRefCount + versionRefCount;
+  return {
+    chapterCount,
+    settingRefCount,
+    versionRefCount,
+    total,
+    hasImpact: total > 0,
+    message:
+      typeof impact.message === "string" && impact.message.trim()
+        ? impact.message
+        : total === 0
+          ? "未发现影响：当前没有章节、设定或版本图引用这条设定。"
+          : `影响 ${chapterCount} 章、${settingRefCount} 条设定引用、${versionRefCount} 个版本节点。`,
+    resources: Array.isArray(impact.resources)
+      ? (impact.resources as SettingChangeImpact["resources"])
+      : [],
+  };
+}
+
+function noSettingChangeImpact(): SettingChangeImpact {
+  return {
+    chapterCount: 0,
+    settingRefCount: 0,
+    versionRefCount: 0,
+    total: 0,
+    hasImpact: false,
+    message: "未发现影响：当前没有章节、设定或版本图引用这条设定。",
+    resources: [],
+  };
+}
+
+function nonNegativeInteger(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
 }
 
 function factType(predicate: string): ConfirmedSetting["type"] {

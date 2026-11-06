@@ -27,6 +27,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  CRITIC_SEVERITY_LABELS,
   agentRunTraceListResponseSchema,
   apiErrorSchema,
   canonCommitListResponseSchema,
@@ -148,13 +149,6 @@ const factRiskLabels: Record<FactProposal["risk"], string> = {
   low: "低风险",
   medium: "中风险",
   high: "高风险",
-};
-
-const criticSeverityLabels: Record<QualityWorkspace["findings"][number]["severity"], string> = {
-  P0: "阻断",
-  P1: "高风险",
-  P2: "提醒",
-  P3: "建议",
 };
 
 const criticStatusLabels: Record<QualityWorkspace["findings"][number]["status"], string> = {
@@ -425,7 +419,7 @@ export function WritingWorkspace({
   const canApprove = Boolean(
     selected?.status === "waiting_review" &&
     !reviewBusy &&
-    (qualityWorkspace?.gate.canApprove ?? true),
+    qualityWorkspace?.gate.canApprove === true,
   );
   const canSubmit = Boolean(
     selected?.currentVersionId &&
@@ -433,6 +427,7 @@ export function WritingWorkspace({
     !factsSubmitted &&
     pendingRequiredFacts.length === 0 &&
     unresolvedHighRiskFacts.length === 0 &&
+    qualityWorkspace?.gate.canCommitCanon === true &&
     !submissionBusy,
   );
   const comparisonLeft = versions.find((version) => version.id === leftVersionId);
@@ -720,6 +715,7 @@ export function WritingWorkspace({
           method: "POST",
           headers: {
             "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
             "x-csrf-token": await getCsrfToken(),
           },
           body: JSON.stringify({
@@ -758,6 +754,7 @@ export function WritingWorkspace({
           method: "POST",
           headers: {
             "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
             "x-csrf-token": await getCsrfToken(),
           },
           body: JSON.stringify({
@@ -1280,6 +1277,7 @@ export function WritingWorkspace({
           method: "POST",
           headers: {
             "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
             "x-csrf-token": await getCsrfToken(),
           },
           body: JSON.stringify({ chapterVersionId: selected.currentVersionId }),
@@ -2131,9 +2129,10 @@ export function WritingWorkspace({
               </button>
             </div>
             {!qualityWorkspace?.report ? (
-              <p className="writing-generation-empty">
-                保存当前版本后检查连续性、文风和读者体验，结果会定位到正文证据。
-              </p>
+              <div className="writing-generation-empty">
+                <p>当前版本还没有质量报告，批准和提交本章事实都会被阻断。</p>
+                <p>先点“检查本章”，生成连续性、文风和读者体验证据后再批准。</p>
+              </div>
             ) : (
               <>
                 <p className="writing-quality-summary">{qualityWorkspace.report.summary}</p>
@@ -2172,7 +2171,9 @@ export function WritingWorkspace({
                 ) : (
                   <p className="writing-quality-gate-ok">
                     <Check size={14} aria-hidden="true" />
-                    当前版本没有阻断级质量问题。
+                    {qualityWorkspace.gate.reportState === "fresh"
+                      ? "当前版本没有阻断级质量问题。"
+                      : "质量报告需要重新生成后才能继续。"}
                   </p>
                 )}
                 <div className="writing-quality-findings">
@@ -2197,7 +2198,7 @@ export function WritingWorkspace({
                             <span
                               className={`badge critic-severity-${finding.severity.toLowerCase()}`}
                             >
-                              {criticSeverityLabels[finding.severity]}
+                              {CRITIC_SEVERITY_LABELS[finding.severity]}
                             </span>
                             <span>{criticDimensionLabels[finding.dimension]}</span>
                             <small>{criticStatusLabels[finding.status]}</small>
@@ -2376,7 +2377,7 @@ export function WritingWorkspace({
                       type="checkbox"
                     />
                     <span>
-                      <strong>{criticSeverityLabels[finding.severity]}</strong>
+                      <strong>{CRITIC_SEVERITY_LABELS[finding.severity]}</strong>
                       {finding.recommendation}
                     </span>
                   </label>
@@ -2428,7 +2429,7 @@ export function WritingWorkspace({
                             {round.selectedFindings
                               .map(
                                 (finding) =>
-                                  `${criticSeverityLabels[finding.severity]} · ${finding.recommendation}`,
+                                  `${CRITIC_SEVERITY_LABELS[finding.severity]} · ${finding.recommendation}`,
                               )
                               .join("；")}
                           </p>
@@ -2701,17 +2702,19 @@ export function WritingWorkspace({
                     <small>
                       {factsSubmitted
                         ? "事实已提交，后续修改需要发起修改请求。"
-                        : qualityWorkspace && !qualityWorkspace.gate.canApprove
-                          ? "先处理阻断级质量问题，再批准本章。"
-                          : !chapterApproved
-                            ? pendingRequiredFacts.length > 0
-                              ? `先批准本章，再确认剩余 ${pendingRequiredFacts.length} 条事实。`
-                              : "先批准本章，才能提交事实。"
-                            : pendingRequiredFacts.length > 0
-                              ? `还有 ${pendingRequiredFacts.length} 条事实待确认。`
-                              : unresolvedHighRiskFacts.length > 0
-                                ? "还有高风险事实待处理。"
-                                : "已满足提交条件，可以提交本章事实。"}
+                        : !qualityWorkspace?.report
+                          ? "先检查本章，生成当前版本的质量报告。"
+                          : qualityWorkspace && !qualityWorkspace.gate.canApprove
+                            ? "先处理阻断级质量问题，再批准本章。"
+                            : !chapterApproved
+                              ? pendingRequiredFacts.length > 0
+                                ? `先批准本章，再确认剩余 ${pendingRequiredFacts.length} 条事实。`
+                                : "先批准本章，才能提交事实。"
+                              : pendingRequiredFacts.length > 0
+                                ? `还有 ${pendingRequiredFacts.length} 条事实待确认。`
+                                : unresolvedHighRiskFacts.length > 0
+                                  ? "还有高风险事实待处理。"
+                                  : "已满足提交条件，可以提交本章事实。"}
                     </small>
                   </div>
                   <div className="writing-submit-actions">

@@ -28,10 +28,21 @@ export class StyleService {
     workId: string,
     branchId: string,
     input: StyleProfileCreateRequest,
+    idempotencyKey: string,
     audit: WorksAuditContext,
   ): Promise<StyleProfile> {
+    const normalizedKey = idempotencyKey.trim();
+    if (!normalizedKey || normalizedKey.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的幂等键");
+    }
     const context = await this.requireContext(userId, workId, branchId);
-    const result = await this.repository.createProfile(userId, context, input, audit);
+    const result = await this.repository.createProfile(
+      userId,
+      context,
+      input,
+      normalizedKey,
+      audit,
+    );
     if (result.kind !== "ok") {
       throw styleWriteError(result);
     }

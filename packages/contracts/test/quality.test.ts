@@ -114,6 +114,8 @@ describe("quality contracts", () => {
       gate: {
         canApprove: false,
         canCommitCanon: false,
+        reportState: "fresh",
+        reportId: findingId,
         blockers: [
           {
             findingId,

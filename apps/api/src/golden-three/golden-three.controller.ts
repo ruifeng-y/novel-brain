@@ -13,12 +13,14 @@ import {
 import {
   ApiBody,
   ApiCreatedResponse,
+  ApiHeader,
   ApiOkResponse,
   ApiTags,
   type SchemaObject,
 } from "@nestjs/swagger";
 import {
   goldenThreeCandidateBatchRequestSchema,
+  goldenThreeGenerateRequestSchema,
   goldenThreeLockRequestSchema,
   goldenThreeReviewBatchRequestSchema,
   goldenThreeSelectionRequestSchema,
@@ -42,6 +44,7 @@ function schemaOf(schema: z.ZodType, io: "input" | "output" = "output"): SchemaO
 
 const workspaceJsonSchema = schemaOf(goldenThreeWorkspaceResponseSchema);
 const candidateBatchBodyJsonSchema = schemaOf(goldenThreeCandidateBatchRequestSchema, "input");
+const generateBodyJsonSchema = schemaOf(goldenThreeGenerateRequestSchema, "input");
 const reviewBatchBodyJsonSchema = schemaOf(goldenThreeReviewBatchRequestSchema, "input");
 const selectionBodyJsonSchema = schemaOf(goldenThreeSelectionRequestSchema, "input");
 const lockBodyJsonSchema = schemaOf(goldenThreeLockRequestSchema, "input");
@@ -96,6 +99,36 @@ export class GoldenThreeController {
         uuidV7Schema.parse(branchId),
         idempotencyKey,
         goldenThreeCandidateBatchRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("candidates/generate")
+  @HttpCode(201)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiBody({ schema: generateBodyJsonSchema })
+  @ApiCreatedResponse({
+    description: "Generated golden three candidates with reviews",
+    schema: workspaceJsonSchema,
+  })
+  async generateCandidates(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Headers("Idempotency-Key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return goldenThreeWorkspaceResponseSchema.parse({
+      data: await this.service.generateCandidates(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        idempotencyKey,
+        goldenThreeGenerateRequestSchema.parse(body ?? {}),
         this.auditContext(request, requestId),
       ),
       requestId,

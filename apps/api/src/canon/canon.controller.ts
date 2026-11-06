@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -13,9 +14,17 @@ import {
   canonCommitListResponseSchema,
   canonCommitRequestSchema,
   canonCommitResponseSchema,
+  cursorPageQuerySchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
-import { ApiBody, ApiHeader, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
+import {
+  ApiBody,
+  ApiHeader,
+  ApiOkResponse,
+  ApiQuery,
+  ApiTags,
+  type SchemaObject,
+} from "@nestjs/swagger";
 import { createRequestId } from "@novel-brain/core";
 import { z } from "zod";
 
@@ -85,21 +94,27 @@ export class CanonController {
   }
 
   @Get("canon/commits")
+  @ApiQuery({ name: "cursor", required: false })
+  @ApiQuery({ name: "limit", required: false })
   @ApiOkResponse({ description: "Canon commits", schema: commitListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = cursorPageQuerySchema.parse(query);
+    const result = await this.service.list(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      page,
+    );
     return canonCommitListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-      ),
+      data: result.commits,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 

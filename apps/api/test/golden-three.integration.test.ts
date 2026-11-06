@@ -332,6 +332,110 @@ describe("golden three HTTP integration", () => {
     );
   });
 
+  it("generates reviewed candidates from chapters 1-3 without changing current versions", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-generate@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const chapters = await createGoldenThreeChapters(owner, token, basePath);
+    const outlinePath = `${basePath}/golden-three`;
+
+    const generated = await owner
+      .post(`${outlinePath}/candidates/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "golden-three-generate-1")
+      .send({ candidateCount: 3 })
+      .expect(201);
+    const workspace = generated.body.data;
+    expect(workspace.candidates).toHaveLength(3);
+    expect(
+      workspace.candidates.map((candidate: { strategy: string }) => candidate.strategy),
+    ).toEqual(["hook_focus", "character_focus", "world_focus"]);
+    for (const [index, candidate] of workspace.candidates.entries()) {
+      expect(candidate.status).toBe("reviewed");
+      expect(candidate.reviewSummary).toMatchObject({ completed: 6, requiredFailed: 0 });
+      expect(candidate.prompt).toMatchObject({ key: "golden-three-generate", version: 1 });
+      expect(candidate.model).toMatchObject({
+        provider: "deterministic",
+        model: "deterministic-golden-three-v1",
+      });
+      expect(candidate.context.manifestHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(candidate.pins.map((pin: { chapterNumber: number }) => pin.chapterNumber)).toEqual([
+        1, 2, 3,
+      ]);
+      expect(candidate.pins[0].chapterVersion).toBe(index + 2);
+    }
+
+    for (const chapter of chapters) {
+      const stored = (await owner.get(`${basePath}/chapters/${chapter.id}`).expect(200)).body.data;
+      expect(stored.currentVersionId).toBe(chapter.versionId);
+    }
+    const versionCount = await databasePool.query<{ count: string }>(
+      `SELECT count(*) FROM chapter_versions WHERE chapter_id = ANY($1::uuid[])`,
+      [chapters.map((chapter) => chapter.id)],
+    );
+    expect(versionCount.rows[0]?.count).toBe("12");
+
+    const repeated = await owner
+      .post(`${outlinePath}/candidates/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "golden-three-generate-1")
+      .send({ candidateCount: 3 })
+      .expect(201);
+    expect(repeated.body.data.candidates.map((candidate: { id: string }) => candidate.id)).toEqual(
+      workspace.candidates.map((candidate: { id: string }) => candidate.id),
+    );
+
+    const differentKey = await owner
+      .post(`${outlinePath}/candidates/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "golden-three-generate-2")
+      .send({ candidateCount: 3 })
+      .expect(409);
+    expect(differentKey.body.error.code).toBe("GOLDEN_THREE_CANDIDATES_EXIST");
+  });
+
+  it("returns a recoverable empty-chapter error before creating candidates", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-empty@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const outlinePath = `${basePath}/golden-three`;
+    for (let number = 1; number <= 3; number += 1) {
+      await owner
+        .post(`${basePath}/chapters`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({
+          number,
+          title: `第 ${number} 章`,
+          brief: {
+            goal: `推进第 ${number} 章。`,
+            pov: "沈砚",
+            location: "荒寺",
+            sceneBeats: ["行动"],
+            requiredFacts: ["沈砚不能暴露忘川书"],
+          },
+        })
+        .expect(201);
+    }
+    const empty = await owner
+      .post(`${outlinePath}/candidates/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "golden-three-empty-1")
+      .send({ candidateCount: 3 })
+      .expect(409);
+    expect(empty.body.error).toMatchObject({
+      code: "GOLDEN_THREE_CHAPTERS_EMPTY",
+      details: { chapterNumbers: [1, 2, 3], retryable: true },
+    });
+    expect((await owner.get(outlinePath).expect(200)).body.data.candidates).toHaveLength(0);
+  });
+
   it("rejects cross-tenant access, unsupported evidence and locking before selection", async () => {
     const owner = await createAuthenticatedAgent("golden-three-owner@example.com");
     const other = await createAuthenticatedAgent("golden-three-other@example.com");

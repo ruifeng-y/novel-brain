@@ -3,18 +3,20 @@ import {
   test,
   type APIRequestContext,
   type BrowserContext,
+  type Locator,
   type Page,
 } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import { seedM1Structure, type M1Work } from "../helpers/m1";
+import { createModelConfig } from "../helpers/m0";
 import { expectAuthorFacingLanguage } from "../helpers/ui";
 import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440] as const;
 
-test.describe.configure({ timeout: 180_000 });
+test.describe.configure({ timeout: 240_000 });
 
 test.beforeEach(async () => {
   await resetRateLimits();
@@ -63,6 +65,7 @@ test("completes the M1 author loop through outline, writing, facts and volume au
   const workResponse = await request.get(`/api/v1/works/${workId}`);
   expect(workResponse.ok()).toBe(true);
   const work = (await workResponse.json()).data as M1Work;
+  await createModelConfig(request);
 
   await page.goto(`/workspace/${work.id}/bible`);
   await page.locator(".story-bible-empty").getByRole("button", { name: "生成九卡提案" }).click();
@@ -70,30 +73,62 @@ test("completes the M1 author loop through outline, writing, facts and volume au
   await page.getByRole("button", { name: "锁定故事圣经" }).click();
   await expect(page.getByText("故事圣经已锁定，修改需要发起修改请求。")).toBeVisible();
 
-  const fixture = await seedM1Structure(request, work, { skipBible: true });
-
   await page.goto(`/workspace/${work.id}/settings`);
   await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
   await expect(page.locator(".settings-column-nav button")).toHaveCount(7);
+  await createSettingsThroughUi(page);
   await expectAuthorFacingLanguage(page);
+
+  await createOutlineThroughUi(page, work);
+  await expectAuthorFacingLanguage(page);
+
+  const chapterResponse = await request.get(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters`,
+  );
+  expect(chapterResponse.ok()).toBe(true);
+  const chapters = (await chapterResponse.json()).data as Array<{ id: string; number: number }>;
+  const chapterByNumber = new Map(chapters.map((chapter) => [chapter.number, chapter]));
+  const chapterOne = chapterByNumber.get(1)!;
+  const chapterTwo = chapterByNumber.get(2)!;
+  const chapterThree = chapterByNumber.get(3)!;
+  const chapterFour = chapterByNumber.get(4)!;
+
+  await writeChapterVersionThroughUi(page, work.id, chapterOne.id, chapterOneContent());
+  await writeChapterVersionThroughUi(page, work.id, chapterTwo.id, chapterTwoContent());
+  await writeChapterVersionThroughUi(page, work.id, chapterThree.id, chapterThreeContent());
 
   await page.goto(`/workspace/${work.id}/outline`);
-  await expect(page.getByRole("heading", { name: "大纲工作台" })).toBeVisible();
-  await expect(page.getByText("第一卷 · 忘川").first()).toBeVisible();
-  await expect(page.getByText("第一幕 · 断臂").first()).toBeVisible();
-  await expectAuthorFacingLanguage(page);
-
   await page.getByRole("tab", { name: "黄金三章" }).click();
+  await page.getByRole("button", { name: "生成 3 个候选" }).click();
+  await expect(page.locator(".golden-three-candidate")).toHaveCount(3);
+  await page
+    .locator(".golden-three-candidate")
+    .first()
+    .getByRole("button", { name: "选定这个方向" })
+    .click();
+  await expect(page.locator(".golden-three-candidate").first().getByText("已选定")).toBeVisible();
+  await page.getByRole("button", { name: "锁定黄金三章" }).click();
   await expect(page.getByText("黄金三章已锁定")).toBeVisible();
   await expectAuthorFacingLanguage(page);
 
+  await page.goto(`/workspace/${work.id}/write?chapterId=${chapterTwo.id}`);
+  await page.getByRole("button", { name: "检查本章", exact: true }).click();
+  await expect(page.locator(".writing-quality")).toContainText("质量报告");
+
+  await createForeshadowThroughUi(page, work.id, chapterOne.id);
+
   const worker = await startWorker();
   try {
-    await page.goto(`/workspace/${work.id}/write?chapterId=${fixture.generationChapterId}`);
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapterFour.id}`);
     await page.getByRole("button", { name: "生成整章" }).click();
     await expect(
       page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
-    ).toBeVisible({ timeout: 20_000 });
+    ).toBeVisible({ timeout: 30_000 });
+
+    await page.getByRole("button", { name: "检查本章", exact: true }).click();
+    await expect(
+      page.locator(".writing-quality").getByText("当前版本没有阻断级质量问题。"),
+    ).toBeVisible();
 
     const factsPanel = page.getByRole("region", { name: "本章事实" });
     const optionalFact = factsPanel
@@ -249,3 +284,220 @@ test("checks every M1 page at four viewports without claiming unsigned goldens",
   expect(csrf.length).toBeGreaterThan(20);
   expect(origin).toBe("http://localhost:3000");
 });
+
+async function createSettingsThroughUi(page: Page) {
+  const settings = [
+    {
+      type: "world_rule",
+      name: "天门只认完整记忆",
+      summary: "失去关键记忆的人无法通过天门。",
+      fields: { 世界规则: "主动抹除关键记忆会导致天门通行失败。" },
+    },
+    {
+      type: "character",
+      name: "沈砚",
+      summary: "隐藏忘川书的外门杂役。",
+      fields: {
+        当前身体状态: "左臂骨折，不能双手结印。",
+        知识边界: "不知道父母死于仇杀。",
+        关系摘要: "与顾青互相试探。",
+      },
+    },
+    {
+      type: "faction",
+      name: "血河宗",
+      summary: "以血河秘术追杀叛徒的宗门。",
+      fields: { 势力: "盘踞北域血河，誓要夺回忘川书。" },
+    },
+    {
+      type: "map",
+      name: "北域山河",
+      summary: "沈砚逃亡经过的地图。",
+      fields: { 地图: "荒寺在山道北侧，血河城在南侧。" },
+    },
+    {
+      type: "power_system",
+      name: "大玄修炼体系",
+      summary: "炼气、筑基、金丹、元婴、化神五境。",
+      fields: { 力量体系: "越级突破需要付出寿元与记忆。" },
+    },
+    {
+      type: "golden_finger",
+      name: "忘川书",
+      summary: "以记忆换取前人经验。",
+      fields: {
+        规则: "每次只能借用一位前人的经验。",
+        代价: "永久失去一段重要记忆。",
+        限制: "每次使用消耗一页。",
+        成长: "缺失记忆会拼成完整人格。",
+      },
+    },
+    {
+      type: "item",
+      name: "听潮剑",
+      summary: "会记录持剑者杀意的法器。",
+      fields: {
+        分类: "兵器",
+        效果: "剑身会记录持剑者的杀意。",
+      },
+    },
+    {
+      type: "timeline_event",
+      name: "天门洞开",
+      summary: "第一卷末的天门开启事件。",
+      fields: {
+        故事时间: "大玄历 · 卷一末",
+        事件: "天门洞开，只有完整记忆者能通行。",
+      },
+    },
+  ] as const;
+
+  for (const setting of settings) {
+    await page.getByRole("button", { name: "新增设定" }).click();
+    const editor = page.locator(".settings-editor");
+    await editor.getByLabel("设定类型").selectOption(setting.type);
+    await editor.locator("#setting-name").fill(setting.name);
+    await editor.getByLabel("一句话摘要").fill(setting.summary);
+    for (const [label, value] of Object.entries(setting.fields)) {
+      await editor.getByLabel(label, { exact: true }).fill(value);
+    }
+    await editor.getByRole("button", { name: "创建设定" }).click();
+    const detail = page.locator(".settings-entity-detail");
+    await expect(detail.getByRole("heading", { name: setting.name })).toBeVisible();
+    await detail.getByRole("button", { name: "锁定设定" }).click();
+    await expect(detail.getByText("已锁定 · 编辑需修改请求")).toBeVisible();
+  }
+}
+
+async function createOutlineThroughUi(page: Page, work: M1Work) {
+  await page.goto(`/workspace/${work.id}/outline`);
+  await expect(page.getByRole("heading", { name: "大纲工作台" })).toBeVisible();
+  await page.getByLabel("全书标题").fill("忘川书");
+  await page.getByRole("button", { name: "创建全书大纲" }).click();
+  await expect(page.getByText("全书大纲已创建。")).toBeVisible();
+
+  const creator = page.locator("details.outline-plan-create");
+  await ensureCreatorOpen(creator);
+  await creator.getByLabel("层级").selectOption("volume");
+  await creator.getByLabel("上级全书").selectOption({ label: "忘川书" });
+  await creator.getByLabel("标题").fill("第一卷 · 忘川");
+  await creator.getByLabel("摘要").fill("沈砚从杂役到踏入仙途的第一卷。");
+  await creator.getByRole("button", { name: "创建节点" }).click();
+  await expect(page.getByText("第一卷 · 忘川").first()).toBeVisible();
+
+  if (
+    !(await page
+      .getByLabel("卷目标")
+      .isVisible()
+      .catch(() => false))
+  ) {
+    await page.getByRole("treeitem", { name: /第一卷 · 忘川/u }).click();
+  }
+  await page.getByLabel("卷目标").fill("让沈砚在追杀中活下来并发现忘川书的代价。");
+  await page.getByLabel("核心冲突").fill("血河宗追杀与天门记忆规则。");
+  await page.getByLabel("关键转折（一行一个）").fill("断臂结印\n记忆代价\n天门开启");
+  await page.getByLabel("退出条件（一行一个）").fill("沈砚进入天门\n父母之死线索浮出");
+  await page.getByLabel("相关剧情线（名称｜状态｜备注）").fill("父母之死｜active｜卷末仍未回收");
+  await page.getByRole("button", { name: "保存卷契约" }).click();
+  await expect(page.getByText("卷契约已保存。")).toBeVisible();
+
+  await ensureCreatorOpen(creator);
+  await creator.getByLabel("层级").selectOption("act");
+  await creator.getByLabel("上级卷").selectOption({ label: "第一卷 · 忘川" });
+  await creator.getByLabel("标题").fill("第一幕 · 断臂");
+  await creator.getByLabel("摘要").fill("沈砚在追杀中被迫使用忘川书。");
+  await creator.getByRole("button", { name: "创建节点" }).click();
+  await expect(page.getByText("第一幕 · 断臂").first()).toBeVisible();
+
+  const chapters = [
+    {
+      number: 1,
+      title: "断碑夜雨",
+      goal: "让沈砚在旧宅里发现父母留下的线索。",
+    },
+    {
+      number: 2,
+      title: "一只手也能结印",
+      goal: "让沈砚在断臂后护住顾青，找到新的战斗方式。",
+    },
+    {
+      number: 3,
+      title: "铜牌背面",
+      goal: "让沈砚发现铜牌背面的名字与自己的身世有关。",
+    },
+    {
+      number: 4,
+      title: "天门之前",
+      goal: "让沈砚抵达天门，面对记忆与通行规则。",
+    },
+  ];
+  for (const chapter of chapters) {
+    await ensureCreatorOpen(creator);
+    await creator.getByLabel("层级").selectOption("chapter");
+    await creator.getByLabel("上级幕").selectOption({ label: "第一幕 · 断臂" });
+    await creator.getByLabel("章节序号").fill(String(chapter.number));
+    await creator.getByLabel("章节标题").fill(chapter.title);
+    await creator.getByLabel("章目标").fill(chapter.goal);
+    await creator.getByLabel("视角人物").fill("沈砚");
+    await creator.getByLabel("地点").fill("荒寺外山道");
+    await creator
+      .getByLabel("场景节拍（一行一个）")
+      .fill("沈砚藏起断臂。\n追兵逼近，两人继续上路。");
+    await creator.getByLabel("必用事实（一行一个）").fill("左臂骨折，不能双手结印");
+    await creator.getByRole("button", { name: "创建节点" }).click();
+    await expect(page.getByText(`第 ${chapter.number} 章`).first()).toBeVisible();
+  }
+}
+
+async function ensureCreatorOpen(creator: Locator) {
+  const open = await creator.evaluate((element) => (element as HTMLDetailsElement).open);
+  if (!open) {
+    await creator.locator("summary").click();
+  }
+}
+
+async function writeChapterVersionThroughUi(
+  page: Page,
+  workId: string,
+  chapterId: string,
+  content: string,
+) {
+  await page.goto(`/workspace/${workId}/write?chapterId=${chapterId}`);
+  await page.getByLabel("章节正文").fill(content);
+  await page.getByRole("button", { name: "保存版本" }).click();
+  await expect(page.locator(".writing-save-state")).toContainText("已保存");
+}
+
+async function createForeshadowThroughUi(page: Page, workId: string, chapterId: string) {
+  await page.goto(`/workspace/${workId}/foreshadows`);
+  await expect(page.getByRole("heading", { name: "埋下的，都要有回收计划" })).toBeVisible();
+  await page.getByRole("button", { name: "新增伏笔" }).click();
+  const form = page.locator(".foreshadow-form");
+  await form.getByLabel("名称").fill("父母之死");
+  await form.getByLabel("摘要").fill("沈砚以为父母是自杀。");
+  await form.getByLabel("目标起始章").fill("1");
+  await form.getByLabel("目标结束章").fill("2");
+  await form.getByLabel("读者承诺").fill("身世谜团");
+  await form.getByRole("button", { name: "保存记录" }).click();
+  await expect(page.getByText("伏笔已保存。")).toBeVisible();
+
+  const row = page.locator(".foreshadow-row", { hasText: "父母之死" });
+  await row.getByRole("button", { name: "埋设" }).click();
+  const transition = page.locator(".foreshadow-inline-form");
+  await transition.getByLabel("来源章节").selectOption(chapterId);
+  await transition.getByLabel("原因").fill("在第 1 章旧宅里埋下。");
+  await transition.getByRole("button", { name: "确认埋设" }).click();
+  await expect(page.getByText("记录状态已更新。")).toBeVisible();
+}
+
+function chapterOneContent(): string {
+  return "沈砚把父母的旧信压在箱底。\n\n风从荒寺的瓦上压下来，顾青在门外等他。";
+}
+
+function chapterTwoContent(): string {
+  return "沈砚握紧断刀，听见追兵踏碎山道上的积水。\n\n沈砚收起断刀，转身离开，不再战斗。";
+}
+
+function chapterThreeContent(): string {
+  return "铜牌背面刻着沈砚自己的名字。\n\n顾青看见书页一角，却没有点破。";
+}

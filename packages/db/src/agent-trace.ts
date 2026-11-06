@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 
@@ -30,6 +30,7 @@ export interface AgentTraceFilter {
   chapterId?: string;
   jobId?: string;
   limit?: number;
+  cursor?: string;
 }
 
 export interface AgentTraceRecord {
@@ -60,7 +61,7 @@ export class AgentTraceStore {
     userId: string,
     scope: AgentTraceScope,
     filter: AgentTraceFilter = {},
-  ): Promise<AgentTraceRecord[]> {
+  ): Promise<{ traces: AgentTraceRecord[]; nextCursor: string | null }> {
     return this.withTenant(userId, async (transaction) => {
       const conditions = [
         eq(agentRuns.userId, userId),
@@ -73,13 +74,22 @@ export class AgentTraceStore {
       if (filter.jobId) {
         conditions.push(eq(agentRuns.jobId, filter.jobId));
       }
+      if (filter.cursor) {
+        conditions.push(gt(agentRuns.id, filter.cursor));
+      }
+      const limit = Math.min(Math.max(filter.limit ?? 50, 1), 200);
       const runs = await transaction
         .select()
         .from(agentRuns)
         .where(and(...conditions))
-        .orderBy(asc(agentRuns.startedAt))
-        .limit(Math.min(Math.max(filter.limit ?? 50, 1), 200));
-      return hydrateTraces(transaction, runs);
+        .orderBy(asc(agentRuns.id))
+        .limit(limit + 1);
+      const hasMore = runs.length > limit;
+      const pageRuns = hasMore ? runs.slice(0, limit) : runs;
+      return {
+        traces: await hydrateTraces(transaction, pageRuns),
+        nextCursor: hasMore ? (pageRuns.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

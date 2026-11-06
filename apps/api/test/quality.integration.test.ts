@@ -82,6 +82,18 @@ describe("quality critic HTTP integration", () => {
     ].join("\n\n");
     const firstVersion = await saveVersion(owner, fixture, contradictory);
 
+    await setChapterStatus(fixture.chapterId, "waiting_review");
+    const missingReport = await owner
+      .post(`${fixture.branchPath}/chapters/${fixture.chapterId}/review`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", fixture.token)
+      .send({ action: "approve", version: fixture.chapterVersion })
+      .expect(409);
+    expect(missingReport.body.error).toMatchObject({
+      code: "QUALITY_GATE_BLOCKED",
+      details: { reportState: "missing" },
+    });
+
     const verified = await verify(owner, fixture, firstVersion.id);
     expect(verified.report?.dimensions).toHaveLength(6);
     expect(verified.report?.dimensions.every((dimension) => dimension.evidence.length > 0)).toBe(
@@ -227,6 +239,7 @@ describe("quality critic HTTP integration", () => {
       .post(`${fixture.branchPath}/chapters/${fixture.chapterId}/verify`)
       .set("Origin", origin)
       .set("X-CSRF-Token", fixture.token)
+      .set("Idempotency-Key", crypto.randomUUID())
       .send({ chapterVersionId });
     if (response.status !== 200) {
       throw new Error(`verify failed: ${response.status} ${JSON.stringify(response.body)}`);

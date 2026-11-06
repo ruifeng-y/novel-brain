@@ -495,7 +495,11 @@ async function createLedgerEntry(
 ): Promise<string> {
   const token = await getCsrf(request);
   const created = await request.post(`${branchPath}/ledger/entries`, {
-    headers: { Origin: origin, "X-CSRF-Token": token },
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
     data: {
       kind: "foreshadow",
       title: "父母之死",
@@ -540,7 +544,11 @@ async function verifyChapter(
 ): Promise<void> {
   const token = await getCsrf(request);
   const response = await request.post(`${branchPath}/chapters/${chapter.id}/verify`, {
-    headers: { Origin: origin, "X-CSRF-Token": token },
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
     data: { chapterVersionId: chapter.versionId },
   });
   expect(response.status()).toBe(200);
