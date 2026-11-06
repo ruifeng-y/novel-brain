@@ -105,7 +105,11 @@ export async function createStyleProfile(
 ) {
   const token = await getCsrf(page.request);
   const response = await page.request.post(`${styleBranchPath(work)}/style/profiles`, {
-    headers: { Origin: origin, "X-CSRF-Token": token },
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
     data: {
       scope: "character",
       scopeId: characterId,
@@ -149,7 +153,11 @@ export async function createStyleArc(
 ) {
   const token = await getCsrf(page.request);
   const response = await page.request.post(`${styleBranchPath(work)}/ledger/entries`, {
-    headers: { Origin: origin, "X-CSRF-Token": token },
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
     data: {
       kind: "character_arc",
       title: "沈砚不再压住情绪",

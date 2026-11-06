@@ -102,6 +102,9 @@ test("completes the full M0 author journey through the production UI", async ({
       .filter({ has: page.locator(".writing-fact-risk-medium") });
     await mediumRiskFact.getByRole("button", { name: "确认", exact: true }).click();
     await expect(mediumRiskFact.getByText("已确认", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "检查本章", exact: true }).click();
+    await expect(page.locator(".writing-quality")).toContainText("质量报告");
     await expect(factsPanel.getByText("先批准本章，才能提交事实。")).toBeVisible();
     await factsPanel.getByRole("button", { name: "批准本章" }).click();
     await expect(factsPanel.getByRole("button", { name: "本章已批准" })).toBeDisabled();

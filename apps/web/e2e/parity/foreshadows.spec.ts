@@ -73,7 +73,11 @@ async function createForeshadow(
 ) {
   const token = await getCsrf(page.request);
   const response = await page.request.post(`${branchPath(work)}/ledger/entries`, {
-    headers: { Origin: origin, "X-CSRF-Token": token },
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
     data: {
       kind: "foreshadow",
       responsibleRole: "protagonist",
