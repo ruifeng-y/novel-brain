@@ -115,6 +115,15 @@ describe("writing action rules", () => {
         outputKind: "chapter_text",
         chapterVersion: true,
       },
+      targeted_revision: {
+        promptKey: "writing.targeted_revision",
+        promptVersion: 1,
+        role: "reviser",
+        toolName: "draft.write_version",
+        permission: "chapter.write",
+        outputKind: "chapter_text",
+        chapterVersion: true,
+      },
     });
   });
 

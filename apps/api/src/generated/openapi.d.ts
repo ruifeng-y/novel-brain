@@ -2308,6 +2308,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/revisions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RevisionController_list"];
+    put?: never;
+    post: operations["RevisionController_createPlan"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/revisions/{revisionPlanId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["RevisionController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/revisions/{revisionPlanId}/rounds": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["RevisionController_addRound"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/revisions/{revisionPlanId}/rounds/{roundId}/feedback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["RevisionController_feedback"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3359,6 +3423,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -3655,6 +3726,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -7603,6 +7681,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8120,6 +8205,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8466,6 +8558,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8812,6 +8911,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9158,6 +9264,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9513,6 +9626,13 @@ export interface operations {
                     | "CRITIC_VERSION_REQUIRED"
                     | "CRITIC_FINDING_NOT_DISMISSIBLE"
                     | "QUALITY_GATE_BLOCKED"
+                    | "REVISION_NOT_EDITABLE"
+                    | "REVISION_SOURCE_INVALID"
+                    | "REVISION_FINDING_HIGH_RISK"
+                    | "REVISION_FINDING_INVALID"
+                    | "REVISION_FINDING_REJECTED"
+                    | "REVISION_ROUND_LIMIT_REACHED"
+                    | "REVISION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -24497,6 +24617,13 @@ export interface operations {
                     | "CRITIC_VERSION_REQUIRED"
                     | "CRITIC_FINDING_NOT_DISMISSIBLE"
                     | "QUALITY_GATE_BLOCKED"
+                    | "REVISION_NOT_EDITABLE"
+                    | "REVISION_SOURCE_INVALID"
+                    | "REVISION_FINDING_HIGH_RISK"
+                    | "REVISION_FINDING_INVALID"
+                    | "REVISION_FINDING_REJECTED"
+                    | "REVISION_ROUND_LIMIT_REACHED"
+                    | "REVISION_INVALID_STATE"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -24672,6 +24799,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -24823,6 +24957,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -34121,7 +34262,8 @@ export interface operations {
                 | "add_hook"
                 | "generate_title"
                 | "generate_summary"
-                | "selection_rewrite";
+                | "selection_rewrite"
+                | "targeted_revision";
               workId: string;
               branchId: string;
               chapterId: string;
@@ -34192,7 +34334,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -34231,7 +34374,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -34270,7 +34414,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -34309,7 +34454,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -34569,6 +34715,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -34781,6 +34934,49 @@ export interface operations {
                 end: number;
               };
               instruction: string;
+            }
+          | {
+              /** @enum {string} */
+              action: "targeted_revision";
+              sourceVersionId: string;
+              findingIds: string[];
+              blocks: {
+                id: string;
+                start: number;
+                end: number;
+                label?: string;
+              }[];
+              /**
+               * @default {
+               *       "preserveOutsideSelection": true,
+               *       "protectLockedContent": true
+               *     }
+               */
+              constraints?: {
+                /**
+                 * @default true
+                 * @enum {boolean}
+                 */
+                preserveOutsideSelection?: true;
+                /**
+                 * @default true
+                 * @enum {boolean}
+                 */
+                protectLockedContent?: true;
+                authorInstruction?: string;
+              };
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 2
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
             };
       };
     };
@@ -34806,7 +35002,8 @@ export interface operations {
                 | "add_hook"
                 | "generate_title"
                 | "generate_summary"
-                | "selection_rewrite";
+                | "selection_rewrite"
+                | "targeted_revision";
               workId: string;
               branchId: string;
               chapterId: string;
@@ -34877,7 +35074,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -34916,7 +35114,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -34955,7 +35154,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -34994,7 +35194,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -35254,6 +35455,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -35310,7 +35518,8 @@ export interface operations {
                 | "add_hook"
                 | "generate_title"
                 | "generate_summary"
-                | "selection_rewrite";
+                | "selection_rewrite"
+                | "targeted_revision";
               workId: string;
               branchId: string;
               chapterId: string;
@@ -35381,7 +35590,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -35420,7 +35630,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -35459,7 +35670,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -35498,7 +35710,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -35758,6 +35971,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -35814,7 +36034,8 @@ export interface operations {
                 | "add_hook"
                 | "generate_title"
                 | "generate_summary"
-                | "selection_rewrite";
+                | "selection_rewrite"
+                | "targeted_revision";
               workId: string;
               branchId: string;
               chapterId: string;
@@ -35885,7 +36106,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -35924,7 +36146,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -35963,7 +36186,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -36002,7 +36226,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -36262,6 +36487,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -36318,7 +36550,8 @@ export interface operations {
                 | "add_hook"
                 | "generate_title"
                 | "generate_summary"
-                | "selection_rewrite";
+                | "selection_rewrite"
+                | "targeted_revision";
               workId: string;
               branchId: string;
               chapterId: string;
@@ -36389,7 +36622,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -36428,7 +36662,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -36467,7 +36702,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -36506,7 +36742,8 @@ export interface operations {
                           | "add_hook"
                           | "generate_title"
                           | "generate_summary"
-                          | "selection_rewrite";
+                          | "selection_rewrite"
+                          | "targeted_revision";
                         version: number;
                         versionNodeId: string;
                         sourceVersionId: string;
@@ -36766,6 +37003,13 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "REVISION_NOT_EDITABLE"
+                  | "REVISION_SOURCE_INVALID"
+                  | "REVISION_FINDING_HIGH_RISK"
+                  | "REVISION_FINDING_INVALID"
+                  | "REVISION_FINDING_REJECTED"
+                  | "REVISION_ROUND_LIMIT_REACHED"
+                  | "REVISION_INVALID_STATE"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -36808,6 +37052,1115 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  RevisionController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Revision plans for one chapter */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              plan: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                sourceVersionId: string;
+                /** @enum {string} */
+                status: "active" | "awaiting_feedback" | "completed" | "rejected";
+                maxRounds: number;
+                budget: {
+                  maxCostCny: number;
+                  maxTokens: number;
+                  maxRevisionRounds: number;
+                };
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                completedAt: string | null;
+              };
+              rounds: {
+                id: string;
+                planId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                roundNumber: number;
+                /** @enum {string} */
+                status:
+                  | "queued"
+                  | "running"
+                  | "waiting_review"
+                  | "accepted"
+                  | "rejected"
+                  | "rewrite_requested"
+                  | "failed";
+                jobId: string | null;
+                /** @enum {string|null} */
+                jobStatus:
+                  | "queued"
+                  | "preparing"
+                  | "running"
+                  | "paused"
+                  | "waiting_review"
+                  | "completed"
+                  | "failed"
+                  | "cancelled"
+                  | null;
+                sourceVersionId: string;
+                resultVersionId: string | null;
+                versionNodeId: string | null;
+                selectedFindings: {
+                  findingId: string;
+                  /** @enum {string} */
+                  code:
+                    | "FACT_CONTRADICTION"
+                    | "TIMELINE_CONFLICT"
+                    | "UNDISCLOSED_KNOWLEDGE"
+                    | "MOTIVATION_BREAK"
+                    | "LOCATION_CONFLICT"
+                    | "STYLE_DRIFT"
+                    | "WEAK_CHAPTER_END_HOOK";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  qualityDimension:
+                    | "hook"
+                    | "pacing"
+                    | "information_density"
+                    | "character_voice"
+                    | "prose"
+                    | "continuity";
+                  recommendation: string;
+                  evidence: {
+                    /** @enum {string} */
+                    kind:
+                      "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                    sourceId: string | null;
+                    sourceVersionId: string | null;
+                    chapterId: string;
+                    chapterVersionId: string | null;
+                    quote: string;
+                    startOffset: number;
+                    endOffset: number;
+                    locator: string;
+                    explanation: string;
+                  }[];
+                }[];
+                blocks: {
+                  id: string;
+                  start: number;
+                  end: number;
+                  label?: string;
+                }[];
+                constraints: {
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  preserveOutsideSelection: true;
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  protectLockedContent: true;
+                  authorInstruction?: string;
+                };
+                diff: {
+                  sourceVersionId: string;
+                  resultVersionId: string;
+                  beforeHash: string;
+                  afterHash: string;
+                  changes: {
+                    blockId: string;
+                    beforeStart: number;
+                    beforeEnd: number;
+                    afterStart: number;
+                    afterEnd: number;
+                    before: string;
+                    after: string;
+                  }[];
+                  unresolvedFindingIds: string[];
+                } | null;
+                unresolvedFindingIds: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              feedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              evaluationFeedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  RevisionController_createPlan: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same revision plan request */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          sourceVersionId: string;
+          findingIds: string[];
+          blocks: {
+            id: string;
+            start: number;
+            end: number;
+            label?: string;
+          }[];
+          /**
+           * @default {
+           *       "preserveOutsideSelection": true,
+           *       "protectLockedContent": true
+           *     }
+           */
+          constraints?: {
+            /**
+             * @default true
+             * @enum {boolean}
+             */
+            preserveOutsideSelection?: true;
+            /**
+             * @default true
+             * @enum {boolean}
+             */
+            protectLockedContent?: true;
+            authorInstruction?: string;
+          };
+          /**
+           * @default {
+           *       "maxCostCny": 2.5,
+           *       "maxTokens": 30000,
+           *       "maxRevisionRounds": 2
+           *     }
+           */
+          budget?: {
+            maxCostCny: number;
+            maxTokens: number;
+            maxRevisionRounds: number;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Queued revision plan and first round */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              plan: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                sourceVersionId: string;
+                /** @enum {string} */
+                status: "active" | "awaiting_feedback" | "completed" | "rejected";
+                maxRounds: number;
+                budget: {
+                  maxCostCny: number;
+                  maxTokens: number;
+                  maxRevisionRounds: number;
+                };
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                completedAt: string | null;
+              };
+              rounds: {
+                id: string;
+                planId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                roundNumber: number;
+                /** @enum {string} */
+                status:
+                  | "queued"
+                  | "running"
+                  | "waiting_review"
+                  | "accepted"
+                  | "rejected"
+                  | "rewrite_requested"
+                  | "failed";
+                jobId: string | null;
+                /** @enum {string|null} */
+                jobStatus:
+                  | "queued"
+                  | "preparing"
+                  | "running"
+                  | "paused"
+                  | "waiting_review"
+                  | "completed"
+                  | "failed"
+                  | "cancelled"
+                  | null;
+                sourceVersionId: string;
+                resultVersionId: string | null;
+                versionNodeId: string | null;
+                selectedFindings: {
+                  findingId: string;
+                  /** @enum {string} */
+                  code:
+                    | "FACT_CONTRADICTION"
+                    | "TIMELINE_CONFLICT"
+                    | "UNDISCLOSED_KNOWLEDGE"
+                    | "MOTIVATION_BREAK"
+                    | "LOCATION_CONFLICT"
+                    | "STYLE_DRIFT"
+                    | "WEAK_CHAPTER_END_HOOK";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  qualityDimension:
+                    | "hook"
+                    | "pacing"
+                    | "information_density"
+                    | "character_voice"
+                    | "prose"
+                    | "continuity";
+                  recommendation: string;
+                  evidence: {
+                    /** @enum {string} */
+                    kind:
+                      "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                    sourceId: string | null;
+                    sourceVersionId: string | null;
+                    chapterId: string;
+                    chapterVersionId: string | null;
+                    quote: string;
+                    startOffset: number;
+                    endOffset: number;
+                    locator: string;
+                    explanation: string;
+                  }[];
+                }[];
+                blocks: {
+                  id: string;
+                  start: number;
+                  end: number;
+                  label?: string;
+                }[];
+                constraints: {
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  preserveOutsideSelection: true;
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  protectLockedContent: true;
+                  authorInstruction?: string;
+                };
+                diff: {
+                  sourceVersionId: string;
+                  resultVersionId: string;
+                  beforeHash: string;
+                  afterHash: string;
+                  changes: {
+                    blockId: string;
+                    beforeStart: number;
+                    beforeEnd: number;
+                    afterStart: number;
+                    afterEnd: number;
+                    before: string;
+                    after: string;
+                  }[];
+                  unresolvedFindingIds: string[];
+                } | null;
+                unresolvedFindingIds: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              feedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              evaluationFeedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  RevisionController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        revisionPlanId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Revision plan with rounds and feedback */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              plan: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                sourceVersionId: string;
+                /** @enum {string} */
+                status: "active" | "awaiting_feedback" | "completed" | "rejected";
+                maxRounds: number;
+                budget: {
+                  maxCostCny: number;
+                  maxTokens: number;
+                  maxRevisionRounds: number;
+                };
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                completedAt: string | null;
+              };
+              rounds: {
+                id: string;
+                planId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                roundNumber: number;
+                /** @enum {string} */
+                status:
+                  | "queued"
+                  | "running"
+                  | "waiting_review"
+                  | "accepted"
+                  | "rejected"
+                  | "rewrite_requested"
+                  | "failed";
+                jobId: string | null;
+                /** @enum {string|null} */
+                jobStatus:
+                  | "queued"
+                  | "preparing"
+                  | "running"
+                  | "paused"
+                  | "waiting_review"
+                  | "completed"
+                  | "failed"
+                  | "cancelled"
+                  | null;
+                sourceVersionId: string;
+                resultVersionId: string | null;
+                versionNodeId: string | null;
+                selectedFindings: {
+                  findingId: string;
+                  /** @enum {string} */
+                  code:
+                    | "FACT_CONTRADICTION"
+                    | "TIMELINE_CONFLICT"
+                    | "UNDISCLOSED_KNOWLEDGE"
+                    | "MOTIVATION_BREAK"
+                    | "LOCATION_CONFLICT"
+                    | "STYLE_DRIFT"
+                    | "WEAK_CHAPTER_END_HOOK";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  qualityDimension:
+                    | "hook"
+                    | "pacing"
+                    | "information_density"
+                    | "character_voice"
+                    | "prose"
+                    | "continuity";
+                  recommendation: string;
+                  evidence: {
+                    /** @enum {string} */
+                    kind:
+                      "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                    sourceId: string | null;
+                    sourceVersionId: string | null;
+                    chapterId: string;
+                    chapterVersionId: string | null;
+                    quote: string;
+                    startOffset: number;
+                    endOffset: number;
+                    locator: string;
+                    explanation: string;
+                  }[];
+                }[];
+                blocks: {
+                  id: string;
+                  start: number;
+                  end: number;
+                  label?: string;
+                }[];
+                constraints: {
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  preserveOutsideSelection: true;
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  protectLockedContent: true;
+                  authorInstruction?: string;
+                };
+                diff: {
+                  sourceVersionId: string;
+                  resultVersionId: string;
+                  beforeHash: string;
+                  afterHash: string;
+                  changes: {
+                    blockId: string;
+                    beforeStart: number;
+                    beforeEnd: number;
+                    afterStart: number;
+                    afterEnd: number;
+                    before: string;
+                    after: string;
+                  }[];
+                  unresolvedFindingIds: string[];
+                } | null;
+                unresolvedFindingIds: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              feedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              evaluationFeedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  RevisionController_addRound: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        revisionPlanId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          sourceVersionId: string;
+          findingIds: string[];
+          blocks: {
+            id: string;
+            start: number;
+            end: number;
+            label?: string;
+          }[];
+          /**
+           * @default {
+           *       "preserveOutsideSelection": true,
+           *       "protectLockedContent": true
+           *     }
+           */
+          constraints?: {
+            /**
+             * @default true
+             * @enum {boolean}
+             */
+            preserveOutsideSelection?: true;
+            /**
+             * @default true
+             * @enum {boolean}
+             */
+            protectLockedContent?: true;
+            authorInstruction?: string;
+          };
+          /**
+           * @default {
+           *       "maxCostCny": 2.5,
+           *       "maxTokens": 30000,
+           *       "maxRevisionRounds": 2
+           *     }
+           */
+          budget?: {
+            maxCostCny: number;
+            maxTokens: number;
+            maxRevisionRounds: number;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Queued next revision round */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              plan: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                sourceVersionId: string;
+                /** @enum {string} */
+                status: "active" | "awaiting_feedback" | "completed" | "rejected";
+                maxRounds: number;
+                budget: {
+                  maxCostCny: number;
+                  maxTokens: number;
+                  maxRevisionRounds: number;
+                };
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                completedAt: string | null;
+              };
+              rounds: {
+                id: string;
+                planId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                roundNumber: number;
+                /** @enum {string} */
+                status:
+                  | "queued"
+                  | "running"
+                  | "waiting_review"
+                  | "accepted"
+                  | "rejected"
+                  | "rewrite_requested"
+                  | "failed";
+                jobId: string | null;
+                /** @enum {string|null} */
+                jobStatus:
+                  | "queued"
+                  | "preparing"
+                  | "running"
+                  | "paused"
+                  | "waiting_review"
+                  | "completed"
+                  | "failed"
+                  | "cancelled"
+                  | null;
+                sourceVersionId: string;
+                resultVersionId: string | null;
+                versionNodeId: string | null;
+                selectedFindings: {
+                  findingId: string;
+                  /** @enum {string} */
+                  code:
+                    | "FACT_CONTRADICTION"
+                    | "TIMELINE_CONFLICT"
+                    | "UNDISCLOSED_KNOWLEDGE"
+                    | "MOTIVATION_BREAK"
+                    | "LOCATION_CONFLICT"
+                    | "STYLE_DRIFT"
+                    | "WEAK_CHAPTER_END_HOOK";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  qualityDimension:
+                    | "hook"
+                    | "pacing"
+                    | "information_density"
+                    | "character_voice"
+                    | "prose"
+                    | "continuity";
+                  recommendation: string;
+                  evidence: {
+                    /** @enum {string} */
+                    kind:
+                      "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                    sourceId: string | null;
+                    sourceVersionId: string | null;
+                    chapterId: string;
+                    chapterVersionId: string | null;
+                    quote: string;
+                    startOffset: number;
+                    endOffset: number;
+                    locator: string;
+                    explanation: string;
+                  }[];
+                }[];
+                blocks: {
+                  id: string;
+                  start: number;
+                  end: number;
+                  label?: string;
+                }[];
+                constraints: {
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  preserveOutsideSelection: true;
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  protectLockedContent: true;
+                  authorInstruction?: string;
+                };
+                diff: {
+                  sourceVersionId: string;
+                  resultVersionId: string;
+                  beforeHash: string;
+                  afterHash: string;
+                  changes: {
+                    blockId: string;
+                    beforeStart: number;
+                    beforeEnd: number;
+                    afterStart: number;
+                    afterEnd: number;
+                    before: string;
+                    after: string;
+                  }[];
+                  unresolvedFindingIds: string[];
+                } | null;
+                unresolvedFindingIds: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              feedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              evaluationFeedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  RevisionController_feedback: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        revisionPlanId: string;
+        roundId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          action: "accept" | "reject" | "rewrite";
+          reason: string;
+          version: number;
+          findingId?: string;
+          /** @default false */
+          evaluationOptIn?: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Recorded author revision feedback */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              plan: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                sourceVersionId: string;
+                /** @enum {string} */
+                status: "active" | "awaiting_feedback" | "completed" | "rejected";
+                maxRounds: number;
+                budget: {
+                  maxCostCny: number;
+                  maxTokens: number;
+                  maxRevisionRounds: number;
+                };
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                completedAt: string | null;
+              };
+              rounds: {
+                id: string;
+                planId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                roundNumber: number;
+                /** @enum {string} */
+                status:
+                  | "queued"
+                  | "running"
+                  | "waiting_review"
+                  | "accepted"
+                  | "rejected"
+                  | "rewrite_requested"
+                  | "failed";
+                jobId: string | null;
+                /** @enum {string|null} */
+                jobStatus:
+                  | "queued"
+                  | "preparing"
+                  | "running"
+                  | "paused"
+                  | "waiting_review"
+                  | "completed"
+                  | "failed"
+                  | "cancelled"
+                  | null;
+                sourceVersionId: string;
+                resultVersionId: string | null;
+                versionNodeId: string | null;
+                selectedFindings: {
+                  findingId: string;
+                  /** @enum {string} */
+                  code:
+                    | "FACT_CONTRADICTION"
+                    | "TIMELINE_CONFLICT"
+                    | "UNDISCLOSED_KNOWLEDGE"
+                    | "MOTIVATION_BREAK"
+                    | "LOCATION_CONFLICT"
+                    | "STYLE_DRIFT"
+                    | "WEAK_CHAPTER_END_HOOK";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  qualityDimension:
+                    | "hook"
+                    | "pacing"
+                    | "information_density"
+                    | "character_voice"
+                    | "prose"
+                    | "continuity";
+                  recommendation: string;
+                  evidence: {
+                    /** @enum {string} */
+                    kind:
+                      "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                    sourceId: string | null;
+                    sourceVersionId: string | null;
+                    chapterId: string;
+                    chapterVersionId: string | null;
+                    quote: string;
+                    startOffset: number;
+                    endOffset: number;
+                    locator: string;
+                    explanation: string;
+                  }[];
+                }[];
+                blocks: {
+                  id: string;
+                  start: number;
+                  end: number;
+                  label?: string;
+                }[];
+                constraints: {
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  preserveOutsideSelection: true;
+                  /**
+                   * @default true
+                   * @enum {boolean}
+                   */
+                  protectLockedContent: true;
+                  authorInstruction?: string;
+                };
+                diff: {
+                  sourceVersionId: string;
+                  resultVersionId: string;
+                  beforeHash: string;
+                  afterHash: string;
+                  changes: {
+                    blockId: string;
+                    beforeStart: number;
+                    beforeEnd: number;
+                    afterStart: number;
+                    afterEnd: number;
+                    before: string;
+                    after: string;
+                  }[];
+                  unresolvedFindingIds: string[];
+                } | null;
+                unresolvedFindingIds: string[];
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              feedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              evaluationFeedback: {
+                id: string;
+                planId: string;
+                roundId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                findingId: string | null;
+                /** @enum {string} */
+                action: "accept" | "reject" | "rewrite";
+                reason: string;
+                targetVersionId: string;
+                evaluationOptIn: boolean;
+                actorId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };

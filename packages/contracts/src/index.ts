@@ -93,6 +93,13 @@ export const ERROR_CODES = [
   "CRITIC_VERSION_REQUIRED",
   "CRITIC_FINDING_NOT_DISMISSIBLE",
   "QUALITY_GATE_BLOCKED",
+  "REVISION_NOT_EDITABLE",
+  "REVISION_SOURCE_INVALID",
+  "REVISION_FINDING_HIGH_RISK",
+  "REVISION_FINDING_INVALID",
+  "REVISION_FINDING_REJECTED",
+  "REVISION_ROUND_LIMIT_REACHED",
+  "REVISION_INVALID_STATE",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -4436,6 +4443,7 @@ export const WRITING_ACTION_KINDS = [
   "generate_title",
   "generate_summary",
   "selection_rewrite",
+  "targeted_revision",
 ] as const;
 export const writingActionKindSchema = z.enum(WRITING_ACTION_KINDS);
 export type WritingActionKind = z.infer<typeof writingActionKindSchema>;
@@ -4455,6 +4463,105 @@ export const writingActionSelectionSchema = z
     path: ["end"],
   });
 export type WritingActionSelection = z.infer<typeof writingActionSelectionSchema>;
+
+export const REVISION_MAX_ROUNDS = 2 as const;
+
+export const revisionBudgetSchema = generationBudgetSchema.extend({
+  maxRevisionRounds: z.number().int().min(1).max(REVISION_MAX_ROUNDS),
+});
+export type RevisionBudget = z.infer<typeof revisionBudgetSchema>;
+
+export const revisionManuscriptBlockSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_-]{1,40}$/),
+    start: z.number().int().nonnegative(),
+    end: z.number().int().positive(),
+    label: z.string().trim().min(1).max(100).optional(),
+  })
+  .strict()
+  .refine((block) => block.end > block.start, {
+    message: "Revision block end must be after start",
+    path: ["end"],
+  });
+export type RevisionManuscriptBlock = z.infer<typeof revisionManuscriptBlockSchema>;
+
+export const revisionConstraintsSchema = z
+  .object({
+    preserveOutsideSelection: z.literal(true).default(true),
+    protectLockedContent: z.literal(true).default(true),
+    authorInstruction: z.string().trim().min(1).max(2_000).optional(),
+  })
+  .strict();
+export type RevisionConstraints = z.infer<typeof revisionConstraintsSchema>;
+
+const revisionSelectionShape = {
+  sourceVersionId: uuidV7Schema,
+  findingIds: z.array(uuidV7Schema).min(1).max(10),
+  blocks: z.array(revisionManuscriptBlockSchema).min(1).max(20),
+  constraints: revisionConstraintsSchema.default({
+    preserveOutsideSelection: true,
+    protectLockedContent: true,
+  }),
+};
+
+function validateRevisionSelection(
+  input: { blocks: Array<{ id: string; start: number; end: number }> },
+  context: z.RefinementCtx,
+): void {
+  const ids = new Set<string>();
+  const sorted = [...input.blocks].sort((left, right) => left.start - right.start);
+  for (const [index, block] of sorted.entries()) {
+    if (ids.has(block.id)) {
+      context.addIssue({
+        code: "custom",
+        path: ["blocks", index, "id"],
+        message: "Revision block ids must be unique",
+      });
+    }
+    ids.add(block.id);
+    const previous = sorted[index - 1];
+    if (previous && block.start < previous.end) {
+      context.addIssue({
+        code: "custom",
+        path: ["blocks", index, "start"],
+        message: "Revision blocks must not overlap",
+      });
+    }
+  }
+}
+
+export const revisionPlanCreateRequestSchema = z
+  .object({
+    ...revisionSelectionShape,
+    budget: revisionBudgetSchema.default({
+      maxCostCny: 2.5,
+      maxTokens: 30_000,
+      maxRevisionRounds: REVISION_MAX_ROUNDS,
+    }),
+  })
+  .strict()
+  .superRefine(validateRevisionSelection);
+export type RevisionPlanCreateRequest = z.infer<typeof revisionPlanCreateRequestSchema>;
+
+export const revisionRoundCreateRequestSchema = revisionPlanCreateRequestSchema;
+export type RevisionRoundCreateRequest = z.infer<typeof revisionRoundCreateRequestSchema>;
+
+export const targetedRevisionWritingActionSchema = z
+  .object({
+    action: z.literal("targeted_revision"),
+    ...revisionSelectionShape,
+    budget: revisionBudgetSchema.default({
+      maxCostCny: 2.5,
+      maxTokens: 30_000,
+      maxRevisionRounds: REVISION_MAX_ROUNDS,
+    }),
+  })
+  .strict()
+  .superRefine(validateRevisionSelection);
+export type TargetedRevisionWritingAction = z.infer<typeof targetedRevisionWritingActionSchema>;
 
 const writingActionBaseShape = {
   sourceVersionId: uuidV7Schema,
@@ -4552,6 +4659,7 @@ export const writingActionRequestSchema = z.discriminatedUnion("action", [
   generateTitleWritingActionSchema,
   generateSummaryWritingActionSchema,
   selectionRewriteWritingActionSchema,
+  targetedRevisionWritingActionSchema,
 ]);
 export type WritingActionRequest = z.infer<typeof writingActionRequestSchema>;
 export type ContinueWritingAction = z.infer<typeof continueWritingActionSchema>;
@@ -4563,6 +4671,9 @@ export type AddHookWritingAction = z.infer<typeof addHookWritingActionSchema>;
 export type GenerateTitleWritingAction = z.infer<typeof generateTitleWritingActionSchema>;
 export type GenerateSummaryWritingAction = z.infer<typeof generateSummaryWritingActionSchema>;
 export type SelectionRewriteWritingAction = z.infer<typeof selectionRewriteWritingActionSchema>;
+export type TargetedRevisionWritingActionInput = z.infer<
+  typeof targetedRevisionWritingActionSchema
+>;
 
 export const writingActionAffectedRangeSchema = z
   .object({
@@ -6723,6 +6834,162 @@ export const criticAnnotationListResponseSchema = apiEnvelopeSchema(
   z.array(criticAnnotationSchema),
 );
 export const criticAnnotationResponseSchema = apiEnvelopeSchema(criticAnnotationSchema);
+
+export const revisionPlanStatusSchema = z.enum([
+  "active",
+  "awaiting_feedback",
+  "completed",
+  "rejected",
+]);
+export type RevisionPlanStatus = z.infer<typeof revisionPlanStatusSchema>;
+
+export const revisionRoundStatusSchema = z.enum([
+  "queued",
+  "running",
+  "waiting_review",
+  "accepted",
+  "rejected",
+  "rewrite_requested",
+  "failed",
+]);
+export type RevisionRoundStatus = z.infer<typeof revisionRoundStatusSchema>;
+
+export const revisionSelectedFindingSchema = z
+  .object({
+    findingId: uuidV7Schema,
+    code: criticFindingCodeSchema,
+    severity: criticSeveritySchema,
+    qualityDimension: qualityDimensionSchema,
+    recommendation: z.string().trim().min(1).max(2_000),
+    evidence: z.array(criticEvidenceSchema).min(1).max(5),
+  })
+  .strict();
+export type RevisionSelectedFinding = z.infer<typeof revisionSelectedFindingSchema>;
+
+export const revisionDiffChangeSchema = z
+  .object({
+    blockId: z.string().trim().min(1).max(40),
+    beforeStart: z.number().int().nonnegative(),
+    beforeEnd: z.number().int().positive(),
+    afterStart: z.number().int().nonnegative(),
+    afterEnd: z.number().int().positive(),
+    before: z.string(),
+    after: z.string(),
+  })
+  .strict()
+  .refine(
+    (change) => change.beforeEnd > change.beforeStart && change.afterEnd > change.afterStart,
+    {
+      message: "Revision change ranges must be non-empty",
+    },
+  );
+export type RevisionDiffChange = z.infer<typeof revisionDiffChangeSchema>;
+
+export const revisionDiffSchema = z
+  .object({
+    sourceVersionId: uuidV7Schema,
+    resultVersionId: uuidV7Schema,
+    beforeHash: z.string().regex(/^[a-f0-9]{64}$/),
+    afterHash: z.string().regex(/^[a-f0-9]{64}$/),
+    changes: z.array(revisionDiffChangeSchema).min(1),
+    unresolvedFindingIds: z.array(uuidV7Schema),
+  })
+  .strict();
+export type RevisionDiff = z.infer<typeof revisionDiffSchema>;
+
+export const revisionPlanSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    sourceVersionId: uuidV7Schema,
+    status: revisionPlanStatusSchema,
+    maxRounds: z.number().int().min(1).max(REVISION_MAX_ROUNDS),
+    budget: revisionBudgetSchema,
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    completedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type RevisionPlan = z.infer<typeof revisionPlanSchema>;
+
+export const revisionRoundSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    roundNumber: z.number().int().min(1).max(REVISION_MAX_ROUNDS),
+    status: revisionRoundStatusSchema,
+    jobId: uuidV7Schema.nullable(),
+    jobStatus: generationJobStatusSchema.nullable(),
+    sourceVersionId: uuidV7Schema,
+    resultVersionId: uuidV7Schema.nullable(),
+    versionNodeId: uuidV7Schema.nullable(),
+    selectedFindings: z.array(revisionSelectedFindingSchema).min(1).max(10),
+    blocks: z.array(revisionManuscriptBlockSchema).min(1).max(20),
+    constraints: revisionConstraintsSchema,
+    diff: revisionDiffSchema.nullable(),
+    unresolvedFindingIds: z.array(uuidV7Schema),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type RevisionRound = z.infer<typeof revisionRoundSchema>;
+
+export const revisionFeedbackActionSchema = z.enum(["accept", "reject", "rewrite"]);
+export type RevisionFeedbackAction = z.infer<typeof revisionFeedbackActionSchema>;
+
+export const revisionFeedbackCreateRequestSchema = z
+  .object({
+    action: revisionFeedbackActionSchema,
+    reason: z.string().trim().min(1).max(1_000),
+    version: z.number().int().positive(),
+    findingId: uuidV7Schema.optional(),
+    evaluationOptIn: z.boolean().default(false),
+  })
+  .strict();
+export type RevisionFeedbackCreateRequest = z.infer<typeof revisionFeedbackCreateRequestSchema>;
+
+export const revisionFeedbackSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    roundId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    findingId: uuidV7Schema.nullable(),
+    action: revisionFeedbackActionSchema,
+    reason: z.string().trim().min(1).max(1_000),
+    targetVersionId: uuidV7Schema,
+    evaluationOptIn: z.boolean(),
+    actorId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type RevisionFeedback = z.infer<typeof revisionFeedbackSchema>;
+
+export const revisionPlanWorkspaceSchema = z
+  .object({
+    plan: revisionPlanSchema,
+    rounds: z.array(revisionRoundSchema).max(REVISION_MAX_ROUNDS),
+    feedback: z.array(revisionFeedbackSchema),
+    evaluationFeedback: z.array(revisionFeedbackSchema),
+  })
+  .strict();
+export type RevisionPlanWorkspace = z.infer<typeof revisionPlanWorkspaceSchema>;
+
+export const revisionPlanWorkspaceResponseSchema = apiEnvelopeSchema(revisionPlanWorkspaceSchema);
+export const revisionPlanWorkspaceListResponseSchema = apiEnvelopeSchema(
+  z.array(revisionPlanWorkspaceSchema),
+);
+
 export const GENERATION_READINESS_RULE_VERSION = "readiness-v1" as const;
 
 export const generationReadinessSeveritySchema = z.enum(["blocker", "warning"]);

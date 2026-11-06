@@ -44,6 +44,8 @@ import {
   generationJobResponseSchema,
   jobEventSchema,
   qualityWorkspaceResponseSchema,
+  revisionPlanWorkspaceListResponseSchema,
+  revisionPlanWorkspaceResponseSchema,
   writingActionJobListResponseSchema,
   writingActionJobResponseSchema,
   workResponseSchema,
@@ -56,6 +58,8 @@ import {
   type GenerationJob,
   type QualityWorkspace,
   type GenerationReadiness,
+  type RevisionFeedbackAction,
+  type RevisionPlanWorkspace,
   type WorkOverview,
   type WritingActionJob,
   type WritingActionRequest,
@@ -107,6 +111,24 @@ const writingActionLabels: Record<WritingActionJob["action"], string> = {
   generate_title: "生成标题",
   generate_summary: "生成摘要",
   selection_rewrite: "改写选中",
+  targeted_revision: "定向修订",
+};
+
+const revisionRoundStatusLabels: Record<RevisionPlanWorkspace["rounds"][number]["status"], string> =
+  {
+    queued: "排队中",
+    running: "修订中",
+    waiting_review: "等待作者反馈",
+    accepted: "已接受",
+    rejected: "已拒绝",
+    rewrite_requested: "等待再改写",
+    failed: "修订失败",
+  };
+
+const revisionFeedbackLabels: Record<RevisionFeedbackAction, string> = {
+  accept: "接受修订",
+  reject: "拒绝建议",
+  rewrite: "再改写",
 };
 
 const factStatusLabels: Record<FactProposal["status"], string> = {
@@ -210,6 +232,11 @@ export function WritingWorkspace({
   const [annotationBusyId, setAnnotationBusyId] = useState<string | null>(null);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [dismissReason, setDismissReason] = useState("");
+  const [revisionPlans, setRevisionPlans] = useState<RevisionPlanWorkspace[]>([]);
+  const [revisionFindingIds, setRevisionFindingIds] = useState<string[]>([]);
+  const [revisionBusy, setRevisionBusy] = useState(false);
+  const [revisionRoundBusy, setRevisionRoundBusy] = useState(false);
+  const [revisionFeedbackBusyId, setRevisionFeedbackBusyId] = useState<string | null>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const writingActionEventSourceRef = useRef<EventSource | null>(null);
@@ -250,6 +277,7 @@ export function WritingWorkspace({
           loadFactProposals(workData, nextSelectedId),
           loadCanonCommit(workData, nextSelectedId),
           loadQuality(workData, nextSelectedId),
+          loadRevisions(workData, nextSelectedId),
           loadReadiness(workData, nextSelectedId),
         ]);
       } else {
@@ -260,6 +288,7 @@ export function WritingWorkspace({
         setFactProposals([]);
         setCanonCommit(null);
         setQualityWorkspace(null);
+        setRevisionPlans([]);
         await loadReadiness(workData, null);
       }
     } catch (caught) {
@@ -280,6 +309,64 @@ export function WritingWorkspace({
     },
     [],
   );
+
+  useEffect(() => {
+    if (!work || !selectedId) {
+      return;
+    }
+    const active = revisionPlans.some((plan) =>
+      plan.rounds.some((round) => (round.jobStatus ? isActiveGeneration(round.jobStatus) : false)),
+    );
+    if (!active) {
+      return;
+    }
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          const response = await fetch(
+            `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selectedId}/revisions`,
+            { cache: "no-store" },
+          );
+          if (!response.ok) {
+            return;
+          }
+          const plans = revisionPlanWorkspaceListResponseSchema.parse(await response.json()).data;
+          setRevisionPlans(plans);
+          if (
+            plans.some((plan) =>
+              plan.rounds.some((round) =>
+                round.jobStatus ? isActiveGeneration(round.jobStatus) : false,
+              ),
+            )
+          ) {
+            return;
+          }
+          const chapterResponse = await fetch(
+            `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selectedId}`,
+            { cache: "no-store" },
+          );
+          if (chapterResponse.ok) {
+            const chapter = chapterWorkspaceResponseSchema.parse(await chapterResponse.json()).data;
+            setChapters((current) =>
+              current.map((item) => (item.id === chapter.id ? chapter : item)),
+            );
+            setContent(chapter.currentVersion?.content ?? "");
+            setSavedContent(chapter.currentVersion?.content ?? "");
+          }
+          const versionsResponse = await fetch(
+            `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selectedId}/versions`,
+            { cache: "no-store" },
+          );
+          if (versionsResponse.ok) {
+            setVersions(chapterVersionListResponseSchema.parse(await versionsResponse.json()).data);
+          }
+        } catch {
+          // The next poll retries while the revision job is still active.
+        }
+      })();
+    }, 1_000);
+    return () => clearInterval(timer);
+  }, [revisionPlans, selectedId, work]);
 
   const selected = useMemo(
     () => chapters.find((chapter) => chapter.id === selectedId) ?? null,
@@ -348,6 +435,22 @@ export function WritingWorkspace({
   const canCheckQuality = Boolean(
     selected?.currentVersionId && !dirty && !qualityBusy && !generationActive,
   );
+  const revisionCandidates =
+    qualityWorkspace?.findings.filter(
+      (finding) =>
+        finding.status === "open" &&
+        finding.chapterVersionId === selected?.currentVersionId &&
+        (finding.severity === "P2" || finding.severity === "P3") &&
+        !finding.structural,
+    ) ?? [];
+  const canStartRevision = Boolean(
+    selected?.currentVersionId &&
+    revisionFindingIds.length > 0 &&
+    !dirty &&
+    !revisionBusy &&
+    !generationActive &&
+    !writingActionActive,
+  );
 
   async function selectChapter(chapter: ChapterWorkspace) {
     setSelectedId(chapter.id);
@@ -364,6 +467,7 @@ export function WritingWorkspace({
           loadFactProposals(work, chapter.id),
           loadCanonCommit(work, chapter.id),
           loadQuality(work, chapter.id),
+          loadRevisions(work, chapter.id),
         ]);
       } catch (caught) {
         setActionError(caught instanceof Error ? caught.message : "章节资料加载失败。");
@@ -491,6 +595,176 @@ export function WritingWorkspace({
     setQualityWorkspace(qualityWorkspaceResponseSchema.parse(await response.json()).data);
   }
 
+  async function loadRevisions(workData: WorkOverview, chapterId: string) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/revisions`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      throw new Error(await readError(response, "修订记录加载失败。"));
+    }
+    setRevisionPlans(revisionPlanWorkspaceListResponseSchema.parse(await response.json()).data);
+  }
+
+  function upsertRevisionPlan(workspace: RevisionPlanWorkspace) {
+    setRevisionPlans((current) => [
+      workspace,
+      ...current.filter((plan) => plan.plan.id !== workspace.plan.id),
+    ]);
+  }
+
+  async function startRevisionPlan() {
+    if (!work || !selected?.currentVersionId || !canStartRevision) {
+      return;
+    }
+    const findings = revisionCandidates.filter((finding) =>
+      revisionFindingIds.includes(finding.id),
+    );
+    const blocks = revisionBlocksForFindings(findings);
+    if (blocks.length === 0) {
+      setActionError("所选问题没有可定位的正文范围。");
+      return;
+    }
+    setRevisionBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}/revisions`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            sourceVersionId: selected.currentVersionId,
+            findingIds: findings.map((finding) => finding.id),
+            blocks,
+            constraints: {
+              preserveOutsideSelection: true,
+              protectLockedContent: true,
+              authorInstruction: "按所选问题定向修改，不改动选区外正文，不新增事实。",
+            },
+            budget: {
+              maxCostCny: 2.5,
+              maxTokens: 30_000,
+              maxRevisionRounds: 2,
+            },
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "定向修订启动失败。"));
+      }
+      upsertRevisionPlan(revisionPlanWorkspaceResponseSchema.parse(await response.json()).data);
+      setRevisionFindingIds([]);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "定向修订启动失败。");
+    } finally {
+      setRevisionBusy(false);
+    }
+  }
+
+  async function submitRevisionFeedback(
+    planId: string,
+    roundId: string,
+    roundVersion: number,
+    form: FormData,
+  ) {
+    if (!work || !selected) {
+      return;
+    }
+    const action = String(form.get("action") ?? "") as RevisionFeedbackAction;
+    const reason = String(form.get("reason") ?? "").trim();
+    if (!reason) {
+      setActionError("请填写这次反馈的原因。");
+      return;
+    }
+    setRevisionFeedbackBusyId(roundId);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/revisions/${planId}/rounds/${roundId}/feedback`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            action,
+            reason,
+            version: roundVersion,
+            evaluationOptIn: form.get("evaluationOptIn") === "on",
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "修订反馈保存失败。"));
+      }
+      upsertRevisionPlan(revisionPlanWorkspaceResponseSchema.parse(await response.json()).data);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "修订反馈保存失败。");
+    } finally {
+      setRevisionFeedbackBusyId(null);
+    }
+  }
+
+  async function startNextRevisionRound(plan: RevisionPlanWorkspace) {
+    if (!work || !selected?.currentVersionId || !content.trim()) {
+      return;
+    }
+    const latest = plan.rounds.at(-1);
+    if (!latest || latest.status !== "rewrite_requested") {
+      return;
+    }
+    setRevisionRoundBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/revisions/${plan.plan.id}/rounds`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            sourceVersionId: selected.currentVersionId,
+            findingIds: latest.selectedFindings.map((finding) => finding.findingId),
+            blocks: [
+              {
+                id: "block-next",
+                start: 0,
+                end: content.length,
+                label: "下一轮定向收紧",
+              },
+            ],
+            constraints: {
+              preserveOutsideSelection: true,
+              protectLockedContent: true,
+              authorInstruction: "沿用本轮问题选择，限制在正文块内完成下一轮。",
+            },
+            budget: {
+              maxCostCny: 2.5,
+              maxTokens: 30_000,
+              maxRevisionRounds: plan.plan.maxRounds,
+            },
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "下一轮修订启动失败。"));
+      }
+      upsertRevisionPlan(revisionPlanWorkspaceResponseSchema.parse(await response.json()).data);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "下一轮修订启动失败。");
+    } finally {
+      setRevisionRoundBusy(false);
+    }
+  }
+
   async function loadReadiness(
     workData: WorkOverview,
     chapterId: string | null,
@@ -554,7 +828,9 @@ export function WritingWorkspace({
     }
   }
 
-  async function startWritingAction(action: WritingActionJob["action"]) {
+  async function startWritingAction(
+    action: Exclude<WritingActionJob["action"], "targeted_revision">,
+  ) {
     if (!work || !selected?.currentVersionId || !canUseWritingAction) {
       return;
     }
@@ -1951,6 +2227,204 @@ export function WritingWorkspace({
             )}
           </section>
 
+          <section className="panel writing-revisions" aria-labelledby="writing-revisions-title">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">低中风险问题</span>
+                <h2 id="writing-revisions-title">定向修订</h2>
+              </div>
+              <button
+                className="btn btn-primary btn-small"
+                disabled={!canStartRevision}
+                onClick={() => void startRevisionPlan()}
+                type="button"
+              >
+                {revisionBusy ? (
+                  <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                ) : (
+                  <WandSparkles size={14} aria-hidden="true" />
+                )}
+                开始定向修订
+              </button>
+            </div>
+            {revisionCandidates.length > 0 ? (
+              <div className="writing-revision-candidates" aria-label="可选择修订问题">
+                {revisionCandidates.map((finding) => (
+                  <label data-revision-finding={finding.code} key={finding.id}>
+                    <input
+                      checked={revisionFindingIds.includes(finding.id)}
+                      onChange={(event) =>
+                        setRevisionFindingIds((current) =>
+                          event.target.checked
+                            ? [...current, finding.id]
+                            : current.filter((id) => id !== finding.id),
+                        )
+                      }
+                      type="checkbox"
+                    />
+                    <span>
+                      <strong>{criticSeverityLabels[finding.severity]}</strong>
+                      {finding.recommendation}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p className="writing-generation-empty">
+                检查后，可在这里选择低中风险问题并限定正文修改块。
+              </p>
+            )}
+            {revisionPlans.length === 0 ? (
+              <p className="writing-generation-empty">还没有定向修订记录。</p>
+            ) : (
+              <div className="writing-revision-plans">
+                {revisionPlans.map((workspace) => {
+                  const latest = workspace.rounds.at(-1);
+                  const canAddRound =
+                    latest?.status === "rewrite_requested" &&
+                    workspace.rounds.length < workspace.plan.maxRounds &&
+                    workspace.plan.status === "active";
+                  return (
+                    <article className="writing-revision-plan" key={workspace.plan.id}>
+                      <div className="writing-revision-plan-head">
+                        <div>
+                          <strong>修订计划 · 最多 {workspace.plan.maxRounds} 轮</strong>
+                          <small>
+                            预算 {formatCost(workspace.plan.budget.maxCostCny)} · 已完成{" "}
+                            {workspace.rounds.length} 轮
+                          </small>
+                        </div>
+                        <span className={`badge revision-plan-${workspace.plan.status}`}>
+                          {workspace.plan.status === "completed"
+                            ? "已接受"
+                            : workspace.plan.status === "rejected"
+                              ? "已拒绝"
+                              : "进行中"}
+                        </span>
+                      </div>
+                      {workspace.rounds.map((round) => (
+                        <div
+                          className={`writing-revision-round revision-round-${round.status}`}
+                          key={round.id}
+                        >
+                          <div className="writing-revision-round-head">
+                            <strong>第 {round.roundNumber} 轮</strong>
+                            <span>{revisionRoundStatusLabels[round.status]}</span>
+                          </div>
+                          <p className="writing-revision-findings">
+                            {round.selectedFindings
+                              .map(
+                                (finding) =>
+                                  `${criticSeverityLabels[finding.severity]} · ${finding.recommendation}`,
+                              )
+                              .join("；")}
+                          </p>
+                          {round.diff ? (
+                            <div className="writing-revision-diff">
+                              {round.diff.changes.map((change) => (
+                                <div key={`${round.id}-${change.blockId}`}>
+                                  <span>{change.blockId}</span>
+                                  <div>
+                                    <small>修订前</small>
+                                    <pre>{change.before}</pre>
+                                  </div>
+                                  <div>
+                                    <small>修订后</small>
+                                    <pre>{change.after}</pre>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
+                          <p className="writing-revision-unresolved">
+                            {round.unresolvedFindingIds.length > 0
+                              ? `仍有 ${round.unresolvedFindingIds.length} 个问题未解决`
+                              : "本轮所选问题已不再命中原文证据"}
+                          </p>
+                          {round.status === "waiting_review" ? (
+                            <form
+                              className="writing-revision-feedback"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void submitRevisionFeedback(
+                                  workspace.plan.id,
+                                  round.id,
+                                  round.version,
+                                  new FormData(event.currentTarget),
+                                );
+                              }}
+                            >
+                              <label>
+                                <span>反馈</span>
+                                <select name="action" defaultValue="accept">
+                                  <option value="accept">接受修订</option>
+                                  <option value="rewrite">再改写</option>
+                                  <option value="reject">拒绝建议</option>
+                                </select>
+                              </label>
+                              <label>
+                                <span>原因</span>
+                                <textarea
+                                  name="reason"
+                                  placeholder="记录接受、拒绝或再改写的理由"
+                                  required
+                                />
+                              </label>
+                              <label className="writing-revision-opt-in">
+                                <input name="evaluationOptIn" type="checkbox" />
+                                <span>允许这条反馈用于后续质量评估</span>
+                              </label>
+                              <button
+                                className="btn btn-primary btn-small"
+                                disabled={revisionFeedbackBusyId === round.id}
+                                type="submit"
+                              >
+                                {revisionFeedbackBusyId === round.id ? (
+                                  <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                                ) : (
+                                  <Send size={13} aria-hidden="true" />
+                                )}
+                                记录反馈
+                              </button>
+                            </form>
+                          ) : null}
+                        </div>
+                      ))}
+                      {workspace.feedback.length > 0 ? (
+                        <div className="writing-revision-feedback-list">
+                          {workspace.feedback.map((event) => (
+                            <div key={event.id}>
+                              <strong>{revisionFeedbackLabels[event.action]}</strong>
+                              <p>{event.reason}</p>
+                              <small>
+                                {event.evaluationOptIn ? "已授权用于评估" : "仅保留在本作品"}
+                              </small>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                      {canAddRound ? (
+                        <button
+                          className="btn btn-ghost btn-small"
+                          disabled={revisionRoundBusy}
+                          onClick={() => void startNextRevisionRound(workspace)}
+                          type="button"
+                        >
+                          {revisionRoundBusy ? (
+                            <LoaderCircle className="spin" size={13} aria-hidden="true" />
+                          ) : (
+                            <RefreshCw size={13} aria-hidden="true" />
+                          )}
+                          开始下一轮
+                        </button>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+
           <section
             className="panel writing-facts"
             aria-labelledby="writing-facts-title"
@@ -2312,6 +2786,34 @@ function readinessLabel(readiness: ChapterReadiness): string {
     return "部分就绪";
   }
   return "未就绪";
+}
+
+function revisionBlocksForFindings(
+  findings: QualityWorkspace["findings"],
+): Array<{ id: string; start: number; end: number; label: string }> {
+  const ranges = findings
+    .flatMap((finding) => finding.evidence.slice(0, 1))
+    .map((evidence) => ({
+      start: evidence.startOffset,
+      end: evidence.endOffset,
+      label: evidence.locator,
+    }))
+    .sort((left, right) => left.start - right.start);
+  const merged: Array<{ start: number; end: number; label: string }> = [];
+  for (const range of ranges) {
+    const previous = merged.at(-1);
+    if (previous && range.start < previous.end) {
+      previous.end = Math.max(previous.end, range.end);
+      continue;
+    }
+    merged.push({ ...range });
+  }
+  return merged.map((range, index) => ({
+    id: `block-${index + 1}`,
+    start: range.start,
+    end: range.end,
+    label: range.label,
+  }));
 }
 
 function isActiveGeneration(status: GenerationJob["status"]): boolean {

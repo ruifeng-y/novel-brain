@@ -20,6 +20,7 @@ export const WRITING_ACTION_OPERATIONS = [
   "generate_title",
   "generate_summary",
   "selection_rewrite",
+  "targeted_revision",
 ] as const;
 export type WritingActionOperation = (typeof WRITING_ACTION_OPERATIONS)[number];
 export type GenerationOperation = "draft" | "verify" | "revise" | WritingActionOperation;
@@ -314,7 +315,7 @@ export class FakeAiProvider implements AiGateway {
     const model = input.model ?? "fake-deterministic";
     const fingerprint = stableHash(`${input.system ?? ""}\n${input.prompt}`);
     const text = input.operation
-      ? operationText(input.operation, fingerprint)
+      ? operationText(input.operation, fingerprint, input.prompt)
       : `fake:${fingerprint}:${input.prompt}`;
 
     return {
@@ -337,7 +338,11 @@ export class FakeAiProvider implements AiGateway {
   }
 }
 
-function operationText(operation: GenerationOperation, fingerprint: string): string {
+function operationText(
+  operation: GenerationOperation,
+  fingerprint: string,
+  prompt: string,
+): string {
   if (operation === "verify") {
     return `审校通过：章纲、已确认设定和必用事实一致。指纹 ${fingerprint}`;
   }
@@ -394,6 +399,22 @@ function operationText(operation: GenerationOperation, fingerprint: string): str
   }
   if (operation === "selection_rewrite") {
     return `改写片段 ${fingerprint}：他收紧呼吸，把疼痛压回袖中。`;
+  }
+  if (operation === "targeted_revision") {
+    const blockIds = [
+      ...new Set(
+        [...prompt.matchAll(/"blockId"\s*:\s*"([A-Za-z0-9_-]+)"/gu)].map((match) => match[1]!),
+      ),
+    ];
+    if (blockIds.length === 0) {
+      return `修订片段 ${fingerprint}：他收紧呼吸，把疼痛压回袖中。`;
+    }
+    return JSON.stringify({
+      replacements: blockIds.map((blockId) => ({
+        blockId,
+        text: `修订块 ${blockId}：他收紧呼吸，把疼痛压回袖中。`,
+      })),
+    });
   }
   return [
     `生成草稿 ${fingerprint}`,

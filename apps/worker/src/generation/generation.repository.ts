@@ -32,6 +32,9 @@ import {
   modelCalls,
   modelConfigs,
   promptVersions,
+  qualityFindings,
+  revisionPlans,
+  revisionRounds,
   refreshFactProposals,
   releaseBudgetInTransaction,
   reserveBudgetInTransaction,
@@ -54,11 +57,13 @@ import {
   outputRefsFromStepOutput,
   resolveRecoveryStep,
   spliceSelectedText,
+  applyTargetedRevision,
+  computeUnresolvedRevisionFindings,
   WRITING_ACTION_SPECS,
   type ChapterContextInput,
   type RecoveryStepStatus,
 } from "@novel-brain/core";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Pool } from "pg";
@@ -162,6 +167,19 @@ export interface StartedModelCall {
   reservationId: string;
   reservationKey: string;
   attempt: number;
+}
+
+export interface LoadedRevisionFinding {
+  findingId: string;
+  code: string;
+  severity: string;
+  qualityDimension: string;
+  recommendation: string;
+  evidence: Array<{
+    quote: string;
+    locator: string;
+    explanation: string;
+  }>;
 }
 
 export class WritingActionNotEditableError extends Error {
@@ -513,6 +531,47 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
             }
           : {}),
       };
+    });
+  }
+
+  async loadRevisionFindings(
+    payload: WorkerJobBase,
+    findingIds: string[],
+  ): Promise<LoadedRevisionFinding[]> {
+    return this.withTenant(payload.actorId, async (transaction) => {
+      const rows = await transaction
+        .select()
+        .from(qualityFindings)
+        .where(
+          and(
+            eq(qualityFindings.userId, payload.actorId),
+            eq(qualityFindings.workId, payload.workId),
+            eq(qualityFindings.branchId, payload.branchId),
+            eq(qualityFindings.chapterId, payload.chapterId),
+            inArray(qualityFindings.id, findingIds),
+          ),
+        );
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      return findingIds.flatMap((findingId) => {
+        const row = byId.get(findingId);
+        if (!row) {
+          return [];
+        }
+        return [
+          {
+            findingId: row.id,
+            code: row.code,
+            severity: row.severity,
+            qualityDimension: row.qualityDimension,
+            recommendation: row.recommendation,
+            evidence: row.evidence.map((evidence) => ({
+              quote: evidence.quote,
+              locator: evidence.locator,
+              explanation: evidence.explanation,
+            })),
+          },
+        ];
+      });
     });
   }
 
@@ -1296,6 +1355,19 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         throw new WritingActionSourceInvalidError();
       }
 
+      const [revisionRound] =
+        input.payload.action === "targeted_revision"
+          ? await transaction
+              .select()
+              .from(revisionRounds)
+              .where(eq(revisionRounds.jobId, input.payload.jobId))
+              .for("update")
+              .limit(1)
+          : [];
+      if (input.payload.action === "targeted_revision" && !revisionRound) {
+        throw new WritingActionSourceInvalidError();
+      }
+
       const spec = WRITING_ACTION_SPECS[input.payload.action];
       const generatedText = input.generatedText.trim();
       if (!generatedText) {
@@ -1311,6 +1383,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       let chapterVersionId: string | null = null;
       let finalContent: string | undefined;
       let affectedRange: Record<string, number> | null = null;
+      let revisionChanges: ReturnType<typeof applyTargetedRevision>["changes"] = [];
       let artifact: Record<string, unknown>;
 
       if (spec.chapterVersion) {
@@ -1323,6 +1396,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         const content = applied.content;
         finalContent = content;
         affectedRange = applied.affectedRange;
+        revisionChanges = applied.revisionChanges ?? [];
         if (!content.trim()) {
           throw new WritingActionSourceInvalidError();
         }
@@ -1352,6 +1426,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
             jobId: input.payload.jobId,
             sourceVersionId: input.payload.sourceVersionId,
             affectedRange,
+            ...(revisionRound ? { revisionRoundId: revisionRound.id } : {}),
           },
           actorId: input.payload.actorId,
           message: `写作动作：${writingActionLabel(input.payload.action)}`,
@@ -1382,7 +1457,45 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
             updatedAt: now,
           })
           .where(eq(chapters.id, source.chapter.id));
-        artifact = { contentHash, wordCount };
+        if (revisionRound) {
+          const unresolvedFindingIds = computeUnresolvedRevisionFindings(
+            revisionRound.selectedFindings,
+            content,
+          );
+          const diff = {
+            sourceVersionId: input.payload.sourceVersionId,
+            resultVersionId: chapterVersionId,
+            beforeHash: sha256(source.version.content),
+            afterHash: contentHash,
+            changes: revisionChanges,
+            unresolvedFindingIds,
+          };
+          const nowFinished = new Date();
+          await transaction
+            .update(revisionRounds)
+            .set({
+              status: "waiting_review",
+              resultVersionId: chapterVersionId,
+              versionNodeId,
+              diff,
+              unresolvedFindingIds,
+              version: revisionRound.version + 1,
+              updatedAt: nowFinished,
+              finishedAt: nowFinished,
+            })
+            .where(eq(revisionRounds.id, revisionRound.id));
+          await transaction
+            .update(revisionPlans)
+            .set({
+              status: "awaiting_feedback",
+              version: sql`${revisionPlans.version} + 1`,
+              updatedAt: nowFinished,
+            })
+            .where(eq(revisionPlans.id, revisionRound.planId));
+          artifact = { contentHash, wordCount, revisionRoundId: revisionRound.id, diff };
+        } else {
+          artifact = { contentHash, wordCount };
+        }
       } else {
         artifact = writingActionArtifact(input.payload, generatedText);
         await transaction.insert(versionNodes).values({
@@ -1475,6 +1588,33 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         progress: 100,
         checkpoint: completed.checkpoint,
       });
+    });
+  }
+
+  async markRevisionRoundFailed(payload: WriteActionJob, code: string): Promise<void> {
+    if (payload.action !== "targeted_revision") {
+      return;
+    }
+    await this.withTenant(payload.actorId, async (transaction) => {
+      const [round] = await transaction
+        .select()
+        .from(revisionRounds)
+        .where(eq(revisionRounds.jobId, payload.jobId))
+        .for("update")
+        .limit(1);
+      if (!round || ["waiting_review", "accepted", "rejected"].includes(round.status)) {
+        return;
+      }
+      const now = new Date();
+      await transaction
+        .update(revisionRounds)
+        .set({
+          status: code === "JOB_CANCELLED" ? "rejected" : "failed",
+          version: round.version + 1,
+          updatedAt: now,
+          finishedAt: now,
+        })
+        .where(eq(revisionRounds.id, round.id));
     });
   }
 
@@ -2103,7 +2243,19 @@ function applyWritingActionText(
   sourceContent: string,
   generatedText: string,
   input: WriteActionJob["input"],
-): { content: string; affectedRange: Record<string, number> | null } {
+): {
+  content: string;
+  affectedRange: Record<string, number> | null;
+  revisionChanges?: ReturnType<typeof applyTargetedRevision>["changes"];
+} {
+  if (action === "targeted_revision" && input.action === "targeted_revision") {
+    const applied = applyTargetedRevision(sourceContent, input.blocks, generatedText);
+    return {
+      content: applied.content,
+      affectedRange: null,
+      revisionChanges: applied.changes,
+    };
+  }
   if (action === "selection_rewrite" && input.action === "selection_rewrite") {
     return spliceSelectedText(sourceContent, input.selection, generatedText);
   }
@@ -2229,6 +2381,7 @@ function writingActionLabel(action: WriteActionJob["action"]): string {
     generate_title: "生成标题",
     generate_summary: "生成摘要",
     selection_rewrite: "选区重写",
+    targeted_revision: "定向修订",
   };
   return labels[action];
 }
