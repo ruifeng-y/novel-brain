@@ -13,6 +13,7 @@ import {
   chapterVersions,
   chapters,
   contextPackVersions,
+  costReservations,
   createDatabaseClient,
   createDatabasePool,
   entities,
@@ -21,8 +22,13 @@ import {
   jobEvents,
   jobSteps,
   jobs,
+  modelCalls,
   modelConfigs,
+  promptVersions,
   refreshFactProposals,
+  releaseBudgetInTransaction,
+  reserveBudgetInTransaction,
+  settleBudgetInTransaction,
   storyBibles,
   storyBibleVersions,
   storyBibleWorldRules,
@@ -34,6 +40,7 @@ import {
   type DatabaseClient,
   type FactProposalCandidate,
 } from "@novel-brain/db";
+import { M0_COST_PER_TOKEN_CNY, type GenerationResult } from "@novel-brain/ai";
 import type { ChapterContextInput, CompiledContextPack } from "@novel-brain/core";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
@@ -77,6 +84,15 @@ export interface WorkerContextSources {
     validToChapter?: number | null;
   }>;
   previousVersions: ChapterContextInput["previousVersions"];
+}
+
+export interface StartedModelCall {
+  runId: string;
+  promptVersionId: string;
+  modelCallId: string;
+  reservationId: string;
+  reservationKey: string;
+  attempt: number;
 }
 
 const factSourceChapters = alias(chapters, "fact_source_chapters");
@@ -507,7 +523,6 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           finishedAt: now,
         })
         .where(and(eq(jobSteps.jobId, input.payload.jobId), eq(jobSteps.stepKey, input.step)));
-      const nextCost = addCost(job.cost as Partial<GenerationCost>, input.cost);
       const checkpoint = { step: input.step, payload: input.checkpointPayload };
       const [updated] = await transaction
         .update(jobs)
@@ -515,7 +530,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           progress: input.progress,
           currentStep: input.step,
           checkpoint,
-          cost: nextCost,
+          cost: job.cost,
           updatedAt: now,
         })
         .where(eq(jobs.id, job.id))
@@ -541,7 +556,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       await appendEvent(transaction, updated, "job.progress", {
         step: input.step,
         progress: input.progress,
-        cost: nextCost,
+        cost: job.cost,
       });
       return updated;
     });
@@ -858,6 +873,373 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     });
   }
 
+  async beginModelCall(input: {
+    payload: GenerateChapterJob;
+    step: "draft" | "verify" | "revise";
+    attempt: number;
+    role: "writer" | "critic" | "reviser";
+    prompt: string;
+    system: string;
+    citations: unknown[];
+    estimatedTokens: number;
+    estimatedCostCny: number;
+    parameters: Record<string, unknown>;
+  }): Promise<StartedModelCall> {
+    return this.withTenant(input.payload.actorId, async (transaction) => {
+      const [job] = await transaction
+        .select()
+        .from(jobs)
+        .where(and(eq(jobs.id, input.payload.jobId), eq(jobs.userId, input.payload.actorId)))
+        .for("update")
+        .limit(1);
+      if (!job) {
+        throw new Error("Generation job no longer exists");
+      }
+      const [modelConfig] = await transaction
+        .select()
+        .from(modelConfigs)
+        .where(
+          and(
+            eq(modelConfigs.id, input.payload.modelConfigId),
+            eq(modelConfigs.userId, input.payload.actorId),
+          ),
+        )
+        .limit(1);
+      if (!modelConfig) {
+        throw new Error("Model configuration no longer exists");
+      }
+
+      const now = new Date();
+      const promptHash = sha256(input.prompt);
+      const systemHash = sha256(input.system);
+      const inputHash = sha256(`${input.system}\u0000${input.prompt}`);
+      const promptVersion = await upsertPromptVersion(transaction, {
+        payload: input.payload,
+        step: input.step,
+        role: input.role,
+        promptHash,
+        systemHash,
+        inputHash,
+        now,
+      });
+      const run = await upsertAgentRun(transaction, {
+        payload: input.payload,
+        step: input.step,
+        role: input.role,
+        promptVersionId: promptVersion.id,
+        modelConfigId: modelConfig.id,
+        provider: modelConfig.provider,
+        model: modelConfig.model,
+        inputHash,
+        inputSummary: {
+          promptBytes: Buffer.byteLength(input.prompt, "utf8"),
+          systemBytes: Buffer.byteLength(input.system, "utf8"),
+        },
+        citations: input.citations,
+        now,
+      });
+      const reservationKey = `generation:${input.step}:attempt:${input.attempt}`;
+      const reservation = await reserveBudgetInTransaction(transaction, {
+        userId: input.payload.actorId,
+        workId: input.payload.workId,
+        branchId: input.payload.branchId,
+        jobId: input.payload.jobId,
+        agentRunId: run.id,
+        idempotencyKey: reservationKey,
+        estimatedTokens: input.estimatedTokens,
+        estimatedCostCny: input.estimatedCostCny,
+        now,
+      });
+      const [modelCall] = await transaction
+        .insert(modelCalls)
+        .values({
+          id: uuidv7(),
+          userId: input.payload.actorId,
+          workId: input.payload.workId,
+          branchId: input.payload.branchId,
+          chapterId: input.payload.chapterId,
+          jobId: input.payload.jobId,
+          agentRunId: run.id,
+          promptVersionId: promptVersion.id,
+          costReservationId: reservation.reservation.id,
+          stepKey: input.step,
+          attempt: input.attempt,
+          status: "started",
+          provider: modelConfig.provider,
+          model: modelConfig.model,
+          parameters: input.parameters,
+          configHash: sha256(
+            `${modelConfig.provider}\u0000${modelConfig.model}\u0000${modelConfig.baseUrl}\u0000${modelConfig.version}`,
+          ),
+          inputHash,
+          inputSummary: {
+            promptBytes: Buffer.byteLength(input.prompt, "utf8"),
+            systemBytes: Buffer.byteLength(input.system, "utf8"),
+            estimatedTokens: input.estimatedTokens,
+          },
+          inputTokens: 0,
+          outputTokens: 0,
+          costCny: 0,
+          startedAt: now,
+        })
+        .returning({ id: modelCalls.id });
+      if (!modelCall) {
+        throw new Error("Model call insert returned no row");
+      }
+      return {
+        runId: run.id,
+        promptVersionId: promptVersion.id,
+        modelCallId: modelCall.id,
+        reservationId: reservation.reservation.id,
+        reservationKey,
+        attempt: input.attempt,
+      };
+    });
+  }
+
+  async completeModelCall(input: {
+    payload: GenerateChapterJob;
+    step: "draft" | "verify" | "revise";
+    call: StartedModelCall;
+    result: GenerationResult;
+  }): Promise<void> {
+    const inputTokens = input.result.usage.inputTokens;
+    const outputTokens = input.result.usage.outputTokens;
+    const totalTokens = inputTokens + outputTokens;
+    const costCny = calculateCost(totalTokens);
+    const outputHash = sha256(input.result.text);
+    await this.withTenant(input.payload.actorId, async (transaction) => {
+      const [job] = await transaction
+        .select()
+        .from(jobs)
+        .where(and(eq(jobs.id, input.payload.jobId), eq(jobs.userId, input.payload.actorId)))
+        .for("update")
+        .limit(1);
+      if (!job) {
+        throw new Error("Generation job no longer exists");
+      }
+      await settleBudgetInTransaction(transaction, {
+        userId: input.payload.actorId,
+        jobId: input.payload.jobId,
+        idempotencyKey: input.call.reservationKey,
+        actualTokens: totalTokens,
+        actualCostCny: costCny,
+      });
+      const now = new Date();
+      await transaction
+        .update(modelCalls)
+        .set({
+          status: "succeeded",
+          outputHash,
+          outputSummary: {
+            outputBytes: Buffer.byteLength(input.result.text, "utf8"),
+            finishReason: input.result.finishReason,
+          },
+          inputTokens,
+          outputTokens,
+          costCny,
+          providerRequestId: input.result.providerRequestId ?? null,
+          finishedAt: now,
+        })
+        .where(eq(modelCalls.id, input.call.modelCallId));
+      await transaction
+        .update(agentRuns)
+        .set({
+          status: "succeeded",
+          outputHash,
+          outputSummary: {
+            outputBytes: Buffer.byteLength(input.result.text, "utf8"),
+          },
+          usage: { inputTokens, outputTokens, costCny },
+          failureClass: null,
+          escalationReason: null,
+          finishedAt: now,
+        })
+        .where(eq(agentRuns.id, input.call.runId));
+      await transaction
+        .insert(usageRecords)
+        .values({
+          id: uuidv7(),
+          userId: input.payload.actorId,
+          workId: input.payload.workId,
+          jobId: input.payload.jobId,
+          stepKey: input.step,
+          model: input.result.model,
+          promptTokens: inputTokens,
+          completionTokens: outputTokens,
+          costCny,
+        })
+        .onConflictDoNothing();
+    });
+  }
+
+  async failModelCall(input: {
+    payload: GenerateChapterJob;
+    step: "draft" | "verify" | "revise";
+    call: StartedModelCall;
+    failureClass: string;
+    errorCode: string;
+    message: string;
+    escalationReason: string;
+  }): Promise<void> {
+    await this.withTenant(input.payload.actorId, async (transaction) => {
+      await releaseBudgetInTransaction(transaction, {
+        userId: input.payload.actorId,
+        jobId: input.payload.jobId,
+        idempotencyKey: input.call.reservationKey,
+        failureClass: input.failureClass as
+          | "provider"
+          | "timeout"
+          | "rate_limit"
+          | "schema"
+          | "policy"
+          | "budget"
+          | "cancelled"
+          | "unknown",
+      });
+      const now = new Date();
+      await transaction
+        .update(modelCalls)
+        .set({
+          status: "failed",
+          failureClass: input.failureClass,
+          errorCode: input.errorCode,
+          escalationReason: input.escalationReason,
+          finishedAt: now,
+        })
+        .where(eq(modelCalls.id, input.call.modelCallId));
+      await transaction
+        .update(agentRuns)
+        .set({
+          status: "failed",
+          failureClass: input.failureClass,
+          escalationReason: input.escalationReason,
+          finishedAt: now,
+        })
+        .where(eq(agentRuns.id, input.call.runId));
+    });
+  }
+
+  async recordBudgetFailure(input: {
+    payload: GenerateChapterJob;
+    step: "draft" | "verify" | "revise";
+    attempt: number;
+    role: "writer" | "critic" | "reviser";
+    prompt: string;
+    system: string;
+    estimatedTokens: number;
+    estimatedCostCny: number;
+    errorCode: string;
+    message: string;
+    escalationReason: string;
+  }): Promise<void> {
+    await this.withTenant(input.payload.actorId, async (transaction) => {
+      const now = new Date();
+      const promptHash = sha256(input.prompt);
+      const systemHash = sha256(input.system);
+      const inputHash = sha256(`${input.system}\u0000${input.prompt}`);
+      const promptVersion = await upsertPromptVersion(transaction, {
+        payload: input.payload,
+        step: input.step,
+        role: input.role,
+        promptHash,
+        systemHash,
+        inputHash,
+        now,
+      });
+      const [modelConfig] = await transaction
+        .select()
+        .from(modelConfigs)
+        .where(
+          and(
+            eq(modelConfigs.id, input.payload.modelConfigId),
+            eq(modelConfigs.userId, input.payload.actorId),
+          ),
+        )
+        .limit(1);
+      const run = await upsertAgentRun(transaction, {
+        payload: input.payload,
+        step: input.step,
+        role: input.role,
+        promptVersionId: promptVersion.id,
+        modelConfigId: modelConfig?.id ?? null,
+        provider: modelConfig?.provider ?? "unknown",
+        model: modelConfig?.model ?? "unknown",
+        inputHash,
+        inputSummary: {
+          promptBytes: Buffer.byteLength(input.prompt, "utf8"),
+          systemBytes: Buffer.byteLength(input.system, "utf8"),
+        },
+        citations: [],
+        now,
+      });
+      const [reservation] = await transaction
+        .insert(costReservations)
+        .values({
+          id: uuidv7(),
+          userId: input.payload.actorId,
+          workId: input.payload.workId,
+          branchId: input.payload.branchId,
+          jobId: input.payload.jobId,
+          agentRunId: run.id,
+          idempotencyKey: `generation:${input.step}:attempt:${input.attempt}`,
+          status: "released",
+          reservedTokens: input.estimatedTokens,
+          reservedCostCny: input.estimatedCostCny,
+          settledTokens: 0,
+          settledCostCny: 0,
+          failureClass: "budget",
+          createdAt: now,
+        })
+        .returning({ id: costReservations.id });
+      if (!reservation) {
+        throw new Error("Budget failure reservation insert returned no row");
+      }
+      await transaction.insert(modelCalls).values({
+        id: uuidv7(),
+        userId: input.payload.actorId,
+        workId: input.payload.workId,
+        branchId: input.payload.branchId,
+        chapterId: input.payload.chapterId,
+        jobId: input.payload.jobId,
+        agentRunId: run.id,
+        promptVersionId: promptVersion.id,
+        costReservationId: reservation.id,
+        stepKey: input.step,
+        attempt: input.attempt,
+        status: "failed",
+        provider: modelConfig?.provider ?? "unknown",
+        model: modelConfig?.model ?? "unknown",
+        parameters: { operation: input.step },
+        configHash: sha256(
+          `${modelConfig?.provider ?? "unknown"}\u0000${modelConfig?.model ?? "unknown"}\u0000${modelConfig?.baseUrl ?? ""}\u0000${modelConfig?.version ?? 0}`,
+        ),
+        inputHash,
+        inputSummary: {
+          promptBytes: Buffer.byteLength(input.prompt, "utf8"),
+          systemBytes: Buffer.byteLength(input.system, "utf8"),
+        },
+        inputTokens: 0,
+        outputTokens: 0,
+        costCny: 0,
+        failureClass: "budget",
+        errorCode: input.errorCode,
+        escalationReason: input.escalationReason,
+        startedAt: now,
+        finishedAt: now,
+      });
+      await transaction
+        .update(agentRuns)
+        .set({
+          status: "failed",
+          failureClass: "budget",
+          escalationReason: input.escalationReason,
+          finishedAt: now,
+        })
+        .where(eq(agentRuns.id, run.id));
+    });
+  }
+
   async recordUsage(input: {
     payload: GenerateChapterJob;
     step: "draft" | "verify" | "revise";
@@ -1041,17 +1423,154 @@ async function appendEvent(
   });
 }
 
-function addCost(current: Partial<GenerationCost>, delta: GenerationCost): GenerationCost {
-  const inputTokens = Number(current.inputTokens ?? 0) + delta.inputTokens;
-  const outputTokens = Number(current.outputTokens ?? 0) + delta.outputTokens;
-  return {
-    inputTokens,
-    outputTokens,
-    totalTokens: inputTokens + outputTokens,
-    costCny: Number((Number(current.costCny ?? 0) + delta.costCny).toFixed(8)),
-  };
-}
-
 function countWords(content: string): number {
   return Array.from(content.replace(/\s/gu, "")).length;
+}
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function calculateCost(tokens: number): number {
+  return Number((tokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
+}
+
+async function upsertPromptVersion(
+  transaction: DatabaseTransaction,
+  input: {
+    payload: GenerateChapterJob;
+    step: string;
+    role: "writer" | "critic" | "reviser";
+    promptHash: string;
+    systemHash: string;
+    inputHash: string;
+    now: Date;
+  },
+): Promise<{ id: string }> {
+  const key = `generation.${input.step}`;
+  const [existing] = await transaction
+    .select({ id: promptVersions.id })
+    .from(promptVersions)
+    .where(
+      and(
+        eq(promptVersions.jobId, input.payload.jobId),
+        eq(promptVersions.stepKey, input.step),
+        eq(promptVersions.key, key),
+        eq(promptVersions.promptHash, input.promptHash),
+      ),
+    )
+    .limit(1);
+  if (existing) {
+    return existing;
+  }
+  const [latest] = await transaction
+    .select({ version: sql<number>`coalesce(max(${promptVersions.version}), 0)` })
+    .from(promptVersions)
+    .where(
+      and(
+        eq(promptVersions.jobId, input.payload.jobId),
+        eq(promptVersions.stepKey, input.step),
+        eq(promptVersions.key, key),
+      ),
+    );
+  const [created] = await transaction
+    .insert(promptVersions)
+    .values({
+      id: uuidv7(),
+      jobId: input.payload.jobId,
+      workId: input.payload.workId,
+      branchId: input.payload.branchId,
+      userId: input.payload.actorId,
+      stepKey: input.step,
+      key,
+      version: Number(latest?.version ?? 0) + 1,
+      role: input.role,
+      promptHash: input.promptHash,
+      systemHash: input.systemHash,
+      inputHash: input.inputHash,
+      createdBy: input.payload.actorId,
+      createdAt: input.now,
+    })
+    .returning({ id: promptVersions.id });
+  if (!created) {
+    throw new Error("Prompt version insert returned no row");
+  }
+  return created;
+}
+
+async function upsertAgentRun(
+  transaction: DatabaseTransaction,
+  input: {
+    payload: GenerateChapterJob;
+    step: string;
+    role: "writer" | "critic" | "reviser";
+    promptVersionId: string;
+    modelConfigId: string | null;
+    provider: string;
+    model: string;
+    inputHash: string;
+    inputSummary: Record<string, unknown>;
+    citations: unknown[];
+    now: Date;
+  },
+): Promise<{ id: string }> {
+  const [existing] = await transaction
+    .select({ id: agentRuns.id })
+    .from(agentRuns)
+    .where(and(eq(agentRuns.jobId, input.payload.jobId), eq(agentRuns.stepKey, input.step)))
+    .limit(1);
+  if (existing) {
+    await transaction
+      .update(agentRuns)
+      .set({
+        chapterId: input.payload.chapterId,
+        promptVersionId: input.promptVersionId,
+        modelConfigId: input.modelConfigId,
+        role: input.role,
+        status: "running",
+        provider: input.provider,
+        model: input.model,
+        inputHash: input.inputHash,
+        inputSummary: input.inputSummary,
+        citations: input.citations,
+        output: "",
+        outputHash: null,
+        outputSummary: {},
+        usage: {},
+        failureClass: null,
+        escalationReason: null,
+        startedAt: input.now,
+        finishedAt: null,
+      })
+      .where(eq(agentRuns.id, existing.id));
+    return existing;
+  }
+  const [created] = await transaction
+    .insert(agentRuns)
+    .values({
+      id: uuidv7(),
+      jobId: input.payload.jobId,
+      workId: input.payload.workId,
+      branchId: input.payload.branchId,
+      userId: input.payload.actorId,
+      chapterId: input.payload.chapterId,
+      promptVersionId: input.promptVersionId,
+      modelConfigId: input.modelConfigId,
+      stepKey: input.step,
+      role: input.role,
+      status: "running",
+      provider: input.provider,
+      model: input.model,
+      inputHash: input.inputHash,
+      inputSummary: input.inputSummary,
+      output: "",
+      citations: input.citations,
+      usage: {},
+      startedAt: input.now,
+    })
+    .returning({ id: agentRuns.id });
+  if (!created) {
+    throw new Error("Agent run insert returned no row");
+  }
+  return created;
 }

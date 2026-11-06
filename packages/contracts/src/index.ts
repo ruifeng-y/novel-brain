@@ -14,6 +14,8 @@ export const ERROR_CODES = [
   "MODEL_CONNECTION_FAILED",
   "MODEL_RATE_LIMITED",
   "MODEL_TIMEOUT",
+  "MODEL_POLICY_BLOCKED",
+  "MODEL_RESPONSE_INVALID",
   "MODEL_PROVIDER_ERROR",
   "BIBLE_NOT_READY",
   "BIBLE_LOCKED",
@@ -3349,6 +3351,217 @@ export type AgentToolCallRequest = z.infer<typeof agentToolCallRequestSchema>;
 export const agentGrantResponseSchema = apiEnvelopeSchema(agentGrantSchema);
 export const agentGrantListResponseSchema = apiEnvelopeSchema(z.array(agentGrantSchema));
 export const agentGrantRevokeResponseSchema = agentGrantResponseSchema;
+
+export const agentFailureClassSchema = z.enum([
+  "provider",
+  "timeout",
+  "rate_limit",
+  "schema",
+  "policy",
+  "budget",
+  "cancelled",
+  "unknown",
+]);
+export type AgentFailureClass = z.infer<typeof agentFailureClassSchema>;
+
+export const agentRunStatusSchema = z.enum(["running", "succeeded", "failed"]);
+export type AgentRunStatus = z.infer<typeof agentRunStatusSchema>;
+
+const sha256HashSchema = z.string().regex(/^[a-f0-9]{64}$/i, "Expected a SHA-256 hash");
+
+export const promptVersionSchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    stepKey: z.string().min(1).max(100),
+    key: z.string().min(1).max(100),
+    version: z.number().int().positive(),
+    role: agentRoleSchema,
+    promptHash: sha256HashSchema,
+    systemHash: sha256HashSchema,
+    inputHash: sha256HashSchema,
+    contextPackId: uuidV7Schema.nullable(),
+    compilerVersion: z.string().min(1).max(100).nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type PromptVersion = z.infer<typeof promptVersionSchema>;
+
+export const costReservationStatusSchema = z.enum(["reserved", "settled", "released"]);
+export type CostReservationStatus = z.infer<typeof costReservationStatusSchema>;
+
+export const costReservationSchema = z
+  .object({
+    id: uuidV7Schema,
+    status: costReservationStatusSchema,
+    reservedTokens: z.number().int().nonnegative(),
+    reservedCostCny: z.number().nonnegative(),
+    settledTokens: z.number().int().nonnegative(),
+    settledCostCny: z.number().nonnegative(),
+    failureClass: agentFailureClassSchema.nullable(),
+    createdAt: z.string().datetime(),
+    settledAt: z.string().datetime().nullable(),
+  })
+  .strict()
+  .superRefine((reservation, context) => {
+    if (
+      reservation.status !== "settled" &&
+      (reservation.settledTokens !== 0 || reservation.settledCostCny !== 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["settledTokens"],
+        message: "Unsettled reservations cannot carry settled usage",
+      });
+    }
+    if (reservation.status === "settled" && !reservation.settledAt) {
+      context.addIssue({
+        code: "custom",
+        path: ["settledAt"],
+        message: "Settled reservations require settlement time",
+      });
+    }
+    if (reservation.status === "reserved" && reservation.settledAt) {
+      context.addIssue({
+        code: "custom",
+        path: ["settledAt"],
+        message: "Reserved reservations cannot be settled",
+      });
+    }
+  });
+export type CostReservation = z.infer<typeof costReservationSchema>;
+
+export const modelCallStatusSchema = z.enum(["started", "succeeded", "failed"]);
+export type ModelCallStatus = z.infer<typeof modelCallStatusSchema>;
+
+export const modelCallSchema = z
+  .object({
+    id: uuidV7Schema,
+    agentRunId: uuidV7Schema,
+    promptVersionId: uuidV7Schema,
+    costReservationId: uuidV7Schema,
+    stepKey: z.string().min(1).max(100),
+    attempt: z.number().int().positive(),
+    status: modelCallStatusSchema,
+    provider: z.string().min(1).max(100),
+    model: z.string().min(1).max(200),
+    parameters: z.record(z.string(), z.unknown()),
+    configHash: sha256HashSchema,
+    inputHash: sha256HashSchema,
+    outputHash: sha256HashSchema.nullable(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    costCny: z.number().nonnegative(),
+    failureClass: agentFailureClassSchema.nullable(),
+    errorCode: errorCodeSchema.nullable(),
+    escalationReason: z.string().min(1).max(500).nullable(),
+    providerRequestId: z.string().min(1).max(200).nullable(),
+    startedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict()
+  .superRefine((call, context) => {
+    if (call.status === "failed" && !call.failureClass) {
+      context.addIssue({
+        code: "custom",
+        path: ["failureClass"],
+        message: "Failed model calls require a failure class",
+      });
+    }
+    if (call.status !== "failed" && call.failureClass) {
+      context.addIssue({
+        code: "custom",
+        path: ["failureClass"],
+        message: "Only failed model calls may carry a failure class",
+      });
+    }
+    if (call.status === "succeeded" && !call.outputHash) {
+      context.addIssue({
+        code: "custom",
+        path: ["outputHash"],
+        message: "Succeeded model calls require an output hash",
+      });
+    }
+  });
+export type ModelCall = z.infer<typeof modelCallSchema>;
+
+export const agentToolCallTraceSchema = z
+  .object({
+    id: uuidV7Schema,
+    toolName: z.string().min(3).max(100),
+    sideEffect: toolSideEffectLevelSchema.nullable(),
+    decision: z.enum(["allow", "deny"]),
+    status: z.enum(["authorized", "denied", "succeeded", "failed"]),
+    reason: z.string().min(1).max(200),
+    inputHash: sha256HashSchema,
+    inputSummary: z.record(z.string(), z.unknown()),
+    outputSummary: z.record(z.string(), z.unknown()).nullable(),
+    estimatedCostCny: z.number().nonnegative(),
+    estimatedTokens: z.number().int().nonnegative(),
+    createdAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type AgentToolCallTrace = z.infer<typeof agentToolCallTraceSchema>;
+
+export const agentRunTraceRunSchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    stepKey: z.string().min(1).max(100),
+    role: agentRoleSchema,
+    status: agentRunStatusSchema,
+    failureClass: agentFailureClassSchema.nullable(),
+    escalationReason: z.string().min(1).max(500).nullable(),
+    inputHash: sha256HashSchema,
+    outputHash: sha256HashSchema.nullable(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    costCny: z.number().nonnegative(),
+    startedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type AgentRunTraceRun = z.infer<typeof agentRunTraceRunSchema>;
+
+export const agentRunReplaySchema = z
+  .object({
+    modelConfigId: uuidV7Schema.nullable(),
+    provider: z.string().min(1).max(100),
+    model: z.string().min(1).max(200),
+    parameters: z.record(z.string(), z.unknown()),
+    configHash: sha256HashSchema,
+    promptVersion: z
+      .object({
+        id: uuidV7Schema,
+        key: z.string().min(1).max(100),
+        version: z.number().int().positive(),
+        promptHash: sha256HashSchema,
+        systemHash: sha256HashSchema,
+        inputHash: sha256HashSchema,
+      })
+      .strict(),
+  })
+  .strict();
+export type AgentRunReplay = z.infer<typeof agentRunReplaySchema>;
+
+export const agentRunTraceSchema = z
+  .object({
+    run: agentRunTraceRunSchema,
+    replay: agentRunReplaySchema.nullable(),
+    promptVersions: z.array(promptVersionSchema),
+    modelCalls: z.array(modelCallSchema),
+    toolCalls: z.array(agentToolCallTraceSchema),
+    costReservations: z.array(costReservationSchema),
+  })
+  .strict();
+export type AgentRunTrace = z.infer<typeof agentRunTraceSchema>;
+
+export const agentRunTraceListResponseSchema = apiEnvelopeSchema(z.array(agentRunTraceSchema));
+export const agentRunTraceResponseSchema = apiEnvelopeSchema(agentRunTraceSchema);
 
 export const ORCHESTRATOR_CONTRACT_VERSION = 1 as const;
 export const ORCHESTRATOR_SCHEMA_VERSION = ORCHESTRATOR_CONTRACT_VERSION;

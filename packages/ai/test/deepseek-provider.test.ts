@@ -46,6 +46,7 @@ describe("DeepSeek provider", () => {
       model: "deepseek-chat",
       finishReason: "stop",
       usage: { inputTokens: 21, outputTokens: 8 },
+      providerRequestId: "deepseek-response-1",
     });
   });
 

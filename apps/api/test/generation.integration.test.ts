@@ -3,20 +3,32 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  agentGrantResponseSchema,
+  agentRunTraceListResponseSchema,
+  agentRunTraceResponseSchema,
   contextPackPreviewResponseSchema,
   generationJobListResponseSchema,
   generationJobResponseSchema,
   generateChapterJobSchema,
 } from "@novel-brain/contracts";
-import { createDatabasePool, runMigrations } from "@novel-brain/db";
-import { FakeAiProvider } from "@novel-brain/ai";
+import {
+  AgentGrantStore,
+  BudgetReservationError,
+  CostLedger,
+  CostSettlementConflictError,
+  createDatabasePool,
+  runMigrations,
+} from "@novel-brain/db";
+import { AiProviderError, FakeAiProvider, type AiGateway } from "@novel-brain/ai";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
+import { uuidv7 } from "uuidv7";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppModule } from "../src/app.module";
 import { MAIL_GATEWAY, type MailGateway } from "../src/auth/mail.gateway";
 import { ApiExceptionFilter } from "../src/common/api-exception.filter";
+import { AgentGrantGuard } from "../../worker/src/agent-runtime/agent-grant.guard";
 import { GenerationJobProcessor } from "../../worker/src/generation/generation.processor";
 import { WorkerGenerationRepository } from "../../worker/src/generation/generation.repository";
 import { ByokAiGatewayFactory } from "../../worker/src/generation/model-provider.factory";
@@ -71,7 +83,7 @@ describe("generation HTTP integration", () => {
 
   beforeEach(async () => {
     mail.codes.clear();
-    await databasePool.query("TRUNCATE TABLE users CASCADE");
+    await resetDatabase(databasePool);
     await redis.flushdb();
   });
 
@@ -213,6 +225,11 @@ describe("generation HTTP integration", () => {
       new WorkerGenerationRepository(),
       new FakeAiProvider(),
     );
+    const logLines: string[] = [];
+    processor.setTraceLogger({
+      info: (payload) => logLines.push(JSON.stringify(payload)),
+      warn: (payload) => logLines.push(JSON.stringify(payload)),
+    });
     await processor.process(workerPayload);
 
     const completed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
@@ -256,6 +273,249 @@ describe("generation HTTP integration", () => {
     expect(events.headers["content-type"]).toContain("text/event-stream");
     expect(events.text).toContain("job.step.succeeded");
     expect(events.text).toContain("job.waiting_review");
+
+    const tracesResponse = await owner.get(`${branchPath}/agent-runs?jobId=${job.id}`).expect(200);
+    const traces = agentRunTraceListResponseSchema.parse(tracesResponse.body).data;
+    expect(traces.map((trace) => trace.run.stepKey)).toEqual(["draft", "verify", "revise"]);
+    expect(traces.every((trace) => trace.run.status === "succeeded")).toBe(true);
+    expect(traces.every((trace) => trace.modelCalls.length === 1)).toBe(true);
+    expect(traces.every((trace) => trace.costReservations[0]?.status === "settled")).toBe(true);
+    expect(traces.map((trace) => trace.replay?.provider)).toEqual([
+      "deepseek",
+      "deepseek",
+      "deepseek",
+    ]);
+    expect(traces.every((trace) => trace.replay?.model === "deepseek-chat")).toBe(true);
+    expect(traces.every((trace) => trace.replay?.parameters.maxTokens === 2_000)).toBe(true);
+    expect(traces.every((trace) => trace.promptVersions[0]?.promptHash.length === 64)).toBe(true);
+
+    const traceJson = JSON.stringify(traces);
+    expect(traceJson).not.toContain("sk-fake-generation-1234");
+    expect(traceJson).not.toContain("沈砚把断臂藏进衣袍");
+    expect(traceJson).not.toContain('"prompt":');
+    expect(traceJson).not.toContain('"output":');
+
+    const detailed = await owner.get(`${branchPath}/agent-runs/${traces[0]?.run.id}`).expect(200);
+    expect(agentRunTraceResponseSchema.parse(detailed.body).data).toEqual(traces[0]);
+
+    const byChapter = await owner
+      .get(`${branchPath}/agent-runs?chapterId=${chapter.id}`)
+      .expect(200);
+    expect(agentRunTraceListResponseSchema.parse(byChapter.body).data).toEqual(traces);
+
+    const other = await createAuthenticatedAgent("generation-trace-other@example.com");
+    expect(
+      (await other.get(`${branchPath}/agent-runs?jobId=${job.id}`).expect(403)).body.error.code,
+    ).toBe("FORBIDDEN_TENANT_ACCESS");
+
+    const grantResponse = await owner
+      .post(`${branchPath}/agent-grants`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        taskId: uuidv7(),
+        role: "writer",
+        tools: ["context.read_pack"],
+        resourceScope: { chapterIds: [chapter.id], settingIds: [], includeCanon: false },
+        budget: { maxCostCny: 0.5, maxTokens: 1_000, maxCalls: 2 },
+        maxImpact: { maxSideEffect: "S0", maxAffectedResources: 1 },
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      })
+      .expect(201);
+    const grant = agentGrantResponseSchema.parse(grantResponse.body).data;
+    const grantStore = new AgentGrantStore(databaseUrl);
+    try {
+      await new AgentGrantGuard(grantStore).authorizeToolCall({
+        userId: await userIdFor(owner),
+        workId: work.id,
+        branchId: work.mainBranch.id,
+        taskId: grant.taskId,
+        grantId: grant.id,
+        agentRunId: traces[0]?.run.id,
+        toolName: "context.read_pack",
+        resource: { type: "chapter", id: chapter.id },
+        input: { taskId: grant.taskId },
+        affectedResources: 1,
+        estimatedCostCny: 0.01,
+        estimatedTokens: 100,
+        approval: null,
+        audit: {
+          requestId: "req_trace_tool_call",
+          ip: "127.0.0.1",
+          userAgent: "integration-test",
+        },
+      });
+    } finally {
+      await grantStore.close();
+    }
+    const tracedTool = agentRunTraceListResponseSchema.parse(
+      (await owner.get(`${branchPath}/agent-runs?jobId=${job.id}`).expect(200)).body,
+    ).data;
+    expect(tracedTool[0]?.toolCalls).toMatchObject([
+      {
+        toolName: "context.read_pack",
+        decision: "allow",
+        status: "authorized",
+      },
+    ]);
+
+    expect(logLines.join("\n")).not.toContain("sk-fake-generation-1234");
+    expect(logLines.join("\n")).not.toContain("沈砚");
+    expect(logLines.join("\n")).not.toContain("完整上下文");
+    expect(logLines.join("\n")).not.toContain("本章参考");
+  });
+
+  it("serializes concurrent budget reservations and settles each reservation once", async () => {
+    const owner = await createAuthenticatedAgent("generation-cost-race@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-cost-race",
+      { maxCostCny: 1, maxTokens: 30_000, maxRevisionRounds: 2 },
+    );
+    const ledger = new CostLedger(databaseUrl);
+    const userId = await userIdFor(owner);
+    try {
+      const results = await Promise.allSettled([
+        ledger.reserve({
+          userId,
+          workId: work.id,
+          branchId: work.mainBranch.id,
+          jobId: job.id,
+          idempotencyKey: "race-a",
+          estimatedTokens: 1_000,
+          estimatedCostCny: 0.6,
+        }),
+        ledger.reserve({
+          userId,
+          workId: work.id,
+          branchId: work.mainBranch.id,
+          jobId: job.id,
+          idempotencyKey: "race-b",
+          estimatedTokens: 1_000,
+          estimatedCostCny: 0.6,
+        }),
+      ]);
+      const fulfilled = results.filter(
+        (result): result is PromiseFulfilledResult<Awaited<ReturnType<CostLedger["reserve"]>>> =>
+          result.status === "fulfilled",
+      );
+      const rejected = results.filter(
+        (result): result is PromiseRejectedResult => result.status === "rejected",
+      );
+      expect(fulfilled).toHaveLength(1);
+      expect(rejected).toHaveLength(1);
+      expect(rejected[0]?.reason).toBeInstanceOf(BudgetReservationError);
+
+      const winner = fulfilled[0]!.value.reservation;
+      const settled = await ledger.settle({
+        userId,
+        jobId: job.id,
+        idempotencyKey: winner.idempotencyKey,
+        actualTokens: 1_000,
+        actualCostCny: 0.4,
+      });
+      expect(settled).toMatchObject({
+        id: winner.id,
+        status: "settled",
+        settledTokens: 1_000,
+        settledCostCny: 0.4,
+      });
+      const replay = await ledger.settle({
+        userId,
+        jobId: job.id,
+        idempotencyKey: winner.idempotencyKey,
+        actualTokens: 1_000,
+        actualCostCny: 0.4,
+      });
+      expect(replay).toEqual(settled);
+
+      await expect(
+        ledger.settle({
+          userId,
+          jobId: job.id,
+          idempotencyKey: winner.idempotencyKey,
+          actualTokens: 2_000,
+          actualCostCny: 0.8,
+        }),
+      ).rejects.toBeInstanceOf(CostSettlementConflictError);
+
+      const stored = await databasePool.query<{ total: string; cost: string }>(
+        "SELECT cost->>'totalTokens' AS total, cost->>'costCny' AS cost FROM jobs WHERE id = $1",
+        [job.id],
+      );
+      expect(stored.rows[0]).toEqual({ total: "1000", cost: "0.4" });
+      const reservationCount = await databasePool.query<{ count: string }>(
+        "SELECT count(*)::text AS count FROM cost_reservations WHERE job_id = $1",
+        [job.id],
+      );
+      expect(reservationCount.rows[0]?.count).toBe("1");
+    } finally {
+      await ledger.close();
+    }
+  });
+
+  it("classifies provider rate limits with trace evidence and an author escalation reason", async () => {
+    const owner = await createAuthenticatedAgent("generation-rate-limit@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-rate-limit",
+    );
+    const provider: AiGateway = {
+      async generateText() {
+        throw new AiProviderError("rate limited", { failureClass: "rate_limit" });
+      },
+      async *streamText() {
+        yield { text: "", done: true };
+      },
+    };
+    await new GenerationJobProcessor(new WorkerGenerationRepository(), provider).process(
+      await readWorkerPayload(job.id),
+    );
+
+    const failed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    expect(generationJobResponseSchema.parse(failed.body).data).toMatchObject({
+      status: "failed",
+      error: { code: "MODEL_RATE_LIMITED" },
+    });
+    const traces = agentRunTraceListResponseSchema.parse(
+      (await owner.get(`${branchPath}/agent-runs?jobId=${job.id}`).expect(200)).body,
+    ).data;
+    expect(traces).toHaveLength(1);
+    expect(traces[0]).toMatchObject({
+      run: {
+        status: "failed",
+        failureClass: "rate_limit",
+        escalationReason: "模型服务限流，请稍后从断点重试",
+      },
+      modelCalls: [
+        {
+          status: "failed",
+          failureClass: "rate_limit",
+          errorCode: "MODEL_RATE_LIMITED",
+        },
+      ],
+      costReservations: [{ status: "released", failureClass: "rate_limit" }],
+    });
   });
 
   it("uses the job's decrypted BYOK configuration for every provider call", async () => {
@@ -629,10 +889,15 @@ describe("generation HTTP integration", () => {
       new FakeAiProvider({ failOperations: ["revise"] }),
     ).process(workerPayload);
 
-    const before = await databasePool.query<{ usage_count: string; trace_count: string }>(
+    const before = await databasePool.query<{
+      usage_count: string;
+      trace_count: string;
+      revise_calls: string;
+    }>(
       `SELECT
          (SELECT count(*)::text FROM usage_records WHERE job_id = $1) AS usage_count,
-         (SELECT count(*)::text FROM agent_runs WHERE job_id = $1) AS trace_count`,
+         (SELECT count(*)::text FROM agent_runs WHERE job_id = $1) AS trace_count,
+         (SELECT count(*)::text FROM model_calls WHERE job_id = $1 AND step_key = 'revise') AS revise_calls`,
       [job.id],
     );
     await owner
@@ -656,14 +921,20 @@ describe("generation HTTP integration", () => {
     });
 
     expect(generateText.mock.calls.map(([input]) => input.operation)).toEqual(["revise"]);
-    const after = await databasePool.query<{ usage_count: string; trace_count: string }>(
+    const after = await databasePool.query<{
+      usage_count: string;
+      trace_count: string;
+      revise_calls: string;
+    }>(
       `SELECT
          (SELECT count(*)::text FROM usage_records WHERE job_id = $1) AS usage_count,
-         (SELECT count(*)::text FROM agent_runs WHERE job_id = $1) AS trace_count`,
+         (SELECT count(*)::text FROM agent_runs WHERE job_id = $1) AS trace_count,
+         (SELECT count(*)::text FROM model_calls WHERE job_id = $1 AND step_key = 'revise') AS revise_calls`,
       [job.id],
     );
     expect(Number(after.rows[0]?.usage_count)).toBe(Number(before.rows[0]?.usage_count) + 1);
-    expect(Number(after.rows[0]?.trace_count)).toBe(Number(before.rows[0]?.trace_count) + 1);
+    expect(after.rows[0]?.trace_count).toBe(before.rows[0]?.trace_count);
+    expect(Number(after.rows[0]?.revise_calls)).toBe(Number(before.rows[0]?.revise_calls) + 1);
   });
 
   it("stops at the budget limit after preserving the generated draft and checkpoint", async () => {
@@ -728,21 +999,21 @@ describe("generation HTTP integration", () => {
     branchPath: string,
     chapterId: string,
     idempotencyKey: string,
+    budget = { maxCostCny: 2.5, maxTokens: 12_000, maxRevisionRounds: 2 },
   ) {
     const response = await agent
       .post(`${branchPath}/chapters/${chapterId}/generate`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .set("Idempotency-Key", idempotencyKey)
-      .send({
-        budget: {
-          maxCostCny: 2.5,
-          maxTokens: 12_000,
-          maxRevisionRounds: 2,
-        },
-      })
+      .send({ budget })
       .expect(202);
     return generationJobResponseSchema.parse(response.body).data;
+  }
+
+  async function userIdFor(agent: SuperAgentTest): Promise<string> {
+    const response = await agent.get("/api/v1/auth/me").expect(200);
+    return response.body.data.user.id as string;
   }
 
   async function readWorkerPayload(jobId: string) {
@@ -976,4 +1247,21 @@ async function ensureDatabaseExists(databaseUrl: string): Promise<void> {
 
 function isDuplicateDatabase(error: unknown): boolean {
   return typeof error === "object" && error !== null && "code" in error && error.code === "42P04";
+}
+
+async function resetDatabase(pool: ReturnType<typeof createDatabasePool>): Promise<void> {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      await pool.query("TRUNCATE TABLE users CASCADE");
+      return;
+    } catch (error) {
+      const code =
+        typeof error === "object" && error !== null && "code" in error ? error.code : undefined;
+      if (attempt < 3 && (code === "40P01" || code === "55P03")) {
+        await new Promise((resolve) => setTimeout(resolve, 150 * attempt));
+        continue;
+      }
+      throw error;
+    }
+  }
 }

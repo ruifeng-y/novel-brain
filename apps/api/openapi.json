@@ -2033,6 +2033,1463 @@
         "tags": ["agent-runtime"]
       }
     },
+    "/api/v1/works/{workId}/branches/{branchId}/agent-runs": {
+      "get": {
+        "operationId": "AgentTraceController_list",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "chapterId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jobId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped run traces",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "run": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "jobId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "stepKey": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "planner",
+                                  "context_curator",
+                                  "writer",
+                                  "critic",
+                                  "reviser",
+                                  "fact_extractor",
+                                  "canon_curator"
+                                ]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["running", "succeeded", "failed"]
+                              },
+                              "failureClass": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "provider",
+                                  "timeout",
+                                  "rate_limit",
+                                  "schema",
+                                  "policy",
+                                  "budget",
+                                  "cancelled",
+                                  "unknown"
+                                ]
+                              },
+                              "escalationReason": {
+                                "nullable": true,
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "inputHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "outputHash": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "inputTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "outputTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "costCny": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "startedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "finishedAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "jobId",
+                              "workId",
+                              "branchId",
+                              "chapterId",
+                              "stepKey",
+                              "role",
+                              "status",
+                              "failureClass",
+                              "escalationReason",
+                              "inputHash",
+                              "outputHash",
+                              "inputTokens",
+                              "outputTokens",
+                              "costCny",
+                              "startedAt",
+                              "finishedAt"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "replay": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "modelConfigId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "provider": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "model": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "parameters": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "configHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "promptVersion": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "version": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "promptHash": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  },
+                                  "systemHash": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  },
+                                  "inputHash": {
+                                    "type": "string",
+                                    "pattern": "^[a-f0-9]{64}$"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "key",
+                                  "version",
+                                  "promptHash",
+                                  "systemHash",
+                                  "inputHash"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "modelConfigId",
+                              "provider",
+                              "model",
+                              "parameters",
+                              "configHash",
+                              "promptVersion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "promptVersions": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "jobId": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "stepKey": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "key": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "enum": [
+                                    "planner",
+                                    "context_curator",
+                                    "writer",
+                                    "critic",
+                                    "reviser",
+                                    "fact_extractor",
+                                    "canon_curator"
+                                  ]
+                                },
+                                "promptHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "systemHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "inputHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "contextPackId": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "compilerVersion": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "jobId",
+                                "stepKey",
+                                "key",
+                                "version",
+                                "role",
+                                "promptHash",
+                                "systemHash",
+                                "inputHash",
+                                "contextPackId",
+                                "compilerVersion",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "modelCalls": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "agentRunId": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "promptVersionId": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "costReservationId": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "stepKey": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "attempt": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": ["started", "succeeded", "failed"]
+                                },
+                                "provider": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "model": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "parameters": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                },
+                                "configHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "inputHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "outputHash": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "inputTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "outputTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "costCny": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "failureClass": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": [
+                                    "provider",
+                                    "timeout",
+                                    "rate_limit",
+                                    "schema",
+                                    "policy",
+                                    "budget",
+                                    "cancelled",
+                                    "unknown"
+                                  ]
+                                },
+                                "errorCode": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": [
+                                    "VALIDATION_INVALID",
+                                    "AUTH_CODE_INVALID",
+                                    "AUTH_RATE_LIMITED",
+                                    "AUTH_EMAIL_TAKEN",
+                                    "AUTH_PASSWORD_WEAK",
+                                    "AUTH_LOGIN_FAILED",
+                                    "AUTH_SESSION_INVALID",
+                                    "AUTH_CSRF_INVALID",
+                                    "AUTH_ORIGIN_INVALID",
+                                    "MODEL_KEY_INVALID",
+                                    "MODEL_CONNECTION_FAILED",
+                                    "MODEL_RATE_LIMITED",
+                                    "MODEL_TIMEOUT",
+                                    "MODEL_POLICY_BLOCKED",
+                                    "MODEL_RESPONSE_INVALID",
+                                    "MODEL_PROVIDER_ERROR",
+                                    "BIBLE_NOT_READY",
+                                    "BIBLE_LOCKED",
+                                    "BIBLE_NOT_LOCKED",
+                                    "SETTING_LOCKED",
+                                    "SETTING_NAME_CONFLICT",
+                                    "SETTING_ALIAS_CONFLICT",
+                                    "SETTING_CONFLICT_UNRESOLVED",
+                                    "SETTING_PROPOSAL_STATE",
+                                    "SETTING_NOT_LOCKED",
+                                    "CUSTOM_FIELD_REQUIRED",
+                                    "CUSTOM_FIELD_INVALID",
+                                    "CUSTOM_FIELD_IMMUTABLE",
+                                    "CUSTOM_FIELD_DUPLICATE",
+                                    "CHARACTER_STATE_OVERLAP",
+                                    "MAP_NODE_PARENT_MISMATCH",
+                                    "MAP_LAYER_MISMATCH",
+                                    "MAP_ROUTE_ENDPOINT_MISMATCH",
+                                    "MAP_ROUTE_DISCONNECTED",
+                                    "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+                                    "CONTROL_AREA_OVERLAP",
+                                    "TIMELINE_EVENT_OVERLAP",
+                                    "TIMELINE_ERA_NOT_FOUND",
+                                    "ITINERARY_TIME_ORDER",
+                                    "ITINERARY_OVERLAP",
+                                    "JOB_BUDGET_EXCEEDED",
+                                    "JOB_CANCELLED",
+                                    "FACT_DECISION_REQUIRED",
+                                    "FACT_SUBMISSION_BLOCKED",
+                                    "CANON_CHAPTER_NOT_APPROVED",
+                                    "IMPORT_CONFLICT_UNRESOLVED",
+                                    "VERSION_CONFLICT",
+                                    "AGENT_CONTRACT_INVALID",
+                                    "AGENT_GRANT_INVALID",
+                                    "AGENT_GRANT_EXPIRED",
+                                    "AGENT_GRANT_REVOKED",
+                                    "AGENT_TOOL_NOT_REGISTERED",
+                                    "AGENT_TOOL_DENIED",
+                                    "AGENT_BUDGET_EXCEEDED",
+                                    "AGENT_APPROVAL_REQUIRED",
+                                    "FORBIDDEN_TENANT_ACCESS",
+                                    "INTERNAL_ERROR"
+                                  ]
+                                },
+                                "escalationReason": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 500
+                                },
+                                "providerRequestId": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "startedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "finishedAt": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "agentRunId",
+                                "promptVersionId",
+                                "costReservationId",
+                                "stepKey",
+                                "attempt",
+                                "status",
+                                "provider",
+                                "model",
+                                "parameters",
+                                "configHash",
+                                "inputHash",
+                                "outputHash",
+                                "inputTokens",
+                                "outputTokens",
+                                "costCny",
+                                "failureClass",
+                                "errorCode",
+                                "escalationReason",
+                                "providerRequestId",
+                                "startedAt",
+                                "finishedAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "toolCalls": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "toolName": {
+                                  "type": "string",
+                                  "minLength": 3,
+                                  "maxLength": 100
+                                },
+                                "sideEffect": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": ["S0", "S1", "S2", "S3", "S4"]
+                                },
+                                "decision": {
+                                  "type": "string",
+                                  "enum": ["allow", "deny"]
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": ["authorized", "denied", "succeeded", "failed"]
+                                },
+                                "reason": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "inputHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "inputSummary": {
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                },
+                                "outputSummary": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                },
+                                "estimatedCostCny": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "estimatedTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "finishedAt": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "toolName",
+                                "sideEffect",
+                                "decision",
+                                "status",
+                                "reason",
+                                "inputHash",
+                                "inputSummary",
+                                "outputSummary",
+                                "estimatedCostCny",
+                                "estimatedTokens",
+                                "createdAt",
+                                "finishedAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "costReservations": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "status": {
+                                  "type": "string",
+                                  "enum": ["reserved", "settled", "released"]
+                                },
+                                "reservedTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "reservedCostCny": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "settledTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "settledCostCny": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "failureClass": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "enum": [
+                                    "provider",
+                                    "timeout",
+                                    "rate_limit",
+                                    "schema",
+                                    "policy",
+                                    "budget",
+                                    "cancelled",
+                                    "unknown"
+                                  ]
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                "settledAt": {
+                                  "nullable": true,
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "status",
+                                "reservedTokens",
+                                "reservedCostCny",
+                                "settledTokens",
+                                "settledCostCny",
+                                "failureClass",
+                                "createdAt",
+                                "settledAt"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "run",
+                          "replay",
+                          "promptVersions",
+                          "modelCalls",
+                          "toolCalls",
+                          "costReservations"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["agent-runtime"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/agent-runs/{runId}": {
+      "get": {
+        "operationId": "AgentTraceController_get",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Run trace with replay metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "run": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "jobId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "chapterId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "stepKey": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "planner",
+                                "context_curator",
+                                "writer",
+                                "critic",
+                                "reviser",
+                                "fact_extractor",
+                                "canon_curator"
+                              ]
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": ["running", "succeeded", "failed"]
+                            },
+                            "failureClass": {
+                              "nullable": true,
+                              "type": "string",
+                              "enum": [
+                                "provider",
+                                "timeout",
+                                "rate_limit",
+                                "schema",
+                                "policy",
+                                "budget",
+                                "cancelled",
+                                "unknown"
+                              ]
+                            },
+                            "escalationReason": {
+                              "nullable": true,
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 500
+                            },
+                            "inputHash": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "outputHash": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "inputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "outputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "costCny": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "startedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "finishedAt": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "jobId",
+                            "workId",
+                            "branchId",
+                            "chapterId",
+                            "stepKey",
+                            "role",
+                            "status",
+                            "failureClass",
+                            "escalationReason",
+                            "inputHash",
+                            "outputHash",
+                            "inputTokens",
+                            "outputTokens",
+                            "costCny",
+                            "startedAt",
+                            "finishedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "replay": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "modelConfigId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "parameters": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            "configHash": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "promptVersion": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "key": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "promptHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "systemHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "inputHash": {
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "key",
+                                "version",
+                                "promptHash",
+                                "systemHash",
+                                "inputHash"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "modelConfigId",
+                            "provider",
+                            "model",
+                            "parameters",
+                            "configHash",
+                            "promptVersion"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "promptVersions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "jobId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "stepKey": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "role": {
+                                "type": "string",
+                                "enum": [
+                                  "planner",
+                                  "context_curator",
+                                  "writer",
+                                  "critic",
+                                  "reviser",
+                                  "fact_extractor",
+                                  "canon_curator"
+                                ]
+                              },
+                              "promptHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "systemHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "inputHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "contextPackId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "compilerVersion": {
+                                "nullable": true,
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "jobId",
+                              "stepKey",
+                              "key",
+                              "version",
+                              "role",
+                              "promptHash",
+                              "systemHash",
+                              "inputHash",
+                              "contextPackId",
+                              "compilerVersion",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "modelCalls": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "agentRunId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "promptVersionId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "costReservationId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "stepKey": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "attempt": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["started", "succeeded", "failed"]
+                              },
+                              "provider": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "model": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "parameters": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "configHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "inputHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "outputHash": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "inputTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "outputTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "costCny": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "failureClass": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "provider",
+                                  "timeout",
+                                  "rate_limit",
+                                  "schema",
+                                  "policy",
+                                  "budget",
+                                  "cancelled",
+                                  "unknown"
+                                ]
+                              },
+                              "errorCode": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "VALIDATION_INVALID",
+                                  "AUTH_CODE_INVALID",
+                                  "AUTH_RATE_LIMITED",
+                                  "AUTH_EMAIL_TAKEN",
+                                  "AUTH_PASSWORD_WEAK",
+                                  "AUTH_LOGIN_FAILED",
+                                  "AUTH_SESSION_INVALID",
+                                  "AUTH_CSRF_INVALID",
+                                  "AUTH_ORIGIN_INVALID",
+                                  "MODEL_KEY_INVALID",
+                                  "MODEL_CONNECTION_FAILED",
+                                  "MODEL_RATE_LIMITED",
+                                  "MODEL_TIMEOUT",
+                                  "MODEL_POLICY_BLOCKED",
+                                  "MODEL_RESPONSE_INVALID",
+                                  "MODEL_PROVIDER_ERROR",
+                                  "BIBLE_NOT_READY",
+                                  "BIBLE_LOCKED",
+                                  "BIBLE_NOT_LOCKED",
+                                  "SETTING_LOCKED",
+                                  "SETTING_NAME_CONFLICT",
+                                  "SETTING_ALIAS_CONFLICT",
+                                  "SETTING_CONFLICT_UNRESOLVED",
+                                  "SETTING_PROPOSAL_STATE",
+                                  "SETTING_NOT_LOCKED",
+                                  "CUSTOM_FIELD_REQUIRED",
+                                  "CUSTOM_FIELD_INVALID",
+                                  "CUSTOM_FIELD_IMMUTABLE",
+                                  "CUSTOM_FIELD_DUPLICATE",
+                                  "CHARACTER_STATE_OVERLAP",
+                                  "MAP_NODE_PARENT_MISMATCH",
+                                  "MAP_LAYER_MISMATCH",
+                                  "MAP_ROUTE_ENDPOINT_MISMATCH",
+                                  "MAP_ROUTE_DISCONNECTED",
+                                  "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+                                  "CONTROL_AREA_OVERLAP",
+                                  "TIMELINE_EVENT_OVERLAP",
+                                  "TIMELINE_ERA_NOT_FOUND",
+                                  "ITINERARY_TIME_ORDER",
+                                  "ITINERARY_OVERLAP",
+                                  "JOB_BUDGET_EXCEEDED",
+                                  "JOB_CANCELLED",
+                                  "FACT_DECISION_REQUIRED",
+                                  "FACT_SUBMISSION_BLOCKED",
+                                  "CANON_CHAPTER_NOT_APPROVED",
+                                  "IMPORT_CONFLICT_UNRESOLVED",
+                                  "VERSION_CONFLICT",
+                                  "AGENT_CONTRACT_INVALID",
+                                  "AGENT_GRANT_INVALID",
+                                  "AGENT_GRANT_EXPIRED",
+                                  "AGENT_GRANT_REVOKED",
+                                  "AGENT_TOOL_NOT_REGISTERED",
+                                  "AGENT_TOOL_DENIED",
+                                  "AGENT_BUDGET_EXCEEDED",
+                                  "AGENT_APPROVAL_REQUIRED",
+                                  "FORBIDDEN_TENANT_ACCESS",
+                                  "INTERNAL_ERROR"
+                                ]
+                              },
+                              "escalationReason": {
+                                "nullable": true,
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              },
+                              "providerRequestId": {
+                                "nullable": true,
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "startedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "finishedAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "agentRunId",
+                              "promptVersionId",
+                              "costReservationId",
+                              "stepKey",
+                              "attempt",
+                              "status",
+                              "provider",
+                              "model",
+                              "parameters",
+                              "configHash",
+                              "inputHash",
+                              "outputHash",
+                              "inputTokens",
+                              "outputTokens",
+                              "costCny",
+                              "failureClass",
+                              "errorCode",
+                              "escalationReason",
+                              "providerRequestId",
+                              "startedAt",
+                              "finishedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "toolCalls": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "toolName": {
+                                "type": "string",
+                                "minLength": 3,
+                                "maxLength": 100
+                              },
+                              "sideEffect": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": ["S0", "S1", "S2", "S3", "S4"]
+                              },
+                              "decision": {
+                                "type": "string",
+                                "enum": ["allow", "deny"]
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["authorized", "denied", "succeeded", "failed"]
+                              },
+                              "reason": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "inputHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "inputSummary": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "outputSummary": {
+                                "nullable": true,
+                                "type": "object",
+                                "additionalProperties": {}
+                              },
+                              "estimatedCostCny": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "estimatedTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "finishedAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "toolName",
+                              "sideEffect",
+                              "decision",
+                              "status",
+                              "reason",
+                              "inputHash",
+                              "inputSummary",
+                              "outputSummary",
+                              "estimatedCostCny",
+                              "estimatedTokens",
+                              "createdAt",
+                              "finishedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "costReservations": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["reserved", "settled", "released"]
+                              },
+                              "reservedTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "reservedCostCny": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "settledTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "settledCostCny": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "failureClass": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": [
+                                  "provider",
+                                  "timeout",
+                                  "rate_limit",
+                                  "schema",
+                                  "policy",
+                                  "budget",
+                                  "cancelled",
+                                  "unknown"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "settledAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "status",
+                              "reservedTokens",
+                              "reservedCostCny",
+                              "settledTokens",
+                              "settledCostCny",
+                              "failureClass",
+                              "createdAt",
+                              "settledAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "run",
+                        "replay",
+                        "promptVersions",
+                        "modelCalls",
+                        "toolCalls",
+                        "costReservations"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["agent-runtime"]
+      }
+    },
     "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
       "post": {
         "operationId": "CanonController_submit",
@@ -12954,6 +14411,8 @@
                                 "MODEL_CONNECTION_FAILED",
                                 "MODEL_RATE_LIMITED",
                                 "MODEL_TIMEOUT",
+                                "MODEL_POLICY_BLOCKED",
+                                "MODEL_RESPONSE_INVALID",
                                 "MODEL_PROVIDER_ERROR",
                                 "BIBLE_NOT_READY",
                                 "BIBLE_LOCKED",
@@ -13660,6 +15119,8 @@
                                   "MODEL_CONNECTION_FAILED",
                                   "MODEL_RATE_LIMITED",
                                   "MODEL_TIMEOUT",
+                                  "MODEL_POLICY_BLOCKED",
+                                  "MODEL_RESPONSE_INVALID",
                                   "MODEL_PROVIDER_ERROR",
                                   "BIBLE_NOT_READY",
                                   "BIBLE_LOCKED",
@@ -14138,6 +15599,8 @@
                                 "MODEL_CONNECTION_FAILED",
                                 "MODEL_RATE_LIMITED",
                                 "MODEL_TIMEOUT",
+                                "MODEL_POLICY_BLOCKED",
+                                "MODEL_RESPONSE_INVALID",
                                 "MODEL_PROVIDER_ERROR",
                                 "BIBLE_NOT_READY",
                                 "BIBLE_LOCKED",
@@ -14615,6 +16078,8 @@
                                 "MODEL_CONNECTION_FAILED",
                                 "MODEL_RATE_LIMITED",
                                 "MODEL_TIMEOUT",
+                                "MODEL_POLICY_BLOCKED",
+                                "MODEL_RESPONSE_INVALID",
                                 "MODEL_PROVIDER_ERROR",
                                 "BIBLE_NOT_READY",
                                 "BIBLE_LOCKED",
@@ -15092,6 +16557,8 @@
                                 "MODEL_CONNECTION_FAILED",
                                 "MODEL_RATE_LIMITED",
                                 "MODEL_TIMEOUT",
+                                "MODEL_POLICY_BLOCKED",
+                                "MODEL_RESPONSE_INVALID",
                                 "MODEL_PROVIDER_ERROR",
                                 "BIBLE_NOT_READY",
                                 "BIBLE_LOCKED",

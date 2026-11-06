@@ -19,7 +19,10 @@ import { WorkerService } from "./worker.service";
     WorkerService,
     AgentGrantGuard,
     AgentOrchestrator,
-    AgentOrchestratorRepository,
+    {
+      provide: AgentOrchestratorRepository,
+      useFactory: () => new AgentOrchestratorRepository(),
+    },
     {
       provide: AgentGrantStore,
       useClass: WorkerAgentGrantStore,

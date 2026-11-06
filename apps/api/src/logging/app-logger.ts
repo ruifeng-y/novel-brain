@@ -1,4 +1,5 @@
 import type { LoggerService } from "@nestjs/common";
+import { sanitizeLogPayload } from "@novel-brain/core";
 import pino, { type Logger } from "pino";
 
 export class AppLogger implements LoggerService {
@@ -46,6 +47,7 @@ export class AppLogger implements LoggerService {
   }
 
   private message(message: unknown): string {
-    return typeof message === "string" ? message : JSON.stringify(message);
+    const sanitized = sanitizeLogPayload(message);
+    return typeof sanitized === "string" ? sanitized : JSON.stringify(sanitized);
   }
 }

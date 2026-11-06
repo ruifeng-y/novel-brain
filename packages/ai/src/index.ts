@@ -22,6 +22,7 @@ export interface GenerationResult {
   model: string;
   finishReason: "stop";
   usage: GenerationUsage;
+  providerRequestId?: string;
 }
 
 export interface GenerationChunk {
@@ -34,13 +35,37 @@ export interface AiGateway {
   streamText(input: GenerationRequest): AsyncIterable<GenerationChunk>;
 }
 
+export const AI_FAILURE_CLASSES = [
+  "provider",
+  "timeout",
+  "rate_limit",
+  "schema",
+  "policy",
+  "budget",
+  "cancelled",
+  "unknown",
+] as const;
+export type AiFailureClass = (typeof AI_FAILURE_CLASSES)[number];
+
 export class AiProviderError extends Error {
   readonly code = "MODEL_PROVIDER_ERROR";
+  readonly failureClass: AiFailureClass;
 
-  constructor(message = "AI provider failed") {
+  constructor(message = "AI provider failed", options: { failureClass?: AiFailureClass } = {}) {
     super(message);
     this.name = "AiProviderError";
+    this.failureClass = options.failureClass ?? "provider";
   }
+}
+
+export function classifyAiFailure(error: unknown): AiFailureClass {
+  if (error instanceof AiProviderError) {
+    return error.failureClass;
+  }
+  if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
+    return "timeout";
+  }
+  return "unknown";
 }
 
 export const M0_COST_PER_TOKEN_CNY = 0.000002;
@@ -105,7 +130,9 @@ export class DeepSeekProvider implements AiGateway {
     });
     const payload = (await response.json().catch(() => ({}))) as DeepSeekResponse;
     if (!response.ok) {
-      throw new AiProviderError(`DeepSeek request failed with status ${response.status}`);
+      throw new AiProviderError(`DeepSeek request failed with status ${response.status}`, {
+        failureClass: providerFailureClass(response.status),
+      });
     }
     const text = payload.choices?.[0]?.message?.content;
     const inputTokens = payload.usage?.prompt_tokens;
@@ -115,7 +142,9 @@ export class DeepSeekProvider implements AiGateway {
       typeof inputTokens !== "number" ||
       typeof outputTokens !== "number"
     ) {
-      throw new AiProviderError("DeepSeek returned an incomplete generation response");
+      throw new AiProviderError("DeepSeek returned an incomplete generation response", {
+        failureClass: "schema",
+      });
     }
     this.lastResponseId = payload.id;
     return {
@@ -123,6 +152,7 @@ export class DeepSeekProvider implements AiGateway {
       model: payload.model ?? model,
       finishReason: "stop",
       usage: { inputTokens, outputTokens },
+      ...(payload.id ? { providerRequestId: payload.id } : {}),
     };
   }
 
@@ -136,6 +166,22 @@ export class DeepSeekProvider implements AiGateway {
   getLastResponseId(): string | undefined {
     return this.lastResponseId;
   }
+}
+
+function providerFailureClass(status: number): AiFailureClass {
+  if (status === 401 || status === 403) {
+    return "policy";
+  }
+  if (status === 408) {
+    return "timeout";
+  }
+  if (status === 429) {
+    return "rate_limit";
+  }
+  if (status === 400 || status === 422) {
+    return "schema";
+  }
+  return "provider";
 }
 
 interface DeepSeekSmokeOptions {
