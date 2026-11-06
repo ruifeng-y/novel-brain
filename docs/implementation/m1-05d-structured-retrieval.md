@@ -6,7 +6,7 @@
 
 ## Delivered
 
-- Added the shared `search_documents` index contract and migration `0034_parched_shocker.sql`. It is the single text/structured index for #112 and the future #128 search module; no pgvector, embedding column or HNSW index was introduced.
+- Added the shared `search_documents` index contract and migration `0035_fresh_chat.sql`. It is the single text/structured index for #112 and the future #128 search module; no pgvector, embedding column or HNSW index was introduced.
 - Added `pg_trgm`, `simple tsvector`, tenant/chapter indexes and a GIN trigram index over the combined title/content/aliases expression.
 - Added index-sync triggers for entity versions, facts, timeline events and map nodes. Existing rows are backfilled before RLS is forced.
 - Added `POST /api/v1/works/:workId/branches/:branchId/retrieval/search`.

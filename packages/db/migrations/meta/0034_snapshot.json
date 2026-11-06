@@ -1,5 +1,5 @@
 {
-  "id": "7c24b1d1-3fdd-448a-b68a-a0e7f7cf15a4",
+  "id": "0bb7798b-63a8-438d-b3b0-11a1b413f8fc",
   "prevId": "009a26dd-505c-41f3-9086-c11a86ebfe45",
   "version": "7",
   "dialect": "postgresql",
@@ -7057,6 +7057,791 @@
         "genre_packs_key_check": {
           "name": "genre_packs_key_check",
           "value": "\"genre_packs\".\"key\" in ('xianxia', 'history', 'urban')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.golden_three_candidates": {
+      "name": "golden_three_candidates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "batch_id": {
+          "name": "batch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "strategy": {
+          "name": "strategy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'draft'"
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "prompt_key": {
+          "name": "prompt_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prompt_version": {
+          "name": "prompt_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prompt_hash": {
+          "name": "prompt_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model_provider": {
+          "name": "model_provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model_parameters": {
+          "name": "model_parameters",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "context_pack_version_id": {
+          "name": "context_pack_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "context_manifest_hash": {
+          "name": "context_manifest_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter_pins": {
+          "name": "chapter_pins",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "golden_three_candidates_idempotency_strategy_unique": {
+          "name": "golden_three_candidates_idempotency_strategy_unique",
+          "columns": [
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "idempotency_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "strategy",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "golden_three_candidates_batch_strategy_unique": {
+          "name": "golden_three_candidates_batch_strategy_unique",
+          "columns": [
+            {
+              "expression": "batch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "strategy",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "golden_three_candidates_user_work_idx": {
+          "name": "golden_three_candidates_user_work_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "golden_three_candidates_branch_created_idx": {
+          "name": "golden_three_candidates_branch_created_idx",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "golden_three_candidates_work_id_works_id_fk": {
+          "name": "golden_three_candidates_work_id_works_id_fk",
+          "tableFrom": "golden_three_candidates",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_candidates_branch_id_work_branches_id_fk": {
+          "name": "golden_three_candidates_branch_id_work_branches_id_fk",
+          "tableFrom": "golden_three_candidates",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_candidates_user_id_users_id_fk": {
+          "name": "golden_three_candidates_user_id_users_id_fk",
+          "tableFrom": "golden_three_candidates",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_candidates_context_pack_version_id_context_pack_versions_id_fk": {
+          "name": "golden_three_candidates_context_pack_version_id_context_pack_versions_id_fk",
+          "tableFrom": "golden_three_candidates",
+          "tableTo": "context_pack_versions",
+          "columnsFrom": [
+            "context_pack_version_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "golden_three_candidates_strategy_check": {
+          "name": "golden_three_candidates_strategy_check",
+          "value": "\"golden_three_candidates\".\"strategy\" in ('hook_focus', 'character_focus', 'world_focus')"
+        },
+        "golden_three_candidates_status_check": {
+          "name": "golden_three_candidates_status_check",
+          "value": "\"golden_three_candidates\".\"status\" in ('draft', 'reviewed', 'selected', 'locked')"
+        },
+        "golden_three_candidates_prompt_hash_check": {
+          "name": "golden_three_candidates_prompt_hash_check",
+          "value": "\"golden_three_candidates\".\"prompt_hash\" ~ '^[a-f0-9]{64}$'"
+        },
+        "golden_three_candidates_context_hash_check": {
+          "name": "golden_three_candidates_context_hash_check",
+          "value": "\"golden_three_candidates\".\"context_manifest_hash\" ~ '^[a-f0-9]{64}$'"
+        },
+        "golden_three_candidates_pins_check": {
+          "name": "golden_three_candidates_pins_check",
+          "value": "jsonb_typeof(\"golden_three_candidates\".\"chapter_pins\") = 'array' and jsonb_array_length(\"golden_three_candidates\".\"chapter_pins\") = 3"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.golden_three_locks": {
+      "name": "golden_three_locks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version_node_id": {
+          "name": "version_node_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "style_baseline_id": {
+          "name": "style_baseline_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter_pins": {
+          "name": "chapter_pins",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "review_snapshot": {
+          "name": "review_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "override_policy": {
+          "name": "override_policy",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "override_rationale": {
+          "name": "override_rationale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "locked_by": {
+          "name": "locked_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "golden_three_locks_branch_unique": {
+          "name": "golden_three_locks_branch_unique",
+          "columns": [
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "golden_three_locks_candidate_unique": {
+          "name": "golden_three_locks_candidate_unique",
+          "columns": [
+            {
+              "expression": "candidate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "golden_three_locks_user_work_idx": {
+          "name": "golden_three_locks_user_work_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "golden_three_locks_work_id_works_id_fk": {
+          "name": "golden_three_locks_work_id_works_id_fk",
+          "tableFrom": "golden_three_locks",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_locks_branch_id_work_branches_id_fk": {
+          "name": "golden_three_locks_branch_id_work_branches_id_fk",
+          "tableFrom": "golden_three_locks",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_locks_user_id_users_id_fk": {
+          "name": "golden_three_locks_user_id_users_id_fk",
+          "tableFrom": "golden_three_locks",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_locks_candidate_id_golden_three_candidates_id_fk": {
+          "name": "golden_three_locks_candidate_id_golden_three_candidates_id_fk",
+          "tableFrom": "golden_three_locks",
+          "tableTo": "golden_three_candidates",
+          "columnsFrom": [
+            "candidate_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "golden_three_locks_version_node_id_version_nodes_id_fk": {
+          "name": "golden_three_locks_version_node_id_version_nodes_id_fk",
+          "tableFrom": "golden_three_locks",
+          "tableTo": "version_nodes",
+          "columnsFrom": [
+            "version_node_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "golden_three_locks_style_baseline_id_style_baselines_id_fk": {
+          "name": "golden_three_locks_style_baseline_id_style_baselines_id_fk",
+          "tableFrom": "golden_three_locks",
+          "tableTo": "style_baselines",
+          "columnsFrom": [
+            "style_baseline_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "golden_three_locks_locked_by_users_id_fk": {
+          "name": "golden_three_locks_locked_by_users_id_fk",
+          "tableFrom": "golden_three_locks",
+          "tableTo": "users",
+          "columnsFrom": [
+            "locked_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "golden_three_locks_override_check": {
+          "name": "golden_three_locks_override_check",
+          "value": "(\"golden_three_locks\".\"override_policy\" is null and \"golden_three_locks\".\"override_rationale\" is null) or (\"golden_three_locks\".\"override_policy\" = 'author_override_v1' and \"golden_three_locks\".\"override_rationale\" is not null and length(trim(\"golden_three_locks\".\"override_rationale\")) >= 10)"
+        },
+        "golden_three_locks_pins_check": {
+          "name": "golden_three_locks_pins_check",
+          "value": "jsonb_typeof(\"golden_three_locks\".\"chapter_pins\") = 'array' and jsonb_array_length(\"golden_three_locks\".\"chapter_pins\") = 3"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.golden_three_reviews": {
+      "name": "golden_three_reviews",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "candidate_id": {
+          "name": "candidate_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dimension": {
+          "name": "dimension",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "score": {
+          "name": "score",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_chapter_id": {
+          "name": "evidence_chapter_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_chapter_version_id": {
+          "name": "evidence_chapter_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_passage": {
+          "name": "evidence_passage",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_locator": {
+          "name": "evidence_locator",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reviewer_origin": {
+          "name": "reviewer_origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "required": {
+          "name": "required",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "golden_three_reviews_candidate_dimension_unique": {
+          "name": "golden_three_reviews_candidate_dimension_unique",
+          "columns": [
+            {
+              "expression": "candidate_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "dimension",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "golden_three_reviews_user_work_idx": {
+          "name": "golden_three_reviews_user_work_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "golden_three_reviews_candidate_id_golden_three_candidates_id_fk": {
+          "name": "golden_three_reviews_candidate_id_golden_three_candidates_id_fk",
+          "tableFrom": "golden_three_reviews",
+          "tableTo": "golden_three_candidates",
+          "columnsFrom": [
+            "candidate_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_reviews_work_id_works_id_fk": {
+          "name": "golden_three_reviews_work_id_works_id_fk",
+          "tableFrom": "golden_three_reviews",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_reviews_branch_id_work_branches_id_fk": {
+          "name": "golden_three_reviews_branch_id_work_branches_id_fk",
+          "tableFrom": "golden_three_reviews",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "golden_three_reviews_user_id_users_id_fk": {
+          "name": "golden_three_reviews_user_id_users_id_fk",
+          "tableFrom": "golden_three_reviews",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "golden_three_reviews_dimension_check": {
+          "name": "golden_three_reviews_dimension_check",
+          "value": "\"golden_three_reviews\".\"dimension\" in ('opening_hook', 'protagonist_appeal', 'world_rules', 'core_conflict', 'reader_promise', 'chapter_end_hook')"
+        },
+        "golden_three_reviews_score_check": {
+          "name": "golden_three_reviews_score_check",
+          "value": "\"golden_three_reviews\".\"score\" between 1 and 5"
+        },
+        "golden_three_reviews_origin_check": {
+          "name": "golden_three_reviews_origin_check",
+          "value": "\"golden_three_reviews\".\"reviewer_origin\" in ('model', 'author', 'critic')"
+        },
+        "golden_three_reviews_evidence_check": {
+          "name": "golden_three_reviews_evidence_check",
+          "value": "length(trim(\"golden_three_reviews\".\"evidence_passage\")) > 0 and length(trim(\"golden_three_reviews\".\"evidence_locator\")) > 0"
         }
       },
       "isRLSEnabled": false
@@ -14471,350 +15256,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.search_documents": {
-      "name": "search_documents",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_type": {
-          "name": "source_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_id": {
-          "name": "source_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "entity_type": {
-          "name": "entity_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "aliases": {
-          "name": "aliases",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "version_node_id": {
-          "name": "version_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "object_version": {
-          "name": "object_version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_chapter_id": {
-          "name": "source_chapter_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_chapter": {
-          "name": "from_chapter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "to_chapter": {
-          "name": "to_chapter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_era": {
-          "name": "from_era",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_story_time_label": {
-          "name": "from_story_time_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_story_sort_key": {
-          "name": "from_story_sort_key",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_era": {
-          "name": "to_era",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_story_time_label": {
-          "name": "to_story_time_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_story_sort_key": {
-          "name": "to_story_sort_key",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "search_documents_source_version_unique": {
-          "name": "search_documents_source_version_unique",
-          "columns": [
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "version_node_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "search_documents_user_work_branch_idx": {
-          "name": "search_documents_user_work_branch_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "source_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "search_documents_branch_chapter_idx": {
-          "name": "search_documents_branch_chapter_idx",
-          "columns": [
-            {
-              "expression": "branch_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "from_chapter",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "to_chapter",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "search_documents_work_id_works_id_fk": {
-          "name": "search_documents_work_id_works_id_fk",
-          "tableFrom": "search_documents",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "search_documents_branch_id_work_branches_id_fk": {
-          "name": "search_documents_branch_id_work_branches_id_fk",
-          "tableFrom": "search_documents",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "search_documents_user_id_users_id_fk": {
-          "name": "search_documents_user_id_users_id_fk",
-          "tableFrom": "search_documents",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "search_documents_version_node_id_version_nodes_id_fk": {
-          "name": "search_documents_version_node_id_version_nodes_id_fk",
-          "tableFrom": "search_documents",
-          "tableTo": "version_nodes",
-          "columnsFrom": [
-            "version_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "search_documents_source_chapter_id_chapters_id_fk": {
-          "name": "search_documents_source_chapter_id_chapters_id_fk",
-          "tableFrom": "search_documents",
-          "tableTo": "chapters",
-          "columnsFrom": [
-            "source_chapter_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "search_documents_source_type_check": {
-          "name": "search_documents_source_type_check",
-          "value": "\"search_documents\".\"source_type\" in ('entity', 'fact', 'timeline_event', 'map_node')"
-        },
-        "search_documents_entity_type_check": {
-          "name": "search_documents_entity_type_check",
-          "value": "\"search_documents\".\"entity_type\" is null or \"search_documents\".\"entity_type\" in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')"
-        },
-        "search_documents_validity_check": {
-          "name": "search_documents_validity_check",
-          "value": "\"search_documents\".\"to_chapter\" is null or \"search_documents\".\"to_chapter\" >= \"search_documents\".\"from_chapter\""
-        },
-        "search_documents_from_story_time_check": {
-          "name": "search_documents_from_story_time_check",
-          "value": "(\"search_documents\".\"from_era\" is null and \"search_documents\".\"from_story_time_label\" is null and \"search_documents\".\"from_story_sort_key\" is null) or (\"search_documents\".\"from_era\" is not null and \"search_documents\".\"from_story_time_label\" is not null and \"search_documents\".\"from_story_sort_key\" is not null)"
-        },
-        "search_documents_to_story_time_check": {
-          "name": "search_documents_to_story_time_check",
-          "value": "(\"search_documents\".\"to_era\" is null and \"search_documents\".\"to_story_time_label\" is null and \"search_documents\".\"to_story_sort_key\" is null) or (\"search_documents\".\"from_era\" is not null and \"search_documents\".\"to_era\" is not null and \"search_documents\".\"to_story_time_label\" is not null and \"search_documents\".\"to_story_sort_key\" is not null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.sessions": {
       "name": "sessions",
       "schema": "",
@@ -16572,6 +17013,213 @@
         "story_bibles_lock_metadata_check": {
           "name": "story_bibles_lock_metadata_check",
           "value": "(\"story_bibles\".\"status\" = 'locked' and \"story_bibles\".\"locked_at\" is not null and \"story_bibles\".\"locked_by\" is not null) or (\"story_bibles\".\"status\" <> 'locked' and \"story_bibles\".\"locked_at\" is null and \"story_bibles\".\"locked_by\" is null)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.style_baselines": {
+      "name": "style_baselines",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_type": {
+          "name": "source_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_id": {
+          "name": "source_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "profile": {
+          "name": "profile",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version_node_id": {
+          "name": "version_node_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "style_baselines_source_unique": {
+          "name": "style_baselines_source_unique",
+          "columns": [
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "source_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "style_baselines_user_work_idx": {
+          "name": "style_baselines_user_work_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "style_baselines_work_id_works_id_fk": {
+          "name": "style_baselines_work_id_works_id_fk",
+          "tableFrom": "style_baselines",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "style_baselines_branch_id_work_branches_id_fk": {
+          "name": "style_baselines_branch_id_work_branches_id_fk",
+          "tableFrom": "style_baselines",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "style_baselines_user_id_users_id_fk": {
+          "name": "style_baselines_user_id_users_id_fk",
+          "tableFrom": "style_baselines",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "style_baselines_version_node_id_version_nodes_id_fk": {
+          "name": "style_baselines_version_node_id_version_nodes_id_fk",
+          "tableFrom": "style_baselines",
+          "tableTo": "version_nodes",
+          "columnsFrom": [
+            "version_node_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "style_baselines_created_by_users_id_fk": {
+          "name": "style_baselines_created_by_users_id_fk",
+          "tableFrom": "style_baselines",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "style_baselines_source_type_check": {
+          "name": "style_baselines_source_type_check",
+          "value": "\"style_baselines\".\"source_type\" = 'golden_three'"
         }
       },
       "isRLSEnabled": false

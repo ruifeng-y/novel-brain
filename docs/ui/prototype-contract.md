@@ -14,7 +14,7 @@
 | work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改 | loading/empty/error/readonly/archived | 生成摘要 | 部分，缺分支上下文和长内容 |
 | bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | M1 生产实现，待作者视觉重新签收 |
 | settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | M1 生产实现，待作者视觉重新签收 |
-| outline | `/workspace/[workId]/outline` | 树/看板/张力/账本、黄金三章 | loading/empty/error/locked/partial | 黄金三章候选 | 五层大纲、卷契约、场景卡已实现；账本与黄金三章锁定仍由后续 ticket 补齐 |
+| outline | `/workspace/[workId]/outline` | 树/看板/张力/账本、黄金三章 | loading/empty/error/locked/partial | 黄金三章候选 | 五层大纲、卷契约、场景卡、剧情账本与黄金三章候选比较/选择/失败阻断/锁定已实现；视觉基线待重新签收 |
 | foreshadows | `/workspace/[workId]/foreshadows` | 新增/编辑/埋设/推进/回收/失败回收/放弃/延期/检查 | loading/empty/error/disabled/long | 逾期提醒 | M1 生产实现，待作者视觉签收 |
 | writing | `/workspace/[workId]/write` | 生成/续写/改写/检查/批准章节/确认事实/提交本章事实/版本 | loading/empty/error/disabled/partial/conflict/long | 本章参考/来源/淘汰/修订 diff/成本/检查点 | 已含三段状态机和页面状态 |
 | batch | `/workspace/[workId]/batch` | 开始/暂停/恢复/取消/重试/审核/报告 | loading/empty/error/partial/disabled/long | 失败断点/成本/审批 | 部分，缺父子任务和失败章节明细 |

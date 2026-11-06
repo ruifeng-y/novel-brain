@@ -243,8 +243,15 @@
     {
       "idx": 34,
       "version": "7",
-      "when": 1793954121614,
-      "tag": "0034_parched_shocker",
+      "when": 1793954539551,
+      "tag": "0034_golden_three",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793955993732,
+      "tag": "0035_fresh_chat",
       "breakpoints": true
     }
   ]

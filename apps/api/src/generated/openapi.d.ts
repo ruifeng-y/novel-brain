@@ -692,6 +692,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/golden-three": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GoldenThreeController_workspace"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GoldenThreeController_createCandidates"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates/{candidateId}/reviews": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put: operations["GoldenThreeController_submitReviews"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates/{candidateId}/select": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GoldenThreeController_selectCandidate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates/{candidateId}/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GoldenThreeController_lockCandidate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/health": {
     parameters: {
       query?: never;
@@ -3043,6 +3123,13 @@ export interface operations {
                   | "OUTLINE_PARENT_INVALID"
                   | "OUTLINE_CHAPTER_INVALID"
                   | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -3324,6 +3411,13 @@ export interface operations {
                   | "OUTLINE_PARENT_INVALID"
                   | "OUTLINE_CHAPTER_INVALID"
                   | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -7145,6 +7239,13 @@ export interface operations {
                   | "OUTLINE_PARENT_INVALID"
                   | "OUTLINE_CHAPTER_INVALID"
                   | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -7608,6 +7709,13 @@ export interface operations {
                   | "OUTLINE_PARENT_INVALID"
                   | "OUTLINE_CHAPTER_INVALID"
                   | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -7923,6 +8031,13 @@ export interface operations {
                   | "OUTLINE_PARENT_INVALID"
                   | "OUTLINE_CHAPTER_INVALID"
                   | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -8238,6 +8353,13 @@ export interface operations {
                   | "OUTLINE_PARENT_INVALID"
                   | "OUTLINE_CHAPTER_INVALID"
                   | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -8553,6 +8675,13 @@ export interface operations {
                   | "OUTLINE_PARENT_INVALID"
                   | "OUTLINE_CHAPTER_INVALID"
                   | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "LEDGER_TRANSITION_INVALID"
                   | "LEDGER_SOURCE_REQUIRED"
                   | "LEDGER_EVIDENCE_REQUIRED"
@@ -8877,6 +9006,13 @@ export interface operations {
                     | "OUTLINE_PARENT_INVALID"
                     | "OUTLINE_CHAPTER_INVALID"
                     | "OUTLINE_REFERENCE_INVALID"
+                    | "GOLDEN_THREE_CANDIDATES_EXIST"
+                    | "GOLDEN_THREE_INVALID_CANDIDATES"
+                    | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                    | "GOLDEN_THREE_REVIEW_FAILED"
+                    | "GOLDEN_THREE_SELECTION_REQUIRED"
+                    | "GOLDEN_THREE_ALREADY_LOCKED"
+                    | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "LEDGER_TRANSITION_INVALID"
                     | "LEDGER_SOURCE_REQUIRED"
                     | "LEDGER_EVIDENCE_REQUIRED"
@@ -9085,6 +9221,1077 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  GoldenThreeController_workspace: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Golden three candidates and lock gate */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              candidates: {
+                id: string;
+                batchId: string;
+                workId: string;
+                branchId: string;
+                label: string;
+                /** @enum {string} */
+                strategy: "hook_focus" | "character_focus" | "world_focus";
+                /** @enum {string} */
+                status: "draft" | "reviewed" | "selected" | "locked";
+                version: number;
+                prompt: {
+                  key: string;
+                  version: number;
+                  hash: string;
+                };
+                model: {
+                  provider: string;
+                  model: string;
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                context: {
+                  packVersionId: string | null;
+                  manifestHash: string;
+                };
+                pins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                reviews: {
+                  /** @enum {string} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook";
+                  score: number;
+                  evidence: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    passage: string;
+                    locator: string;
+                  };
+                  /** @enum {string} */
+                  reviewerOrigin: "model" | "author" | "critic";
+                  id: string;
+                  candidateId: string;
+                  required: boolean;
+                  passed: boolean;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                }[];
+                reviewSummary: {
+                  completed: number;
+                  /** @enum {number} */
+                  total: 6;
+                  requiredFailed: number;
+                  failedDimensions: (
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                  )[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              selectedCandidateId: string | null;
+              lock: {
+                id: string;
+                workId: string;
+                branchId: string;
+                candidateId: string;
+                versionNodeId: string;
+                styleBaselineId: string;
+                chapterPins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                override: {
+                  /** @enum {string} */
+                  policy: "author_override_v1";
+                  rationale: string;
+                } | null;
+                lockedBy: string;
+                /** Format: date-time */
+                lockedAt: string;
+              } | null;
+              styleBaseline: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                sourceType: "golden_three";
+                sourceId: string;
+                version: number;
+                versionNodeId: string;
+                profile: {
+                  /** @enum {string} */
+                  strategy: "hook_focus" | "character_focus" | "world_focus";
+                  candidateLabel: string;
+                  excerpts: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              gate: {
+                candidateId: string | null;
+                canLock: boolean;
+                blockers: {
+                  /** @enum {string} */
+                  code:
+                    | "NO_CANDIDATES"
+                    | "NO_SELECTION"
+                    | "REVIEW_INCOMPLETE"
+                    | "REQUIRED_DIMENSION_FAILED"
+                    | "CANDIDATE_LOCKED";
+                  message: string;
+                  /** @enum {string|null} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                    | null;
+                }[];
+                failedDimensions: (
+                  | "opening_hook"
+                  | "protagonist_appeal"
+                  | "world_rules"
+                  | "core_conflict"
+                  | "reader_promise"
+                  | "chapter_end_hook"
+                )[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GoldenThreeController_createCandidates: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          candidates: {
+            label: string;
+            /** @enum {string} */
+            strategy: "hook_focus" | "character_focus" | "world_focus";
+            prompt: {
+              key: string;
+              version: number;
+              hash: string;
+            };
+            model: {
+              provider: string;
+              model: string;
+              parameters: {
+                [key: string]: unknown;
+              };
+            };
+            context: {
+              packVersionId: string | null;
+              manifestHash: string;
+            };
+            pins: {
+              chapterId: string;
+              chapterVersionId: string;
+              expectedContentHash?: string;
+            }[];
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Golden three candidate workspace */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              candidates: {
+                id: string;
+                batchId: string;
+                workId: string;
+                branchId: string;
+                label: string;
+                /** @enum {string} */
+                strategy: "hook_focus" | "character_focus" | "world_focus";
+                /** @enum {string} */
+                status: "draft" | "reviewed" | "selected" | "locked";
+                version: number;
+                prompt: {
+                  key: string;
+                  version: number;
+                  hash: string;
+                };
+                model: {
+                  provider: string;
+                  model: string;
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                context: {
+                  packVersionId: string | null;
+                  manifestHash: string;
+                };
+                pins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                reviews: {
+                  /** @enum {string} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook";
+                  score: number;
+                  evidence: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    passage: string;
+                    locator: string;
+                  };
+                  /** @enum {string} */
+                  reviewerOrigin: "model" | "author" | "critic";
+                  id: string;
+                  candidateId: string;
+                  required: boolean;
+                  passed: boolean;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                }[];
+                reviewSummary: {
+                  completed: number;
+                  /** @enum {number} */
+                  total: 6;
+                  requiredFailed: number;
+                  failedDimensions: (
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                  )[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              selectedCandidateId: string | null;
+              lock: {
+                id: string;
+                workId: string;
+                branchId: string;
+                candidateId: string;
+                versionNodeId: string;
+                styleBaselineId: string;
+                chapterPins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                override: {
+                  /** @enum {string} */
+                  policy: "author_override_v1";
+                  rationale: string;
+                } | null;
+                lockedBy: string;
+                /** Format: date-time */
+                lockedAt: string;
+              } | null;
+              styleBaseline: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                sourceType: "golden_three";
+                sourceId: string;
+                version: number;
+                versionNodeId: string;
+                profile: {
+                  /** @enum {string} */
+                  strategy: "hook_focus" | "character_focus" | "world_focus";
+                  candidateLabel: string;
+                  excerpts: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              gate: {
+                candidateId: string | null;
+                canLock: boolean;
+                blockers: {
+                  /** @enum {string} */
+                  code:
+                    | "NO_CANDIDATES"
+                    | "NO_SELECTION"
+                    | "REVIEW_INCOMPLETE"
+                    | "REQUIRED_DIMENSION_FAILED"
+                    | "CANDIDATE_LOCKED";
+                  message: string;
+                  /** @enum {string|null} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                    | null;
+                }[];
+                failedDimensions: (
+                  | "opening_hook"
+                  | "protagonist_appeal"
+                  | "world_rules"
+                  | "core_conflict"
+                  | "reader_promise"
+                  | "chapter_end_hook"
+                )[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GoldenThreeController_submitReviews: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        candidateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          reviews: {
+            /** @enum {string} */
+            dimension:
+              | "opening_hook"
+              | "protagonist_appeal"
+              | "world_rules"
+              | "core_conflict"
+              | "reader_promise"
+              | "chapter_end_hook";
+            score: number;
+            evidence: {
+              chapterId: string;
+              chapterVersionId: string;
+              passage: string;
+              locator: string;
+            };
+            /** @enum {string} */
+            reviewerOrigin: "model" | "author" | "critic";
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Golden three review workspace */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              candidates: {
+                id: string;
+                batchId: string;
+                workId: string;
+                branchId: string;
+                label: string;
+                /** @enum {string} */
+                strategy: "hook_focus" | "character_focus" | "world_focus";
+                /** @enum {string} */
+                status: "draft" | "reviewed" | "selected" | "locked";
+                version: number;
+                prompt: {
+                  key: string;
+                  version: number;
+                  hash: string;
+                };
+                model: {
+                  provider: string;
+                  model: string;
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                context: {
+                  packVersionId: string | null;
+                  manifestHash: string;
+                };
+                pins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                reviews: {
+                  /** @enum {string} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook";
+                  score: number;
+                  evidence: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    passage: string;
+                    locator: string;
+                  };
+                  /** @enum {string} */
+                  reviewerOrigin: "model" | "author" | "critic";
+                  id: string;
+                  candidateId: string;
+                  required: boolean;
+                  passed: boolean;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                }[];
+                reviewSummary: {
+                  completed: number;
+                  /** @enum {number} */
+                  total: 6;
+                  requiredFailed: number;
+                  failedDimensions: (
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                  )[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              selectedCandidateId: string | null;
+              lock: {
+                id: string;
+                workId: string;
+                branchId: string;
+                candidateId: string;
+                versionNodeId: string;
+                styleBaselineId: string;
+                chapterPins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                override: {
+                  /** @enum {string} */
+                  policy: "author_override_v1";
+                  rationale: string;
+                } | null;
+                lockedBy: string;
+                /** Format: date-time */
+                lockedAt: string;
+              } | null;
+              styleBaseline: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                sourceType: "golden_three";
+                sourceId: string;
+                version: number;
+                versionNodeId: string;
+                profile: {
+                  /** @enum {string} */
+                  strategy: "hook_focus" | "character_focus" | "world_focus";
+                  candidateLabel: string;
+                  excerpts: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              gate: {
+                candidateId: string | null;
+                canLock: boolean;
+                blockers: {
+                  /** @enum {string} */
+                  code:
+                    | "NO_CANDIDATES"
+                    | "NO_SELECTION"
+                    | "REVIEW_INCOMPLETE"
+                    | "REQUIRED_DIMENSION_FAILED"
+                    | "CANDIDATE_LOCKED";
+                  message: string;
+                  /** @enum {string|null} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                    | null;
+                }[];
+                failedDimensions: (
+                  | "opening_hook"
+                  | "protagonist_appeal"
+                  | "world_rules"
+                  | "core_conflict"
+                  | "reader_promise"
+                  | "chapter_end_hook"
+                )[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GoldenThreeController_selectCandidate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        candidateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Selected golden three candidate */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              candidates: {
+                id: string;
+                batchId: string;
+                workId: string;
+                branchId: string;
+                label: string;
+                /** @enum {string} */
+                strategy: "hook_focus" | "character_focus" | "world_focus";
+                /** @enum {string} */
+                status: "draft" | "reviewed" | "selected" | "locked";
+                version: number;
+                prompt: {
+                  key: string;
+                  version: number;
+                  hash: string;
+                };
+                model: {
+                  provider: string;
+                  model: string;
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                context: {
+                  packVersionId: string | null;
+                  manifestHash: string;
+                };
+                pins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                reviews: {
+                  /** @enum {string} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook";
+                  score: number;
+                  evidence: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    passage: string;
+                    locator: string;
+                  };
+                  /** @enum {string} */
+                  reviewerOrigin: "model" | "author" | "critic";
+                  id: string;
+                  candidateId: string;
+                  required: boolean;
+                  passed: boolean;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                }[];
+                reviewSummary: {
+                  completed: number;
+                  /** @enum {number} */
+                  total: 6;
+                  requiredFailed: number;
+                  failedDimensions: (
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                  )[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              selectedCandidateId: string | null;
+              lock: {
+                id: string;
+                workId: string;
+                branchId: string;
+                candidateId: string;
+                versionNodeId: string;
+                styleBaselineId: string;
+                chapterPins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                override: {
+                  /** @enum {string} */
+                  policy: "author_override_v1";
+                  rationale: string;
+                } | null;
+                lockedBy: string;
+                /** Format: date-time */
+                lockedAt: string;
+              } | null;
+              styleBaseline: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                sourceType: "golden_three";
+                sourceId: string;
+                version: number;
+                versionNodeId: string;
+                profile: {
+                  /** @enum {string} */
+                  strategy: "hook_focus" | "character_focus" | "world_focus";
+                  candidateLabel: string;
+                  excerpts: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              gate: {
+                candidateId: string | null;
+                canLock: boolean;
+                blockers: {
+                  /** @enum {string} */
+                  code:
+                    | "NO_CANDIDATES"
+                    | "NO_SELECTION"
+                    | "REVIEW_INCOMPLETE"
+                    | "REQUIRED_DIMENSION_FAILED"
+                    | "CANDIDATE_LOCKED";
+                  message: string;
+                  /** @enum {string|null} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                    | null;
+                }[];
+                failedDimensions: (
+                  | "opening_hook"
+                  | "protagonist_appeal"
+                  | "world_rules"
+                  | "core_conflict"
+                  | "reader_promise"
+                  | "chapter_end_hook"
+                )[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GoldenThreeController_lockCandidate: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        candidateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          override?: {
+            /** @enum {string} */
+            policy: "author_override_v1";
+            rationale: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Locked golden three candidate */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              candidates: {
+                id: string;
+                batchId: string;
+                workId: string;
+                branchId: string;
+                label: string;
+                /** @enum {string} */
+                strategy: "hook_focus" | "character_focus" | "world_focus";
+                /** @enum {string} */
+                status: "draft" | "reviewed" | "selected" | "locked";
+                version: number;
+                prompt: {
+                  key: string;
+                  version: number;
+                  hash: string;
+                };
+                model: {
+                  provider: string;
+                  model: string;
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                context: {
+                  packVersionId: string | null;
+                  manifestHash: string;
+                };
+                pins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                reviews: {
+                  /** @enum {string} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook";
+                  score: number;
+                  evidence: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    passage: string;
+                    locator: string;
+                  };
+                  /** @enum {string} */
+                  reviewerOrigin: "model" | "author" | "critic";
+                  id: string;
+                  candidateId: string;
+                  required: boolean;
+                  passed: boolean;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                }[];
+                reviewSummary: {
+                  completed: number;
+                  /** @enum {number} */
+                  total: 6;
+                  requiredFailed: number;
+                  failedDimensions: (
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                  )[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              selectedCandidateId: string | null;
+              lock: {
+                id: string;
+                workId: string;
+                branchId: string;
+                candidateId: string;
+                versionNodeId: string;
+                styleBaselineId: string;
+                chapterPins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                override: {
+                  /** @enum {string} */
+                  policy: "author_override_v1";
+                  rationale: string;
+                } | null;
+                lockedBy: string;
+                /** Format: date-time */
+                lockedAt: string;
+              } | null;
+              styleBaseline: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                sourceType: "golden_three";
+                sourceId: string;
+                version: number;
+                versionNodeId: string;
+                profile: {
+                  /** @enum {string} */
+                  strategy: "hook_focus" | "character_focus" | "world_focus";
+                  candidateLabel: string;
+                  excerpts: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              gate: {
+                candidateId: string | null;
+                canLock: boolean;
+                blockers: {
+                  /** @enum {string} */
+                  code:
+                    | "NO_CANDIDATES"
+                    | "NO_SELECTION"
+                    | "REVIEW_INCOMPLETE"
+                    | "REQUIRED_DIMENSION_FAILED"
+                    | "CANDIDATE_LOCKED";
+                  message: string;
+                  /** @enum {string|null} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                    | null;
+                }[];
+                failedDimensions: (
+                  | "opening_hook"
+                  | "protagonist_appeal"
+                  | "world_rules"
+                  | "core_conflict"
+                  | "reader_promise"
+                  | "chapter_end_hook"
+                )[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };

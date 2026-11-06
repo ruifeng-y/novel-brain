@@ -3546,3 +3546,235 @@ export const characterArcs = pgTable(
     ),
   ],
 );
+
+export type GoldenThreeChapterPinJson = {
+  chapterId: string;
+  chapterNumber: number;
+  chapterTitle: string;
+  chapterVersionId: string;
+  chapterVersion: number;
+  versionNodeId: string;
+  contentHash: string;
+  wordCount: number;
+  content: string;
+};
+
+export type GoldenThreeReviewSnapshotJson = {
+  dimension: string;
+  score: number;
+  evidenceChapterId: string;
+  evidenceChapterVersionId: string;
+  evidencePassage: string;
+  evidenceLocator: string;
+  reviewerOrigin: string;
+  required: boolean;
+  passed: boolean;
+};
+
+export type GoldenThreeStyleProfileJson = {
+  strategy: string;
+  candidateLabel: string;
+  excerpts: Array<{
+    chapterId: string;
+    chapterVersionId: string;
+    excerpt: string;
+  }>;
+};
+
+export const goldenThreeCandidates = pgTable(
+  "golden_three_candidates",
+  {
+    id: uuid("id").primaryKey(),
+    batchId: uuid("batch_id").notNull(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    label: text("label").notNull(),
+    strategy: text("strategy").notNull(),
+    status: text("status").notNull().default("draft"),
+    version: integer("version").notNull().default(1),
+    promptKey: text("prompt_key").notNull(),
+    promptVersion: integer("prompt_version").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    modelProvider: text("model_provider").notNull(),
+    model: text("model").notNull(),
+    modelParameters: jsonb("model_parameters")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    contextPackVersionId: uuid("context_pack_version_id").references(() => contextPackVersions.id, {
+      onDelete: "set null",
+    }),
+    contextManifestHash: text("context_manifest_hash").notNull(),
+    chapterPins: jsonb("chapter_pins").$type<GoldenThreeChapterPinJson[]>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("golden_three_candidates_idempotency_strategy_unique").on(
+      table.workId,
+      table.branchId,
+      table.idempotencyKey,
+      table.strategy,
+    ),
+    uniqueIndex("golden_three_candidates_batch_strategy_unique").on(table.batchId, table.strategy),
+    index("golden_three_candidates_user_work_idx").on(table.userId, table.workId),
+    index("golden_three_candidates_branch_created_idx").on(table.branchId, table.createdAt),
+    check(
+      "golden_three_candidates_strategy_check",
+      sql`${table.strategy} in ('hook_focus', 'character_focus', 'world_focus')`,
+    ),
+    check(
+      "golden_three_candidates_status_check",
+      sql`${table.status} in ('draft', 'reviewed', 'selected', 'locked')`,
+    ),
+    check("golden_three_candidates_prompt_hash_check", sql`${table.promptHash} ~ '^[a-f0-9]{64}$'`),
+    check(
+      "golden_three_candidates_context_hash_check",
+      sql`${table.contextManifestHash} ~ '^[a-f0-9]{64}$'`,
+    ),
+    check(
+      "golden_three_candidates_pins_check",
+      sql`jsonb_typeof(${table.chapterPins}) = 'array' and jsonb_array_length(${table.chapterPins}) = 3`,
+    ),
+  ],
+);
+
+export const goldenThreeReviews = pgTable(
+  "golden_three_reviews",
+  {
+    id: uuid("id").primaryKey(),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => goldenThreeCandidates.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dimension: text("dimension").notNull(),
+    score: integer("score").notNull(),
+    evidenceChapterId: uuid("evidence_chapter_id").notNull(),
+    evidenceChapterVersionId: uuid("evidence_chapter_version_id").notNull(),
+    evidencePassage: text("evidence_passage").notNull(),
+    evidenceLocator: text("evidence_locator").notNull(),
+    reviewerOrigin: text("reviewer_origin").notNull(),
+    required: boolean("required").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("golden_three_reviews_candidate_dimension_unique").on(
+      table.candidateId,
+      table.dimension,
+    ),
+    index("golden_three_reviews_user_work_idx").on(table.userId, table.workId),
+    check(
+      "golden_three_reviews_dimension_check",
+      sql`${table.dimension} in ('opening_hook', 'protagonist_appeal', 'world_rules', 'core_conflict', 'reader_promise', 'chapter_end_hook')`,
+    ),
+    check("golden_three_reviews_score_check", sql`${table.score} between 1 and 5`),
+    check(
+      "golden_three_reviews_origin_check",
+      sql`${table.reviewerOrigin} in ('model', 'author', 'critic')`,
+    ),
+    check(
+      "golden_three_reviews_evidence_check",
+      sql`length(trim(${table.evidencePassage})) > 0 and length(trim(${table.evidenceLocator})) > 0`,
+    ),
+  ],
+);
+
+export const styleBaselines = pgTable(
+  "style_baselines",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    version: integer("version").notNull().default(1),
+    profile: jsonb("profile").$type<GoldenThreeStyleProfileJson>().notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("style_baselines_source_unique").on(
+      table.workId,
+      table.branchId,
+      table.sourceType,
+      table.sourceId,
+    ),
+    index("style_baselines_user_work_idx").on(table.userId, table.workId),
+    check("style_baselines_source_type_check", sql`${table.sourceType} = 'golden_three'`),
+  ],
+);
+
+export const goldenThreeLocks = pgTable(
+  "golden_three_locks",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => goldenThreeCandidates.id, { onDelete: "restrict" }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    styleBaselineId: uuid("style_baseline_id")
+      .notNull()
+      .references(() => styleBaselines.id, { onDelete: "restrict" }),
+    chapterPins: jsonb("chapter_pins").$type<GoldenThreeChapterPinJson[]>().notNull(),
+    reviewSnapshot: jsonb("review_snapshot").$type<GoldenThreeReviewSnapshotJson[]>().notNull(),
+    overridePolicy: text("override_policy"),
+    overrideRationale: text("override_rationale"),
+    lockedBy: uuid("locked_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("golden_three_locks_branch_unique").on(table.workId, table.branchId),
+    uniqueIndex("golden_three_locks_candidate_unique").on(table.candidateId),
+    index("golden_three_locks_user_work_idx").on(table.userId, table.workId),
+    check(
+      "golden_three_locks_override_check",
+      sql`(${table.overridePolicy} is null and ${table.overrideRationale} is null) or (${table.overridePolicy} = 'author_override_v1' and ${table.overrideRationale} is not null and length(trim(${table.overrideRationale})) >= 10)`,
+    ),
+    check(
+      "golden_three_locks_pins_check",
+      sql`jsonb_typeof(${table.chapterPins}) = 'array' and jsonb_array_length(${table.chapterPins}) = 3`,
+    ),
+  ],
+);
