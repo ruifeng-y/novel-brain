@@ -3104,7 +3104,15 @@ a:focus-visible {
   gap: 18px;
 }
 
+.account-security-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+
 .account-settings-card {
+  min-width: 0;
   padding: 22px;
 }
 
@@ -3176,6 +3184,239 @@ a:focus-visible {
   background: var(--white);
   border: 1px solid var(--line-strong);
   border-radius: 6px;
+}
+
+.auth-field textarea,
+.account-profile-form textarea,
+.pen-name-form textarea,
+.pen-name-editor textarea {
+  width: 100%;
+  padding: 9px 11px;
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.65;
+  background: var(--white);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  outline: none;
+  resize: vertical;
+}
+
+.auth-field textarea:focus,
+.account-profile-form textarea:focus,
+.pen-name-form textarea:focus,
+.pen-name-editor textarea:focus {
+  border-color: var(--jade);
+  box-shadow: 0 0 0 3px rgba(47, 111, 94, 0.12);
+}
+
+.auth-field textarea:disabled {
+  color: var(--muted);
+  background: #f1f3ef;
+}
+
+.auth-form-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 20px;
+}
+
+.auth-recovery-links .text-link {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.account-security-loading,
+.account-empty,
+.account-security-notice {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 14px;
+  padding: 11px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  border-radius: 7px;
+}
+
+.account-security-loading {
+  align-items: center;
+  color: var(--muted);
+  background: var(--paper-2);
+}
+
+.account-security-notice.danger {
+  color: var(--cinnabar);
+  background: var(--cinnabar-soft);
+}
+
+.account-security-notice.success {
+  color: var(--jade);
+  background: var(--jade-soft);
+}
+
+.account-security-notice .text-btn {
+  margin-left: auto;
+}
+
+.account-empty {
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.account-empty strong {
+  display: block;
+  font-size: 12px;
+}
+
+.account-empty p {
+  margin: 3px 0 0;
+  color: var(--ink-3);
+}
+
+.account-identity-row {
+  display: flex;
+  gap: 11px;
+  align-items: center;
+  min-width: 0;
+  padding: 13px 0;
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.account-avatar {
+  display: grid;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  color: var(--cinnabar);
+  font-family: Georgia, "Songti SC", serif;
+  font-size: 18px;
+  background: var(--cinnabar-soft);
+  border-radius: 7px;
+}
+
+.account-identity-row > div {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.account-identity-row strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-identity-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.account-profile-form,
+.pen-name-form,
+.pen-name-editor {
+  display: grid;
+  gap: 11px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.account-profile-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.account-profile-bio,
+.account-form-actions,
+.pen-name-form .two-col-fields {
+  grid-column: 1 / -1;
+}
+
+.account-form-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.two-col-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.pen-name-list,
+.account-session-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.pen-name-row,
+.account-session-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.pen-name-row > div,
+.account-session-row > div {
+  display: grid;
+  flex: 1;
+  gap: 3px;
+  min-width: 0;
+}
+
+.pen-name-row strong,
+.account-session-row strong {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.pen-name-row small,
+.account-session-row small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  text-overflow: ellipsis;
+}
+
+.pen-name-editor {
+  margin-top: 14px;
+  padding: 13px;
+  background: var(--paper-2);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.pen-name-editor .panel-head {
+  padding: 0;
+  border: 0;
+}
+
+.account-sessions-card {
+  grid-column: 1 / -1;
+}
+
+.account-session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  justify-content: flex-end;
 }
 
 .model-check {
@@ -3341,7 +3582,7 @@ a:focus-visible {
 
 .auth-tabs {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   margin: 16px 0 18px;
   padding: 3px;
@@ -3577,6 +3818,14 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .account-security-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-sessions-card {
+    grid-column: 1;
+  }
+
   .creation-layout,
   .overview-grid,
   .story-bible-layout {
@@ -3662,6 +3911,20 @@ a:focus-visible {
   .creation-field-grid,
   .overview-hero {
     grid-template-columns: 1fr;
+  }
+
+  .account-profile-form,
+  .two-col-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .account-session-actions {
+    justify-content: stretch;
+  }
+
+  .account-session-actions .btn {
+    flex: 1;
+    justify-content: center;
   }
 
   .settings-import-panel,

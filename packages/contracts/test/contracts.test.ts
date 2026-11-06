@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  authorPenNameCreateRequestSchema,
+  authorPenNameUpdateRequestSchema,
+  authDeviceSessionsResponseSchema,
   authPasswordSchema,
   authSessionResponseSchema,
   canonCommitRequestSchema,
@@ -44,8 +47,10 @@ import {
   modelConfigUpdateSchema,
   modelConnectionTestResponseSchema,
   modelProvidersResponseSchema,
+  profileUpdateRequestSchema,
   readinessResponseSchema,
   registerRequestSchema,
+  resetPasswordRequestSchema,
   sendRegistrationCodeRequestSchema,
   sendRegistrationCodeResponseSchema,
   settingsImportConfirmRequestSchema,
@@ -570,6 +575,55 @@ describe("shared contracts", () => {
           },
         },
         requestId: "req_session",
+        meta: {},
+      }),
+    ).toBeTruthy();
+  });
+
+  it("validates account recovery, profile, pen name and device session contracts", () => {
+    expect(
+      resetPasswordRequestSchema.parse({
+        token: "t".repeat(32),
+        password: "StrongPassword123",
+      }),
+    ).toBeTruthy();
+    expect(() =>
+      resetPasswordRequestSchema.parse({ token: "short", password: "StrongPassword123" }),
+    ).toThrow();
+
+    expect(profileUpdateRequestSchema.parse({ version: 1, displayName: "青舟" })).toBeTruthy();
+    expect(() => profileUpdateRequestSchema.parse({ version: 1 })).toThrow();
+    expect(() =>
+      profileUpdateRequestSchema.parse({
+        version: 1,
+        avatarUrl: "javascript:alert(1)",
+      }),
+    ).toThrow();
+    expect(profileUpdateRequestSchema.parse({ version: 1, avatarUrl: null })).toBeTruthy();
+
+    expect(authorPenNameCreateRequestSchema.parse({ name: "青舟" })).toMatchObject({
+      bio: "",
+      isDefault: false,
+    });
+    expect(() => authorPenNameUpdateRequestSchema.parse({ version: 1 })).toThrow();
+    expect(
+      authorPenNameUpdateRequestSchema.parse({ version: 2, name: "砚秋", isDefault: true }),
+    ).toBeTruthy();
+
+    expect(
+      authDeviceSessionsResponseSchema.parse({
+        data: [
+          {
+            id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c12",
+            expiresAt: "2026-11-11T08:00:00.000Z",
+            current: true,
+            userAgent: "Chrome",
+            ip: "203.0.113.10",
+            lastSeenAt: "2026-11-04T08:00:00.000Z",
+            createdAt: "2026-11-04T08:00:00.000Z",
+          },
+        ],
+        requestId: "req_sessions",
         meta: {},
       }),
     ).toBeTruthy();

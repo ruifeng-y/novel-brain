@@ -32,6 +32,6 @@
 
 ## Residual Risk
 
-- 迁移 `0028_power_items.sql` 在生成后补了 RLS 与回填语句；已用全新数据库验证，但已有环境若已记录旧哈希需重建测试库或手工补跑策略。
+- 迁移 `0029_power_items.sql` 在生成后补了 RLS 与回填语句；已用全新数据库验证，但已有环境需按正常迁移顺序应用。
 - 通用 `PATCH /entities/:id` 仍可写旧 `attributes` 投影；生产 UI 已改走专用域 API，后续可由 #144 统一收紧或迁移。
 - 视觉 golden 尚未由作者重新签收，parity 状态保持 `production-pending`。

@@ -1,5 +1,5 @@
 {
-  "id": "52ff20c3-62ad-47ce-b844-fb2426f16389",
+  "id": "49f6483d-cca5-4ed4-96be-b6f689a0c13b",
   "prevId": "a947c961-9bf2-4dfa-aeef-7276e841cbbd",
   "version": "7",
   "dialect": "postgresql",
@@ -6476,553 +6476,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.item_rights": {
-      "name": "item_rights",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "item_id": {
-          "name": "item_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "right_type": {
-          "name": "right_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "holder_type": {
-          "name": "holder_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "holder_id": {
-          "name": "holder_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "holder_label": {
-          "name": "holder_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "share_percent": {
-          "name": "share_percent",
-          "type": "real",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "valid_from_chapter": {
-          "name": "valid_from_chapter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "valid_to_chapter": {
-          "name": "valid_to_chapter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_era": {
-          "name": "from_era",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_story_time_label": {
-          "name": "from_story_time_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_story_sort_key": {
-          "name": "from_story_sort_key",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_era": {
-          "name": "to_era",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_story_time_label": {
-          "name": "to_story_time_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_story_sort_key": {
-          "name": "to_story_sort_key",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "source_chapter_id": {
-          "name": "source_chapter_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "evidence": {
-          "name": "evidence",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "version_node_id": {
-          "name": "version_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "item_rights_item_type_valid_idx": {
-          "name": "item_rights_item_type_valid_idx",
-          "columns": [
-            {
-              "expression": "item_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "right_type",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "valid_from_chapter",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "item_rights_user_work_idx": {
-          "name": "item_rights_user_work_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "item_rights_item_id_item_techniques_entity_id_fk": {
-          "name": "item_rights_item_id_item_techniques_entity_id_fk",
-          "tableFrom": "item_rights",
-          "tableTo": "item_techniques",
-          "columnsFrom": [
-            "item_id"
-          ],
-          "columnsTo": [
-            "entity_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "item_rights_work_id_works_id_fk": {
-          "name": "item_rights_work_id_works_id_fk",
-          "tableFrom": "item_rights",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "item_rights_branch_id_work_branches_id_fk": {
-          "name": "item_rights_branch_id_work_branches_id_fk",
-          "tableFrom": "item_rights",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "item_rights_user_id_users_id_fk": {
-          "name": "item_rights_user_id_users_id_fk",
-          "tableFrom": "item_rights",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "item_rights_source_chapter_id_chapters_id_fk": {
-          "name": "item_rights_source_chapter_id_chapters_id_fk",
-          "tableFrom": "item_rights",
-          "tableTo": "chapters",
-          "columnsFrom": [
-            "source_chapter_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "item_rights_version_node_id_version_nodes_id_fk": {
-          "name": "item_rights_version_node_id_version_nodes_id_fk",
-          "tableFrom": "item_rights",
-          "tableTo": "version_nodes",
-          "columnsFrom": [
-            "version_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "item_rights_created_by_users_id_fk": {
-          "name": "item_rights_created_by_users_id_fk",
-          "tableFrom": "item_rights",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "item_rights_type_check": {
-          "name": "item_rights_type_check",
-          "value": "\"item_rights\".\"right_type\" in ('ownership', 'custody', 'location', 'usage', 'disposal')"
-        },
-        "item_rights_holder_check": {
-          "name": "item_rights_holder_check",
-          "value": "(\"item_rights\".\"right_type\" = 'location' and \"item_rights\".\"holder_type\" in ('map', 'map_node') and \"item_rights\".\"share_percent\" is null) or (\"item_rights\".\"right_type\" <> 'location' and \"item_rights\".\"holder_type\" in ('character', 'faction', 'item'))"
-        },
-        "item_rights_share_check": {
-          "name": "item_rights_share_check",
-          "value": "(\"item_rights\".\"right_type\" = 'ownership' and \"item_rights\".\"share_percent\" is not null and \"item_rights\".\"share_percent\" > 0 and \"item_rights\".\"share_percent\" <= 100) or (\"item_rights\".\"right_type\" <> 'ownership' and \"item_rights\".\"share_percent\" is null)"
-        },
-        "item_rights_validity_check": {
-          "name": "item_rights_validity_check",
-          "value": "\"item_rights\".\"valid_to_chapter\" is null or \"item_rights\".\"valid_to_chapter\" >= \"item_rights\".\"valid_from_chapter\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.item_techniques": {
-      "name": "item_techniques",
-      "schema": "",
-      "columns": {
-        "entity_id": {
-          "name": "entity_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "grade": {
-          "name": "grade",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "effect": {
-          "name": "effect",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cost": {
-          "name": "cost",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "limits": {
-          "name": "limits",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "ownership_model": {
-          "name": "ownership_model",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "consumable": {
-          "name": "consumable",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "quantity": {
-          "name": "quantity",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        },
-        "equipment_slot": {
-          "name": "equipment_slot",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "equipped_by_type": {
-          "name": "equipped_by_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "equipped_by_id": {
-          "name": "equipped_by_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "equipped_by_label": {
-          "name": "equipped_by_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "item_techniques_user_work_idx": {
-          "name": "item_techniques_user_work_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "item_techniques_entity_id_entities_id_fk": {
-          "name": "item_techniques_entity_id_entities_id_fk",
-          "tableFrom": "item_techniques",
-          "tableTo": "entities",
-          "columnsFrom": [
-            "entity_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "item_techniques_work_id_works_id_fk": {
-          "name": "item_techniques_work_id_works_id_fk",
-          "tableFrom": "item_techniques",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "item_techniques_branch_id_work_branches_id_fk": {
-          "name": "item_techniques_branch_id_work_branches_id_fk",
-          "tableFrom": "item_techniques",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "item_techniques_user_id_users_id_fk": {
-          "name": "item_techniques_user_id_users_id_fk",
-          "tableFrom": "item_techniques",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "item_techniques_kind_check": {
-          "name": "item_techniques_kind_check",
-          "value": "\"item_techniques\".\"kind\" in ('item', 'technique', 'equipment', 'resource')"
-        },
-        "item_techniques_ownership_model_check": {
-          "name": "item_techniques_ownership_model_check",
-          "value": "\"item_techniques\".\"ownership_model\" in ('shared', 'unique')"
-        },
-        "item_techniques_quantity_check": {
-          "name": "item_techniques_quantity_check",
-          "value": "\"item_techniques\".\"quantity\" >= 0"
-        },
-        "item_techniques_unique_quantity_check": {
-          "name": "item_techniques_unique_quantity_check",
-          "value": "\"item_techniques\".\"ownership_model\" <> 'unique' or \"item_techniques\".\"quantity\" <= 1"
-        },
-        "item_techniques_equipment_check": {
-          "name": "item_techniques_equipment_check",
-          "value": "(\"item_techniques\".\"kind\" = 'equipment' and \"item_techniques\".\"equipment_slot\" is not null) or (\"item_techniques\".\"kind\" <> 'equipment' and \"item_techniques\".\"equipment_slot\" is null and \"item_techniques\".\"equipped_by_type\" is null and \"item_techniques\".\"equipped_by_id\" is null and \"item_techniques\".\"equipped_by_label\" is null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.job_checkpoints": {
       "name": "job_checkpoints",
       "schema": "",
@@ -9430,296 +8883,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.mechanism_ownership_events": {
-      "name": "mechanism_ownership_events",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "mechanism_id": {
-          "name": "mechanism_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "previous_owner_type": {
-          "name": "previous_owner_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "previous_owner_id": {
-          "name": "previous_owner_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "previous_owner_label": {
-          "name": "previous_owner_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "owner_type": {
-          "name": "owner_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "owner_label": {
-          "name": "owner_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "valid_from_chapter": {
-          "name": "valid_from_chapter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "valid_to_chapter": {
-          "name": "valid_to_chapter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_era": {
-          "name": "from_era",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_story_time_label": {
-          "name": "from_story_time_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "from_story_sort_key": {
-          "name": "from_story_sort_key",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_era": {
-          "name": "to_era",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_story_time_label": {
-          "name": "to_story_time_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "to_story_sort_key": {
-          "name": "to_story_sort_key",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "evidence": {
-          "name": "evidence",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
-        "version_node_id": {
-          "name": "version_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "mechanism_ownership_events_mechanism_idx": {
-          "name": "mechanism_ownership_events_mechanism_idx",
-          "columns": [
-            {
-              "expression": "mechanism_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "mechanism_ownership_events_user_work_idx": {
-          "name": "mechanism_ownership_events_user_work_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "mechanism_ownership_events_mechanism_id_special_mechanisms_entity_id_fk": {
-          "name": "mechanism_ownership_events_mechanism_id_special_mechanisms_entity_id_fk",
-          "tableFrom": "mechanism_ownership_events",
-          "tableTo": "special_mechanisms",
-          "columnsFrom": [
-            "mechanism_id"
-          ],
-          "columnsTo": [
-            "entity_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mechanism_ownership_events_work_id_works_id_fk": {
-          "name": "mechanism_ownership_events_work_id_works_id_fk",
-          "tableFrom": "mechanism_ownership_events",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mechanism_ownership_events_branch_id_work_branches_id_fk": {
-          "name": "mechanism_ownership_events_branch_id_work_branches_id_fk",
-          "tableFrom": "mechanism_ownership_events",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mechanism_ownership_events_user_id_users_id_fk": {
-          "name": "mechanism_ownership_events_user_id_users_id_fk",
-          "tableFrom": "mechanism_ownership_events",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "mechanism_ownership_events_version_node_id_version_nodes_id_fk": {
-          "name": "mechanism_ownership_events_version_node_id_version_nodes_id_fk",
-          "tableFrom": "mechanism_ownership_events",
-          "tableTo": "version_nodes",
-          "columnsFrom": [
-            "version_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "mechanism_ownership_events_created_by_users_id_fk": {
-          "name": "mechanism_ownership_events_created_by_users_id_fk",
-          "tableFrom": "mechanism_ownership_events",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "mechanism_ownership_events_owner_check": {
-          "name": "mechanism_ownership_events_owner_check",
-          "value": "\"mechanism_ownership_events\".\"owner_type\" in ('character', 'faction', 'item')"
-        },
-        "mechanism_ownership_events_validity_check": {
-          "name": "mechanism_ownership_events_validity_check",
-          "value": "\"mechanism_ownership_events\".\"valid_to_chapter\" is null or \"mechanism_ownership_events\".\"valid_to_chapter\" >= \"mechanism_ownership_events\".\"valid_from_chapter\""
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.model_configs": {
       "name": "model_configs",
       "schema": "",
@@ -9891,8 +9054,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.power_paths": {
-      "name": "power_paths",
+    "public.password_resets": {
+      "name": "password_resets",
       "schema": "",
       "columns": {
         "id": {
@@ -9901,65 +9064,33 @@
           "primaryKey": true,
           "notNull": true
         },
-        "power_system_id": {
-          "name": "power_system_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
         "user_id": {
           "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "name": {
-          "name": "name",
+        "token_hash": {
+          "name": "token_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "path_type": {
-          "name": "path_type",
-          "type": "text",
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
-        "description": {
-          "name": "description",
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "requested_ip": {
+          "name": "requested_ip",
           "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "sort_order": {
-          "name": "sort_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "version_node_id": {
-          "name": "version_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -9972,17 +9103,11 @@
         }
       },
       "indexes": {
-        "power_paths_system_name_unique": {
-          "name": "power_paths_system_name_unique",
+        "password_resets_token_hash_unique": {
+          "name": "password_resets_token_hash_unique",
           "columns": [
             {
-              "expression": "power_system_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "name",
+              "expression": "token_hash",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -9993,8 +9118,8 @@
           "method": "btree",
           "with": {}
         },
-        "power_paths_user_work_idx": {
-          "name": "power_paths_user_work_idx",
+        "password_resets_user_created_idx": {
+          "name": "password_resets_user_created_idx",
           "columns": [
             {
               "expression": "user_id",
@@ -10003,7 +9128,7 @@
               "nulls": "last"
             },
             {
-              "expression": "work_id",
+              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -10016,48 +9141,9 @@
         }
       },
       "foreignKeys": {
-        "power_paths_power_system_id_power_systems_entity_id_fk": {
-          "name": "power_paths_power_system_id_power_systems_entity_id_fk",
-          "tableFrom": "power_paths",
-          "tableTo": "power_systems",
-          "columnsFrom": [
-            "power_system_id"
-          ],
-          "columnsTo": [
-            "entity_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_paths_work_id_works_id_fk": {
-          "name": "power_paths_work_id_works_id_fk",
-          "tableFrom": "power_paths",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_paths_branch_id_work_branches_id_fk": {
-          "name": "power_paths_branch_id_work_branches_id_fk",
-          "tableFrom": "power_paths",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_paths_user_id_users_id_fk": {
-          "name": "power_paths_user_id_users_id_fk",
-          "tableFrom": "power_paths",
+        "password_resets_user_id_users_id_fk": {
+          "name": "password_resets_user_id_users_id_fk",
+          "tableFrom": "password_resets",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -10066,32 +9152,6 @@
             "id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_paths_version_node_id_version_nodes_id_fk": {
-          "name": "power_paths_version_node_id_version_nodes_id_fk",
-          "tableFrom": "power_paths",
-          "tableTo": "version_nodes",
-          "columnsFrom": [
-            "version_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "power_paths_created_by_users_id_fk": {
-          "name": "power_paths_created_by_users_id_fk",
-          "tableFrom": "power_paths",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
           "onUpdate": "no action"
         }
       },
@@ -10101,32 +9161,14 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.power_realms": {
-      "name": "power_realms",
+    "public.pen_names": {
+      "name": "pen_names",
       "schema": "",
       "columns": {
         "id": {
           "name": "id",
           "type": "uuid",
           "primaryKey": true,
-          "notNull": true
-        },
-        "path_id": {
-          "name": "path_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
           "notNull": true
         },
         "user_id": {
@@ -10141,336 +9183,32 @@
           "primaryKey": false,
           "notNull": true
         },
-        "rank": {
-          "name": "rank",
+        "bio": {
+          "name": "bio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_default": {
+          "name": "is_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "version": {
+          "name": "version",
           "type": "integer",
           "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
           "notNull": true,
-          "default": "''"
-        },
-        "breakthrough_conditions": {
-          "name": "breakthrough_conditions",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "breakthrough_costs": {
-          "name": "breakthrough_costs",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "bottlenecks": {
-          "name": "bottlenecks",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "counters": {
-          "name": "counters",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "countered_by": {
-          "name": "countered_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "lifespan_amount": {
-          "name": "lifespan_amount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "prerequisite_realm_id": {
-          "name": "prerequisite_realm_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version_node_id": {
-          "name": "version_node_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "power_realms_path_name_unique": {
-          "name": "power_realms_path_name_unique",
-          "columns": [
-            {
-              "expression": "path_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "power_realms_path_rank_unique": {
-          "name": "power_realms_path_rank_unique",
-          "columns": [
-            {
-              "expression": "path_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "rank",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "power_realms_user_work_idx": {
-          "name": "power_realms_user_work_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "power_realms_path_id_power_paths_id_fk": {
-          "name": "power_realms_path_id_power_paths_id_fk",
-          "tableFrom": "power_realms",
-          "tableTo": "power_paths",
-          "columnsFrom": [
-            "path_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_realms_work_id_works_id_fk": {
-          "name": "power_realms_work_id_works_id_fk",
-          "tableFrom": "power_realms",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_realms_branch_id_work_branches_id_fk": {
-          "name": "power_realms_branch_id_work_branches_id_fk",
-          "tableFrom": "power_realms",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_realms_user_id_users_id_fk": {
-          "name": "power_realms_user_id_users_id_fk",
-          "tableFrom": "power_realms",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_realms_prerequisite_realm_id_power_realms_id_fk": {
-          "name": "power_realms_prerequisite_realm_id_power_realms_id_fk",
-          "tableFrom": "power_realms",
-          "tableTo": "power_realms",
-          "columnsFrom": [
-            "prerequisite_realm_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        },
-        "power_realms_version_node_id_version_nodes_id_fk": {
-          "name": "power_realms_version_node_id_version_nodes_id_fk",
-          "tableFrom": "power_realms",
-          "tableTo": "version_nodes",
-          "columnsFrom": [
-            "version_node_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "power_realms_created_by_users_id_fk": {
-          "name": "power_realms_created_by_users_id_fk",
-          "tableFrom": "power_realms",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "power_realms_rank_check": {
-          "name": "power_realms_rank_check",
-          "value": "\"power_realms\".\"rank\" > 0"
-        },
-        "power_realms_lifespan_check": {
-          "name": "power_realms_lifespan_check",
-          "value": "\"power_realms\".\"lifespan_amount\" is null or \"power_realms\".\"lifespan_amount\" > 0"
-        },
-        "power_realms_prerequisite_check": {
-          "name": "power_realms_prerequisite_check",
-          "value": "\"power_realms\".\"prerequisite_realm_id\" is null or \"power_realms\".\"prerequisite_realm_id\" <> \"power_realms\".\"id\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.power_systems": {
-      "name": "power_systems",
-      "schema": "",
-      "columns": {
-        "entity_id": {
-          "name": "entity_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "overview": {
-          "name": "overview",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "lifespan_mode": {
-          "name": "lifespan_mode",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'none'"
-        },
-        "lifespan_unit": {
-          "name": "lifespan_unit",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'年'"
-        },
-        "lifespan_basis": {
-          "name": "lifespan_basis",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "lifespan_description": {
-          "name": "lifespan_description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "lifespan_path_id": {
-          "name": "lifespan_path_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "lifespan_fixed_amount": {
-          "name": "lifespan_fixed_amount",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
+          "default": 1
         },
         "created_at": {
           "name": "created_at",
@@ -10485,11 +9223,17 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
-        "power_systems_user_work_idx": {
-          "name": "power_systems_user_work_idx",
+        "pen_names_user_name_unique": {
+          "name": "pen_names_user_name_unique",
           "columns": [
             {
               "expression": "user_id",
@@ -10498,22 +9242,45 @@
               "nulls": "last"
             },
             {
-              "expression": "work_id",
+              "expression": "name",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
+          "where": "\"pen_names\".\"deleted_at\" is null",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "power_systems_branch_idx": {
-          "name": "power_systems_branch_idx",
+        "pen_names_user_default_unique": {
+          "name": "pen_names_user_default_unique",
           "columns": [
             {
-              "expression": "branch_id",
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"pen_names\".\"is_default\" and \"pen_names\".\"deleted_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "pen_names_user_updated_idx": {
+          "name": "pen_names_user_updated_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "updated_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -10526,48 +9293,9 @@
         }
       },
       "foreignKeys": {
-        "power_systems_entity_id_entities_id_fk": {
-          "name": "power_systems_entity_id_entities_id_fk",
-          "tableFrom": "power_systems",
-          "tableTo": "entities",
-          "columnsFrom": [
-            "entity_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_systems_work_id_works_id_fk": {
-          "name": "power_systems_work_id_works_id_fk",
-          "tableFrom": "power_systems",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_systems_branch_id_work_branches_id_fk": {
-          "name": "power_systems_branch_id_work_branches_id_fk",
-          "tableFrom": "power_systems",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "power_systems_user_id_users_id_fk": {
-          "name": "power_systems_user_id_users_id_fk",
-          "tableFrom": "power_systems",
+        "pen_names_user_id_users_id_fk": {
+          "name": "pen_names_user_id_users_id_fk",
+          "tableFrom": "pen_names",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -10582,20 +9310,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "power_systems_lifespan_mode_check": {
-          "name": "power_systems_lifespan_mode_check",
-          "value": "\"power_systems\".\"lifespan_mode\" in ('none', 'realm', 'fixed', 'custom')"
-        },
-        "power_systems_lifespan_amount_check": {
-          "name": "power_systems_lifespan_amount_check",
-          "value": "(\"power_systems\".\"lifespan_mode\" = 'fixed' and \"power_systems\".\"lifespan_fixed_amount\" is not null and \"power_systems\".\"lifespan_fixed_amount\" > 0) or (\"power_systems\".\"lifespan_mode\" <> 'fixed' and \"power_systems\".\"lifespan_fixed_amount\" is null)"
-        },
-        "power_systems_lifespan_unit_check": {
-          "name": "power_systems_lifespan_unit_check",
-          "value": "length(trim(\"power_systems\".\"lifespan_unit\")) > 0"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.review_decisions": {
@@ -11430,211 +10145,6 @@
         "setting_proposals_decision_metadata_check": {
           "name": "setting_proposals_decision_metadata_check",
           "value": "(\"setting_proposals\".\"status\" = 'pending' and \"setting_proposals\".\"decided_by\" is null and \"setting_proposals\".\"decided_at\" is null and \"setting_proposals\".\"decision_reason\" is null) or (\"setting_proposals\".\"status\" <> 'pending' and \"setting_proposals\".\"decided_by\" is not null and \"setting_proposals\".\"decided_at\" is not null and \"setting_proposals\".\"decision_reason\" is not null)"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.special_mechanisms": {
-      "name": "special_mechanisms",
-      "schema": "",
-      "columns": {
-        "entity_id": {
-          "name": "entity_id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "work_id": {
-          "name": "work_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "branch_id": {
-          "name": "branch_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "mechanism_type": {
-          "name": "mechanism_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "owner_type": {
-          "name": "owner_type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "owner_id": {
-          "name": "owner_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "owner_label": {
-          "name": "owner_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "power_system_id": {
-          "name": "power_system_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "rules": {
-          "name": "rules",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "costs": {
-          "name": "costs",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "limits": {
-          "name": "limits",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "growth": {
-          "name": "growth",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "''"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "special_mechanisms_user_work_idx": {
-          "name": "special_mechanisms_user_work_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "work_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "special_mechanisms_entity_id_entities_id_fk": {
-          "name": "special_mechanisms_entity_id_entities_id_fk",
-          "tableFrom": "special_mechanisms",
-          "tableTo": "entities",
-          "columnsFrom": [
-            "entity_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "special_mechanisms_work_id_works_id_fk": {
-          "name": "special_mechanisms_work_id_works_id_fk",
-          "tableFrom": "special_mechanisms",
-          "tableTo": "works",
-          "columnsFrom": [
-            "work_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "special_mechanisms_branch_id_work_branches_id_fk": {
-          "name": "special_mechanisms_branch_id_work_branches_id_fk",
-          "tableFrom": "special_mechanisms",
-          "tableTo": "work_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "special_mechanisms_user_id_users_id_fk": {
-          "name": "special_mechanisms_user_id_users_id_fk",
-          "tableFrom": "special_mechanisms",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "special_mechanisms_power_system_id_entities_id_fk": {
-          "name": "special_mechanisms_power_system_id_entities_id_fk",
-          "tableFrom": "special_mechanisms",
-          "tableTo": "entities",
-          "columnsFrom": [
-            "power_system_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "special_mechanisms_owner_check": {
-          "name": "special_mechanisms_owner_check",
-          "value": "(\"special_mechanisms\".\"owner_type\" is null and \"special_mechanisms\".\"owner_id\" is null and \"special_mechanisms\".\"owner_label\" is null) or (\"special_mechanisms\".\"owner_type\" in ('character', 'faction', 'item') and \"special_mechanisms\".\"owner_id\" is not null)"
-        },
-        "special_mechanisms_type_check": {
-          "name": "special_mechanisms_type_check",
-          "value": "length(trim(\"special_mechanisms\".\"mechanism_type\")) > 0"
         }
       },
       "isRLSEnabled": false
@@ -13263,6 +11773,26 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "bio": {
+          "name": "bio",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "avatar_url": {
+          "name": "avatar_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
         },
         "status": {
           "name": "status",
