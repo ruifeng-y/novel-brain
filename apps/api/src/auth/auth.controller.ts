@@ -1,13 +1,31 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from "@nestjs/common";
 import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from "@nestjs/common";
+import {
+  authDeviceSessionsResponseSchema,
   authPasswordSchema,
   authSessionResponseSchema,
   csrfResponseSchema,
   loginRequestSchema,
   logoutResponseSchema,
   registerRequestSchema,
+  resetPasswordRequestSchema,
+  resetPasswordResponseSchema,
+  revokeSessionResponseSchema,
   sendRegistrationCodeRequestSchema,
   sendRegistrationCodeResponseSchema,
+  sendPasswordResetRequestSchema,
+  sendPasswordResetResponseSchema,
+  uuidV7Schema,
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
 import { ApiBody, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
@@ -42,10 +60,16 @@ function schemaOf(schema: z.ZodType): SchemaObject {
 const sendCodeBodySchema = schemaOf(sendRegistrationCodeRequestSchema);
 const registerBodySchema = schemaOf(registerRequestSchema);
 const loginBodySchema = schemaOf(loginRequestSchema);
+const passwordForgotBodySchema = schemaOf(sendPasswordResetRequestSchema);
+const passwordResetBodySchema = schemaOf(resetPasswordRequestSchema);
 const csrfResponseJsonSchema = schemaOf(csrfResponseSchema);
 const sendCodeResponseJsonSchema = schemaOf(sendRegistrationCodeResponseSchema);
+const sendPasswordResetResponseJsonSchema = schemaOf(sendPasswordResetResponseSchema);
+const resetPasswordResponseJsonSchema = schemaOf(resetPasswordResponseSchema);
 const authSessionResponseJsonSchema = schemaOf(authSessionResponseSchema);
 const logoutResponseJsonSchema = schemaOf(logoutResponseSchema);
+const sessionsResponseJsonSchema = schemaOf(authDeviceSessionsResponseSchema);
+const revokeSessionResponseJsonSchema = schemaOf(revokeSessionResponseSchema);
 
 @ApiTags("auth")
 @Controller("auth")
@@ -118,6 +142,37 @@ export class AuthController {
     return authSessionResponseSchema.parse(responseEnvelope(issued.data));
   }
 
+  @Post("password/forgot")
+  @HttpCode(200)
+  @UseGuards(CsrfGuard)
+  @ApiBody({ schema: passwordForgotBodySchema })
+  @ApiOkResponse({
+    description: "Password reset email accepted",
+    schema: sendPasswordResetResponseJsonSchema,
+  })
+  async forgotPassword(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    const result = await this.authService.sendPasswordReset(
+      sendPasswordResetRequestSchema.parse(body),
+      getClientIp(request),
+    );
+    return sendPasswordResetResponseSchema.parse(
+      responseEnvelope({ sent: true, expiresAt: result.expiresAt.toISOString() }),
+    );
+  }
+
+  @Post("password/reset")
+  @HttpCode(200)
+  @UseGuards(CsrfGuard)
+  @ApiBody({ schema: passwordResetBodySchema })
+  @ApiOkResponse({ description: "Password reset", schema: resetPasswordResponseJsonSchema })
+  async resetPassword(@Body() body: unknown, @Req() request: AuthenticatedRequest) {
+    await this.authService.resetPassword(
+      resetPasswordRequestSchema.parse(body),
+      getClientIp(request),
+    );
+    return resetPasswordResponseSchema.parse(responseEnvelope({ reset: true }));
+  }
+
   @Get("me")
   @UseGuards(SessionAuthGuard)
   @ApiOkResponse({
@@ -147,5 +202,47 @@ export class AuthController {
     await this.authService.logout(request.auth.session.id);
     clearAuthCookies(response);
     return logoutResponseSchema.parse(responseEnvelope({ loggedOut: true }));
+  }
+
+  @Post("logout-all")
+  @HttpCode(200)
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOkResponse({ description: "All sessions revoked", schema: logoutResponseJsonSchema })
+  async logoutAll(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    if (!request.auth) {
+      throw new Error("Authenticated request is missing auth context");
+    }
+    await this.authService.logoutAll(request.auth.user.id);
+    clearAuthCookies(response);
+    return logoutResponseSchema.parse(responseEnvelope({ loggedOut: true }));
+  }
+
+  @Get("sessions")
+  @UseGuards(SessionAuthGuard)
+  @ApiOkResponse({ description: "Active sessions", schema: sessionsResponseJsonSchema })
+  async sessions(@Req() request: AuthenticatedRequest) {
+    if (!request.auth) {
+      throw new Error("Authenticated request is missing auth context");
+    }
+    return authDeviceSessionsResponseSchema.parse(
+      responseEnvelope(
+        await this.authService.listSessions(request.auth.user.id, request.auth.session.id),
+      ),
+    );
+  }
+
+  @Delete("sessions/:sessionId")
+  @HttpCode(200)
+  @UseGuards(SessionAuthGuard, CsrfGuard)
+  @ApiOkResponse({ description: "Session revoked", schema: revokeSessionResponseJsonSchema })
+  async revokeSession(@Req() request: AuthenticatedRequest, @Param("sessionId") sessionId: string) {
+    if (!request.auth) {
+      throw new Error("Authenticated request is missing auth context");
+    }
+    await this.authService.revokeUserSession(request.auth.user.id, uuidV7Schema.parse(sessionId));
+    return revokeSessionResponseSchema.parse(responseEnvelope({ revoked: true }));
   }
 }

@@ -44,6 +44,22 @@ export class AuthRateLimiterService implements OnModuleDestroy {
     ]);
   }
 
+  async consumePasswordResetRequest(email: string, ip: string): Promise<void> {
+    await this.assertWithinLimits([
+      { key: `password-reset:email:minute:${sha256(email)}`, limit: 1, ttlSeconds: 60 },
+      { key: `password-reset:email:hour:${sha256(email)}`, limit: 5, ttlSeconds: 3_600 },
+      { key: `password-reset:ip:minute:${sha256(ip)}`, limit: 5, ttlSeconds: 60 },
+      { key: `password-reset:ip:hour:${sha256(ip)}`, limit: 30, ttlSeconds: 3_600 },
+    ]);
+  }
+
+  async consumePasswordResetAttempt(tokenHash: string, ip: string): Promise<void> {
+    await this.assertWithinLimits([
+      { key: `password-reset:token:${tokenHash}`, limit: 10, ttlSeconds: 3_600 },
+      { key: `password-reset:attempt-ip:${sha256(ip)}`, limit: 30, ttlSeconds: 3_600 },
+    ]);
+  }
+
   async onModuleDestroy(): Promise<void> {
     if (this.redis.status === "ready") {
       await this.redis.quit();

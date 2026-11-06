@@ -71,6 +71,13 @@ export const authPasswordSchema = z
   .regex(/[A-Za-z]/, "Password must contain a letter")
   .regex(/\d/, "Password must contain a number");
 export const authDisplayNameSchema = z.string().trim().min(1).max(50);
+export const authorAvatarUrlSchema = z
+  .url()
+  .max(500)
+  .refine((value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === "http:" || protocol === "https:";
+  }, "Avatar URL must use http or https");
 
 export const sendRegistrationCodeRequestSchema = z.object({
   email: authEmailSchema,
@@ -91,13 +98,41 @@ export const loginRequestSchema = z.object({
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
+export const sendPasswordResetRequestSchema = z.object({
+  email: authEmailSchema,
+});
+export type SendPasswordResetRequest = z.infer<typeof sendPasswordResetRequestSchema>;
+
+export const resetPasswordRequestSchema = z.object({
+  token: z.string().min(32).max(256),
+  password: authPasswordSchema,
+});
+export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
+
 export const authUserSchema = z.object({
   id: uuidV7Schema,
   emailMasked: z.string().min(3),
   displayName: z.string().min(1),
+  bio: z.string().max(500).default(""),
+  avatarUrl: authorAvatarUrlSchema.nullable().default(null),
+  version: z.number().int().positive().default(1),
   createdAt: z.string().datetime(),
 });
 export type AuthUser = z.infer<typeof authUserSchema>;
+
+export const profileUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    displayName: authDisplayNameSchema.optional(),
+    bio: z.string().trim().max(500).optional(),
+    avatarUrl: authorAvatarUrlSchema.nullable().optional(),
+  })
+  .refine(
+    (input) =>
+      input.displayName !== undefined || input.bio !== undefined || input.avatarUrl !== undefined,
+    { message: "At least one profile field is required" },
+  );
+export type ProfileUpdateRequest = z.infer<typeof profileUpdateRequestSchema>;
 
 export const authSessionSchema = z.object({
   id: uuidV7Schema,
@@ -107,6 +142,17 @@ export const authSessionSchema = z.object({
   createdAt: z.string().datetime(),
 });
 export type AuthSession = z.infer<typeof authSessionSchema>;
+
+export const authDeviceSessionSchema = z.object({
+  id: uuidV7Schema,
+  expiresAt: z.string().datetime(),
+  current: z.boolean(),
+  userAgent: z.string(),
+  ip: z.string(),
+  lastSeenAt: z.string().datetime(),
+  createdAt: z.string().datetime(),
+});
+export type AuthDeviceSession = z.infer<typeof authDeviceSessionSchema>;
 
 export const authSessionDataSchema = z.object({
   user: authUserSchema,
@@ -121,14 +167,73 @@ export const sendRegistrationCodeDataSchema = z.object({
   sent: z.literal(true),
   expiresAt: z.string().datetime(),
 });
+export const sendPasswordResetDataSchema = z.object({
+  sent: z.literal(true),
+  expiresAt: z.string().datetime(),
+});
+export const resetPasswordDataSchema = z.object({
+  reset: z.literal(true),
+});
+export const revokeSessionDataSchema = z.object({
+  revoked: z.literal(true),
+});
 export const logoutDataSchema = z.object({
   loggedOut: z.literal(true),
 });
 
 export const csrfResponseSchema = apiEnvelopeSchema(csrfDataSchema);
 export const sendRegistrationCodeResponseSchema = apiEnvelopeSchema(sendRegistrationCodeDataSchema);
+export const sendPasswordResetResponseSchema = apiEnvelopeSchema(sendPasswordResetDataSchema);
+export const resetPasswordResponseSchema = apiEnvelopeSchema(resetPasswordDataSchema);
 export const authSessionResponseSchema = apiEnvelopeSchema(authSessionDataSchema);
+export const authDeviceSessionsResponseSchema = apiEnvelopeSchema(z.array(authDeviceSessionSchema));
+export const revokeSessionResponseSchema = apiEnvelopeSchema(revokeSessionDataSchema);
+export const profileResponseSchema = apiEnvelopeSchema(authUserSchema);
 export const logoutResponseSchema = apiEnvelopeSchema(logoutDataSchema);
+
+export const authorPenNameSchema = z.object({
+  id: uuidV7Schema,
+  name: z.string().min(1).max(50),
+  bio: z.string().max(500),
+  avatarUrl: authorAvatarUrlSchema.nullable(),
+  isDefault: z.boolean(),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type AuthorPenName = z.infer<typeof authorPenNameSchema>;
+
+export const authorPenNameCreateRequestSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  bio: z.string().trim().max(500).default(""),
+  avatarUrl: authorAvatarUrlSchema.nullable().optional(),
+  isDefault: z.boolean().default(false),
+});
+export type AuthorPenNameCreateRequest = z.infer<typeof authorPenNameCreateRequestSchema>;
+
+export const authorPenNameUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(50).optional(),
+    bio: z.string().trim().max(500).optional(),
+    avatarUrl: authorAvatarUrlSchema.nullable().optional(),
+    isDefault: z.boolean().optional(),
+  })
+  .refine(
+    (input) =>
+      input.name !== undefined ||
+      input.bio !== undefined ||
+      input.avatarUrl !== undefined ||
+      input.isDefault !== undefined,
+    { message: "At least one pen name field is required" },
+  );
+export type AuthorPenNameUpdateRequest = z.infer<typeof authorPenNameUpdateRequestSchema>;
+
+export const authorPenNameResponseSchema = apiEnvelopeSchema(authorPenNameSchema);
+export const authorPenNameListResponseSchema = apiEnvelopeSchema(z.array(authorPenNameSchema));
+export const authorPenNameDeleteResponseSchema = apiEnvelopeSchema(
+  z.object({ deleted: z.literal(true) }),
+);
 
 export const modelProviderSchema = z.enum(["deepseek", "openai-compatible"]);
 export const modelPurposeSchema = z.enum(["planning", "writing", "review"]);

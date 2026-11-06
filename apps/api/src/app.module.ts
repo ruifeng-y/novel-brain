@@ -12,6 +12,7 @@ import { ModelConfigModule } from "./model-config/model-config.module";
 import { ReviewModule } from "./review/review.module";
 import { SettingsModule } from "./settings/settings.module";
 import { StoryBibleModule } from "./story-bible/story-bible.module";
+import { UsersModule } from "./users/users.module";
 import { WorksModule } from "./works/works.module";
 
 @Module({
@@ -28,6 +29,7 @@ import { WorksModule } from "./works/works.module";
     ReviewModule,
     SettingsModule,
     StoryBibleModule,
+    UsersModule,
     WorksModule,
   ],
 })
