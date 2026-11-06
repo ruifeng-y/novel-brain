@@ -2,6 +2,7 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   chapterVersions,
   chapters,
+  characterKnowledgeStates,
   contextPackVersions,
   createDatabaseClient,
   createDatabasePool,
@@ -48,6 +49,11 @@ export interface GenerationBranchContext {
 
 export interface GenerationSources {
   chapter: InferSelectModel<typeof chapters>;
+  branch: {
+    id: string;
+    status: "active" | "archived";
+    headNodeId: string | null;
+  };
   storyBible: InferSelectModel<typeof storyBibles>;
   worldRules: Array<{
     id: string;
@@ -66,6 +72,24 @@ export interface GenerationSources {
     content: string;
   }>;
   modelConfig: InferSelectModel<typeof modelConfigs>;
+  povCharacterId?: string;
+  knowledge?: {
+    facts: Array<{
+      id: string;
+      subject: string;
+      predicate: string;
+      object: string;
+      validFromChapter: number;
+      validToChapter: number | null;
+    }>;
+    states: Array<{
+      objectiveFactId: string;
+      state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+      claimedContent: string | null;
+      validFromChapter: number;
+      validToChapter: number | null;
+    }>;
+  };
 }
 
 export interface GenerationSettingSource {
@@ -159,6 +183,24 @@ export class GenerationRepository implements OnModuleDestroy {
         )
         .limit(1);
       if (!chapter) {
+        return undefined;
+      }
+      const [branch] = await transaction
+        .select({
+          id: workBranches.id,
+          status: workBranches.status,
+          headNodeId: workBranches.headNodeId,
+        })
+        .from(workBranches)
+        .where(
+          and(
+            eq(workBranches.id, context.branchId),
+            eq(workBranches.workId, context.workId),
+            eq(workBranches.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (!branch) {
         return undefined;
       }
       const [storyBible] = await transaction
@@ -277,8 +319,33 @@ export class GenerationRepository implements OnModuleDestroy {
       if (!modelConfig) {
         return undefined;
       }
+      const povName = chapter.brief?.pov;
+      const hasPov = typeof povName === "string" && povName.trim().length > 0;
+      const povCharacter =
+        typeof povName === "string"
+          ? settings.find((setting) => setting.type === "character" && setting.name === povName)
+          : undefined;
+      const knowledgeStates = povCharacter
+        ? await transaction
+            .select()
+            .from(characterKnowledgeStates)
+            .where(
+              and(
+                eq(characterKnowledgeStates.characterId, povCharacter.id),
+                eq(characterKnowledgeStates.workId, context.workId),
+                eq(characterKnowledgeStates.branchId, context.branchId),
+                eq(characterKnowledgeStates.userId, userId),
+              ),
+            )
+            .orderBy(asc(characterKnowledgeStates.validFromChapter))
+        : [];
       return {
         chapter,
+        branch: {
+          id: branch.id,
+          status: branch.status === "archived" ? "archived" : "active",
+          headNodeId: branch.headNodeId,
+        },
         storyBible,
         worldRules: worldRules.map((rule) => ({
           id: rule.id,
@@ -326,6 +393,29 @@ export class GenerationRepository implements OnModuleDestroy {
           : {}),
         previousVersions,
         modelConfig,
+        ...(povCharacter ? { povCharacterId: povCharacter.id } : {}),
+        ...(hasPov
+          ? {
+              knowledge: {
+                facts: submittedFacts.map(({ fact }) => ({
+                  id: fact.id,
+                  subject: fact.subject,
+                  predicate: fact.predicate,
+                  object: fact.object,
+                  validFromChapter: fact.validFromChapter,
+                  validToChapter: fact.validToChapter,
+                })),
+                states: knowledgeStates.map((state) => ({
+                  objectiveFactId: state.objectiveFactId,
+                  state: state.state as
+                    "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown",
+                  claimedContent: state.claimedContent,
+                  validFromChapter: state.validFromChapter,
+                  validToChapter: state.validToChapter,
+                })),
+              },
+            }
+          : {}),
       };
     });
   }

@@ -20,6 +20,7 @@ import {
   chapterVersionCreateRequestSchema,
   chapterWorkspaceSchema,
   confirmedSettingSchema,
+  contextPackManifestSchema,
   contextPackVersionSchema,
   csrfResponseSchema,
   customFieldDefinitionCreateRequestSchema,
@@ -477,6 +478,78 @@ describe("shared contracts", () => {
     expect(generateChapterRequestSchema.parse({})).toEqual({
       budget: { maxCostCny: 2.5, maxTokens: 30_000, maxRevisionRounds: 2 },
     });
+  });
+
+  it("accepts a P0-P4 context manifest with budget accounting and eviction reasons", () => {
+    const manifest = contextPackManifestSchema.parse({
+      compilerVersion: "m1-context-v1",
+      manifestHash: "a".repeat(64),
+      task: "chapter_draft",
+      chapterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c14",
+      chapterNumber: 5,
+      povCharacterId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c20",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c13",
+      tokenBudget: 30_000,
+      tokenUsed: 7,
+      effectiveTokenBudget: 30_000,
+      selected: [
+        {
+          key: "brief:required-facts",
+          label: "本章必用事实",
+          layer: "P0",
+          priority: "P0",
+          content: "左臂骨折",
+          tokenCount: 2,
+          sourceRefs: [
+            {
+              sourceType: "chapter_brief",
+              sourceId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c14",
+              label: "章纲",
+              citation: "第 5 章 · 必用事实",
+            },
+          ],
+          reason: "p0_hard_constraint",
+        },
+      ],
+      evicted: [
+        {
+          key: "recent:chapter-4",
+          label: "第 4 章",
+          layer: "P2",
+          reason: "future_fact",
+          tokenCount: 12,
+          sourceRefs: [],
+        },
+      ],
+      sourceRefs: [
+        {
+          sourceType: "chapter_brief",
+          sourceId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c14",
+          label: "章纲",
+          citation: "第 5 章 · 必用事实",
+        },
+      ],
+      budget: {
+        requestedTokenBudget: 30_000,
+        effectiveTokenBudget: 30_000,
+        modelContextWindowTokens: 64_000,
+        reservedOutputTokens: 2_000,
+        tokenUsed: 7,
+        tokenRemaining: 29_993,
+        tokenEstimator: "cjk_chars_per_2",
+        layers: {
+          P0: { selectedCount: 1, selectedTokens: 2, evictedCount: 0, evictedTokens: 0 },
+          P1: { selectedCount: 0, selectedTokens: 0, evictedCount: 0, evictedTokens: 0 },
+          P2: { selectedCount: 0, selectedTokens: 0, evictedCount: 1, evictedTokens: 12 },
+          P3: { selectedCount: 0, selectedTokens: 0, evictedCount: 0, evictedTokens: 0 },
+          P4: { selectedCount: 0, selectedTokens: 0, evictedCount: 0, evictedTokens: 0 },
+        },
+      },
+    });
+
+    expect(manifest.selected[0]).toMatchObject({ layer: "P0", priority: "P0" });
+    expect(manifest.evicted[0]?.reason).toBe("future_fact");
+    expect(manifest.budget.layers.P2.evictedCount).toBe(1);
   });
 
   it("rejects a job without an idempotency key", () => {

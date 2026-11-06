@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import {
+  contextPackManifestSchema,
   contextPackPreviewSchema,
   contextPackVersionSchema,
   generateChapterJobSchema,
@@ -14,7 +15,13 @@ import {
   type GenerationJob,
   type JobEvent,
 } from "@novel-brain/contracts";
-import { compileChapterContext, ContextBudgetExceededError } from "@novel-brain/core";
+import {
+  compileChapterContextManifest,
+  ContextBudgetExceededError,
+  ContextBranchStaleError,
+  ContextWindowTooSmallError,
+  resolveModelContextWindow,
+} from "@novel-brain/core";
 import { Observable } from "rxjs";
 
 import { ApiError } from "../common/api-error";
@@ -32,7 +39,8 @@ import {
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GenerationQueue } from "./generation.queue";
 
-const COMPILER_VERSION = "m0-context-v1";
+const COMPILER_VERSION = "m1-context-v1";
+const RESERVED_OUTPUT_TOKENS = 2_000;
 
 @Injectable()
 export class GenerationService {
@@ -63,6 +71,18 @@ export class GenerationService {
         throw new ApiError(400, "JOB_BUDGET_EXCEEDED", "上下文超过本章生成预算", {
           requiredTokens: error.requiredTokens,
           tokenBudget: error.tokenBudget,
+          p0Keys: error.p0Keys,
+        });
+      }
+      if (error instanceof ContextBranchStaleError) {
+        throw new ApiError(409, "JOB_CONTEXT_BRANCH_STALE", "当前分支已归档，不能继续生成", {
+          branchId: error.branchId,
+        });
+      }
+      if (error instanceof ContextWindowTooSmallError) {
+        throw new ApiError(400, "JOB_CONTEXT_WINDOW_TOO_SMALL", "模型上下文窗口不足以容纳输入", {
+          contextWindowTokens: error.contextWindowTokens,
+          reservedOutputTokens: error.reservedOutputTokens,
         });
       }
       throw error;
@@ -114,6 +134,18 @@ export class GenerationService {
         throw new ApiError(400, "JOB_BUDGET_EXCEEDED", "上下文超过本章生成预算", {
           requiredTokens: error.requiredTokens,
           tokenBudget: error.tokenBudget,
+          p0Keys: error.p0Keys,
+        });
+      }
+      if (error instanceof ContextBranchStaleError) {
+        throw new ApiError(409, "JOB_CONTEXT_BRANCH_STALE", "当前分支已归档，不能继续生成", {
+          branchId: error.branchId,
+        });
+      }
+      if (error instanceof ContextWindowTooSmallError) {
+        throw new ApiError(400, "JOB_CONTEXT_WINDOW_TOO_SMALL", "模型上下文窗口不足以容纳输入", {
+          contextWindowTokens: error.contextWindowTokens,
+          reservedOutputTokens: error.reservedOutputTokens,
         });
       }
       throw error;
@@ -237,6 +269,7 @@ export class GenerationService {
           evicted: record.contextPack.evicted,
           sourceRefs: record.contextPack.sourceRefs,
           createdAt: record.contextPack.createdAt.toISOString(),
+          ...manifestSnapshotFields(record.contextPack.snapshot),
         })
       : null;
     return generationJobSchema.parse({
@@ -261,6 +294,23 @@ export class GenerationService {
       finishedAt: record.job.finishedAt?.toISOString() ?? null,
     });
   }
+}
+
+function manifestSnapshotFields(snapshot: Record<string, unknown>): Record<string, unknown> {
+  if (typeof snapshot.manifestHash !== "string") {
+    return {};
+  }
+  const manifest = contextPackManifestSchema.parse(snapshot);
+  return {
+    manifestHash: manifest.manifestHash,
+    task: manifest.task,
+    chapterId: manifest.chapterId,
+    chapterNumber: manifest.chapterNumber,
+    povCharacterId: manifest.povCharacterId,
+    branchId: manifest.branchId,
+    effectiveTokenBudget: manifest.effectiveTokenBudget,
+    budget: manifest.budget,
+  };
 }
 
 function toWorkerJob(userId: string, record: JobWithContextPack): GenerateChapterJob {
@@ -289,8 +339,11 @@ export function compileGenerationContext(
     sceneBeats?: string[];
     requiredFacts?: string[];
   };
-  const compiled = compileChapterContext(
+  const compiled = compileChapterContextManifest(
     {
+      branchId: sources.branch.id,
+      branchStatus: sources.branch.status,
+      compilerVersion: COMPILER_VERSION,
       chapter: {
         id: sources.chapter.id,
         number: sources.chapter.number,
@@ -320,9 +373,12 @@ export function compileGenerationContext(
         validToChapter: setting.validToChapter ?? null,
       })),
       previousVersions: sources.previousVersions,
+      povCharacterId: sources.povCharacterId ?? null,
+      modelContextWindowTokens: resolveModelContextWindow(sources.modelConfig.model),
+      reservedOutputTokens: RESERVED_OUTPUT_TOKENS,
+      ...(sources.knowledge ? { knowledge: sources.knowledge } : {}),
     },
     tokenBudget,
-    COMPILER_VERSION,
   );
   return contextPackPreviewSchema.parse(compiled);
 }

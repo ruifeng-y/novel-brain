@@ -1,5 +1,10 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
+import { ContextBudgetExceededError } from "./context-compiler";
+import { estimateContextTokens } from "./context-tokens";
+
+export { estimateContextTokens } from "./context-tokens";
+
 export type RandomUuid = () => string;
 
 export function createRequestId(generateUuid: RandomUuid = randomUUID): string {
@@ -146,20 +151,6 @@ export interface ChapterContextInput {
     versionId: string;
     content: string;
   }>;
-}
-
-export class ContextBudgetExceededError extends Error {
-  constructor(
-    readonly requiredTokens: number,
-    readonly tokenBudget: number,
-  ) {
-    super("Required context exceeds the token budget");
-    this.name = "ContextBudgetExceededError";
-  }
-}
-
-export function estimateContextTokens(value: string): number {
-  return Math.max(1, Math.ceil(Array.from(value.replace(/\s/gu, "")).length / 2));
 }
 
 export function compileContextPack(input: CompileContextPackInput): CompiledContextPack {
@@ -585,6 +576,7 @@ function uniqueSourceRefs(refs: ContextSourceRef[]): ContextSourceRef[] {
 }
 
 export * from "./agent-runtime";
+export * from "./context-compiler";
 export * from "./world-simulation";
 export * from "./orchestrator";
 export * from "./logging";

@@ -2772,6 +2772,8 @@ export interface operations {
                   | "EQUIPMENT_SLOT_CONFLICT"
                   | "ITEM_NOT_EQUIPMENT"
                   | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
@@ -3039,6 +3041,8 @@ export interface operations {
                   | "EQUIPMENT_SLOT_CONFLICT"
                   | "ITEM_NOT_EQUIPMENT"
                   | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
@@ -6801,6 +6805,8 @@ export interface operations {
                   | "EQUIPMENT_SLOT_CONFLICT"
                   | "ITEM_NOT_EQUIPMENT"
                   | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
@@ -6830,7 +6836,8 @@ export interface operations {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  priority: "required" | "high" | "normal";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
                   content: string;
                   tokenCount: number;
                   sourceRefs: {
@@ -6841,13 +6848,41 @@ export interface operations {
                     label: string;
                     citation: string;
                   }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
                 }[];
                 evicted: {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  reason: "token_budget";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
                   tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
                 }[];
                 sourceRefs: {
                   /** @enum {string} */
@@ -6859,6 +6894,56 @@ export interface operations {
                 }[];
                 /** Format: date-time */
                 createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
               } | null;
               /** Format: date-time */
               createdAt: string;
@@ -6908,7 +6993,8 @@ export interface operations {
                 key: string;
                 label: string;
                 /** @enum {string} */
-                priority: "required" | "high" | "normal";
+                layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
                 content: string;
                 tokenCount: number;
                 sourceRefs: {
@@ -6919,13 +7005,41 @@ export interface operations {
                   label: string;
                   citation: string;
                 }[];
+                /** @enum {string} */
+                reason?:
+                  | "p0_hard_constraint"
+                  | "scene_relevant_canon"
+                  | "recent_narrative"
+                  | "style_and_promise"
+                  | "optional_reference";
               }[];
               evicted: {
                 key: string;
                 label: string;
                 /** @enum {string} */
-                reason: "token_budget";
+                layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                /** @enum {string} */
+                reason:
+                  | "token_budget"
+                  | "stale_branch"
+                  | "task_mismatch"
+                  | "pov_mismatch"
+                  | "future_fact"
+                  | "expired_fact"
+                  | "time_window"
+                  | "knowledge_boundary"
+                  | "empty_content"
+                  | "missing_source";
                 tokenCount: number;
+                sourceRefs?: {
+                  /** @enum {string} */
+                  sourceType:
+                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                detail?: string;
               }[];
               sourceRefs: {
                 /** @enum {string} */
@@ -6935,6 +7049,55 @@ export interface operations {
                 label: string;
                 citation: string;
               }[];
+              manifestHash?: string;
+              /** @enum {string} */
+              task?: "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+              chapterId?: string;
+              chapterNumber?: number;
+              povCharacterId?: string | null;
+              branchId?: string;
+              effectiveTokenBudget?: number;
+              budget?: {
+                requestedTokenBudget: number;
+                effectiveTokenBudget: number;
+                modelContextWindowTokens: number | null;
+                reservedOutputTokens: number;
+                tokenUsed: number;
+                tokenRemaining: number;
+                tokenEstimator: string;
+                layers: {
+                  P0: {
+                    selectedCount: number;
+                    selectedTokens: number;
+                    evictedCount: number;
+                    evictedTokens: number;
+                  };
+                  P1: {
+                    selectedCount: number;
+                    selectedTokens: number;
+                    evictedCount: number;
+                    evictedTokens: number;
+                  };
+                  P2: {
+                    selectedCount: number;
+                    selectedTokens: number;
+                    evictedCount: number;
+                    evictedTokens: number;
+                  };
+                  P3: {
+                    selectedCount: number;
+                    selectedTokens: number;
+                    evictedCount: number;
+                    evictedTokens: number;
+                  };
+                  P4: {
+                    selectedCount: number;
+                    selectedTokens: number;
+                    evictedCount: number;
+                    evictedTokens: number;
+                  };
+                };
+              };
             };
             /** Format: starts_with */
             requestId: string;
@@ -7072,6 +7235,8 @@ export interface operations {
                   | "EQUIPMENT_SLOT_CONFLICT"
                   | "ITEM_NOT_EQUIPMENT"
                   | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
@@ -7101,7 +7266,8 @@ export interface operations {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  priority: "required" | "high" | "normal";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
                   content: string;
                   tokenCount: number;
                   sourceRefs: {
@@ -7112,13 +7278,41 @@ export interface operations {
                     label: string;
                     citation: string;
                   }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
                 }[];
                 evicted: {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  reason: "token_budget";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
                   tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
                 }[];
                 sourceRefs: {
                   /** @enum {string} */
@@ -7130,6 +7324,56 @@ export interface operations {
                 }[];
                 /** Format: date-time */
                 createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
               } | null;
               /** Format: date-time */
               createdAt: string;
@@ -7273,6 +7517,8 @@ export interface operations {
                   | "EQUIPMENT_SLOT_CONFLICT"
                   | "ITEM_NOT_EQUIPMENT"
                   | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
@@ -7302,7 +7548,8 @@ export interface operations {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  priority: "required" | "high" | "normal";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
                   content: string;
                   tokenCount: number;
                   sourceRefs: {
@@ -7313,13 +7560,41 @@ export interface operations {
                     label: string;
                     citation: string;
                   }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
                 }[];
                 evicted: {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  reason: "token_budget";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
                   tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
                 }[];
                 sourceRefs: {
                   /** @enum {string} */
@@ -7331,6 +7606,56 @@ export interface operations {
                 }[];
                 /** Format: date-time */
                 createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
               } | null;
               /** Format: date-time */
               createdAt: string;
@@ -7474,6 +7799,8 @@ export interface operations {
                   | "EQUIPMENT_SLOT_CONFLICT"
                   | "ITEM_NOT_EQUIPMENT"
                   | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
@@ -7503,7 +7830,8 @@ export interface operations {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  priority: "required" | "high" | "normal";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
                   content: string;
                   tokenCount: number;
                   sourceRefs: {
@@ -7514,13 +7842,41 @@ export interface operations {
                     label: string;
                     citation: string;
                   }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
                 }[];
                 evicted: {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  reason: "token_budget";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
                   tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
                 }[];
                 sourceRefs: {
                   /** @enum {string} */
@@ -7532,6 +7888,56 @@ export interface operations {
                 }[];
                 /** Format: date-time */
                 createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
               } | null;
               /** Format: date-time */
               createdAt: string;
@@ -7675,6 +8081,8 @@ export interface operations {
                   | "EQUIPMENT_SLOT_CONFLICT"
                   | "ITEM_NOT_EQUIPMENT"
                   | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
@@ -7704,7 +8112,8 @@ export interface operations {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  priority: "required" | "high" | "normal";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
                   content: string;
                   tokenCount: number;
                   sourceRefs: {
@@ -7715,13 +8124,41 @@ export interface operations {
                     label: string;
                     citation: string;
                   }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
                 }[];
                 evicted: {
                   key: string;
                   label: string;
                   /** @enum {string} */
-                  reason: "token_budget";
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
                   tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
                 }[];
                 sourceRefs: {
                   /** @enum {string} */
@@ -7733,6 +8170,56 @@ export interface operations {
                 }[];
                 /** Format: date-time */
                 createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
               } | null;
               /** Format: date-time */
               createdAt: string;

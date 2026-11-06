@@ -174,6 +174,29 @@ describe("generation HTTP integration", () => {
     );
   });
 
+  it("blocks context compilation deterministically when the branch is archived", async () => {
+    const owner = await createAuthenticatedAgent("generation-stale-branch@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+
+    await databasePool.query("UPDATE work_branches SET status = 'archived' WHERE id = $1", [
+      work.mainBranch.id,
+    ]);
+
+    const stale = await owner
+      .get(`${branchPath}/chapters/${chapter.id}/context-preview?tokenBudget=12000`)
+      .expect(409);
+    expect(stale.body.error).toMatchObject({
+      code: "JOB_CONTEXT_BRANCH_STALE",
+      details: { branchId: work.mainBranch.id },
+    });
+  });
+
   it("runs the worker pipeline, persists a versioned context pack and exposes replayable SSE", async () => {
     const owner = await createAuthenticatedAgent("generation-success@example.com");
     const work = await createWork(owner);
@@ -244,10 +267,16 @@ describe("generation HTTP integration", () => {
     expect(completedJob.cost.totalTokens).toBeGreaterThan(0);
     expect(completedJob.contextPack).toMatchObject({
       version: 1,
-      compilerVersion: "m0-context-v1",
+      compilerVersion: "m1-context-v1",
       tokenBudget: 12_000,
+      task: "chapter_draft",
+      chapterNumber: 1,
+      effectiveTokenBudget: 12_000,
     });
     expect(completedJob.contextPack?.selected.length).toBeGreaterThan(0);
+    expect(completedJob.contextPack?.selected.map((source) => source.layer)).toContain("P0");
+    expect(completedJob.contextPack?.budget?.layers.P0.selectedCount).toBeGreaterThan(0);
+    expect(completedJob.contextPack?.manifestHash).toMatch(/^[a-f0-9]{64}$/);
     expect(completedJob.contextPack?.sourceRefs.length).toBeGreaterThan(0);
 
     const versions = await owner.get(`${branchPath}/chapters/${chapter.id}/versions`).expect(200);

@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import {
   generateChapterJobSchema,
+  type ContextPackManifest,
   WORKER_JOB_STEPS,
   type GenerateChapterJob,
   type GenerationCost,
@@ -17,10 +18,10 @@ import {
   type GenerationOperation,
 } from "@novel-brain/ai";
 import {
-  compileChapterContext,
+  compileChapterContextManifest,
   ContextBudgetExceededError,
   extractFactCandidates,
-  type CompiledContextPack,
+  resolveModelContextWindow,
 } from "@novel-brain/core";
 
 import { AI_GATEWAY } from "./generation.tokens";
@@ -107,7 +108,7 @@ export class GenerationJobProcessor {
     }
     const resumeStep = await this.repository.resumeStep(durablePayload);
     const startIndex = WORKER_JOB_STEPS.indexOf(resumeStep);
-    let contextPack: CompiledContextPack | undefined;
+    let contextPack: ContextPackManifest | undefined;
     let provider: AiGateway | undefined;
 
     for (const step of WORKER_JOB_STEPS) {
@@ -172,12 +173,12 @@ export class GenerationJobProcessor {
     provider?: AiGateway;
     step: WorkerJobStep;
     attempt: number;
-    contextPack?: CompiledContextPack;
+    contextPack?: ContextPackManifest;
   }): Promise<{
     output: Record<string, unknown>;
     cost: GenerationCost;
     checkpointPayload: Record<string, unknown>;
-    contextPack?: CompiledContextPack;
+    contextPack?: ContextPackManifest;
   }> {
     switch (input.step) {
       case "prepare": {
@@ -194,8 +195,11 @@ export class GenerationJobProcessor {
       }
       case "compile_context": {
         const sources = await this.requireSources(input.payload);
-        const pack = compileChapterContext(
+        const pack = compileChapterContextManifest(
           {
+            branchId: input.payload.branchId,
+            branchStatus: sources.branch.status,
+            compilerVersion: "m1-context-v1",
             chapter: {
               id: sources.chapter.id,
               number: sources.chapter.number,
@@ -225,6 +229,10 @@ export class GenerationJobProcessor {
               validToChapter: setting.validToChapter ?? null,
             })),
             previousVersions: sources.previousVersions,
+            povCharacterId: sources.povCharacterId ?? null,
+            modelContextWindowTokens: resolveModelContextWindow(input.loaded.modelConfig.model),
+            reservedOutputTokens: 2_000,
+            ...(sources.knowledge ? { knowledge: sources.knowledge } : {}),
           },
           input.payload.budget.maxTokens,
         );
@@ -359,7 +367,7 @@ export class GenerationJobProcessor {
     return sources;
   }
 
-  private async loadContextPack(payload: GenerateChapterJob): Promise<CompiledContextPack> {
+  private async loadContextPack(payload: GenerateChapterJob): Promise<ContextPackManifest> {
     const output = await this.repository.findStepOutput(payload, "compile_context");
     const contextPackId = output?.contextPackId;
     if (typeof contextPackId !== "string") {
@@ -514,7 +522,7 @@ function validateBrief(sources: WorkerContextSources): void {
   }
 }
 
-function promptFromPack(pack: CompiledContextPack, instruction: string): string {
+function promptFromPack(pack: ContextPackManifest, instruction: string): string {
   return [
     instruction,
     "本章参考：",
