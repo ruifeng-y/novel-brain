@@ -3050,6 +3050,14 @@ export type SceneInformationReleaseJson = {
   constraint: string | null;
 };
 
+export type SummarySourceRangeJson = {
+  nodeId: string;
+  versionNodeId: string | null;
+  objectVersion: number;
+  chapterFrom: number;
+  chapterTo: number | null;
+};
+
 export type VolumePlotLineJson = {
   name: string;
   status: string;
@@ -3298,6 +3306,179 @@ export const searchDocuments = pgTable(
       "search_documents_to_story_time_check",
       sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
     ),
+  ],
+);
+
+export const summaryRecords = pgTable(
+  "summary_records",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    level: text("level").notNull(),
+    scopeId: uuid("scope_id").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    status: text("status").notNull().default("stale"),
+    version: integer("version").notNull().default(1),
+    contentHash: text("content_hash").notNull(),
+    inputHash: text("input_hash").notNull(),
+    compilerVersion: text("compiler_version").notNull(),
+    modelVersion: text("model_version").notNull(),
+    sourceRanges: jsonb("source_ranges").$type<SummarySourceRangeJson[]>().notNull(),
+    fromChapter: integer("from_chapter").notNull(),
+    toChapter: integer("to_chapter"),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
+    invalidationReason: text("invalidation_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("summary_records_branch_scope_unique").on(
+      table.branchId,
+      table.level,
+      table.scopeId,
+    ),
+    index("summary_records_user_work_branch_status_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.status,
+    ),
+    index("summary_records_branch_range_idx").on(
+      table.branchId,
+      table.fromChapter,
+      table.toChapter,
+    ),
+    check(
+      "summary_records_level_check",
+      sql`${table.level} in ('chapter', 'stage', 'volume', 'book')`,
+    ),
+    check("summary_records_status_check", sql`${table.status} in ('fresh', 'stale', 'rebuilding')`),
+    check("summary_records_version_check", sql`${table.version} > 0`),
+    check(
+      "summary_records_content_hash_check",
+      sql`${table.contentHash} ~ '^[a-fA-F0-9]{64}$' and ${table.inputHash} ~ '^[a-fA-F0-9]{64}$'`,
+    ),
+    check(
+      "summary_records_range_check",
+      sql`${table.toChapter} is null or ${table.toChapter} >= ${table.fromChapter}`,
+    ),
+    check(
+      "summary_records_invalidation_check",
+      sql`(${table.status} = 'fresh' and ${table.invalidatedAt} is null and ${table.invalidationReason} is null) or (${table.status} <> 'fresh' and ${table.invalidatedAt} is not null and length(trim(${table.invalidationReason})) > 0)`,
+    ),
+  ],
+);
+
+export const summaryRebuildRuns = pgTable(
+  "summary_rebuild_runs",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    levels: jsonb("levels").$type<string[]>().notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    compilerVersion: text("compiler_version").notNull(),
+    modelVersion: text("model_version").notNull(),
+    checkpointRevision: integer("checkpoint_revision").notNull().default(0),
+    totalItems: integer("total_items").notNull().default(0),
+    completedItems: integer("completed_items").notNull().default(0),
+    failedItems: integer("failed_items").notNull().default(0),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("summary_rebuild_runs_branch_idempotency_unique").on(
+      table.branchId,
+      table.idempotencyKey,
+    ),
+    index("summary_rebuild_runs_user_work_branch_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.createdAt,
+    ),
+    check(
+      "summary_rebuild_runs_status_check",
+      sql`${table.status} in ('queued', 'running', 'completed', 'failed', 'cancelled')`,
+    ),
+    check(
+      "summary_rebuild_runs_counts_check",
+      sql`${table.checkpointRevision} >= 0 and ${table.totalItems} >= 0 and ${table.completedItems} >= 0 and ${table.completedItems} <= ${table.totalItems} and ${table.failedItems} >= 0 and ${table.failedItems} <= ${table.totalItems}`,
+    ),
+  ],
+);
+
+export const summaryRebuildItems = pgTable(
+  "summary_rebuild_items",
+  {
+    id: uuid("id").primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => summaryRebuildRuns.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    level: text("level").notNull(),
+    scopeId: uuid("scope_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    inputHash: text("input_hash"),
+    outputSummaryId: uuid("output_summary_id").references(() => summaryRecords.id, {
+      onDelete: "set null",
+    }),
+    attempts: integer("attempts").notNull().default(0),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("summary_rebuild_items_run_ordinal_unique").on(table.runId, table.ordinal),
+    uniqueIndex("summary_rebuild_items_run_scope_unique").on(
+      table.runId,
+      table.level,
+      table.scopeId,
+    ),
+    index("summary_rebuild_items_run_status_idx").on(table.runId, table.status, table.ordinal),
+    check(
+      "summary_rebuild_items_level_check",
+      sql`${table.level} in ('chapter', 'stage', 'volume', 'book')`,
+    ),
+    check(
+      "summary_rebuild_items_status_check",
+      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed')`,
+    ),
+    check("summary_rebuild_items_ordinal_check", sql`${table.ordinal} >= 0`),
+    check("summary_rebuild_items_attempts_check", sql`${table.attempts} >= 0`),
   ],
 );
 

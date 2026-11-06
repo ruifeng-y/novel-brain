@@ -13,6 +13,8 @@ import {
   resolveWorkerAiProviderMode,
 } from "./generation/model-provider.factory";
 import { WorkerService } from "./worker.service";
+import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
+import { WorkerSummaryRepository } from "./summaries/summary.repository";
 
 @Module({
   providers: [
@@ -29,6 +31,8 @@ import { WorkerService } from "./worker.service";
     },
     WorkerGenerationRepository,
     GenerationJobProcessor,
+    WorkerSummaryRepository,
+    SummaryRebuildProcessor,
     {
       provide: AI_GATEWAY,
       useFactory: () =>

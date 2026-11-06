@@ -18,6 +18,7 @@ import {
   storyBibles,
   storyBibleVersions,
   storyBibleWorldRules,
+  summaryRecords,
   workBranches,
   works,
   type DatabaseClient,
@@ -85,6 +86,16 @@ export interface GenerationSources {
     chapterTitle: string;
     versionId: string;
     content: string;
+  }>;
+  summaries: Array<{
+    id: string;
+    level: "chapter" | "stage" | "volume" | "book";
+    label: string;
+    content: string;
+    branchId: string;
+    fromChapter: number;
+    toChapter: number | null;
+    status: "fresh" | "stale" | "rebuilding";
   }>;
   modelConfig: InferSelectModel<typeof modelConfigs>;
   povCharacterId?: string;
@@ -338,6 +349,20 @@ export class GenerationRepository implements OnModuleDestroy {
         )
         .orderBy(desc(chapters.number))
         .limit(3);
+      const summaries = await transaction
+        .select()
+        .from(summaryRecords)
+        .where(
+          and(
+            eq(summaryRecords.userId, userId),
+            eq(summaryRecords.workId, context.workId),
+            eq(summaryRecords.branchId, context.branchId),
+            eq(summaryRecords.status, "fresh"),
+            sql`${summaryRecords.toChapter} is not null and ${summaryRecords.toChapter} < ${chapter.number}`,
+          ),
+        )
+        .orderBy(desc(summaryRecords.fromChapter))
+        .limit(8);
       const configs = await transaction
         .select()
         .from(modelConfigs)
@@ -427,6 +452,16 @@ export class GenerationRepository implements OnModuleDestroy {
           ? { styleSample: work.settings.styleSample }
           : {}),
         previousVersions,
+        summaries: summaries.map((summary) => ({
+          id: summary.id,
+          level: summary.level as "chapter" | "stage" | "volume" | "book",
+          label: summary.title,
+          content: summary.content,
+          branchId: summary.branchId,
+          fromChapter: summary.fromChapter,
+          toChapter: summary.toChapter,
+          status: summary.status as "fresh" | "stale" | "rebuilding",
+        })),
         modelConfig,
         ...(povCharacter ? { povCharacterId: povCharacter.id } : {}),
         ...(hasPov

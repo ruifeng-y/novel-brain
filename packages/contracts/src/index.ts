@@ -56,6 +56,7 @@ export const ERROR_CODES = [
   "JOB_NOT_RECOVERABLE",
   "JOB_RECOVERY_CONFLICT",
   "JOB_ATTEMPTS_EXHAUSTED",
+  "SUMMARY_REBUILD_FAILED",
   "FACT_DECISION_REQUIRED",
   "FACT_SUBMISSION_BLOCKED",
   "CANON_CHAPTER_NOT_APPROVED",
@@ -4356,6 +4357,7 @@ export type WorkerReadinessData = z.infer<typeof workerReadinessDataSchema>;
 
 export const WORKER_QUEUE_NAME = "novel-brain-jobs";
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
+export const SUMMARY_REBUILD_JOB = "rebuild_summaries";
 export const WORKER_JOB_STEPS = [
   "prepare",
   "compile_context",
@@ -4413,9 +4415,6 @@ export const generateChapterJobSchema = z.object({
 });
 export type GenerateChapterJob = z.infer<typeof generateChapterJobSchema>;
 
-export const workerJobSchema = z.discriminatedUnion("jobType", [generateChapterJobSchema]);
-export type WorkerJob = z.infer<typeof workerJobSchema>;
-
 export const generationBudgetSchema = generateChapterJobSchema.shape.budget;
 export type GenerationBudget = z.infer<typeof generationBudgetSchema>;
 
@@ -4451,6 +4450,7 @@ export const contextSourceTypeSchema = z.enum([
   "chapter_brief",
   "chapter_version",
   "style",
+  "summary",
 ]);
 export type ContextSourceType = z.infer<typeof contextSourceTypeSchema>;
 
@@ -4488,6 +4488,7 @@ export type ContextInclusionReason = z.infer<typeof contextInclusionReasonSchema
 export const contextEvictionReasonSchema = z.enum([
   "token_budget",
   "stale_branch",
+  "summary_stale",
   "task_mismatch",
   "pov_mismatch",
   "future_fact",
@@ -4611,6 +4612,170 @@ export const contextPackPreviewSchema = z.object({
   budget: contextBudgetAccountingSchema.optional(),
 });
 export type ContextPackPreview = z.infer<typeof contextPackPreviewSchema>;
+
+export const summaryLevelSchema = z.enum(["chapter", "stage", "volume", "book"]);
+export type SummaryLevel = z.infer<typeof summaryLevelSchema>;
+
+export const summaryStatusSchema = z.enum(["fresh", "stale", "rebuilding"]);
+export type SummaryStatus = z.infer<typeof summaryStatusSchema>;
+
+const summaryHashSchema = z.string().regex(/^[a-f0-9]{64}$/i, "Expected a SHA-256 hash");
+
+export const summarySourceRangeSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    versionNodeId: uuidV7Schema.nullable(),
+    objectVersion: z.number().int().positive(),
+    chapterFrom: z.number().int().positive(),
+    chapterTo: z.number().int().positive().nullable(),
+  })
+  .strict()
+  .superRefine((range, context) => {
+    if (range.chapterTo !== null && range.chapterTo < range.chapterFrom) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterTo"],
+        message: "Source range end cannot precede its start",
+      });
+    }
+  });
+export type SummarySourceRange = z.infer<typeof summarySourceRangeSchema>;
+
+export const summaryRecordSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    level: summaryLevelSchema,
+    scopeId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    title: z.string().trim().min(1).max(200),
+    content: z.string().trim().min(1).max(20_000),
+    status: summaryStatusSchema,
+    version: z.number().int().positive(),
+    contentHash: summaryHashSchema,
+    inputHash: summaryHashSchema,
+    compilerVersion: z.string().trim().min(1).max(100),
+    modelVersion: z.string().trim().min(1).max(200),
+    sourceRanges: z.array(summarySourceRangeSchema).min(1).max(10_000),
+    fromChapter: z.number().int().positive(),
+    toChapter: z.number().int().positive().nullable(),
+    generatedAt: z.string().datetime(),
+    invalidatedAt: z.string().datetime().nullable(),
+    invalidationReason: z.string().trim().min(1).max(500).nullable(),
+  })
+  .strict()
+  .superRefine((summary, context) => {
+    if (summary.toChapter !== null && summary.toChapter < summary.fromChapter) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Summary range end cannot precede its start",
+      });
+    }
+    if (summary.level === "chapter" && !summary.chapterId) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "Chapter summaries require a chapter",
+      });
+    }
+    if (summary.status === "fresh" && (summary.invalidatedAt || summary.invalidationReason)) {
+      context.addIssue({
+        code: "custom",
+        path: ["invalidatedAt"],
+        message: "Fresh summaries cannot carry invalidation evidence",
+      });
+    }
+    if (summary.status !== "fresh" && (!summary.invalidatedAt || !summary.invalidationReason)) {
+      context.addIssue({
+        code: "custom",
+        path: ["invalidatedAt"],
+        message: "Stale or rebuilding summaries require invalidation evidence",
+      });
+    }
+  });
+export type SummaryRecord = z.infer<typeof summaryRecordSchema>;
+
+export const summaryRebuildStatusSchema = z.enum([
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export type SummaryRebuildStatus = z.infer<typeof summaryRebuildStatusSchema>;
+
+export const summaryRebuildRequestSchema = z
+  .object({
+    levels: z.array(summaryLevelSchema).min(1).default(["chapter", "stage", "volume", "book"]),
+    force: z.boolean().default(false),
+  })
+  .strict();
+export type SummaryRebuildRequest = z.infer<typeof summaryRebuildRequestSchema>;
+
+export const summaryRebuildRunSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    status: summaryRebuildStatusSchema,
+    levels: z.array(summaryLevelSchema).min(1),
+    idempotencyKey: z.string().min(1).max(200),
+    compilerVersion: z.string().min(1).max(100),
+    modelVersion: z.string().min(1).max(200),
+    checkpointRevision: z.number().int().nonnegative(),
+    totalItems: z.number().int().nonnegative(),
+    completedItems: z.number().int().nonnegative(),
+    failedItems: z.number().int().nonnegative(),
+    error: generationJobErrorSchema.nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type SummaryRebuildRun = z.infer<typeof summaryRebuildRunSchema>;
+
+export const summaryStatsSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    fresh: z.number().int().nonnegative(),
+    stale: z.number().int().nonnegative(),
+    rebuilding: z.number().int().nonnegative(),
+  })
+  .strict();
+export type SummaryStats = z.infer<typeof summaryStatsSchema>;
+
+export const summaryWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    invalidationRuleVersion: z.literal("summary-invalidation-v1"),
+    summaries: z.array(summaryRecordSchema),
+    rebuilds: z.array(summaryRebuildRunSchema),
+    stats: summaryStatsSchema,
+  })
+  .strict();
+export type SummaryWorkspace = z.infer<typeof summaryWorkspaceSchema>;
+
+export const summaryWorkspaceResponseSchema = apiEnvelopeSchema(summaryWorkspaceSchema);
+export const summaryRebuildRunResponseSchema = apiEnvelopeSchema(summaryRebuildRunSchema);
+
+export const summaryRebuildJobSchema = z.object({
+  jobType: z.literal(SUMMARY_REBUILD_JOB),
+  runId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  actorId: uuidV7Schema,
+  idempotencyKey: z.string().min(1).max(200),
+});
+export type SummaryRebuildJob = z.infer<typeof summaryRebuildJobSchema>;
+
+export const workerJobSchema = z.discriminatedUnion("jobType", [
+  generateChapterJobSchema,
+  summaryRebuildJobSchema,
+]);
+export type WorkerJob = z.infer<typeof workerJobSchema>;
 
 export const generationJobSchema = z.object({
   id: uuidV7Schema,

@@ -36,6 +36,7 @@ import {
   storyBibles,
   storyBibleVersions,
   storyBibleWorldRules,
+  summaryRecords,
   usageRecords,
   users,
   versionNodes,
@@ -98,6 +99,16 @@ export interface WorkerContextSources {
     validToChapter?: number | null;
   }>;
   previousVersions: ChapterContextInput["previousVersions"];
+  summaries: Array<{
+    id: string;
+    level: "chapter" | "stage" | "volume" | "book";
+    label: string;
+    content: string;
+    branchId: string;
+    fromChapter: number;
+    toChapter: number | null;
+    status: "fresh" | "stale" | "rebuilding";
+  }>;
   povCharacterId?: string;
   knowledge?: {
     facts: Array<{
@@ -341,6 +352,20 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         )
         .orderBy(desc(chapters.number))
         .limit(3);
+      const summaries = await transaction
+        .select()
+        .from(summaryRecords)
+        .where(
+          and(
+            eq(summaryRecords.userId, payload.actorId),
+            eq(summaryRecords.workId, payload.workId),
+            eq(summaryRecords.branchId, payload.branchId),
+            eq(summaryRecords.status, "fresh"),
+            sql`${summaryRecords.toChapter} is not null and ${summaryRecords.toChapter} < ${chapter.number}`,
+          ),
+        )
+        .orderBy(desc(summaryRecords.fromChapter))
+        .limit(8);
       const povName = chapter.brief?.pov;
       const hasPov = typeof povName === "string" && povName.trim().length > 0;
       const povCharacter =
@@ -414,6 +439,16 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           ? { styleSample: work.settings.styleSample }
           : {}),
         previousVersions,
+        summaries: summaries.map((summary) => ({
+          id: summary.id,
+          level: summary.level as "chapter" | "stage" | "volume" | "book",
+          label: summary.title,
+          content: summary.content,
+          branchId: summary.branchId,
+          fromChapter: summary.fromChapter,
+          toChapter: summary.toChapter,
+          status: summary.status as "fresh" | "stale" | "rebuilding",
+        })),
         ...(povCharacter ? { povCharacterId: povCharacter.id } : {}),
         ...(hasPov
           ? {
