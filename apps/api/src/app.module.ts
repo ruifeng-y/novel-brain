@@ -7,6 +7,7 @@ import { ChaptersModule } from "./chapters/chapters.module";
 import { CharactersModule } from "./characters/characters.module";
 import { FactsModule } from "./facts/facts.module";
 import { GenerationModule } from "./generation/generation.module";
+import { GoldenThreeModule } from "./golden-three/golden-three.module";
 import { HealthModule } from "./health/health.module";
 import { ManuscriptImportModule } from "./imports/manuscript-import.module";
 import { SettingsImportModule } from "./imports/settings-import.module";
@@ -29,6 +30,7 @@ import { WorldModule } from "./world/world.module";
     CharactersModule,
     FactsModule,
     GenerationModule,
+    GoldenThreeModule,
     HealthModule,
     ManuscriptImportModule,
     SettingsImportModule,

@@ -51,8 +51,9 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { GoldenThreePanel } from "./golden-three-panel";
 
-type OutlineView = "tree" | "board" | "tension" | "ledger";
+type OutlineView = "tree" | "board" | "tension" | "ledger" | "golden";
 
 interface CreateForm {
   level: OutlineLevel;
@@ -479,6 +480,15 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
             <GitCommitHorizontal size={14} aria-hidden="true" />
             剧情账本
           </button>
+          <button
+            className={`seg${view === "golden" ? " active" : ""}`}
+            onClick={() => setView("golden")}
+            role="tab"
+            type="button"
+          >
+            <BookOpen size={14} aria-hidden="true" />
+            黄金三章
+          </button>
         </div>
         <div className="outline-plan-stats">
           <span>{workspace.stats.totalNodes} 个节点</span>
@@ -657,6 +667,10 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
           </div>
           {renderLedger()}
         </section>
+      ) : null}
+
+      {view === "golden" ? (
+        <GoldenThreePanel branchId={work.mainBranch.id} workId={work.id} />
       ) : null}
     </div>
   );
