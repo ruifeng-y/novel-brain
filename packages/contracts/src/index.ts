@@ -36,6 +36,14 @@ export const ERROR_CODES = [
   "CANON_CHAPTER_NOT_APPROVED",
   "IMPORT_CONFLICT_UNRESOLVED",
   "VERSION_CONFLICT",
+  "AGENT_CONTRACT_INVALID",
+  "AGENT_GRANT_INVALID",
+  "AGENT_GRANT_EXPIRED",
+  "AGENT_GRANT_REVOKED",
+  "AGENT_TOOL_NOT_REGISTERED",
+  "AGENT_TOOL_DENIED",
+  "AGENT_BUDGET_EXCEEDED",
+  "AGENT_APPROVAL_REQUIRED",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -2399,3 +2407,280 @@ export const generationJobResponseSchema = apiEnvelopeSchema(generationJobSchema
 export const generationJobListResponseSchema = apiEnvelopeSchema(z.array(generationJobSchema));
 export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
 export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);
+
+export const agentRoleSchema = z.enum([
+  "planner",
+  "context_curator",
+  "writer",
+  "critic",
+  "reviser",
+  "fact_extractor",
+  "canon_curator",
+]);
+export type AgentRole = z.infer<typeof agentRoleSchema>;
+
+export const toolSideEffectLevelSchema = z.enum(["S0", "S1", "S2", "S3", "S4"]);
+export type ToolSideEffectLevel = z.infer<typeof toolSideEffectLevelSchema>;
+
+export const toolCategorySchema = z.enum([
+  "read_story",
+  "read_context",
+  "write_draft",
+  "write_review",
+  "propose_fact",
+  "commit_canon",
+  "external_irreversible",
+]);
+export type ToolCategory = z.infer<typeof toolCategorySchema>;
+
+export const toolNameSchema = z
+  .string()
+  .min(3)
+  .max(100)
+  .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced tool name");
+export type ToolName = z.infer<typeof toolNameSchema>;
+
+export const jsonSchemaDocumentSchema = z
+  .record(z.string(), z.unknown())
+  .refine((schema) => typeof schema.type === "string", "JSON Schema must declare a root type");
+export type JsonSchemaDocument = z.infer<typeof jsonSchemaDocumentSchema>;
+
+export const agentToolDeclarationSchema = z
+  .object({
+    name: toolNameSchema,
+    required: z.boolean(),
+  })
+  .strict();
+export type AgentToolDeclaration = z.infer<typeof agentToolDeclarationSchema>;
+
+export const agentFailureSemanticsSchema = z
+  .object({
+    invalidOutput: z.literal("fail_run"),
+    toolDenied: z.literal("fail_run"),
+    budgetExceeded: z.literal("pause_task"),
+    retry: z
+      .object({
+        maxAttempts: z.number().int().min(1).max(5),
+        retryableCodes: z.array(z.string().min(1).max(100)).max(8),
+        exhaustedAction: z.enum(["fail_run", "pause_task", "escalate_to_author"]),
+        preserveCheckpoint: z.literal(true),
+      })
+      .strict(),
+  })
+  .strict();
+export type AgentFailureSemantics = z.infer<typeof agentFailureSemanticsSchema>;
+
+export const agentContractSchema = z
+  .object({
+    key: z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced contract key"),
+    version: z.number().int().positive(),
+    role: agentRoleSchema,
+    description: z.string().trim().min(1).max(2_000),
+    inputSchema: jsonSchemaDocumentSchema,
+    outputSchema: jsonSchemaDocumentSchema,
+    tools: z.array(agentToolDeclarationSchema).max(32),
+    failureSemantics: agentFailureSemanticsSchema,
+  })
+  .strict()
+  .superRefine((contract, context) => {
+    const names = contract.tools.map((tool) => tool.name);
+    if (new Set(names).size !== names.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tools"],
+        message: "Tool declarations must be unique",
+      });
+    }
+  });
+export type AgentContract = z.infer<typeof agentContractSchema>;
+
+export const toolRegistryEntrySchema = z
+  .object({
+    name: toolNameSchema,
+    category: toolCategorySchema,
+    sideEffect: toolSideEffectLevelSchema,
+    description: z.string().trim().min(1).max(2_000),
+    inputSchema: jsonSchemaDocumentSchema,
+    agentCallable: z.boolean(),
+    approval: z.enum(["none", "human"]),
+  })
+  .strict();
+export type ToolRegistryEntry = z.infer<typeof toolRegistryEntrySchema>;
+
+export const agentGrantStateSchema = z.enum(["active", "revoked", "expired"]);
+export type AgentGrantState = z.infer<typeof agentGrantStateSchema>;
+
+export const agentResourceScopeSchema = z
+  .object({
+    chapterIds: z.array(uuidV7Schema).max(500),
+    settingIds: z.array(uuidV7Schema).max(500),
+    includeCanon: z.boolean(),
+  })
+  .strict()
+  .superRefine((scope, context) => {
+    if (new Set(scope.chapterIds).size !== scope.chapterIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterIds"],
+        message: "Chapter scope entries must be unique",
+      });
+    }
+    if (new Set(scope.settingIds).size !== scope.settingIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["settingIds"],
+        message: "Setting scope entries must be unique",
+      });
+    }
+  });
+export type AgentResourceScope = z.infer<typeof agentResourceScopeSchema>;
+
+export const agentGrantBudgetLimitsSchema = z
+  .object({
+    maxCostCny: z.number().positive().max(1_000),
+    maxTokens: z.number().int().positive().max(10_000_000),
+    maxCalls: z.number().int().positive().max(10_000),
+  })
+  .strict();
+export type AgentGrantBudgetLimits = z.infer<typeof agentGrantBudgetLimitsSchema>;
+
+export const agentGrantBudgetSchema = agentGrantBudgetLimitsSchema
+  .extend({
+    spentCostCny: z.number().nonnegative(),
+    spentTokens: z.number().int().nonnegative(),
+    callCount: z.number().int().nonnegative(),
+  })
+  .strict()
+  .superRefine((budget, context) => {
+    if (budget.spentCostCny > budget.maxCostCny) {
+      context.addIssue({ code: "custom", path: ["spentCostCny"], message: "Cost budget exceeded" });
+    }
+    if (budget.spentTokens > budget.maxTokens) {
+      context.addIssue({
+        code: "custom",
+        path: ["spentTokens"],
+        message: "Token budget exceeded",
+      });
+    }
+    if (budget.callCount > budget.maxCalls) {
+      context.addIssue({ code: "custom", path: ["callCount"], message: "Call budget exceeded" });
+    }
+  });
+export type AgentGrantBudget = z.infer<typeof agentGrantBudgetSchema>;
+
+export const agentGrantMaxImpactSchema = z
+  .object({
+    maxSideEffect: toolSideEffectLevelSchema,
+    maxAffectedResources: z.number().int().positive().max(5_000),
+  })
+  .strict();
+export type AgentGrantMaxImpact = z.infer<typeof agentGrantMaxImpactSchema>;
+
+export const agentGrantCreateRequestSchema = z
+  .object({
+    taskId: uuidV7Schema,
+    role: agentRoleSchema,
+    tools: z.array(toolNameSchema).min(1).max(32),
+    resourceScope: agentResourceScopeSchema,
+    budget: agentGrantBudgetLimitsSchema,
+    maxImpact: agentGrantMaxImpactSchema,
+    expiresAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((request, context) => {
+    if (new Set(request.tools).size !== request.tools.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tools"],
+        message: "Grant tools must be unique",
+      });
+    }
+  });
+export type AgentGrantCreateRequest = z.infer<typeof agentGrantCreateRequestSchema>;
+
+export const agentGrantSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    taskId: uuidV7Schema,
+    userId: uuidV7Schema,
+    role: agentRoleSchema,
+    state: agentGrantStateSchema,
+    tools: z.array(toolNameSchema).min(1).max(32),
+    resourceScope: agentResourceScopeSchema,
+    budget: agentGrantBudgetSchema,
+    maxImpact: agentGrantMaxImpactSchema,
+    expiresAt: z.string().datetime(),
+    issuedBy: uuidV7Schema,
+    revokedAt: z.string().datetime().nullable(),
+    revokedBy: uuidV7Schema.nullable(),
+    revocationReason: z.string().min(1).max(500).nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((grant, context) => {
+    if (grant.state === "revoked") {
+      if (!grant.revokedAt || !grant.revokedBy || !grant.revocationReason) {
+        context.addIssue({
+          code: "custom",
+          path: ["revokedAt"],
+          message: "Revoked grants require revocation evidence",
+        });
+      }
+    } else if (grant.revokedAt || grant.revokedBy || grant.revocationReason) {
+      context.addIssue({
+        code: "custom",
+        path: ["revokedAt"],
+        message: "Only revoked grants may carry revocation evidence",
+      });
+    }
+  });
+export type AgentGrant = z.infer<typeof agentGrantSchema>;
+
+export const agentGrantRevokeRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type AgentGrantRevokeRequest = z.infer<typeof agentGrantRevokeRequestSchema>;
+
+export const agentToolApprovalSchema = z
+  .object({
+    approvalId: uuidV7Schema,
+    approvedBy: uuidV7Schema,
+    approvedSideEffect: toolSideEffectLevelSchema,
+  })
+  .strict();
+export type AgentToolApproval = z.infer<typeof agentToolApprovalSchema>;
+
+export const agentToolResourceSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("task"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("chapter"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("setting"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("canon"), id: uuidV7Schema.nullable() }).strict(),
+]);
+export type AgentToolResource = z.infer<typeof agentToolResourceSchema>;
+
+export const agentToolCallRequestSchema = z
+  .object({
+    grantId: uuidV7Schema,
+    taskId: uuidV7Schema,
+    toolName: toolNameSchema,
+    resource: agentToolResourceSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative().max(1_000),
+    estimatedTokens: z.number().int().nonnegative().max(10_000_000),
+    affectedResources: z.number().int().positive().max(5_000),
+    approval: agentToolApprovalSchema.nullable(),
+  })
+  .strict();
+export type AgentToolCallRequest = z.infer<typeof agentToolCallRequestSchema>;
+
+export const agentGrantResponseSchema = apiEnvelopeSchema(agentGrantSchema);
+export const agentGrantListResponseSchema = apiEnvelopeSchema(z.array(agentGrantSchema));
+export const agentGrantRevokeResponseSchema = agentGrantResponseSchema;

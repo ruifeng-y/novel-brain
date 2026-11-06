@@ -100,6 +100,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/agent-grants": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AgentGrantController_list"];
+    put?: never;
+    post: operations["AgentGrantController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/agent-grants/{grantId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AgentGrantController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/agent-grants/{grantId}/revoke": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AgentGrantController_revoke"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
     parameters: {
       query?: never;
@@ -1349,6 +1397,351 @@ export interface operations {
             data: {
               /** @enum {boolean} */
               loggedOut: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentGrantController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Agent grants for the branch */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              taskId: string;
+              userId: string;
+              /** @enum {string} */
+              role:
+                | "planner"
+                | "context_curator"
+                | "writer"
+                | "critic"
+                | "reviser"
+                | "fact_extractor"
+                | "canon_curator";
+              /** @enum {string} */
+              state: "active" | "revoked" | "expired";
+              tools: string[];
+              resourceScope: {
+                chapterIds: string[];
+                settingIds: string[];
+                includeCanon: boolean;
+              };
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxCalls: number;
+                spentCostCny: number;
+                spentTokens: number;
+                callCount: number;
+              };
+              maxImpact: {
+                /** @enum {string} */
+                maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+                maxAffectedResources: number;
+              };
+              /** Format: date-time */
+              expiresAt: string;
+              issuedBy: string;
+              /** Format: date-time */
+              revokedAt: string | null;
+              revokedBy: string | null;
+              revocationReason: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentGrantController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          taskId: string;
+          /** @enum {string} */
+          role:
+            | "planner"
+            | "context_curator"
+            | "writer"
+            | "critic"
+            | "reviser"
+            | "fact_extractor"
+            | "canon_curator";
+          tools: string[];
+          resourceScope: {
+            chapterIds: string[];
+            settingIds: string[];
+            includeCanon: boolean;
+          };
+          budget: {
+            maxCostCny: number;
+            maxTokens: number;
+            maxCalls: number;
+          };
+          maxImpact: {
+            /** @enum {string} */
+            maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+            maxAffectedResources: number;
+          };
+          /** Format: date-time */
+          expiresAt: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Issued agent grant */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              taskId: string;
+              userId: string;
+              /** @enum {string} */
+              role:
+                | "planner"
+                | "context_curator"
+                | "writer"
+                | "critic"
+                | "reviser"
+                | "fact_extractor"
+                | "canon_curator";
+              /** @enum {string} */
+              state: "active" | "revoked" | "expired";
+              tools: string[];
+              resourceScope: {
+                chapterIds: string[];
+                settingIds: string[];
+                includeCanon: boolean;
+              };
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxCalls: number;
+                spentCostCny: number;
+                spentTokens: number;
+                callCount: number;
+              };
+              maxImpact: {
+                /** @enum {string} */
+                maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+                maxAffectedResources: number;
+              };
+              /** Format: date-time */
+              expiresAt: string;
+              issuedBy: string;
+              /** Format: date-time */
+              revokedAt: string | null;
+              revokedBy: string | null;
+              revocationReason: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentGrantController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        grantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Agent grant */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              taskId: string;
+              userId: string;
+              /** @enum {string} */
+              role:
+                | "planner"
+                | "context_curator"
+                | "writer"
+                | "critic"
+                | "reviser"
+                | "fact_extractor"
+                | "canon_curator";
+              /** @enum {string} */
+              state: "active" | "revoked" | "expired";
+              tools: string[];
+              resourceScope: {
+                chapterIds: string[];
+                settingIds: string[];
+                includeCanon: boolean;
+              };
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxCalls: number;
+                spentCostCny: number;
+                spentTokens: number;
+                callCount: number;
+              };
+              maxImpact: {
+                /** @enum {string} */
+                maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+                maxAffectedResources: number;
+              };
+              /** Format: date-time */
+              expiresAt: string;
+              issuedBy: string;
+              /** Format: date-time */
+              revokedAt: string | null;
+              revokedBy: string | null;
+              revocationReason: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentGrantController_revoke: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        grantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Revoked agent grant */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              taskId: string;
+              userId: string;
+              /** @enum {string} */
+              role:
+                | "planner"
+                | "context_curator"
+                | "writer"
+                | "critic"
+                | "reviser"
+                | "fact_extractor"
+                | "canon_curator";
+              /** @enum {string} */
+              state: "active" | "revoked" | "expired";
+              tools: string[];
+              resourceScope: {
+                chapterIds: string[];
+                settingIds: string[];
+                includeCanon: boolean;
+              };
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxCalls: number;
+                spentCostCny: number;
+                spentTokens: number;
+                callCount: number;
+              };
+              maxImpact: {
+                /** @enum {string} */
+                maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+                maxAffectedResources: number;
+              };
+              /** Format: date-time */
+              expiresAt: string;
+              issuedBy: string;
+              /** Format: date-time */
+              revokedAt: string | null;
+              revokedBy: string | null;
+              revocationReason: string | null;
+              /** Format: date-time */
+              createdAt: string;
             };
             /** Format: starts_with */
             requestId: string;
@@ -4881,6 +5274,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -5124,6 +5525,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -5297,6 +5706,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -5470,6 +5887,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -5643,6 +6068,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;

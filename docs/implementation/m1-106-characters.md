@@ -15,7 +15,7 @@
 
 ## Migrations and schema
 
-- `packages/db/migrations/0024_flippant_tomas.sql`
+- `packages/db/migrations/0025_nostalgic_ma_gnuci.sql`
 - `packages/db/src/schema.ts`
 
 All five new tenant tables enable and force row-level security with the existing `app.user_id` policy pattern. Existing character entities are backfilled into `character_profiles`.
