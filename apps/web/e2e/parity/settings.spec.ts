@@ -156,14 +156,18 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await page.getByLabel("一句话摘要").fill("会记录持剑者杀意的法器。");
   await page.getByLabel("详细说明").fill("太玄门内门弟子配剑。");
   await page.getByLabel("标签").fill("法器");
+  await page.getByLabel("物品类型").selectOption("equipment");
   await page.getByLabel("分类", { exact: true }).fill("兵器");
   await page.getByLabel("品阶", { exact: true }).fill("玄阶");
   await page.getByLabel("效果", { exact: true }).fill("剑身会记录持剑者的杀意。");
   await page.getByLabel("代价", { exact: true }).fill("杀意过重时会反噬持剑者。");
-  await page.getByLabel("归属", { exact: true }).fill("顾青");
+  await page.getByLabel("归属方式").selectOption("unique");
+  await page.getByLabel("装备位").fill("main_hand");
   await page.getByLabel("限制", { exact: true }).fill("不能离开主人超过七日。");
   await page.getByRole("button", { name: "创建设定" }).click();
   await expect(page.locator(".settings-entity-card", { hasText: "听潮剑" })).toBeVisible();
+  await expect(page.locator(".settings-entity-detail").getByText("唯一")).toBeVisible();
+  await expect(page.locator(".settings-entity-detail").getByText("main_hand")).toBeVisible();
 
   await page
     .locator(".settings-column-nav")

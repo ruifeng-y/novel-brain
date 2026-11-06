@@ -31,7 +31,9 @@ import {
   customFieldDefinitionListResponseSchema,
   customFieldDefinitionResponseSchema,
   factionDetailResponseSchema,
+  itemResponseSchema,
   mapDetailResponseSchema,
+  powerSystemResponseSchema,
   settingEntityDeleteResponseSchema,
   settingEntityListResponseSchema,
   settingEntityResponseSchema,
@@ -39,6 +41,7 @@ import {
   settingChangeRequestResponseSchema,
   settingProposalListResponseSchema,
   settingProposalResponseSchema,
+  specialMechanismResponseSchema,
   worldTimelineResponseSchema,
   workResponseSchema,
   type ConfirmedSetting,
@@ -46,13 +49,16 @@ import {
   type CustomFieldDefinition,
   type CustomFieldValue,
   type FactionDetail,
+  type ItemDomain,
   type MapDetail,
+  type PowerSystem,
   type SettingChangeRequest,
   type SettingConflictType,
   type SettingEntity,
   type SettingEntityCreateRequest,
   type SettingEntityType,
   type SettingProposal,
+  type SpecialMechanism,
   type WorkOverview,
   type WorldTimeline,
 } from "@novel-brain/contracts";
@@ -89,6 +95,17 @@ type EditorState = {
   itemCost: string;
   itemOwnership: string;
   itemLimits: string;
+  itemKind: "item" | "technique" | "equipment" | "resource";
+  itemOwnershipModel: "shared" | "unique";
+  itemConsumable: boolean;
+  itemQuantity: number;
+  itemEquipmentSlot: string;
+  mechanismType: string;
+  powerLifespanMode: "none" | "realm" | "fixed" | "custom";
+  powerLifespanUnit: string;
+  powerLifespanBasis: string;
+  powerLifespanDescription: string;
+  powerLifespanFixedAmount: string;
   timelineEra: string;
   timelineStoryTime: string;
   timelineDuration: string;
@@ -108,7 +125,10 @@ type ProposalInput = {
 type WorldDomainDetail =
   | { kind: "faction"; value: FactionDetail }
   | { kind: "map"; value: MapDetail }
-  | { kind: "timeline"; value: WorldTimeline };
+  | { kind: "timeline"; value: WorldTimeline }
+  | { kind: "power"; value: PowerSystem }
+  | { kind: "mechanism"; value: SpecialMechanism }
+  | { kind: "item"; value: ItemDomain };
 
 type FieldFormState = {
   key: string;
@@ -186,6 +206,33 @@ const changeRequestStatusLabels: Record<SettingChangeRequest["status"], string> 
   approved: "已批准",
   rejected: "已驳回",
   applied: "已应用",
+};
+
+const powerLifespanModeLabels: Record<PowerSystem["lifespanPolicy"]["mode"], string> = {
+  none: "不绑定寿命",
+  realm: "按境界绑定",
+  fixed: "固定寿命",
+  custom: "自定义规则",
+};
+
+const itemKindLabels: Record<ItemDomain["kind"], string> = {
+  item: "物品",
+  technique: "功法",
+  equipment: "装备",
+  resource: "资源",
+};
+
+const itemOwnershipModelLabels: Record<ItemDomain["ownershipModel"], string> = {
+  shared: "共享",
+  unique: "唯一",
+};
+
+const itemRightTypeLabels: Record<ItemDomain["rights"][number]["rightType"], string> = {
+  ownership: "归属",
+  custody: "保管",
+  location: "位置",
+  usage: "使用权",
+  disposal: "处置权",
 };
 
 const relationshipTypeLabels: Record<
@@ -408,7 +455,14 @@ export function SettingsCenter({ workId }: { workId: string }) {
         }
         return;
       }
-      if (entityType !== "faction" && entityType !== "map" && entityType !== "timeline_event") {
+      if (
+        entityType !== "faction" &&
+        entityType !== "map" &&
+        entityType !== "timeline_event" &&
+        entityType !== "power_system" &&
+        entityType !== "golden_finger" &&
+        entityType !== "item"
+      ) {
         return;
       }
       setWorldDetailLoading(true);
@@ -418,7 +472,13 @@ export function SettingsCenter({ workId }: { workId: string }) {
             ? `${basePath}/world/factions/${entityId}`
             : entityType === "map"
               ? `${basePath}/world/maps/${entityId}`
-              : `${basePath}/world/timeline`;
+              : entityType === "timeline_event"
+                ? `${basePath}/world/timeline`
+                : entityType === "power_system"
+                  ? `${basePath}/world/power-systems/${entityId}`
+                  : entityType === "golden_finger"
+                    ? `${basePath}/world/mechanisms/${entityId}`
+                    : `${basePath}/world/items/${entityId}`;
         const response = await fetch(path, {
           cache: "no-store",
         });
@@ -435,10 +495,25 @@ export function SettingsCenter({ workId }: { workId: string }) {
             kind: "map",
             value: mapDetailResponseSchema.parse(await response.json()).data,
           });
-        } else {
+        } else if (entityType === "timeline_event") {
           setWorldDetail({
             kind: "timeline",
             value: worldTimelineResponseSchema.parse(await response.json()).data,
+          });
+        } else if (entityType === "power_system") {
+          setWorldDetail({
+            kind: "power",
+            value: powerSystemResponseSchema.parse(await response.json()).data,
+          });
+        } else if (entityType === "golden_finger") {
+          setWorldDetail({
+            kind: "mechanism",
+            value: specialMechanismResponseSchema.parse(await response.json()).data,
+          });
+        } else {
+          setWorldDetail({
+            kind: "item",
+            value: itemResponseSchema.parse(await response.json()).data,
           });
         }
       } catch (caught) {
@@ -529,6 +604,19 @@ export function SettingsCenter({ workId }: { workId: string }) {
         await refreshProjection();
         return;
       }
+      if (
+        editor.type === "power_system" ||
+        editor.type === "golden_finger" ||
+        editor.type === "item"
+      ) {
+        const created = await createPowerItemEntity(work, editor);
+        setSelectedId(created.id);
+        setActiveColumn(columnForType(editor.type));
+        setEditor(null);
+        setNotice(`“${created.name}”已创建。`);
+        await refreshProjection();
+        return;
+      }
       const created = await mutateEntity(
         `${settingsPath(work)}/entities`,
         "POST",
@@ -573,6 +661,19 @@ export function SettingsCenter({ workId }: { workId: string }) {
         setEditor(null);
         setNotice(`“${request.title}”已提交，等待影响分析。`);
         await refreshDetail(editor.entityId, editor.type);
+        return;
+      }
+      if (
+        editor.type === "power_system" ||
+        editor.type === "golden_finger" ||
+        editor.type === "item"
+      ) {
+        const updated = await updatePowerItemEntity(work, editor);
+        setSelectedId(updated.id);
+        setEditor(null);
+        setNotice(`“${updated.name}”已保存。`);
+        await refreshProjection();
+        await refreshDetail(updated.id, editor.type);
         return;
       }
       const updated = await mutateEntity(
@@ -797,8 +898,32 @@ export function SettingsCenter({ workId }: { workId: string }) {
     setNotice("");
   }
 
+  function withDomainDetail(next: EditorState, entity: SettingEntity): EditorState {
+    if (entity.type === "power_system" && worldDetail?.kind === "power") {
+      next.details = worldDetail.value.overview;
+      next.powerLifespanMode = worldDetail.value.lifespanPolicy.mode;
+      next.powerLifespanUnit = worldDetail.value.lifespanPolicy.unit;
+      next.powerLifespanBasis = worldDetail.value.lifespanPolicy.basis;
+      next.powerLifespanDescription = worldDetail.value.lifespanPolicy.description;
+      next.powerLifespanFixedAmount =
+        worldDetail.value.lifespanPolicy.fixedAmount?.toString() ?? "";
+    }
+    if (entity.type === "item" && worldDetail?.kind === "item") {
+      next.itemKind = worldDetail.value.kind;
+      next.itemOwnershipModel = worldDetail.value.ownershipModel;
+      next.itemConsumable = worldDetail.value.consumable;
+      next.itemQuantity = worldDetail.value.quantity;
+      next.itemEquipmentSlot = worldDetail.value.equipmentSlot ?? "";
+    }
+    if (entity.type === "golden_finger" && worldDetail?.kind === "mechanism") {
+      next.mechanismType = worldDetail.value.mechanismType;
+    }
+    return next;
+  }
+
   function beginEdit(entity: SettingEntity, focus: "general" | "alias" = "general") {
-    setEditor(editorFromEntity(entity));
+    const next = withDomainDetail(editorFromEntity(entity), entity);
+    setEditor(next);
     setActionError("");
     setNotice("");
     window.setTimeout(() => {
@@ -808,7 +933,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
   }
 
   function beginChangeRequest(entity: SettingEntity) {
-    const next = editorFromEntity(entity);
+    const next = withDomainDetail(editorFromEntity(entity), entity);
     next.mode = "change";
     next.requestTitle = `修改“${entity.name}”`;
     next.requestReason = "";
@@ -1233,7 +1358,7 @@ function SettingEditor({
               />
             </label>
           </div>
-        ) : editor.type === "faction" || editor.type === "map" || editor.type === "power_system" ? (
+        ) : editor.type === "faction" || editor.type === "map" ? (
           <label className="settings-field">
             <span>{typeLabels[editor.type]}</span>
             <textarea
@@ -1243,8 +1368,83 @@ function SettingEditor({
               value={editor.details}
             />
           </label>
+        ) : editor.type === "power_system" ? (
+          <div className="settings-form-grid">
+            <label className="settings-field settings-field-wide">
+              <span>力量体系</span>
+              <textarea
+                onChange={(event) => update("details", event.target.value)}
+                required
+                rows={4}
+                value={editor.details}
+              />
+            </label>
+            <label className="settings-field">
+              <span>寿命绑定</span>
+              <select
+                onChange={(event) =>
+                  update(
+                    "powerLifespanMode",
+                    event.target.value as EditorState["powerLifespanMode"],
+                  )
+                }
+                value={editor.powerLifespanMode}
+              >
+                <option value="none">不绑定寿命</option>
+                <option value="realm">按境界绑定</option>
+                <option value="fixed">固定寿命</option>
+                <option value="custom">自定义规则</option>
+              </select>
+            </label>
+            <label className="settings-field">
+              <span>寿命单位</span>
+              <input
+                onChange={(event) => update("powerLifespanUnit", event.target.value)}
+                value={editor.powerLifespanUnit}
+              />
+            </label>
+            <label className="settings-field">
+              <span>寿命依据</span>
+              <input
+                onChange={(event) => update("powerLifespanBasis", event.target.value)}
+                value={editor.powerLifespanBasis}
+              />
+            </label>
+            {editor.powerLifespanMode === "fixed" ? (
+              <label className="settings-field">
+                <span>固定寿命</span>
+                <input
+                  min={1}
+                  onChange={(event) => update("powerLifespanFixedAmount", event.target.value)}
+                  type="number"
+                  value={editor.powerLifespanFixedAmount}
+                />
+              </label>
+            ) : null}
+            <label className="settings-field settings-field-wide">
+              <span>寿命规则说明</span>
+              <input
+                onChange={(event) => update("powerLifespanDescription", event.target.value)}
+                value={editor.powerLifespanDescription}
+              />
+            </label>
+          </div>
         ) : editor.type === "item" ? (
           <div className="settings-form-grid">
+            <label className="settings-field">
+              <span>物品类型</span>
+              <select
+                onChange={(event) =>
+                  update("itemKind", event.target.value as EditorState["itemKind"])
+                }
+                value={editor.itemKind}
+              >
+                <option value="item">物品</option>
+                <option value="technique">功法</option>
+                <option value="equipment">装备</option>
+                <option value="resource">资源</option>
+              </select>
+            </label>
             <label className="settings-field">
               <span>分类</span>
               <input
@@ -1278,11 +1478,45 @@ function SettingEditor({
               />
             </label>
             <label className="settings-field">
-              <span>归属</span>
+              <span>归属方式</span>
+              <select
+                onChange={(event) =>
+                  update(
+                    "itemOwnershipModel",
+                    event.target.value as EditorState["itemOwnershipModel"],
+                  )
+                }
+                value={editor.itemOwnershipModel}
+              >
+                <option value="shared">共享</option>
+                <option value="unique">唯一</option>
+              </select>
+            </label>
+            <label className="settings-field">
+              <span>数量</span>
               <input
-                onChange={(event) => update("itemOwnership", event.target.value)}
-                value={editor.itemOwnership}
+                min={1}
+                onChange={(event) => update("itemQuantity", Number(event.target.value))}
+                type="number"
+                value={editor.itemOwnershipModel === "unique" ? 1 : editor.itemQuantity}
               />
+            </label>
+            <label className="settings-field settings-field-wide">
+              <span>装备位</span>
+              <input
+                disabled={editor.itemKind !== "equipment"}
+                onChange={(event) => update("itemEquipmentSlot", event.target.value)}
+                placeholder="例如 main_hand"
+                value={editor.itemEquipmentSlot}
+              />
+            </label>
+            <label className="settings-field settings-checkbox-field">
+              <input
+                checked={editor.itemConsumable}
+                onChange={(event) => update("itemConsumable", event.target.checked)}
+                type="checkbox"
+              />
+              <span>消耗品</span>
             </label>
             <label className="settings-field settings-field-wide">
               <span>限制</span>
@@ -1329,6 +1563,14 @@ function SettingEditor({
           </div>
         ) : (
           <div className="settings-form-grid">
+            <label className="settings-field">
+              <span>机制类型</span>
+              <input
+                onChange={(event) => update("mechanismType", event.target.value)}
+                required
+                value={editor.mechanismType}
+              />
+            </label>
             <label className="settings-field">
               <span>规则</span>
               <textarea
@@ -2036,37 +2278,19 @@ function EntityDetail({
           onRetry={onRetryWorldDetail}
         />
       ) : entity.type === "power_system" ? (
-        <div className="settings-detail-block">
-          <h3>{typeLabels[entity.type]}</h3>
-          <p>{entity.data.details}</p>
-        </div>
+        <PowerDomainView
+          detail={worldDetail?.kind === "power" ? worldDetail.value : null}
+          error={worldDetailError}
+          loading={worldDetailLoading}
+          onRetry={onRetryWorldDetail}
+        />
       ) : entity.type === "item" ? (
-        <div className="settings-golden-grid">
-          <div>
-            <span>分类</span>
-            <strong>{entity.data.category}</strong>
-          </div>
-          <div>
-            <span>品阶</span>
-            <strong>{entity.data.grade || "未定"}</strong>
-          </div>
-          <div>
-            <span>归属</span>
-            <strong>{entity.data.ownership || "未记录"}</strong>
-          </div>
-          <div>
-            <span>效果</span>
-            <strong>{entity.data.effect}</strong>
-          </div>
-          <div>
-            <span>代价</span>
-            <strong>{entity.data.cost || "未记录"}</strong>
-          </div>
-          <div>
-            <span>限制</span>
-            <strong>{entity.data.limits || "未记录"}</strong>
-          </div>
-        </div>
+        <ItemDomainView
+          detail={worldDetail?.kind === "item" ? worldDetail.value : null}
+          error={worldDetailError}
+          loading={worldDetailLoading}
+          onRetry={onRetryWorldDetail}
+        />
       ) : entity.type === "timeline_event" ? (
         <TimelineDomainView
           detail={worldDetail?.kind === "timeline" ? worldDetail.value : null}
@@ -2076,24 +2300,12 @@ function EntityDetail({
           onRetry={onRetryWorldDetail}
         />
       ) : (
-        <div className="settings-golden-grid">
-          <div>
-            <span>规则</span>
-            <strong>{entity.data.rules}</strong>
-          </div>
-          <div>
-            <span>代价</span>
-            <strong>{entity.data.cost}</strong>
-          </div>
-          <div>
-            <span>限制</span>
-            <strong>{entity.data.limits}</strong>
-          </div>
-          <div>
-            <span>成长</span>
-            <strong>{entity.data.growth}</strong>
-          </div>
-        </div>
+        <MechanismDomainView
+          detail={worldDetail?.kind === "mechanism" ? worldDetail.value : null}
+          error={worldDetailError}
+          loading={worldDetailLoading}
+          onRetry={onRetryWorldDetail}
+        />
       )}
 
       {applicableFields.length > 0 ? (
@@ -2623,6 +2835,358 @@ function MapDomainView({
   );
 }
 
+function PowerDomainView({
+  detail,
+  error,
+  loading,
+  onRetry,
+}: {
+  detail: PowerSystem | null;
+  error: string;
+  loading: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="settings-character-domain">
+      {loading ? (
+        <div className="settings-detail-block settings-character-loading" role="status">
+          <LoaderCircle className="spin" size={16} aria-hidden="true" />
+          <span>正在加载力量体系</span>
+        </div>
+      ) : error ? (
+        <div className="settings-detail-block settings-character-error" role="alert">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{error}</span>
+          <button className="text-btn small" onClick={onRetry} type="button">
+            重试
+          </button>
+        </div>
+      ) : detail ? (
+        <>
+          <div className="settings-detail-block">
+            <h3>体系概览</h3>
+            <p>{detail.overview || "尚未补充力量体系概览。"}</p>
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>寿命绑定</h3>
+            <dl className="settings-character-grid">
+              <div>
+                <dt>绑定方式</dt>
+                <dd>{powerLifespanModeLabels[detail.lifespanPolicy.mode]}</dd>
+              </div>
+              <div>
+                <dt>单位</dt>
+                <dd>{detail.lifespanPolicy.unit}</dd>
+              </div>
+              <div>
+                <dt>依据</dt>
+                <dd>{detail.lifespanPolicy.basis || "未指定"}</dd>
+              </div>
+              <div>
+                <dt>规则说明</dt>
+                <dd>{detail.lifespanPolicy.description || "未指定"}</dd>
+              </div>
+              {detail.lifespanPolicy.mode === "fixed" ? (
+                <div>
+                  <dt>固定寿命</dt>
+                  <dd>
+                    {detail.lifespanPolicy.fixedAmount} {detail.lifespanPolicy.unit}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>路径与境界</h3>
+            {detail.paths.length === 0 ? (
+              <p>还没有记录力量路径。</p>
+            ) : (
+              <div className="settings-character-records">
+                {detail.paths.map((path) => (
+                  <div key={path.id}>
+                    <div>
+                      <strong>
+                        {path.name} · {path.pathType}
+                      </strong>
+                      <span>{path.realms.length} 个境界</span>
+                    </div>
+                    {path.description ? <p>{path.description}</p> : null}
+                    {path.realms.length === 0 ? (
+                      <small>这条路径还没有境界。</small>
+                    ) : (
+                      <ul className="settings-evidence-list">
+                        {path.realms.map((realm) => (
+                          <li key={realm.id}>
+                            <strong>
+                              第 {realm.rank} 层 · {realm.name}
+                            </strong>
+                            <span>突破条件：{realm.breakthroughConditions}</span>
+                            {realm.breakthroughCosts ? (
+                              <small>代价：{realm.breakthroughCosts}</small>
+                            ) : null}
+                            {realm.bottlenecks ? <small>瓶颈：{realm.bottlenecks}</small> : null}
+                            {realm.counters ? <small>克制：{realm.counters}</small> : null}
+                            {realm.counteredBy ? <small>被克制：{realm.counteredBy}</small> : null}
+                            <small>
+                              寿命：
+                              {realm.lifespanAmount
+                                ? `${realm.lifespanAmount} ${detail.lifespanPolicy.unit}`
+                                : "未配置"}
+                            </small>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <WorldHealth findings={detail.health} />
+        </>
+      ) : (
+        <div className="settings-detail-block">
+          <p>尚未载入力量体系专用档案。</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MechanismDomainView({
+  detail,
+  error,
+  loading,
+  onRetry,
+}: {
+  detail: SpecialMechanism | null;
+  error: string;
+  loading: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="settings-character-domain">
+      {loading ? (
+        <div className="settings-detail-block settings-character-loading" role="status">
+          <LoaderCircle className="spin" size={16} aria-hidden="true" />
+          <span>正在加载特殊机制</span>
+        </div>
+      ) : error ? (
+        <div className="settings-detail-block settings-character-error" role="alert">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{error}</span>
+          <button className="text-btn small" onClick={onRetry} type="button">
+            重试
+          </button>
+        </div>
+      ) : detail ? (
+        <>
+          <div className="settings-detail-block">
+            <h3>机制归属</h3>
+            <dl className="settings-character-grid">
+              <div>
+                <dt>机制类型</dt>
+                <dd>{detail.mechanismType}</dd>
+              </div>
+              <div>
+                <dt>所有者</dt>
+                <dd>{detail.owner?.label ?? "尚未记录"}</dd>
+              </div>
+              <div>
+                <dt>关联体系</dt>
+                <dd>{detail.powerSystem?.label ?? "未关联"}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>规则、代价、限制与成长</h3>
+            <dl className="settings-character-grid">
+              <div>
+                <dt>规则</dt>
+                <dd>{detail.rules}</dd>
+              </div>
+              <div>
+                <dt>代价</dt>
+                <dd>{detail.costs || "尚未记录"}</dd>
+              </div>
+              <div>
+                <dt>限制</dt>
+                <dd>{detail.limits || "尚未记录"}</dd>
+              </div>
+              <div>
+                <dt>成长</dt>
+                <dd>{detail.growth || "尚未记录"}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>所有权历史</h3>
+            {detail.ownershipHistory.length === 0 ? (
+              <p>还没有记录所有权变更。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.ownershipHistory.map((record) => (
+                  <li key={record.id}>
+                    <div>
+                      <strong>
+                        {record.previousOwner
+                          ? `${record.previousOwner.label ?? "原所有者"} → `
+                          : "首次登记 · "}
+                        {record.owner.label ?? "未命名所有者"}
+                      </strong>
+                      <span>{formatValidity(record.validity)}</span>
+                    </div>
+                    <p>{record.reason}</p>
+                    <small>
+                      {record.evidence.length > 0
+                        ? `来源证据 ${record.evidence.length} 条`
+                        : "来源：作者补录"}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <WorldHealth findings={detail.health} />
+        </>
+      ) : (
+        <div className="settings-detail-block">
+          <p>尚未载入特殊机制专用档案。</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ItemDomainView({
+  detail,
+  error,
+  loading,
+  onRetry,
+}: {
+  detail: ItemDomain | null;
+  error: string;
+  loading: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="settings-character-domain">
+      {loading ? (
+        <div className="settings-detail-block settings-character-loading" role="status">
+          <LoaderCircle className="spin" size={16} aria-hidden="true" />
+          <span>正在加载物品功法</span>
+        </div>
+      ) : error ? (
+        <div className="settings-detail-block settings-character-error" role="alert">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{error}</span>
+          <button className="text-btn small" onClick={onRetry} type="button">
+            重试
+          </button>
+        </div>
+      ) : detail ? (
+        <>
+          <div className="settings-detail-block">
+            <h3>物品档案</h3>
+            <dl className="settings-character-grid">
+              <div>
+                <dt>类型</dt>
+                <dd>{itemKindLabels[detail.kind]}</dd>
+              </div>
+              <div>
+                <dt>分类</dt>
+                <dd>{detail.category}</dd>
+              </div>
+              <div>
+                <dt>品阶</dt>
+                <dd>{detail.grade || "未定"}</dd>
+              </div>
+              <div>
+                <dt>归属方式</dt>
+                <dd>{itemOwnershipModelLabels[detail.ownershipModel]}</dd>
+              </div>
+              <div>
+                <dt>数量</dt>
+                <dd>{detail.quantity}</dd>
+              </div>
+              <div>
+                <dt>消耗品</dt>
+                <dd>{detail.consumable ? "是" : "否"}</dd>
+              </div>
+              <div>
+                <dt>装备位</dt>
+                <dd>{detail.equipmentSlot || "不适用"}</dd>
+              </div>
+              <div>
+                <dt>当前装备者</dt>
+                <dd>{detail.equippedBy?.label ?? "未装备"}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>效果、代价与限制</h3>
+            <dl className="settings-character-grid">
+              <div>
+                <dt>效果</dt>
+                <dd>{detail.effect}</dd>
+              </div>
+              <div>
+                <dt>代价</dt>
+                <dd>{detail.cost || "尚未记录"}</dd>
+              </div>
+              <div>
+                <dt>限制</dt>
+                <dd>{detail.limits || "尚未记录"}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>权利记录</h3>
+            {detail.rights.length === 0 ? (
+              <p>还没有记录归属、保管、位置、使用权或处置权。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.rights.map((right) => (
+                  <li key={right.id}>
+                    <div>
+                      <strong>
+                        {itemRightTypeLabels[right.rightType]} ·{" "}
+                        {right.holder.label ?? "未命名持有者"}
+                      </strong>
+                      <span>{formatValidity(right.validity)}</span>
+                    </div>
+                    <p>{right.reason}</p>
+                    <small>
+                      {right.sharePercent !== null ? `份额 ${right.sharePercent}% · ` : ""}
+                      {right.evidence.length > 0
+                        ? `来源证据 ${right.evidence.length} 条`
+                        : "来源：作者补录"}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <WorldHealth findings={detail.health} />
+        </>
+      ) : (
+        <div className="settings-detail-block">
+          <p>尚未载入物品功法专用档案。</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TimelineDomainView({
   detail,
   entity,
@@ -2818,6 +3382,17 @@ function emptyEditor(type: SettingEntityType): EditorState {
     itemCost: "",
     itemOwnership: "",
     itemLimits: "",
+    itemKind: "item",
+    itemOwnershipModel: "shared",
+    itemConsumable: false,
+    itemQuantity: 1,
+    itemEquipmentSlot: "",
+    mechanismType: "特殊机制",
+    powerLifespanMode: "none",
+    powerLifespanUnit: "年",
+    powerLifespanBasis: "",
+    powerLifespanDescription: "",
+    powerLifespanFixedAmount: "",
     timelineEra: "",
     timelineStoryTime: "",
     timelineDuration: "",
@@ -2857,6 +3432,17 @@ function editorFromEntity(entity: SettingEntity): EditorState {
     itemCost: entity.type === "item" ? entity.data.cost : "",
     itemOwnership: entity.type === "item" ? entity.data.ownership : "",
     itemLimits: entity.type === "item" ? entity.data.limits : "",
+    itemKind: "item",
+    itemOwnershipModel: "shared",
+    itemConsumable: false,
+    itemQuantity: 1,
+    itemEquipmentSlot: "",
+    mechanismType: "特殊机制",
+    powerLifespanMode: "none",
+    powerLifespanUnit: "年",
+    powerLifespanBasis: "",
+    powerLifespanDescription: "",
+    powerLifespanFixedAmount: "",
     timelineEra: entity.type === "timeline_event" ? entity.data.era : "",
     timelineStoryTime: entity.type === "timeline_event" ? entity.data.storyTime : "",
     timelineDuration: entity.type === "timeline_event" ? entity.data.duration : "",
@@ -2965,6 +3551,15 @@ function changePayload(editor: EditorState) {
     };
   }
   if (editor.type === "faction" || editor.type === "map" || editor.type === "power_system") {
+    if (editor.type === "power_system") {
+      return {
+        ...common,
+        powerSystem: {
+          overview: editor.details.trim(),
+          lifespanPolicy: lifespanPolicyFromEditor(editor),
+        },
+      };
+    }
     return {
       ...common,
       data: { details: editor.details.trim() },
@@ -2973,9 +3568,10 @@ function changePayload(editor: EditorState) {
   if (editor.type === "golden_finger") {
     return {
       ...common,
-      data: {
+      mechanism: {
+        mechanismType: editor.mechanismType.trim(),
         rules: editor.goldenRules.trim(),
-        cost: editor.cost.trim(),
+        costs: editor.cost.trim(),
         limits: editor.limits.trim(),
         growth: editor.growth.trim(),
       },
@@ -2984,13 +3580,16 @@ function changePayload(editor: EditorState) {
   if (editor.type === "item") {
     return {
       ...common,
-      data: {
+      item: {
+        kind: editor.itemKind,
         category: editor.itemCategory.trim(),
         grade: editor.itemGrade.trim(),
         effect: editor.itemEffect.trim(),
         cost: editor.itemCost.trim(),
-        ownership: editor.itemOwnership.trim(),
         limits: editor.itemLimits.trim(),
+        ownershipModel: editor.itemOwnershipModel,
+        consumable: editor.itemConsumable,
+        equipmentSlot: editor.itemEquipmentSlot.trim() || null,
       },
     };
   }
@@ -3070,6 +3669,185 @@ async function createWorldEntity(
   return {
     id: detail.map.id,
     name: detail.map.label ?? editor.name,
+  };
+}
+
+function lifespanPolicyFromEditor(editor: EditorState) {
+  return {
+    mode: editor.powerLifespanMode,
+    unit: editor.powerLifespanUnit.trim() || "年",
+    basis: editor.powerLifespanBasis.trim(),
+    description: editor.powerLifespanDescription.trim(),
+    pathId: null,
+    fixedAmount:
+      editor.powerLifespanMode === "fixed"
+        ? Math.max(1, Number(editor.powerLifespanFixedAmount) || 1)
+        : null,
+  };
+}
+
+async function createPowerItemEntity(
+  work: WorkOverview,
+  editor: EditorState,
+): Promise<{ id: string; name: string }> {
+  const basePath = settingsPath(work);
+  const common = {
+    name: editor.name.trim(),
+    aliases: splitList(editor.aliases),
+    summary: editor.summary.trim(),
+    description: editor.description.trim(),
+    tags: splitList(editor.tags),
+  };
+  const path =
+    editor.type === "power_system"
+      ? `${basePath}/world/power-systems`
+      : editor.type === "golden_finger"
+        ? `${basePath}/world/mechanisms`
+        : `${basePath}/world/items`;
+  const body =
+    editor.type === "power_system"
+      ? {
+          ...common,
+          overview: editor.details.trim(),
+          lifespanPolicy: lifespanPolicyFromEditor(editor),
+          paths: [],
+        }
+      : editor.type === "golden_finger"
+        ? {
+            ...common,
+            mechanismType: editor.mechanismType.trim() || "特殊机制",
+            owner: null,
+            powerSystem: null,
+            rules: editor.goldenRules.trim(),
+            costs: editor.cost.trim(),
+            limits: editor.limits.trim(),
+            growth: editor.growth.trim(),
+          }
+        : {
+            ...common,
+            kind: editor.itemKind,
+            category: editor.itemCategory.trim(),
+            grade: editor.itemGrade.trim(),
+            effect: editor.itemEffect.trim(),
+            cost: editor.itemCost.trim(),
+            limits: editor.itemLimits.trim(),
+            ownershipModel: editor.itemOwnershipModel,
+            consumable: editor.itemConsumable,
+            quantity:
+              editor.itemOwnershipModel === "unique"
+                ? 1
+                : Math.max(1, Math.floor(editor.itemQuantity) || 1),
+            equipmentSlot:
+              editor.itemKind === "equipment" ? editor.itemEquipmentSlot.trim() || null : null,
+          };
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, "设定创建失败。"));
+  }
+  if (editor.type === "power_system") {
+    const detail = powerSystemResponseSchema.parse(await response.json()).data;
+    return {
+      id: detail.powerSystem.id,
+      name: detail.powerSystem.label ?? editor.name,
+    };
+  }
+  if (editor.type === "golden_finger") {
+    const detail = specialMechanismResponseSchema.parse(await response.json()).data;
+    return {
+      id: detail.mechanism.id,
+      name: detail.mechanism.label ?? editor.name,
+    };
+  }
+  const detail = itemResponseSchema.parse(await response.json()).data;
+  return {
+    id: detail.item.id,
+    name: detail.item.label ?? editor.name,
+  };
+}
+
+async function updatePowerItemEntity(
+  work: WorkOverview,
+  editor: EditorState,
+): Promise<{ id: string; name: string }> {
+  if (!editor.entityId || !editor.version) {
+    throw new Error("设定版本缺失，请刷新后重试。");
+  }
+  const basePath = settingsPath(work);
+  const common = {
+    version: editor.version,
+    name: editor.name.trim(),
+    aliases: splitList(editor.aliases),
+    summary: editor.summary.trim(),
+    description: editor.description.trim(),
+    tags: splitList(editor.tags),
+  };
+  const path =
+    editor.type === "power_system"
+      ? `${basePath}/world/power-systems/${editor.entityId}`
+      : editor.type === "golden_finger"
+        ? `${basePath}/world/mechanisms/${editor.entityId}`
+        : `${basePath}/world/items/${editor.entityId}`;
+  const body =
+    editor.type === "power_system"
+      ? {
+          ...common,
+          overview: editor.details.trim(),
+          lifespanPolicy: lifespanPolicyFromEditor(editor),
+        }
+      : editor.type === "golden_finger"
+        ? {
+            ...common,
+            mechanismType: editor.mechanismType.trim() || "特殊机制",
+            rules: editor.goldenRules.trim(),
+            costs: editor.cost.trim(),
+            limits: editor.limits.trim(),
+            growth: editor.growth.trim(),
+          }
+        : {
+            ...common,
+            kind: editor.itemKind,
+            category: editor.itemCategory.trim(),
+            grade: editor.itemGrade.trim(),
+            effect: editor.itemEffect.trim(),
+            cost: editor.itemCost.trim(),
+            limits: editor.itemLimits.trim(),
+            ownershipModel: editor.itemOwnershipModel,
+            consumable: editor.itemConsumable,
+            equipmentSlot:
+              editor.itemKind === "equipment" ? editor.itemEquipmentSlot.trim() || null : null,
+          };
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(path, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, "设定保存失败。"));
+  }
+  if (editor.type === "power_system") {
+    const detail = powerSystemResponseSchema.parse(await response.json()).data;
+    return {
+      id: detail.powerSystem.id,
+      name: detail.powerSystem.label ?? editor.name,
+    };
+  }
+  if (editor.type === "golden_finger") {
+    const detail = specialMechanismResponseSchema.parse(await response.json()).data;
+    return {
+      id: detail.mechanism.id,
+      name: detail.mechanism.label ?? editor.name,
+    };
+  }
+  const detail = itemResponseSchema.parse(await response.json()).data;
+  return {
+    id: detail.item.id,
+    name: detail.item.label ?? editor.name,
   };
 }
 
@@ -3236,6 +4014,15 @@ function worldDetailErrorLabel(type: SettingEntityType): string {
   }
   if (type === "timeline_event") {
     return "故事时间线加载失败。";
+  }
+  if (type === "power_system") {
+    return "力量体系加载失败。";
+  }
+  if (type === "golden_finger") {
+    return "特殊机制加载失败。";
+  }
+  if (type === "item") {
+    return "物品功法加载失败。";
   }
   return "世界设定加载失败。";
 }

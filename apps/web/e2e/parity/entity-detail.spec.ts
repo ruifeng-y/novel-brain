@@ -298,6 +298,210 @@ async function createTimeline(
     .then((response) => expect(response.status()).toBe(201));
 }
 
+async function createPowerSystem(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  name: string,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/power-systems`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        name,
+        aliases: [],
+        summary: "剑修与体修并行的北域体系。",
+        description: "",
+        tags: ["修行"],
+        overview: "两条路径共享突破代价，但克制关系不同。",
+        lifespanPolicy: {
+          mode: "realm",
+          unit: "年",
+          basis: "境界",
+          description: "不同境界提供不同寿命。",
+          pathId: null,
+          fixedAmount: null,
+        },
+        paths: [
+          {
+            name: "剑修",
+            pathType: "剑道",
+            description: "以剑意破境。",
+            sortOrder: 0,
+            realms: [
+              {
+                name: "筑基",
+                rank: 2,
+                description: "",
+                breakthroughConditions: "灵台稳固。",
+                breakthroughCosts: "三百灵石。",
+                bottlenecks: "心魔未除不可筑基。",
+                counters: "被破阵术克制。",
+                counteredBy: "克制阴灵。",
+                lifespanAmount: 240,
+                prerequisiteRealmId: null,
+              },
+            ],
+          },
+        ],
+      },
+    },
+  );
+  expect(response.status(), await response.text()).toBe(201);
+  return (await response.json()).data as {
+    powerSystem: { id: string; label: string | null };
+    version: number;
+  };
+}
+
+async function createMechanism(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  character: { character: { id: string } },
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/mechanisms`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        name: "忘川书",
+        aliases: [],
+        summary: "吞噬记忆换取答案。",
+        description: "",
+        tags: ["机制"],
+        mechanismType: "记忆交易",
+        owner: {
+          type: "character",
+          id: character.character.id,
+          branchId: work.mainBranch.id,
+          label: "沈砚",
+        },
+        powerSystem: null,
+        rules: "写下问题，交换一段记忆。",
+        costs: "每次交换失去一段记忆。",
+        limits: "同一天只能问一次。",
+        growth: "回答越远，代价越高。",
+      },
+    },
+  );
+  expect(response.status(), await response.text()).toBe(201);
+  return (await response.json()).data as {
+    mechanism: { id: string; label: string | null };
+    version: number;
+  };
+}
+
+async function createItem(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  input: {
+    name: string;
+    kind: "item" | "technique" | "equipment" | "resource";
+    ownershipModel?: "shared" | "unique";
+    quantity?: number;
+    consumable?: boolean;
+    equipmentSlot?: string | null;
+  },
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/items`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        name: input.name,
+        aliases: [],
+        summary: `${input.name}的说明。`,
+        description: "",
+        tags: [],
+        kind: input.kind,
+        category: input.kind === "resource" ? "丹炉" : "兵器",
+        grade: "玄阶",
+        effect: input.kind === "resource" ? "可同时炼两炉丹。" : "斩断灵体。",
+        cost: "每次使用消耗灵力。",
+        limits: "离开主人超过七日会失效。",
+        ownershipModel: input.ownershipModel ?? "shared",
+        consumable: input.consumable ?? false,
+        quantity: input.quantity ?? 1,
+        equipmentSlot: input.equipmentSlot ?? null,
+      },
+    },
+  );
+  expect(response.status(), await response.text()).toBe(201);
+  return (await response.json()).data as {
+    item: { id: string; label: string | null };
+    version: number;
+  };
+}
+
+async function grantItemRight(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  itemId: string,
+  body: Record<string, unknown>,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/items/${itemId}/rights`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: body,
+    },
+  );
+  expect(response.status(), await response.text()).toBe(201);
+}
+
+async function lockEntity(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  entityId: string,
+  version: number,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${entityId}/lock`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: { version },
+    },
+  );
+  expect(response.status(), await response.text()).toBe(200);
+  return (await response.json()).data as { version: number };
+}
+
+async function createEntityProposal(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  entityId: string,
+  version: number,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities/${entityId}/proposals`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        version,
+        reason: "这条设定需要作者确认后才能进入已确认设定。",
+        conflictType: "none",
+        evidence: [
+          {
+            kind: "chapter",
+            sourceId: null,
+            label: "第 1 章",
+            quote: "书页吞掉了他的名字。",
+            locator: "第 1 章 · 第 3 段",
+            confidence: 0.9,
+          },
+        ],
+      },
+    },
+  );
+  expect(response.status(), await response.text()).toBe(201);
+}
+
 async function addRelationship(
   page: Page,
   work: { id: string; mainBranch: { id: string } },
@@ -885,5 +1089,282 @@ test("holds locked faction and long map details at all four viewports", async ({
     await expect(detail.getByText("地点 10 · 地标")).toBeVisible();
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-world-long-${width}`);
+  }
+});
+
+test("shows multi-path power systems and mechanism ownership at all four viewports", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  const shen = await createCharacter(page, work, "沈砚");
+  await createPowerSystem(page, work, "北域双路径");
+  await createMechanism(page, work, shen);
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    const power = await openEntity(page, work, /^力量体系/, "北域双路径");
+    await expect(power.getByText("体系概览")).toBeVisible();
+    await expect(power.getByText("按境界绑定")).toBeVisible();
+    await expect(power.getByText("剑修 · 剑道")).toBeVisible();
+    await expect(power.getByText("第 2 层 · 筑基")).toBeVisible();
+    await expect(power.getByText("突破条件：灵台稳固。")).toBeVisible();
+    await expect(power.getByText("瓶颈：心魔未除不可筑基。")).toBeVisible();
+    await expect(power.getByText("克制：被破阵术克制。")).toBeVisible();
+    await expect(power.getByText("寿命：240 年")).toBeVisible();
+    await expectAuthorFacingLanguage(page);
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-power-${width}`);
+
+    const mechanism = await openEntity(page, work, /^力量体系/, "忘川书");
+    await expect(mechanism.getByText("机制归属")).toBeVisible();
+    await expect(mechanism.getByText("记忆交易")).toBeVisible();
+    await expect(mechanism.getByText("规则、代价、限制与成长")).toBeVisible();
+    await expect(mechanism.getByText("写下问题，交换一段记忆。")).toBeVisible();
+    await expect(mechanism.getByText("所有权历史")).toBeVisible();
+    await expect(mechanism.getByText("首次登记 · 沈砚")).toBeVisible();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-mechanism-${width}`);
+  }
+});
+
+test("keeps item ownership, custody, location, usage and disposal separate", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(90_000);
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  const first = await createCharacter(page, work, "沈砚");
+  const second = await createCharacter(page, work, "顾青");
+  const third = await createCharacter(page, work, "陈渡");
+  const map = await createMap(page, work, "北域");
+  const item = await createItem(page, work, {
+    name: "共灵丹炉",
+    kind: "resource",
+    ownershipModel: "shared",
+    quantity: 5,
+    consumable: true,
+  });
+  const validity = {
+    fromChapter: 1,
+    toChapter: null,
+    fromStoryTime: null,
+    toStoryTime: null,
+  };
+  await grantItemRight(page, work, item.item.id, {
+    rightType: "ownership",
+    holder: {
+      type: "character",
+      id: first.character.id,
+      branchId: work.mainBranch.id,
+      label: "沈砚",
+    },
+    sharePercent: 60,
+    validity,
+    reason: "共同持有。",
+  });
+  await grantItemRight(page, work, item.item.id, {
+    rightType: "ownership",
+    holder: {
+      type: "character",
+      id: second.character.id,
+      branchId: work.mainBranch.id,
+      label: "顾青",
+    },
+    sharePercent: 40,
+    validity,
+    reason: "共同持有。",
+  });
+  for (const right of [
+    {
+      rightType: "custody",
+      holder: {
+        type: "character",
+        id: third.character.id,
+        branchId: work.mainBranch.id,
+        label: "陈渡",
+      },
+      reason: "由陈渡保管。",
+    },
+    {
+      rightType: "usage",
+      holder: {
+        type: "character",
+        id: first.character.id,
+        branchId: work.mainBranch.id,
+        label: "沈砚",
+      },
+      reason: "沈砚可以使用。",
+    },
+    {
+      rightType: "disposal",
+      holder: {
+        type: "character",
+        id: second.character.id,
+        branchId: work.mainBranch.id,
+        label: "顾青",
+      },
+      reason: "顾青拥有处置权。",
+    },
+    {
+      rightType: "location",
+      holder: {
+        type: "map",
+        id: map.id,
+        branchId: work.mainBranch.id,
+        label: "北域",
+      },
+      reason: "存放在北域。",
+    },
+  ]) {
+    await grantItemRight(page, work, item.item.id, {
+      ...right,
+      sharePercent: null,
+      validity,
+    });
+  }
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    const detail = await openEntity(page, work, /^物品功法/, "共灵丹炉");
+    await expect(detail.getByText("物品档案")).toBeVisible();
+    await expect(detail.getByText("资源")).toBeVisible();
+    await expect(detail.getByText("共享")).toBeVisible();
+    await expect(detail.getByText("归属 · 沈砚")).toBeVisible();
+    await expect(detail.getByText("归属 · 顾青")).toBeVisible();
+    await expect(detail.getByText("保管 · 陈渡")).toBeVisible();
+    await expect(detail.getByText("位置 · 北域")).toBeVisible();
+    await expect(detail.getByText("使用权 · 沈砚")).toBeVisible();
+    await expect(detail.getByText("处置权 · 顾青")).toBeVisible();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-item-${width}`);
+  }
+});
+
+test("holds locked, proposal, long and error states for power and item domains", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  const lockedPower = await createPowerSystem(page, work, "锁定的力量体系");
+  await lockEntity(page, work, lockedPower.powerSystem.id, lockedPower.version);
+  const proposedPower = await createPowerSystem(page, work, "待确认的力量体系");
+  await createEntityProposal(page, work, proposedPower.powerSystem.id, proposedPower.version);
+  const lockedItem = await createItem(page, work, {
+    name: "锁定的斩灵剑",
+    kind: "equipment",
+    equipmentSlot: "main_hand",
+  });
+  await lockEntity(page, work, lockedItem.item.id, lockedItem.version);
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    const locked = await openEntity(page, work, /^力量体系/, "锁定的力量体系");
+    await expect(locked.getByText("已锁定").first()).toBeVisible();
+    await expect(locked.getByText("按境界绑定")).toBeVisible();
+    await expect(locked.getByRole("button", { name: "已锁定 · 编辑需修改请求" })).toBeDisabled();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-power-locked-${width}`);
+
+    const proposal = await openEntity(page, work, /^力量体系/, "待确认的力量体系");
+    await expect(proposal.getByText("待确认").first()).toBeVisible();
+    await expect(proposal.getByText("待裁决", { exact: true })).toBeVisible();
+    await expect(proposal.getByRole("button", { name: "确认提案" })).toBeEnabled();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-power-proposal-${width}`);
+
+    const item = await openEntity(page, work, /^物品功法/, "锁定的斩灵剑");
+    await expect(item.getByText("已锁定").first()).toBeVisible();
+    await expect(item.getByText("物品档案")).toBeVisible();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-item-locked-${width}`);
+  }
+
+  for (let index = 1; index <= 10; index += 1) {
+    await createItem(page, work, {
+      name: `长卷物品 ${index}`,
+      kind: "item",
+    });
+  }
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto(`/workspace/${work.id}/settings`);
+    await page.getByRole("button", { name: /^物品功法/ }).click();
+    await expect(page.locator(".settings-entity-card")).toHaveCount(11);
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-item-long-${width}`);
+  }
+
+  const powerPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/power-systems/${lockedPower.powerSystem.id}`;
+  const itemPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/items/${lockedItem.item.id}`;
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.route(`**${powerPath}`, async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "力量体系加载失败。",
+            details: {},
+            requestId: "req_power_error",
+          },
+        }),
+      });
+    });
+    const power = await openEntity(page, work, /^力量体系/, "锁定的力量体系");
+    await expect(power.getByText("力量体系加载失败。")).toBeVisible();
+    await expect(power.getByRole("button", { name: "重试" })).toBeEnabled();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-power-error-${width}`);
+    await page.unroute(`**${powerPath}`);
+
+    await page.route(`**${itemPath}`, async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "物品功法加载失败。",
+            details: {},
+            requestId: "req_item_error",
+          },
+        }),
+      });
+    });
+    const item = await openEntity(page, work, /^物品功法/, "锁定的斩灵剑");
+    await expect(item.getByText("物品功法加载失败。")).toBeVisible();
+    await expect(item.getByRole("button", { name: "重试" })).toBeEnabled();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `entity-detail-item-error-${width}`);
+    await page.unroute(`**${itemPath}`);
   }
 });

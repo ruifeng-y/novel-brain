@@ -32,6 +32,8 @@ import type {
 import { ApiError } from "../common/api-error";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { PowerItemsRepository } from "./power-items.repository";
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorldRepository } from "./world.repository";
 import type { WorldAuditContext, WorldWorkContext, WorldWriteResult } from "./world.repository";
 
@@ -42,7 +44,10 @@ interface ReadQuery {
 
 @Injectable()
 export class WorldService {
-  constructor(private readonly repository: WorldRepository) {}
+  constructor(
+    private readonly repository: WorldRepository,
+    private readonly powerItemsRepository: PowerItemsRepository,
+  ) {}
 
   async listFactions(
     userId: string,
@@ -311,11 +316,14 @@ export class WorldService {
     query: WorldSnapshotQuery,
   ): Promise<WorldSnapshot> {
     const context = await this.requireContext(userId, workId, branchId);
-    return this.repository.getSnapshot(
-      userId,
-      context,
-      await this.readOptions(userId, context, query),
-    );
+    const options = await this.readOptions(userId, context, query);
+    const [snapshot, powerSystems, mechanisms, items] = await Promise.all([
+      this.repository.getSnapshot(userId, context, options),
+      this.powerItemsRepository.listPowerSystems(userId, context, options),
+      this.powerItemsRepository.listMechanisms(userId, context, options),
+      this.powerItemsRepository.listItems(userId, context, options),
+    ]);
+    return { ...snapshot, powerSystems, mechanisms, items };
   }
 
   private async readOptions(

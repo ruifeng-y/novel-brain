@@ -1925,6 +1925,347 @@ export const characterItineraries = pgTable(
   ],
 );
 
+export const powerSystems = pgTable(
+  "power_systems",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    overview: text("overview").notNull().default(""),
+    lifespanMode: text("lifespan_mode").notNull().default("none"),
+    lifespanUnit: text("lifespan_unit").notNull().default("年"),
+    lifespanBasis: text("lifespan_basis").notNull().default(""),
+    lifespanDescription: text("lifespan_description").notNull().default(""),
+    lifespanPathId: uuid("lifespan_path_id"),
+    lifespanFixedAmount: integer("lifespan_fixed_amount"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("power_systems_user_work_idx").on(table.userId, table.workId),
+    index("power_systems_branch_idx").on(table.branchId),
+    check(
+      "power_systems_lifespan_mode_check",
+      sql`${table.lifespanMode} in ('none', 'realm', 'fixed', 'custom')`,
+    ),
+    check(
+      "power_systems_lifespan_amount_check",
+      sql`(${table.lifespanMode} = 'fixed' and ${table.lifespanFixedAmount} is not null and ${table.lifespanFixedAmount} > 0) or (${table.lifespanMode} <> 'fixed' and ${table.lifespanFixedAmount} is null)`,
+    ),
+    check("power_systems_lifespan_unit_check", sql`length(trim(${table.lifespanUnit})) > 0`),
+  ],
+);
+
+export const powerPaths = pgTable(
+  "power_paths",
+  {
+    id: uuid("id").primaryKey(),
+    powerSystemId: uuid("power_system_id")
+      .notNull()
+      .references(() => powerSystems.entityId, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    pathType: text("path_type").notNull(),
+    description: text("description").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("power_paths_system_name_unique").on(table.powerSystemId, table.name),
+    index("power_paths_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
+export const powerRealms = pgTable(
+  "power_realms",
+  {
+    id: uuid("id").primaryKey(),
+    pathId: uuid("path_id")
+      .notNull()
+      .references(() => powerPaths.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    rank: integer("rank").notNull(),
+    description: text("description").notNull().default(""),
+    breakthroughConditions: text("breakthrough_conditions").notNull(),
+    breakthroughCosts: text("breakthrough_costs").notNull().default(""),
+    bottlenecks: text("bottlenecks").notNull().default(""),
+    counters: text("counters").notNull().default(""),
+    counteredBy: text("countered_by").notNull().default(""),
+    lifespanAmount: integer("lifespan_amount"),
+    prerequisiteRealmId: uuid("prerequisite_realm_id").references(
+      (): AnyPgColumn => powerRealms.id,
+      { onDelete: "set null" },
+    ),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("power_realms_path_name_unique").on(table.pathId, table.name),
+    uniqueIndex("power_realms_path_rank_unique").on(table.pathId, table.rank),
+    index("power_realms_user_work_idx").on(table.userId, table.workId),
+    check("power_realms_rank_check", sql`${table.rank} > 0`),
+    check(
+      "power_realms_lifespan_check",
+      sql`${table.lifespanAmount} is null or ${table.lifespanAmount} > 0`,
+    ),
+    check(
+      "power_realms_prerequisite_check",
+      sql`${table.prerequisiteRealmId} is null or ${table.prerequisiteRealmId} <> ${table.id}`,
+    ),
+  ],
+);
+
+export const specialMechanisms = pgTable(
+  "special_mechanisms",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mechanismType: text("mechanism_type").notNull(),
+    ownerType: text("owner_type"),
+    ownerId: uuid("owner_id"),
+    ownerLabel: text("owner_label"),
+    powerSystemId: uuid("power_system_id").references(() => entities.id, {
+      onDelete: "set null",
+    }),
+    rules: text("rules").notNull(),
+    costs: text("costs").notNull().default(""),
+    limits: text("limits").notNull().default(""),
+    growth: text("growth").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("special_mechanisms_user_work_idx").on(table.userId, table.workId),
+    check(
+      "special_mechanisms_owner_check",
+      sql`(${table.ownerType} is null and ${table.ownerId} is null and ${table.ownerLabel} is null) or (${table.ownerType} in ('character', 'faction', 'item') and ${table.ownerId} is not null)`,
+    ),
+    check("special_mechanisms_type_check", sql`length(trim(${table.mechanismType})) > 0`),
+  ],
+);
+
+export const mechanismOwnershipEvents = pgTable(
+  "mechanism_ownership_events",
+  {
+    id: uuid("id").primaryKey(),
+    mechanismId: uuid("mechanism_id")
+      .notNull()
+      .references(() => specialMechanisms.entityId, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    previousOwnerType: text("previous_owner_type"),
+    previousOwnerId: uuid("previous_owner_id"),
+    previousOwnerLabel: text("previous_owner_label"),
+    ownerType: text("owner_type").notNull(),
+    ownerId: uuid("owner_id").notNull(),
+    ownerLabel: text("owner_label"),
+    reason: text("reason").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("mechanism_ownership_events_mechanism_idx").on(table.mechanismId, table.createdAt),
+    index("mechanism_ownership_events_user_work_idx").on(table.userId, table.workId),
+    check(
+      "mechanism_ownership_events_owner_check",
+      sql`${table.ownerType} in ('character', 'faction', 'item')`,
+    ),
+    check(
+      "mechanism_ownership_events_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const itemTechniques = pgTable(
+  "item_techniques",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    category: text("category").notNull(),
+    grade: text("grade").notNull().default(""),
+    effect: text("effect").notNull(),
+    cost: text("cost").notNull().default(""),
+    limits: text("limits").notNull().default(""),
+    ownershipModel: text("ownership_model").notNull(),
+    consumable: boolean("consumable").notNull().default(false),
+    quantity: integer("quantity").notNull().default(1),
+    equipmentSlot: text("equipment_slot"),
+    equippedByType: text("equipped_by_type"),
+    equippedById: uuid("equipped_by_id"),
+    equippedByLabel: text("equipped_by_label"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("item_techniques_user_work_idx").on(table.userId, table.workId),
+    check(
+      "item_techniques_kind_check",
+      sql`${table.kind} in ('item', 'technique', 'equipment', 'resource')`,
+    ),
+    check(
+      "item_techniques_ownership_model_check",
+      sql`${table.ownershipModel} in ('shared', 'unique')`,
+    ),
+    check("item_techniques_quantity_check", sql`${table.quantity} >= 0`),
+    check(
+      "item_techniques_unique_quantity_check",
+      sql`${table.ownershipModel} <> 'unique' or ${table.quantity} <= 1`,
+    ),
+    check(
+      "item_techniques_equipment_check",
+      sql`(${table.kind} = 'equipment' and ${table.equipmentSlot} is not null) or (${table.kind} <> 'equipment' and ${table.equipmentSlot} is null and ${table.equippedByType} is null and ${table.equippedById} is null and ${table.equippedByLabel} is null)`,
+    ),
+  ],
+);
+
+export const itemRights = pgTable(
+  "item_rights",
+  {
+    id: uuid("id").primaryKey(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => itemTechniques.entityId, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rightType: text("right_type").notNull(),
+    holderType: text("holder_type").notNull(),
+    holderId: uuid("holder_id").notNull(),
+    holderLabel: text("holder_label"),
+    sharePercent: real("share_percent"),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    reason: text("reason").notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("item_rights_item_type_valid_idx").on(
+      table.itemId,
+      table.rightType,
+      table.validFromChapter,
+    ),
+    index("item_rights_user_work_idx").on(table.userId, table.workId),
+    check(
+      "item_rights_type_check",
+      sql`${table.rightType} in ('ownership', 'custody', 'location', 'usage', 'disposal')`,
+    ),
+    check(
+      "item_rights_holder_check",
+      sql`(${table.rightType} = 'location' and ${table.holderType} in ('map', 'map_node') and ${table.sharePercent} is null) or (${table.rightType} <> 'location' and ${table.holderType} in ('character', 'faction', 'item'))`,
+    ),
+    check(
+      "item_rights_share_check",
+      sql`(${table.rightType} = 'ownership' and ${table.sharePercent} is not null and ${table.sharePercent} > 0 and ${table.sharePercent} <= 100) or (${table.rightType} <> 'ownership' and ${table.sharePercent} is null)`,
+    ),
+    check(
+      "item_rights_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
 export const jobs = pgTable(
   "jobs",
   {
