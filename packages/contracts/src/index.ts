@@ -93,6 +93,12 @@ export const ERROR_CODES = [
   "CRITIC_VERSION_REQUIRED",
   "CRITIC_FINDING_NOT_DISMISSIBLE",
   "QUALITY_GATE_BLOCKED",
+  "STYLE_SOURCE_NOT_APPROVED",
+  "STYLE_BASELINE_UNAPPROVED",
+  "STYLE_BASELINE_REQUIRED",
+  "STYLE_REFERENCE_INVALID",
+  "STYLE_RANGE_EMPTY",
+  "CHAPTER_VERSION_REQUIRED",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -6723,6 +6729,356 @@ export const criticAnnotationListResponseSchema = apiEnvelopeSchema(
   z.array(criticAnnotationSchema),
 );
 export const criticAnnotationResponseSchema = apiEnvelopeSchema(criticAnnotationSchema);
+
+export const STYLE_DRIFT_RULE_VERSION = "m1-style-drift-v1" as const;
+
+export const styleBaselineDimensionSchema = z.enum(["character_voice", "prose"]);
+export type StyleBaselineDimension = z.infer<typeof styleBaselineDimensionSchema>;
+
+export const styleProfileScopeSchema = z.enum(["work", "character"]);
+export type StyleProfileScope = z.infer<typeof styleProfileScopeSchema>;
+
+export const styleProfileApprovalStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "superseded",
+]);
+export type StyleProfileApprovalStatus = z.infer<typeof styleProfileApprovalStatusSchema>;
+
+export const styleProfileSourceTypeSchema = z.enum([
+  "author_sample",
+  "approved_chapter_version",
+  "golden_three",
+]);
+export type StyleProfileSourceType = z.infer<typeof styleProfileSourceTypeSchema>;
+
+export const styleProfileSourceSchema = z
+  .object({
+    type: styleProfileSourceTypeSchema,
+    id: uuidV7Schema,
+    versionId: uuidV7Schema,
+    versionNodeId: uuidV7Schema.nullable(),
+    label: z.string().trim().min(1).max(200),
+  })
+  .strict();
+export type StyleProfileSource = z.infer<typeof styleProfileSourceSchema>;
+
+export const styleProfileSampleSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    excerpt: z.string().trim().min(1).max(2_000),
+    locator: z.string().trim().min(1).max(200),
+  })
+  .strict();
+export type StyleProfileSample = z.infer<typeof styleProfileSampleSchema>;
+
+export const styleProfileMetricsSchema = z
+  .object({
+    averageSentenceLength: z.number().nonnegative(),
+    exclamationRate: z.number().nonnegative(),
+    dialogueRatio: z.number().nonnegative(),
+  })
+  .strict();
+export type StyleProfileMetrics = z.infer<typeof styleProfileMetricsSchema>;
+
+export const styleProfileBodySchema = z
+  .object({
+    guides: z.array(z.string().trim().min(1).max(500)).min(1).max(20),
+    samples: z.array(styleProfileSampleSchema).min(1).max(20),
+    metrics: styleProfileMetricsSchema,
+  })
+  .strict();
+export type StyleProfileBody = z.infer<typeof styleProfileBodySchema>;
+
+export const styleProfileApprovalSchema = z
+  .object({
+    approvedBy: uuidV7Schema,
+    approvedAt: z.string().datetime(),
+    rationale: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type StyleProfileApproval = z.infer<typeof styleProfileApprovalSchema>;
+
+export const styleProfileSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    scope: styleProfileScopeSchema,
+    scopeId: uuidV7Schema.nullable(),
+    dimension: styleBaselineDimensionSchema,
+    name: z.string().trim().min(1).max(200),
+    version: z.number().int().positive(),
+    approvalStatus: styleProfileApprovalStatusSchema,
+    source: styleProfileSourceSchema,
+    profile: styleProfileBodySchema,
+    approval: styleProfileApprovalSchema.nullable(),
+    versionNodeId: uuidV7Schema.nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.scope === "work" && input.scopeId !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["scopeId"],
+        message: "Work-scoped style profiles do not accept a scope id",
+      });
+    }
+    if (input.scope === "character" && input.scopeId === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["scopeId"],
+        message: "Character-scoped style profiles require a character id",
+      });
+    }
+    if (input.approvalStatus === "approved" && input.approval === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["approval"],
+        message: "Approved style profiles require explicit approval metadata",
+      });
+    }
+    if (input.approvalStatus !== "approved" && input.approval !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["approval"],
+        message: "Only approved style profiles carry approval metadata",
+      });
+    }
+  });
+export type StyleProfile = z.infer<typeof styleProfileSchema>;
+
+export const styleProfileCreateRequestSchema = z
+  .object({
+    scope: styleProfileScopeSchema,
+    scopeId: uuidV7Schema.nullable().default(null),
+    dimension: styleBaselineDimensionSchema,
+    name: z.string().trim().min(1).max(200),
+    approvalStatus: z.literal("pending").optional().default("pending"),
+    source: z
+      .object({
+        type: styleProfileSourceTypeSchema,
+        id: uuidV7Schema,
+        versionId: uuidV7Schema,
+        label: z.string().trim().min(1).max(200),
+      })
+      .strict(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.scope === "work" && input.scopeId !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["scopeId"],
+        message: "Work-scoped style profiles do not accept a scope id",
+      });
+    }
+    if (input.scope === "character" && input.scopeId === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["scopeId"],
+        message: "Character-scoped style profiles require a character id",
+      });
+    }
+  });
+export type StyleProfileCreateRequest = z.infer<typeof styleProfileCreateRequestSchema>;
+
+export const styleProfileApproveRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    rationale: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type StyleProfileApproveRequest = z.infer<typeof styleProfileApproveRequestSchema>;
+
+export const styleDriftScopeSchema = z.enum(["chapter", "volume", "cross_volume"]);
+export type StyleDriftScope = z.infer<typeof styleDriftScopeSchema>;
+
+export const styleDriftModelProvenanceSchema = z
+  .object({
+    provider: z.string().trim().min(1).max(100),
+    model: z.string().trim().min(1).max(200),
+    parameters: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type StyleDriftModelProvenance = z.infer<typeof styleDriftModelProvenanceSchema>;
+
+export const styleDriftPromptProvenanceSchema = z
+  .object({
+    key: z.string().trim().min(1).max(100),
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type StyleDriftPromptProvenance = z.infer<typeof styleDriftPromptProvenanceSchema>;
+
+export const styleDriftCheckRequestSchema = z
+  .object({
+    scope: styleDriftScopeSchema,
+    chapterId: uuidV7Schema.optional(),
+    fromChapter: z.number().int().positive().optional(),
+    toChapter: z.number().int().positive().optional(),
+    model: styleDriftModelProvenanceSchema,
+    prompt: styleDriftPromptProvenanceSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.scope === "chapter") {
+      if (!input.chapterId) {
+        context.addIssue({
+          code: "custom",
+          path: ["chapterId"],
+          message: "Chapter drift checks require a chapter id",
+        });
+      }
+      if (input.fromChapter !== undefined || input.toChapter !== undefined) {
+        context.addIssue({
+          code: "custom",
+          path: ["fromChapter"],
+          message: "Chapter drift checks do not accept a chapter range",
+        });
+      }
+      return;
+    }
+    if (input.chapterId !== undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "Volume and cross-volume checks do not accept a chapter id",
+      });
+    }
+    if (
+      input.fromChapter === undefined ||
+      input.toChapter === undefined ||
+      input.toChapter < input.fromChapter
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Range checks require an ordered chapter window",
+      });
+    }
+  });
+export type StyleDriftCheckRequest = z.infer<typeof styleDriftCheckRequestSchema>;
+
+export const styleDriftFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    code: z.enum([
+      "CHARACTER_VOICE_DRIFT",
+      "WORK_STYLE_DRIFT",
+      "INTENTIONAL_CHARACTER_DEVELOPMENT",
+    ]),
+    classification: z.enum(["drift", "intentional_development"]),
+    severity: criticSeveritySchema,
+    dimension: styleBaselineDimensionSchema,
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    quote: z.string().trim().min(1).max(2_000),
+    startOffset: z.number().int().nonnegative(),
+    endOffset: z.number().int().nonnegative(),
+    locator: z.string().trim().min(1).max(200),
+    explanation: z.string().trim().min(1).max(1_000),
+    recommendation: z.string().trim().min(1).max(2_000),
+    growthEvidence: z
+      .object({
+        markerId: uuidV7Schema,
+        startState: z.string().trim().min(1).max(2_000),
+        endState: z.string().trim().min(1).max(2_000),
+        reason: z.string().trim().min(1).max(2_000),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endOffset <= input.startOffset) {
+      context.addIssue({
+        code: "custom",
+        path: ["endOffset"],
+        message: "Drift evidence end must follow its start",
+      });
+    }
+    if (input.classification === "intentional_development" && input.growthEvidence === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["growthEvidence"],
+        message: "Intentional development requires character arc evidence",
+      });
+    }
+    if (input.classification === "drift" && input.growthEvidence !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["growthEvidence"],
+        message: "Drift findings do not carry growth evidence",
+      });
+    }
+  });
+export type StyleDriftFinding = z.infer<typeof styleDriftFindingSchema>;
+
+export const styleDriftTrendPointSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    exclamationRate: z.number().nonnegative(),
+    averageSentenceLength: z.number().nonnegative(),
+    dialogueRatio: z.number().nonnegative(),
+    deviationScore: z.number().nonnegative(),
+  })
+  .strict();
+export type StyleDriftTrendPoint = z.infer<typeof styleDriftTrendPointSchema>;
+
+export const styleDriftReportSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    scope: styleDriftScopeSchema,
+    chapterId: uuidV7Schema.nullable(),
+    window: z
+      .object({
+        fromChapter: z.number().int().positive(),
+        toChapter: z.number().int().positive(),
+      })
+      .strict(),
+    baseline: z
+      .object({
+        id: uuidV7Schema,
+        version: z.number().int().positive(),
+        dimension: styleBaselineDimensionSchema,
+        sourceType: styleProfileSourceTypeSchema,
+      })
+      .strict(),
+    profileVersion: z.number().int().positive(),
+    ruleVersion: z.literal(STYLE_DRIFT_RULE_VERSION),
+    model: styleDriftModelProvenanceSchema,
+    prompt: styleDriftPromptProvenanceSchema,
+    summary: z.string().trim().min(1).max(2_000),
+    findings: z.array(styleDriftFindingSchema),
+    trend: z.array(styleDriftTrendPointSchema),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type StyleDriftReport = z.infer<typeof styleDriftReportSchema>;
+
+export const styleDriftWorkspaceSchema = z
+  .object({
+    profiles: z.array(styleProfileSchema),
+    latestChapterReport: styleDriftReportSchema.nullable(),
+    latestVolumeReport: styleDriftReportSchema.nullable(),
+    latestCrossVolumeReport: styleDriftReportSchema.nullable(),
+  })
+  .strict();
+export type StyleDriftWorkspace = z.infer<typeof styleDriftWorkspaceSchema>;
+
+export const styleProfileListResponseSchema = apiEnvelopeSchema(z.array(styleProfileSchema));
+export const styleProfileResponseSchema = apiEnvelopeSchema(styleProfileSchema);
+export const styleDriftWorkspaceResponseSchema = apiEnvelopeSchema(styleDriftWorkspaceSchema);
+export const styleDriftReportResponseSchema = apiEnvelopeSchema(styleDriftReportSchema);
 export const GENERATION_READINESS_RULE_VERSION = "readiness-v1" as const;
 
 export const generationReadinessSeveritySchema = z.enum(["blocker", "warning"]);

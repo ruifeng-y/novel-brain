@@ -1,6 +1,13 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import {
+  approveStyleProfile,
+  createStyleChapter,
+  createStyleProfile,
+  findCharacterId,
+  styleBranchPath,
+} from "../helpers/styles";
 import { expectAuthorFacingLanguage } from "../helpers/ui";
 import { startWorker } from "../helpers/worker";
 
@@ -364,6 +371,68 @@ test("shows six-dimension evidence and completes a finding dismiss/reopen lifecy
     );
     expect(overflow).toBeLessThanOrEqual(0);
     await testInfo.attach(`writing-quality-${width}`, {
+      body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
+      contentType: "image/png",
+    });
+  }
+});
+
+test("checks character voice drift, locates evidence and never rewrites the draft", async ({
+  page,
+  context,
+}, testInfo) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const base = styleBranchPath(work);
+  const token = await getCsrf(page.request);
+  const baselineContent = "风停了。\n他没有回头。\n“走吧。”沈砚说。";
+  const baselineVersionResponse = await page.request.post(
+    `${base}/chapters/${chapter.id}/versions`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: { version: chapter.version, content: baselineContent },
+    },
+  );
+  expect(baselineVersionResponse.status(), await baselineVersionResponse.text()).toBe(201);
+  const baselineVersionId = (await baselineVersionResponse.json()).data.version.id as string;
+  const characterId = await findCharacterId(page, work, "沈砚");
+  const profile = await createStyleProfile(page, work, characterId, baselineVersionId);
+  await approveStyleProfile(page, work, profile);
+
+  const driftContent = "不可能！！！这绝不可能！！！\n他看见天裂开了！！！血液像火一样燃烧！！！";
+  const driftChapter = await createStyleChapter(page, work, 2, "天裂", driftContent);
+
+  await page.goto(`/workspace/${work.id}/write?chapterId=${driftChapter.id}`);
+  const editor = page.getByRole("textbox", { name: "章节正文" });
+  await expect(editor).toHaveValue(driftContent);
+  await page.getByRole("button", { name: "检查本章声线" }).click();
+
+  const panel = page.locator(".writing-style-drift");
+  await expect(panel.getByRole("heading", { name: "漂移检查" })).toBeVisible();
+  const finding = panel.locator('[data-style-finding="CHARACTER_VOICE_DRIFT"]');
+  await expect(finding).toBeVisible();
+  await expect(finding.getByText("第 2 章 · 第 1 段")).toBeVisible();
+  await expect(finding).toContainText("不可能");
+  await expect(finding.getByRole("button", { name: "定位证据" })).toBeVisible();
+  await expectAuthorFacingLanguage(page);
+
+  await finding.getByRole("button", { name: "定位证据" }).click();
+  const selectedText = await editor.evaluate((element) => {
+    const textarea = element as HTMLTextAreaElement;
+    return textarea.value.slice(textarea.selectionStart, textarea.selectionEnd);
+  });
+  expect(selectedText).toContain("不可能");
+  await expect(editor).toHaveValue(driftContent);
+
+  for (const width of [390, 900, 1180, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(panel).toBeVisible();
+    await expect(finding).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    await testInfo.attach(`writing-style-drift-${width}`, {
       body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
       contentType: "image/png",
     });

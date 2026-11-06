@@ -2565,6 +2565,12 @@
                                     "CRITIC_VERSION_REQUIRED",
                                     "CRITIC_FINDING_NOT_DISMISSIBLE",
                                     "QUALITY_GATE_BLOCKED",
+                                    "STYLE_SOURCE_NOT_APPROVED",
+                                    "STYLE_BASELINE_UNAPPROVED",
+                                    "STYLE_BASELINE_REQUIRED",
+                                    "STYLE_REFERENCE_INVALID",
+                                    "STYLE_RANGE_EMPTY",
+                                    "CHAPTER_VERSION_REQUIRED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -3322,6 +3328,12 @@
                                   "CRITIC_VERSION_REQUIRED",
                                   "CRITIC_FINDING_NOT_DISMISSIBLE",
                                   "QUALITY_GATE_BLOCKED",
+                                  "STYLE_SOURCE_NOT_APPROVED",
+                                  "STYLE_BASELINE_UNAPPROVED",
+                                  "STYLE_BASELINE_REQUIRED",
+                                  "STYLE_REFERENCE_INVALID",
+                                  "STYLE_RANGE_EMPTY",
+                                  "CHAPTER_VERSION_REQUIRED",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -14949,6 +14961,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -16419,6 +16437,12 @@
                                   "CRITIC_VERSION_REQUIRED",
                                   "CRITIC_FINDING_NOT_DISMISSIBLE",
                                   "QUALITY_GATE_BLOCKED",
+                                  "STYLE_SOURCE_NOT_APPROVED",
+                                  "STYLE_BASELINE_UNAPPROVED",
+                                  "STYLE_BASELINE_REQUIRED",
+                                  "STYLE_REFERENCE_INVALID",
+                                  "STYLE_RANGE_EMPTY",
+                                  "CHAPTER_VERSION_REQUIRED",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -17323,6 +17347,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -18226,6 +18256,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -19129,6 +19165,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -20064,6 +20106,12 @@
                                     "CRITIC_VERSION_REQUIRED",
                                     "CRITIC_FINDING_NOT_DISMISSIBLE",
                                     "QUALITY_GATE_BLOCKED",
+                                    "STYLE_SOURCE_NOT_APPROVED",
+                                    "STYLE_BASELINE_UNAPPROVED",
+                                    "STYLE_BASELINE_REQUIRED",
+                                    "STYLE_REFERENCE_INVALID",
+                                    "STYLE_RANGE_EMPTY",
+                                    "CHAPTER_VERSION_REQUIRED",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -69588,6 +69636,2251 @@
         "tags": ["story-ledger"]
       }
     },
+    "/api/v1/works/{workId}/branches/{branchId}/style": {
+      "get": {
+        "operationId": "StyleController_workspace",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Style baselines and latest drift reports",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "profiles": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "scope": {
+                                "type": "string",
+                                "enum": ["work", "character"]
+                              },
+                              "scopeId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "dimension": {
+                                "type": "string",
+                                "enum": ["character_voice", "prose"]
+                              },
+                              "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "approvalStatus": {
+                                "type": "string",
+                                "enum": ["pending", "approved", "rejected", "superseded"]
+                              },
+                              "source": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "author_sample",
+                                      "approved_chapter_version",
+                                      "golden_three"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "versionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "versionNodeId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": ["type", "id", "versionId", "versionNodeId", "label"],
+                                "additionalProperties": false
+                              },
+                              "profile": {
+                                "type": "object",
+                                "properties": {
+                                  "guides": {
+                                    "minItems": 1,
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "samples": {
+                                    "minItems": 1,
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "chapterId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "chapterVersionId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "excerpt": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 2000
+                                        },
+                                        "locator": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": [
+                                        "chapterId",
+                                        "chapterVersionId",
+                                        "excerpt",
+                                        "locator"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "metrics": {
+                                    "type": "object",
+                                    "properties": {
+                                      "averageSentenceLength": {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      "exclamationRate": {
+                                        "type": "number",
+                                        "minimum": 0
+                                      },
+                                      "dialogueRatio": {
+                                        "type": "number",
+                                        "minimum": 0
+                                      }
+                                    },
+                                    "required": [
+                                      "averageSentenceLength",
+                                      "exclamationRate",
+                                      "dialogueRatio"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": ["guides", "samples", "metrics"],
+                                "additionalProperties": false
+                              },
+                              "approval": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "approvedBy": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "approvedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  },
+                                  "rationale": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  }
+                                },
+                                "required": ["approvedBy", "approvedAt", "rationale"],
+                                "additionalProperties": false
+                              },
+                              "versionNodeId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "workId",
+                              "branchId",
+                              "scope",
+                              "scopeId",
+                              "dimension",
+                              "name",
+                              "version",
+                              "approvalStatus",
+                              "source",
+                              "profile",
+                              "approval",
+                              "versionNodeId",
+                              "createdAt",
+                              "updatedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "latestChapterReport": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "scope": {
+                              "type": "string",
+                              "enum": ["chapter", "volume", "cross_volume"]
+                            },
+                            "chapterId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "window": {
+                              "type": "object",
+                              "properties": {
+                                "fromChapter": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "toChapter": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["fromChapter", "toChapter"],
+                              "additionalProperties": false
+                            },
+                            "baseline": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "dimension": {
+                                  "type": "string",
+                                  "enum": ["character_voice", "prose"]
+                                },
+                                "sourceType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "author_sample",
+                                    "approved_chapter_version",
+                                    "golden_three"
+                                  ]
+                                }
+                              },
+                              "required": ["id", "version", "dimension", "sourceType"],
+                              "additionalProperties": false
+                            },
+                            "profileVersion": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "ruleVersion": {
+                              "type": "string",
+                              "enum": ["m1-style-drift-v1"]
+                            },
+                            "model": {
+                              "type": "object",
+                              "properties": {
+                                "provider": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "model": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "parameters": {
+                                  "default": {},
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              },
+                              "required": ["provider", "model", "parameters"],
+                              "additionalProperties": false
+                            },
+                            "prompt": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["key", "version"],
+                              "additionalProperties": false
+                            },
+                            "summary": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000
+                            },
+                            "findings": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "CHARACTER_VOICE_DRIFT",
+                                      "WORK_STYLE_DRIFT",
+                                      "INTENTIONAL_CHARACTER_DEVELOPMENT"
+                                    ]
+                                  },
+                                  "classification": {
+                                    "type": "string",
+                                    "enum": ["drift", "intentional_development"]
+                                  },
+                                  "severity": {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3"]
+                                  },
+                                  "dimension": {
+                                    "type": "string",
+                                    "enum": ["character_voice", "prose"]
+                                  },
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "quote": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "startOffset": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "endOffset": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "locator": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "explanation": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "recommendation": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "growthEvidence": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "markerId": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "startState": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      },
+                                      "endState": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      }
+                                    },
+                                    "required": ["markerId", "startState", "endState", "reason"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "code",
+                                  "classification",
+                                  "severity",
+                                  "dimension",
+                                  "chapterId",
+                                  "chapterVersionId",
+                                  "quote",
+                                  "startOffset",
+                                  "endOffset",
+                                  "locator",
+                                  "explanation",
+                                  "recommendation",
+                                  "growthEvidence"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "trend": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "exclamationRate": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "averageSentenceLength": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "dialogueRatio": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "deviationScore": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "chapterId",
+                                  "chapterVersionId",
+                                  "chapterNumber",
+                                  "exclamationRate",
+                                  "averageSentenceLength",
+                                  "dialogueRatio",
+                                  "deviationScore"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "workId",
+                            "branchId",
+                            "scope",
+                            "chapterId",
+                            "window",
+                            "baseline",
+                            "profileVersion",
+                            "ruleVersion",
+                            "model",
+                            "prompt",
+                            "summary",
+                            "findings",
+                            "trend",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "latestVolumeReport": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "scope": {
+                              "type": "string",
+                              "enum": ["chapter", "volume", "cross_volume"]
+                            },
+                            "chapterId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "window": {
+                              "type": "object",
+                              "properties": {
+                                "fromChapter": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "toChapter": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["fromChapter", "toChapter"],
+                              "additionalProperties": false
+                            },
+                            "baseline": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "dimension": {
+                                  "type": "string",
+                                  "enum": ["character_voice", "prose"]
+                                },
+                                "sourceType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "author_sample",
+                                    "approved_chapter_version",
+                                    "golden_three"
+                                  ]
+                                }
+                              },
+                              "required": ["id", "version", "dimension", "sourceType"],
+                              "additionalProperties": false
+                            },
+                            "profileVersion": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "ruleVersion": {
+                              "type": "string",
+                              "enum": ["m1-style-drift-v1"]
+                            },
+                            "model": {
+                              "type": "object",
+                              "properties": {
+                                "provider": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "model": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "parameters": {
+                                  "default": {},
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              },
+                              "required": ["provider", "model", "parameters"],
+                              "additionalProperties": false
+                            },
+                            "prompt": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["key", "version"],
+                              "additionalProperties": false
+                            },
+                            "summary": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000
+                            },
+                            "findings": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "CHARACTER_VOICE_DRIFT",
+                                      "WORK_STYLE_DRIFT",
+                                      "INTENTIONAL_CHARACTER_DEVELOPMENT"
+                                    ]
+                                  },
+                                  "classification": {
+                                    "type": "string",
+                                    "enum": ["drift", "intentional_development"]
+                                  },
+                                  "severity": {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3"]
+                                  },
+                                  "dimension": {
+                                    "type": "string",
+                                    "enum": ["character_voice", "prose"]
+                                  },
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "quote": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "startOffset": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "endOffset": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "locator": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "explanation": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "recommendation": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "growthEvidence": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "markerId": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "startState": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      },
+                                      "endState": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      }
+                                    },
+                                    "required": ["markerId", "startState", "endState", "reason"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "code",
+                                  "classification",
+                                  "severity",
+                                  "dimension",
+                                  "chapterId",
+                                  "chapterVersionId",
+                                  "quote",
+                                  "startOffset",
+                                  "endOffset",
+                                  "locator",
+                                  "explanation",
+                                  "recommendation",
+                                  "growthEvidence"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "trend": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "exclamationRate": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "averageSentenceLength": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "dialogueRatio": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "deviationScore": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "chapterId",
+                                  "chapterVersionId",
+                                  "chapterNumber",
+                                  "exclamationRate",
+                                  "averageSentenceLength",
+                                  "dialogueRatio",
+                                  "deviationScore"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "workId",
+                            "branchId",
+                            "scope",
+                            "chapterId",
+                            "window",
+                            "baseline",
+                            "profileVersion",
+                            "ruleVersion",
+                            "model",
+                            "prompt",
+                            "summary",
+                            "findings",
+                            "trend",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "latestCrossVolumeReport": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "scope": {
+                              "type": "string",
+                              "enum": ["chapter", "volume", "cross_volume"]
+                            },
+                            "chapterId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "window": {
+                              "type": "object",
+                              "properties": {
+                                "fromChapter": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "toChapter": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["fromChapter", "toChapter"],
+                              "additionalProperties": false
+                            },
+                            "baseline": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "dimension": {
+                                  "type": "string",
+                                  "enum": ["character_voice", "prose"]
+                                },
+                                "sourceType": {
+                                  "type": "string",
+                                  "enum": [
+                                    "author_sample",
+                                    "approved_chapter_version",
+                                    "golden_three"
+                                  ]
+                                }
+                              },
+                              "required": ["id", "version", "dimension", "sourceType"],
+                              "additionalProperties": false
+                            },
+                            "profileVersion": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "ruleVersion": {
+                              "type": "string",
+                              "enum": ["m1-style-drift-v1"]
+                            },
+                            "model": {
+                              "type": "object",
+                              "properties": {
+                                "provider": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "model": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "parameters": {
+                                  "default": {},
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              },
+                              "required": ["provider", "model", "parameters"],
+                              "additionalProperties": false
+                            },
+                            "prompt": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["key", "version"],
+                              "additionalProperties": false
+                            },
+                            "summary": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000
+                            },
+                            "findings": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "CHARACTER_VOICE_DRIFT",
+                                      "WORK_STYLE_DRIFT",
+                                      "INTENTIONAL_CHARACTER_DEVELOPMENT"
+                                    ]
+                                  },
+                                  "classification": {
+                                    "type": "string",
+                                    "enum": ["drift", "intentional_development"]
+                                  },
+                                  "severity": {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3"]
+                                  },
+                                  "dimension": {
+                                    "type": "string",
+                                    "enum": ["character_voice", "prose"]
+                                  },
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "quote": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "startOffset": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "endOffset": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "locator": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "explanation": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "recommendation": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "growthEvidence": {
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "markerId": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "startState": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      },
+                                      "endState": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 2000
+                                      }
+                                    },
+                                    "required": ["markerId", "startState", "endState", "reason"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "code",
+                                  "classification",
+                                  "severity",
+                                  "dimension",
+                                  "chapterId",
+                                  "chapterVersionId",
+                                  "quote",
+                                  "startOffset",
+                                  "endOffset",
+                                  "locator",
+                                  "explanation",
+                                  "recommendation",
+                                  "growthEvidence"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "trend": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "exclamationRate": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "averageSentenceLength": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "dialogueRatio": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  },
+                                  "deviationScore": {
+                                    "type": "number",
+                                    "minimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "chapterId",
+                                  "chapterVersionId",
+                                  "chapterNumber",
+                                  "exclamationRate",
+                                  "averageSentenceLength",
+                                  "dialogueRatio",
+                                  "deviationScore"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "workId",
+                            "branchId",
+                            "scope",
+                            "chapterId",
+                            "window",
+                            "baseline",
+                            "profileVersion",
+                            "ruleVersion",
+                            "model",
+                            "prompt",
+                            "summary",
+                            "findings",
+                            "trend",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "profiles",
+                        "latestChapterReport",
+                        "latestVolumeReport",
+                        "latestCrossVolumeReport"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["style"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/style/profiles": {
+      "post": {
+        "operationId": "StyleController_createProfile",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": ["work", "character"]
+                  },
+                  "scopeId": {
+                    "default": null,
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "dimension": {
+                    "type": "string",
+                    "enum": ["character_voice", "prose"]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "approvalStatus": {
+                    "default": "pending",
+                    "type": "string",
+                    "enum": ["pending"]
+                  },
+                  "source": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": ["author_sample", "approved_chapter_version", "golden_three"]
+                      },
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                      },
+                      "versionId": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      }
+                    },
+                    "required": ["type", "id", "versionId", "label"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["scope", "dimension", "name", "source"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created style profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": ["work", "character"]
+                        },
+                        "scopeId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "dimension": {
+                          "type": "string",
+                          "enum": ["character_voice", "prose"]
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "approvalStatus": {
+                          "type": "string",
+                          "enum": ["pending", "approved", "rejected", "superseded"]
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["author_sample", "approved_chapter_version", "golden_three"]
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "versionId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "versionNodeId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            }
+                          },
+                          "required": ["type", "id", "versionId", "versionNodeId", "label"],
+                          "additionalProperties": false
+                        },
+                        "profile": {
+                          "type": "object",
+                          "properties": {
+                            "guides": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "samples": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "excerpt": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "locator": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": ["chapterId", "chapterVersionId", "excerpt", "locator"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "metrics": {
+                              "type": "object",
+                              "properties": {
+                                "averageSentenceLength": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "exclamationRate": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "dialogueRatio": {
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "averageSentenceLength",
+                                "exclamationRate",
+                                "dialogueRatio"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": ["guides", "samples", "metrics"],
+                          "additionalProperties": false
+                        },
+                        "approval": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "approvedBy": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "approvedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "rationale": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000
+                            }
+                          },
+                          "required": ["approvedBy", "approvedAt", "rationale"],
+                          "additionalProperties": false
+                        },
+                        "versionNodeId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "scope",
+                        "scopeId",
+                        "dimension",
+                        "name",
+                        "version",
+                        "approvalStatus",
+                        "source",
+                        "profile",
+                        "approval",
+                        "versionNodeId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["style"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/style/profiles/{profileId}/approve": {
+      "post": {
+        "operationId": "StyleController_approveProfile",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "profileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": ["version", "rationale"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Approved style profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": ["work", "character"]
+                        },
+                        "scopeId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "dimension": {
+                          "type": "string",
+                          "enum": ["character_voice", "prose"]
+                        },
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "approvalStatus": {
+                          "type": "string",
+                          "enum": ["pending", "approved", "rejected", "superseded"]
+                        },
+                        "source": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["author_sample", "approved_chapter_version", "golden_three"]
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "versionId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "versionNodeId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            }
+                          },
+                          "required": ["type", "id", "versionId", "versionNodeId", "label"],
+                          "additionalProperties": false
+                        },
+                        "profile": {
+                          "type": "object",
+                          "properties": {
+                            "guides": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "samples": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "excerpt": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "locator": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": ["chapterId", "chapterVersionId", "excerpt", "locator"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "metrics": {
+                              "type": "object",
+                              "properties": {
+                                "averageSentenceLength": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "exclamationRate": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "dialogueRatio": {
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": [
+                                "averageSentenceLength",
+                                "exclamationRate",
+                                "dialogueRatio"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": ["guides", "samples", "metrics"],
+                          "additionalProperties": false
+                        },
+                        "approval": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "approvedBy": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "approvedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "rationale": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000
+                            }
+                          },
+                          "required": ["approvedBy", "approvedAt", "rationale"],
+                          "additionalProperties": false
+                        },
+                        "versionNodeId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "scope",
+                        "scopeId",
+                        "dimension",
+                        "name",
+                        "version",
+                        "approvalStatus",
+                        "source",
+                        "profile",
+                        "approval",
+                        "versionNodeId",
+                        "createdAt",
+                        "updatedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["style"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/style/drift": {
+      "post": {
+        "operationId": "StyleController_checkDrift",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "scope": {
+                    "type": "string",
+                    "enum": ["chapter", "volume", "cross_volume"]
+                  },
+                  "chapterId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "fromChapter": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "toChapter": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "model": {
+                    "type": "object",
+                    "properties": {
+                      "provider": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "model": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "parameters": {
+                        "default": {},
+                        "type": "object",
+                        "additionalProperties": {}
+                      }
+                    },
+                    "required": ["provider", "model"],
+                    "additionalProperties": false
+                  },
+                  "prompt": {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "version": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": ["key", "version"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["scope", "model", "prompt"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Persisted style drift report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "enum": ["chapter", "volume", "cross_volume"]
+                        },
+                        "chapterId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "window": {
+                          "type": "object",
+                          "properties": {
+                            "fromChapter": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "toChapter": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": ["fromChapter", "toChapter"],
+                          "additionalProperties": false
+                        },
+                        "baseline": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "dimension": {
+                              "type": "string",
+                              "enum": ["character_voice", "prose"]
+                            },
+                            "sourceType": {
+                              "type": "string",
+                              "enum": ["author_sample", "approved_chapter_version", "golden_three"]
+                            }
+                          },
+                          "required": ["id", "version", "dimension", "sourceType"],
+                          "additionalProperties": false
+                        },
+                        "profileVersion": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "ruleVersion": {
+                          "type": "string",
+                          "enum": ["m1-style-drift-v1"]
+                        },
+                        "model": {
+                          "type": "object",
+                          "properties": {
+                            "provider": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "model": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "parameters": {
+                              "default": {},
+                              "type": "object",
+                              "additionalProperties": {}
+                            }
+                          },
+                          "required": ["provider", "model", "parameters"],
+                          "additionalProperties": false
+                        },
+                        "prompt": {
+                          "type": "object",
+                          "properties": {
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": ["key", "version"],
+                          "additionalProperties": false
+                        },
+                        "summary": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        },
+                        "findings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "CHARACTER_VOICE_DRIFT",
+                                  "WORK_STYLE_DRIFT",
+                                  "INTENTIONAL_CHARACTER_DEVELOPMENT"
+                                ]
+                              },
+                              "classification": {
+                                "type": "string",
+                                "enum": ["drift", "intentional_development"]
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2", "P3"]
+                              },
+                              "dimension": {
+                                "type": "string",
+                                "enum": ["character_voice", "prose"]
+                              },
+                              "chapterId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterVersionId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "quote": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "startOffset": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "endOffset": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "locator": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "explanation": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              },
+                              "recommendation": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "growthEvidence": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "markerId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "startState": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "endState": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  }
+                                },
+                                "required": ["markerId", "startState", "endState", "reason"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "code",
+                              "classification",
+                              "severity",
+                              "dimension",
+                              "chapterId",
+                              "chapterVersionId",
+                              "quote",
+                              "startOffset",
+                              "endOffset",
+                              "locator",
+                              "explanation",
+                              "recommendation",
+                              "growthEvidence"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "trend": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "chapterId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterVersionId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterNumber": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "exclamationRate": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "averageSentenceLength": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "dialogueRatio": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "deviationScore": {
+                                "type": "number",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "chapterId",
+                              "chapterVersionId",
+                              "chapterNumber",
+                              "exclamationRate",
+                              "averageSentenceLength",
+                              "dialogueRatio",
+                              "deviationScore"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "scope",
+                        "chapterId",
+                        "window",
+                        "baseline",
+                        "profileVersion",
+                        "ruleVersion",
+                        "model",
+                        "prompt",
+                        "summary",
+                        "findings",
+                        "trend",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["style"]
+      }
+    },
     "/api/v1/works/{workId}/branches/{branchId}/summaries": {
       "get": {
         "operationId": "SummariesController_workspace",
@@ -69965,6 +72258,12 @@
                                       "CRITIC_VERSION_REQUIRED",
                                       "CRITIC_FINDING_NOT_DISMISSIBLE",
                                       "QUALITY_GATE_BLOCKED",
+                                      "STYLE_SOURCE_NOT_APPROVED",
+                                      "STYLE_BASELINE_UNAPPROVED",
+                                      "STYLE_BASELINE_REQUIRED",
+                                      "STYLE_REFERENCE_INVALID",
+                                      "STYLE_RANGE_EMPTY",
+                                      "CHAPTER_VERSION_REQUIRED",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -70298,6 +72597,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -70566,6 +72871,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -99495,6 +101806,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -100990,6 +103307,12 @@
                                   "CRITIC_VERSION_REQUIRED",
                                   "CRITIC_FINDING_NOT_DISMISSIBLE",
                                   "QUALITY_GATE_BLOCKED",
+                                  "STYLE_SOURCE_NOT_APPROVED",
+                                  "STYLE_BASELINE_UNAPPROVED",
+                                  "STYLE_BASELINE_REQUIRED",
+                                  "STYLE_REFERENCE_INVALID",
+                                  "STYLE_RANGE_EMPTY",
+                                  "CHAPTER_VERSION_REQUIRED",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -102486,6 +104809,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -103981,6 +106310,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -105476,6 +107811,12 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "STYLE_SOURCE_NOT_APPROVED",
+                                "STYLE_BASELINE_UNAPPROVED",
+                                "STYLE_BASELINE_REQUIRED",
+                                "STYLE_REFERENCE_INVALID",
+                                "STYLE_RANGE_EMPTY",
+                                "CHAPTER_VERSION_REQUIRED",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]

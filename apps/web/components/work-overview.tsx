@@ -4,24 +4,34 @@ import {
   ArrowLeft,
   BookMarked,
   Check,
+  CheckCircle2,
   Circle,
   GitBranch,
   LoaderCircle,
+  Mic2,
   PenLine,
+  ScanSearch,
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   apiErrorSchema,
+  chapterWorkspaceListResponseSchema,
   generationReadinessResponseSchema,
+  styleDriftReportResponseSchema,
+  styleDriftWorkspaceResponseSchema,
+  styleProfileResponseSchema,
   workResponseSchema,
   type GenerationReadiness,
+  type StyleDriftWorkspace,
   type Work,
   type WorkOverview as WorkOverviewData,
 } from "@novel-brain/contracts";
 
 import { ReadinessRemediation } from "./readiness-remediation";
+import { StyleDriftFindings } from "./style-drift-findings";
+import { getCsrfToken } from "../lib/csrf-client";
 
 const statusLabels: Record<Work["status"], string> = {
   draft: "草稿",
@@ -48,6 +58,11 @@ const genreLabels: Record<Work["genre"], string> = {
 export function WorkOverview({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverviewData | null>(null);
   const [readiness, setReadiness] = useState<GenerationReadiness | null>(null);
+  const [styleWorkspace, setStyleWorkspace] = useState<StyleDriftWorkspace | null>(null);
+  const [styleError, setStyleError] = useState("");
+  const [styleBusy, setStyleBusy] = useState(false);
+  const [approvingProfileId, setApprovingProfileId] = useState<string | null>(null);
+  const [approvalReason, setApprovalReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -60,15 +75,25 @@ export function WorkOverview({ workId }: { workId: string }) {
         throw new Error(await readError(response));
       }
       const workData = workResponseSchema.parse(await response.json()).data;
-      const readinessResponse = await fetch(
-        `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/readiness`,
-        { cache: "no-store" },
-      );
+      const [readinessResponse, styleResponse] = await Promise.all([
+        fetch(`/api/v1/works/${workId}/branches/${workData.mainBranch.id}/readiness`, {
+          cache: "no-store",
+        }),
+        fetch(`/api/v1/works/${workId}/branches/${workData.mainBranch.id}/style`, {
+          cache: "no-store",
+        }),
+      ]);
       if (!readinessResponse.ok) {
         throw new Error(await readError(readinessResponse));
       }
       setWork(workData);
       setReadiness(generationReadinessResponseSchema.parse(await readinessResponse.json()).data);
+      if (styleResponse.ok) {
+        setStyleWorkspace(styleDriftWorkspaceResponseSchema.parse(await styleResponse.json()).data);
+        setStyleError("");
+      } else {
+        setStyleError(await readError(styleResponse));
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "作品总览加载失败。");
     } finally {
@@ -79,6 +104,108 @@ export function WorkOverview({ workId }: { workId: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  async function checkCrossVolumeStyle() {
+    if (!work || styleBusy) {
+      return;
+    }
+    setStyleBusy(true);
+    setStyleError("");
+    try {
+      const chaptersResponse = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters`,
+        { cache: "no-store" },
+      );
+      if (!chaptersResponse.ok) {
+        throw new Error(await readError(chaptersResponse));
+      }
+      const chapters = chapterWorkspaceListResponseSchema.parse(await chaptersResponse.json()).data;
+      if (chapters.length === 0) {
+        throw new Error("还没有可检查的章节。");
+      }
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/style/drift`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            scope: "cross_volume",
+            fromChapter: chapters[0]!.number,
+            toChapter: chapters.at(-1)!.number,
+            model: {
+              provider: "novel-brain",
+              model: "风格规则检查 v1",
+              parameters: {},
+            },
+            prompt: { key: "style-drift-review", version: 1 },
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const report = styleDriftReportResponseSchema.parse(await response.json()).data;
+      setStyleWorkspace((current) =>
+        current ? { ...current, latestCrossVolumeReport: report } : current,
+      );
+    } catch (caught) {
+      setStyleError(caught instanceof Error ? caught.message : "跨卷声线检查失败。");
+    } finally {
+      setStyleBusy(false);
+    }
+  }
+
+  async function approveStyleProfile(profileId: string, version: number) {
+    if (!work || !approvalReason.trim()) {
+      return;
+    }
+    setStyleBusy(true);
+    setStyleError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/style/profiles/${profileId}/approve`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({ version, rationale: approvalReason.trim() }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const approved = styleProfileResponseSchema.parse(await response.json()).data;
+      setStyleWorkspace((current) =>
+        current
+          ? {
+              ...current,
+              profiles: current.profiles.map((profile) =>
+                profile.scope === approved.scope &&
+                profile.scopeId === approved.scopeId &&
+                profile.dimension === approved.dimension &&
+                profile.id !== approved.id &&
+                profile.approvalStatus === "approved"
+                  ? { ...profile, approvalStatus: "superseded", approval: null }
+                  : profile.id === approved.id
+                    ? approved
+                    : profile,
+              ),
+            }
+          : current,
+      );
+      setApprovingProfileId(null);
+      setApprovalReason("");
+    } catch (caught) {
+      setStyleError(caught instanceof Error ? caught.message : "基线批准失败。");
+    } finally {
+      setStyleBusy(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -245,6 +372,133 @@ export function WorkOverview({ workId }: { workId: string }) {
             </li>
           </ul>
         </aside>
+      </section>
+
+      <section className="panel overview-style" aria-labelledby="overview-style-title">
+        <div className="panel-head">
+          <div>
+            <span className="panel-kicker">声线与风格</span>
+            <h2 id="overview-style-title">跨卷一致性</h2>
+          </div>
+          <button
+            className="btn btn-ghost btn-small"
+            disabled={
+              styleBusy ||
+              !styleWorkspace ||
+              styleWorkspace.profiles.every((profile) => profile.approvalStatus !== "approved")
+            }
+            onClick={() => void checkCrossVolumeStyle()}
+            type="button"
+          >
+            {styleBusy ? (
+              <LoaderCircle className="spin" size={14} aria-hidden="true" />
+            ) : (
+              <ScanSearch size={14} aria-hidden="true" />
+            )}
+            检查跨卷趋势
+          </button>
+        </div>
+        {styleError ? (
+          <div className="story-bible-notice danger" role="alert">
+            <TriangleAlert size={15} aria-hidden="true" />
+            <span>{styleError}</span>
+          </div>
+        ) : null}
+        {styleWorkspace ? (
+          <>
+            <div className="overview-style-baselines">
+              {styleWorkspace.profiles.length === 0 ? (
+                <div className="style-drift-empty">
+                  <Mic2 size={18} aria-hidden="true" />
+                  还没有声线或风格样本。可从已签收正文建立基线。
+                </div>
+              ) : (
+                styleWorkspace.profiles.map((profile) => (
+                  <article
+                    className={`overview-style-baseline status-${profile.approvalStatus}`}
+                    data-style-profile={profile.approvalStatus}
+                    key={profile.id}
+                  >
+                    <div>
+                      <strong>{profile.name}</strong>
+                      <span>
+                        {profile.scope === "character" ? "人物声线" : "作品文风"} · 版本{" "}
+                        {profile.version}
+                      </span>
+                      <small>来源：{profile.source.label}</small>
+                    </div>
+                    {profile.approvalStatus === "approved" ? (
+                      <span className="badge style-approved">
+                        <CheckCircle2 size={12} aria-hidden="true" />
+                        作者已批准
+                      </span>
+                    ) : profile.approvalStatus === "pending" ? (
+                      approvingProfileId === profile.id ? (
+                        <form
+                          className="overview-style-approval"
+                          onSubmit={(event) => {
+                            event.preventDefault();
+                            void approveStyleProfile(profile.id, profile.version);
+                          }}
+                        >
+                          <textarea
+                            aria-label="批准理由"
+                            onChange={(event) => setApprovalReason(event.target.value)}
+                            placeholder="说明为什么这份样本代表稳定声线或文风"
+                            value={approvalReason}
+                          />
+                          <div>
+                            <button
+                              className="btn btn-primary btn-small"
+                              disabled={!approvalReason.trim() || styleBusy}
+                              type="submit"
+                            >
+                              确认批准
+                            </button>
+                            <button
+                              className="btn btn-ghost btn-small"
+                              onClick={() => {
+                                setApprovingProfileId(null);
+                                setApprovalReason("");
+                              }}
+                              type="button"
+                            >
+                              取消
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        <button
+                          className="btn btn-ghost btn-small"
+                          onClick={() => {
+                            setApprovingProfileId(profile.id);
+                            setApprovalReason("");
+                          }}
+                          type="button"
+                        >
+                          批准为基线
+                        </button>
+                      )
+                    ) : (
+                      <span className="badge">
+                        {profile.approvalStatus === "superseded" ? "已替换" : "未采用"}
+                      </span>
+                    )}
+                  </article>
+                ))
+              )}
+            </div>
+            {styleWorkspace.latestCrossVolumeReport ? (
+              <StyleDriftFindings report={styleWorkspace.latestCrossVolumeReport} />
+            ) : (
+              <p className="style-drift-empty">
+                批准至少一条基线后，可检查全书区间的人物声线与文风趋势。
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="style-drift-empty">正在读取声线与风格样本。</p>
+        )}
       </section>
     </>
   );
