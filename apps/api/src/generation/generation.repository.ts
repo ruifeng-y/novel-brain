@@ -23,6 +23,7 @@ import type {
   ContextSourceRef,
   GenerateChapterRequest,
 } from "@novel-brain/contracts";
+import { GENERATE_CHAPTER_JOB } from "@novel-brain/contracts";
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -435,6 +436,7 @@ export class GenerationRepository implements OnModuleDestroy {
             eq(jobs.userId, userId),
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
           ),
         )
         .limit(1);
@@ -455,6 +457,7 @@ export class GenerationRepository implements OnModuleDestroy {
             eq(jobs.userId, userId),
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
             eq(jobs.chapterId, context.chapterId),
           ),
         )
@@ -516,6 +519,7 @@ export class GenerationRepository implements OnModuleDestroy {
             eq(jobs.userId, userId),
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
           ),
         )
         .for("update")
@@ -564,6 +568,7 @@ export class GenerationRepository implements OnModuleDestroy {
             eq(jobs.userId, userId),
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
           ),
         )
         .for("update")

@@ -2684,3 +2684,392 @@ export type AgentToolCallRequest = z.infer<typeof agentToolCallRequestSchema>;
 export const agentGrantResponseSchema = apiEnvelopeSchema(agentGrantSchema);
 export const agentGrantListResponseSchema = apiEnvelopeSchema(z.array(agentGrantSchema));
 export const agentGrantRevokeResponseSchema = agentGrantResponseSchema;
+
+export const ORCHESTRATOR_CONTRACT_VERSION = 1 as const;
+export const ORCHESTRATOR_SCHEMA_VERSION = ORCHESTRATOR_CONTRACT_VERSION;
+export const ORCHESTRATOR_AGENT_WORKFLOW_JOB = "agent_workflow" as const;
+
+export const orchestratorRunStatusSchema = generationJobStatusSchema;
+export type OrchestratorRunStatus = z.infer<typeof orchestratorRunStatusSchema>;
+
+export const orchestratorTaskStatusSchema = z.enum([
+  "pending",
+  "ready",
+  "running",
+  "waiting_review",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export type OrchestratorTaskStatus = z.infer<typeof orchestratorTaskStatusSchema>;
+
+export const orchestratorStepStatusSchema = z.enum([
+  "pending",
+  "running",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export type OrchestratorStepStatus = z.infer<typeof orchestratorStepStatusSchema>;
+
+export const orchestratorRiskSchema = z.enum(["low", "medium", "high"]);
+export type OrchestratorRisk = z.infer<typeof orchestratorRiskSchema>;
+
+export const orchestratorApprovalPolicySchema = z.enum(["none", "human"]);
+export type OrchestratorApprovalPolicy = z.infer<typeof orchestratorApprovalPolicySchema>;
+
+const orchestratorActorBaseShape = {
+  id: uuidV7Schema,
+};
+
+export const orchestratorHumanActorSchema = z
+  .object({
+    type: z.literal("human"),
+    ...orchestratorActorBaseShape,
+  })
+  .strict();
+export type OrchestratorHumanActor = z.infer<typeof orchestratorHumanActorSchema>;
+
+export const orchestratorAgentActorSchema = z
+  .object({
+    type: z.literal("agent"),
+    ...orchestratorActorBaseShape,
+  })
+  .strict();
+export type OrchestratorAgentActor = z.infer<typeof orchestratorAgentActorSchema>;
+
+export const orchestratorActorSchema = z.discriminatedUnion("type", [
+  orchestratorHumanActorSchema,
+  orchestratorAgentActorSchema,
+]);
+export type OrchestratorActor = z.infer<typeof orchestratorActorSchema>;
+
+export const orchestratorBudgetSchema = z
+  .object({
+    maxCostCny: z.number().positive().max(1_000),
+    maxTokens: z.number().int().positive().max(10_000_000),
+    maxCalls: z.number().int().positive().max(10_000),
+  })
+  .strict();
+export type OrchestratorBudget = z.infer<typeof orchestratorBudgetSchema>;
+
+export const orchestratorEnvelopeSchema = z
+  .object({
+    key: z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced envelope key"),
+    version: z.number().int().positive(),
+    maxTasks: z.number().int().min(1).max(1_000),
+    maxDepth: z.number().int().min(1).max(32),
+    maxFanOut: z.number().int().min(0).max(64),
+    maxConcurrency: z.number().int().min(1).max(8),
+    dynamicSubtasks: z.boolean(),
+    budget: orchestratorBudgetSchema,
+  })
+  .strict();
+export type OrchestratorEnvelope = z.infer<typeof orchestratorEnvelopeSchema>;
+
+export const orchestratorTaskKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_.-]*$/, "Expected a stable task key");
+export type OrchestratorTaskKey = z.infer<typeof orchestratorTaskKeySchema>;
+
+export const orchestratorStepKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_.-]*$/, "Expected a stable step key");
+export type OrchestratorStepKey = z.infer<typeof orchestratorStepKeySchema>;
+
+export const orchestratorTaskStepSchema = z
+  .object({
+    key: orchestratorStepKeySchema,
+    toolName: toolNameSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative().max(1_000),
+    estimatedTokens: z.number().int().nonnegative().max(10_000_000),
+  })
+  .strict();
+export type OrchestratorTaskStep = z.infer<typeof orchestratorTaskStepSchema>;
+
+export const orchestratorTaskSchema = z
+  .object({
+    id: uuidV7Schema,
+    key: orchestratorTaskKeySchema,
+    title: z.string().trim().min(1).max(200),
+    priority: z.number().int().min(0).max(100),
+    dependsOn: z.array(orchestratorTaskKeySchema).max(64),
+    role: agentRoleSchema,
+    grantId: uuidV7Schema,
+    resource: agentToolResourceSchema,
+    affectedResources: z.number().int().positive().max(5_000),
+    risk: orchestratorRiskSchema,
+    approval: orchestratorApprovalPolicySchema,
+    steps: z.array(orchestratorTaskStepSchema).min(1).max(32),
+  })
+  .strict()
+  .superRefine((task, context) => {
+    if (new Set(task.dependsOn).size !== task.dependsOn.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["dependsOn"],
+        message: "Task dependencies must be unique",
+      });
+    }
+    const stepKeys = task.steps.map((step) => step.key);
+    if (new Set(stepKeys).size !== stepKeys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["steps"],
+        message: "Task step keys must be unique",
+      });
+    }
+    if (task.risk === "high" && task.approval !== "human") {
+      context.addIssue({
+        code: "custom",
+        path: ["approval"],
+        message: "High-risk tasks require a human approval gate",
+      });
+    }
+  });
+export type OrchestratorTask = z.infer<typeof orchestratorTaskSchema>;
+
+const orchestratorCommandBaseShape = {
+  schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+  commandId: uuidV7Schema,
+  runId: uuidV7Schema,
+};
+
+export const orchestratorScheduleCommandSchema = z
+  .object({
+    type: z.literal("schedule"),
+    ...orchestratorCommandBaseShape,
+    idempotencyKey: z.string().trim().min(1).max(200),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    actor: orchestratorHumanActorSchema,
+    envelope: orchestratorEnvelopeSchema,
+    tasks: z.array(orchestratorTaskSchema).min(1).max(1_000),
+  })
+  .strict();
+export type OrchestratorScheduleCommand = z.infer<typeof orchestratorScheduleCommandSchema>;
+
+export const orchestratorPauseCommandSchema = z
+  .object({
+    type: z.literal("pause"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorPauseCommand = z.infer<typeof orchestratorPauseCommandSchema>;
+
+export const orchestratorResumeCommandSchema = z
+  .object({
+    type: z.literal("resume"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+  })
+  .strict();
+export type OrchestratorResumeCommand = z.infer<typeof orchestratorResumeCommandSchema>;
+
+export const orchestratorCancelCommandSchema = z
+  .object({
+    type: z.literal("cancel"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorCancelCommand = z.infer<typeof orchestratorCancelCommandSchema>;
+
+export const orchestratorApproveTaskCommandSchema = z
+  .object({
+    type: z.literal("approve_task"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    taskKey: orchestratorTaskKeySchema,
+    approvalId: uuidV7Schema,
+  })
+  .strict();
+export type OrchestratorApproveTaskCommand = z.infer<typeof orchestratorApproveTaskCommandSchema>;
+
+export const orchestratorEscalateTaskCommandSchema = z
+  .object({
+    type: z.literal("escalate_task"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorActorSchema,
+    taskKey: orchestratorTaskKeySchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorEscalateTaskCommand = z.infer<typeof orchestratorEscalateTaskCommandSchema>;
+
+export const orchestratorAddSubtasksCommandSchema = z
+  .object({
+    type: z.literal("add_subtasks"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorActorSchema,
+    parentTaskKey: orchestratorTaskKeySchema,
+    tasks: z.array(orchestratorTaskSchema).min(1).max(100),
+  })
+  .strict();
+export type OrchestratorAddSubtasksCommand = z.infer<typeof orchestratorAddSubtasksCommandSchema>;
+
+export const orchestratorCommandSchema = z.discriminatedUnion("type", [
+  orchestratorScheduleCommandSchema,
+  orchestratorPauseCommandSchema,
+  orchestratorResumeCommandSchema,
+  orchestratorCancelCommandSchema,
+  orchestratorApproveTaskCommandSchema,
+  orchestratorEscalateTaskCommandSchema,
+  orchestratorAddSubtasksCommandSchema,
+]);
+export type OrchestratorCommand = z.infer<typeof orchestratorCommandSchema>;
+
+export const orchestratorEventTypeSchema = z.enum([
+  "run.scheduled",
+  "run.started",
+  "run.pause_requested",
+  "run.paused",
+  "run.resumed",
+  "run.waiting_review",
+  "run.completed",
+  "run.failed",
+  "run.cancelled",
+  "tasks.added",
+  "task.ready",
+  "task.started",
+  "task.waiting_review",
+  "task.approved",
+  "task.escalated",
+  "task.succeeded",
+  "task.failed",
+  "task.skipped",
+  "task.cancelled",
+  "step.started",
+  "step.succeeded",
+  "step.failed",
+  "step.skipped",
+  "step.cancelled",
+]);
+export type OrchestratorEventType = z.infer<typeof orchestratorEventTypeSchema>;
+
+export const orchestratorEventSchema = z
+  .object({
+    schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+    eventId: z.string().min(1).max(120),
+    runId: uuidV7Schema,
+    sequence: z.number().int().positive(),
+    type: orchestratorEventTypeSchema,
+    occurredAt: z.string().datetime(),
+    taskKey: orchestratorTaskKeySchema.nullable().default(null),
+    stepKey: orchestratorStepKeySchema.nullable().default(null),
+    data: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type OrchestratorEvent = z.infer<typeof orchestratorEventSchema>;
+
+export const orchestratorTaskStepStateSchema = z
+  .object({
+    key: orchestratorStepKeySchema,
+    toolName: toolNameSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative(),
+    estimatedTokens: z.number().int().nonnegative(),
+    status: orchestratorStepStatusSchema,
+    attempt: z.number().int().nonnegative(),
+    output: z.record(z.string(), z.unknown()).default({}),
+    errorCode: z.string().min(1).max(100).nullable(),
+    errorMessage: z.string().min(1).max(2_000).nullable(),
+  })
+  .strict();
+export type OrchestratorTaskStepState = z.infer<typeof orchestratorTaskStepStateSchema>;
+
+export const orchestratorTaskStateSchema = z
+  .object({
+    id: uuidV7Schema,
+    key: orchestratorTaskKeySchema,
+    title: z.string().min(1),
+    priority: z.number().int().min(0).max(100),
+    dependsOn: z.array(orchestratorTaskKeySchema),
+    role: agentRoleSchema,
+    grantId: uuidV7Schema,
+    resource: agentToolResourceSchema,
+    affectedResources: z.number().int().positive(),
+    risk: orchestratorRiskSchema,
+    approval: orchestratorApprovalPolicySchema,
+    status: orchestratorTaskStatusSchema,
+    attempt: z.number().int().nonnegative(),
+    approvedBy: uuidV7Schema.nullable(),
+    approvalId: uuidV7Schema.nullable(),
+    escalationReason: z.string().min(1).max(500).nullable(),
+    steps: z.array(orchestratorTaskStepStateSchema).min(1),
+  })
+  .strict();
+export type OrchestratorTaskState = z.infer<typeof orchestratorTaskStateSchema>;
+
+export const orchestratorRunStateSchema = z
+  .object({
+    schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+    runId: uuidV7Schema,
+    ownerId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    workflowKey: z.string().min(1),
+    workflowVersion: z.number().int().positive(),
+    idempotencyKey: z.string().min(1),
+    envelope: orchestratorEnvelopeSchema,
+    status: orchestratorRunStatusSchema,
+    pauseRequested: z.boolean(),
+    cancelReason: z.string().min(1).max(500).nullable(),
+    failureMessage: z.string().min(1).max(2_000).nullable(),
+    lastSequence: z.number().int().nonnegative(),
+    appliedCommandIds: z.array(uuidV7Schema).max(10_000),
+    appliedEventIds: z.array(z.string().min(1).max(120)).max(20_000),
+    tasks: z.array(orchestratorTaskStateSchema).min(1),
+  })
+  .strict()
+  .superRefine((state, context) => {
+    const keys = state.tasks.map((task) => task.key);
+    if (new Set(keys).size !== keys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tasks"],
+        message: "Task keys must be unique",
+      });
+    }
+  });
+export type OrchestratorRunState = z.infer<typeof orchestratorRunStateSchema>;
+
+export const orchestratorValidationIssueSchema = z
+  .object({
+    code: z.enum([
+      "duplicate_task",
+      "unknown_dependency",
+      "cycle",
+      "task_limit_exceeded",
+      "depth_exceeded",
+      "fanout_exceeded",
+      "concurrency_exceeded",
+      "budget_exceeded",
+      "human_gate_required",
+      "dynamic_subtasks_disabled",
+      "invalid_child_task",
+      "tool_not_registered",
+      "role_tool_denied",
+      "tool_not_agent_callable",
+    ]),
+    message: z.string().min(1),
+    taskKey: orchestratorTaskKeySchema.nullable(),
+  })
+  .strict();
+export type OrchestratorValidationIssue = z.infer<typeof orchestratorValidationIssueSchema>;
+
+export const orchestratorRunResponseSchema = apiEnvelopeSchema(orchestratorRunStateSchema);

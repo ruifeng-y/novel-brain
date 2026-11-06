@@ -3,6 +3,8 @@ import { Module } from "@nestjs/common";
 import { AgentGrantStore } from "@novel-brain/db";
 
 import { AgentGrantGuard, WorkerAgentGrantStore } from "./agent-runtime/agent-grant.guard";
+import { AgentOrchestrator } from "./agent-runtime/agent-orchestrator";
+import { AgentOrchestratorRepository } from "./agent-runtime/agent-orchestrator.repository";
 import { GenerationJobProcessor } from "./generation/generation.processor";
 import { WorkerGenerationRepository } from "./generation/generation.repository";
 import { AI_GATEWAY } from "./generation/generation.tokens";
@@ -16,6 +18,8 @@ import { WorkerService } from "./worker.service";
   providers: [
     WorkerService,
     AgentGrantGuard,
+    AgentOrchestrator,
+    AgentOrchestratorRepository,
     {
       provide: AgentGrantStore,
       useClass: WorkerAgentGrantStore,
