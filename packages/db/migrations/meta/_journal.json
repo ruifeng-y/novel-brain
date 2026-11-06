@@ -169,6 +169,13 @@
       "when": 1793926905874,
       "tag": "0023_settings_center",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793930201509,
+      "tag": "0024_secret_wiccan",
+      "breakpoints": true
     }
   ]
 }
