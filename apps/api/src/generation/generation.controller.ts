@@ -17,6 +17,8 @@ import {
   generateChapterRequestSchema,
   generationJobListResponseSchema,
   generationJobResponseSchema,
+  jobRecoveryRequestSchema,
+  jobRecoveryResponseSchema,
   uuidV7Schema,
   type JobEvent,
 } from "@novel-brain/contracts";
@@ -33,6 +35,7 @@ import { map, type Observable } from "rxjs";
 import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
+import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -47,6 +50,8 @@ const generateBodyJsonSchema = schemaOf(generateChapterRequestSchema, "input");
 const jobJsonSchema = schemaOf(generationJobResponseSchema);
 const jobListJsonSchema = schemaOf(generationJobListResponseSchema);
 const contextPreviewJsonSchema = schemaOf(contextPackPreviewResponseSchema);
+const recoveryBodyJsonSchema = schemaOf(jobRecoveryRequestSchema, "input");
+const recoveryResponseJsonSchema = schemaOf(jobRecoveryResponseSchema);
 
 @ApiTags("generation")
 @Controller("works/:workId/branches/:branchId")
@@ -183,6 +188,35 @@ export class GenerationController {
         this.userId(request),
         this.branchContext(workId, branchId),
         uuidV7Schema.parse(jobId),
+        this.audit(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("jobs/:jobId/recover")
+  @HttpCode(202)
+  @ApiBody({ schema: recoveryBodyJsonSchema })
+  @ApiAcceptedResponse({
+    description: "Recovered generation job with an audit record",
+    schema: recoveryResponseJsonSchema,
+  })
+  async recover(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("jobId") jobId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return jobRecoveryResponseSchema.parse({
+      data: await this.service.recover(
+        this.userId(request),
+        this.branchContext(workId, branchId),
+        uuidV7Schema.parse(jobId),
+        jobRecoveryRequestSchema.parse(body ?? {}),
+        this.audit(request, requestId),
       ),
       requestId,
       meta: {},
@@ -232,6 +266,14 @@ export class GenerationController {
     return {
       workId: uuidV7Schema.parse(workId),
       branchId: uuidV7Schema.parse(branchId),
+    };
+  }
+
+  private audit(request: AuthenticatedRequest, requestId: string) {
+    return {
+      requestId,
+      ip: getClientIp(request) || "unknown",
+      userAgent: String(request.headers["user-agent"] ?? "").trim() || "unknown",
     };
   }
 }

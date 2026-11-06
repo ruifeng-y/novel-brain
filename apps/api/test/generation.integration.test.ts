@@ -8,8 +8,11 @@ import {
   agentRunTraceResponseSchema,
   contextPackPreviewResponseSchema,
   generationJobListResponseSchema,
+  jobRecoveryResponseSchema,
   generationJobResponseSchema,
   generateChapterJobSchema,
+  WORKER_JOB_STEPS,
+  type WorkerJobStep,
 } from "@novel-brain/contracts";
 import {
   AgentGrantStore,
@@ -44,6 +47,13 @@ class CapturingMailGateway implements MailGateway {
 
   async sendVerificationCode(email: string, code: string): Promise<void> {
     this.codes.set(email, code);
+  }
+}
+
+class SimulatedWorkerCrash extends Error {
+  constructor(step: string) {
+    super(`Simulated worker kill after ${step}`);
+    this.name = "SimulatedWorkerCrash";
   }
 }
 
@@ -991,6 +1001,436 @@ describe("generation HTTP integration", () => {
       [job.id],
     );
     expect(packs.rows[0]?.count).toBe("1");
+  });
+
+  it("restarts after a kill at every step boundary without duplicating versions or charges", async () => {
+    const owner = await createAuthenticatedAgent("generation-crash-boundary@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-crash-boundary",
+    );
+    const payload = await readWorkerPayload(job.id);
+    const crashed = new Set<WorkerJobStep>();
+
+    for (const boundary of WORKER_JOB_STEPS) {
+      const repository = new WorkerGenerationRepository();
+      const processor = new GenerationJobProcessor(repository, new FakeAiProvider());
+      processor.setStepBoundaryHook((step) => {
+        if (step === boundary && !crashed.has(step)) {
+          crashed.add(step);
+          throw new SimulatedWorkerCrash(step);
+        }
+      });
+      try {
+        await expect(processor.process(payload)).rejects.toBeInstanceOf(SimulatedWorkerCrash);
+      } finally {
+        await repository.onModuleDestroy();
+      }
+    }
+
+    const finalRepository = new WorkerGenerationRepository();
+    try {
+      await new GenerationJobProcessor(finalRepository, new FakeAiProvider()).process(payload);
+    } finally {
+      await finalRepository.onModuleDestroy();
+    }
+
+    const completed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    expect(generationJobResponseSchema.parse(completed.body).data).toMatchObject({
+      status: "waiting_review",
+      progress: 100,
+      error: null,
+      checkpoint: {
+        schemaVersion: 1,
+        step: "await_review",
+      },
+    });
+
+    const evidence = await databasePool.query<{
+      versions: string;
+      packs: string;
+      reservations: string;
+      usage_records: string;
+      checkpoint_versions: string;
+      step_attempts: string;
+      job_tokens: string;
+      usage_tokens: string;
+    }>(
+      `SELECT
+         (SELECT count(*)::text FROM chapter_versions WHERE generation_job_id = $1) AS versions,
+         (SELECT count(*)::text FROM context_pack_versions WHERE job_id = $1) AS packs,
+         (SELECT count(*)::text FROM cost_reservations WHERE job_id = $1) AS reservations,
+         (SELECT count(*)::text FROM usage_records WHERE job_id = $1) AS usage_records,
+         (SELECT count(*)::text FROM job_checkpoints WHERE job_id = $1) AS checkpoint_versions,
+         (SELECT count(*)::text FROM job_step_attempts WHERE job_id = $1) AS step_attempts,
+         (SELECT cost->>'totalTokens' FROM jobs WHERE id = $1) AS job_tokens,
+         (SELECT coalesce(sum(prompt_tokens + completion_tokens), 0)::text FROM usage_records WHERE job_id = $1) AS usage_tokens`,
+      [job.id],
+    );
+    expect(evidence.rows[0]).toMatchObject({
+      versions: "2",
+      packs: "1",
+      reservations: "3",
+      usage_records: "3",
+    });
+    expect(evidence.rows[0]?.job_tokens).toBe(evidence.rows[0]?.usage_tokens);
+    expect(Number(evidence.rows[0]?.checkpoint_versions)).toBeGreaterThanOrEqual(
+      WORKER_JOB_STEPS.length,
+    );
+    expect(Number(evidence.rows[0]?.step_attempts)).toBeGreaterThanOrEqual(WORKER_JOB_STEPS.length);
+
+    const checkpoints = await databasePool.query<{
+      revision: number;
+      schema_version: number;
+      input_hash: string | null;
+    }>(
+      `SELECT revision, schema_version, input_hash
+       FROM job_checkpoints
+       WHERE job_id = $1
+       ORDER BY revision`,
+      [job.id],
+    );
+    expect(checkpoints.rows.every((row) => row.schema_version === 1)).toBe(true);
+    expect(checkpoints.rows.every((row) => row.input_hash?.length === 64)).toBe(true);
+    expect(new Set(checkpoints.rows.map((row) => row.revision)).size).toBe(checkpoints.rows.length);
+
+    const attempts = await databasePool.query<{ step_key: string; attempt: number }>(
+      `SELECT step_key, attempt
+       FROM job_step_attempts
+       WHERE job_id = $1 AND step_key IN ('draft', 'verify', 'revise')
+       ORDER BY step_key`,
+      [job.id],
+    );
+    expect(attempts.rows).toEqual([
+      { step_key: "draft", attempt: 1 },
+      { step_key: "revise", attempt: 1 },
+      { step_key: "verify", attempt: 1 },
+    ]);
+  });
+
+  it("retries a provider rate limit with bounded backoff and settles only the successful attempt", async () => {
+    const owner = await createAuthenticatedAgent("generation-backoff@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(owner, token, branchPath, chapter.id, "generation-backoff");
+    const fake = new FakeAiProvider();
+    let draftCalls = 0;
+    const provider: AiGateway = {
+      async generateText(input) {
+        if (input.operation === "draft" && draftCalls++ === 0) {
+          throw new AiProviderError("rate limited", { failureClass: "rate_limit" });
+        }
+        return fake.generateText(input);
+      },
+      streamText(input) {
+        return fake.streamText(input);
+      },
+    };
+    const delays: number[] = [];
+    const repository = new WorkerGenerationRepository();
+    const processor = new GenerationJobProcessor(repository, provider);
+    processor.configureRecovery({
+      maxAutomaticAttempts: 2,
+      sleep: async (delayMs) => {
+        delays.push(delayMs);
+      },
+    });
+    try {
+      await processor.process(await readWorkerPayload(job.id));
+    } finally {
+      await repository.onModuleDestroy();
+    }
+
+    expect(delays).toEqual([1_000]);
+    const completed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    expect(generationJobResponseSchema.parse(completed.body).data).toMatchObject({
+      status: "waiting_review",
+      error: null,
+    });
+    const calls = await databasePool.query<{
+      attempt: number;
+      status: string;
+      failure_class: string | null;
+    }>(
+      `SELECT attempt, status, failure_class
+       FROM model_calls
+       WHERE job_id = $1 AND step_key = 'draft'
+       ORDER BY attempt`,
+      [job.id],
+    );
+    expect(calls.rows).toEqual([
+      { attempt: 1, status: "failed", failure_class: "rate_limit" },
+      { attempt: 2, status: "succeeded", failure_class: null },
+    ]);
+    const reservations = await databasePool.query<{ status: string }>(
+      `SELECT status
+       FROM cost_reservations
+       WHERE job_id = $1 AND idempotency_key LIKE 'generation:draft:%'
+       ORDER BY created_at`,
+      [job.id],
+    );
+    expect(reservations.rows.map((row) => row.status)).toEqual(["released", "settled"]);
+    const attemptHashes = await databasePool.query<{ input_hash: string }>(
+      `SELECT input_hash
+       FROM job_step_attempts
+       WHERE job_id = $1 AND step_key = 'draft'
+       ORDER BY attempt`,
+      [job.id],
+    );
+    expect(attemptHashes.rows).toHaveLength(2);
+    expect(attemptHashes.rows[0]?.input_hash).toBe(attemptHashes.rows[1]?.input_hash);
+  });
+
+  it("recovers a cancelled job from the last checkpoint with permission, audit, and idempotency", async () => {
+    const owner = await createAuthenticatedAgent("generation-recover-owner@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-recover-cancelled",
+    );
+    const payload = await readWorkerPayload(job.id);
+    const repository = new WorkerGenerationRepository();
+    const processor = new GenerationJobProcessor(repository, new FakeAiProvider());
+    processor.setStepBoundaryHook(async (step) => {
+      if (step === "compile_context") {
+        await owner
+          .post(`${branchPath}/jobs/${job.id}/cancel`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({})
+          .expect(200);
+      }
+    });
+    try {
+      await processor.process(payload);
+    } finally {
+      await repository.onModuleDestroy();
+    }
+
+    const cancelledResponse = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    const cancelledJob = generationJobResponseSchema.parse(cancelledResponse.body).data;
+    expect(cancelledJob).toMatchObject({
+      status: "cancelled",
+      checkpoint: { step: "compile_context" },
+    });
+    const recoveryRequest = {
+      reason: "作者确认从编译后的检查点继续",
+      idempotencyKey: "recover-cancelled-once",
+      expectedCheckpointVersion: cancelledJob.checkpoint.revision,
+    };
+
+    const other = await createAuthenticatedAgent("generation-recover-other@example.com");
+    const otherToken = await csrf(other);
+    const forbidden = await other
+      .post(`${branchPath}/jobs/${job.id}/recover`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send(recoveryRequest)
+      .expect(403);
+    expect(forbidden.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+
+    const conflict = await owner
+      .post(`${branchPath}/jobs/${job.id}/recover`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        ...recoveryRequest,
+        idempotencyKey: "recover-cancelled-stale",
+        expectedCheckpointVersion: Math.max(0, cancelledJob.checkpoint.revision - 1),
+      })
+      .expect(409);
+    expect(conflict.body.error.code).toBe("JOB_RECOVERY_CONFLICT");
+
+    const recovered = await owner
+      .post(`${branchPath}/jobs/${job.id}/recover`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send(recoveryRequest)
+      .expect(202);
+    const recovery = jobRecoveryResponseSchema.parse(recovered.body).data;
+    expect(recovery.recovery).toMatchObject({
+      jobId: job.id,
+      action: "retry",
+      reason: recoveryRequest.reason,
+      idempotencyKey: recoveryRequest.idempotencyKey,
+      fromStatus: "cancelled",
+      fromCheckpointVersion: cancelledJob.checkpoint.revision,
+      resumeStep: "draft",
+    });
+    expect(recovery.recovery.checkpointVersion).toBeGreaterThan(
+      recovery.recovery.fromCheckpointVersion,
+    );
+
+    const replay = await owner
+      .post(`${branchPath}/jobs/${job.id}/recover`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send(recoveryRequest)
+      .expect(202);
+    expect(jobRecoveryResponseSchema.parse(replay.body).data.recovery.id).toBe(
+      recovery.recovery.id,
+    );
+
+    const provider = new FakeAiProvider();
+    const generateText = vi.spyOn(provider, "generateText");
+    const resumedRepository = new WorkerGenerationRepository();
+    try {
+      await new GenerationJobProcessor(resumedRepository, provider).process(payload);
+    } finally {
+      await resumedRepository.onModuleDestroy();
+    }
+    expect(generateText.mock.calls.map(([input]) => input.operation)).toEqual([
+      "draft",
+      "verify",
+      "revise",
+    ]);
+
+    const finished = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    expect(generationJobResponseSchema.parse(finished.body).data).toMatchObject({
+      status: "waiting_review",
+      error: null,
+      checkpoint: { step: "await_review" },
+    });
+    const evidence = await databasePool.query<{
+      recoveries: string;
+      audits: string;
+      packs: string;
+    }>(
+      `SELECT
+         (SELECT count(*)::text FROM job_recoveries WHERE job_id = $1) AS recoveries,
+         (SELECT count(*)::text FROM audit_logs
+          WHERE target_type = 'job' AND target_id = $1 AND action = 'job.recovered') AS audits,
+         (SELECT count(*)::text FROM context_pack_versions WHERE job_id = $1) AS packs`,
+      [job.id],
+    );
+    expect(evidence.rows[0]).toEqual({ recoveries: "1", audits: "1", packs: "1" });
+  });
+
+  it("releases interrupted in-flight reservations before starting the next attempt", async () => {
+    const owner = await createAuthenticatedAgent("generation-interrupted-call@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-interrupted-call",
+    );
+    let payload = await readWorkerPayload(job.id);
+
+    const interruptedRepository = new WorkerGenerationRepository();
+    const interruptedProcessor = new GenerationJobProcessor(
+      interruptedRepository,
+      new FakeAiProvider(),
+    );
+    interruptedProcessor.setStepBoundaryHook((step) => {
+      if (step === "compile_context") {
+        throw new SimulatedWorkerCrash(step);
+      }
+    });
+    try {
+      await expect(interruptedProcessor.process(payload)).rejects.toBeInstanceOf(
+        SimulatedWorkerCrash,
+      );
+    } finally {
+      await interruptedRepository.onModuleDestroy();
+    }
+
+    payload = await readWorkerPayload(job.id);
+    const orphanRepository = new WorkerGenerationRepository();
+    try {
+      await orphanRepository.startStep(payload, "draft", "a".repeat(64), 55);
+      await orphanRepository.beginModelCall({
+        payload,
+        step: "draft",
+        attempt: 1,
+        role: "writer",
+        prompt: "中断前已发出的草稿请求",
+        system: "只输出正文",
+        citations: [],
+        estimatedTokens: 100,
+        estimatedCostCny: 0.01,
+        parameters: { operation: "draft" },
+      });
+    } finally {
+      await orphanRepository.onModuleDestroy();
+    }
+
+    const resumedRepository = new WorkerGenerationRepository();
+    try {
+      await new GenerationJobProcessor(resumedRepository, new FakeAiProvider()).process(payload);
+    } finally {
+      await resumedRepository.onModuleDestroy();
+    }
+
+    const calls = await databasePool.query<{
+      attempt: number;
+      status: string;
+      failure_class: string | null;
+      error_code: string | null;
+    }>(
+      `SELECT attempt, status, failure_class, error_code
+       FROM model_calls
+       WHERE job_id = $1 AND step_key = 'draft'
+       ORDER BY attempt`,
+      [job.id],
+    );
+    expect(calls.rows).toEqual([
+      {
+        attempt: 1,
+        status: "failed",
+        failure_class: "unknown",
+        error_code: "WORKER_INTERRUPTED",
+      },
+      {
+        attempt: 2,
+        status: "succeeded",
+        failure_class: null,
+        error_code: null,
+      },
+    ]);
+    const reservations = await databasePool.query<{ status: string; settled_tokens: number }>(
+      `SELECT status, settled_tokens
+       FROM cost_reservations
+       WHERE job_id = $1 AND idempotency_key LIKE 'generation:draft:%'
+       ORDER BY created_at`,
+      [job.id],
+    );
+    expect(reservations.rows).toEqual([
+      { status: "released", settled_tokens: 0 },
+      { status: "settled", settled_tokens: expect.any(Number) },
+    ]);
+    expect(reservations.rows[1]?.settled_tokens).toBeGreaterThan(0);
   });
 
   async function startGeneration(

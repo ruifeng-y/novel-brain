@@ -204,16 +204,22 @@ export async function settleBudgetInTransaction(
   if (!settled) {
     throw new Error("Cost settlement update returned no row");
   }
-  const current = job.cost as { inputTokens?: unknown; outputTokens?: unknown; costCny?: unknown };
+  const current = job.cost as {
+    inputTokens?: unknown;
+    outputTokens?: unknown;
+    totalTokens?: unknown;
+    costCny?: unknown;
+  };
   const inputTokens = finiteNumber(current.inputTokens, 0);
   const outputTokens = finiteNumber(current.outputTokens, 0);
+  const totalTokens = finiteNumber(current.totalTokens, inputTokens + outputTokens);
   await transaction
     .update(jobs)
     .set({
       cost: {
         inputTokens,
         outputTokens,
-        totalTokens: inputTokens + outputTokens + input.actualTokens,
+        totalTokens: totalTokens + input.actualTokens,
         costCny: roundCost(finiteNumber(current.costCny, 0) + input.actualCostCny),
       },
       updatedAt: now,

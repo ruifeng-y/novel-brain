@@ -1,5 +1,6 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
+  auditLogs,
   chapterVersions,
   chapters,
   contextPackVersions,
@@ -8,6 +9,9 @@ import {
   entities,
   facts as canonicalFacts,
   jobEvents,
+  jobCheckpoints,
+  jobRecoveries,
+  jobSteps,
   jobs,
   modelConfigs,
   storyBibles,
@@ -17,13 +21,18 @@ import {
   works,
   type DatabaseClient,
 } from "@novel-brain/db";
-import type {
-  ContextPackEviction,
-  ContextPackSelected,
-  ContextSourceRef,
-  GenerateChapterRequest,
+import {
+  generationCheckpointSchema,
+  jobRecoveryRecordSchema,
+  type ContextPackEviction,
+  type ContextPackSelected,
+  type ContextSourceRef,
+  type GenerateChapterRequest,
+  type JobRecoveryRecord,
+  type JobRecoveryRequest,
 } from "@novel-brain/contracts";
-import { GENERATE_CHAPTER_JOB } from "@novel-brain/contracts";
+import { GENERATE_CHAPTER_JOB, WORKER_JOB_STEPS } from "@novel-brain/contracts";
+import { resolveRecoveryStep, type RecoveryStepStatus } from "@novel-brain/core";
 import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -44,6 +53,12 @@ export interface GenerationWorkContext {
 export interface GenerationBranchContext {
   workId: string;
   branchId: string;
+}
+
+export interface GenerationAuditContext {
+  requestId: string;
+  ip: string;
+  userAgent: string;
 }
 
 export interface GenerationSources {
@@ -86,6 +101,26 @@ export interface GenerationSettingSource {
 export interface JobWithContextPack {
   job: JobRecord;
   contextPack: ContextPackRecord | null;
+}
+
+export interface GenerationRecoveryResult {
+  job: JobWithContextPack;
+  recovery: JobRecoveryRecord;
+  created: boolean;
+}
+
+export class JobRecoveryConflictError extends Error {
+  constructor() {
+    super("Generation checkpoint changed before recovery");
+    this.name = "JobRecoveryConflictError";
+  }
+}
+
+export class JobNotRecoverableError extends Error {
+  constructor(readonly status: string) {
+    super(`Generation job in status ${status} cannot be recovered`);
+    this.name = "JobNotRecoverableError";
+  }
 }
 
 export interface PersistedContextPack {
@@ -553,21 +588,23 @@ export class GenerationRepository implements OnModuleDestroy {
     });
   }
 
-  async retryJob(
-    userId: string,
-    context: GenerationBranchContext,
-    jobId: string,
-  ): Promise<JobWithContextPack | undefined> {
-    return this.withTenant(userId, async (transaction) => {
+  async recoverJob(input: {
+    userId: string;
+    context: GenerationBranchContext;
+    jobId: string;
+    request: JobRecoveryRequest;
+    audit: GenerationAuditContext;
+  }): Promise<GenerationRecoveryResult | undefined> {
+    return this.withTenant(input.userId, async (transaction) => {
       const [current] = await transaction
         .select()
         .from(jobs)
         .where(
           and(
-            eq(jobs.id, jobId),
-            eq(jobs.userId, userId),
-            eq(jobs.workId, context.workId),
-            eq(jobs.branchId, context.branchId),
+            eq(jobs.id, input.jobId),
+            eq(jobs.userId, input.userId),
+            eq(jobs.workId, input.context.workId),
+            eq(jobs.branchId, input.context.branchId),
             eq(jobs.type, GENERATE_CHAPTER_JOB),
           ),
         )
@@ -576,14 +613,74 @@ export class GenerationRepository implements OnModuleDestroy {
       if (!current) {
         return undefined;
       }
-      if (current.status !== "failed" && current.status !== "cancelled") {
-        return { job: current, contextPack: await this.findContextPack(transaction, current.id) };
+
+      const [existingRecovery] = await transaction
+        .select()
+        .from(jobRecoveries)
+        .where(
+          and(
+            eq(jobRecoveries.jobId, current.id),
+            eq(jobRecoveries.idempotencyKey, input.request.idempotencyKey),
+          ),
+        )
+        .limit(1);
+      if (existingRecovery) {
+        return {
+          job: {
+            job: current,
+            contextPack: await this.findContextPack(transaction, current.id),
+          },
+          recovery: toJobRecoveryRecord(existingRecovery),
+          created: false,
+        };
       }
+
+      if (!["failed", "cancelled", "paused"].includes(current.status)) {
+        throw new JobNotRecoverableError(current.status);
+      }
+      if (
+        input.request.expectedCheckpointVersion !== undefined &&
+        input.request.expectedCheckpointVersion !== current.checkpointVersion
+      ) {
+        throw new JobRecoveryConflictError();
+      }
+
+      const steps = await transaction
+        .select({ stepKey: jobSteps.stepKey, status: jobSteps.status })
+        .from(jobSteps)
+        .where(eq(jobSteps.jobId, current.id));
+      const resume = resolveRecoveryStep(
+        WORKER_JOB_STEPS,
+        steps.map((step) => ({
+          stepKey: step.stepKey,
+          status: step.status as RecoveryStepStatus,
+        })),
+      );
+      const [resumeStepRecord] = await transaction
+        .select({ inputHash: jobSteps.inputHash })
+        .from(jobSteps)
+        .where(and(eq(jobSteps.jobId, current.id), eq(jobSteps.stepKey, resume.step)))
+        .limit(1);
+      const previousCheckpoint = generationCheckpointSchema.parse(current.checkpoint);
+      const recoveryId = uuidv7();
+      const checkpointVersion = current.checkpointVersion + 1;
+      const checkpoint = generationCheckpointSchema.parse({
+        schemaVersion: 1,
+        revision: checkpointVersion,
+        step: resume.step,
+        inputHash: resumeStepRecord?.inputHash ?? null,
+        outputRefs: previousCheckpoint.outputRefs,
+        payload: previousCheckpoint.payload,
+      });
       const now = new Date();
+      const action = current.status === "paused" ? "resume" : "retry";
       const [job] = await transaction
         .update(jobs)
         .set({
           status: "queued",
+          currentStep: resume.step,
+          checkpoint,
+          checkpointVersion,
           errorCode: null,
           errorMessage: null,
           finishedAt: null,
@@ -592,13 +689,73 @@ export class GenerationRepository implements OnModuleDestroy {
         .where(eq(jobs.id, current.id))
         .returning();
       if (!job) {
-        throw new Error("Failed to retry generation job");
+        throw new Error("Failed to recover generation job");
       }
-      await appendEvent(transaction, job, "job.resumed", {
-        status: "queued",
-        checkpoint: job.checkpoint,
+      await transaction.insert(jobCheckpoints).values({
+        id: uuidv7(),
+        jobId: job.id,
+        workId: job.workId,
+        branchId: job.branchId,
+        userId: job.userId,
+        stepKey: resume.step,
+        schemaVersion: 1,
+        revision: checkpointVersion,
+        attempt: 0,
+        inputHash: resumeStepRecord?.inputHash ?? null,
+        outputRefs: previousCheckpoint.outputRefs,
+        payload: checkpoint,
+        createdAt: now,
       });
-      return { job, contextPack: await this.findContextPack(transaction, job.id) };
+      const [recovery] = await transaction
+        .insert(jobRecoveries)
+        .values({
+          id: recoveryId,
+          jobId: job.id,
+          workId: job.workId,
+          branchId: job.branchId,
+          userId: job.userId,
+          actorId: input.userId,
+          action,
+          reason: input.request.reason,
+          idempotencyKey: input.request.idempotencyKey,
+          fromStatus: current.status,
+          fromCheckpointVersion: current.checkpointVersion,
+          checkpointVersion,
+          resumeStep: resume.step,
+          correlationId: input.audit.requestId,
+          createdAt: now,
+        })
+        .returning();
+      if (!recovery) {
+        throw new Error("Failed to record generation recovery");
+      }
+      await transaction.insert(auditLogs).values({
+        id: uuidv7(),
+        actorId: input.userId,
+        action: "job.recovered",
+        targetType: "job",
+        targetId: job.id,
+        decision: "allowed",
+        correlationId: input.audit.requestId,
+        ip: input.audit.ip,
+        userAgent: input.audit.userAgent,
+        createdAt: now,
+      });
+      await appendEvent(transaction, job, "job.recovered", {
+        status: "queued",
+        recoveryId,
+        reason: input.request.reason,
+        resumeStep: resume.step,
+        checkpoint,
+      });
+      return {
+        job: {
+          job,
+          contextPack: await this.findContextPack(transaction, job.id),
+        },
+        recovery: toJobRecoveryRecord(recovery),
+        created: true,
+      };
     });
   }
 
@@ -698,4 +855,20 @@ export function isTerminal(status: string): boolean {
     status === "failed" ||
     status === "cancelled"
   );
+}
+
+function toJobRecoveryRecord(row: InferSelectModel<typeof jobRecoveries>): JobRecoveryRecord {
+  return jobRecoveryRecordSchema.parse({
+    id: row.id,
+    jobId: row.jobId,
+    actorId: row.actorId,
+    action: row.action,
+    reason: row.reason,
+    idempotencyKey: row.idempotencyKey,
+    fromStatus: row.fromStatus,
+    fromCheckpointVersion: row.fromCheckpointVersion,
+    resumeStep: row.resumeStep,
+    checkpointVersion: row.checkpointVersion,
+    createdAt: row.createdAt.toISOString(),
+  });
 }

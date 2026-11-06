@@ -20,6 +20,7 @@ import {
   facts as canonicalFacts,
   jobCheckpoints,
   jobEvents,
+  jobStepAttempts,
   jobSteps,
   jobs,
   modelCalls,
@@ -41,7 +42,13 @@ import {
   type FactProposalCandidate,
 } from "@novel-brain/db";
 import { M0_COST_PER_TOKEN_CNY, type GenerationResult } from "@novel-brain/ai";
-import type { ChapterContextInput, CompiledContextPack } from "@novel-brain/core";
+import {
+  outputRefsFromStepOutput,
+  resolveRecoveryStep,
+  type ChapterContextInput,
+  type CompiledContextPack,
+  type RecoveryStepStatus,
+} from "@novel-brain/core";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -385,26 +392,17 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
 
   async resumeStep(payload: GenerateChapterJob): Promise<WorkerJobStep> {
     return this.withTenant(payload.actorId, async (transaction) => {
-      const [job] = await transaction
-        .select({ checkpoint: jobs.checkpoint })
-        .from(jobs)
-        .where(and(eq(jobs.id, payload.jobId), eq(jobs.userId, payload.actorId)))
-        .limit(1);
-      const checkpointStep = (job?.checkpoint as { step?: unknown } | undefined)?.step;
-      const step = WORKER_JOB_STEPS.find((candidate) => candidate === checkpointStep);
-      if (!step) {
-        return "prepare";
-      }
-      const [completed] = await transaction
-        .select({ status: jobSteps.status })
+      const steps = await transaction
+        .select({ stepKey: jobSteps.stepKey, status: jobSteps.status })
         .from(jobSteps)
-        .where(and(eq(jobSteps.jobId, payload.jobId), eq(jobSteps.stepKey, step)))
-        .limit(1);
-      if (completed?.status !== "succeeded") {
-        return step;
-      }
-      const index = WORKER_JOB_STEPS.indexOf(step);
-      return WORKER_JOB_STEPS[index + 1] ?? "await_review";
+        .where(eq(jobSteps.jobId, payload.jobId));
+      return resolveRecoveryStep(
+        WORKER_JOB_STEPS,
+        steps.map((step) => ({
+          stepKey: step.stepKey,
+          status: step.status as RecoveryStepStatus,
+        })),
+      ).step;
     });
   }
 
@@ -435,12 +433,55 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!job) {
         throw new Error("Generation job no longer exists");
       }
+      const interrupted = await transaction
+        .select({
+          callId: modelCalls.id,
+          runId: modelCalls.agentRunId,
+          reservationKey: costReservations.idempotencyKey,
+        })
+        .from(modelCalls)
+        .innerJoin(costReservations, eq(costReservations.id, modelCalls.costReservationId))
+        .where(
+          and(
+            eq(modelCalls.jobId, job.id),
+            eq(modelCalls.stepKey, step),
+            eq(modelCalls.status, "started"),
+            eq(costReservations.status, "reserved"),
+          ),
+        );
+      const now = new Date();
+      for (const call of interrupted) {
+        await releaseBudgetInTransaction(transaction, {
+          userId: job.userId,
+          jobId: job.id,
+          idempotencyKey: call.reservationKey,
+          failureClass: "unknown",
+        });
+        await transaction
+          .update(modelCalls)
+          .set({
+            status: "failed",
+            failureClass: "unknown",
+            errorCode: "WORKER_INTERRUPTED",
+            escalationReason: "Worker 中断后已释放预留，可从断点重试",
+            finishedAt: now,
+          })
+          .where(eq(modelCalls.id, call.callId));
+        await transaction
+          .update(agentRuns)
+          .set({
+            status: "failed",
+            failureClass: "unknown",
+            escalationReason: "Worker 中断后已释放预留，可从断点重试",
+            finishedAt: now,
+          })
+          .where(eq(agentRuns.id, call.runId));
+      }
       const [existing] = await transaction
         .select()
         .from(jobSteps)
         .where(and(eq(jobSteps.jobId, payload.jobId), eq(jobSteps.stepKey, step)))
         .limit(1);
-      const now = new Date();
       const [jobStep] = existing
         ? await transaction
             .update(jobSteps)
@@ -473,6 +514,19 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!jobStep) {
         throw new Error("Failed to start job step");
       }
+      await transaction.insert(jobStepAttempts).values({
+        id: uuidv7(),
+        jobId: job.id,
+        workId: job.workId,
+        branchId: job.branchId,
+        userId: job.userId,
+        stepKey: step,
+        attempt: jobStep.attempt,
+        status: "running",
+        inputHash,
+        checkpointRevision: job.checkpointVersion,
+        startedAt: now,
+      });
       const [updatedJob] = await transaction
         .update(jobs)
         .set({
@@ -513,24 +567,47 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!job) {
         throw new Error("Generation job no longer exists");
       }
+      const [jobStep] = await transaction
+        .select()
+        .from(jobSteps)
+        .where(and(eq(jobSteps.jobId, input.payload.jobId), eq(jobSteps.stepKey, input.step)))
+        .limit(1);
+      if (!jobStep) {
+        throw new Error("Generation step was not started");
+      }
       const now = new Date();
+      const outputRefs = outputRefsFromStepOutput(input.output);
       await transaction
         .update(jobSteps)
         .set({
           status: "succeeded",
           output: input.output,
+          outputRefs,
           cost: input.cost,
+          errorCode: null,
+          errorMessage: null,
           finishedAt: now,
         })
         .where(and(eq(jobSteps.jobId, input.payload.jobId), eq(jobSteps.stepKey, input.step)));
-      const checkpoint = { step: input.step, payload: input.checkpointPayload };
+      const revision = job.checkpointVersion + 1;
+      const checkpoint = {
+        schemaVersion: 1,
+        revision,
+        step: input.step,
+        inputHash: jobStep.inputHash,
+        outputRefs,
+        payload: input.checkpointPayload,
+      };
       const [updated] = await transaction
         .update(jobs)
         .set({
           progress: input.progress,
           currentStep: input.step,
           checkpoint,
+          checkpointVersion: revision,
           cost: job.cost,
+          errorCode: null,
+          errorMessage: null,
           updatedAt: now,
         })
         .where(eq(jobs.id, job.id))
@@ -545,12 +622,36 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         branchId: job.branchId,
         userId: job.userId,
         stepKey: input.step,
+        schemaVersion: 1,
+        revision,
+        attempt: jobStep.attempt,
+        inputHash: jobStep.inputHash,
+        outputRefs,
         payload: checkpoint,
         createdAt: now,
       });
+      await transaction
+        .update(jobStepAttempts)
+        .set({
+          status: "succeeded",
+          outputRefs,
+          checkpointRevision: revision,
+          errorCode: null,
+          errorMessage: null,
+          finishedAt: now,
+        })
+        .where(
+          and(
+            eq(jobStepAttempts.jobId, job.id),
+            eq(jobStepAttempts.stepKey, input.step),
+            eq(jobStepAttempts.attempt, jobStep.attempt),
+          ),
+        );
       await appendEvent(transaction, updated, "job.step.succeeded", {
         step: input.step,
         progress: input.progress,
+        attempt: jobStep.attempt,
+        outputRefs,
         checkpoint,
       });
       await appendEvent(transaction, updated, "job.progress", {
@@ -567,6 +668,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     step: string;
     code: string;
     message: string;
+    terminal?: boolean;
   }): Promise<void> {
     await this.withTenant(input.payload.actorId, async (transaction) => {
       const [job] = await transaction
@@ -578,21 +680,52 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!job) {
         return;
       }
+      const [jobStep] = await transaction
+        .select()
+        .from(jobSteps)
+        .where(and(eq(jobSteps.jobId, input.payload.jobId), eq(jobSteps.stepKey, input.step)))
+        .limit(1);
       const now = new Date();
-      const previousCheckpoint = job.checkpoint as { payload?: Record<string, unknown> };
+      const previousCheckpoint = job.checkpoint as {
+        payload?: Record<string, unknown>;
+        outputRefs?: Array<{ type: string; id: string }>;
+      };
+      const revision = job.checkpointVersion + 1;
       const checkpoint = {
+        schemaVersion: 1,
+        revision,
         step: input.step,
+        inputHash: jobStep?.inputHash ?? null,
+        outputRefs: previousCheckpoint.outputRefs ?? [],
         payload: previousCheckpoint.payload ?? {},
       };
-      await transaction
-        .update(jobSteps)
-        .set({
-          status: "failed",
-          errorCode: input.code,
-          errorMessage: input.message,
-          finishedAt: now,
-        })
-        .where(and(eq(jobSteps.jobId, input.payload.jobId), eq(jobSteps.stepKey, input.step)));
+      if (jobStep) {
+        await transaction
+          .update(jobSteps)
+          .set({
+            status: "failed",
+            errorCode: input.code,
+            errorMessage: input.message,
+            finishedAt: now,
+          })
+          .where(eq(jobSteps.id, jobStep.id));
+        await transaction
+          .update(jobStepAttempts)
+          .set({
+            status: "failed",
+            checkpointRevision: revision,
+            errorCode: input.code,
+            errorMessage: input.message,
+            finishedAt: now,
+          })
+          .where(
+            and(
+              eq(jobStepAttempts.jobId, job.id),
+              eq(jobStepAttempts.stepKey, input.step),
+              eq(jobStepAttempts.attempt, jobStep.attempt),
+            ),
+          );
+      }
       await transaction.insert(jobCheckpoints).values({
         id: uuidv7(),
         jobId: job.id,
@@ -600,18 +733,29 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         branchId: job.branchId,
         userId: job.userId,
         stepKey: input.step,
+        schemaVersion: 1,
+        revision,
+        attempt: jobStep?.attempt ?? 0,
+        inputHash: jobStep?.inputHash ?? null,
+        outputRefs: previousCheckpoint.outputRefs ?? [],
         payload: checkpoint,
+        errorCode: input.code,
+        errorMessage: input.message,
         createdAt: now,
       });
+      const keepCancelled = job.status === "cancelled";
+      const terminal = input.terminal !== false || keepCancelled;
+      const status = keepCancelled ? "cancelled" : terminal ? "failed" : "running";
       const [failed] = await transaction
         .update(jobs)
         .set({
-          status: "failed",
+          status,
           currentStep: input.step,
           checkpoint,
+          checkpointVersion: revision,
           errorCode: input.code,
           errorMessage: input.message,
-          finishedAt: now,
+          finishedAt: terminal ? now : null,
           updatedAt: now,
         })
         .where(eq(jobs.id, job.id))
@@ -621,14 +765,17 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       }
       await appendEvent(transaction, failed, "job.step.failed", {
         step: input.step,
+        attempt: jobStep?.attempt ?? 0,
         error: { code: input.code, message: input.message },
         checkpoint,
       });
-      await appendEvent(transaction, failed, "job.failed", {
-        status: "failed",
-        error: { code: input.code, message: input.message },
-        checkpoint,
-      });
+      if (terminal && !keepCancelled) {
+        await appendEvent(transaction, failed, "job.failed", {
+          status: "failed",
+          error: { code: input.code, message: input.message },
+          checkpoint,
+        });
+      }
     });
   }
 
@@ -650,6 +797,8 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           status: "waiting_review",
           progress: 100,
           currentStep: "await_review",
+          errorCode: null,
+          errorMessage: null,
           finishedAt: null,
           updatedAt: now,
         })
