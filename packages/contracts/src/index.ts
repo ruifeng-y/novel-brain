@@ -39,6 +39,14 @@ export const ERROR_CODES = [
   "TIMELINE_ERA_NOT_FOUND",
   "ITINERARY_TIME_ORDER",
   "ITINERARY_OVERLAP",
+  "POWER_PATH_MISMATCH",
+  "POWER_REALM_LADDER_INVALID",
+  "POWER_LIFESPAN_POLICY_INVALID",
+  "ITEM_RIGHT_CONFLICT",
+  "ITEM_NOT_CONSUMABLE",
+  "ITEM_QUANTITY_INSUFFICIENT",
+  "EQUIPMENT_SLOT_CONFLICT",
+  "ITEM_NOT_EQUIPMENT",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
   "FACT_DECISION_REQUIRED",
@@ -1155,6 +1163,9 @@ export const settingChangeRequestCreateRequestSchema = z
             timelineEventDataSchema.partial(),
           ])
           .optional(),
+        powerSystem: z.lazy(() => powerSystemChangePatchSchema).optional(),
+        mechanism: z.lazy(() => mechanismChangePatchSchema).optional(),
+        item: z.lazy(() => itemChangePatchSchema).optional(),
       })
       .refine(
         (input) =>
@@ -1164,7 +1175,10 @@ export const settingChangeRequestCreateRequestSchema = z
           input.description !== undefined ||
           input.tags !== undefined ||
           input.customFields !== undefined ||
-          input.data !== undefined,
+          input.data !== undefined ||
+          input.powerSystem !== undefined ||
+          input.mechanism !== undefined ||
+          input.item !== undefined,
         { message: "At least one setting field is required" },
       ),
     conflictType: settingConflictTypeSchema,
@@ -2292,6 +2306,531 @@ export const worldTimelineSchema = z.object({
 export type WorldTimeline = z.infer<typeof worldTimelineSchema>;
 export const worldTimelineResponseSchema = apiEnvelopeSchema(worldTimelineSchema);
 
+export const powerLifespanModeSchema = z.enum(["none", "realm", "fixed", "custom"]);
+export type PowerLifespanMode = z.infer<typeof powerLifespanModeSchema>;
+
+export const powerLifespanPolicySchema = z
+  .object({
+    mode: powerLifespanModeSchema.default("none"),
+    unit: z.string().trim().min(1).max(40).default("年"),
+    basis: z.string().trim().max(200).default(""),
+    description: z.string().trim().max(2_000).default(""),
+    pathId: uuidV7Schema.nullable().default(null),
+    fixedAmount: z.number().int().positive().max(1_000_000).nullable().default(null),
+  })
+  .strict()
+  .superRefine((policy, context) => {
+    if (policy.mode === "fixed" && policy.fixedAmount === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["fixedAmount"],
+        message: "Fixed lifespan policies require an amount",
+      });
+    }
+    if (policy.mode !== "fixed" && policy.fixedAmount !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["fixedAmount"],
+        message: "Only fixed lifespan policies carry a fixed amount",
+      });
+    }
+    if (policy.mode === "custom" && policy.description.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["description"],
+        message: "Custom lifespan policies require a rule description",
+      });
+    }
+  });
+export type PowerLifespanPolicy = z.infer<typeof powerLifespanPolicySchema>;
+
+export const powerRealmCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    rank: z.number().int().positive().max(1_000),
+    description: z.string().trim().max(20_000).default(""),
+    breakthroughConditions: z.string().trim().min(1).max(20_000),
+    breakthroughCosts: z.string().trim().max(20_000).default(""),
+    bottlenecks: z.string().trim().max(20_000).default(""),
+    counters: z.string().trim().max(20_000).default(""),
+    counteredBy: z.string().trim().max(20_000).default(""),
+    lifespanAmount: z.number().int().positive().max(1_000_000).nullable().default(null),
+    prerequisiteRealmId: uuidV7Schema.nullable().default(null),
+  })
+  .strict();
+export type PowerRealmCreateRequest = z.infer<typeof powerRealmCreateRequestSchema>;
+
+export const powerRealmSchema = z.object({
+  id: uuidV7Schema,
+  pathId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  ...powerRealmCreateRequestSchema.shape,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type PowerRealm = z.infer<typeof powerRealmSchema>;
+export const powerRealmResponseSchema = apiEnvelopeSchema(powerRealmSchema);
+
+export const powerPathCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    pathType: z.string().trim().min(1).max(80),
+    description: z.string().trim().max(20_000).default(""),
+    sortOrder: z.number().int().nonnegative().max(10_000).default(0),
+    realms: z.array(powerRealmCreateRequestSchema).max(100).default([]),
+  })
+  .strict()
+  .superRefine((path, context) => {
+    const names = path.realms.map((realm) => realm.name);
+    if (new Set(names).size !== names.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["realms"],
+        message: "Realm names must be unique within a path",
+      });
+    }
+    const ranks = path.realms.map((realm) => realm.rank);
+    if (new Set(ranks).size !== ranks.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["realms"],
+        message: "Realm ranks must be unique within a path",
+      });
+    }
+  });
+export type PowerPathCreateRequest = z.infer<typeof powerPathCreateRequestSchema>;
+
+export const powerPathSchema = z.object({
+  id: uuidV7Schema,
+  powerSystemId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  pathType: z.string(),
+  description: z.string(),
+  sortOrder: z.number().int().nonnegative(),
+  realms: z.array(powerRealmSchema),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type PowerPath = z.infer<typeof powerPathSchema>;
+export const powerPathResponseSchema = apiEnvelopeSchema(powerPathSchema);
+
+export const powerSystemCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    overview: z.string().trim().max(20_000).default(""),
+    lifespanPolicy: powerLifespanPolicySchema.default({
+      mode: "none",
+      unit: "年",
+      basis: "",
+      description: "",
+      pathId: null,
+      fixedAmount: null,
+    }),
+    paths: z.array(powerPathCreateRequestSchema).max(50).default([]),
+  })
+  .strict()
+  .superRefine((system, context) => {
+    const names = system.paths.map((path) => path.name);
+    if (new Set(names).size !== names.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["paths"],
+        message: "Power path names must be unique within a system",
+      });
+    }
+  });
+export type PowerSystemCreateRequest = z.infer<typeof powerSystemCreateRequestSchema>;
+
+export const powerSystemPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(120).optional(),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+    summary: z.string().trim().min(1).max(500).optional(),
+    description: z.string().max(20_000).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    overview: z.string().trim().max(20_000).optional(),
+    lifespanPolicy: powerLifespanPolicySchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 1, {
+    message: "At least one power system field is required",
+  });
+export type PowerSystemPatchRequest = z.infer<typeof powerSystemPatchRequestSchema>;
+
+export const powerSystemSchema = z.object({
+  powerSystem: domainRefSchema,
+  overview: z.string(),
+  lifespanPolicy: powerLifespanPolicySchema,
+  paths: z.array(powerPathSchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type PowerSystem = z.infer<typeof powerSystemSchema>;
+export const powerSystemResponseSchema = apiEnvelopeSchema(powerSystemSchema);
+export const powerSystemListResponseSchema = apiEnvelopeSchema(z.array(powerSystemSchema));
+
+export const mechanismOwnerRefSchema = domainRefSchema.refine(
+  (owner) => owner.type === "character" || owner.type === "faction" || owner.type === "item",
+  { message: "Mechanism owners must be a character, faction or item" },
+);
+export type MechanismOwnerRef = z.infer<typeof mechanismOwnerRefSchema>;
+
+export const powerSystemRefSchema = domainRefSchema.refine(
+  (reference) => reference.type === "power_system",
+  { message: "Mechanism power systems must reference a power system" },
+);
+export type PowerSystemRef = z.infer<typeof powerSystemRefSchema>;
+
+export const specialMechanismCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    mechanismType: z.string().trim().min(1).max(120),
+    owner: mechanismOwnerRefSchema.nullable().default(null),
+    powerSystem: powerSystemRefSchema.nullable().default(null),
+    rules: z.string().trim().min(1).max(20_000),
+    costs: z.string().trim().max(20_000).default(""),
+    limits: z.string().trim().max(20_000).default(""),
+    growth: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type SpecialMechanismCreateRequest = z.infer<typeof specialMechanismCreateRequestSchema>;
+
+export const specialMechanismPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(120).optional(),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+    summary: z.string().trim().min(1).max(500).optional(),
+    description: z.string().max(20_000).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    mechanismType: z.string().trim().min(1).max(120).optional(),
+    powerSystem: powerSystemRefSchema.nullable().optional(),
+    rules: z.string().trim().min(1).max(20_000).optional(),
+    costs: z.string().trim().max(20_000).optional(),
+    limits: z.string().trim().max(20_000).optional(),
+    growth: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 1, {
+    message: "At least one mechanism field is required",
+  });
+export type SpecialMechanismPatchRequest = z.infer<typeof specialMechanismPatchRequestSchema>;
+
+export const specialMechanismOwnershipTransferRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    owner: mechanismOwnerRefSchema,
+    reason: z.string().trim().min(1).max(1_000),
+    validity: validityIntervalSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SpecialMechanismOwnershipTransferRequest = z.infer<
+  typeof specialMechanismOwnershipTransferRequestSchema
+>;
+
+export const specialMechanismOwnershipRecordSchema = z.object({
+  id: uuidV7Schema,
+  mechanismId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  previousOwner: domainRefSchema.nullable(),
+  owner: domainRefSchema,
+  reason: z.string(),
+  validity: validityIntervalSchema,
+  evidence: z.array(settingEvidenceSchema),
+  versionNodeId: uuidV7Schema,
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type SpecialMechanismOwnershipRecord = z.infer<typeof specialMechanismOwnershipRecordSchema>;
+
+export const specialMechanismSchema = z.object({
+  mechanism: domainRefSchema,
+  mechanismType: z.string(),
+  owner: domainRefSchema.nullable(),
+  powerSystem: domainRefSchema.nullable(),
+  rules: z.string(),
+  costs: z.string(),
+  limits: z.string(),
+  growth: z.string(),
+  ownershipHistory: z.array(specialMechanismOwnershipRecordSchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type SpecialMechanism = z.infer<typeof specialMechanismSchema>;
+export const specialMechanismResponseSchema = apiEnvelopeSchema(specialMechanismSchema);
+export const specialMechanismListResponseSchema = apiEnvelopeSchema(
+  z.array(specialMechanismSchema),
+);
+
+export const itemKindSchema = z.enum(["item", "technique", "equipment", "resource"]);
+export type ItemKind = z.infer<typeof itemKindSchema>;
+
+export const itemOwnershipModelSchema = z.enum(["shared", "unique"]);
+export type ItemOwnershipModel = z.infer<typeof itemOwnershipModelSchema>;
+
+export const itemCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    kind: itemKindSchema,
+    category: z.string().trim().min(1).max(200),
+    grade: z.string().trim().max(200).default(""),
+    effect: z.string().trim().min(1).max(20_000),
+    cost: z.string().trim().max(20_000).default(""),
+    limits: z.string().trim().max(20_000).default(""),
+    ownershipModel: itemOwnershipModelSchema,
+    consumable: z.boolean().default(false),
+    quantity: z.number().int().min(1).max(1_000_000).default(1),
+    equipmentSlot: z.string().trim().min(1).max(80).nullable().default(null),
+  })
+  .strict()
+  .superRefine((item, context) => {
+    if (item.kind === "equipment" && item.equipmentSlot === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["equipmentSlot"],
+        message: "Equipment requires an equipment slot",
+      });
+    }
+    if (item.kind !== "equipment" && item.equipmentSlot !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["equipmentSlot"],
+        message: "Only equipment can define an equipment slot",
+      });
+    }
+    if (item.ownershipModel === "unique" && item.quantity !== 1) {
+      context.addIssue({
+        code: "custom",
+        path: ["quantity"],
+        message: "Unique items start with exactly one instance",
+      });
+    }
+  });
+export type ItemCreateRequest = z.infer<typeof itemCreateRequestSchema>;
+
+export const itemPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(120).optional(),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+    summary: z.string().trim().min(1).max(500).optional(),
+    description: z.string().max(20_000).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    kind: itemKindSchema.optional(),
+    category: z.string().trim().min(1).max(200).optional(),
+    grade: z.string().trim().max(200).optional(),
+    effect: z.string().trim().min(1).max(20_000).optional(),
+    cost: z.string().trim().max(20_000).optional(),
+    limits: z.string().trim().max(20_000).optional(),
+    ownershipModel: itemOwnershipModelSchema.optional(),
+    consumable: z.boolean().optional(),
+    equipmentSlot: z.string().trim().min(1).max(80).nullable().optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 1, {
+    message: "At least one item field is required",
+  });
+export type ItemPatchRequest = z.infer<typeof itemPatchRequestSchema>;
+
+export const itemRightTypeSchema = z.enum([
+  "ownership",
+  "custody",
+  "location",
+  "usage",
+  "disposal",
+]);
+export type ItemRightType = z.infer<typeof itemRightTypeSchema>;
+
+export const itemRightHolderSchema = domainRefSchema.refine(
+  (holder) =>
+    holder.type === "character" ||
+    holder.type === "faction" ||
+    holder.type === "item" ||
+    holder.type === "map" ||
+    holder.type === "map_node",
+  { message: "Item rights must reference a character, faction, item or map location" },
+);
+export type ItemRightHolder = z.infer<typeof itemRightHolderSchema>;
+
+export const itemRightGrantRequestSchema = z
+  .object({
+    rightType: itemRightTypeSchema,
+    holder: itemRightHolderSchema,
+    sharePercent: z.number().min(0.01).max(100).nullable().default(null),
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+    reason: z.string().trim().min(1).max(1_000),
+  })
+  .strict()
+  .superRefine((right, context) => {
+    if (right.rightType === "location") {
+      if (right.holder.type !== "map" && right.holder.type !== "map_node") {
+        context.addIssue({
+          code: "custom",
+          path: ["holder", "type"],
+          message: "Location rights must reference a map or map node",
+        });
+      }
+      if (right.sharePercent !== null) {
+        context.addIssue({
+          code: "custom",
+          path: ["sharePercent"],
+          message: "Location rights cannot carry an ownership share",
+        });
+      }
+      return;
+    }
+    if (
+      right.holder.type !== "character" &&
+      right.holder.type !== "faction" &&
+      right.holder.type !== "item"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["holder", "type"],
+        message: "This right type must reference a character, faction or item",
+      });
+    }
+    if (right.rightType === "ownership" && right.sharePercent === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["sharePercent"],
+        message: "Ownership rights require a share percentage",
+      });
+    }
+    if (right.rightType !== "ownership" && right.sharePercent !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["sharePercent"],
+        message: "Only ownership rights carry a share percentage",
+      });
+    }
+  });
+export type ItemRightGrantRequest = z.infer<typeof itemRightGrantRequestSchema>;
+
+export const itemRightSchema = z.object({
+  id: uuidV7Schema,
+  itemId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  rightType: itemRightTypeSchema,
+  holder: domainRefSchema,
+  sharePercent: z.number().nullable(),
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  evidence: z.array(settingEvidenceSchema),
+  reason: z.string(),
+  versionNodeId: uuidV7Schema,
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type ItemRight = z.infer<typeof itemRightSchema>;
+export const itemRightResponseSchema = apiEnvelopeSchema(itemRightSchema);
+
+export const itemConsumeRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    quantity: z.number().int().positive().max(1_000_000),
+    reason: z.string().trim().min(1).max(1_000),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict();
+export type ItemConsumeRequest = z.infer<typeof itemConsumeRequestSchema>;
+
+export const itemEquipRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    holder: domainRefSchema.refine(
+      (holder) => holder.type === "character" || holder.type === "faction",
+      { message: "Equipment can only be held by a character or faction" },
+    ),
+    reason: z.string().trim().min(1).max(1_000),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict();
+export type ItemEquipRequest = z.infer<typeof itemEquipRequestSchema>;
+
+export const itemSchema = z.object({
+  item: domainRefSchema,
+  kind: itemKindSchema,
+  category: z.string(),
+  grade: z.string(),
+  effect: z.string(),
+  cost: z.string(),
+  limits: z.string(),
+  ownershipModel: itemOwnershipModelSchema,
+  consumable: z.boolean(),
+  quantity: z.number().int().nonnegative(),
+  equipmentSlot: z.string().nullable(),
+  equippedBy: domainRefSchema.nullable(),
+  rights: z.array(itemRightSchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type ItemDomain = z.infer<typeof itemSchema>;
+export const itemResponseSchema = apiEnvelopeSchema(itemSchema);
+export const itemListResponseSchema = apiEnvelopeSchema(z.array(itemSchema));
+
+export const powerSystemChangePatchSchema = z
+  .object({
+    overview: z.string().trim().max(20_000).optional(),
+    lifespanPolicy: powerLifespanPolicySchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one power system change is required",
+  });
+export type PowerSystemChangePatch = z.infer<typeof powerSystemChangePatchSchema>;
+
+export const mechanismChangePatchSchema = z
+  .object({
+    mechanismType: z.string().trim().min(1).max(120).optional(),
+    powerSystem: powerSystemRefSchema.nullable().optional(),
+    rules: z.string().trim().min(1).max(20_000).optional(),
+    costs: z.string().trim().max(20_000).optional(),
+    limits: z.string().trim().max(20_000).optional(),
+    growth: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one mechanism change is required",
+  });
+export type MechanismChangePatch = z.infer<typeof mechanismChangePatchSchema>;
+
+export const itemChangePatchSchema = z
+  .object({
+    kind: itemKindSchema.optional(),
+    category: z.string().trim().min(1).max(200).optional(),
+    grade: z.string().trim().max(200).optional(),
+    effect: z.string().trim().min(1).max(20_000).optional(),
+    cost: z.string().trim().max(20_000).optional(),
+    limits: z.string().trim().max(20_000).optional(),
+    ownershipModel: itemOwnershipModelSchema.optional(),
+    consumable: z.boolean().optional(),
+    equipmentSlot: z.string().trim().min(1).max(80).nullable().optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one item change is required",
+  });
+export type ItemChangePatch = z.infer<typeof itemChangePatchSchema>;
+
 export const worldSnapshotQuerySchema = z
   .object({
     versionNodeId: uuidV7Schema.optional(),
@@ -2308,6 +2847,9 @@ export const worldSnapshotSchema = z.object({
   factions: z.array(factionDetailSchema),
   maps: z.array(mapDetailSchema),
   timeline: worldTimelineSchema,
+  powerSystems: z.array(powerSystemSchema),
+  mechanisms: z.array(specialMechanismSchema),
+  items: z.array(itemSchema),
 });
 export type WorldSnapshot = z.infer<typeof worldSnapshotSchema>;
 export const worldSnapshotResponseSchema = apiEnvelopeSchema(worldSnapshotSchema);

@@ -1489,7 +1489,7 @@ export class WorldRepository implements OnModuleDestroy {
     userId: string,
     context: WorldWorkContext,
     options: ReadOptions,
-  ): Promise<WorldSnapshot> {
+  ): Promise<Omit<WorldSnapshot, "powerSystems" | "mechanisms" | "items">> {
     return this.withTenant(userId, async (transaction) => {
       const headNodeId = await requireBranchHead(transaction, userId, context);
       const factionRows = await transaction
