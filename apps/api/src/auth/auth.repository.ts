@@ -3,6 +3,7 @@ import {
   createDatabaseClient,
   createDatabasePool,
   emailVerificationCodes,
+  passwordResets,
   sessions,
   users,
   type DatabaseClient,
@@ -29,6 +30,14 @@ export interface CreateSessionInput {
   userAgent: string;
   ip: string;
   expiresAt: Date;
+}
+
+export interface CreatePasswordResetInput {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  requestedIp: string;
 }
 
 @Injectable()
@@ -121,6 +130,45 @@ export class AuthRepository implements OnModuleDestroy {
     return session;
   }
 
+  async createPasswordReset(input: CreatePasswordResetInput): Promise<void> {
+    await this.db.transaction(async (transaction) => {
+      await transaction
+        .update(passwordResets)
+        .set({ consumedAt: new Date() })
+        .where(and(eq(passwordResets.userId, input.userId), isNull(passwordResets.consumedAt)));
+      await transaction.insert(passwordResets).values(input);
+    });
+  }
+
+  async resetPasswordWithToken(tokenHash: string, passwordHash: string): Promise<boolean> {
+    return this.db.transaction(async (transaction) => {
+      const [reset] = await transaction
+        .update(passwordResets)
+        .set({ consumedAt: new Date() })
+        .where(
+          and(
+            eq(passwordResets.tokenHash, tokenHash),
+            isNull(passwordResets.consumedAt),
+            gt(passwordResets.expiresAt, new Date()),
+          ),
+        )
+        .returning({ userId: passwordResets.userId });
+      if (!reset) {
+        return false;
+      }
+      const now = new Date();
+      await transaction
+        .update(users)
+        .set({ passwordHash, updatedAt: now })
+        .where(eq(users.id, reset.userId));
+      await transaction
+        .update(sessions)
+        .set({ revokedAt: now })
+        .where(and(eq(sessions.userId, reset.userId), isNull(sessions.revokedAt)));
+      return true;
+    });
+  }
+
   async findSessionWithUser(
     tokenHash: string,
   ): Promise<{ session: SessionRecord; user: UserRecord } | null> {
@@ -153,6 +201,36 @@ export class AuthRepository implements OnModuleDestroy {
       .update(sessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(sessions.id, id), isNull(sessions.revokedAt)));
+  }
+
+  async listActiveSessions(userId: string): Promise<SessionRecord[]> {
+    return this.db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.userId, userId),
+          isNull(sessions.revokedAt),
+          gt(sessions.expiresAt, new Date()),
+        ),
+      )
+      .orderBy(desc(sessions.createdAt));
+  }
+
+  async revokeUserSession(userId: string, sessionId: string): Promise<boolean> {
+    const [revoked] = await this.db
+      .update(sessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+      .returning({ id: sessions.id });
+    return Boolean(revoked);
+  }
+
+  async revokeAllSessions(userId: string): Promise<void> {
+    await this.db
+      .update(sessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt)));
   }
 
   async onModuleDestroy(): Promise<void> {

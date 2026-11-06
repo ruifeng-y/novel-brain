@@ -54,9 +54,11 @@ export function AppShell({
             ? "写作台"
             : pathname === "/workspace/new-project"
               ? "新建作品"
-              : pathname.startsWith("/workspace")
-                ? "工作台"
-                : "服务状态";
+              : pathname.startsWith("/workspace/settings")
+                ? "账号与模型"
+                : pathname.startsWith("/workspace")
+                  ? "工作台"
+                  : "服务状态";
 
   async function logout() {
     setLoggingOut(true);

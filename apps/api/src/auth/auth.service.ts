@@ -3,8 +3,11 @@ import { randomInt } from "node:crypto";
 import {
   authPasswordSchema,
   type AuthSessionData,
+  type AuthDeviceSession,
   type LoginRequest,
   type RegisterRequest,
+  type ResetPasswordRequest,
+  type SendPasswordResetRequest,
   type SendRegistrationCodeRequest,
 } from "@novel-brain/contracts";
 import { hash, verify, Algorithm } from "@node-rs/argon2";
@@ -20,6 +23,7 @@ import { AuthRepository, type SessionRecord, type UserRecord } from "./auth.repo
 import { MAIL_GATEWAY, type MailGateway } from "./mail.gateway";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
+const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_CODE_ATTEMPTS = 5;
 
@@ -148,6 +152,40 @@ export class AuthService {
     return this.issueSession(user, ip, userAgent, existingSessionToken);
   }
 
+  async sendPasswordReset(
+    request: SendPasswordResetRequest,
+    ip: string,
+  ): Promise<{ expiresAt: Date }> {
+    const email = request.email.toLowerCase();
+    await this.rateLimiter.consumePasswordResetRequest(email, ip);
+    const expiresAt = new Date(Date.now() + PASSWORD_RESET_TTL_MS);
+    const user = await this.repository.findUserByEmail(email);
+    if (!user || user.status !== "active") {
+      return { expiresAt };
+    }
+
+    const token = randomToken();
+    await this.repository.createPasswordReset({
+      id: uuidv7(),
+      userId: user.id,
+      tokenHash: sha256(token),
+      expiresAt,
+      requestedIp: ip,
+    });
+    await this.mailGateway.sendPasswordResetLink(email, token, expiresAt);
+    return { expiresAt };
+  }
+
+  async resetPassword(request: ResetPasswordRequest, ip: string): Promise<void> {
+    const tokenHash = sha256(request.token);
+    await this.rateLimiter.consumePasswordResetAttempt(tokenHash, ip);
+    const passwordHash = await hash(request.password, { algorithm: Algorithm.Argon2id });
+    const reset = await this.repository.resetPasswordWithToken(tokenHash, passwordHash);
+    if (!reset) {
+      throw new ApiError(400, "AUTH_CODE_INVALID", "重置链接无效或已过期");
+    }
+  }
+
   async resolveSession(token: string | undefined): Promise<{
     user: UserRecord;
     session: SessionRecord;
@@ -169,12 +207,38 @@ export class AuthService {
     await this.repository.revokeSession(sessionId);
   }
 
+  async listSessions(userId: string, currentSessionId: string): Promise<AuthDeviceSession[]> {
+    return (await this.repository.listActiveSessions(userId)).map((session) => ({
+      id: session.id,
+      expiresAt: session.expiresAt.toISOString(),
+      current: session.id === currentSessionId,
+      userAgent: session.userAgent,
+      ip: session.ip,
+      lastSeenAt: session.lastSeenAt.toISOString(),
+      createdAt: session.createdAt.toISOString(),
+    }));
+  }
+
+  async revokeUserSession(userId: string, sessionId: string): Promise<void> {
+    const revoked = await this.repository.revokeUserSession(userId, sessionId);
+    if (!revoked) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "登录设备不存在或无权访问");
+    }
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.repository.revokeAllSessions(userId);
+  }
+
   toSessionData(user: UserRecord, session: SessionRecord): AuthSessionData {
     return {
       user: {
         id: user.id,
         emailMasked: maskEmail(user.email),
         displayName: user.displayName,
+        bio: user.bio,
+        avatarUrl: user.avatarUrl,
+        version: user.version,
         createdAt: user.createdAt.toISOString(),
       },
       session: {

@@ -28,6 +28,9 @@ export const users = pgTable(
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
     displayName: text("display_name").notNull(),
+    bio: text("bio").notNull().default(""),
+    avatarUrl: text("avatar_url"),
+    version: integer("version").notNull().default(1),
     status: text("status").notNull().default("active"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -35,6 +38,33 @@ export const users = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [uniqueIndex("users_email_lower_unique").on(sql`lower(${table.email})`)],
+);
+
+export const penNames = pgTable(
+  "pen_names",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    bio: text("bio").notNull().default(""),
+    avatarUrl: text("avatar_url"),
+    isDefault: boolean("is_default").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("pen_names_user_name_unique")
+      .on(table.userId, table.name)
+      .where(sql`${table.deletedAt} is null`),
+    uniqueIndex("pen_names_user_default_unique")
+      .on(table.userId)
+      .where(sql`${table.isDefault} and ${table.deletedAt} is null`),
+    index("pen_names_user_updated_idx").on(table.userId, table.updatedAt),
+  ],
 );
 
 export const sessions = pgTable(
@@ -73,6 +103,25 @@ export const emailVerificationCodes = pgTable(
   },
   (table) => [
     index("email_codes_email_purpose_created_idx").on(table.email, table.purpose, table.createdAt),
+  ],
+);
+
+export const passwordResets = pgTable(
+  "password_resets",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    requestedIp: text("requested_ip").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("password_resets_token_hash_unique").on(table.tokenHash),
+    index("password_resets_user_created_idx").on(table.userId, table.createdAt),
   ],
 );
 
