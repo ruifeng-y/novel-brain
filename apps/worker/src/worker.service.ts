@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import {
   GENERATE_CHAPTER_JOB,
+  SUMMARY_REBUILD_JOB,
   WORKER_QUEUE_NAME,
   workerJobSchema,
   type WorkerJob,
@@ -16,6 +17,9 @@ import pino, { type Logger } from "pino";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GenerationJobProcessor } from "./generation/generation.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -24,7 +28,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
   private readonly queue: Queue<WorkerJob>;
   private readonly worker: BullWorker<WorkerJob, void>;
 
-  constructor(private readonly processor: GenerationJobProcessor) {
+  constructor(
+    private readonly processor: GenerationJobProcessor,
+    private readonly summaryProcessor: SummaryRebuildProcessor,
+  ) {
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
       throw new Error("REDIS_URL is required");
@@ -78,12 +85,17 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     this.logger.info(
       {
         event: "worker.job.started",
-        jobId: payload.jobId,
         jobType: payload.jobType,
-        checkpointStep: payload.checkpoint.step,
+        ...(payload.jobType === SUMMARY_REBUILD_JOB
+          ? { runId: payload.runId }
+          : { jobId: payload.jobId, checkpointStep: payload.checkpoint.step }),
       },
-      "Processing typed generation job",
+      "Processing typed worker job",
     );
+    if (payload.jobType === SUMMARY_REBUILD_JOB) {
+      await this.summaryProcessor.process(payload);
+      return;
+    }
     await this.processor.process(payload);
   }
 }

@@ -2528,6 +2528,7 @@
                                     "JOB_NOT_RECOVERABLE",
                                     "JOB_RECOVERY_CONFLICT",
                                     "JOB_ATTEMPTS_EXHAUSTED",
+                                    "SUMMARY_REBUILD_FAILED",
                                     "FACT_DECISION_REQUIRED",
                                     "FACT_SUBMISSION_BLOCKED",
                                     "CANON_CHAPTER_NOT_APPROVED",
@@ -3277,6 +3278,7 @@
                                   "JOB_NOT_RECOVERABLE",
                                   "JOB_RECOVERY_CONFLICT",
                                   "JOB_ATTEMPTS_EXHAUSTED",
+                                  "SUMMARY_REBUILD_FAILED",
                                   "FACT_DECISION_REQUIRED",
                                   "FACT_SUBMISSION_BLOCKED",
                                   "CANON_CHAPTER_NOT_APPROVED",
@@ -14587,6 +14589,7 @@
                                 "JOB_NOT_RECOVERABLE",
                                 "JOB_RECOVERY_CONFLICT",
                                 "JOB_ATTEMPTS_EXHAUSTED",
+                                "SUMMARY_REBUILD_FAILED",
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
@@ -14713,7 +14716,8 @@
                                             "setting",
                                             "chapter_brief",
                                             "chapter_version",
-                                            "style"
+                                            "style",
+                                            "summary"
                                           ]
                                         },
                                         "sourceId": {
@@ -14777,6 +14781,7 @@
                                     "enum": [
                                       "token_budget",
                                       "stale_branch",
+                                      "summary_stale",
                                       "task_mismatch",
                                       "pov_mismatch",
                                       "future_fact",
@@ -14805,7 +14810,8 @@
                                             "setting",
                                             "chapter_brief",
                                             "chapter_version",
-                                            "style"
+                                            "style",
+                                            "summary"
                                           ]
                                         },
                                         "sourceId": {
@@ -14845,7 +14851,8 @@
                                       "setting",
                                       "chapter_brief",
                                       "chapter_version",
-                                      "style"
+                                      "style",
+                                      "summary"
                                     ]
                                   },
                                   "sourceId": {
@@ -15318,7 +15325,8 @@
                                         "setting",
                                         "chapter_brief",
                                         "chapter_version",
-                                        "style"
+                                        "style",
+                                        "summary"
                                       ]
                                     },
                                     "sourceId": {
@@ -15382,6 +15390,7 @@
                                 "enum": [
                                   "token_budget",
                                   "stale_branch",
+                                  "summary_stale",
                                   "task_mismatch",
                                   "pov_mismatch",
                                   "future_fact",
@@ -15410,7 +15419,8 @@
                                         "setting",
                                         "chapter_brief",
                                         "chapter_version",
-                                        "style"
+                                        "style",
+                                        "summary"
                                       ]
                                     },
                                     "sourceId": {
@@ -15450,7 +15460,8 @@
                                   "setting",
                                   "chapter_brief",
                                   "chapter_version",
-                                  "style"
+                                  "style",
+                                  "summary"
                                 ]
                               },
                               "sourceId": {
@@ -16038,6 +16049,7 @@
                                   "JOB_NOT_RECOVERABLE",
                                   "JOB_RECOVERY_CONFLICT",
                                   "JOB_ATTEMPTS_EXHAUSTED",
+                                  "SUMMARY_REBUILD_FAILED",
                                   "FACT_DECISION_REQUIRED",
                                   "FACT_SUBMISSION_BLOCKED",
                                   "CANON_CHAPTER_NOT_APPROVED",
@@ -16164,7 +16176,8 @@
                                               "setting",
                                               "chapter_brief",
                                               "chapter_version",
-                                              "style"
+                                              "style",
+                                              "summary"
                                             ]
                                           },
                                           "sourceId": {
@@ -16228,6 +16241,7 @@
                                       "enum": [
                                         "token_budget",
                                         "stale_branch",
+                                        "summary_stale",
                                         "task_mismatch",
                                         "pov_mismatch",
                                         "future_fact",
@@ -16256,7 +16270,8 @@
                                               "setting",
                                               "chapter_brief",
                                               "chapter_version",
-                                              "style"
+                                              "style",
+                                              "summary"
                                             ]
                                           },
                                           "sourceId": {
@@ -16296,7 +16311,8 @@
                                         "setting",
                                         "chapter_brief",
                                         "chapter_version",
-                                        "style"
+                                        "style",
+                                        "summary"
                                       ]
                                     },
                                     "sourceId": {
@@ -16930,6 +16946,7 @@
                                 "JOB_NOT_RECOVERABLE",
                                 "JOB_RECOVERY_CONFLICT",
                                 "JOB_ATTEMPTS_EXHAUSTED",
+                                "SUMMARY_REBUILD_FAILED",
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
@@ -17056,7 +17073,8 @@
                                             "setting",
                                             "chapter_brief",
                                             "chapter_version",
-                                            "style"
+                                            "style",
+                                            "summary"
                                           ]
                                         },
                                         "sourceId": {
@@ -17120,6 +17138,7 @@
                                     "enum": [
                                       "token_budget",
                                       "stale_branch",
+                                      "summary_stale",
                                       "task_mismatch",
                                       "pov_mismatch",
                                       "future_fact",
@@ -17148,7 +17167,8 @@
                                             "setting",
                                             "chapter_brief",
                                             "chapter_version",
-                                            "style"
+                                            "style",
+                                            "summary"
                                           ]
                                         },
                                         "sourceId": {
@@ -17188,7 +17208,8 @@
                                       "setting",
                                       "chapter_brief",
                                       "chapter_version",
-                                      "style"
+                                      "style",
+                                      "summary"
                                     ]
                                   },
                                   "sourceId": {
@@ -17821,6 +17842,7 @@
                                 "JOB_NOT_RECOVERABLE",
                                 "JOB_RECOVERY_CONFLICT",
                                 "JOB_ATTEMPTS_EXHAUSTED",
+                                "SUMMARY_REBUILD_FAILED",
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
@@ -17947,7 +17969,8 @@
                                             "setting",
                                             "chapter_brief",
                                             "chapter_version",
-                                            "style"
+                                            "style",
+                                            "summary"
                                           ]
                                         },
                                         "sourceId": {
@@ -18011,6 +18034,7 @@
                                     "enum": [
                                       "token_budget",
                                       "stale_branch",
+                                      "summary_stale",
                                       "task_mismatch",
                                       "pov_mismatch",
                                       "future_fact",
@@ -18039,7 +18063,8 @@
                                             "setting",
                                             "chapter_brief",
                                             "chapter_version",
-                                            "style"
+                                            "style",
+                                            "summary"
                                           ]
                                         },
                                         "sourceId": {
@@ -18079,7 +18104,8 @@
                                       "setting",
                                       "chapter_brief",
                                       "chapter_version",
-                                      "style"
+                                      "style",
+                                      "summary"
                                     ]
                                   },
                                   "sourceId": {
@@ -18712,6 +18738,7 @@
                                 "JOB_NOT_RECOVERABLE",
                                 "JOB_RECOVERY_CONFLICT",
                                 "JOB_ATTEMPTS_EXHAUSTED",
+                                "SUMMARY_REBUILD_FAILED",
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
@@ -18838,7 +18865,8 @@
                                             "setting",
                                             "chapter_brief",
                                             "chapter_version",
-                                            "style"
+                                            "style",
+                                            "summary"
                                           ]
                                         },
                                         "sourceId": {
@@ -18902,6 +18930,7 @@
                                     "enum": [
                                       "token_budget",
                                       "stale_branch",
+                                      "summary_stale",
                                       "task_mismatch",
                                       "pov_mismatch",
                                       "future_fact",
@@ -18930,7 +18959,8 @@
                                             "setting",
                                             "chapter_brief",
                                             "chapter_version",
-                                            "style"
+                                            "style",
+                                            "summary"
                                           ]
                                         },
                                         "sourceId": {
@@ -18970,7 +19000,8 @@
                                       "setting",
                                       "chapter_brief",
                                       "chapter_version",
-                                      "style"
+                                      "style",
+                                      "summary"
                                     ]
                                   },
                                   "sourceId": {
@@ -19635,6 +19666,7 @@
                                     "JOB_NOT_RECOVERABLE",
                                     "JOB_RECOVERY_CONFLICT",
                                     "JOB_ATTEMPTS_EXHAUSTED",
+                                    "SUMMARY_REBUILD_FAILED",
                                     "FACT_DECISION_REQUIRED",
                                     "FACT_SUBMISSION_BLOCKED",
                                     "CANON_CHAPTER_NOT_APPROVED",
@@ -19761,7 +19793,8 @@
                                                 "setting",
                                                 "chapter_brief",
                                                 "chapter_version",
-                                                "style"
+                                                "style",
+                                                "summary"
                                               ]
                                             },
                                             "sourceId": {
@@ -19830,6 +19863,7 @@
                                         "enum": [
                                           "token_budget",
                                           "stale_branch",
+                                          "summary_stale",
                                           "task_mismatch",
                                           "pov_mismatch",
                                           "future_fact",
@@ -19858,7 +19892,8 @@
                                                 "setting",
                                                 "chapter_brief",
                                                 "chapter_version",
-                                                "style"
+                                                "style",
+                                                "summary"
                                               ]
                                             },
                                             "sourceId": {
@@ -19903,7 +19938,8 @@
                                           "setting",
                                           "chapter_brief",
                                           "chapter_version",
-                                          "style"
+                                          "style",
+                                          "summary"
                                         ]
                                       },
                                       "sourceId": {
@@ -67431,6 +67467,1033 @@
           }
         },
         "tags": ["story-ledger"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/summaries": {
+      "get": {
+        "operationId": "SummariesController_workspace",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Hierarchical summary workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "invalidationRuleVersion": {
+                          "type": "string",
+                          "enum": ["summary-invalidation-v1"]
+                        },
+                        "summaries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "level": {
+                                "type": "string",
+                                "enum": ["chapter", "stage", "volume", "book"]
+                              },
+                              "scopeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "content": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 20000
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["fresh", "stale", "rebuilding"]
+                              },
+                              "version": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "contentHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "inputHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "compilerVersion": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "modelVersion": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "sourceRanges": {
+                                "minItems": 1,
+                                "maxItems": 10000,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "nodeId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "versionNodeId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "objectVersion": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "chapterFrom": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "chapterTo": {
+                                      "nullable": true,
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "nodeId",
+                                    "versionNodeId",
+                                    "objectVersion",
+                                    "chapterFrom",
+                                    "chapterTo"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "fromChapter": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "toChapter": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "generatedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "invalidatedAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "invalidationReason": {
+                                "nullable": true,
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 500
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "workId",
+                              "branchId",
+                              "level",
+                              "scopeId",
+                              "chapterId",
+                              "title",
+                              "content",
+                              "status",
+                              "version",
+                              "contentHash",
+                              "inputHash",
+                              "compilerVersion",
+                              "modelVersion",
+                              "sourceRanges",
+                              "fromChapter",
+                              "toChapter",
+                              "generatedAt",
+                              "invalidatedAt",
+                              "invalidationReason"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "rebuilds": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["queued", "running", "completed", "failed", "cancelled"]
+                              },
+                              "levels": {
+                                "minItems": 1,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": ["chapter", "stage", "volume", "book"]
+                                }
+                              },
+                              "idempotencyKey": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "compilerVersion": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "modelVersion": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "checkpointRevision": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "totalItems": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "completedItems": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "failedItems": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "error": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "VALIDATION_INVALID",
+                                      "AUTH_CODE_INVALID",
+                                      "AUTH_RATE_LIMITED",
+                                      "AUTH_EMAIL_TAKEN",
+                                      "AUTH_PASSWORD_WEAK",
+                                      "AUTH_LOGIN_FAILED",
+                                      "AUTH_SESSION_INVALID",
+                                      "AUTH_CSRF_INVALID",
+                                      "AUTH_ORIGIN_INVALID",
+                                      "MODEL_KEY_INVALID",
+                                      "MODEL_CONNECTION_FAILED",
+                                      "MODEL_RATE_LIMITED",
+                                      "MODEL_TIMEOUT",
+                                      "MODEL_POLICY_BLOCKED",
+                                      "MODEL_RESPONSE_INVALID",
+                                      "MODEL_PROVIDER_ERROR",
+                                      "BIBLE_NOT_READY",
+                                      "BIBLE_LOCKED",
+                                      "BIBLE_NOT_LOCKED",
+                                      "SETTING_LOCKED",
+                                      "SETTING_NAME_CONFLICT",
+                                      "SETTING_ALIAS_CONFLICT",
+                                      "SETTING_CONFLICT_UNRESOLVED",
+                                      "SETTING_PROPOSAL_STATE",
+                                      "SETTING_NOT_LOCKED",
+                                      "CUSTOM_FIELD_REQUIRED",
+                                      "CUSTOM_FIELD_INVALID",
+                                      "CUSTOM_FIELD_IMMUTABLE",
+                                      "CUSTOM_FIELD_DUPLICATE",
+                                      "CHARACTER_STATE_OVERLAP",
+                                      "MAP_NODE_PARENT_MISMATCH",
+                                      "MAP_LAYER_MISMATCH",
+                                      "MAP_ROUTE_ENDPOINT_MISMATCH",
+                                      "MAP_ROUTE_DISCONNECTED",
+                                      "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+                                      "CONTROL_AREA_OVERLAP",
+                                      "TIMELINE_EVENT_OVERLAP",
+                                      "TIMELINE_ERA_NOT_FOUND",
+                                      "ITINERARY_TIME_ORDER",
+                                      "ITINERARY_OVERLAP",
+                                      "POWER_PATH_MISMATCH",
+                                      "POWER_REALM_LADDER_INVALID",
+                                      "POWER_LIFESPAN_POLICY_INVALID",
+                                      "ITEM_RIGHT_CONFLICT",
+                                      "ITEM_NOT_CONSUMABLE",
+                                      "ITEM_QUANTITY_INSUFFICIENT",
+                                      "EQUIPMENT_SLOT_CONFLICT",
+                                      "ITEM_NOT_EQUIPMENT",
+                                      "JOB_BUDGET_EXCEEDED",
+                                      "JOB_CONTEXT_BRANCH_STALE",
+                                      "JOB_CONTEXT_WINDOW_TOO_SMALL",
+                                      "JOB_CANCELLED",
+                                      "JOB_NOT_RECOVERABLE",
+                                      "JOB_RECOVERY_CONFLICT",
+                                      "JOB_ATTEMPTS_EXHAUSTED",
+                                      "SUMMARY_REBUILD_FAILED",
+                                      "FACT_DECISION_REQUIRED",
+                                      "FACT_SUBMISSION_BLOCKED",
+                                      "CANON_CHAPTER_NOT_APPROVED",
+                                      "IMPORT_CONFLICT_UNRESOLVED",
+                                      "OUTLINE_STRUCTURE_INVALID",
+                                      "OUTLINE_NODE_LOCKED",
+                                      "OUTLINE_PARENT_INVALID",
+                                      "OUTLINE_CHAPTER_INVALID",
+                                      "OUTLINE_REFERENCE_INVALID",
+                                      "GOLDEN_THREE_CANDIDATES_EXIST",
+                                      "GOLDEN_THREE_INVALID_CANDIDATES",
+                                      "GOLDEN_THREE_CANDIDATE_LOCKED",
+                                      "GOLDEN_THREE_REVIEW_FAILED",
+                                      "GOLDEN_THREE_SELECTION_REQUIRED",
+                                      "GOLDEN_THREE_ALREADY_LOCKED",
+                                      "GOLDEN_THREE_OVERRIDE_INVALID",
+                                      "LEDGER_TRANSITION_INVALID",
+                                      "LEDGER_SOURCE_REQUIRED",
+                                      "LEDGER_EVIDENCE_REQUIRED",
+                                      "LEDGER_REFERENCE_INVALID",
+                                      "VERSION_CONFLICT",
+                                      "AGENT_CONTRACT_INVALID",
+                                      "AGENT_GRANT_INVALID",
+                                      "AGENT_GRANT_EXPIRED",
+                                      "AGENT_GRANT_REVOKED",
+                                      "AGENT_TOOL_NOT_REGISTERED",
+                                      "AGENT_TOOL_DENIED",
+                                      "AGENT_BUDGET_EXCEEDED",
+                                      "AGENT_APPROVAL_REQUIRED",
+                                      "FORBIDDEN_TENANT_ACCESS",
+                                      "INTERNAL_ERROR"
+                                    ]
+                                  },
+                                  "message": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  }
+                                },
+                                "required": ["code", "message"],
+                                "additionalProperties": false
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "finishedAt": {
+                                "nullable": true,
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "workId",
+                              "branchId",
+                              "status",
+                              "levels",
+                              "idempotencyKey",
+                              "compilerVersion",
+                              "modelVersion",
+                              "checkpointRevision",
+                              "totalItems",
+                              "completedItems",
+                              "failedItems",
+                              "error",
+                              "createdAt",
+                              "updatedAt",
+                              "finishedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "stats": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "fresh": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "stale": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "rebuilding": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": ["total", "fresh", "stale", "rebuilding"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "workId",
+                        "branchId",
+                        "invalidationRuleVersion",
+                        "summaries",
+                        "rebuilds",
+                        "stats"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["summaries"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/summaries/rebuild": {
+      "post": {
+        "operationId": "SummariesController_rebuild",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "levels": {
+                    "default": ["chapter", "stage", "volume", "book"],
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["chapter", "stage", "volume", "book"]
+                    }
+                  },
+                  "force": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Queued summary rebuild",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["queued", "running", "completed", "failed", "cancelled"]
+                        },
+                        "levels": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["chapter", "stage", "volume", "book"]
+                          }
+                        },
+                        "idempotencyKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "compilerVersion": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "modelVersion": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "checkpointRevision": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "totalItems": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "completedItems": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "failedItems": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "VALIDATION_INVALID",
+                                "AUTH_CODE_INVALID",
+                                "AUTH_RATE_LIMITED",
+                                "AUTH_EMAIL_TAKEN",
+                                "AUTH_PASSWORD_WEAK",
+                                "AUTH_LOGIN_FAILED",
+                                "AUTH_SESSION_INVALID",
+                                "AUTH_CSRF_INVALID",
+                                "AUTH_ORIGIN_INVALID",
+                                "MODEL_KEY_INVALID",
+                                "MODEL_CONNECTION_FAILED",
+                                "MODEL_RATE_LIMITED",
+                                "MODEL_TIMEOUT",
+                                "MODEL_POLICY_BLOCKED",
+                                "MODEL_RESPONSE_INVALID",
+                                "MODEL_PROVIDER_ERROR",
+                                "BIBLE_NOT_READY",
+                                "BIBLE_LOCKED",
+                                "BIBLE_NOT_LOCKED",
+                                "SETTING_LOCKED",
+                                "SETTING_NAME_CONFLICT",
+                                "SETTING_ALIAS_CONFLICT",
+                                "SETTING_CONFLICT_UNRESOLVED",
+                                "SETTING_PROPOSAL_STATE",
+                                "SETTING_NOT_LOCKED",
+                                "CUSTOM_FIELD_REQUIRED",
+                                "CUSTOM_FIELD_INVALID",
+                                "CUSTOM_FIELD_IMMUTABLE",
+                                "CUSTOM_FIELD_DUPLICATE",
+                                "CHARACTER_STATE_OVERLAP",
+                                "MAP_NODE_PARENT_MISMATCH",
+                                "MAP_LAYER_MISMATCH",
+                                "MAP_ROUTE_ENDPOINT_MISMATCH",
+                                "MAP_ROUTE_DISCONNECTED",
+                                "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+                                "CONTROL_AREA_OVERLAP",
+                                "TIMELINE_EVENT_OVERLAP",
+                                "TIMELINE_ERA_NOT_FOUND",
+                                "ITINERARY_TIME_ORDER",
+                                "ITINERARY_OVERLAP",
+                                "POWER_PATH_MISMATCH",
+                                "POWER_REALM_LADDER_INVALID",
+                                "POWER_LIFESPAN_POLICY_INVALID",
+                                "ITEM_RIGHT_CONFLICT",
+                                "ITEM_NOT_CONSUMABLE",
+                                "ITEM_QUANTITY_INSUFFICIENT",
+                                "EQUIPMENT_SLOT_CONFLICT",
+                                "ITEM_NOT_EQUIPMENT",
+                                "JOB_BUDGET_EXCEEDED",
+                                "JOB_CONTEXT_BRANCH_STALE",
+                                "JOB_CONTEXT_WINDOW_TOO_SMALL",
+                                "JOB_CANCELLED",
+                                "JOB_NOT_RECOVERABLE",
+                                "JOB_RECOVERY_CONFLICT",
+                                "JOB_ATTEMPTS_EXHAUSTED",
+                                "SUMMARY_REBUILD_FAILED",
+                                "FACT_DECISION_REQUIRED",
+                                "FACT_SUBMISSION_BLOCKED",
+                                "CANON_CHAPTER_NOT_APPROVED",
+                                "IMPORT_CONFLICT_UNRESOLVED",
+                                "OUTLINE_STRUCTURE_INVALID",
+                                "OUTLINE_NODE_LOCKED",
+                                "OUTLINE_PARENT_INVALID",
+                                "OUTLINE_CHAPTER_INVALID",
+                                "OUTLINE_REFERENCE_INVALID",
+                                "GOLDEN_THREE_CANDIDATES_EXIST",
+                                "GOLDEN_THREE_INVALID_CANDIDATES",
+                                "GOLDEN_THREE_CANDIDATE_LOCKED",
+                                "GOLDEN_THREE_REVIEW_FAILED",
+                                "GOLDEN_THREE_SELECTION_REQUIRED",
+                                "GOLDEN_THREE_ALREADY_LOCKED",
+                                "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "LEDGER_TRANSITION_INVALID",
+                                "LEDGER_SOURCE_REQUIRED",
+                                "LEDGER_EVIDENCE_REQUIRED",
+                                "LEDGER_REFERENCE_INVALID",
+                                "VERSION_CONFLICT",
+                                "AGENT_CONTRACT_INVALID",
+                                "AGENT_GRANT_INVALID",
+                                "AGENT_GRANT_EXPIRED",
+                                "AGENT_GRANT_REVOKED",
+                                "AGENT_TOOL_NOT_REGISTERED",
+                                "AGENT_TOOL_DENIED",
+                                "AGENT_BUDGET_EXCEEDED",
+                                "AGENT_APPROVAL_REQUIRED",
+                                "FORBIDDEN_TENANT_ACCESS",
+                                "INTERNAL_ERROR"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": ["code", "message"],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "finishedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "status",
+                        "levels",
+                        "idempotencyKey",
+                        "compilerVersion",
+                        "modelVersion",
+                        "checkpointRevision",
+                        "totalItems",
+                        "completedItems",
+                        "failedItems",
+                        "error",
+                        "createdAt",
+                        "updatedAt",
+                        "finishedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["summaries"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/summaries/rebuilds/{runId}": {
+      "get": {
+        "operationId": "SummariesController_rebuildRun",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "runId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary rebuild checkpoint status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["queued", "running", "completed", "failed", "cancelled"]
+                        },
+                        "levels": {
+                          "minItems": 1,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "enum": ["chapter", "stage", "volume", "book"]
+                          }
+                        },
+                        "idempotencyKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "compilerVersion": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "modelVersion": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "checkpointRevision": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "totalItems": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "completedItems": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "failedItems": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "error": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string",
+                              "enum": [
+                                "VALIDATION_INVALID",
+                                "AUTH_CODE_INVALID",
+                                "AUTH_RATE_LIMITED",
+                                "AUTH_EMAIL_TAKEN",
+                                "AUTH_PASSWORD_WEAK",
+                                "AUTH_LOGIN_FAILED",
+                                "AUTH_SESSION_INVALID",
+                                "AUTH_CSRF_INVALID",
+                                "AUTH_ORIGIN_INVALID",
+                                "MODEL_KEY_INVALID",
+                                "MODEL_CONNECTION_FAILED",
+                                "MODEL_RATE_LIMITED",
+                                "MODEL_TIMEOUT",
+                                "MODEL_POLICY_BLOCKED",
+                                "MODEL_RESPONSE_INVALID",
+                                "MODEL_PROVIDER_ERROR",
+                                "BIBLE_NOT_READY",
+                                "BIBLE_LOCKED",
+                                "BIBLE_NOT_LOCKED",
+                                "SETTING_LOCKED",
+                                "SETTING_NAME_CONFLICT",
+                                "SETTING_ALIAS_CONFLICT",
+                                "SETTING_CONFLICT_UNRESOLVED",
+                                "SETTING_PROPOSAL_STATE",
+                                "SETTING_NOT_LOCKED",
+                                "CUSTOM_FIELD_REQUIRED",
+                                "CUSTOM_FIELD_INVALID",
+                                "CUSTOM_FIELD_IMMUTABLE",
+                                "CUSTOM_FIELD_DUPLICATE",
+                                "CHARACTER_STATE_OVERLAP",
+                                "MAP_NODE_PARENT_MISMATCH",
+                                "MAP_LAYER_MISMATCH",
+                                "MAP_ROUTE_ENDPOINT_MISMATCH",
+                                "MAP_ROUTE_DISCONNECTED",
+                                "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+                                "CONTROL_AREA_OVERLAP",
+                                "TIMELINE_EVENT_OVERLAP",
+                                "TIMELINE_ERA_NOT_FOUND",
+                                "ITINERARY_TIME_ORDER",
+                                "ITINERARY_OVERLAP",
+                                "POWER_PATH_MISMATCH",
+                                "POWER_REALM_LADDER_INVALID",
+                                "POWER_LIFESPAN_POLICY_INVALID",
+                                "ITEM_RIGHT_CONFLICT",
+                                "ITEM_NOT_CONSUMABLE",
+                                "ITEM_QUANTITY_INSUFFICIENT",
+                                "EQUIPMENT_SLOT_CONFLICT",
+                                "ITEM_NOT_EQUIPMENT",
+                                "JOB_BUDGET_EXCEEDED",
+                                "JOB_CONTEXT_BRANCH_STALE",
+                                "JOB_CONTEXT_WINDOW_TOO_SMALL",
+                                "JOB_CANCELLED",
+                                "JOB_NOT_RECOVERABLE",
+                                "JOB_RECOVERY_CONFLICT",
+                                "JOB_ATTEMPTS_EXHAUSTED",
+                                "SUMMARY_REBUILD_FAILED",
+                                "FACT_DECISION_REQUIRED",
+                                "FACT_SUBMISSION_BLOCKED",
+                                "CANON_CHAPTER_NOT_APPROVED",
+                                "IMPORT_CONFLICT_UNRESOLVED",
+                                "OUTLINE_STRUCTURE_INVALID",
+                                "OUTLINE_NODE_LOCKED",
+                                "OUTLINE_PARENT_INVALID",
+                                "OUTLINE_CHAPTER_INVALID",
+                                "OUTLINE_REFERENCE_INVALID",
+                                "GOLDEN_THREE_CANDIDATES_EXIST",
+                                "GOLDEN_THREE_INVALID_CANDIDATES",
+                                "GOLDEN_THREE_CANDIDATE_LOCKED",
+                                "GOLDEN_THREE_REVIEW_FAILED",
+                                "GOLDEN_THREE_SELECTION_REQUIRED",
+                                "GOLDEN_THREE_ALREADY_LOCKED",
+                                "GOLDEN_THREE_OVERRIDE_INVALID",
+                                "LEDGER_TRANSITION_INVALID",
+                                "LEDGER_SOURCE_REQUIRED",
+                                "LEDGER_EVIDENCE_REQUIRED",
+                                "LEDGER_REFERENCE_INVALID",
+                                "VERSION_CONFLICT",
+                                "AGENT_CONTRACT_INVALID",
+                                "AGENT_GRANT_INVALID",
+                                "AGENT_GRANT_EXPIRED",
+                                "AGENT_GRANT_REVOKED",
+                                "AGENT_TOOL_NOT_REGISTERED",
+                                "AGENT_TOOL_DENIED",
+                                "AGENT_BUDGET_EXCEEDED",
+                                "AGENT_APPROVAL_REQUIRED",
+                                "FORBIDDEN_TENANT_ACCESS",
+                                "INTERNAL_ERROR"
+                              ]
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1
+                            }
+                          },
+                          "required": ["code", "message"],
+                          "additionalProperties": false
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "finishedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "status",
+                        "levels",
+                        "idempotencyKey",
+                        "compilerVersion",
+                        "modelVersion",
+                        "checkpointRevision",
+                        "totalItems",
+                        "completedItems",
+                        "failedItems",
+                        "error",
+                        "createdAt",
+                        "updatedAt",
+                        "finishedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["summaries"]
       }
     },
     "/api/v1/users/me": {

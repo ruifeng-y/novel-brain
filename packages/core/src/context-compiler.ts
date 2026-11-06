@@ -52,6 +52,7 @@ export interface ContextCandidate {
   validity?: ContextCandidateValidity;
   knowledgeFactId?: string;
   inclusionReason?: ContextInclusionReason;
+  summaryStatus?: "fresh" | "stale" | "rebuilding";
 }
 
 export interface ContextKnowledgeFact {
@@ -215,6 +216,16 @@ export interface ChapterContextManifestInput extends ChapterContextInput {
   reservedOutputTokens?: number;
   knowledge?: ContextKnowledgeInput;
   compilerVersion?: string;
+  summaries?: Array<{
+    id: string;
+    level: "chapter" | "stage" | "volume" | "book";
+    label: string;
+    content: string;
+    branchId: string;
+    fromChapter: number;
+    toChapter: number | null;
+    status: "fresh" | "stale" | "rebuilding";
+  }>;
 }
 
 export function compileChapterContextManifest(
@@ -362,6 +373,27 @@ export function compileChapterContextManifest(
       order: index,
       tasks: ["chapter_draft", "chapter_revision", "continuity_check"] as ContextTask[],
     })),
+    ...(input.summaries ?? []).map((summary, index) => ({
+      key: `summary:${summary.level}:${summary.id}`,
+      label: summary.label,
+      layer: "P2" as const,
+      content: summary.content,
+      sourceRefs: [
+        {
+          sourceType: "summary" as const,
+          sourceId: summary.id,
+          label: summary.label,
+          citation:
+            summary.toChapter === null
+              ? `第 ${summary.fromChapter} 章起 · ${summary.label}`
+              : `第 ${summary.fromChapter}-${summary.toChapter} 章 · ${summary.label}`,
+        },
+      ],
+      branchId: summary.branchId,
+      order: 100 + index,
+      tasks: ["chapter_draft", "chapter_revision", "continuity_check"] as ContextTask[],
+      summaryStatus: summary.status,
+    })),
   ];
   return compileContextManifest({
     compilerVersion: input.compilerVersion ?? "m1-context-v1",
@@ -445,6 +477,9 @@ function rejectionReason(
   }
   if (candidate.branchId && candidate.branchId !== input.branchId) {
     return "stale_branch";
+  }
+  if (candidate.summaryStatus && candidate.summaryStatus !== "fresh") {
+    return "summary_stale";
   }
   if (candidate.tasks && !candidate.tasks.includes(input.task)) {
     return "task_mismatch";

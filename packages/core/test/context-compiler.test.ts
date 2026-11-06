@@ -91,6 +91,55 @@ describe("M1 context manifest compiler", () => {
     expect(manifest.selected.map((entry) => entry.key)).not.toContain("p1:unknown");
   });
 
+  it("excludes stale and rebuilding summaries from a new context pack", () => {
+    const manifest = compileContextManifest(
+      input({
+        candidates: [
+          {
+            ...candidate({
+              key: "summary:fresh",
+              layer: "P2",
+              content: "第一章概要：沈砚藏起断臂。",
+            }),
+            summaryStatus: "fresh",
+            sourceRefs: [
+              {
+                sourceType: "summary",
+                sourceId: factId,
+                label: "第一章概要",
+                citation: "第 1 章 · 摘要",
+              },
+            ],
+          },
+          {
+            ...candidate({
+              key: "summary:stale",
+              layer: "P2",
+              content: "旧的第一章概要。",
+            }),
+            summaryStatus: "stale",
+          },
+          {
+            ...candidate({
+              key: "summary:rebuilding",
+              layer: "P2",
+              content: "重建中的章节概要。",
+            }),
+            summaryStatus: "rebuilding",
+          },
+        ],
+      }),
+    );
+
+    expect(manifest.selected.map((entry) => entry.key)).toEqual(["summary:fresh"]);
+    expect(manifest.evicted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: "summary:stale", reason: "summary_stale" }),
+        expect.objectContaining({ key: "summary:rebuilding", reason: "summary_stale" }),
+      ]),
+    );
+  });
+
   it("applies story-time validity windows when the era is comparable", () => {
     const manifest = compileContextManifest(
       input({

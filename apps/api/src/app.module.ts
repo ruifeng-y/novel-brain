@@ -18,6 +18,7 @@ import { RetrievalModule } from "./retrieval/retrieval.module";
 import { SettingsModule } from "./settings/settings.module";
 import { StoryBibleModule } from "./story-bible/story-bible.module";
 import { StoryLedgerModule } from "./story-ledger/story-ledger.module";
+import { SummariesModule } from "./summaries/summaries.module";
 import { UsersModule } from "./users/users.module";
 import { WorksModule } from "./works/works.module";
 import { WorldModule } from "./world/world.module";
@@ -42,6 +43,7 @@ import { WorldModule } from "./world/world.module";
     SettingsModule,
     StoryBibleModule,
     StoryLedgerModule,
+    SummariesModule,
     UsersModule,
     WorksModule,
     WorldModule,
