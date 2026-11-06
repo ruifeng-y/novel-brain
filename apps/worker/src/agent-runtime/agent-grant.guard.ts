@@ -2,6 +2,7 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   agentToolCallRequestSchema,
   type AgentGrant,
+  type AgentRole,
   type AgentToolCallRequest,
   type AgentToolResource,
 } from "@novel-brain/contracts";
@@ -32,6 +33,8 @@ export interface AgentGrantScopeInput {
 
 export interface AgentGrantDispatchInput extends AgentGrantScopeInput {
   grantId: string;
+  expectedRole?: AgentRole;
+  expectedTools?: string[];
   audit: AgentGrantAudit;
   now?: Date;
 }
@@ -179,6 +182,12 @@ function dispatchDenial(grant: AgentGrant, input: AgentGrantDispatchInput): stri
   }
   if (grant.taskId !== input.taskId) {
     return "task_mismatch";
+  }
+  if (input.expectedRole && grant.role !== input.expectedRole) {
+    return "grant_role_mismatch";
+  }
+  if (input.expectedTools?.some((tool) => !grant.tools.includes(tool))) {
+    return "tool_not_whitelisted";
   }
   return null;
 }

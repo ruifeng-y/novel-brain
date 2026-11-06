@@ -1889,19 +1889,19 @@ export const jobs = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    chapterId: uuid("chapter_id")
-      .notNull()
-      .references(() => chapters.id, { onDelete: "cascade" }),
-    modelConfigId: uuid("model_config_id")
-      .notNull()
-      .references(() => modelConfigs.id, { onDelete: "restrict" }),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
+      onDelete: "restrict",
+    }),
     type: text("type").notNull(),
     status: text("status").notNull().default("queued"),
     progress: integer("progress").notNull().default(0),
     currentStep: text("current_step").notNull().default("prepare"),
+    priority: integer("priority").notNull().default(0),
     idempotencyKey: text("idempotency_key").notNull(),
     budget: jsonb("budget").$type<Record<string, unknown>>().notNull(),
     checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull(),
+    orchestration: jsonb("orchestration").$type<Record<string, unknown>>(),
     cost: jsonb("cost").$type<Record<string, unknown>>().notNull(),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
@@ -1916,9 +1916,16 @@ export const jobs = pgTable(
       table.chapterId,
       table.idempotencyKey,
     ),
+    uniqueIndex("jobs_workflow_idempotency_unique")
+      .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
+      .where(sql`${table.type} = 'agent_workflow'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
-    check("jobs_type_check", sql`${table.type} in ('generate_chapter')`),
+    check("jobs_type_check", sql`${table.type} in ('generate_chapter', 'agent_workflow')`),
+    check(
+      "jobs_required_scope_check",
+      sql`(${table.type} = 'agent_workflow') or (${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+    ),
     check(
       "jobs_status_check",
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
@@ -1958,13 +1965,10 @@ export const jobSteps = pgTable(
   (table) => [
     uniqueIndex("job_steps_job_step_unique").on(table.jobId, table.stepKey),
     index("job_steps_job_status_idx").on(table.jobId, table.status),
-    check(
-      "job_steps_step_check",
-      sql`${table.stepKey} in ('prepare', 'compile_context', 'draft', 'verify', 'revise', 'extract_facts', 'await_review')`,
-    ),
+    check("job_steps_step_check", sql`${table.stepKey} ~ '^[a-z][a-z0-9_.-]{0,99}$'`),
     check(
       "job_steps_status_check",
-      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed', 'skipped')`,
+      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed', 'skipped', 'cancelled')`,
     ),
   ],
 );
