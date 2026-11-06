@@ -15,6 +15,7 @@ import { OutlineModule } from "./outline/outline.module";
 import { ReviewModule } from "./review/review.module";
 import { SettingsModule } from "./settings/settings.module";
 import { StoryBibleModule } from "./story-bible/story-bible.module";
+import { StoryLedgerModule } from "./story-ledger/story-ledger.module";
 import { UsersModule } from "./users/users.module";
 import { WorksModule } from "./works/works.module";
 import { WorldModule } from "./world/world.module";
@@ -36,6 +37,7 @@ import { WorldModule } from "./world/world.module";
     ReviewModule,
     SettingsModule,
     StoryBibleModule,
+    StoryLedgerModule,
     UsersModule,
     WorksModule,
     WorldModule,

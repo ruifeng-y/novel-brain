@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   ListTree,
   LogOut,
+  Milestone,
   PenLine,
   Settings,
 } from "lucide-react";
@@ -29,6 +30,7 @@ const workNavigation = [
   { suffix: "bible", label: "故事圣经", icon: BookMarked },
   { suffix: "settings", label: "设定中心", icon: Settings },
   { suffix: "outline", label: "大纲工作台", icon: ListTree },
+  { suffix: "foreshadows", label: "伏笔账本", icon: Milestone },
   { suffix: "write", label: "写作台", icon: PenLine },
 ];
 
@@ -50,15 +52,17 @@ export function AppShell({
         ? "设定中心"
         : pathname.endsWith("/outline")
           ? "大纲工作台"
-          : pathname.endsWith("/write")
-            ? "写作台"
-            : pathname === "/workspace/new-project"
-              ? "新建作品"
-              : pathname.startsWith("/workspace/settings")
-                ? "账号与模型"
-                : pathname.startsWith("/workspace")
-                  ? "工作台"
-                  : "服务状态";
+          : pathname.endsWith("/foreshadows")
+            ? "伏笔账本"
+            : pathname.endsWith("/write")
+              ? "写作台"
+              : pathname === "/workspace/new-project"
+                ? "新建作品"
+                : pathname.startsWith("/workspace/settings")
+                  ? "账号与模型"
+                  : pathname.startsWith("/workspace")
+                    ? "工作台"
+                    : "服务状态";
 
   async function logout() {
     setLoggingOut(true);
