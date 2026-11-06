@@ -68,6 +68,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/password/forgot": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AuthController_forgotPassword"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/password/reset": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AuthController_resetPassword"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/auth/me": {
     parameters: {
       query?: never;
@@ -95,6 +127,54 @@ export interface paths {
     put?: never;
     post: operations["AuthController_logout"];
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/logout-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AuthController_logoutAll"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/sessions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AuthController_sessions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/sessions/{sessionId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["AuthController_revokeSession"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1140,6 +1220,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/users/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["UsersController_updateProfile"];
+    trace?: never;
+  };
+  "/api/v1/users/me/pen-names": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["UsersController_listPenNames"];
+    put?: never;
+    post: operations["UsersController_createPenName"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/users/me/pen-names/{penNameId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["UsersController_deletePenName"];
+    options?: never;
+    head?: never;
+    patch: operations["UsersController_updatePenName"];
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/world/factions": {
     parameters: {
       query?: never;
@@ -1509,6 +1637,15 @@ export interface operations {
                 id: string;
                 emailMasked: string;
                 displayName: string;
+                /** @default  */
+                bio: string;
+                /**
+                 * Format: uri
+                 * @default null
+                 */
+                avatarUrl: string | null;
+                /** @default 1 */
+                version: number;
                 /** Format: date-time */
                 createdAt: string;
               };
@@ -1563,6 +1700,15 @@ export interface operations {
                 id: string;
                 emailMasked: string;
                 displayName: string;
+                /** @default  */
+                bio: string;
+                /**
+                 * Format: uri
+                 * @default null
+                 */
+                avatarUrl: string | null;
+                /** @default 1 */
+                version: number;
                 /** Format: date-time */
                 createdAt: string;
               };
@@ -1576,6 +1722,84 @@ export interface operations {
                 /** Format: date-time */
                 createdAt: string;
               };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AuthController_forgotPassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** Format: email */
+          email: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Password reset email accepted */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              sent: true;
+              /** Format: date-time */
+              expiresAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AuthController_resetPassword: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          token: string;
+          password: string & string;
+        };
+      };
+    };
+    responses: {
+      /** @description Password reset */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              reset: true;
             };
             /** Format: starts_with */
             requestId: string;
@@ -1609,6 +1833,15 @@ export interface operations {
                 id: string;
                 emailMasked: string;
                 displayName: string;
+                /** @default  */
+                bio: string;
+                /**
+                 * Format: uri
+                 * @default null
+                 */
+                avatarUrl: string | null;
+                /** @default 1 */
+                version: number;
                 /** Format: date-time */
                 createdAt: string;
               };
@@ -1653,6 +1886,109 @@ export interface operations {
             data: {
               /** @enum {boolean} */
               loggedOut: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AuthController_logoutAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description All sessions revoked */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              loggedOut: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AuthController_sessions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Active sessions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** Format: date-time */
+              expiresAt: string;
+              current: boolean;
+              userAgent: string;
+              ip: string;
+              /** Format: date-time */
+              lastSeenAt: string;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AuthController_revokeSession: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        sessionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Session revoked */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              revoked: true;
             };
             /** Format: starts_with */
             requestId: string;
@@ -11766,6 +12102,237 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  UsersController_updateProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          displayName?: string;
+          bio?: string;
+          /** Format: uri */
+          avatarUrl?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated display profile */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              emailMasked: string;
+              displayName: string;
+              /** @default  */
+              bio: string;
+              /**
+               * Format: uri
+               * @default null
+               */
+              avatarUrl: string | null;
+              /** @default 1 */
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  UsersController_listPenNames: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Author pen names */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              name: string;
+              bio: string;
+              /** Format: uri */
+              avatarUrl: string | null;
+              isDefault: boolean;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  UsersController_createPenName: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          /** @default  */
+          bio: string;
+          /** Format: uri */
+          avatarUrl?: string | null;
+          /** @default false */
+          isDefault: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Created pen name */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              name: string;
+              bio: string;
+              /** Format: uri */
+              avatarUrl: string | null;
+              isDefault: boolean;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  UsersController_deletePenName: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        penNameId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Deleted pen name */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {boolean} */
+              deleted: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  UsersController_updatePenName: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        penNameId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          name?: string;
+          bio?: string;
+          /** Format: uri */
+          avatarUrl?: string | null;
+          isDefault?: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated pen name */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              name: string;
+              bio: string;
+              /** Format: uri */
+              avatarUrl: string | null;
+              isDefault: boolean;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };
