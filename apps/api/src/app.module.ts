@@ -4,6 +4,7 @@ import { AuthModule } from "./auth/auth.module";
 import { AgentRuntimeModule } from "./agent-runtime/agent-runtime.module";
 import { CanonModule } from "./canon/canon.module";
 import { ChaptersModule } from "./chapters/chapters.module";
+import { CharactersModule } from "./characters/characters.module";
 import { FactsModule } from "./facts/facts.module";
 import { GenerationModule } from "./generation/generation.module";
 import { HealthModule } from "./health/health.module";
@@ -21,6 +22,7 @@ import { WorksModule } from "./works/works.module";
     AgentRuntimeModule,
     CanonModule,
     ChaptersModule,
+    CharactersModule,
     FactsModule,
     GenerationModule,
     HealthModule,

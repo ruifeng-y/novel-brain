@@ -7,6 +7,9 @@ import {
   createRequestId,
   elapsedMilliseconds,
   extractFactCandidates,
+  projectActiveRelationshipsAtChapter,
+  projectCharacterKnowledgeAtChapter,
+  projectCharacterStateAtChapter,
   resolveProxyIpSecret,
   signClientIp,
   verifyClientIp,
@@ -375,5 +378,126 @@ describe("fact extraction", () => {
         },
       ]),
     );
+  });
+});
+
+describe("character domain projections", () => {
+  const hiddenFact = {
+    id: "fact-parents-murdered",
+    subject: "沈砚父母",
+    predicate: "死因",
+    object: "被仇家杀死",
+    validFromChapter: 1,
+    validToChapter: null,
+  };
+  const publicFact = {
+    id: "fact-sect-expelled",
+    subject: "沈砚",
+    predicate: "身份",
+    object: "被太玄门逐出",
+    validFromChapter: 3,
+    validToChapter: null,
+  };
+
+  it("does not disclose objective facts without an active knowledge state", () => {
+    const projection = projectCharacterKnowledgeAtChapter(
+      [hiddenFact, publicFact],
+      [
+        {
+          objectiveFactId: publicFact.id,
+          state: "knowledge",
+          claimedContent: "沈砚知道自己被逐出宗门。",
+          validFromChapter: 3,
+          validToChapter: null,
+        },
+      ],
+      5,
+    );
+
+    expect(projection.knownFacts.map((fact) => fact.id)).toEqual([publicFact.id]);
+    expect(projection.hiddenFactIds).toEqual([hiddenFact.id]);
+  });
+
+  it("keeps a misbelief from overwriting objective canon", () => {
+    const factsBefore = structuredClone([hiddenFact]);
+    const projection = projectCharacterKnowledgeAtChapter(
+      [hiddenFact],
+      [
+        {
+          objectiveFactId: hiddenFact.id,
+          state: "misbelief",
+          claimedContent: "沈砚相信父母是自尽。",
+          validFromChapter: 2,
+          validToChapter: null,
+        },
+      ],
+      6,
+    );
+
+    expect(projection.knownFacts).toEqual([]);
+    expect(projection.beliefs).toEqual([
+      {
+        objectiveFactId: hiddenFact.id,
+        state: "misbelief",
+        claimedContent: "沈砚相信父母是自尽。",
+      },
+    ]);
+    expect([hiddenFact]).toEqual(factsBefore);
+  });
+
+  it("replays body, location and ability transitions at a chapter boundary", () => {
+    const states = [
+      {
+        stateKind: "body" as const,
+        stateKey: "overall",
+        value: "左臂骨折",
+        validFromChapter: 1,
+        validToChapter: 9,
+      },
+      {
+        stateKind: "body" as const,
+        stateKey: "overall",
+        value: "伤势痊愈",
+        validFromChapter: 10,
+        validToChapter: null,
+      },
+      {
+        stateKind: "ability" as const,
+        stateKey: "seal",
+        value: "不能双手结印",
+        validFromChapter: 1,
+        validToChapter: 9,
+      },
+    ];
+
+    expect(projectCharacterStateAtChapter(states, 9)).toMatchObject({
+      "body:overall": { value: "左臂骨折" },
+      "ability:seal": { value: "不能双手结印" },
+    });
+    expect(projectCharacterStateAtChapter(states, 10)).toMatchObject({
+      "body:overall": { value: "伤势痊愈" },
+    });
+  });
+
+  it("returns only relationships valid at the requested chapter", () => {
+    const relationships = [
+      {
+        id: "rel-ally",
+        relationType: "ally" as const,
+        validFromChapter: 1,
+        validToChapter: 11,
+      },
+      {
+        id: "rel-enemy",
+        relationType: "enemy" as const,
+        validFromChapter: 12,
+        validToChapter: null,
+      },
+    ];
+
+    expect(projectActiveRelationshipsAtChapter(relationships, 11).map((edge) => edge.id)).toEqual([
+      "rel-ally",
+    ]);
+    expect(projectActiveRelationshipsAtChapter(relationships, 12)).toEqual([relationships[1]]);
   });
 });

@@ -1,6 +1,7 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   auditLogs,
+  characterProfiles,
   customFieldDefinitions,
   customFieldValues,
   facts as canonicalFacts,
@@ -850,6 +851,16 @@ export class SettingsRepository implements OnModuleDestroy {
       if (!entity) {
         throw new Error("Failed to create setting");
       }
+      if (entity.type === "character") {
+        await transaction.insert(characterProfiles).values({
+          entityId: entity.id,
+          workId: context.workId,
+          branchId: context.branchId,
+          userId,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
       await writeCustomFieldValues(
         transaction,
         userId,
@@ -1135,6 +1146,14 @@ export class SettingsRepository implements OnModuleDestroy {
     const now = new Date();
     const entityVersionId = uuidv7();
     const versionNodeId = uuidv7();
+    const [characterProfile] =
+      entity.type === "character"
+        ? await transaction
+            .select()
+            .from(characterProfiles)
+            .where(eq(characterProfiles.entityId, entity.id))
+            .limit(1)
+        : [];
     const snapshot = {
       type: entity.type,
       name: entity.name,
@@ -1149,6 +1168,18 @@ export class SettingsRepository implements OnModuleDestroy {
       version: entity.version,
       lockedAt: entity.lockedAt?.toISOString() ?? null,
       lockedBy: entity.lockedBy,
+      ...(characterProfile
+        ? {
+            characterProfile: {
+              desire: characterProfile.desire,
+              fear: characterProfile.fear,
+              goal: characterProfile.goal,
+              voiceSample: characterProfile.voiceSample,
+              voiceGuide: characterProfile.voiceGuide,
+              disguise: characterProfile.disguise,
+            },
+          }
+        : {}),
     };
     await transaction.insert(versionNodes).values({
       id: versionNodeId,

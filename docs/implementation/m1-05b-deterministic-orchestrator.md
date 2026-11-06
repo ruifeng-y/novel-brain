@@ -25,4 +25,4 @@
 - `packages/contracts/test/orchestrator.test.ts`
 - `packages/core/test/orchestrator.test.ts`
 - `apps/api/test/agent-orchestrator.integration.test.ts`
-- 迁移：`packages/db/migrations/0025_chemical_chamber.sql`
+- 迁移：`packages/db/migrations/0026_stormy_molly_hayes.sql`
