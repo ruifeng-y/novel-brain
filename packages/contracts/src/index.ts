@@ -1425,6 +1425,7 @@ export const domainRefTypeSchema = z.enum([
   "character",
   "faction",
   "map",
+  "world_rule",
   "map_layer",
   "map_node",
   "map_edge",
@@ -1519,6 +1520,144 @@ export const validityIntervalSchema = z
     }
   });
 export type ValidityInterval = z.infer<typeof validityIntervalSchema>;
+
+export const retrievalSourceKindSchema = z.enum(["entity", "fact", "timeline_event", "map_node"]);
+export type RetrievalSourceKind = z.infer<typeof retrievalSourceKindSchema>;
+
+export const retrievalMatchKindSchema = z.enum([
+  "canonical_name",
+  "alias",
+  "title",
+  "synonym",
+  "fuzzy",
+  "content",
+  "relationship",
+]);
+export type RetrievalMatchKind = z.infer<typeof retrievalMatchKindSchema>;
+
+export const retrievalMatchFieldSchema = z.enum([
+  "name",
+  "aliases",
+  "title",
+  "content",
+  "relationship",
+]);
+export type RetrievalMatchField = z.infer<typeof retrievalMatchFieldSchema>;
+
+export const retrievalQuerySchema = z
+  .object({
+    query: z.string().trim().min(1).max(200),
+    synonyms: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+    sourceKinds: z
+      .array(retrievalSourceKindSchema)
+      .min(1)
+      .max(4)
+      .default(["entity", "fact", "timeline_event", "map_node"]),
+    entityTypes: z.array(settingEntityTypeSchema).max(8).default([]),
+    chapterNumber: z.number().int().positive(),
+    versionNodeId: uuidV7Schema.nullable().default(null),
+    storyTime: storyTimePointSchema.nullable().default(null),
+    povCharacterId: uuidV7Schema.nullable().default(null),
+    expandRelationships: z.boolean().default(true),
+    relationshipDepth: z.number().int().min(0).max(2).optional(),
+    limit: z.number().int().min(1).max(100).default(20),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (!input.expandRelationships && (input.relationshipDepth ?? 0) > 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["relationshipDepth"],
+        message: "Relationship depth requires relationship expansion",
+      });
+    }
+  })
+  .transform((input) => ({
+    ...input,
+    relationshipDepth: input.expandRelationships ? (input.relationshipDepth ?? 1) : 0,
+  }));
+export type RetrievalQuery = z.infer<typeof retrievalQuerySchema>;
+
+export const retrievalRelationshipHopSchema = z
+  .object({
+    relationId: uuidV7Schema,
+    relationType: z.string().trim().min(1).max(80),
+    direction: z.enum(["outgoing", "incoming"]),
+    from: domainRefSchema,
+    to: domainRefSchema,
+  })
+  .strict();
+export type RetrievalRelationshipHop = z.infer<typeof retrievalRelationshipHopSchema>;
+
+export const retrievalSourceChapterSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    number: z.number().int().positive(),
+    title: z.string(),
+  })
+  .strict();
+export type RetrievalSourceChapter = z.infer<typeof retrievalSourceChapterSchema>;
+
+export const retrievalDisambiguationSchema = z
+  .object({
+    sameNameCount: z.number().int().min(1),
+    key: z.string().trim().min(1),
+  })
+  .strict();
+export type RetrievalDisambiguation = z.infer<typeof retrievalDisambiguationSchema>;
+
+export const retrievalResultSchema = z
+  .object({
+    id: uuidV7Schema,
+    sourceKind: retrievalSourceKindSchema,
+    matchKind: retrievalMatchKindSchema,
+    score: z.number().min(0).max(1),
+    label: z.string().trim().min(1).max(200),
+    canonicalName: z.string().trim().min(1).max(200),
+    entityType: settingEntityTypeSchema.nullable(),
+    summary: z.string(),
+    source: domainRefSchema,
+    validity: validityIntervalSchema,
+    sourceChapter: retrievalSourceChapterSchema.nullable(),
+    matchedTerm: z.string().trim().min(1).max(200),
+    matchedField: retrievalMatchFieldSchema,
+    relationshipPath: z.array(retrievalRelationshipHopSchema),
+    disambiguation: retrievalDisambiguationSchema,
+  })
+  .strict();
+export type RetrievalResult = z.infer<typeof retrievalResultSchema>;
+
+export const retrievalResultListResponseSchema = apiEnvelopeSchema(z.array(retrievalResultSchema));
+
+export const searchDocumentSourceTypeSchema = z.enum([
+  "entity",
+  "fact",
+  "timeline_event",
+  "map_node",
+  "chapter",
+  "setting",
+]);
+export type SearchDocumentSourceType = z.infer<typeof searchDocumentSourceTypeSchema>;
+
+export const searchDocumentSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    sourceType: searchDocumentSourceTypeSchema,
+    sourceId: uuidV7Schema,
+    entityType: settingEntityTypeSchema.nullable(),
+    title: z.string(),
+    content: z.string(),
+    aliases: z.array(z.string()),
+    version: versionRefSchema,
+    sourceChapterId: uuidV7Schema.nullable(),
+    validity: validityIntervalSchema,
+    metadata: z.record(z.string(), z.unknown()),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type SearchDocument = z.infer<typeof searchDocumentSchema>;
 
 const characterProfileFields = {
   desire: z.string().trim().max(20_000).default(""),

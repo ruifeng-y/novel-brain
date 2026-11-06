@@ -1140,6 +1140,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/retrieval/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["RetrievalController_search"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/entities": {
     parameters: {
       query?: never;
@@ -4217,6 +4233,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -4271,6 +4288,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -4350,6 +4368,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -4521,6 +4540,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -4575,6 +4595,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -4654,6 +4675,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -4789,6 +4811,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -4843,6 +4866,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -4922,6 +4946,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -5077,6 +5102,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -5131,6 +5157,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -5210,6 +5237,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -5351,6 +5379,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -5405,6 +5434,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -5484,6 +5514,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -5612,6 +5643,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -5695,6 +5727,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -5795,6 +5828,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -5869,6 +5903,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -6101,6 +6136,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -6159,6 +6195,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -6238,6 +6275,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -6476,6 +6514,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -6570,6 +6609,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -10636,6 +10676,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -10671,6 +10712,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -10863,6 +10905,7 @@ export interface operations {
                 | "character"
                 | "faction"
                 | "map"
+                | "world_rule"
                 | "map_layer"
                 | "map_node"
                 | "map_edge"
@@ -10899,6 +10942,7 @@ export interface operations {
                 | "character"
                 | "faction"
                 | "map"
+                | "world_rule"
                 | "map_layer"
                 | "map_node"
                 | "map_edge"
@@ -11040,6 +11084,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -11075,6 +11120,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -11355,6 +11401,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -11390,6 +11437,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -11667,6 +11715,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -11702,6 +11751,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -11977,6 +12027,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -12012,6 +12063,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -12287,6 +12339,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -12322,6 +12375,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -12610,6 +12664,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -12645,6 +12700,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -12833,6 +12889,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -12869,6 +12926,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -13009,6 +13067,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -13044,6 +13103,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -13368,6 +13428,252 @@ export interface operations {
                 decidedAt: string;
               };
             };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  RetrievalController_search: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          query: string;
+          /** @default [] */
+          synonyms?: string[];
+          /**
+           * @default [
+           *       "entity",
+           *       "fact",
+           *       "timeline_event",
+           *       "map_node"
+           *     ]
+           */
+          sourceKinds?: ("entity" | "fact" | "timeline_event" | "map_node")[];
+          /** @default [] */
+          entityTypes?: (
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event"
+          )[];
+          chapterNumber: number;
+          /** @default null */
+          versionNodeId?: string | null;
+          /** @default null */
+          storyTime?: {
+            era: string;
+            label: string;
+            sortKey: number;
+          } | null;
+          /** @default null */
+          povCharacterId?: string | null;
+          /** @default true */
+          expandRelationships?: boolean;
+          relationshipDepth?: number;
+          /** @default 20 */
+          limit?: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Structured retrieval results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              sourceKind: "entity" | "fact" | "timeline_event" | "map_node";
+              /** @enum {string} */
+              matchKind:
+                | "canonical_name"
+                | "alias"
+                | "title"
+                | "synonym"
+                | "fuzzy"
+                | "content"
+                | "relationship";
+              score: number;
+              label: string;
+              canonicalName: string;
+              /** @enum {string|null} */
+              entityType:
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event"
+                | null;
+              summary: string;
+              source: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "world_rule"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapter: {
+                chapterId: string;
+                number: number;
+                title: string;
+              } | null;
+              matchedTerm: string;
+              /** @enum {string} */
+              matchedField: "name" | "aliases" | "title" | "content" | "relationship";
+              relationshipPath: {
+                relationId: string;
+                relationType: string;
+                /** @enum {string} */
+                direction: "outgoing" | "incoming";
+                from: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "world_rule"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                to: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "world_rule"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+              }[];
+              disambiguation: {
+                sameNameCount: number;
+                key: string;
+              };
+            }[];
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
@@ -15320,6 +15626,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -17310,6 +17617,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -17345,6 +17653,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -17505,6 +17814,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -18037,6 +18347,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -18072,6 +18383,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -18233,6 +18545,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -18567,6 +18880,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -18602,6 +18916,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -18762,6 +19077,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -19118,6 +19434,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -19153,6 +19470,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -19314,6 +19632,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -19815,6 +20134,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -19850,6 +20170,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -20011,6 +20332,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -20345,6 +20667,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -20380,6 +20703,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -20540,6 +20864,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -20925,6 +21250,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -20960,6 +21286,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -21121,6 +21448,7 @@ export interface operations {
                           | "character"
                           | "faction"
                           | "map"
+                          | "world_rule"
                           | "map_layer"
                           | "map_node"
                           | "map_edge"
@@ -21455,6 +21783,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -21490,6 +21819,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -21650,6 +21980,7 @@ export interface operations {
                         | "character"
                         | "faction"
                         | "map"
+                        | "world_rule"
                         | "map_layer"
                         | "map_node"
                         | "map_edge"
@@ -21957,6 +22288,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -22007,6 +22339,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -22071,6 +22404,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -22219,6 +22553,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -22269,6 +22604,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -22333,6 +22669,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -22451,6 +22788,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -22501,6 +22839,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -22565,6 +22904,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -22695,6 +23035,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -22745,6 +23086,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -22809,6 +23151,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -22920,6 +23263,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -22992,6 +23336,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -23076,6 +23421,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -23160,6 +23506,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -23262,6 +23609,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -23441,6 +23789,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -23573,6 +23922,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -23752,6 +24102,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -23870,6 +24221,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -24049,6 +24401,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -24618,6 +24971,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -24687,6 +25041,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -24722,6 +25077,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -24757,6 +25113,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -24976,6 +25333,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -25065,6 +25423,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -25100,6 +25459,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -25135,6 +25495,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -25229,6 +25590,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -25264,6 +25626,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -25299,6 +25662,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -25417,6 +25781,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -25467,6 +25832,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -25531,6 +25897,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -25618,6 +25985,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -25797,6 +26165,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -25898,6 +26267,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -25967,6 +26337,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -26002,6 +26373,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -26037,6 +26409,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -26130,6 +26503,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -26238,6 +26612,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -26274,6 +26649,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -26309,6 +26685,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -26353,6 +26730,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -26388,6 +26766,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -26475,6 +26854,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -26522,6 +26902,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -26564,6 +26945,7 @@ export interface operations {
                       | "character"
                       | "faction"
                       | "map"
+                      | "world_rule"
                       | "map_layer"
                       | "map_node"
                       | "map_edge"
@@ -26684,6 +27066,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -26893,6 +27276,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27032,6 +27416,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27200,6 +27585,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27519,6 +27905,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27555,6 +27942,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27590,6 +27978,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27634,6 +28023,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -27669,6 +28059,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -27789,6 +28180,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -27825,6 +28217,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -27879,6 +28272,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27915,6 +28309,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27950,6 +28345,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -27994,6 +28390,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -28029,6 +28426,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -28147,6 +28545,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28183,6 +28582,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28218,6 +28618,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28262,6 +28663,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -28297,6 +28699,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -28415,6 +28818,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -28466,6 +28870,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28502,6 +28907,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28537,6 +28943,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28581,6 +28988,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -28616,6 +29024,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -28728,6 +29137,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -28806,6 +29216,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28842,6 +29253,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28877,6 +29289,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -28921,6 +29334,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -28956,6 +29370,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -29073,6 +29488,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -29120,6 +29536,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -29162,6 +29579,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -29312,6 +29730,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -29359,6 +29778,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -29401,6 +29821,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -29521,6 +29942,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -29568,6 +29990,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -29610,6 +30033,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -29752,6 +30176,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -29799,6 +30224,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -29841,6 +30267,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -29956,6 +30383,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -30045,6 +30473,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -30172,6 +30601,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -30219,6 +30649,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -30261,6 +30692,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -30375,6 +30807,7 @@ export interface operations {
               | "character"
               | "faction"
               | "map"
+              | "world_rule"
               | "map_layer"
               | "map_node"
               | "map_edge"
@@ -30437,6 +30870,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -30484,6 +30918,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -30526,6 +30961,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"
@@ -30652,6 +31088,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -30699,6 +31136,7 @@ export interface operations {
                   | "character"
                   | "faction"
                   | "map"
+                  | "world_rule"
                   | "map_layer"
                   | "map_node"
                   | "map_edge"
@@ -30741,6 +31179,7 @@ export interface operations {
                     | "character"
                     | "faction"
                     | "map"
+                    | "world_rule"
                     | "map_layer"
                     | "map_node"
                     | "map_edge"

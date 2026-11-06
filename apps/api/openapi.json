@@ -6189,6 +6189,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -6327,6 +6328,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -6553,6 +6555,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -7083,6 +7086,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -7221,6 +7225,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -7447,6 +7452,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -7887,6 +7893,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -8025,6 +8032,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -8251,6 +8259,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -8745,6 +8754,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -8883,6 +8893,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -9109,6 +9120,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -9568,6 +9580,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -9706,6 +9719,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -9932,6 +9946,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -10368,6 +10383,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -10566,6 +10582,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -10825,6 +10842,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -11019,6 +11037,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -11690,6 +11709,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -11847,6 +11867,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -12073,6 +12094,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -12853,6 +12875,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -13116,6 +13139,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -24786,6 +24810,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -24860,6 +24885,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -25493,6 +25519,7 @@
                               "character",
                               "faction",
                               "map",
+                              "world_rule",
                               "map_layer",
                               "map_node",
                               "map_edge",
@@ -25568,6 +25595,7 @@
                               "character",
                               "faction",
                               "map",
+                              "world_rule",
                               "map_layer",
                               "map_node",
                               "map_edge",
@@ -26082,6 +26110,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -26156,6 +26185,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -27269,6 +27299,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -27343,6 +27374,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -28447,6 +28479,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -28521,6 +28554,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -29615,6 +29649,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -29689,6 +29724,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -30783,6 +30819,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -30857,6 +30894,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -32006,6 +32044,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -32080,6 +32119,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -32813,6 +32853,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -32888,6 +32929,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -33398,6 +33440,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -33472,6 +33515,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -34708,6 +34752,613 @@
           }
         },
         "tags": ["review"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/retrieval/search": {
+      "post": {
+        "operationId": "RetrievalController_search",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "synonyms": {
+                    "default": [],
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "sourceKinds": {
+                    "default": ["entity", "fact", "timeline_event", "map_node"],
+                    "minItems": 1,
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["entity", "fact", "timeline_event", "map_node"]
+                    }
+                  },
+                  "entityTypes": {
+                    "default": [],
+                    "maxItems": 8,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "world_rule",
+                        "character",
+                        "faction",
+                        "map",
+                        "power_system",
+                        "golden_finger",
+                        "item",
+                        "timeline_event"
+                      ]
+                    }
+                  },
+                  "chapterNumber": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "versionNodeId": {
+                    "default": null,
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "storyTime": {
+                    "default": null,
+                    "nullable": true,
+                    "type": "object",
+                    "properties": {
+                      "era": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "sortKey": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": ["era", "label", "sortKey"],
+                    "additionalProperties": false
+                  },
+                  "povCharacterId": {
+                    "default": null,
+                    "nullable": true,
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  },
+                  "expandRelationships": {
+                    "default": true,
+                    "type": "boolean"
+                  },
+                  "relationshipDepth": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 2
+                  },
+                  "limit": {
+                    "default": 20,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  }
+                },
+                "required": ["query", "chapterNumber"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Structured retrieval results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "sourceKind": {
+                            "type": "string",
+                            "enum": ["entity", "fact", "timeline_event", "map_node"]
+                          },
+                          "matchKind": {
+                            "type": "string",
+                            "enum": [
+                              "canonical_name",
+                              "alias",
+                              "title",
+                              "synonym",
+                              "fuzzy",
+                              "content",
+                              "relationship"
+                            ]
+                          },
+                          "score": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "canonicalName": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "entityType": {
+                            "nullable": true,
+                            "type": "string",
+                            "enum": [
+                              "world_rule",
+                              "character",
+                              "faction",
+                              "map",
+                              "power_system",
+                              "golden_finger",
+                              "item",
+                              "timeline_event"
+                            ]
+                          },
+                          "summary": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "object",
+                            "properties": {
+                              "type": {
+                                "type": "string",
+                                "enum": [
+                                  "character",
+                                  "faction",
+                                  "map",
+                                  "world_rule",
+                                  "map_layer",
+                                  "map_node",
+                                  "map_edge",
+                                  "map_marker",
+                                  "territory",
+                                  "power_system",
+                                  "golden_finger",
+                                  "item",
+                                  "timeline_event",
+                                  "timeline_era",
+                                  "itinerary",
+                                  "fact",
+                                  "chapter",
+                                  "character_relationship",
+                                  "character_state",
+                                  "character_knowledge"
+                                ]
+                              },
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "label": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "version": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "branchId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "versionNodeId": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "objectVersion": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": ["branchId", "versionNodeId", "objectVersion"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": ["type", "id", "branchId", "label", "version"],
+                            "additionalProperties": false
+                          },
+                          "validity": {
+                            "type": "object",
+                            "properties": {
+                              "fromChapter": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "toChapter": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "fromStoryTime": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "era": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "sortKey": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": ["era", "label", "sortKey"],
+                                "additionalProperties": false
+                              },
+                              "toStoryTime": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "era": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "sortKey": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": ["era", "label", "sortKey"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": [
+                              "fromChapter",
+                              "toChapter",
+                              "fromStoryTime",
+                              "toStoryTime"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "sourceChapter": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "chapterId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "number": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["chapterId", "number", "title"],
+                            "additionalProperties": false
+                          },
+                          "matchedTerm": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "matchedField": {
+                            "type": "string",
+                            "enum": ["name", "aliases", "title", "content", "relationship"]
+                          },
+                          "relationshipPath": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "relationId": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "relationType": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                },
+                                "direction": {
+                                  "type": "string",
+                                  "enum": ["outgoing", "incoming"]
+                                },
+                                "from": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "character",
+                                        "faction",
+                                        "map",
+                                        "world_rule",
+                                        "map_layer",
+                                        "map_node",
+                                        "map_edge",
+                                        "map_marker",
+                                        "territory",
+                                        "power_system",
+                                        "golden_finger",
+                                        "item",
+                                        "timeline_event",
+                                        "timeline_era",
+                                        "itinerary",
+                                        "fact",
+                                        "chapter",
+                                        "character_relationship",
+                                        "character_state",
+                                        "character_knowledge"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "branchId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "default": null,
+                                      "nullable": true,
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "version": {
+                                      "default": null,
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "branchId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "versionNodeId": {
+                                          "default": null,
+                                          "nullable": true,
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "objectVersion": {
+                                          "default": null,
+                                          "nullable": true,
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "exclusiveMinimum": true,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": ["branchId", "versionNodeId", "objectVersion"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": ["type", "id", "branchId", "label", "version"],
+                                  "additionalProperties": false
+                                },
+                                "to": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "character",
+                                        "faction",
+                                        "map",
+                                        "world_rule",
+                                        "map_layer",
+                                        "map_node",
+                                        "map_edge",
+                                        "map_marker",
+                                        "territory",
+                                        "power_system",
+                                        "golden_finger",
+                                        "item",
+                                        "timeline_event",
+                                        "timeline_era",
+                                        "itinerary",
+                                        "fact",
+                                        "chapter",
+                                        "character_relationship",
+                                        "character_state",
+                                        "character_knowledge"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "branchId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "default": null,
+                                      "nullable": true,
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "version": {
+                                      "default": null,
+                                      "nullable": true,
+                                      "type": "object",
+                                      "properties": {
+                                        "branchId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "versionNodeId": {
+                                          "default": null,
+                                          "nullable": true,
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "objectVersion": {
+                                          "default": null,
+                                          "nullable": true,
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "exclusiveMinimum": true,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": ["branchId", "versionNodeId", "objectVersion"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": ["type", "id", "branchId", "label", "version"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": ["relationId", "relationType", "direction", "from", "to"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "disambiguation": {
+                            "type": "object",
+                            "properties": {
+                              "sameNameCount": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991
+                              },
+                              "key": {
+                                "type": "string",
+                                "minLength": 1
+                              }
+                            },
+                            "required": ["sameNameCount", "key"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "sourceKind",
+                          "matchKind",
+                          "score",
+                          "label",
+                          "canonicalName",
+                          "entityType",
+                          "summary",
+                          "source",
+                          "validity",
+                          "sourceChapter",
+                          "matchedTerm",
+                          "matchedField",
+                          "relationshipPath",
+                          "disambiguation"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["retrieval"]
       }
     },
     "/api/v1/works/{workId}/branches/{branchId}/entities": {
@@ -41835,6 +42486,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -47574,6 +48226,7 @@
                                             "character",
                                             "faction",
                                             "map",
+                                            "world_rule",
                                             "map_layer",
                                             "map_node",
                                             "map_edge",
@@ -47655,6 +48308,7 @@
                                             "character",
                                             "faction",
                                             "map",
+                                            "world_rule",
                                             "map_layer",
                                             "map_node",
                                             "map_edge",
@@ -48225,6 +48879,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -50055,6 +50710,7 @@
                                                 "character",
                                                 "faction",
                                                 "map",
+                                                "world_rule",
                                                 "map_layer",
                                                 "map_node",
                                                 "map_edge",
@@ -50142,6 +50798,7 @@
                                                 "character",
                                                 "faction",
                                                 "map",
+                                                "world_rule",
                                                 "map_layer",
                                                 "map_node",
                                                 "map_edge",
@@ -50718,6 +51375,7 @@
                                               "character",
                                               "faction",
                                               "map",
+                                              "world_rule",
                                               "map_layer",
                                               "map_node",
                                               "map_edge",
@@ -51965,6 +52623,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -52042,6 +52701,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -52608,6 +53268,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -54287,6 +54948,7 @@
                                                 "character",
                                                 "faction",
                                                 "map",
+                                                "world_rule",
                                                 "map_layer",
                                                 "map_node",
                                                 "map_edge",
@@ -54374,6 +55036,7 @@
                                                 "character",
                                                 "faction",
                                                 "map",
+                                                "world_rule",
                                                 "map_layer",
                                                 "map_node",
                                                 "map_edge",
@@ -54950,6 +55613,7 @@
                                               "character",
                                               "faction",
                                               "map",
+                                              "world_rule",
                                               "map_layer",
                                               "map_node",
                                               "map_edge",
@@ -56197,6 +56861,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -56274,6 +56939,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -56840,6 +57506,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -58086,6 +58753,7 @@
                                                 "character",
                                                 "faction",
                                                 "map",
+                                                "world_rule",
                                                 "map_layer",
                                                 "map_node",
                                                 "map_edge",
@@ -58173,6 +58841,7 @@
                                                 "character",
                                                 "faction",
                                                 "map",
+                                                "world_rule",
                                                 "map_layer",
                                                 "map_node",
                                                 "map_edge",
@@ -58749,6 +59418,7 @@
                                               "character",
                                               "faction",
                                               "map",
+                                              "world_rule",
                                               "map_layer",
                                               "map_node",
                                               "map_edge",
@@ -60204,6 +60874,7 @@
                                                 "character",
                                                 "faction",
                                                 "map",
+                                                "world_rule",
                                                 "map_layer",
                                                 "map_node",
                                                 "map_edge",
@@ -60291,6 +60962,7 @@
                                                 "character",
                                                 "faction",
                                                 "map",
+                                                "world_rule",
                                                 "map_layer",
                                                 "map_node",
                                                 "map_edge",
@@ -60867,6 +61539,7 @@
                                               "character",
                                               "faction",
                                               "map",
+                                              "world_rule",
                                               "map_layer",
                                               "map_node",
                                               "map_edge",
@@ -62114,6 +62787,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -62191,6 +62865,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -62757,6 +63432,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -63472,6 +64148,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -63593,6 +64270,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -63802,6 +64480,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -64231,6 +64910,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -64352,6 +65032,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -64554,6 +65235,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -64911,6 +65593,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -65032,6 +65715,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -65234,6 +65918,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -65631,6 +66316,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -65752,6 +66438,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -65954,6 +66641,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -66307,6 +66995,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -66493,6 +67182,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -66725,6 +67415,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -66949,6 +67640,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -67229,6 +67921,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -67920,6 +68613,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -68324,6 +69018,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -69015,6 +69710,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -69374,6 +70070,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -70065,6 +70762,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -71852,6 +72550,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -72076,6 +72775,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -72149,6 +72849,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -72222,6 +72923,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -72926,6 +73628,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -73176,6 +73879,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -73249,6 +73953,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -73322,6 +74027,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -73602,6 +74308,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -73675,6 +74382,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -73748,6 +74456,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -74112,6 +74821,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -74233,6 +74943,7 @@
                                             "character",
                                             "faction",
                                             "map",
+                                            "world_rule",
                                             "map_layer",
                                             "map_node",
                                             "map_edge",
@@ -74446,6 +75157,7 @@
                                             "character",
                                             "faction",
                                             "map",
+                                            "world_rule",
                                             "map_layer",
                                             "map_node",
                                             "map_edge",
@@ -74752,6 +75464,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -75450,6 +76163,7 @@
                                             "character",
                                             "faction",
                                             "map",
+                                            "world_rule",
                                             "map_layer",
                                             "map_node",
                                             "map_edge",
@@ -75825,6 +76539,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -76049,6 +76764,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -76122,6 +76838,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -76195,6 +76912,7 @@
                                           "character",
                                           "faction",
                                           "map",
+                                          "world_rule",
                                           "map_layer",
                                           "map_node",
                                           "map_edge",
@@ -76538,6 +77256,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -76902,6 +77621,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -76979,6 +77699,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -77053,6 +77774,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -77160,6 +77882,7 @@
                                             "character",
                                             "faction",
                                             "map",
+                                            "world_rule",
                                             "map_layer",
                                             "map_node",
                                             "map_edge",
@@ -77237,6 +77960,7 @@
                                             "character",
                                             "faction",
                                             "map",
+                                            "world_rule",
                                             "map_layer",
                                             "map_node",
                                             "map_edge",
@@ -77553,6 +78277,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -77662,6 +78387,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -77766,6 +78492,7 @@
                                             "character",
                                             "faction",
                                             "map",
+                                            "world_rule",
                                             "map_layer",
                                             "map_node",
                                             "map_edge",
@@ -78159,6 +78886,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -78772,6 +79500,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -79191,6 +79920,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -79705,6 +80435,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -80682,6 +81413,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -80759,6 +81491,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -80833,6 +81566,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -80940,6 +81674,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -81013,6 +81748,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -81409,6 +82145,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -81484,6 +82221,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -81595,6 +82333,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -81672,6 +82411,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -81746,6 +82486,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -81853,6 +82594,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -81926,6 +82668,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -82293,6 +83036,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -82370,6 +83114,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -82444,6 +83189,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -82551,6 +83297,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -82624,6 +83371,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -83029,6 +83777,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -83137,6 +83886,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -83214,6 +83964,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -83288,6 +84039,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -83395,6 +84147,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -83468,6 +84221,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -83837,6 +84591,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -84046,6 +84801,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -84123,6 +84879,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -84197,6 +84954,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -84304,6 +85062,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -84377,6 +85136,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -84738,6 +85498,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -84847,6 +85608,7 @@
                                   "character",
                                   "faction",
                                   "map",
+                                  "world_rule",
                                   "map_layer",
                                   "map_node",
                                   "map_edge",
@@ -84945,6 +85707,7 @@
                                         "character",
                                         "faction",
                                         "map",
+                                        "world_rule",
                                         "map_layer",
                                         "map_node",
                                         "map_edge",
@@ -85417,6 +86180,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -85526,6 +86290,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -85624,6 +86389,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -86006,6 +86772,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -86115,6 +86882,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -86213,6 +86981,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -86684,6 +87453,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -86793,6 +87563,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -86891,6 +87662,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -87273,6 +88045,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -87515,6 +88288,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -87892,6 +88666,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -88001,6 +88776,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -88099,6 +88875,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -88483,6 +89260,7 @@
                           "character",
                           "faction",
                           "map",
+                          "world_rule",
                           "map_layer",
                           "map_node",
                           "map_edge",
@@ -88623,6 +89401,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -88732,6 +89511,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -88830,6 +89610,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",
@@ -89232,6 +90013,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -89341,6 +90123,7 @@
                                 "character",
                                 "faction",
                                 "map",
+                                "world_rule",
                                 "map_layer",
                                 "map_node",
                                 "map_edge",
@@ -89439,6 +90222,7 @@
                                       "character",
                                       "faction",
                                       "map",
+                                      "world_rule",
                                       "map_layer",
                                       "map_node",
                                       "map_edge",

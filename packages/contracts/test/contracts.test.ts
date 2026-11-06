@@ -52,6 +52,8 @@ import {
   readinessResponseSchema,
   registerRequestSchema,
   resetPasswordRequestSchema,
+  retrievalQuerySchema,
+  retrievalResultSchema,
   sendRegistrationCodeRequestSchema,
   sendRegistrationCodeResponseSchema,
   settingsImportConfirmRequestSchema,
@@ -1744,5 +1746,70 @@ describe("character domain contracts", () => {
         ],
       }).kind,
     ).toBe("knowledge_state");
+  });
+
+  it("types structured retrieval queries and provenance-bearing results", () => {
+    const query = retrievalQuerySchema.parse({
+      query: "小砚",
+      synonyms: ["师父"],
+      sourceKinds: ["entity", "fact", "timeline_event", "map_node"],
+      entityTypes: ["character", "faction", "map", "item"],
+      chapterNumber: 5,
+      versionNodeId: null,
+      storyTime: { era: "大玄历", label: "第一年夏", sortKey: 20 },
+      povCharacterId: versionNodeId,
+      expandRelationships: true,
+      relationshipDepth: 1,
+      limit: 20,
+    });
+    expect(query).toMatchObject({
+      query: "小砚",
+      chapterNumber: 5,
+      expandRelationships: true,
+      relationshipDepth: 1,
+    });
+
+    const result = retrievalResultSchema.parse({
+      id: versionNodeId,
+      sourceKind: "entity",
+      matchKind: "alias",
+      score: 0.98,
+      label: "沈砚",
+      canonicalName: "沈砚",
+      entityType: "character",
+      summary: "被宗门抛弃的外门杂役。",
+      source: {
+        type: "character",
+        id: versionNodeId,
+        branchId,
+        label: "沈砚",
+        version: { branchId, versionNodeId: factId, objectVersion: 2 },
+      },
+      validity: {
+        fromChapter: 1,
+        toChapter: null,
+        fromStoryTime: null,
+        toStoryTime: null,
+      },
+      sourceChapter: null,
+      matchedTerm: "小砚",
+      matchedField: "aliases",
+      relationshipPath: [],
+      disambiguation: { sameNameCount: 2, key: "character:沈砚" },
+    });
+    expect(result.source.version).toMatchObject({ versionNodeId: factId, objectVersion: 2 });
+    expect(() =>
+      retrievalQuerySchema.parse({
+        query: "沈砚",
+        chapterNumber: 5,
+        relationshipDepth: 3,
+      }),
+    ).toThrow();
+    expect(() =>
+      retrievalQuerySchema.parse({
+        query: "沈砚",
+        relationshipDepth: 1,
+      }),
+    ).toThrow();
   });
 });

@@ -13,6 +13,7 @@ import { SettingsImportModule } from "./imports/settings-import.module";
 import { ModelConfigModule } from "./model-config/model-config.module";
 import { OutlineModule } from "./outline/outline.module";
 import { ReviewModule } from "./review/review.module";
+import { RetrievalModule } from "./retrieval/retrieval.module";
 import { SettingsModule } from "./settings/settings.module";
 import { StoryBibleModule } from "./story-bible/story-bible.module";
 import { StoryLedgerModule } from "./story-ledger/story-ledger.module";
@@ -35,6 +36,7 @@ import { WorldModule } from "./world/world.module";
     ModelConfigModule,
     OutlineModule,
     ReviewModule,
+    RetrievalModule,
     SettingsModule,
     StoryBibleModule,
     StoryLedgerModule,
