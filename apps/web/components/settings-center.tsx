@@ -26,6 +26,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   apiErrorSchema,
+  characterDetailResponseSchema,
   confirmedSettingListResponseSchema,
   customFieldDefinitionListResponseSchema,
   customFieldDefinitionResponseSchema,
@@ -38,6 +39,7 @@ import {
   settingProposalResponseSchema,
   workResponseSchema,
   type ConfirmedSetting,
+  type CharacterDetail,
   type CustomFieldDefinition,
   type CustomFieldValue,
   type SettingChangeRequest,
@@ -175,6 +177,42 @@ const changeRequestStatusLabels: Record<SettingChangeRequest["status"], string> 
   applied: "已应用",
 };
 
+const relationshipTypeLabels: Record<
+  CharacterDetail["relationships"][number]["relationType"],
+  string
+> = {
+  kinship: "亲属",
+  ally: "同盟",
+  enemy: "敌对",
+  mentor: "师承",
+  student: "弟子",
+  subordinate: "下级",
+  superior: "上级",
+  member_of: "隶属",
+  located_at: "位于",
+  controls: "控制",
+  owns: "拥有",
+};
+
+const characterStateLabels: Record<
+  CharacterDetail["stateTransitions"][number]["stateKind"],
+  string
+> = {
+  body: "身体",
+  limb: "肢体",
+  location: "位置",
+  ability: "能力",
+  disguise: "伪装",
+};
+
+const knowledgeStateLabels: Record<CharacterDetail["knowledgeStates"][number]["state"], string> = {
+  knowledge: "已知",
+  belief: "相信",
+  suspicion: "怀疑",
+  misbelief: "误信",
+  unknown: "未知",
+};
+
 const customFieldTypeLabels: Record<CustomFieldDefinition["fieldType"], string> = {
   text: "文本",
   long_text: "长文本",
@@ -214,6 +252,9 @@ export function SettingsCenter({ workId }: { workId: string }) {
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
   const [proposals, setProposals] = useState<SettingProposal[]>([]);
   const [changeRequests, setChangeRequests] = useState<SettingChangeRequest[]>([]);
+  const [characterDetail, setCharacterDetail] = useState<CharacterDetail | null>(null);
+  const [characterDetailLoading, setCharacterDetailLoading] = useState(false);
+  const [characterDetailError, setCharacterDetailError] = useState("");
   const [activeColumn, setActiveColumn] = useState<ColumnKey>("world");
   const [view, setView] = useState<ViewMode>("columns");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -266,7 +307,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
   }, [load]);
 
   const refreshDetail = useCallback(
-    async (entityId: string) => {
+    async (entityId: string, entityType: SettingEntityType) => {
       if (!work) {
         return;
       }
@@ -283,18 +324,46 @@ export function SettingsCenter({ workId }: { workId: string }) {
           settingChangeRequestListResponseSchema.parse(await changeResponse.json()).data,
         );
       }
+      setCharacterDetail(null);
+      setCharacterDetailError("");
+      if (entityType !== "character") {
+        setCharacterDetailLoading(false);
+        return;
+      }
+      setCharacterDetailLoading(true);
+      try {
+        const response = await fetch(`${basePath}/characters/${entityId}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error(await readError(response, "人物档案加载失败。"));
+        }
+        setCharacterDetail(characterDetailResponseSchema.parse(await response.json()).data);
+      } catch (caught) {
+        setCharacterDetailError(caught instanceof Error ? caught.message : "人物档案加载失败。");
+      } finally {
+        setCharacterDetailLoading(false);
+      }
     },
     [work],
   );
 
+  const selectedEntity = useMemo(
+    () => entities.find((entity) => entity.id === selectedId) ?? null,
+    [entities, selectedId],
+  );
+
   useEffect(() => {
-    if (view !== "columns" || !selectedId) {
+    if (view !== "columns" || !selectedEntity) {
       setProposals([]);
       setChangeRequests([]);
+      setCharacterDetail(null);
+      setCharacterDetailError("");
+      setCharacterDetailLoading(false);
       return;
     }
-    void refreshDetail(selectedId);
-  }, [refreshDetail, selectedId, view]);
+    void refreshDetail(selectedEntity.id, selectedEntity.type);
+  }, [refreshDetail, selectedEntity, view]);
 
   const counts = useMemo(() => {
     return {
@@ -387,7 +456,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
         setChangeRequests((current) => [...current, request]);
         setEditor(null);
         setNotice(`“${request.title}”已提交，等待影响分析。`);
-        await refreshDetail(editor.entityId);
+        await refreshDetail(editor.entityId, editor.type);
         return;
       }
       const updated = await mutateEntity(
@@ -439,7 +508,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
       );
       setProposals((current) => [...current, proposal]);
       await refreshProjection();
-      await refreshDetail(entity.id);
+      await refreshDetail(entity.id, entity.type);
       setNotice(`“${entity.name}”已提交提案，等待裁决。`);
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "提案提交失败。");
@@ -475,7 +544,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
         current.map((candidate) => (candidate.id === decided.id ? decided : candidate)),
       );
       await refreshProjection();
-      await refreshDetail(entity.id);
+      await refreshDetail(entity.id, entity.type);
       setNotice(decision === "accept" ? "提案已确认并锁定。" : "提案已驳回，设定已废弃。");
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "提案裁决失败。");
@@ -824,6 +893,9 @@ export function SettingsCenter({ workId }: { workId: string }) {
             <EntityDetail
               changeRequests={changeRequests}
               busy={busy}
+              characterDetail={characterDetail}
+              characterDetailError={characterDetailError}
+              characterDetailLoading={characterDetailLoading}
               customFieldDefinitions={customFields}
               entity={selected}
               key={selected.id}
@@ -836,6 +908,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
               onEdit={() => beginEdit(selected)}
               onEditAlias={() => beginEdit(selected, "alias")}
               onLock={() => lockEntity(selected)}
+              onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
               proposals={proposals}
             />
           ) : (
@@ -1591,6 +1664,9 @@ function ColumnEmptyState({ label, onCreate }: { label: string; onCreate: () => 
 function EntityDetail({
   busy,
   changeRequests,
+  characterDetail,
+  characterDetailError,
+  characterDetailLoading,
   customFieldDefinitions,
   entity,
   onChangeRequest,
@@ -1600,10 +1676,14 @@ function EntityDetail({
   onEdit,
   onEditAlias,
   onLock,
+  onRetryCharacterDetail,
   proposals,
 }: {
   busy: string;
   changeRequests: SettingChangeRequest[];
+  characterDetail: CharacterDetail | null;
+  characterDetailError: string;
+  characterDetailLoading: boolean;
   customFieldDefinitions: CustomFieldDefinition[];
   entity: SettingEntity;
   onChangeRequest: () => void;
@@ -1617,6 +1697,7 @@ function EntityDetail({
   onEdit: () => void;
   onEditAlias: () => void;
   onLock: () => void;
+  onRetryCharacterDetail: () => void;
   proposals: SettingProposal[];
 }) {
   const locked = entity.status === "locked";
@@ -1675,20 +1756,143 @@ function EntityDetail({
           <p>内容：{entity.data.rule}</p>
         </div>
       ) : entity.type === "character" ? (
-        <>
-          <div className="settings-detail-block">
-            <h3>当前身体状态</h3>
-            <p>{entity.data.bodyState}</p>
-          </div>
-          <div className="settings-detail-block">
-            <h3>知识边界</h3>
-            <p>{entity.data.knowledgeBoundary}</p>
-          </div>
-          <div className="settings-detail-block">
-            <h3>关系摘要</h3>
-            <p>{entity.data.relationshipSummary}</p>
-          </div>
-        </>
+        <div className="settings-character-domain">
+          {characterDetailLoading ? (
+            <div className="settings-detail-block settings-character-loading" role="status">
+              <LoaderCircle className="spin" size={16} aria-hidden="true" />
+              <span>正在加载人物档案</span>
+            </div>
+          ) : characterDetailError ? (
+            <div className="settings-detail-block settings-character-error" role="alert">
+              <TriangleAlert size={16} aria-hidden="true" />
+              <span>{characterDetailError}</span>
+              <button className="text-btn small" onClick={onRetryCharacterDetail} type="button">
+                重试
+              </button>
+            </div>
+          ) : characterDetail ? (
+            <>
+              <div className="settings-detail-block">
+                <h3>基本档案</h3>
+                <dl className="settings-character-grid">
+                  <div>
+                    <dt>欲望</dt>
+                    <dd>{characterDetail.profile.desire || "尚未记录"}</dd>
+                  </div>
+                  <div>
+                    <dt>恐惧</dt>
+                    <dd>{characterDetail.profile.fear || "尚未记录"}</dd>
+                  </div>
+                  <div>
+                    <dt>目标</dt>
+                    <dd>{characterDetail.profile.goal || "尚未记录"}</dd>
+                  </div>
+                  <div>
+                    <dt>伪装</dt>
+                    <dd>{characterDetail.profile.disguise || "尚未记录"}</dd>
+                  </div>
+                  <div>
+                    <dt>声线样本</dt>
+                    <dd>{characterDetail.profile.voiceSample || "尚未记录"}</dd>
+                  </div>
+                  <div>
+                    <dt>声线提示</dt>
+                    <dd>{characterDetail.profile.voiceGuide || "尚未记录"}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="settings-detail-block">
+                <h3>关系</h3>
+                {characterDetail.relationships.length === 0 ? (
+                  <p>还没有类型化关系。</p>
+                ) : (
+                  <ul className="settings-character-records">
+                    {characterDetail.relationships.map((relationship) => (
+                      <li key={relationship.id}>
+                        <div>
+                          <strong>
+                            {relationshipTypeLabels[relationship.relationType]} ·{" "}
+                            {relationship.target.label ?? "未命名目标"}
+                          </strong>
+                          <span>{formatValidity(relationship.validity)}</span>
+                        </div>
+                        <small>
+                          {relationship.sourceChapterId ? "来源：章节记录" : "来源：作者补录"}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="settings-detail-block">
+                <h3>状态历史</h3>
+                {characterDetail.stateTransitions.length === 0 ? (
+                  <p>还没有身体、位置或能力状态记录。</p>
+                ) : (
+                  <ul className="settings-character-records">
+                    {characterDetail.stateTransitions.map((state) => (
+                      <li key={state.id}>
+                        <div>
+                          <strong>
+                            {characterStateLabels[state.stateKind]} · {state.stateKey}
+                          </strong>
+                          <span>{formatValidity(state.validity)}</span>
+                        </div>
+                        <p>{state.value}</p>
+                        {state.target?.label ? <small>地点：{state.target.label}</small> : null}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="settings-detail-block">
+                <h3>角色认知与引用</h3>
+                {characterDetail.knowledgeStates.length === 0 ? (
+                  <p>还没有角色认知记录。</p>
+                ) : (
+                  <ul className="settings-character-records">
+                    {characterDetail.knowledgeStates.map((state) => (
+                      <li key={state.id}>
+                        <div>
+                          <strong>{knowledgeStateLabels[state.state]}</strong>
+                          <span>{formatValidity(state.validity)}</span>
+                        </div>
+                        <p>{state.claimedContent || "明确记录为未知。"}</p>
+                        <small>
+                          {state.sourceChapterId ? "来源：章节记录" : "来源：作者补录"} ·{" "}
+                          客观事实引用已保留
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <div className="settings-detail-block">
+                <h3>设定体检</h3>
+                {characterDetail.health.length === 0 ? (
+                  <p>基础检查通过。</p>
+                ) : (
+                  <ul className="settings-health-list">
+                    {characterDetail.health.map((finding) => (
+                      <li className={`severity-${finding.severity}`} key={finding.code}>
+                        <span>{finding.severity === "blocker" ? "阻断" : "提醒"}</span>
+                        <p>{finding.message}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="settings-detail-block">
+              <p>尚未载入人物专用档案。</p>
+            </div>
+          )}
+        </div>
       ) : entity.type === "faction" || entity.type === "map" || entity.type === "power_system" ? (
         <div className="settings-detail-block">
           <h3>{typeLabels[entity.type]}</h3>
@@ -2429,6 +2633,23 @@ function formatDateTime(value: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function formatValidity(validity: CharacterDetail["relationships"][number]["validity"]): string {
+  const chapterRange =
+    validity.toChapter === null
+      ? `第 ${validity.fromChapter} 章起`
+      : `第 ${validity.fromChapter}–${validity.toChapter} 章`;
+  const storyRange = validity.fromStoryTime
+    ? [
+        validity.fromStoryTime.era,
+        validity.fromStoryTime.label,
+        validity.toStoryTime ? `至 ${validity.toStoryTime.label}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
+  return storyRange ? `${chapterRange} · ${storyRange}` : chapterRange;
 }
 
 function settingsPath(work: WorkOverview): string {

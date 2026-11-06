@@ -5,6 +5,11 @@ import {
   authSessionResponseSchema,
   canonCommitRequestSchema,
   canonCommitSchema,
+  characterChangeRequestCreateRequestSchema,
+  characterKnowledgeStateCreateRequestSchema,
+  characterProfileUpdateRequestSchema,
+  characterRelationshipCreateRequestSchema,
+  characterStateTransitionCreateRequestSchema,
   chapterBriefSchema,
   chapterReadinessSchema,
   chapterReviewRequestSchema,
@@ -14,6 +19,7 @@ import {
   contextPackVersionSchema,
   csrfResponseSchema,
   customFieldDefinitionCreateRequestSchema,
+  domainRefSchema,
   factProposalDecisionRequestSchema,
   factProposalSchema,
   generateChapterRequestSchema,
@@ -52,6 +58,9 @@ import {
   storyBibleUnlockRequestSchema,
   storyBibleVersionSchema,
   storyBibleWorldRuleSchema,
+  storyTimePointSchema,
+  validityIntervalSchema,
+  versionRefSchema,
   workBranchSchema,
   workCreateRequestSchema,
   workSchema,
@@ -1109,5 +1118,144 @@ describe("shared contracts", () => {
       hidden: false,
       marks: ["潮"],
     });
+  });
+});
+
+describe("character domain contracts", () => {
+  const branchId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d01";
+  const characterId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d02";
+  const factId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d03";
+  const versionNodeId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d04";
+
+  it("freezes versioned domain references and story-time validity", () => {
+    const version = versionRefSchema.parse({
+      branchId,
+      versionNodeId,
+      objectVersion: 3,
+    });
+    const ref = domainRefSchema.parse({
+      type: "character",
+      id: characterId,
+      branchId,
+      label: "沈砚",
+      version,
+    });
+    const validity = validityIntervalSchema.parse({
+      fromChapter: 3,
+      toChapter: 8,
+      fromStoryTime: { era: "大玄历", label: "第三年秋", sortKey: 30 },
+      toStoryTime: { era: "大玄历", label: "第三年冬", sortKey: 40 },
+    });
+
+    expect(ref.version).toEqual(version);
+    expect(validity.toChapter).toBe(8);
+    expect(
+      storyTimePointSchema.parse({ era: "大玄历", label: "十六年前", sortKey: -16 }),
+    ).toMatchObject({ sortKey: -16 });
+    expect(() =>
+      domainRefSchema.parse({ type: "character", id: characterId, branchId, extra: true }),
+    ).toThrow();
+    expect(() =>
+      validityIntervalSchema.parse({
+        fromChapter: 8,
+        toChapter: 3,
+        fromStoryTime: null,
+        toStoryTime: null,
+      }),
+    ).toThrow();
+    expect(() =>
+      validityIntervalSchema.parse({
+        fromChapter: 3,
+        toChapter: 8,
+        fromStoryTime: null,
+        toStoryTime: { era: "大玄历", label: "第三年冬", sortKey: 40 },
+      }),
+    ).toThrow("Validity start story time is required");
+  });
+
+  it("keeps objective facts and character knowledge states separate", () => {
+    const knowledge = characterKnowledgeStateCreateRequestSchema.parse({
+      objectiveFactId: factId,
+      state: "misbelief",
+      claimedContent: "沈砚相信父母是自尽。",
+      sourceKind: "told",
+      validity: { fromChapter: 2, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      sourceChapterId: null,
+    });
+    expect(knowledge.objectiveFactId).toBe(factId);
+    expect(knowledge.state).toBe("misbelief");
+    expect(() =>
+      characterKnowledgeStateCreateRequestSchema.parse({
+        objectiveFactId: factId,
+        state: "unknown",
+        claimedContent: "不应附带主观内容",
+        sourceKind: "assumed",
+        validity: { fromChapter: 2, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        sourceChapterId: null,
+      }),
+    ).toThrow();
+  });
+
+  it("types profile, relationship, state and locked-content change requests", () => {
+    expect(
+      characterProfileUpdateRequestSchema.parse({
+        version: 2,
+        profile: {
+          desire: "找回被抹去的记忆",
+          fear: "成为忘川书的下一个祭品",
+          goal: "进入天门",
+          voiceSample: "“我记得，只是还没想起来。”",
+          voiceGuide: "句子短，少用感叹。",
+          disguise: "藏起左臂伤势",
+        },
+      }).profile.desire,
+    ).toBe("找回被抹去的记忆");
+
+    expect(
+      characterRelationshipCreateRequestSchema.parse({
+        target: { type: "character", id: versionNodeId, branchId, label: "顾青" },
+        relationType: "enemy",
+        validity: { fromChapter: 5, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        sourceChapterId: null,
+      }).relationType,
+    ).toBe("enemy");
+
+    expect(
+      characterStateTransitionCreateRequestSchema.parse({
+        stateKind: "location",
+        stateKey: "current_location",
+        value: "太玄门山门",
+        target: { type: "map", id: versionNodeId, branchId, label: "太玄门山门" },
+        validity: { fromChapter: 5, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        sourceChapterId: null,
+      }).stateKind,
+    ).toBe("location");
+
+    expect(
+      characterChangeRequestCreateRequestSchema.parse({
+        version: 3,
+        kind: "knowledge_state",
+        title: "补录顾青的误信",
+        reason: "第 18 章揭示了顾青被告知的假消息。",
+        after: {
+          objectiveFactId: factId,
+          state: "misbelief",
+          claimedContent: "顾青相信沈砚已经死了。",
+          sourceKind: "told",
+          validity: { fromChapter: 18, toChapter: null, fromStoryTime: null, toStoryTime: null },
+          sourceChapterId: null,
+        },
+        evidence: [
+          {
+            kind: "chapter",
+            sourceId: null,
+            label: "第 18 章",
+            quote: "顾青亲手封死了那口空棺。",
+            locator: "第 18 章 · 末段",
+            confidence: 0.98,
+          },
+        ],
+      }).kind,
+    ).toBe("knowledge_state");
   });
 });

@@ -212,6 +212,150 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/characters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_list"];
+    put?: never;
+    post: operations["CharactersController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["CharactersController_updateProfile"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CharactersController_lock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/relationships": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CharactersController_addRelationship"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/state-transitions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CharactersController_addStateTransition"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/knowledge-states": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CharactersController_addKnowledgeState"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/knowledge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_knowledge"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_history"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/change-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_changeRequests"];
+    put?: never;
+    post: operations["CharactersController_createChangeRequest"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/extract-facts": {
     parameters: {
       query?: never;
@@ -2017,6 +2161,2395 @@ export interface operations {
       };
     };
   };
+  CharactersController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Character domain details */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_node"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          /** @default [] */
+          aliases?: string[];
+          summary: string;
+          /** @default  */
+          description?: string;
+          /** @default [] */
+          tags?: string[];
+          /**
+           * @default {
+           *       "desire": "",
+           *       "fear": "",
+           *       "goal": "",
+           *       "voiceSample": "",
+           *       "voiceGuide": "",
+           *       "disguise": ""
+           *     }
+           */
+          profile?: {
+            /** @default  */
+            desire?: string;
+            /** @default  */
+            fear?: string;
+            /** @default  */
+            goal?: string;
+            /** @default  */
+            voiceSample?: string;
+            /** @default  */
+            voiceGuide?: string;
+            /** @default  */
+            disguise?: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created character */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_node"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Character detail */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_node"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_updateProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          profile: {
+            /** @default  */
+            desire?: string;
+            /** @default  */
+            fear?: string;
+            /** @default  */
+            goal?: string;
+            /** @default  */
+            voiceSample?: string;
+            /** @default  */
+            voiceGuide?: string;
+            /** @default  */
+            disguise?: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated character profile */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_node"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_lock: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Locked character */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_node"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_addRelationship: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          target: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_node"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          };
+          /** @enum {string} */
+          relationType:
+            | "kinship"
+            | "ally"
+            | "enemy"
+            | "mentor"
+            | "student"
+            | "subordinate"
+            | "superior"
+            | "member_of"
+            | "located_at"
+            | "controls"
+            | "owns";
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default null */
+          sourceChapterId?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Created character relationship */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              sourceCharacterId: string;
+              target: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_node"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              /** @enum {string} */
+              relationType:
+                | "kinship"
+                | "ally"
+                | "enemy"
+                | "mentor"
+                | "student"
+                | "subordinate"
+                | "superior"
+                | "member_of"
+                | "located_at"
+                | "controls"
+                | "owns";
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapterId: string | null;
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_addStateTransition: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+          stateKey: string;
+          value: string;
+          /** @default null */
+          target?: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_node"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          } | null;
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default null */
+          sourceChapterId?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Created character state transition */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              characterId: string;
+              /** @enum {string} */
+              stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+              stateKey: string;
+              value: string;
+              target: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_node"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              } | null;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapterId: string | null;
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_addKnowledgeState: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          objectiveFactId: string;
+          /** @enum {string} */
+          state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+          /** @default null */
+          claimedContent?: string | null;
+          /** @enum {string} */
+          sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default null */
+          sourceChapterId?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Created character knowledge state */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              characterId: string;
+              objectiveFactId: string;
+              /** @enum {string} */
+              state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+              claimedContent: string | null;
+              /** @enum {string} */
+              sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapterId: string | null;
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_knowledge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Objective facts disclosed to a character at a chapter */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              knownFacts: {
+                id: string;
+                subject: string;
+                predicate: string;
+                object: string;
+                validFromChapter: number;
+                validToChapter: number | null;
+              }[];
+              beliefs: {
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+              }[];
+              hiddenFactIds: string[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_history: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Character state replay */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_node"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              at: {
+                chapterNumber: number | null;
+                versionNodeId: string | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_changeRequests: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Character change requests */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              characterId: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              kind: "profile" | "relationship" | "state_transition" | "knowledge_state";
+              title: string;
+              reason: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              status: "pending" | "approved" | "rejected" | "applied";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_createChangeRequest: {
+    parameters: {
+      query?: never;
+      header: {
+        "idempotency-key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              version: number;
+              title: string;
+              reason: string;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+              }[];
+              /** @enum {string} */
+              kind: "profile";
+              after: {
+                /** @default  */
+                desire?: string;
+                /** @default  */
+                fear?: string;
+                /** @default  */
+                goal?: string;
+                /** @default  */
+                voiceSample?: string;
+                /** @default  */
+                voiceGuide?: string;
+                /** @default  */
+                disguise?: string;
+              };
+            }
+          | {
+              version: number;
+              title: string;
+              reason: string;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+              }[];
+              /** @enum {string} */
+              kind: "relationship";
+              after: {
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label?: string | null;
+                  /** @default null */
+                  version?: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId?: string | null;
+                    /** @default null */
+                    objectVersion?: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter?: number | null;
+                  /** @default null */
+                  fromStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                /** @default null */
+                sourceChapterId?: string | null;
+              };
+            }
+          | {
+              version: number;
+              title: string;
+              reason: string;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+              }[];
+              /** @enum {string} */
+              kind: "state_transition";
+              after: {
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                /** @default null */
+                target?: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_node"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label?: string | null;
+                  /** @default null */
+                  version?: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId?: string | null;
+                    /** @default null */
+                    objectVersion?: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter?: number | null;
+                  /** @default null */
+                  fromStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                /** @default null */
+                sourceChapterId?: string | null;
+              };
+            }
+          | {
+              version: number;
+              title: string;
+              reason: string;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+              }[];
+              /** @enum {string} */
+              kind: "knowledge_state";
+              after: {
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                /** @default null */
+                claimedContent?: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter?: number | null;
+                  /** @default null */
+                  fromStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                /** @default null */
+                sourceChapterId?: string | null;
+              };
+            };
+      };
+    };
+    responses: {
+      /** @description Pending character change request */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              characterId: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              kind: "profile" | "relationship" | "state_transition" | "knowledge_state";
+              title: string;
+              reason: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              status: "pending" | "approved" | "rejected" | "applied";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   FactsController_extract: {
     parameters: {
       query?: never;
@@ -2340,6 +4873,7 @@ export interface operations {
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
                   | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2582,6 +5116,7 @@ export interface operations {
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
                   | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2754,6 +5289,7 @@ export interface operations {
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
                   | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2926,6 +5462,7 @@ export interface operations {
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
                   | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -3098,6 +5635,7 @@ export interface operations {
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
                   | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"

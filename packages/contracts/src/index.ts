@@ -28,6 +28,7 @@ export const ERROR_CODES = [
   "CUSTOM_FIELD_INVALID",
   "CUSTOM_FIELD_IMMUTABLE",
   "CUSTOM_FIELD_DUPLICATE",
+  "CHARACTER_STATE_OVERLAP",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
   "FACT_DECISION_REQUIRED",
@@ -1264,6 +1265,483 @@ export const settingEntityResponseSchema = apiEnvelopeSchema(settingEntitySchema
 export const settingEntityListResponseSchema = apiEnvelopeSchema(z.array(settingEntitySchema));
 export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
+);
+
+export const domainRefTypeSchema = z.enum([
+  "character",
+  "faction",
+  "map",
+  "map_node",
+  "power_system",
+  "golden_finger",
+  "item",
+  "timeline_event",
+  "fact",
+  "chapter",
+  "character_relationship",
+  "character_state",
+  "character_knowledge",
+]);
+export type DomainRefType = z.infer<typeof domainRefTypeSchema>;
+
+export const storyTimePointSchema = z
+  .object({
+    era: z.string().trim().min(1).max(120),
+    label: z.string().trim().min(1).max(200),
+    sortKey: z.number().int(),
+  })
+  .strict();
+export type StoryTimePoint = z.infer<typeof storyTimePointSchema>;
+
+export const versionRefSchema = z
+  .object({
+    branchId: uuidV7Schema,
+    versionNodeId: uuidV7Schema.nullable().default(null),
+    objectVersion: z.number().int().positive().nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if ((input.versionNodeId === null) !== (input.objectVersion === null)) {
+      context.addIssue({
+        code: "custom",
+        path: ["versionNodeId"],
+        message: "Version node and object version must be provided together",
+      });
+    }
+  });
+export type VersionRef = z.infer<typeof versionRefSchema>;
+
+export const domainRefSchema = z
+  .object({
+    type: domainRefTypeSchema,
+    id: uuidV7Schema,
+    branchId: uuidV7Schema,
+    label: z.string().trim().min(1).max(200).nullable().default(null),
+    version: versionRefSchema.nullable().default(null),
+  })
+  .strict();
+export type DomainRef = z.infer<typeof domainRefSchema>;
+
+export const validityIntervalSchema = z
+  .object({
+    fromChapter: z.number().int().positive(),
+    toChapter: z.number().int().positive().nullable().default(null),
+    fromStoryTime: storyTimePointSchema.nullable().default(null),
+    toStoryTime: storyTimePointSchema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.toChapter !== null && input.toChapter < input.fromChapter) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Validity end chapter cannot precede its start",
+      });
+    }
+    if (
+      input.fromStoryTime !== null &&
+      input.toStoryTime !== null &&
+      input.fromStoryTime.era === input.toStoryTime.era &&
+      input.toStoryTime.sortKey < input.fromStoryTime.sortKey
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["toStoryTime"],
+        message: "Validity end story time cannot precede its start",
+      });
+    }
+    if (input.fromStoryTime === null && input.toStoryTime !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["fromStoryTime"],
+        message: "Validity start story time is required when an end is provided",
+      });
+    }
+  });
+export type ValidityInterval = z.infer<typeof validityIntervalSchema>;
+
+const characterProfileFields = {
+  desire: z.string().trim().max(20_000).default(""),
+  fear: z.string().trim().max(20_000).default(""),
+  goal: z.string().trim().max(20_000).default(""),
+  voiceSample: z.string().trim().max(20_000).default(""),
+  voiceGuide: z.string().trim().max(20_000).default(""),
+  disguise: z.string().trim().max(20_000).default(""),
+};
+
+export const characterProfileSchema = z.object(characterProfileFields).strict();
+export type CharacterProfile = z.infer<typeof characterProfileSchema>;
+
+export const characterProfilePatchSchema = z
+  .object({
+    desire: characterProfileFields.desire.optional(),
+    fear: characterProfileFields.fear.optional(),
+    goal: characterProfileFields.goal.optional(),
+    voiceSample: characterProfileFields.voiceSample.optional(),
+    voiceGuide: characterProfileFields.voiceGuide.optional(),
+    disguise: characterProfileFields.disguise.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one character profile field is required",
+  });
+export type CharacterProfilePatch = z.infer<typeof characterProfilePatchSchema>;
+
+export const characterProfileUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    profile: characterProfilePatchSchema,
+  })
+  .strict();
+export type CharacterProfileUpdateRequest = z.infer<typeof characterProfileUpdateRequestSchema>;
+
+export const characterRelationshipTypeSchema = z.enum([
+  "kinship",
+  "ally",
+  "enemy",
+  "mentor",
+  "student",
+  "subordinate",
+  "superior",
+  "member_of",
+  "located_at",
+  "controls",
+  "owns",
+]);
+export type CharacterRelationshipType = z.infer<typeof characterRelationshipTypeSchema>;
+
+export const characterRelationshipCreateRequestSchema = z
+  .object({
+    target: domainRefSchema,
+    relationType: characterRelationshipTypeSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict();
+export type CharacterRelationshipCreateRequest = z.infer<
+  typeof characterRelationshipCreateRequestSchema
+>;
+
+export const characterStateKindSchema = z.enum(["body", "limb", "location", "ability", "disguise"]);
+export type CharacterStateKind = z.infer<typeof characterStateKindSchema>;
+
+export const characterStateKeySchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z][a-z0-9_]{0,63}$/, "Expected a lowercase state key");
+
+export const characterStateTransitionCreateRequestSchema = z
+  .object({
+    stateKind: characterStateKindSchema,
+    stateKey: characterStateKeySchema,
+    value: z.string().trim().min(1).max(20_000),
+    target: domainRefSchema.nullable().default(null),
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.stateKind === "location") {
+      if (input.target === null) {
+        context.addIssue({
+          code: "custom",
+          path: ["target"],
+          message: "Location transitions require a map or map node reference",
+        });
+      } else if (input.target.type !== "map" && input.target.type !== "map_node") {
+        context.addIssue({
+          code: "custom",
+          path: ["target", "type"],
+          message: "Location transitions must reference a map or map node",
+        });
+      }
+      return;
+    }
+    if (input.target !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["target"],
+        message: "Only location transitions can carry a domain reference",
+      });
+    }
+  });
+export type CharacterStateTransitionCreateRequest = z.infer<
+  typeof characterStateTransitionCreateRequestSchema
+>;
+
+export const characterKnowledgeStateKindSchema = z.enum([
+  "knowledge",
+  "belief",
+  "suspicion",
+  "misbelief",
+  "unknown",
+]);
+export type CharacterKnowledgeStateKind = z.infer<typeof characterKnowledgeStateKindSchema>;
+
+export const characterKnowledgeSourceKindSchema = z.enum([
+  "observed",
+  "told",
+  "inferred",
+  "read",
+  "assumed",
+]);
+export type CharacterKnowledgeSourceKind = z.infer<typeof characterKnowledgeSourceKindSchema>;
+
+export const characterKnowledgeStateCreateRequestSchema = z
+  .object({
+    objectiveFactId: uuidV7Schema,
+    state: characterKnowledgeStateKindSchema,
+    claimedContent: z.string().trim().max(20_000).nullable().default(null),
+    sourceKind: characterKnowledgeSourceKindSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const hasClaim = Boolean(input.claimedContent?.trim());
+    if (input.state === "unknown" && hasClaim) {
+      context.addIssue({
+        code: "custom",
+        path: ["claimedContent"],
+        message: "Unknown knowledge states cannot carry claimed content",
+      });
+    }
+    if (input.state !== "unknown" && !hasClaim) {
+      context.addIssue({
+        code: "custom",
+        path: ["claimedContent"],
+        message: "Known, believed, suspected and misbelieved states require content",
+      });
+    }
+  });
+export type CharacterKnowledgeStateCreateRequest = z.infer<
+  typeof characterKnowledgeStateCreateRequestSchema
+>;
+
+export const characterCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+    summary: z.string().trim().min(1).max(500),
+    description: z.string().max(20_000).default(""),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+    profile: characterProfileSchema.default({
+      desire: "",
+      fear: "",
+      goal: "",
+      voiceSample: "",
+      voiceGuide: "",
+      disguise: "",
+    }),
+  })
+  .strict();
+export type CharacterCreateRequest = z.infer<typeof characterCreateRequestSchema>;
+
+export const characterRelationshipSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  sourceCharacterId: uuidV7Schema,
+  target: domainRefSchema,
+  relationType: characterRelationshipTypeSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterRelationship = z.infer<typeof characterRelationshipSchema>;
+export const characterRelationshipResponseSchema = apiEnvelopeSchema(characterRelationshipSchema);
+
+export const characterStateTransitionSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  characterId: uuidV7Schema,
+  stateKind: characterStateKindSchema,
+  stateKey: characterStateKeySchema,
+  value: z.string(),
+  target: domainRefSchema.nullable(),
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterStateTransition = z.infer<typeof characterStateTransitionSchema>;
+export const characterStateTransitionResponseSchema = apiEnvelopeSchema(
+  characterStateTransitionSchema,
+);
+
+export const characterKnowledgeStateSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  characterId: uuidV7Schema,
+  objectiveFactId: uuidV7Schema,
+  state: characterKnowledgeStateKindSchema,
+  claimedContent: z.string().nullable(),
+  sourceKind: characterKnowledgeSourceKindSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterKnowledgeState = z.infer<typeof characterKnowledgeStateSchema>;
+export const characterKnowledgeStateResponseSchema = apiEnvelopeSchema(
+  characterKnowledgeStateSchema,
+);
+
+export const characterHealthFindingSchema = z.object({
+  code: z.string().min(1),
+  severity: z.enum(["info", "warning", "blocker"]),
+  message: z.string().min(1),
+});
+export type CharacterHealthFinding = z.infer<typeof characterHealthFindingSchema>;
+
+export const characterDetailSchema = z.object({
+  character: domainRefSchema,
+  profile: characterProfileSchema,
+  relationships: z.array(characterRelationshipSchema),
+  stateTransitions: z.array(characterStateTransitionSchema),
+  knowledgeStates: z.array(characterKnowledgeStateSchema),
+  health: z.array(characterHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type CharacterDetail = z.infer<typeof characterDetailSchema>;
+
+export const characterDetailResponseSchema = apiEnvelopeSchema(characterDetailSchema);
+export const characterListResponseSchema = apiEnvelopeSchema(z.array(characterDetailSchema));
+
+export const characterHistoryQuerySchema = z
+  .object({
+    chapterNumber: z.coerce.number().int().positive().optional(),
+    versionNodeId: uuidV7Schema.optional(),
+  })
+  .strict()
+  .refine((input) => input.chapterNumber !== undefined || input.versionNodeId !== undefined, {
+    message: "A chapter number or version node is required",
+  });
+export type CharacterHistoryQuery = z.infer<typeof characterHistoryQuerySchema>;
+
+export const characterHistorySchema = z.object({
+  character: domainRefSchema,
+  at: z.object({
+    chapterNumber: z.number().int().positive().nullable(),
+    versionNodeId: uuidV7Schema.nullable(),
+  }),
+  profile: characterProfileSchema,
+  relationships: z.array(characterRelationshipSchema),
+  stateTransitions: z.array(characterStateTransitionSchema),
+  knowledgeStates: z.array(characterKnowledgeStateSchema),
+});
+export type CharacterHistory = z.infer<typeof characterHistorySchema>;
+export const characterHistoryResponseSchema = apiEnvelopeSchema(characterHistorySchema);
+
+export const characterKnowledgeProjectionSchema = z.object({
+  knownFacts: z.array(
+    z.object({
+      id: uuidV7Schema,
+      subject: z.string(),
+      predicate: z.string(),
+      object: z.string(),
+      validFromChapter: z.number().int().positive(),
+      validToChapter: z.number().int().positive().nullable(),
+    }),
+  ),
+  beliefs: z.array(
+    z.object({
+      objectiveFactId: uuidV7Schema,
+      state: z.enum(["belief", "suspicion", "misbelief", "unknown"]),
+      claimedContent: z.string().nullable(),
+    }),
+  ),
+  hiddenFactIds: z.array(uuidV7Schema),
+});
+export type CharacterKnowledgeProjection = z.infer<typeof characterKnowledgeProjectionSchema>;
+export const characterKnowledgeProjectionResponseSchema = apiEnvelopeSchema(
+  characterKnowledgeProjectionSchema,
+);
+
+export const characterChangeRequestKindSchema = z.enum([
+  "profile",
+  "relationship",
+  "state_transition",
+  "knowledge_state",
+]);
+export type CharacterChangeRequestKind = z.infer<typeof characterChangeRequestKindSchema>;
+
+const characterChangeRequestBaseShape = {
+  version: z.number().int().positive(),
+  title: z.string().trim().min(1).max(120),
+  reason: z.string().trim().min(1).max(1_000),
+  evidence: z.array(settingEvidenceSchema).min(1).max(20),
+};
+
+export const characterChangeRequestCreateRequestSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("profile"),
+      after: characterProfilePatchSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("relationship"),
+      after: characterRelationshipCreateRequestSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("state_transition"),
+      after: characterStateTransitionCreateRequestSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("knowledge_state"),
+      after: characterKnowledgeStateCreateRequestSchema,
+    })
+    .strict(),
+]);
+export type CharacterChangeRequestCreateRequest = z.infer<
+  typeof characterChangeRequestCreateRequestSchema
+>;
+
+export const characterChangeRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "applied",
+]);
+export type CharacterChangeRequestStatus = z.infer<typeof characterChangeRequestStatusSchema>;
+
+export const characterChangeRequestSchema = z.object({
+  id: uuidV7Schema,
+  characterId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  version: z.number().int().positive(),
+  kind: characterChangeRequestKindSchema,
+  title: z.string(),
+  reason: z.string(),
+  before: z.record(z.string(), z.unknown()),
+  after: z.record(z.string(), z.unknown()),
+  status: characterChangeRequestStatusSchema,
+  evidence: z.array(settingEvidenceSchema),
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterChangeRequest = z.infer<typeof characterChangeRequestSchema>;
+
+export const characterChangeRequestResponseSchema = apiEnvelopeSchema(characterChangeRequestSchema);
+export const characterChangeRequestListResponseSchema = apiEnvelopeSchema(
+  z.array(characterChangeRequestSchema),
 );
 
 function validateCustomFieldDefinitionShape(
