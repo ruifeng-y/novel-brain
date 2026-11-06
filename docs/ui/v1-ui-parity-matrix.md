@@ -58,6 +58,8 @@ In the columns below, the prototype screenshot path and production test/golden p
 
 > #145 将 outline 扩展为五层大纲、卷契约和场景卡，页面结构与动作已变化；M0 的 outline golden 不再代表当前生产页面，状态回退为 `production-built`，需重新拍摄并完成作者视觉签收后才能回到 `parity-verified`。
 
+> #147 在 outline 增加黄金三章候选比较、作者选择、六维失败阻断、例外理由和锁定后风格基线。生产动作与 `apps/web/e2e/parity/golden-three.spec.ts` 四档视口证据已落地；outline 生产 golden 仍需在 #145/#147 布局稳定后重新拍摄并签收。
+
 ## 4. UI issue ownership rules
 
 - Primary page issue must update this row as implementation progresses: production-pending → production-built → parity-verified (or deviation-approved).

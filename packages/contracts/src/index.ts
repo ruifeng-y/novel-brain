@@ -65,6 +65,13 @@ export const ERROR_CODES = [
   "OUTLINE_PARENT_INVALID",
   "OUTLINE_CHAPTER_INVALID",
   "OUTLINE_REFERENCE_INVALID",
+  "GOLDEN_THREE_CANDIDATES_EXIST",
+  "GOLDEN_THREE_INVALID_CANDIDATES",
+  "GOLDEN_THREE_CANDIDATE_LOCKED",
+  "GOLDEN_THREE_REVIEW_FAILED",
+  "GOLDEN_THREE_SELECTION_REQUIRED",
+  "GOLDEN_THREE_ALREADY_LOCKED",
+  "GOLDEN_THREE_OVERRIDE_INVALID",
   "VERSION_CONFLICT",
   "AGENT_CONTRACT_INVALID",
   "AGENT_GRANT_INVALID",
@@ -4994,3 +5001,347 @@ export const orchestratorValidationIssueSchema = z
 export type OrchestratorValidationIssue = z.infer<typeof orchestratorValidationIssueSchema>;
 
 export const orchestratorRunResponseSchema = apiEnvelopeSchema(orchestratorRunStateSchema);
+
+export const GOLDEN_THREE_REVIEW_DIMENSIONS = [
+  "opening_hook",
+  "protagonist_appeal",
+  "world_rules",
+  "core_conflict",
+  "reader_promise",
+  "chapter_end_hook",
+] as const;
+export const goldenThreeReviewDimensionSchema = z.enum(GOLDEN_THREE_REVIEW_DIMENSIONS);
+export type GoldenThreeReviewDimension = z.infer<typeof goldenThreeReviewDimensionSchema>;
+
+export const GOLDEN_THREE_REVIEW_DIMENSION_LABELS: Record<GoldenThreeReviewDimension, string> = {
+  opening_hook: "开篇钩子",
+  protagonist_appeal: "主角吸引力",
+  world_rules: "世界规则展示",
+  core_conflict: "核心冲突",
+  reader_promise: "读者承诺",
+  chapter_end_hook: "章末追读钩子",
+};
+
+export const GOLDEN_THREE_PASSING_SCORE = 4 as const;
+
+export const goldenThreeStrategySchema = z.enum(["hook_focus", "character_focus", "world_focus"]);
+export type GoldenThreeStrategy = z.infer<typeof goldenThreeStrategySchema>;
+
+export const goldenThreeCandidateStatusSchema = z.enum(["draft", "reviewed", "selected", "locked"]);
+export type GoldenThreeCandidateStatus = z.infer<typeof goldenThreeCandidateStatusSchema>;
+
+export const goldenThreePromptProvenanceSchema = z
+  .object({
+    key: z.string().trim().min(1).max(200),
+    version: z.number().int().positive(),
+    hash: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type GoldenThreePromptProvenance = z.infer<typeof goldenThreePromptProvenanceSchema>;
+
+export const goldenThreeModelProvenanceSchema = z
+  .object({
+    provider: z.string().trim().min(1).max(100),
+    model: z.string().trim().min(1).max(200),
+    parameters: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+export type GoldenThreeModelProvenance = z.infer<typeof goldenThreeModelProvenanceSchema>;
+
+export const goldenThreeContextProvenanceSchema = z
+  .object({
+    packVersionId: uuidV7Schema.nullable(),
+    manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type GoldenThreeContextProvenance = z.infer<typeof goldenThreeContextProvenanceSchema>;
+
+export const goldenThreeChapterPinInputSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    expectedContentHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  })
+  .strict();
+export type GoldenThreeChapterPinInput = z.infer<typeof goldenThreeChapterPinInputSchema>;
+
+export const goldenThreePinnedChapterSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    chapterTitle: z.string().min(1).max(200),
+    chapterVersionId: uuidV7Schema,
+    chapterVersion: z.number().int().positive(),
+    versionNodeId: uuidV7Schema,
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+    wordCount: z.number().int().nonnegative(),
+    content: z.string(),
+  })
+  .strict();
+export type GoldenThreePinnedChapter = z.infer<typeof goldenThreePinnedChapterSchema>;
+
+export const goldenThreeCandidateInputSchema = z
+  .object({
+    label: z.string().trim().min(1).max(100),
+    strategy: goldenThreeStrategySchema,
+    prompt: goldenThreePromptProvenanceSchema,
+    model: goldenThreeModelProvenanceSchema,
+    context: goldenThreeContextProvenanceSchema,
+    pins: z.array(goldenThreeChapterPinInputSchema).length(3),
+  })
+  .strict()
+  .superRefine((candidate, context) => {
+    const chapterIds = candidate.pins.map((pin) => pin.chapterId);
+    if (new Set(chapterIds).size !== chapterIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["pins"],
+        message: "A candidate must pin three distinct chapters",
+      });
+    }
+    const versionIds = candidate.pins.map((pin) => pin.chapterVersionId);
+    if (new Set(versionIds).size !== versionIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["pins"],
+        message: "A candidate must pin three distinct chapter versions",
+      });
+    }
+  });
+export type GoldenThreeCandidateInput = z.infer<typeof goldenThreeCandidateInputSchema>;
+
+export const goldenThreeCandidateBatchRequestSchema = z
+  .object({
+    candidates: z.array(goldenThreeCandidateInputSchema).min(2).max(3),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const labels = input.candidates.map((candidate) => candidate.label.toLocaleLowerCase());
+    if (new Set(labels).size !== labels.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["candidates"],
+        message: "Candidate labels must be unique",
+      });
+    }
+    const strategies = input.candidates.map((candidate) => candidate.strategy);
+    if (new Set(strategies).size !== strategies.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["candidates"],
+        message: "Candidate strategies must be unique",
+      });
+    }
+    const chapterSets = input.candidates.map((candidate) =>
+      candidate.pins
+        .map((pin) => pin.chapterId)
+        .sort()
+        .join(","),
+    );
+    if (new Set(chapterSets).size !== 1) {
+      context.addIssue({
+        code: "custom",
+        path: ["candidates"],
+        message: "Every candidate must compare the same three chapters",
+      });
+    }
+  });
+export type GoldenThreeCandidateBatchRequest = z.infer<
+  typeof goldenThreeCandidateBatchRequestSchema
+>;
+
+export const goldenThreeReviewInputSchema = z
+  .object({
+    dimension: goldenThreeReviewDimensionSchema,
+    score: z.number().int().min(1).max(5),
+    evidence: z
+      .object({
+        chapterId: uuidV7Schema,
+        chapterVersionId: uuidV7Schema,
+        passage: z.string().trim().min(1).max(2_000),
+        locator: z.string().trim().min(1).max(200),
+      })
+      .strict(),
+    reviewerOrigin: z.enum(["model", "author", "critic"]),
+  })
+  .strict();
+export type GoldenThreeReviewInput = z.infer<typeof goldenThreeReviewInputSchema>;
+
+export const goldenThreeReviewBatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    reviews: z.array(goldenThreeReviewInputSchema).length(GOLDEN_THREE_REVIEW_DIMENSIONS.length),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const dimensions = input.reviews.map((review) => review.dimension);
+    if (new Set(dimensions).size !== GOLDEN_THREE_REVIEW_DIMENSIONS.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["reviews"],
+        message: "Each golden-three review dimension must appear exactly once",
+      });
+    }
+  });
+export type GoldenThreeReviewBatchRequest = z.infer<typeof goldenThreeReviewBatchRequestSchema>;
+
+export const goldenThreeReviewSchema = goldenThreeReviewInputSchema
+  .extend({
+    id: uuidV7Schema,
+    candidateId: uuidV7Schema,
+    required: z.boolean(),
+    passed: z.boolean(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type GoldenThreeReview = z.infer<typeof goldenThreeReviewSchema>;
+
+export const goldenThreeReviewSummarySchema = z
+  .object({
+    completed: z.number().int().min(0).max(6),
+    total: z.literal(6),
+    requiredFailed: z.number().int().min(0).max(6),
+    failedDimensions: z.array(goldenThreeReviewDimensionSchema).max(6),
+  })
+  .strict();
+export type GoldenThreeReviewSummary = z.infer<typeof goldenThreeReviewSummarySchema>;
+
+export const goldenThreeCandidateSchema = z
+  .object({
+    id: uuidV7Schema,
+    batchId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    label: z.string().min(1).max(100),
+    strategy: goldenThreeStrategySchema,
+    status: goldenThreeCandidateStatusSchema,
+    version: z.number().int().positive(),
+    prompt: goldenThreePromptProvenanceSchema,
+    model: goldenThreeModelProvenanceSchema,
+    context: goldenThreeContextProvenanceSchema,
+    pins: z.array(goldenThreePinnedChapterSchema).length(3),
+    reviews: z.array(goldenThreeReviewSchema).max(6),
+    reviewSummary: goldenThreeReviewSummarySchema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type GoldenThreeCandidate = z.infer<typeof goldenThreeCandidateSchema>;
+
+export const goldenThreeGateBlockerCodeSchema = z.enum([
+  "NO_CANDIDATES",
+  "NO_SELECTION",
+  "REVIEW_INCOMPLETE",
+  "REQUIRED_DIMENSION_FAILED",
+  "CANDIDATE_LOCKED",
+]);
+export type GoldenThreeGateBlockerCode = z.infer<typeof goldenThreeGateBlockerCodeSchema>;
+
+export const goldenThreeGateSchema = z
+  .object({
+    candidateId: uuidV7Schema.nullable(),
+    canLock: z.boolean(),
+    blockers: z
+      .array(
+        z
+          .object({
+            code: goldenThreeGateBlockerCodeSchema,
+            message: z.string().min(1),
+            dimension: goldenThreeReviewDimensionSchema.nullable(),
+          })
+          .strict(),
+      )
+      .max(6),
+    failedDimensions: z.array(goldenThreeReviewDimensionSchema).max(6),
+  })
+  .strict();
+export type GoldenThreeGate = z.infer<typeof goldenThreeGateSchema>;
+
+export const goldenThreeOverrideSchema = z
+  .object({
+    policy: z.literal("author_override_v1"),
+    rationale: z.string().trim().min(10).max(2_000),
+  })
+  .strict();
+export type GoldenThreeOverride = z.infer<typeof goldenThreeOverrideSchema>;
+
+export const goldenThreeLockRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    override: goldenThreeOverrideSchema.optional(),
+  })
+  .strict();
+export type GoldenThreeLockRequest = z.infer<typeof goldenThreeLockRequestSchema>;
+
+export const goldenThreeSelectionRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type GoldenThreeSelectionRequest = z.infer<typeof goldenThreeSelectionRequestSchema>;
+
+export const goldenThreeLockSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    candidateId: uuidV7Schema,
+    versionNodeId: uuidV7Schema,
+    styleBaselineId: uuidV7Schema,
+    chapterPins: z.array(goldenThreePinnedChapterSchema).length(3),
+    override: goldenThreeOverrideSchema.nullable(),
+    lockedBy: uuidV7Schema,
+    lockedAt: z.string().datetime(),
+  })
+  .strict();
+export type GoldenThreeLock = z.infer<typeof goldenThreeLockSchema>;
+
+export const goldenThreeStyleBaselineSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    sourceType: z.literal("golden_three"),
+    sourceId: uuidV7Schema,
+    version: z.number().int().positive(),
+    versionNodeId: uuidV7Schema,
+    profile: z
+      .object({
+        strategy: goldenThreeStrategySchema,
+        candidateLabel: z.string().min(1).max(100),
+        excerpts: z
+          .array(
+            z
+              .object({
+                chapterId: uuidV7Schema,
+                chapterVersionId: uuidV7Schema,
+                excerpt: z.string().min(1),
+              })
+              .strict(),
+          )
+          .length(3),
+      })
+      .strict(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type GoldenThreeStyleBaseline = z.infer<typeof goldenThreeStyleBaselineSchema>;
+
+export const goldenThreeWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    candidates: z.array(goldenThreeCandidateSchema).max(3),
+    selectedCandidateId: uuidV7Schema.nullable(),
+    lock: goldenThreeLockSchema.nullable(),
+    styleBaseline: goldenThreeStyleBaselineSchema.nullable(),
+    gate: goldenThreeGateSchema,
+  })
+  .strict();
+export type GoldenThreeWorkspace = z.infer<typeof goldenThreeWorkspaceSchema>;
+
+export const goldenThreeWorkspaceResponseSchema = apiEnvelopeSchema(goldenThreeWorkspaceSchema);

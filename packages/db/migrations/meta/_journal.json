@@ -232,6 +232,13 @@
       "when": 1793944926289,
       "tag": "0032_striped_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793953602086,
+      "tag": "0034_golden_three",
+      "breakpoints": true
     }
   ]
 }
