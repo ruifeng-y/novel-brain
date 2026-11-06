@@ -15,6 +15,7 @@ import { ReviewModule } from "./review/review.module";
 import { SettingsModule } from "./settings/settings.module";
 import { StoryBibleModule } from "./story-bible/story-bible.module";
 import { WorksModule } from "./works/works.module";
+import { WorldModule } from "./world/world.module";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { WorksModule } from "./works/works.module";
     SettingsModule,
     StoryBibleModule,
     WorksModule,
+    WorldModule,
   ],
 })
 export class AppModule {}

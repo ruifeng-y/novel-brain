@@ -6,6 +6,7 @@ import {
   canonCommitRequestSchema,
   canonCommitSchema,
   characterChangeRequestCreateRequestSchema,
+  characterItineraryCreateRequestSchema,
   characterKnowledgeStateCreateRequestSchema,
   characterProfileUpdateRequestSchema,
   characterRelationshipCreateRequestSchema,
@@ -22,6 +23,8 @@ import {
   domainRefSchema,
   factProposalDecisionRequestSchema,
   factProposalSchema,
+  factionCreateRequestSchema,
+  factionRelationshipCreateRequestSchema,
   generateChapterRequestSchema,
   generationJobSchema,
   GENERATE_CHAPTER_JOB,
@@ -29,6 +32,10 @@ import {
   jobEventSchema,
   importReportSchema,
   loginRequestSchema,
+  mapEdgeCreateRequestSchema,
+  mapLayerCreateRequestSchema,
+  mapMarkerCreateRequestSchema,
+  mapNodeCreateRequestSchema,
   manuscriptImportConfirmRequestSchema,
   manuscriptImportResponseSchema,
   modelConfigInputSchema,
@@ -47,6 +54,9 @@ import {
   settingEntityCreateRequestSchema,
   settingEntitySchema,
   settingProposalCreateRequestSchema,
+  timelineEraCreateRequestSchema,
+  timelineEventCreateRequestSchema,
+  territoryCreateRequestSchema,
   logoutResponseSchema,
   STORY_BIBLE_CARD_KEYS,
   STORY_BIBLE_CARD_TITLES,
@@ -65,6 +75,7 @@ import {
   workCreateRequestSchema,
   workSchema,
   workSourceModeSchema,
+  worldSnapshotQuerySchema,
 } from "../src";
 
 describe("shared contracts", () => {
@@ -215,6 +226,152 @@ describe("shared contracts", () => {
     });
 
     expect(response.data.status).toBe("ready");
+  });
+
+  it("validates faction, map graph and story timeline contracts", () => {
+    const branchId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c40";
+    const otherId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c41";
+    const faction = factionCreateRequestSchema.parse({
+      name: "太玄门",
+      aliases: ["玄门"],
+      summary: "执掌太玄山脉的仙门。",
+      description: "",
+      tags: ["仙门"],
+      profile: {
+        overview: "以剑阵护山的正道宗门。",
+        goals: "守住天门，追查忘川书。",
+        resources: "太玄剑阵、灵脉与内门弟子。",
+        doctrine: "门人不得私入禁地。",
+      },
+    });
+    expect(faction.profile.goals).toContain("天门");
+
+    const relationship = factionRelationshipCreateRequestSchema.parse({
+      target: {
+        type: "faction",
+        id: branchId,
+        branchId,
+        label: "血河宗",
+      },
+      relationType: "enemy",
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      sourceChapterId: null,
+    });
+    expect(relationship.relationType).toBe("enemy");
+
+    const layer = mapLayerCreateRequestSchema.parse({
+      name: "北域",
+      parentLayerId: null,
+      sortOrder: 0,
+      minScale: 0,
+      maxScale: 100,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(layer.name).toBe("北域");
+
+    const node = mapNodeCreateRequestSchema.parse({
+      layerId: null,
+      parentNodeId: null,
+      name: "忘川村",
+      nodeType: "settlement",
+      summary: "山脚的小村。",
+      x: 0.2,
+      y: 0.7,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(node.nodeType).toBe("settlement");
+
+    const edge = mapEdgeCreateRequestSchema.parse({
+      layerId: null,
+      fromNodeId: branchId,
+      toNodeId: otherId,
+      routeType: "road",
+      bidirectional: true,
+      travelMinutes: 90,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(() =>
+      mapEdgeCreateRequestSchema.parse({
+        ...edge,
+        travelMinutes: 0,
+      }),
+    ).toThrow("Travel time must be positive");
+
+    const marker = mapMarkerCreateRequestSchema.parse({
+      layerId: null,
+      nodeId: null,
+      label: "古战场",
+      markerType: "danger",
+      x: 0.4,
+      y: 0.6,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(marker.markerType).toBe("danger");
+
+    const territory = territoryCreateRequestSchema.parse({
+      node: { type: "map_node", id: branchId, branchId, label: "忘川村" },
+      controlLevel: "direct",
+      validity: { fromChapter: 1, toChapter: 9, fromStoryTime: null, toStoryTime: null },
+      evidence: [
+        {
+          kind: "chapter",
+          sourceId: null,
+          label: "第 1 章",
+          quote: "村口插着太玄门的青旗。",
+          locator: "第 1 章 · 第 2 段",
+          confidence: 0.9,
+        },
+      ],
+    });
+    expect(territory.controlLevel).toBe("direct");
+
+    const era = timelineEraCreateRequestSchema.parse({
+      name: "大玄历",
+      orderIndex: 1,
+      startSortKey: 0,
+      endSortKey: null,
+      description: "大玄王朝纪年。",
+    });
+    expect(era.orderIndex).toBe(1);
+
+    const event = timelineEventCreateRequestSchema.parse({
+      name: "忘川村灭门",
+      aliases: [],
+      summary: "沈砚父母被杀。",
+      description: "",
+      tags: [],
+      era: "大玄历",
+      storyTime: { era: "大玄历", label: "十六年前", sortKey: 100 },
+      durationMinutes: 720,
+      durationLabel: "一夜",
+      event: "仇家屠村后伪装成自尽。",
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(event.storyTime.sortKey).toBe(100);
+
+    const itinerary = characterItineraryCreateRequestSchema.parse({
+      character: { type: "character", id: branchId, branchId, label: "沈砚" },
+      fromNode: { type: "map_node", id: branchId, branchId, label: "忘川村" },
+      toNode: { type: "map_node", id: branchId, branchId, label: "太玄门" },
+      departure: { era: "大玄历", label: "第一日辰时", sortKey: 1000 },
+      arrival: { era: "大玄历", label: "第一日午时", sortKey: 1120 },
+      travelMinutes: 120,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      sourceChapterId: null,
+      evidence: [],
+    });
+    expect(itinerary.travelMinutes).toBe(120);
+    expect(() =>
+      characterItineraryCreateRequestSchema.parse({
+        ...itinerary,
+        arrival: { ...itinerary.departure },
+      }),
+    ).toThrow("Itinerary arrival must follow departure");
+
+    expect(worldSnapshotQuerySchema.parse({})).toEqual({});
+    expect(worldSnapshotQuerySchema.parse({ versionNodeId: branchId }).versionNodeId).toBe(
+      branchId,
+    );
   });
 
   it("accepts the typed worker job consumed by the worker", () => {

@@ -9,8 +9,10 @@ import {
   createDatabasePool,
   entities,
   entityVersions,
+  factionProfiles,
   settingChangeRequests,
   settingProposals,
+  timelineEvents,
   versionNodes,
   workBranches,
   works,
@@ -870,7 +872,7 @@ export class SettingsRepository implements OnModuleDestroy {
         customFields.definitions,
         now,
       );
-      await this.appendVersion(
+      const versionNodeId = await this.appendVersion(
         transaction,
         userId,
         entity,
@@ -880,6 +882,7 @@ export class SettingsRepository implements OnModuleDestroy {
         audit,
         customFields.values,
       );
+      await syncWorldProjection(transaction, userId, entity, versionNodeId, now);
       return entity;
     });
   }
@@ -982,7 +985,7 @@ export class SettingsRepository implements OnModuleDestroy {
         customFields.definitions,
         now,
       );
-      await this.appendVersion(
+      const versionNodeId = await this.appendVersion(
         transaction,
         userId,
         updated,
@@ -992,6 +995,7 @@ export class SettingsRepository implements OnModuleDestroy {
         audit,
         customFields.values,
       );
+      await syncWorldProjection(transaction, userId, updated, versionNodeId, now);
       return updated;
     });
   }
@@ -1142,7 +1146,7 @@ export class SettingsRepository implements OnModuleDestroy {
     message: string,
     audit: SettingsAuditContext,
     customFields: Record<string, unknown>,
-  ): Promise<void> {
+  ): Promise<string> {
     const now = new Date();
     const entityVersionId = uuidv7();
     const versionNodeId = uuidv7();
@@ -1224,6 +1228,7 @@ export class SettingsRepository implements OnModuleDestroy {
       ip: audit.ip,
       userAgent: audit.userAgent,
     });
+    return versionNodeId;
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -1629,6 +1634,114 @@ function validCustomFieldDefinitionShape(
     return relationTarget !== null;
   }
   return relationTarget === null;
+}
+
+async function syncWorldProjection(
+  transaction: DatabaseTransaction,
+  userId: string,
+  entity: SettingEntityRecord,
+  versionNodeId: string,
+  now: Date,
+): Promise<void> {
+  if (entity.type === "faction") {
+    const overview = settingAttributeString(entity.attributes.details) ?? "";
+    await transaction
+      .insert(factionProfiles)
+      .values({
+        entityId: entity.id,
+        workId: entity.workId,
+        branchId: entity.branchId,
+        userId,
+        overview,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: factionProfiles.entityId,
+        set: { overview, updatedAt: now },
+      });
+    return;
+  }
+  if (entity.type !== "timeline_event") {
+    return;
+  }
+
+  const era = settingAttributeString(entity.attributes.era) || "未分纪元";
+  const storyTimeLabel = settingAttributeString(entity.attributes.storyTime) || "未记录";
+  let storyTimeSortKey = settingAttributeNumber(entity.attributes.storySortKey);
+  if (storyTimeSortKey !== undefined) {
+    const [occupied] = await transaction
+      .select({ id: timelineEvents.id })
+      .from(timelineEvents)
+      .where(
+        and(
+          eq(timelineEvents.userId, userId),
+          eq(timelineEvents.branchId, entity.branchId),
+          eq(timelineEvents.era, era),
+          eq(timelineEvents.storyTimeSortKey, storyTimeSortKey),
+          ne(timelineEvents.id, entity.id),
+        ),
+      )
+      .limit(1);
+    if (occupied) {
+      storyTimeSortKey = undefined;
+    }
+  }
+  if (storyTimeSortKey === undefined) {
+    const [maxSort] = await transaction
+      .select({
+        value: sql<number>`coalesce(max(${timelineEvents.storyTimeSortKey}), -100)`,
+      })
+      .from(timelineEvents)
+      .where(
+        and(
+          eq(timelineEvents.userId, userId),
+          eq(timelineEvents.branchId, entity.branchId),
+          eq(timelineEvents.era, era),
+        ),
+      );
+    storyTimeSortKey = Number(maxSort?.value ?? -100) + 100;
+  }
+  const timelineValues = {
+    era,
+    storyTimeLabel,
+    storyTimeSortKey,
+    durationMinutes: 0,
+    durationLabel: settingAttributeString(entity.attributes.duration) ?? "",
+    eventText: settingAttributeString(entity.attributes.event) || entity.summary,
+    validFromChapter: 1,
+    validToChapter: null,
+    versionNodeId,
+  };
+  await transaction
+    .insert(timelineEvents)
+    .values({
+      id: entity.id,
+      workId: entity.workId,
+      branchId: entity.branchId,
+      userId,
+      ...timelineValues,
+      fromEra: null,
+      fromStoryTimeLabel: null,
+      fromStorySortKey: null,
+      toEra: null,
+      toStoryTimeLabel: null,
+      toStorySortKey: null,
+      createdBy: userId,
+      createdAt: now,
+    })
+    .onConflictDoUpdate({
+      target: timelineEvents.id,
+      set: timelineValues,
+    });
+}
+
+function settingAttributeString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
+}
+
+function settingAttributeNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }
 
 function normalizeSettingIdentifier(value: string): string {

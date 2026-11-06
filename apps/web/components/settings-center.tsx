@@ -10,7 +10,7 @@ import {
   History,
   LoaderCircle,
   Lock,
-  Map,
+  Map as MapIcon,
   MessageSquare,
   Pencil,
   Plus,
@@ -30,6 +30,8 @@ import {
   confirmedSettingListResponseSchema,
   customFieldDefinitionListResponseSchema,
   customFieldDefinitionResponseSchema,
+  factionDetailResponseSchema,
+  mapDetailResponseSchema,
   settingEntityDeleteResponseSchema,
   settingEntityListResponseSchema,
   settingEntityResponseSchema,
@@ -37,11 +39,14 @@ import {
   settingChangeRequestResponseSchema,
   settingProposalListResponseSchema,
   settingProposalResponseSchema,
+  worldTimelineResponseSchema,
   workResponseSchema,
   type ConfirmedSetting,
   type CharacterDetail,
   type CustomFieldDefinition,
   type CustomFieldValue,
+  type FactionDetail,
+  type MapDetail,
   type SettingChangeRequest,
   type SettingConflictType,
   type SettingEntity,
@@ -49,6 +54,7 @@ import {
   type SettingEntityType,
   type SettingProposal,
   type WorkOverview,
+  type WorldTimeline,
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
@@ -99,6 +105,11 @@ type ProposalInput = {
   evidenceQuote: string;
 };
 
+type WorldDomainDetail =
+  | { kind: "faction"; value: FactionDetail }
+  | { kind: "map"; value: MapDetail }
+  | { kind: "timeline"; value: WorldTimeline };
+
 type FieldFormState = {
   key: string;
   label: string;
@@ -120,7 +131,7 @@ const COLUMNS: Array<{
   { key: "world", label: "世界", contentLabel: "世界规则", icon: Globe2, supported: true },
   { key: "factions", label: "势力", contentLabel: "势力", icon: Shield, supported: true },
   { key: "characters", label: "人物", contentLabel: "人物档案", icon: Users, supported: true },
-  { key: "map", label: "地图", contentLabel: "地图", icon: Map, supported: true },
+  { key: "map", label: "地图", contentLabel: "地图", icon: MapIcon, supported: true },
   { key: "power", label: "力量体系", contentLabel: "力量体系", icon: Zap, supported: true },
   { key: "items", label: "物品功法", contentLabel: "物品功法", icon: Swords, supported: true },
   { key: "timeline", label: "时间线", contentLabel: "时间线", icon: History, supported: true },
@@ -213,6 +224,53 @@ const knowledgeStateLabels: Record<CharacterDetail["knowledgeStates"][number]["s
   unknown: "未知",
 };
 
+const factionRelationLabels: Record<
+  FactionDetail["relationships"][number]["relationType"],
+  string
+> = {
+  ally: "同盟",
+  enemy: "敌对",
+  vassal: "附庸",
+  overlord: "宗主",
+  trade: "贸易",
+  neutral: "中立",
+};
+
+const controlLevelLabels: Record<FactionDetail["territories"][number]["controlLevel"], string> = {
+  direct: "直辖",
+  military: "军事控制",
+  influence: "影响力",
+  contested: "争夺中",
+};
+
+const mapNodeTypeLabels: Record<MapDetail["nodes"][number]["nodeType"], string> = {
+  region: "区域",
+  settlement: "聚落",
+  landmark: "地标",
+  passage: "通道",
+  battlefield: "战场",
+  sect: "宗门",
+  dungeon: "秘境",
+  other: "其他",
+};
+
+const mapRouteTypeLabels: Record<MapDetail["edges"][number]["routeType"], string> = {
+  road: "官道",
+  trail: "山径",
+  water: "水路",
+  air: "空路",
+  teleport: "传送",
+  secret: "密道",
+};
+
+const mapMarkerTypeLabels: Record<MapDetail["markers"][number]["markerType"], string> = {
+  danger: "危险",
+  event: "事件",
+  resource: "资源",
+  note: "备注",
+  character: "人物",
+};
+
 const customFieldTypeLabels: Record<CustomFieldDefinition["fieldType"], string> = {
   text: "文本",
   long_text: "长文本",
@@ -255,6 +313,9 @@ export function SettingsCenter({ workId }: { workId: string }) {
   const [characterDetail, setCharacterDetail] = useState<CharacterDetail | null>(null);
   const [characterDetailLoading, setCharacterDetailLoading] = useState(false);
   const [characterDetailError, setCharacterDetailError] = useState("");
+  const [worldDetail, setWorldDetail] = useState<WorldDomainDetail | null>(null);
+  const [worldDetailLoading, setWorldDetailLoading] = useState(false);
+  const [worldDetailError, setWorldDetailError] = useState("");
   const [activeColumn, setActiveColumn] = useState<ColumnKey>("world");
   const [view, setView] = useState<ViewMode>("columns");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -326,23 +387,66 @@ export function SettingsCenter({ workId }: { workId: string }) {
       }
       setCharacterDetail(null);
       setCharacterDetailError("");
-      if (entityType !== "character") {
-        setCharacterDetailLoading(false);
+      setCharacterDetailLoading(false);
+      setWorldDetail(null);
+      setWorldDetailError("");
+      setWorldDetailLoading(false);
+      if (entityType === "character") {
+        setCharacterDetailLoading(true);
+        try {
+          const response = await fetch(`${basePath}/characters/${entityId}`, {
+            cache: "no-store",
+          });
+          if (!response.ok) {
+            throw new Error(await readError(response, "人物档案加载失败。"));
+          }
+          setCharacterDetail(characterDetailResponseSchema.parse(await response.json()).data);
+        } catch (caught) {
+          setCharacterDetailError(caught instanceof Error ? caught.message : "人物档案加载失败。");
+        } finally {
+          setCharacterDetailLoading(false);
+        }
         return;
       }
-      setCharacterDetailLoading(true);
+      if (entityType !== "faction" && entityType !== "map" && entityType !== "timeline_event") {
+        return;
+      }
+      setWorldDetailLoading(true);
       try {
-        const response = await fetch(`${basePath}/characters/${entityId}`, {
+        const path =
+          entityType === "faction"
+            ? `${basePath}/world/factions/${entityId}`
+            : entityType === "map"
+              ? `${basePath}/world/maps/${entityId}`
+              : `${basePath}/world/timeline`;
+        const response = await fetch(path, {
           cache: "no-store",
         });
         if (!response.ok) {
-          throw new Error(await readError(response, "人物档案加载失败。"));
+          throw new Error(await readError(response, worldDetailErrorLabel(entityType)));
         }
-        setCharacterDetail(characterDetailResponseSchema.parse(await response.json()).data);
+        if (entityType === "faction") {
+          setWorldDetail({
+            kind: "faction",
+            value: factionDetailResponseSchema.parse(await response.json()).data,
+          });
+        } else if (entityType === "map") {
+          setWorldDetail({
+            kind: "map",
+            value: mapDetailResponseSchema.parse(await response.json()).data,
+          });
+        } else {
+          setWorldDetail({
+            kind: "timeline",
+            value: worldTimelineResponseSchema.parse(await response.json()).data,
+          });
+        }
       } catch (caught) {
-        setCharacterDetailError(caught instanceof Error ? caught.message : "人物档案加载失败。");
+        setWorldDetailError(
+          caught instanceof Error ? caught.message : worldDetailErrorLabel(entityType),
+        );
       } finally {
-        setCharacterDetailLoading(false);
+        setWorldDetailLoading(false);
       }
     },
     [work],
@@ -360,6 +464,9 @@ export function SettingsCenter({ workId }: { workId: string }) {
       setCharacterDetail(null);
       setCharacterDetailError("");
       setCharacterDetailLoading(false);
+      setWorldDetail(null);
+      setWorldDetailError("");
+      setWorldDetailLoading(false);
       return;
     }
     void refreshDetail(selectedEntity.id, selectedEntity.type);
@@ -413,6 +520,15 @@ export function SettingsCenter({ workId }: { workId: string }) {
     setActionError("");
     setNotice("");
     try {
+      if (editor.type === "faction" || editor.type === "map") {
+        const created = await createWorldEntity(work, editor);
+        setSelectedId(created.id);
+        setActiveColumn(columnForType(editor.type));
+        setEditor(null);
+        setNotice(`“${created.name}”已创建。`);
+        await refreshProjection();
+        return;
+      }
       const created = await mutateEntity(
         `${settingsPath(work)}/entities`,
         "POST",
@@ -909,7 +1025,11 @@ export function SettingsCenter({ workId }: { workId: string }) {
               onEditAlias={() => beginEdit(selected, "alias")}
               onLock={() => lockEntity(selected)}
               onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
+              onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
               proposals={proposals}
+              worldDetail={worldDetail}
+              worldDetailError={worldDetailError}
+              worldDetailLoading={worldDetailLoading}
             />
           ) : (
             <section className="panel settings-detail-empty">
@@ -1677,7 +1797,11 @@ function EntityDetail({
   onEditAlias,
   onLock,
   onRetryCharacterDetail,
+  onRetryWorldDetail,
   proposals,
+  worldDetail,
+  worldDetailError,
+  worldDetailLoading,
 }: {
   busy: string;
   changeRequests: SettingChangeRequest[];
@@ -1698,7 +1822,11 @@ function EntityDetail({
   onEditAlias: () => void;
   onLock: () => void;
   onRetryCharacterDetail: () => void;
+  onRetryWorldDetail: () => void;
   proposals: SettingProposal[];
+  worldDetail: WorldDomainDetail | null;
+  worldDetailError: string;
+  worldDetailLoading: boolean;
 }) {
   const locked = entity.status === "locked";
   const proposed = entity.status === "proposed";
@@ -1893,7 +2021,21 @@ function EntityDetail({
             </div>
           )}
         </div>
-      ) : entity.type === "faction" || entity.type === "map" || entity.type === "power_system" ? (
+      ) : entity.type === "faction" ? (
+        <FactionDomainView
+          detail={worldDetail?.kind === "faction" ? worldDetail.value : null}
+          error={worldDetailError}
+          loading={worldDetailLoading}
+          onRetry={onRetryWorldDetail}
+        />
+      ) : entity.type === "map" ? (
+        <MapDomainView
+          detail={worldDetail?.kind === "map" ? worldDetail.value : null}
+          error={worldDetailError}
+          loading={worldDetailLoading}
+          onRetry={onRetryWorldDetail}
+        />
+      ) : entity.type === "power_system" ? (
         <div className="settings-detail-block">
           <h3>{typeLabels[entity.type]}</h3>
           <p>{entity.data.details}</p>
@@ -1926,24 +2068,13 @@ function EntityDetail({
           </div>
         </div>
       ) : entity.type === "timeline_event" ? (
-        <div className="settings-golden-grid">
-          <div>
-            <span>纪元</span>
-            <strong>{entity.data.era || "未记录"}</strong>
-          </div>
-          <div>
-            <span>故事时间</span>
-            <strong>{entity.data.storyTime}</strong>
-          </div>
-          <div>
-            <span>持续时长</span>
-            <strong>{entity.data.duration || "未记录"}</strong>
-          </div>
-          <div>
-            <span>事件</span>
-            <strong>{entity.data.event}</strong>
-          </div>
-        </div>
+        <TimelineDomainView
+          detail={worldDetail?.kind === "timeline" ? worldDetail.value : null}
+          entity={entity}
+          error={worldDetailError}
+          loading={worldDetailLoading}
+          onRetry={onRetryWorldDetail}
+        />
       ) : (
         <div className="settings-golden-grid">
           <div>
@@ -2228,6 +2359,400 @@ function EntityDetail({
   );
 }
 
+function FactionDomainView({
+  detail,
+  error,
+  loading,
+  onRetry,
+}: {
+  detail: FactionDetail | null;
+  error: string;
+  loading: boolean;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="settings-character-domain">
+      {loading ? (
+        <div className="settings-detail-block settings-character-loading" role="status">
+          <LoaderCircle className="spin" size={16} aria-hidden="true" />
+          <span>正在加载势力档案</span>
+        </div>
+      ) : error ? (
+        <div className="settings-detail-block settings-character-error" role="alert">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{error}</span>
+          <button className="text-btn small" onClick={onRetry} type="button">
+            重试
+          </button>
+        </div>
+      ) : detail ? (
+        <>
+          <div className="settings-detail-block">
+            <h3>组织目标</h3>
+            <dl className="settings-character-grid">
+              <div>
+                <dt>概览</dt>
+                <dd>{detail.profile.overview || "尚未记录"}</dd>
+              </div>
+              <div>
+                <dt>当前目标</dt>
+                <dd>{detail.profile.goals || "尚未记录"}</dd>
+              </div>
+              <div>
+                <dt>资源</dt>
+                <dd>{detail.profile.resources || "尚未记录"}</dd>
+              </div>
+              <div>
+                <dt>规矩</dt>
+                <dd>{detail.profile.doctrine || "尚未记录"}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>势力关系</h3>
+            {detail.relationships.length === 0 ? (
+              <p>还没有类型化势力关系。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.relationships.map((relationship) => (
+                  <li key={relationship.id}>
+                    <div>
+                      <strong>
+                        {factionRelationLabels[relationship.relationType]} ·{" "}
+                        {relationship.target.label ?? "未命名势力"}
+                      </strong>
+                      <span>{formatValidity(relationship.validity)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>控制区</h3>
+            {detail.territories.length === 0 ? (
+              <p>还没有记录控制区。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.territories.map((territory) => (
+                  <li key={territory.id}>
+                    <div>
+                      <strong>
+                        {territory.node.label ?? "未命名地点"} ·{" "}
+                        {controlLevelLabels[territory.controlLevel]}
+                      </strong>
+                      <span>{formatValidity(territory.validity)}</span>
+                    </div>
+                    <small>
+                      {territory.evidence.length > 0
+                        ? `来源证据 ${territory.evidence.length} 条`
+                        : "来源：作者补录"}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <WorldHealth findings={detail.health} />
+        </>
+      ) : (
+        <div className="settings-detail-block">
+          <p>尚未载入势力专用档案。</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MapDomainView({
+  detail,
+  error,
+  loading,
+  onRetry,
+}: {
+  detail: MapDetail | null;
+  error: string;
+  loading: boolean;
+  onRetry: () => void;
+}) {
+  const nodeNames = new Map((detail?.nodes ?? []).map((node) => [node.id, node.name] as const));
+  return (
+    <div className="settings-character-domain">
+      {loading ? (
+        <div className="settings-detail-block settings-character-loading" role="status">
+          <LoaderCircle className="spin" size={16} aria-hidden="true" />
+          <span>正在加载地图档案</span>
+        </div>
+      ) : error ? (
+        <div className="settings-detail-block settings-character-error" role="alert">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{error}</span>
+          <button className="text-btn small" onClick={onRetry} type="button">
+            重试
+          </button>
+        </div>
+      ) : detail ? (
+        <>
+          <div className="settings-detail-block">
+            <h3>地图图层</h3>
+            {detail.layers.length === 0 ? (
+              <p>还没有记录地图图层。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.layers.map((layer) => (
+                  <li key={layer.id}>
+                    <div>
+                      <strong>{layer.name}</strong>
+                      <span>{formatValidity(layer.validity)}</span>
+                    </div>
+                    <small>
+                      层级顺序 {layer.sortOrder + 1} · 显示范围 {layer.minScale}–{layer.maxScale}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>地点层级</h3>
+            {detail.nodes.length === 0 ? (
+              <p>还没有记录地点节点。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.nodes.map((node) => (
+                  <li key={node.id}>
+                    <div>
+                      <strong>
+                        {node.name} · {mapNodeTypeLabels[node.nodeType]}
+                      </strong>
+                      <span>{formatValidity(node.validity)}</span>
+                    </div>
+                    <p>{node.summary || "尚未补充地点说明。"}</p>
+                    <small>
+                      {node.parentNodeId
+                        ? `上级地点：${nodeNames.get(node.parentNodeId) ?? "未命名地点"}`
+                        : "地图根部节点"}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>路线与旅行时间</h3>
+            {detail.edges.length === 0 ? (
+              <p>还没有记录地点路线。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.edges.map((edge) => (
+                  <li key={edge.id}>
+                    <div>
+                      <strong>
+                        {nodeNames.get(edge.fromNodeId) ?? "未命名地点"} →{" "}
+                        {nodeNames.get(edge.toNodeId) ?? "未命名地点"}
+                      </strong>
+                      <span>{edge.travelMinutes} 分钟</span>
+                    </div>
+                    <small>
+                      {mapRouteTypeLabels[edge.routeType]}
+                      {edge.bidirectional ? " · 可双向通行" : " · 单向通行"}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>地图标记</h3>
+            {detail.markers.length === 0 ? (
+              <p>还没有地图标记。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.markers.map((marker) => (
+                  <li key={marker.id}>
+                    <div>
+                      <strong>
+                        {marker.label} · {mapMarkerTypeLabels[marker.markerType]}
+                      </strong>
+                      <span>{formatValidity(marker.validity)}</span>
+                    </div>
+                    {marker.nodeId ? (
+                      <small>关联地点：{nodeNames.get(marker.nodeId) ?? "未命名地点"}</small>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>控制区</h3>
+            {detail.controlAreas.length === 0 ? (
+              <p>还没有记录势力控制区。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.controlAreas.map((territory) => (
+                  <li key={territory.id}>
+                    <div>
+                      <strong>
+                        {territory.node.label ?? "未命名地点"} ·{" "}
+                        {controlLevelLabels[territory.controlLevel]}
+                      </strong>
+                      <span>{formatValidity(territory.validity)}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <WorldHealth findings={detail.health} />
+        </>
+      ) : (
+        <div className="settings-detail-block">
+          <p>尚未载入地图专用档案。</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TimelineDomainView({
+  detail,
+  entity,
+  error,
+  loading,
+  onRetry,
+}: {
+  detail: WorldTimeline | null;
+  entity: Extract<SettingEntity, { type: "timeline_event" }>;
+  error: string;
+  loading: boolean;
+  onRetry: () => void;
+}) {
+  const selectedEvent = detail?.events.find((event) => event.event.id === entity.id) ?? null;
+  return (
+    <div className="settings-character-domain">
+      {loading ? (
+        <div className="settings-detail-block settings-character-loading" role="status">
+          <LoaderCircle className="spin" size={16} aria-hidden="true" />
+          <span>正在加载故事时间线</span>
+        </div>
+      ) : error ? (
+        <div className="settings-detail-block settings-character-error" role="alert">
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>{error}</span>
+          <button className="text-btn small" onClick={onRetry} type="button">
+            重试
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="settings-golden-grid">
+            <div>
+              <span>纪元</span>
+              <strong>{selectedEvent?.storyTime.era ?? entity.data.era ?? "未记录"}</strong>
+            </div>
+            <div>
+              <span>故事时间</span>
+              <strong>{selectedEvent?.storyTime.label ?? entity.data.storyTime}</strong>
+            </div>
+            <div>
+              <span>持续时长</span>
+              <strong>{selectedEvent?.durationLabel || entity.data.duration || "未记录"}</strong>
+            </div>
+            <div>
+              <span>事件</span>
+              <strong>{selectedEvent?.eventText ?? entity.data.event}</strong>
+            </div>
+          </div>
+          {selectedEvent ? (
+            <div className="settings-detail-block">
+              <h3>生效范围</h3>
+              <p>{formatValidity(selectedEvent.validity)}</p>
+            </div>
+          ) : null}
+
+          <div className="settings-detail-block">
+            <h3>事件序列</h3>
+            {!detail || detail.events.length === 0 ? (
+              <p>还没有记录故事事件。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.events.map((event) => (
+                  <li key={event.event.id}>
+                    <div>
+                      <strong>
+                        {event.storyTime.era} · {event.storyTime.label}
+                      </strong>
+                      <span>{event.event.label ?? "未命名事件"}</span>
+                    </div>
+                    <p>{event.eventText}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className="settings-detail-block">
+            <h3>角色行程</h3>
+            {!detail || detail.itineraries.length === 0 ? (
+              <p>还没有记录角色行程。</p>
+            ) : (
+              <ul className="settings-character-records">
+                {detail.itineraries.map((itinerary) => (
+                  <li key={itinerary.id}>
+                    <div>
+                      <strong>
+                        {itinerary.character.label ?? "未命名人物"} ·{" "}
+                        {itinerary.fromNode.label ?? "未命名地点"} →{" "}
+                        {itinerary.toNode.label ?? "未命名地点"}
+                      </strong>
+                      <span>{itinerary.travelMinutes} 分钟</span>
+                    </div>
+                    <small>
+                      {itinerary.departure.era} · {itinerary.departure.label} 至{" "}
+                      {itinerary.arrival.label}
+                    </small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {detail ? <WorldHealth findings={detail.health} /> : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function WorldHealth({ findings }: { findings: FactionDetail["health"] }) {
+  return (
+    <div className="settings-detail-block">
+      <h3>设定体检</h3>
+      {findings.length === 0 ? (
+        <p>基础检查通过。</p>
+      ) : (
+        <ul className="settings-health-list">
+          {findings.map((finding, index) => (
+            <li className={`severity-${finding.severity}`} key={`${finding.code}-${index}`}>
+              <span>{finding.severity === "blocker" ? "阻断" : "提醒"}</span>
+              <p>{finding.message}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function ConfirmedSettings({ items }: { items: ConfirmedSetting[] }) {
   return (
     <section className="panel confirmed-settings" aria-labelledby="confirmed-settings-title">
@@ -2498,6 +3023,56 @@ async function mutateEntity(
   return settingEntityResponseSchema.parse(await response.json()).data;
 }
 
+async function createWorldEntity(
+  work: WorkOverview,
+  editor: EditorState,
+): Promise<{ id: string; name: string }> {
+  const path =
+    editor.type === "faction"
+      ? `${settingsPath(work)}/world/factions`
+      : `${settingsPath(work)}/world/maps`;
+  const common = {
+    name: editor.name.trim(),
+    aliases: splitList(editor.aliases),
+    summary: editor.summary.trim(),
+    description: editor.description.trim(),
+    tags: splitList(editor.tags),
+  };
+  const body =
+    editor.type === "faction"
+      ? {
+          ...common,
+          profile: {
+            overview: editor.details.trim(),
+            goals: "",
+            resources: "",
+            doctrine: "",
+          },
+        }
+      : { ...common, details: editor.details.trim() };
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, "设定创建失败。"));
+  }
+  if (editor.type === "faction") {
+    const detail = factionDetailResponseSchema.parse(await response.json()).data;
+    return {
+      id: detail.faction.id,
+      name: detail.faction.label ?? editor.name,
+    };
+  }
+  const detail = mapDetailResponseSchema.parse(await response.json()).data;
+  return {
+    id: detail.map.id,
+    name: detail.map.label ?? editor.name,
+  };
+}
+
 async function mutateProposal(
   path: string,
   body: Record<string, unknown>,
@@ -2650,6 +3225,19 @@ function formatValidity(validity: CharacterDetail["relationships"][number]["vali
         .join(" · ")
     : "";
   return storyRange ? `${chapterRange} · ${storyRange}` : chapterRange;
+}
+
+function worldDetailErrorLabel(type: SettingEntityType): string {
+  if (type === "faction") {
+    return "势力档案加载失败。";
+  }
+  if (type === "map") {
+    return "地图档案加载失败。";
+  }
+  if (type === "timeline_event") {
+    return "故事时间线加载失败。";
+  }
+  return "世界设定加载失败。";
 }
 
 function settingsPath(work: WorkOverview): string {

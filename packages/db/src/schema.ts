@@ -1348,6 +1348,534 @@ export const characterChangeRequests = pgTable(
   ],
 );
 
+export const factionProfiles = pgTable(
+  "faction_profiles",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    overview: text("overview").notNull().default(""),
+    goals: text("goals").notNull().default(""),
+    resources: text("resources").notNull().default(""),
+    doctrine: text("doctrine").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("faction_profiles_user_work_idx").on(table.userId, table.workId),
+    index("faction_profiles_branch_idx").on(table.branchId),
+  ],
+);
+
+export const factionRelationships = pgTable(
+  "faction_relationships",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceFactionId: uuid("source_faction_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    targetLabel: text("target_label"),
+    relationType: text("relation_type").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("faction_relationships_source_valid_idx").on(
+      table.sourceFactionId,
+      table.validFromChapter,
+    ),
+    index("faction_relationships_user_work_idx").on(table.userId, table.workId),
+    check("faction_relationships_target_type_check", sql`${table.targetType} = 'faction'`),
+    check(
+      "faction_relationships_relation_type_check",
+      sql`${table.relationType} in ('ally', 'enemy', 'vassal', 'overlord', 'trade', 'neutral')`,
+    ),
+    check(
+      "faction_relationships_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+    check(
+      "faction_relationships_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "faction_relationships_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const mapControl = pgTable(
+  "map_control",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    factionId: uuid("faction_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    nodeType: text("node_type").notNull(),
+    nodeId: uuid("node_id").notNull(),
+    nodeLabel: text("node_label"),
+    controlLevel: text("control_level").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("map_control_node_valid_idx").on(table.nodeId, table.validFromChapter),
+    index("map_control_user_work_idx").on(table.userId, table.workId),
+    check("map_control_node_type_check", sql`${table.nodeType} in ('map', 'map_node')`),
+    check(
+      "map_control_level_check",
+      sql`${table.controlLevel} in ('direct', 'military', 'influence', 'contested')`,
+    ),
+    check(
+      "map_control_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const mapLayers = pgTable(
+  "map_layers",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    parentLayerId: uuid("parent_layer_id").references((): AnyPgColumn => mapLayers.id, {
+      onDelete: "set null",
+    }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    minScale: real("min_scale").notNull().default(0),
+    maxScale: real("max_scale").notNull().default(100),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("map_layers_map_name_unique").on(table.mapId, table.name),
+    index("map_layers_user_work_idx").on(table.userId, table.workId),
+    check("map_layers_scale_check", sql`${table.maxScale} >= ${table.minScale}`),
+    check(
+      "map_layers_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const mapNodes = pgTable(
+  "map_nodes",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    layerId: uuid("layer_id").references(() => mapLayers.id, { onDelete: "set null" }),
+    parentNodeId: uuid("parent_node_id").references((): AnyPgColumn => mapNodes.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    nodeType: text("node_type").notNull(),
+    summary: text("summary").notNull().default(""),
+    x: real("x"),
+    y: real("y"),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("map_nodes_map_name_unique").on(table.mapId, table.name),
+    index("map_nodes_map_parent_idx").on(table.mapId, table.parentNodeId),
+    index("map_nodes_user_work_idx").on(table.userId, table.workId),
+    check(
+      "map_nodes_type_check",
+      sql`${table.nodeType} in ('region', 'settlement', 'landmark', 'passage', 'battlefield', 'sect', 'dungeon', 'other')`,
+    ),
+    check(
+      "map_nodes_coordinates_check",
+      sql`(${table.x} is null and ${table.y} is null) or (${table.x} >= 0 and ${table.x} <= 1 and ${table.y} >= 0 and ${table.y} <= 1)`,
+    ),
+    check(
+      "map_nodes_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const mapEdges = pgTable(
+  "map_edges",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    layerId: uuid("layer_id").references(() => mapLayers.id, { onDelete: "set null" }),
+    fromNodeId: uuid("from_node_id")
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: "cascade" }),
+    toNodeId: uuid("to_node_id")
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: "cascade" }),
+    routeType: text("route_type").notNull(),
+    bidirectional: boolean("bidirectional").notNull().default(true),
+    travelMinutes: integer("travel_minutes").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("map_edges_map_from_idx").on(table.mapId, table.fromNodeId),
+    index("map_edges_user_work_idx").on(table.userId, table.workId),
+    check(
+      "map_edges_type_check",
+      sql`${table.routeType} in ('road', 'trail', 'water', 'air', 'teleport', 'secret')`,
+    ),
+    check("map_edges_endpoint_check", sql`${table.fromNodeId} <> ${table.toNodeId}`),
+    check("map_edges_travel_time_check", sql`${table.travelMinutes} > 0`),
+    check(
+      "map_edges_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const mapMarkers = pgTable(
+  "map_markers",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    layerId: uuid("layer_id").references(() => mapLayers.id, { onDelete: "set null" }),
+    nodeId: uuid("node_id").references(() => mapNodes.id, { onDelete: "set null" }),
+    label: text("label").notNull(),
+    markerType: text("marker_type").notNull(),
+    x: real("x").notNull(),
+    y: real("y").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("map_markers_map_idx").on(table.mapId),
+    index("map_markers_user_work_idx").on(table.userId, table.workId),
+    check(
+      "map_markers_type_check",
+      sql`${table.markerType} in ('danger', 'event', 'resource', 'note', 'character')`,
+    ),
+    check(
+      "map_markers_coordinates_check",
+      sql`${table.x} >= 0 and ${table.x} <= 1 and ${table.y} >= 0 and ${table.y} <= 1`,
+    ),
+    check(
+      "map_markers_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const timelineEras = pgTable(
+  "timeline_eras",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    orderIndex: integer("order_index").notNull(),
+    startSortKey: integer("start_sort_key").notNull(),
+    endSortKey: integer("end_sort_key"),
+    description: text("description").notNull().default(""),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("timeline_eras_branch_name_unique").on(table.branchId, table.name),
+    index("timeline_eras_user_work_idx").on(table.userId, table.workId),
+    check(
+      "timeline_eras_range_check",
+      sql`${table.endSortKey} is null or ${table.endSortKey} >= ${table.startSortKey}`,
+    ),
+  ],
+);
+
+export const timelineEvents = pgTable(
+  "timeline_events",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    era: text("era").notNull(),
+    storyTimeLabel: text("story_time_label").notNull(),
+    storyTimeSortKey: integer("story_time_sort_key").notNull(),
+    durationMinutes: integer("duration_minutes").notNull().default(0),
+    durationLabel: text("duration_label").notNull().default(""),
+    eventText: text("event_text").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("timeline_events_branch_slot_unique").on(
+      table.branchId,
+      table.era,
+      table.storyTimeSortKey,
+    ),
+    index("timeline_events_user_work_idx").on(table.userId, table.workId),
+    check("timeline_events_duration_check", sql`${table.durationMinutes} >= 0`),
+    check(
+      "timeline_events_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const characterItineraries = pgTable(
+  "character_itineraries",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    fromNodeId: uuid("from_node_id")
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: "restrict" }),
+    toNodeId: uuid("to_node_id")
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: "restrict" }),
+    departureEra: text("departure_era").notNull(),
+    departureLabel: text("departure_label").notNull(),
+    departureSortKey: integer("departure_sort_key").notNull(),
+    arrivalEra: text("arrival_era").notNull(),
+    arrivalLabel: text("arrival_label").notNull(),
+    arrivalSortKey: integer("arrival_sort_key").notNull(),
+    routeTravelMinutes: integer("route_travel_minutes").notNull(),
+    travelMinutes: integer("travel_minutes").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_itineraries_character_time_idx").on(table.characterId, table.departureSortKey),
+    index("character_itineraries_user_work_idx").on(table.userId, table.workId),
+    check(
+      "character_itineraries_time_check",
+      sql`${table.arrivalEra} <> ${table.departureEra} or ${table.arrivalSortKey} > ${table.departureSortKey}`,
+    ),
+    check(
+      "character_itineraries_travel_check",
+      sql`${table.travelMinutes} >= ${table.routeTravelMinutes}`,
+    ),
+    check(
+      "character_itineraries_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
 export const jobs = pgTable(
   "jobs",
   {

@@ -7,11 +7,16 @@ import {
   createRequestId,
   elapsedMilliseconds,
   extractFactCandidates,
+  findControlAreaConflicts,
+  findShortestMapRoute,
+  findTimelineOrderConflicts,
   projectActiveRelationshipsAtChapter,
   projectCharacterKnowledgeAtChapter,
   projectCharacterStateAtChapter,
   resolveProxyIpSecret,
+  sortTimelineEvents,
   signClientIp,
+  validateItinerarySchedule,
   verifyClientIp,
 } from "../src";
 
@@ -499,5 +504,154 @@ describe("character domain projections", () => {
       "rel-ally",
     ]);
     expect(projectActiveRelationshipsAtChapter(relationships, 12)).toEqual([relationships[1]]);
+  });
+});
+
+describe("world simulation rules", () => {
+  const nodes = [
+    { id: "village", mapId: "north" },
+    { id: "pass", mapId: "north" },
+    { id: "gate", mapId: "north" },
+    { id: "sect", mapId: "north" },
+    { id: "isolated", mapId: "north" },
+  ];
+
+  it("finds the shortest cross-layer route and respects directed edges", () => {
+    const edges = [
+      {
+        id: "village-pass",
+        mapId: "north",
+        fromNodeId: "village",
+        toNodeId: "pass",
+        bidirectional: true,
+        travelMinutes: 30,
+      },
+      {
+        id: "pass-gate",
+        mapId: "north",
+        fromNodeId: "pass",
+        toNodeId: "gate",
+        bidirectional: true,
+        travelMinutes: 45,
+      },
+      {
+        id: "village-sect",
+        mapId: "north",
+        fromNodeId: "village",
+        toNodeId: "sect",
+        bidirectional: false,
+        travelMinutes: 60,
+      },
+      {
+        id: "sect-gate",
+        mapId: "north",
+        fromNodeId: "sect",
+        toNodeId: "gate",
+        bidirectional: false,
+        travelMinutes: 20,
+      },
+    ];
+
+    expect(findShortestMapRoute(nodes, edges, "village", "gate")).toMatchObject({
+      pathNodeIds: ["village", "pass", "gate"],
+      travelMinutes: 75,
+    });
+    expect(findShortestMapRoute(nodes, edges, "village", "isolated")).toBeNull();
+  });
+
+  it("reports itinerary order, travel-time and overlap conflicts", () => {
+    const existing = [
+      {
+        id: "trip-1",
+        characterId: "shen",
+        departureSortKey: 1000,
+        arrivalSortKey: 1200,
+      },
+    ];
+    expect(
+      validateItinerarySchedule(
+        {
+          characterId: "shen",
+          departureSortKey: 1000,
+          arrivalSortKey: 1100,
+          travelMinutes: 240,
+        },
+        existing,
+      ).map((finding) => finding.code),
+    ).toEqual(["ITINERARY_TRAVEL_TIME", "ITINERARY_OVERLAP"]);
+    expect(
+      validateItinerarySchedule(
+        {
+          characterId: "shen",
+          departureSortKey: 1200,
+          arrivalSortKey: 1200,
+          travelMinutes: 0,
+        },
+        existing,
+      ).map((finding) => finding.code),
+    ).toContain("ITINERARY_TIME_ORDER");
+  });
+
+  it("detects overlapping control areas for different factions", () => {
+    const conflicts = findControlAreaConflicts([
+      {
+        id: "control-sect",
+        factionId: "tai-xuan",
+        nodeId: "village",
+        validFromChapter: 1,
+        validToChapter: 9,
+      },
+      {
+        id: "control-blood",
+        factionId: "blood-river",
+        nodeId: "village",
+        validFromChapter: 5,
+        validToChapter: null,
+      },
+      {
+        id: "control-later",
+        factionId: "blood-river",
+        nodeId: "village",
+        validFromChapter: 10,
+        validToChapter: null,
+      },
+    ]);
+
+    expect(conflicts).toEqual([
+      {
+        code: "CONTROL_AREA_OVERLAP",
+        leftId: "control-sect",
+        rightId: "control-blood",
+        nodeId: "village",
+      },
+    ]);
+  });
+
+  it("orders timeline events by era and story time while detecting duplicate slots", () => {
+    const eras = [
+      { id: "era-2", name: "新历", orderIndex: 2 },
+      { id: "era-1", name: "大玄历", orderIndex: 1 },
+    ];
+    const events = [
+      { id: "later", era: "新历", sortKey: 10 },
+      { id: "first", era: "大玄历", sortKey: 20 },
+      { id: "second", era: "大玄历", sortKey: 30 },
+    ];
+
+    expect(sortTimelineEvents(eras, events).map((event) => event.id)).toEqual([
+      "first",
+      "second",
+      "later",
+    ]);
+    expect(
+      findTimelineOrderConflicts(events.concat({ id: "duplicate", era: "大玄历", sortKey: 20 })),
+    ).toEqual([
+      {
+        code: "TIMELINE_EVENT_OVERLAP",
+        era: "大玄历",
+        sortKey: 20,
+        eventIds: ["first", "duplicate"],
+      },
+    ]);
   });
 });
