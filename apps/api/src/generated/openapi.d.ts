@@ -100,6 +100,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/agent-grants": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AgentGrantController_list"];
+    put?: never;
+    post: operations["AgentGrantController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/agent-grants/{grantId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["AgentGrantController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/agent-grants/{grantId}/revoke": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["AgentGrantController_revoke"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
     parameters: {
       query?: never;
@@ -206,6 +254,150 @@ export interface paths {
     get: operations["ChaptersController_versions"];
     put?: never;
     post: operations["ChaptersController_saveVersion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_list"];
+    put?: never;
+    post: operations["CharactersController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["CharactersController_updateProfile"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CharactersController_lock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/relationships": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CharactersController_addRelationship"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/state-transitions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CharactersController_addStateTransition"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/knowledge-states": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["CharactersController_addKnowledgeState"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/knowledge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_knowledge"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/history": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_history"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/characters/{characterId}/change-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CharactersController_changeRequests"];
+    put?: never;
+    post: operations["CharactersController_createChangeRequest"];
     delete?: never;
     options?: never;
     head?: never;
@@ -692,6 +884,54 @@ export interface paths {
     patch: operations["SettingsController_patch"];
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/proposals": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_proposals"];
+    put?: never;
+    post: operations["SettingsController_createProposal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/proposals/{proposalId}/decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SettingsController_decideProposal"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/change-requests": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_changeRequests"];
+    put?: never;
+    post: operations["SettingsController_createChangeRequest"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/lock": {
     parameters: {
       query?: never;
@@ -722,6 +962,38 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/custom-fields": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["CustomFieldsController_list"];
+    put?: never;
+    post: operations["CustomFieldsController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/custom-fields/{fieldId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["CustomFieldsController_update"];
     trace?: never;
   };
   "/api/v1/works/{workId}/branches/{branchId}/story-bible": {
@@ -863,6 +1135,262 @@ export interface paths {
     put?: never;
     post?: never;
     delete: operations["StoryBibleController_deleteCard"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/factions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorldController_listFactions"];
+    put?: never;
+    post: operations["WorldController_createFaction"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/factions/{factionId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorldController_getFaction"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["WorldController_updateFaction"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/factions/{factionId}/relationships": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_addFactionRelationship"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/factions/{factionId}/territories": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_addTerritory"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/maps": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorldController_listMaps"];
+    put?: never;
+    post: operations["WorldController_createMap"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorldController_getMap"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}/layers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_addMapLayer"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}/nodes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_addMapNode"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}/edges": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_addMapEdge"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}/markers": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_addMapMarker"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}/routes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorldController_getMapRoute"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/timeline": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorldController_getTimeline"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/timeline/eras": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_createTimelineEra"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/timeline/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_createTimelineEvent"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/timeline/itineraries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorldController_createItinerary"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/snapshot": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorldController_getSnapshot"];
+    put?: never;
+    post?: never;
+    delete?: never;
     options?: never;
     head?: never;
     patch?: never;
@@ -1125,6 +1653,351 @@ export interface operations {
             data: {
               /** @enum {boolean} */
               loggedOut: true;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentGrantController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Agent grants for the branch */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              taskId: string;
+              userId: string;
+              /** @enum {string} */
+              role:
+                | "planner"
+                | "context_curator"
+                | "writer"
+                | "critic"
+                | "reviser"
+                | "fact_extractor"
+                | "canon_curator";
+              /** @enum {string} */
+              state: "active" | "revoked" | "expired";
+              tools: string[];
+              resourceScope: {
+                chapterIds: string[];
+                settingIds: string[];
+                includeCanon: boolean;
+              };
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxCalls: number;
+                spentCostCny: number;
+                spentTokens: number;
+                callCount: number;
+              };
+              maxImpact: {
+                /** @enum {string} */
+                maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+                maxAffectedResources: number;
+              };
+              /** Format: date-time */
+              expiresAt: string;
+              issuedBy: string;
+              /** Format: date-time */
+              revokedAt: string | null;
+              revokedBy: string | null;
+              revocationReason: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentGrantController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          taskId: string;
+          /** @enum {string} */
+          role:
+            | "planner"
+            | "context_curator"
+            | "writer"
+            | "critic"
+            | "reviser"
+            | "fact_extractor"
+            | "canon_curator";
+          tools: string[];
+          resourceScope: {
+            chapterIds: string[];
+            settingIds: string[];
+            includeCanon: boolean;
+          };
+          budget: {
+            maxCostCny: number;
+            maxTokens: number;
+            maxCalls: number;
+          };
+          maxImpact: {
+            /** @enum {string} */
+            maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+            maxAffectedResources: number;
+          };
+          /** Format: date-time */
+          expiresAt: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Issued agent grant */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              taskId: string;
+              userId: string;
+              /** @enum {string} */
+              role:
+                | "planner"
+                | "context_curator"
+                | "writer"
+                | "critic"
+                | "reviser"
+                | "fact_extractor"
+                | "canon_curator";
+              /** @enum {string} */
+              state: "active" | "revoked" | "expired";
+              tools: string[];
+              resourceScope: {
+                chapterIds: string[];
+                settingIds: string[];
+                includeCanon: boolean;
+              };
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxCalls: number;
+                spentCostCny: number;
+                spentTokens: number;
+                callCount: number;
+              };
+              maxImpact: {
+                /** @enum {string} */
+                maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+                maxAffectedResources: number;
+              };
+              /** Format: date-time */
+              expiresAt: string;
+              issuedBy: string;
+              /** Format: date-time */
+              revokedAt: string | null;
+              revokedBy: string | null;
+              revocationReason: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentGrantController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        grantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Agent grant */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              taskId: string;
+              userId: string;
+              /** @enum {string} */
+              role:
+                | "planner"
+                | "context_curator"
+                | "writer"
+                | "critic"
+                | "reviser"
+                | "fact_extractor"
+                | "canon_curator";
+              /** @enum {string} */
+              state: "active" | "revoked" | "expired";
+              tools: string[];
+              resourceScope: {
+                chapterIds: string[];
+                settingIds: string[];
+                includeCanon: boolean;
+              };
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxCalls: number;
+                spentCostCny: number;
+                spentTokens: number;
+                callCount: number;
+              };
+              maxImpact: {
+                /** @enum {string} */
+                maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+                maxAffectedResources: number;
+              };
+              /** Format: date-time */
+              expiresAt: string;
+              issuedBy: string;
+              /** Format: date-time */
+              revokedAt: string | null;
+              revokedBy: string | null;
+              revocationReason: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  AgentGrantController_revoke: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        grantId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Revoked agent grant */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              taskId: string;
+              userId: string;
+              /** @enum {string} */
+              role:
+                | "planner"
+                | "context_curator"
+                | "writer"
+                | "critic"
+                | "reviser"
+                | "fact_extractor"
+                | "canon_curator";
+              /** @enum {string} */
+              state: "active" | "revoked" | "expired";
+              tools: string[];
+              resourceScope: {
+                chapterIds: string[];
+                settingIds: string[];
+                includeCanon: boolean;
+              };
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxCalls: number;
+                spentCostCny: number;
+                spentTokens: number;
+                callCount: number;
+              };
+              maxImpact: {
+                /** @enum {string} */
+                maxSideEffect: "S0" | "S1" | "S2" | "S3" | "S4";
+                maxAffectedResources: number;
+              };
+              /** Format: date-time */
+              expiresAt: string;
+              issuedBy: string;
+              /** Format: date-time */
+              revokedAt: string | null;
+              revokedBy: string | null;
+              revocationReason: string | null;
+              /** Format: date-time */
+              createdAt: string;
             };
             /** Format: starts_with */
             requestId: string;
@@ -1937,6 +2810,2539 @@ export interface operations {
       };
     };
   };
+  CharactersController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Character domain details */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          /** @default [] */
+          aliases?: string[];
+          summary: string;
+          /** @default  */
+          description?: string;
+          /** @default [] */
+          tags?: string[];
+          /**
+           * @default {
+           *       "desire": "",
+           *       "fear": "",
+           *       "goal": "",
+           *       "voiceSample": "",
+           *       "voiceGuide": "",
+           *       "disguise": ""
+           *     }
+           */
+          profile?: {
+            /** @default  */
+            desire?: string;
+            /** @default  */
+            fear?: string;
+            /** @default  */
+            goal?: string;
+            /** @default  */
+            voiceSample?: string;
+            /** @default  */
+            voiceGuide?: string;
+            /** @default  */
+            disguise?: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created character */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Character detail */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_updateProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          profile: {
+            /** @default  */
+            desire?: string;
+            /** @default  */
+            fear?: string;
+            /** @default  */
+            goal?: string;
+            /** @default  */
+            voiceSample?: string;
+            /** @default  */
+            voiceGuide?: string;
+            /** @default  */
+            disguise?: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated character profile */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_lock: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Locked character */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_addRelationship: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          target: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_layer"
+              | "map_node"
+              | "map_edge"
+              | "map_marker"
+              | "territory"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "timeline_era"
+              | "itinerary"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          };
+          /** @enum {string} */
+          relationType:
+            | "kinship"
+            | "ally"
+            | "enemy"
+            | "mentor"
+            | "student"
+            | "subordinate"
+            | "superior"
+            | "member_of"
+            | "located_at"
+            | "controls"
+            | "owns";
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default null */
+          sourceChapterId?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Created character relationship */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              sourceCharacterId: string;
+              target: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              /** @enum {string} */
+              relationType:
+                | "kinship"
+                | "ally"
+                | "enemy"
+                | "mentor"
+                | "student"
+                | "subordinate"
+                | "superior"
+                | "member_of"
+                | "located_at"
+                | "controls"
+                | "owns";
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapterId: string | null;
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_addStateTransition: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+          stateKey: string;
+          value: string;
+          /** @default null */
+          target?: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_layer"
+              | "map_node"
+              | "map_edge"
+              | "map_marker"
+              | "territory"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "timeline_era"
+              | "itinerary"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          } | null;
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default null */
+          sourceChapterId?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Created character state transition */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              characterId: string;
+              /** @enum {string} */
+              stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+              stateKey: string;
+              value: string;
+              target: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              } | null;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapterId: string | null;
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_addKnowledgeState: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          objectiveFactId: string;
+          /** @enum {string} */
+          state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+          /** @default null */
+          claimedContent?: string | null;
+          /** @enum {string} */
+          sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default null */
+          sourceChapterId?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Created character knowledge state */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              characterId: string;
+              objectiveFactId: string;
+              /** @enum {string} */
+              state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+              claimedContent: string | null;
+              /** @enum {string} */
+              sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapterId: string | null;
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_knowledge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Objective facts disclosed to a character at a chapter */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              knownFacts: {
+                id: string;
+                subject: string;
+                predicate: string;
+                object: string;
+                validFromChapter: number;
+                validToChapter: number | null;
+              }[];
+              beliefs: {
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+              }[];
+              hiddenFactIds: string[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_history: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Character state replay */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              at: {
+                chapterNumber: number | null;
+                versionNodeId: string | null;
+              };
+              profile: {
+                /** @default  */
+                desire: string;
+                /** @default  */
+                fear: string;
+                /** @default  */
+                goal: string;
+                /** @default  */
+                voiceSample: string;
+                /** @default  */
+                voiceGuide: string;
+                /** @default  */
+                disguise: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceCharacterId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              stateTransitions: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              knowledgeStates: {
+                id: string;
+                workId: string;
+                branchId: string;
+                characterId: string;
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                claimedContent: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_changeRequests: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Character change requests */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              characterId: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              kind: "profile" | "relationship" | "state_transition" | "knowledge_state";
+              title: string;
+              reason: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              status: "pending" | "approved" | "rejected" | "applied";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CharactersController_createChangeRequest: {
+    parameters: {
+      query?: never;
+      header: {
+        "idempotency-key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        characterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              version: number;
+              title: string;
+              reason: string;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+              }[];
+              /** @enum {string} */
+              kind: "profile";
+              after: {
+                /** @default  */
+                desire?: string;
+                /** @default  */
+                fear?: string;
+                /** @default  */
+                goal?: string;
+                /** @default  */
+                voiceSample?: string;
+                /** @default  */
+                voiceGuide?: string;
+                /** @default  */
+                disguise?: string;
+              };
+            }
+          | {
+              version: number;
+              title: string;
+              reason: string;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+              }[];
+              /** @enum {string} */
+              kind: "relationship";
+              after: {
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label?: string | null;
+                  /** @default null */
+                  version?: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId?: string | null;
+                    /** @default null */
+                    objectVersion?: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType:
+                  | "kinship"
+                  | "ally"
+                  | "enemy"
+                  | "mentor"
+                  | "student"
+                  | "subordinate"
+                  | "superior"
+                  | "member_of"
+                  | "located_at"
+                  | "controls"
+                  | "owns";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter?: number | null;
+                  /** @default null */
+                  fromStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                /** @default null */
+                sourceChapterId?: string | null;
+              };
+            }
+          | {
+              version: number;
+              title: string;
+              reason: string;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+              }[];
+              /** @enum {string} */
+              kind: "state_transition";
+              after: {
+                /** @enum {string} */
+                stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+                stateKey: string;
+                value: string;
+                /** @default null */
+                target?: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label?: string | null;
+                  /** @default null */
+                  version?: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId?: string | null;
+                    /** @default null */
+                    objectVersion?: number | null;
+                  } | null;
+                } | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter?: number | null;
+                  /** @default null */
+                  fromStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                /** @default null */
+                sourceChapterId?: string | null;
+              };
+            }
+          | {
+              version: number;
+              title: string;
+              reason: string;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+              }[];
+              /** @enum {string} */
+              kind: "knowledge_state";
+              after: {
+                objectiveFactId: string;
+                /** @enum {string} */
+                state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+                /** @default null */
+                claimedContent?: string | null;
+                /** @enum {string} */
+                sourceKind: "observed" | "told" | "inferred" | "read" | "assumed";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter?: number | null;
+                  /** @default null */
+                  fromStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime?: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                /** @default null */
+                sourceChapterId?: string | null;
+              };
+            };
+      };
+    };
+    responses: {
+      /** @description Pending character change request */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              characterId: string;
+              workId: string;
+              branchId: string;
+              version: number;
+              /** @enum {string} */
+              kind: "profile" | "relationship" | "state_transition" | "knowledge_state";
+              title: string;
+              reason: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              status: "pending" | "approved" | "rejected" | "applied";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   FactsController_extract: {
     parameters: {
       query?: never;
@@ -2251,6 +5657,26 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2258,6 +5684,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -2484,6 +5918,26 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2491,6 +5945,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -2647,6 +6109,26 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2654,6 +6136,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -2810,6 +6300,26 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2817,6 +6327,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -2973,6 +6491,26 @@ export interface operations {
                   | "BIBLE_LOCKED"
                   | "BIBLE_NOT_LOCKED"
                   | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
                   | "JOB_BUDGET_EXCEEDED"
                   | "JOB_CANCELLED"
                   | "FACT_DECISION_REQUIRED"
@@ -2980,6 +6518,14 @@ export interface operations {
                   | "CANON_CHAPTER_NOT_APPROVED"
                   | "IMPORT_CONFLICT_UNRESOLVED"
                   | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -4691,6 +8237,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4718,6 +8267,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4747,6 +8299,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4774,6 +8329,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4801,6 +8359,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4828,6 +8389,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -4847,6 +8411,81 @@ export interface operations {
                     cost: string;
                     limits: string;
                     growth: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    storySortKey?: number;
+                    /** @default  */
+                    duration: string;
+                    event: string;
                   };
                 }
             )[];
@@ -4888,6 +8527,10 @@ export interface operations {
               data: {
                 rule: string;
               };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
             }
           | {
               /** @enum {string} */
@@ -4905,6 +8548,10 @@ export interface operations {
                 knowledgeBoundary: string;
                 relationshipSummary: string;
               };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
             }
           | {
               /** @enum {string} */
@@ -4919,6 +8566,10 @@ export interface operations {
               tags?: string[];
               data: {
                 details: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
               };
             }
           | {
@@ -4935,6 +8586,10 @@ export interface operations {
               data: {
                 details: string;
               };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
             }
           | {
               /** @enum {string} */
@@ -4949,6 +8604,10 @@ export interface operations {
               tags?: string[];
               data: {
                 details: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
               };
             }
           | {
@@ -4967,6 +8626,63 @@ export interface operations {
                 cost: string;
                 limits: string;
                 growth: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "item";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                category: string;
+                /** @default  */
+                grade?: string;
+                effect: string;
+                /** @default  */
+                cost?: string;
+                /** @default  */
+                ownership?: string;
+                /** @default  */
+                limits?: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
+              };
+            }
+          | {
+              /** @enum {string} */
+              type: "timeline_event";
+              name: string;
+              /** @default [] */
+              aliases?: string[];
+              summary: string;
+              /** @default  */
+              description?: string;
+              /** @default [] */
+              tags?: string[];
+              data: {
+                /** @default  */
+                era?: string;
+                storyTime: string;
+                storySortKey?: number;
+                /** @default  */
+                duration?: string;
+                event: string;
+              };
+              /** @default {} */
+              customFields?: {
+                [key: string]: unknown;
               };
             };
       };
@@ -4989,6 +8705,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5016,6 +8735,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5045,6 +8767,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5072,6 +8797,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5099,6 +8827,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5126,6 +8857,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5145,6 +8879,81 @@ export interface operations {
                     cost: string;
                     limits: string;
                     growth: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    storySortKey?: number;
+                    /** @default  */
+                    duration: string;
+                    event: string;
                   };
                 };
             /** Format: starts_with */
@@ -5188,6 +8997,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5215,6 +9027,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5244,6 +9059,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5271,6 +9089,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5298,6 +9119,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5325,6 +9149,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5344,6 +9171,81 @@ export interface operations {
                     cost: string;
                     limits: string;
                     growth: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    storySortKey?: number;
+                    /** @default  */
+                    duration: string;
+                    event: string;
                   };
                 };
             /** Format: starts_with */
@@ -5408,13 +9310,13 @@ export interface operations {
         "application/json": {
           version: number;
           name?: string;
-          /** @default [] */
           aliases?: string[];
           summary?: string;
-          /** @default  */
           description?: string;
-          /** @default [] */
           tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
           data?:
             | {
                 rule?: string;
@@ -5438,6 +9340,27 @@ export interface operations {
                 cost?: string;
                 limits?: string;
                 growth?: string;
+              }
+            | {
+                category?: string;
+                /** @default  */
+                grade?: string;
+                effect?: string;
+                /** @default  */
+                cost?: string;
+                /** @default  */
+                ownership?: string;
+                /** @default  */
+                limits?: string;
+              }
+            | {
+                /** @default  */
+                era?: string;
+                storyTime?: string;
+                storySortKey?: number;
+                /** @default  */
+                duration?: string;
+                event?: string;
               };
         };
       };
@@ -5460,6 +9383,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5487,6 +9413,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5516,6 +9445,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5543,6 +9475,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5570,6 +9505,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5597,6 +9535,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5617,7 +9558,643 @@ export interface operations {
                     limits: string;
                     growth: string;
                   };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    storySortKey?: number;
+                    /** @default  */
+                    duration: string;
+                    event: string;
+                  };
                 };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_proposals: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Setting proposal history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              /** @enum {string} */
+              status: "pending" | "accepted" | "rejected";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              reason: string;
+              proposedBy: string;
+              /** Format: date-time */
+              createdAt: string;
+              decidedBy: string | null;
+              /** Format: date-time */
+              decidedAt: string | null;
+              decisionReason: string | null;
+              decisionEvidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              /** @enum {string|null} */
+              decisionConflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement"
+                | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_createProposal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          reason: string;
+          /** @enum {string} */
+          conflictType:
+            | "none"
+            | "duplicate_name"
+            | "alias_collision"
+            | "contradictory_fact"
+            | "import_candidate"
+            | "ai_disagreement";
+          evidence: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Setting proposal */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              /** @enum {string} */
+              status: "pending" | "accepted" | "rejected";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              reason: string;
+              proposedBy: string;
+              /** Format: date-time */
+              createdAt: string;
+              decidedBy: string | null;
+              /** Format: date-time */
+              decidedAt: string | null;
+              decisionReason: string | null;
+              decisionEvidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              /** @enum {string|null} */
+              decisionConflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement"
+                | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_decideProposal: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+        proposalId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          decision: "accept" | "reject";
+          reason: string;
+          /** @enum {string} */
+          conflictType:
+            | "none"
+            | "duplicate_name"
+            | "alias_collision"
+            | "contradictory_fact"
+            | "import_candidate"
+            | "ai_disagreement";
+          evidence: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Decided setting proposal */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              /** @enum {string} */
+              status: "pending" | "accepted" | "rejected";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              reason: string;
+              proposedBy: string;
+              /** Format: date-time */
+              createdAt: string;
+              decidedBy: string | null;
+              /** Format: date-time */
+              decidedAt: string | null;
+              decisionReason: string | null;
+              decisionEvidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              /** @enum {string|null} */
+              decisionConflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement"
+                | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_changeRequests: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Setting change request history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              title: string;
+              reason: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              status: "pending" | "approved" | "rejected" | "applied";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SettingsController_createChangeRequest: {
+    parameters: {
+      query?: never;
+      header: {
+        "idempotency-key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          title: string;
+          reason: string;
+          after: {
+            name?: string;
+            aliases?: string[];
+            summary?: string;
+            description?: string;
+            tags?: string[];
+            customFields?: {
+              [key: string]: unknown;
+            };
+            data?:
+              | {
+                  rule?: string;
+                }
+              | {
+                  bodyState?: string;
+                  knowledgeBoundary?: string;
+                  relationshipSummary?: string;
+                }
+              | {
+                  details?: string;
+                }
+              | {
+                  details?: string;
+                }
+              | {
+                  details?: string;
+                }
+              | {
+                  rules?: string;
+                  cost?: string;
+                  limits?: string;
+                  growth?: string;
+                }
+              | {
+                  category?: string;
+                  /** @default  */
+                  grade?: string;
+                  effect?: string;
+                  /** @default  */
+                  cost?: string;
+                  /** @default  */
+                  ownership?: string;
+                  /** @default  */
+                  limits?: string;
+                }
+              | {
+                  /** @default  */
+                  era?: string;
+                  storyTime?: string;
+                  storySortKey?: number;
+                  /** @default  */
+                  duration?: string;
+                  event?: string;
+                };
+          };
+          /** @enum {string} */
+          conflictType:
+            | "none"
+            | "duplicate_name"
+            | "alias_collision"
+            | "contradictory_fact"
+            | "import_candidate"
+            | "ai_disagreement";
+          evidence: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Pending setting change request */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              entityId: string;
+              workId: string;
+              branchId: string;
+              entityVersion: number;
+              title: string;
+              reason: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              status: "pending" | "approved" | "rejected" | "applied";
+              /** @enum {string} */
+              conflictType:
+                | "none"
+                | "duplicate_name"
+                | "alias_collision"
+                | "contradictory_fact"
+                | "import_candidate"
+                | "ai_disagreement";
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              createdBy: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
@@ -5665,6 +10242,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5692,6 +10272,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5721,6 +10304,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5748,6 +10334,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5775,6 +10364,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5802,6 +10394,9 @@ export interface operations {
                   summary: string;
                   description: string;
                   tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
                   /** @enum {string} */
                   status: "draft" | "proposed" | "locked" | "discarded";
                   /** @enum {string} */
@@ -5821,6 +10416,81 @@ export interface operations {
                     cost: string;
                     limits: string;
                     growth: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "item";
+                  data: {
+                    category: string;
+                    /** @default  */
+                    grade: string;
+                    effect: string;
+                    /** @default  */
+                    cost: string;
+                    /** @default  */
+                    ownership: string;
+                    /** @default  */
+                    limits: string;
+                  };
+                }
+              | {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  aliases: string[];
+                  summary: string;
+                  description: string;
+                  tags: string[];
+                  customFields: {
+                    [key: string]: string | number | boolean | string[];
+                  };
+                  /** @enum {string} */
+                  status: "draft" | "proposed" | "locked" | "discarded";
+                  /** @enum {string} */
+                  source: "author" | "import" | "ai" | "canon";
+                  version: number;
+                  /** Format: date-time */
+                  lockedAt: string | null;
+                  lockedBy: string | null;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                  /** @enum {string} */
+                  type: "timeline_event";
+                  data: {
+                    /** @default  */
+                    era: string;
+                    storyTime: string;
+                    storySortKey?: number;
+                    /** @default  */
+                    duration: string;
+                    event: string;
                   };
                 };
             /** Format: starts_with */
@@ -5859,7 +10529,14 @@ export interface operations {
               id: string;
               /** @enum {string} */
               type:
-                "world_rule" | "character" | "faction" | "map" | "power_system" | "golden_finger";
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event";
               name: string;
               summary: string;
               /** @enum {string} */
@@ -5876,6 +10553,333 @@ export interface operations {
               predicate?: string;
               object?: string;
             }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CustomFieldsController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Custom field definitions */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              key: string;
+              label: string;
+              /** @enum {string} */
+              fieldType:
+                | "text"
+                | "long_text"
+                | "number"
+                | "date"
+                | "single_select"
+                | "multi_select"
+                | "boolean"
+                | "relation_ref";
+              /** @enum {string} */
+              appliesTo:
+                | "all"
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event";
+              required: boolean;
+              options: string[];
+              /** @enum {string|null} */
+              relationTarget:
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event"
+                | null;
+              enabled: boolean;
+              schemaVersion: number;
+              sortOrder: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CustomFieldsController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          key: string;
+          label: string;
+          /** @enum {string} */
+          fieldType:
+            | "text"
+            | "long_text"
+            | "number"
+            | "date"
+            | "single_select"
+            | "multi_select"
+            | "boolean"
+            | "relation_ref";
+          /** @enum {string} */
+          appliesTo:
+            | "all"
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event";
+          /** @default false */
+          required?: boolean;
+          /** @default [] */
+          options?: string[];
+          /**
+           * @default null
+           * @enum {string|null}
+           */
+          relationTarget?:
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event"
+            | null;
+          /** @default 0 */
+          sortOrder?: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Created custom field definition */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              key: string;
+              label: string;
+              /** @enum {string} */
+              fieldType:
+                | "text"
+                | "long_text"
+                | "number"
+                | "date"
+                | "single_select"
+                | "multi_select"
+                | "boolean"
+                | "relation_ref";
+              /** @enum {string} */
+              appliesTo:
+                | "all"
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event";
+              required: boolean;
+              options: string[];
+              /** @enum {string|null} */
+              relationTarget:
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event"
+                | null;
+              enabled: boolean;
+              schemaVersion: number;
+              sortOrder: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  CustomFieldsController_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        fieldId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          schemaVersion: number;
+          key?: string;
+          label?: string;
+          /** @enum {string} */
+          fieldType?:
+            | "text"
+            | "long_text"
+            | "number"
+            | "date"
+            | "single_select"
+            | "multi_select"
+            | "boolean"
+            | "relation_ref";
+          /** @enum {string} */
+          appliesTo?:
+            | "all"
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event";
+          required?: boolean;
+          options?: string[];
+          /** @enum {string|null} */
+          relationTarget?:
+            | "world_rule"
+            | "character"
+            | "faction"
+            | "map"
+            | "power_system"
+            | "golden_finger"
+            | "item"
+            | "timeline_event"
+            | null;
+          enabled?: boolean;
+          sortOrder?: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated custom field definition */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              key: string;
+              label: string;
+              /** @enum {string} */
+              fieldType:
+                | "text"
+                | "long_text"
+                | "number"
+                | "date"
+                | "single_select"
+                | "multi_select"
+                | "boolean"
+                | "relation_ref";
+              /** @enum {string} */
+              appliesTo:
+                | "all"
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event";
+              required: boolean;
+              options: string[];
+              /** @enum {string|null} */
+              relationTarget:
+                | "world_rule"
+                | "character"
+                | "faction"
+                | "map"
+                | "power_system"
+                | "golden_finger"
+                | "item"
+                | "timeline_event"
+                | null;
+              enabled: boolean;
+              schemaVersion: number;
+              sortOrder: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
             /** Format: starts_with */
             requestId: string;
             /** @default {} */
@@ -6762,6 +11766,4210 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  WorldController_listFactions: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Faction domain details */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              faction: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                overview: string;
+                /** @default  */
+                goals: string;
+                /** @default  */
+                resources: string;
+                /** @default  */
+                doctrine: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceFactionId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType: "ally" | "enemy" | "vassal" | "overlord" | "trade" | "neutral";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              territories: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_createFaction: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          /** @default [] */
+          aliases?: string[];
+          summary: string;
+          /** @default  */
+          description?: string;
+          /** @default [] */
+          tags?: string[];
+          /**
+           * @default {
+           *       "overview": "",
+           *       "goals": "",
+           *       "resources": "",
+           *       "doctrine": ""
+           *     }
+           */
+          profile?: {
+            /** @default  */
+            overview?: string;
+            /** @default  */
+            goals?: string;
+            /** @default  */
+            resources?: string;
+            /** @default  */
+            doctrine?: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created faction */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              faction: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                overview: string;
+                /** @default  */
+                goals: string;
+                /** @default  */
+                resources: string;
+                /** @default  */
+                doctrine: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceFactionId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType: "ally" | "enemy" | "vassal" | "overlord" | "trade" | "neutral";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              territories: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_getFaction: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        factionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Faction detail */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              faction: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                overview: string;
+                /** @default  */
+                goals: string;
+                /** @default  */
+                resources: string;
+                /** @default  */
+                doctrine: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceFactionId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType: "ally" | "enemy" | "vassal" | "overlord" | "trade" | "neutral";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              territories: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_updateFaction: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        factionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          profile: {
+            overview?: string;
+            goals?: string;
+            resources?: string;
+            doctrine?: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated faction profile */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              faction: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              profile: {
+                /** @default  */
+                overview: string;
+                /** @default  */
+                goals: string;
+                /** @default  */
+                resources: string;
+                /** @default  */
+                doctrine: string;
+              };
+              relationships: {
+                id: string;
+                workId: string;
+                branchId: string;
+                sourceFactionId: string;
+                target: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                relationType: "ally" | "enemy" | "vassal" | "overlord" | "trade" | "neutral";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              territories: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_addFactionRelationship: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        factionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          target: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_layer"
+              | "map_node"
+              | "map_edge"
+              | "map_marker"
+              | "territory"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "timeline_era"
+              | "itinerary"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          };
+          /** @enum {string} */
+          relationType: "ally" | "enemy" | "vassal" | "overlord" | "trade" | "neutral";
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default null */
+          sourceChapterId?: string | null;
+        };
+      };
+    };
+    responses: {
+      /** @description Created faction relationship */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              sourceFactionId: string;
+              target: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              /** @enum {string} */
+              relationType: "ally" | "enemy" | "vassal" | "overlord" | "trade" | "neutral";
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapterId: string | null;
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_addTerritory: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        factionId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          node: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_layer"
+              | "map_node"
+              | "map_edge"
+              | "map_marker"
+              | "territory"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "timeline_era"
+              | "itinerary"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          };
+          /** @enum {string} */
+          controlLevel: "direct" | "military" | "influence" | "contested";
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default [] */
+          evidence?: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Created territory */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              factionId: string;
+              node: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              /** @enum {string} */
+              controlLevel: "direct" | "military" | "influence" | "contested";
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_listMaps: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Map domain details */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              map: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              layers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                name: string;
+                parentLayerId: string | null;
+                sortOrder: number;
+                minScale: number;
+                maxScale: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              nodes: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                parentNodeId: string | null;
+                name: string;
+                /** @enum {string} */
+                nodeType:
+                  | "region"
+                  | "settlement"
+                  | "landmark"
+                  | "passage"
+                  | "battlefield"
+                  | "sect"
+                  | "dungeon"
+                  | "other";
+                summary: string;
+                x: number | null;
+                y: number | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              edges: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                fromNodeId: string;
+                toNodeId: string;
+                /** @enum {string} */
+                routeType: "road" | "trail" | "water" | "air" | "teleport" | "secret";
+                bidirectional: boolean;
+                travelMinutes: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              markers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                nodeId: string | null;
+                label: string;
+                /** @enum {string} */
+                markerType: "danger" | "event" | "resource" | "note" | "character";
+                x: number;
+                y: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              controlAreas: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_createMap: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          /** @default [] */
+          aliases?: string[];
+          summary: string;
+          /** @default  */
+          description?: string;
+          /** @default [] */
+          tags?: string[];
+          /** @default  */
+          details?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created map */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              map: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              layers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                name: string;
+                parentLayerId: string | null;
+                sortOrder: number;
+                minScale: number;
+                maxScale: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              nodes: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                parentNodeId: string | null;
+                name: string;
+                /** @enum {string} */
+                nodeType:
+                  | "region"
+                  | "settlement"
+                  | "landmark"
+                  | "passage"
+                  | "battlefield"
+                  | "sect"
+                  | "dungeon"
+                  | "other";
+                summary: string;
+                x: number | null;
+                y: number | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              edges: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                fromNodeId: string;
+                toNodeId: string;
+                /** @enum {string} */
+                routeType: "road" | "trail" | "water" | "air" | "teleport" | "secret";
+                bidirectional: boolean;
+                travelMinutes: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              markers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                nodeId: string | null;
+                label: string;
+                /** @enum {string} */
+                markerType: "danger" | "event" | "resource" | "note" | "character";
+                x: number;
+                y: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              controlAreas: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_getMap: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        mapId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Map detail */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              map: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              layers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                name: string;
+                parentLayerId: string | null;
+                sortOrder: number;
+                minScale: number;
+                maxScale: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              nodes: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                parentNodeId: string | null;
+                name: string;
+                /** @enum {string} */
+                nodeType:
+                  | "region"
+                  | "settlement"
+                  | "landmark"
+                  | "passage"
+                  | "battlefield"
+                  | "sect"
+                  | "dungeon"
+                  | "other";
+                summary: string;
+                x: number | null;
+                y: number | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              edges: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                fromNodeId: string;
+                toNodeId: string;
+                /** @enum {string} */
+                routeType: "road" | "trail" | "water" | "air" | "teleport" | "secret";
+                bidirectional: boolean;
+                travelMinutes: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              markers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                nodeId: string | null;
+                label: string;
+                /** @enum {string} */
+                markerType: "danger" | "event" | "resource" | "note" | "character";
+                x: number;
+                y: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              controlAreas: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_addMapLayer: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        mapId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          /** @default null */
+          parentLayerId?: string | null;
+          /** @default 0 */
+          sortOrder?: number;
+          /** @default 0 */
+          minScale?: number;
+          /** @default 100 */
+          maxScale?: number;
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created map layer */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              mapId: string;
+              workId: string;
+              branchId: string;
+              name: string;
+              parentLayerId: string | null;
+              sortOrder: number;
+              minScale: number;
+              maxScale: number;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_addMapNode: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        mapId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @default null */
+          layerId?: string | null;
+          /** @default null */
+          parentNodeId?: string | null;
+          name: string;
+          /** @enum {string} */
+          nodeType:
+            | "region"
+            | "settlement"
+            | "landmark"
+            | "passage"
+            | "battlefield"
+            | "sect"
+            | "dungeon"
+            | "other";
+          /** @default  */
+          summary?: string;
+          /** @default null */
+          x?: number | null;
+          /** @default null */
+          y?: number | null;
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created map node */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              mapId: string;
+              workId: string;
+              branchId: string;
+              layerId: string | null;
+              parentNodeId: string | null;
+              name: string;
+              /** @enum {string} */
+              nodeType:
+                | "region"
+                | "settlement"
+                | "landmark"
+                | "passage"
+                | "battlefield"
+                | "sect"
+                | "dungeon"
+                | "other";
+              summary: string;
+              x: number | null;
+              y: number | null;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_addMapEdge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        mapId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @default null */
+          layerId?: string | null;
+          fromNodeId: string;
+          toNodeId: string;
+          /** @enum {string} */
+          routeType: "road" | "trail" | "water" | "air" | "teleport" | "secret";
+          /** @default true */
+          bidirectional?: boolean;
+          travelMinutes: number;
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created map edge */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              mapId: string;
+              workId: string;
+              branchId: string;
+              layerId: string | null;
+              fromNodeId: string;
+              toNodeId: string;
+              /** @enum {string} */
+              routeType: "road" | "trail" | "water" | "air" | "teleport" | "secret";
+              bidirectional: boolean;
+              travelMinutes: number;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_addMapMarker: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        mapId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @default null */
+          layerId?: string | null;
+          /** @default null */
+          nodeId?: string | null;
+          label: string;
+          /** @enum {string} */
+          markerType: "danger" | "event" | "resource" | "note" | "character";
+          x: number;
+          y: number;
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created map marker */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              mapId: string;
+              workId: string;
+              branchId: string;
+              layerId: string | null;
+              nodeId: string | null;
+              label: string;
+              /** @enum {string} */
+              markerType: "danger" | "event" | "resource" | "note" | "character";
+              x: number;
+              y: number;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_getMapRoute: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        mapId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Shortest map route */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              mapId: string;
+              fromNodeId: string;
+              toNodeId: string;
+              pathNodeIds: string[];
+              edgeIds: string[];
+              travelMinutes: number;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_getTimeline: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Story timeline */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              eras: {
+                id: string;
+                workId: string;
+                branchId: string;
+                name: string;
+                orderIndex: number;
+                startSortKey: number;
+                endSortKey: number | null;
+                description: string;
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              events: {
+                event: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                era: string;
+                storyTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                };
+                durationMinutes: number;
+                durationLabel: string;
+                eventText: string;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              itineraries: {
+                id: string;
+                workId: string;
+                branchId: string;
+                character: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                fromNode: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                toNode: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                departure: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                };
+                arrival: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                };
+                routeTravelMinutes: number;
+                travelMinutes: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                sourceChapterId: string | null;
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              latestVersionNodeId: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_createTimelineEra: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          orderIndex: number;
+          startSortKey: number;
+          /** @default null */
+          endSortKey?: number | null;
+          /** @default  */
+          description?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created timeline era */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              name: string;
+              orderIndex: number;
+              startSortKey: number;
+              endSortKey: number | null;
+              description: string;
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_createTimelineEvent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          /** @default [] */
+          aliases?: string[];
+          summary: string;
+          /** @default  */
+          description?: string;
+          /** @default [] */
+          tags?: string[];
+          era: string;
+          storyTime: {
+            era: string;
+            label: string;
+            sortKey: number;
+          };
+          /** @default 0 */
+          durationMinutes?: number;
+          /** @default  */
+          durationLabel?: string;
+          event: string;
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created timeline event */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              event: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              era: string;
+              storyTime: {
+                era: string;
+                label: string;
+                sortKey: number;
+              };
+              durationMinutes: number;
+              durationLabel: string;
+              eventText: string;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_createItinerary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          character: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_layer"
+              | "map_node"
+              | "map_edge"
+              | "map_marker"
+              | "territory"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "timeline_era"
+              | "itinerary"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          };
+          fromNode: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_layer"
+              | "map_node"
+              | "map_edge"
+              | "map_marker"
+              | "territory"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "timeline_era"
+              | "itinerary"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          };
+          toNode: {
+            /** @enum {string} */
+            type:
+              | "character"
+              | "faction"
+              | "map"
+              | "map_layer"
+              | "map_node"
+              | "map_edge"
+              | "map_marker"
+              | "territory"
+              | "power_system"
+              | "golden_finger"
+              | "item"
+              | "timeline_event"
+              | "timeline_era"
+              | "itinerary"
+              | "fact"
+              | "chapter"
+              | "character_relationship"
+              | "character_state"
+              | "character_knowledge";
+            id: string;
+            branchId: string;
+            /** @default null */
+            label?: string | null;
+            /** @default null */
+            version?: {
+              branchId: string;
+              /** @default null */
+              versionNodeId?: string | null;
+              /** @default null */
+              objectVersion?: number | null;
+            } | null;
+          };
+          departure: {
+            era: string;
+            label: string;
+            sortKey: number;
+          };
+          arrival: {
+            era: string;
+            label: string;
+            sortKey: number;
+          };
+          travelMinutes: number;
+          validity: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+          /** @default null */
+          sourceChapterId?: string | null;
+          /** @default [] */
+          evidence?: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Created character itinerary */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              character: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              fromNode: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              toNode: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              departure: {
+                era: string;
+                label: string;
+                sortKey: number;
+              };
+              arrival: {
+                era: string;
+                label: string;
+                sortKey: number;
+              };
+              routeTravelMinutes: number;
+              travelMinutes: number;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              sourceChapterId: string | null;
+              evidence: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId: string | null;
+                label: string;
+                /** @default  */
+                quote: string;
+                /** @default  */
+                locator: string;
+                /** @default null */
+                confidence: number | null;
+              }[];
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_getSnapshot: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description World state at a branch/version point */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              at: {
+                versionNodeId: string | null;
+                chapterNumber: number | null;
+              };
+              factions: {
+                faction: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                profile: {
+                  /** @default  */
+                  overview: string;
+                  /** @default  */
+                  goals: string;
+                  /** @default  */
+                  resources: string;
+                  /** @default  */
+                  doctrine: string;
+                };
+                relationships: {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  sourceFactionId: string;
+                  target: {
+                    /** @enum {string} */
+                    type:
+                      | "character"
+                      | "faction"
+                      | "map"
+                      | "map_layer"
+                      | "map_node"
+                      | "map_edge"
+                      | "map_marker"
+                      | "territory"
+                      | "power_system"
+                      | "golden_finger"
+                      | "item"
+                      | "timeline_event"
+                      | "timeline_era"
+                      | "itinerary"
+                      | "fact"
+                      | "chapter"
+                      | "character_relationship"
+                      | "character_state"
+                      | "character_knowledge";
+                    id: string;
+                    branchId: string;
+                    /** @default null */
+                    label: string | null;
+                    /** @default null */
+                    version: {
+                      branchId: string;
+                      /** @default null */
+                      versionNodeId: string | null;
+                      /** @default null */
+                      objectVersion: number | null;
+                    } | null;
+                  };
+                  /** @enum {string} */
+                  relationType: "ally" | "enemy" | "vassal" | "overlord" | "trade" | "neutral";
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  sourceChapterId: string | null;
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                territories: {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  factionId: string;
+                  node: {
+                    /** @enum {string} */
+                    type:
+                      | "character"
+                      | "faction"
+                      | "map"
+                      | "map_layer"
+                      | "map_node"
+                      | "map_edge"
+                      | "map_marker"
+                      | "territory"
+                      | "power_system"
+                      | "golden_finger"
+                      | "item"
+                      | "timeline_event"
+                      | "timeline_era"
+                      | "itinerary"
+                      | "fact"
+                      | "chapter"
+                      | "character_relationship"
+                      | "character_state"
+                      | "character_knowledge";
+                    id: string;
+                    branchId: string;
+                    /** @default null */
+                    label: string | null;
+                    /** @default null */
+                    version: {
+                      branchId: string;
+                      /** @default null */
+                      versionNodeId: string | null;
+                      /** @default null */
+                      objectVersion: number | null;
+                    } | null;
+                  };
+                  /** @enum {string} */
+                  controlLevel: "direct" | "military" | "influence" | "contested";
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  evidence: {
+                    /** @enum {string} */
+                    kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                    /** @default null */
+                    sourceId: string | null;
+                    label: string;
+                    /** @default  */
+                    quote: string;
+                    /** @default  */
+                    locator: string;
+                    /** @default null */
+                    confidence: number | null;
+                  }[];
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                health: {
+                  code: string;
+                  /** @enum {string} */
+                  severity: "info" | "warning" | "blocker";
+                  message: string;
+                  /** @default [] */
+                  relatedIds: string[];
+                }[];
+                version: number;
+                latestVersionNodeId: string;
+                /** @enum {string} */
+                status: "draft" | "proposed" | "locked" | "discarded";
+                /** Format: date-time */
+                lockedAt: string | null;
+              }[];
+              maps: {
+                map: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                layers: {
+                  id: string;
+                  mapId: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  parentLayerId: string | null;
+                  sortOrder: number;
+                  minScale: number;
+                  maxScale: number;
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                nodes: {
+                  id: string;
+                  mapId: string;
+                  workId: string;
+                  branchId: string;
+                  layerId: string | null;
+                  parentNodeId: string | null;
+                  name: string;
+                  /** @enum {string} */
+                  nodeType:
+                    | "region"
+                    | "settlement"
+                    | "landmark"
+                    | "passage"
+                    | "battlefield"
+                    | "sect"
+                    | "dungeon"
+                    | "other";
+                  summary: string;
+                  x: number | null;
+                  y: number | null;
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                edges: {
+                  id: string;
+                  mapId: string;
+                  workId: string;
+                  branchId: string;
+                  layerId: string | null;
+                  fromNodeId: string;
+                  toNodeId: string;
+                  /** @enum {string} */
+                  routeType: "road" | "trail" | "water" | "air" | "teleport" | "secret";
+                  bidirectional: boolean;
+                  travelMinutes: number;
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                markers: {
+                  id: string;
+                  mapId: string;
+                  workId: string;
+                  branchId: string;
+                  layerId: string | null;
+                  nodeId: string | null;
+                  label: string;
+                  /** @enum {string} */
+                  markerType: "danger" | "event" | "resource" | "note" | "character";
+                  x: number;
+                  y: number;
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                controlAreas: {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  factionId: string;
+                  node: {
+                    /** @enum {string} */
+                    type:
+                      | "character"
+                      | "faction"
+                      | "map"
+                      | "map_layer"
+                      | "map_node"
+                      | "map_edge"
+                      | "map_marker"
+                      | "territory"
+                      | "power_system"
+                      | "golden_finger"
+                      | "item"
+                      | "timeline_event"
+                      | "timeline_era"
+                      | "itinerary"
+                      | "fact"
+                      | "chapter"
+                      | "character_relationship"
+                      | "character_state"
+                      | "character_knowledge";
+                    id: string;
+                    branchId: string;
+                    /** @default null */
+                    label: string | null;
+                    /** @default null */
+                    version: {
+                      branchId: string;
+                      /** @default null */
+                      versionNodeId: string | null;
+                      /** @default null */
+                      objectVersion: number | null;
+                    } | null;
+                  };
+                  /** @enum {string} */
+                  controlLevel: "direct" | "military" | "influence" | "contested";
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  evidence: {
+                    /** @enum {string} */
+                    kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                    /** @default null */
+                    sourceId: string | null;
+                    label: string;
+                    /** @default  */
+                    quote: string;
+                    /** @default  */
+                    locator: string;
+                    /** @default null */
+                    confidence: number | null;
+                  }[];
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                health: {
+                  code: string;
+                  /** @enum {string} */
+                  severity: "info" | "warning" | "blocker";
+                  message: string;
+                  /** @default [] */
+                  relatedIds: string[];
+                }[];
+                version: number;
+                latestVersionNodeId: string;
+                /** @enum {string} */
+                status: "draft" | "proposed" | "locked" | "discarded";
+                /** Format: date-time */
+                lockedAt: string | null;
+              }[];
+              timeline: {
+                eras: {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  name: string;
+                  orderIndex: number;
+                  startSortKey: number;
+                  endSortKey: number | null;
+                  description: string;
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                events: {
+                  event: {
+                    /** @enum {string} */
+                    type:
+                      | "character"
+                      | "faction"
+                      | "map"
+                      | "map_layer"
+                      | "map_node"
+                      | "map_edge"
+                      | "map_marker"
+                      | "territory"
+                      | "power_system"
+                      | "golden_finger"
+                      | "item"
+                      | "timeline_event"
+                      | "timeline_era"
+                      | "itinerary"
+                      | "fact"
+                      | "chapter"
+                      | "character_relationship"
+                      | "character_state"
+                      | "character_knowledge";
+                    id: string;
+                    branchId: string;
+                    /** @default null */
+                    label: string | null;
+                    /** @default null */
+                    version: {
+                      branchId: string;
+                      /** @default null */
+                      versionNodeId: string | null;
+                      /** @default null */
+                      objectVersion: number | null;
+                    } | null;
+                  };
+                  era: string;
+                  storyTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  };
+                  durationMinutes: number;
+                  durationLabel: string;
+                  eventText: string;
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                itineraries: {
+                  id: string;
+                  workId: string;
+                  branchId: string;
+                  character: {
+                    /** @enum {string} */
+                    type:
+                      | "character"
+                      | "faction"
+                      | "map"
+                      | "map_layer"
+                      | "map_node"
+                      | "map_edge"
+                      | "map_marker"
+                      | "territory"
+                      | "power_system"
+                      | "golden_finger"
+                      | "item"
+                      | "timeline_event"
+                      | "timeline_era"
+                      | "itinerary"
+                      | "fact"
+                      | "chapter"
+                      | "character_relationship"
+                      | "character_state"
+                      | "character_knowledge";
+                    id: string;
+                    branchId: string;
+                    /** @default null */
+                    label: string | null;
+                    /** @default null */
+                    version: {
+                      branchId: string;
+                      /** @default null */
+                      versionNodeId: string | null;
+                      /** @default null */
+                      objectVersion: number | null;
+                    } | null;
+                  };
+                  fromNode: {
+                    /** @enum {string} */
+                    type:
+                      | "character"
+                      | "faction"
+                      | "map"
+                      | "map_layer"
+                      | "map_node"
+                      | "map_edge"
+                      | "map_marker"
+                      | "territory"
+                      | "power_system"
+                      | "golden_finger"
+                      | "item"
+                      | "timeline_event"
+                      | "timeline_era"
+                      | "itinerary"
+                      | "fact"
+                      | "chapter"
+                      | "character_relationship"
+                      | "character_state"
+                      | "character_knowledge";
+                    id: string;
+                    branchId: string;
+                    /** @default null */
+                    label: string | null;
+                    /** @default null */
+                    version: {
+                      branchId: string;
+                      /** @default null */
+                      versionNodeId: string | null;
+                      /** @default null */
+                      objectVersion: number | null;
+                    } | null;
+                  };
+                  toNode: {
+                    /** @enum {string} */
+                    type:
+                      | "character"
+                      | "faction"
+                      | "map"
+                      | "map_layer"
+                      | "map_node"
+                      | "map_edge"
+                      | "map_marker"
+                      | "territory"
+                      | "power_system"
+                      | "golden_finger"
+                      | "item"
+                      | "timeline_event"
+                      | "timeline_era"
+                      | "itinerary"
+                      | "fact"
+                      | "chapter"
+                      | "character_relationship"
+                      | "character_state"
+                      | "character_knowledge";
+                    id: string;
+                    branchId: string;
+                    /** @default null */
+                    label: string | null;
+                    /** @default null */
+                    version: {
+                      branchId: string;
+                      /** @default null */
+                      versionNodeId: string | null;
+                      /** @default null */
+                      objectVersion: number | null;
+                    } | null;
+                  };
+                  departure: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  };
+                  arrival: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  };
+                  routeTravelMinutes: number;
+                  travelMinutes: number;
+                  validity: {
+                    fromChapter: number;
+                    /** @default null */
+                    toChapter: number | null;
+                    /** @default null */
+                    fromStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                    /** @default null */
+                    toStoryTime: {
+                      era: string;
+                      label: string;
+                      sortKey: number;
+                    } | null;
+                  };
+                  sourceChapterId: string | null;
+                  evidence: {
+                    /** @enum {string} */
+                    kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                    /** @default null */
+                    sourceId: string | null;
+                    label: string;
+                    /** @default  */
+                    quote: string;
+                    /** @default  */
+                    locator: string;
+                    /** @default null */
+                    confidence: number | null;
+                  }[];
+                  versionNodeId: string;
+                  /** Format: date-time */
+                  createdAt: string;
+                }[];
+                health: {
+                  code: string;
+                  /** @enum {string} */
+                  severity: "info" | "warning" | "blocker";
+                  message: string;
+                  /** @default [] */
+                  relatedIds: string[];
+                }[];
+                latestVersionNodeId: string;
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };

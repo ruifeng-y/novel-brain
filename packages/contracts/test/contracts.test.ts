@@ -8,6 +8,12 @@ import {
   authSessionResponseSchema,
   canonCommitRequestSchema,
   canonCommitSchema,
+  characterChangeRequestCreateRequestSchema,
+  characterItineraryCreateRequestSchema,
+  characterKnowledgeStateCreateRequestSchema,
+  characterProfileUpdateRequestSchema,
+  characterRelationshipCreateRequestSchema,
+  characterStateTransitionCreateRequestSchema,
   chapterBriefSchema,
   chapterReadinessSchema,
   chapterReviewRequestSchema,
@@ -16,8 +22,12 @@ import {
   confirmedSettingSchema,
   contextPackVersionSchema,
   csrfResponseSchema,
+  customFieldDefinitionCreateRequestSchema,
+  domainRefSchema,
   factProposalDecisionRequestSchema,
   factProposalSchema,
+  factionCreateRequestSchema,
+  factionRelationshipCreateRequestSchema,
   generateChapterRequestSchema,
   generationJobSchema,
   GENERATE_CHAPTER_JOB,
@@ -25,6 +35,10 @@ import {
   jobEventSchema,
   importReportSchema,
   loginRequestSchema,
+  mapEdgeCreateRequestSchema,
+  mapLayerCreateRequestSchema,
+  mapMarkerCreateRequestSchema,
+  mapNodeCreateRequestSchema,
   manuscriptImportConfirmRequestSchema,
   manuscriptImportResponseSchema,
   modelConfigInputSchema,
@@ -41,6 +55,13 @@ import {
   sendRegistrationCodeResponseSchema,
   settingsImportConfirmRequestSchema,
   settingsImportConflictDecisionRequestSchema,
+  settingChangeRequestCreateRequestSchema,
+  settingEntityCreateRequestSchema,
+  settingEntitySchema,
+  settingProposalCreateRequestSchema,
+  timelineEraCreateRequestSchema,
+  timelineEventCreateRequestSchema,
+  territoryCreateRequestSchema,
   logoutResponseSchema,
   STORY_BIBLE_CARD_KEYS,
   STORY_BIBLE_CARD_TITLES,
@@ -52,10 +73,14 @@ import {
   storyBibleUnlockRequestSchema,
   storyBibleVersionSchema,
   storyBibleWorldRuleSchema,
+  storyTimePointSchema,
+  validityIntervalSchema,
+  versionRefSchema,
   workBranchSchema,
   workCreateRequestSchema,
   workSchema,
   workSourceModeSchema,
+  worldSnapshotQuerySchema,
 } from "../src";
 
 describe("shared contracts", () => {
@@ -206,6 +231,152 @@ describe("shared contracts", () => {
     });
 
     expect(response.data.status).toBe("ready");
+  });
+
+  it("validates faction, map graph and story timeline contracts", () => {
+    const branchId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c40";
+    const otherId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c41";
+    const faction = factionCreateRequestSchema.parse({
+      name: "太玄门",
+      aliases: ["玄门"],
+      summary: "执掌太玄山脉的仙门。",
+      description: "",
+      tags: ["仙门"],
+      profile: {
+        overview: "以剑阵护山的正道宗门。",
+        goals: "守住天门，追查忘川书。",
+        resources: "太玄剑阵、灵脉与内门弟子。",
+        doctrine: "门人不得私入禁地。",
+      },
+    });
+    expect(faction.profile.goals).toContain("天门");
+
+    const relationship = factionRelationshipCreateRequestSchema.parse({
+      target: {
+        type: "faction",
+        id: branchId,
+        branchId,
+        label: "血河宗",
+      },
+      relationType: "enemy",
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      sourceChapterId: null,
+    });
+    expect(relationship.relationType).toBe("enemy");
+
+    const layer = mapLayerCreateRequestSchema.parse({
+      name: "北域",
+      parentLayerId: null,
+      sortOrder: 0,
+      minScale: 0,
+      maxScale: 100,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(layer.name).toBe("北域");
+
+    const node = mapNodeCreateRequestSchema.parse({
+      layerId: null,
+      parentNodeId: null,
+      name: "忘川村",
+      nodeType: "settlement",
+      summary: "山脚的小村。",
+      x: 0.2,
+      y: 0.7,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(node.nodeType).toBe("settlement");
+
+    const edge = mapEdgeCreateRequestSchema.parse({
+      layerId: null,
+      fromNodeId: branchId,
+      toNodeId: otherId,
+      routeType: "road",
+      bidirectional: true,
+      travelMinutes: 90,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(() =>
+      mapEdgeCreateRequestSchema.parse({
+        ...edge,
+        travelMinutes: 0,
+      }),
+    ).toThrow("Travel time must be positive");
+
+    const marker = mapMarkerCreateRequestSchema.parse({
+      layerId: null,
+      nodeId: null,
+      label: "古战场",
+      markerType: "danger",
+      x: 0.4,
+      y: 0.6,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(marker.markerType).toBe("danger");
+
+    const territory = territoryCreateRequestSchema.parse({
+      node: { type: "map_node", id: branchId, branchId, label: "忘川村" },
+      controlLevel: "direct",
+      validity: { fromChapter: 1, toChapter: 9, fromStoryTime: null, toStoryTime: null },
+      evidence: [
+        {
+          kind: "chapter",
+          sourceId: null,
+          label: "第 1 章",
+          quote: "村口插着太玄门的青旗。",
+          locator: "第 1 章 · 第 2 段",
+          confidence: 0.9,
+        },
+      ],
+    });
+    expect(territory.controlLevel).toBe("direct");
+
+    const era = timelineEraCreateRequestSchema.parse({
+      name: "大玄历",
+      orderIndex: 1,
+      startSortKey: 0,
+      endSortKey: null,
+      description: "大玄王朝纪年。",
+    });
+    expect(era.orderIndex).toBe(1);
+
+    const event = timelineEventCreateRequestSchema.parse({
+      name: "忘川村灭门",
+      aliases: [],
+      summary: "沈砚父母被杀。",
+      description: "",
+      tags: [],
+      era: "大玄历",
+      storyTime: { era: "大玄历", label: "十六年前", sortKey: 100 },
+      durationMinutes: 720,
+      durationLabel: "一夜",
+      event: "仇家屠村后伪装成自尽。",
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+    });
+    expect(event.storyTime.sortKey).toBe(100);
+
+    const itinerary = characterItineraryCreateRequestSchema.parse({
+      character: { type: "character", id: branchId, branchId, label: "沈砚" },
+      fromNode: { type: "map_node", id: branchId, branchId, label: "忘川村" },
+      toNode: { type: "map_node", id: branchId, branchId, label: "太玄门" },
+      departure: { era: "大玄历", label: "第一日辰时", sortKey: 1000 },
+      arrival: { era: "大玄历", label: "第一日午时", sortKey: 1120 },
+      travelMinutes: 120,
+      validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      sourceChapterId: null,
+      evidence: [],
+    });
+    expect(itinerary.travelMinutes).toBe(120);
+    expect(() =>
+      characterItineraryCreateRequestSchema.parse({
+        ...itinerary,
+        arrival: { ...itinerary.departure },
+      }),
+    ).toThrow("Itinerary arrival must follow departure");
+
+    expect(worldSnapshotQuerySchema.parse({})).toEqual({});
+    expect(worldSnapshotQuerySchema.parse({ versionNodeId: branchId }).versionNodeId).toBe(
+      branchId,
+    );
   });
 
   it("accepts the typed worker job consumed by the worker", () => {
@@ -1017,5 +1188,285 @@ describe("shared contracts", () => {
         object: "左臂骨折",
       }),
     ).toThrow();
+  });
+
+  it("validates seven-column setting entities, custom fields and proposal evidence", () => {
+    const item = settingEntityCreateRequestSchema.parse({
+      type: "item",
+      name: "听潮剑",
+      aliases: ["潮生"],
+      summary: "会记录持剑者杀意的法器。",
+      description: "",
+      tags: ["法器"],
+      data: {
+        category: "兵器",
+        grade: "玄阶",
+        effect: "剑身会记录杀意。",
+        cost: "杀意过重会反噬。",
+        ownership: "顾青",
+        limits: "不能离开主人超过七日。",
+      },
+    });
+    expect(item.type).toBe("item");
+
+    const timelineEvent = settingEntityCreateRequestSchema.parse({
+      type: "timeline_event",
+      name: "忘川村灭门",
+      aliases: [],
+      summary: "改变沈砚命运的事件。",
+      description: "",
+      tags: [],
+      data: {
+        era: "大玄历",
+        storyTime: "十六年前",
+        duration: "一夜",
+        event: "沈砚父母被杀。",
+      },
+    });
+    expect(timelineEvent.type).toBe("timeline_event");
+    expect(() =>
+      settingEntityCreateRequestSchema.parse({
+        ...item,
+        data: { ...item.data, bodyState: "物品不能有身体状态。" },
+      }),
+    ).toThrow();
+
+    expect(
+      customFieldDefinitionCreateRequestSchema.parse({
+        key: "fate",
+        label: "命格",
+        fieldType: "single_select",
+        appliesTo: "character",
+        required: true,
+        options: ["剑骨", "凡骨"],
+        relationTarget: null,
+      }),
+    ).toMatchObject({ key: "fate", required: true });
+    expect(() =>
+      customFieldDefinitionCreateRequestSchema.parse({
+        key: "fate",
+        label: "命格",
+        fieldType: "single_select",
+        appliesTo: "character",
+        options: [],
+      }),
+    ).toThrow("Select fields require at least one option");
+    expect(() =>
+      customFieldDefinitionCreateRequestSchema.parse({
+        key: "relic",
+        label: "关联物品",
+        fieldType: "relation_ref",
+        appliesTo: "character",
+        options: [],
+        relationTarget: null,
+      }),
+    ).toThrow("Relation fields require a target type");
+    expect(() =>
+      customFieldDefinitionCreateRequestSchema.parse({
+        key: "note",
+        label: "备注",
+        fieldType: "text",
+        appliesTo: "character",
+        options: ["不应有选项"],
+      }),
+    ).toThrow("Only select fields can define options");
+
+    expect(() =>
+      settingProposalCreateRequestSchema.parse({
+        version: 1,
+        reason: "缺少证据",
+        conflictType: "none",
+        evidence: [],
+      }),
+    ).toThrow();
+    expect(() =>
+      settingChangeRequestCreateRequestSchema.parse({
+        version: 1,
+        title: "缺少修改内容",
+        reason: "必须至少包含一个字段",
+        after: {},
+        conflictType: "none",
+        evidence: [
+          {
+            kind: "author_note",
+            label: "作者说明",
+            quote: "需要修改。",
+          },
+        ],
+      }),
+    ).toThrow("At least one setting field is required");
+
+    const response = settingEntitySchema.parse({
+      id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c81",
+      workId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c82",
+      branchId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c83",
+      type: "item",
+      name: "听潮剑",
+      aliases: [],
+      summary: "会记录持剑者杀意的法器。",
+      description: "",
+      tags: [],
+      customFields: { fate: "剑骨", charges: 3, hidden: false, marks: ["潮"] },
+      status: "draft",
+      source: "author",
+      version: 1,
+      data: {
+        category: "兵器",
+        grade: "玄阶",
+        effect: "剑身会记录杀意。",
+        cost: "",
+        ownership: "顾青",
+        limits: "",
+      },
+      lockedAt: null,
+      lockedBy: null,
+      createdAt: "2026-11-06T08:00:00.000Z",
+      updatedAt: "2026-11-06T08:00:00.000Z",
+    });
+    expect(response.customFields).toEqual({
+      fate: "剑骨",
+      charges: 3,
+      hidden: false,
+      marks: ["潮"],
+    });
+  });
+});
+
+describe("character domain contracts", () => {
+  const branchId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d01";
+  const characterId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d02";
+  const factId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d03";
+  const versionNodeId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1d04";
+
+  it("freezes versioned domain references and story-time validity", () => {
+    const version = versionRefSchema.parse({
+      branchId,
+      versionNodeId,
+      objectVersion: 3,
+    });
+    const ref = domainRefSchema.parse({
+      type: "character",
+      id: characterId,
+      branchId,
+      label: "沈砚",
+      version,
+    });
+    const validity = validityIntervalSchema.parse({
+      fromChapter: 3,
+      toChapter: 8,
+      fromStoryTime: { era: "大玄历", label: "第三年秋", sortKey: 30 },
+      toStoryTime: { era: "大玄历", label: "第三年冬", sortKey: 40 },
+    });
+
+    expect(ref.version).toEqual(version);
+    expect(validity.toChapter).toBe(8);
+    expect(
+      storyTimePointSchema.parse({ era: "大玄历", label: "十六年前", sortKey: -16 }),
+    ).toMatchObject({ sortKey: -16 });
+    expect(() =>
+      domainRefSchema.parse({ type: "character", id: characterId, branchId, extra: true }),
+    ).toThrow();
+    expect(() =>
+      validityIntervalSchema.parse({
+        fromChapter: 8,
+        toChapter: 3,
+        fromStoryTime: null,
+        toStoryTime: null,
+      }),
+    ).toThrow();
+    expect(() =>
+      validityIntervalSchema.parse({
+        fromChapter: 3,
+        toChapter: 8,
+        fromStoryTime: null,
+        toStoryTime: { era: "大玄历", label: "第三年冬", sortKey: 40 },
+      }),
+    ).toThrow("Validity start story time is required");
+  });
+
+  it("keeps objective facts and character knowledge states separate", () => {
+    const knowledge = characterKnowledgeStateCreateRequestSchema.parse({
+      objectiveFactId: factId,
+      state: "misbelief",
+      claimedContent: "沈砚相信父母是自尽。",
+      sourceKind: "told",
+      validity: { fromChapter: 2, toChapter: null, fromStoryTime: null, toStoryTime: null },
+      sourceChapterId: null,
+    });
+    expect(knowledge.objectiveFactId).toBe(factId);
+    expect(knowledge.state).toBe("misbelief");
+    expect(() =>
+      characterKnowledgeStateCreateRequestSchema.parse({
+        objectiveFactId: factId,
+        state: "unknown",
+        claimedContent: "不应附带主观内容",
+        sourceKind: "assumed",
+        validity: { fromChapter: 2, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        sourceChapterId: null,
+      }),
+    ).toThrow();
+  });
+
+  it("types profile, relationship, state and locked-content change requests", () => {
+    expect(
+      characterProfileUpdateRequestSchema.parse({
+        version: 2,
+        profile: {
+          desire: "找回被抹去的记忆",
+          fear: "成为忘川书的下一个祭品",
+          goal: "进入天门",
+          voiceSample: "“我记得，只是还没想起来。”",
+          voiceGuide: "句子短，少用感叹。",
+          disguise: "藏起左臂伤势",
+        },
+      }).profile.desire,
+    ).toBe("找回被抹去的记忆");
+
+    expect(
+      characterRelationshipCreateRequestSchema.parse({
+        target: { type: "character", id: versionNodeId, branchId, label: "顾青" },
+        relationType: "enemy",
+        validity: { fromChapter: 5, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        sourceChapterId: null,
+      }).relationType,
+    ).toBe("enemy");
+
+    expect(
+      characterStateTransitionCreateRequestSchema.parse({
+        stateKind: "location",
+        stateKey: "current_location",
+        value: "太玄门山门",
+        target: { type: "map", id: versionNodeId, branchId, label: "太玄门山门" },
+        validity: { fromChapter: 5, toChapter: null, fromStoryTime: null, toStoryTime: null },
+        sourceChapterId: null,
+      }).stateKind,
+    ).toBe("location");
+
+    expect(
+      characterChangeRequestCreateRequestSchema.parse({
+        version: 3,
+        kind: "knowledge_state",
+        title: "补录顾青的误信",
+        reason: "第 18 章揭示了顾青被告知的假消息。",
+        after: {
+          objectiveFactId: factId,
+          state: "misbelief",
+          claimedContent: "顾青相信沈砚已经死了。",
+          sourceKind: "told",
+          validity: { fromChapter: 18, toChapter: null, fromStoryTime: null, toStoryTime: null },
+          sourceChapterId: null,
+        },
+        evidence: [
+          {
+            kind: "chapter",
+            sourceId: null,
+            label: "第 18 章",
+            quote: "顾青亲手封死了那口空棺。",
+            locator: "第 18 章 · 末段",
+            confidence: 0.98,
+          },
+        ],
+      }).kind,
+    ).toBe("knowledge_state");
   });
 });

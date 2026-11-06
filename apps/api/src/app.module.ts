@@ -1,8 +1,10 @@
 import { Module } from "@nestjs/common";
 
 import { AuthModule } from "./auth/auth.module";
+import { AgentRuntimeModule } from "./agent-runtime/agent-runtime.module";
 import { CanonModule } from "./canon/canon.module";
 import { ChaptersModule } from "./chapters/chapters.module";
+import { CharactersModule } from "./characters/characters.module";
 import { FactsModule } from "./facts/facts.module";
 import { GenerationModule } from "./generation/generation.module";
 import { HealthModule } from "./health/health.module";
@@ -14,12 +16,15 @@ import { SettingsModule } from "./settings/settings.module";
 import { StoryBibleModule } from "./story-bible/story-bible.module";
 import { UsersModule } from "./users/users.module";
 import { WorksModule } from "./works/works.module";
+import { WorldModule } from "./world/world.module";
 
 @Module({
   imports: [
     AuthModule,
+    AgentRuntimeModule,
     CanonModule,
     ChaptersModule,
+    CharactersModule,
     FactsModule,
     GenerationModule,
     HealthModule,
@@ -31,6 +36,7 @@ import { WorksModule } from "./works/works.module";
     StoryBibleModule,
     UsersModule,
     WorksModule,
+    WorldModule,
   ],
 })
 export class AppModule {}

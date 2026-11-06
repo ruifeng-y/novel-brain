@@ -2476,6 +2476,111 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.settings-character-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 8px 0 0;
+}
+
+.settings-character-grid > div {
+  min-width: 0;
+  padding: 9px 10px;
+  background: var(--paper-2);
+  border-radius: 7px;
+}
+
+.settings-character-grid dt,
+.settings-character-grid dd {
+  margin: 0;
+}
+
+.settings-character-grid dt {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.settings-character-grid dd {
+  margin-top: 4px;
+  color: var(--ink-2);
+  font-size: 11px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.settings-character-records,
+.settings-health-list {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-character-records li,
+.settings-health-list li {
+  min-width: 0;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-character-records li:last-child,
+.settings-health-list li:last-child {
+  border-bottom: 0;
+}
+
+.settings-character-records li > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.settings-character-records strong {
+  color: var(--ink-2);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.settings-character-records span,
+.settings-character-records small {
+  color: var(--muted);
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.settings-character-records p {
+  margin-top: 4px;
+}
+
+.settings-health-list li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.settings-health-list li > span {
+  flex: none;
+  padding: 2px 6px;
+  color: var(--muted);
+  font-size: 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+
+.settings-health-list p {
+  margin: 0;
+}
+
+.settings-character-loading,
+.settings-character-error {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 .settings-detail-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2639,6 +2744,202 @@ a:focus-visible {
   margin: 0;
 }
 
+.settings-check-field {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.settings-check-field input[type="checkbox"] {
+  width: auto;
+}
+
+.settings-check-group {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.settings-check-group legend {
+  padding: 0 5px;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.settings-check-group label {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin-top: 6px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.settings-check-group input[type="checkbox"] {
+  width: auto;
+}
+
+.settings-custom-fields {
+  padding: 22px;
+}
+
+.settings-custom-fields .panel-head p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.settings-custom-fields .settings-note {
+  margin-top: 16px;
+}
+
+.settings-field-form {
+  margin-top: 16px;
+  padding: 16px;
+  background: var(--paper-2);
+  border-radius: 7px;
+}
+
+.settings-field-form .settings-form-grid {
+  margin-top: 0;
+}
+
+.settings-custom-field-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.settings-custom-field-head,
+.settings-custom-field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) 90px minmax(0, 0.9fr) minmax(0, 1.4fr) 70px 60px;
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.settings-custom-field-head {
+  padding: 0 10px 7px;
+  color: var(--muted);
+  font-size: 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-custom-field-row {
+  padding: 10px;
+  background: var(--paper-2);
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.settings-custom-field-row > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-custom-field-row strong,
+.settings-custom-field-row small,
+.settings-custom-field-row > span {
+  overflow-wrap: anywhere;
+}
+
+.settings-custom-field-row small {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.settings-custom-field-row > span {
+  color: var(--ink-2);
+}
+
+.settings-proposal-form,
+.settings-proposal-card,
+.settings-change-card {
+  margin-top: 12px;
+  padding: 13px;
+  background: var(--paper-2);
+  border-radius: 7px;
+}
+
+.settings-proposal-form h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+}
+
+.settings-proposal-form .settings-field {
+  margin-top: 9px;
+}
+
+.settings-proposal-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-proposal-card p,
+.settings-change-card p {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.settings-evidence-list {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.settings-evidence-list li {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.settings-evidence-list li span,
+.settings-evidence-list li small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.settings-proposal-decision {
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-inline-warning {
+  margin: 8px 0 0;
+  color: var(--cinnabar);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.settings-inline-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+
+.settings-change-card .settings-detail-meta {
+  margin-top: 10px;
+}
+
 @media (max-width: 1180px) {
   .settings-workspace-grid {
     grid-template-columns: 210px minmax(0, 1fr);
@@ -2647,6 +2948,16 @@ a:focus-visible {
   .settings-detail-rail {
     position: static;
     grid-column: 1 / -1;
+  }
+
+  .settings-custom-field-head,
+  .settings-custom-field-row {
+    grid-template-columns: minmax(0, 1.2fr) 80px minmax(0, 0.9fr) auto auto;
+  }
+
+  .settings-custom-field-head span:nth-child(4),
+  .settings-custom-field-row > span:nth-child(4) {
+    display: none;
   }
 }
 
@@ -2688,6 +2999,14 @@ a:focus-visible {
   .settings-column-nav,
   .settings-form-grid,
   .settings-golden-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-custom-field-head {
+    display: none;
+  }
+
+  .settings-custom-field-row {
     grid-template-columns: 1fr;
   }
 
@@ -4796,7 +5115,8 @@ a:focus-visible {
   .writing-chapter-list,
   .writing-notes,
   .writing-version-selects,
-  .writing-version-diff {
+  .writing-version-diff,
+  .settings-character-grid {
     grid-template-columns: 1fr;
   }
 

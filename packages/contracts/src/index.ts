@@ -19,6 +19,26 @@ export const ERROR_CODES = [
   "BIBLE_LOCKED",
   "BIBLE_NOT_LOCKED",
   "SETTING_LOCKED",
+  "SETTING_NAME_CONFLICT",
+  "SETTING_ALIAS_CONFLICT",
+  "SETTING_CONFLICT_UNRESOLVED",
+  "SETTING_PROPOSAL_STATE",
+  "SETTING_NOT_LOCKED",
+  "CUSTOM_FIELD_REQUIRED",
+  "CUSTOM_FIELD_INVALID",
+  "CUSTOM_FIELD_IMMUTABLE",
+  "CUSTOM_FIELD_DUPLICATE",
+  "CHARACTER_STATE_OVERLAP",
+  "MAP_NODE_PARENT_MISMATCH",
+  "MAP_LAYER_MISMATCH",
+  "MAP_ROUTE_ENDPOINT_MISMATCH",
+  "MAP_ROUTE_DISCONNECTED",
+  "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+  "CONTROL_AREA_OVERLAP",
+  "TIMELINE_EVENT_OVERLAP",
+  "TIMELINE_ERA_NOT_FOUND",
+  "ITINERARY_TIME_ORDER",
+  "ITINERARY_OVERLAP",
   "JOB_BUDGET_EXCEEDED",
   "JOB_CANCELLED",
   "FACT_DECISION_REQUIRED",
@@ -26,6 +46,14 @@ export const ERROR_CODES = [
   "CANON_CHAPTER_NOT_APPROVED",
   "IMPORT_CONFLICT_UNRESOLVED",
   "VERSION_CONFLICT",
+  "AGENT_CONTRACT_INVALID",
+  "AGENT_GRANT_INVALID",
+  "AGENT_GRANT_EXPIRED",
+  "AGENT_GRANT_REVOKED",
+  "AGENT_TOOL_NOT_REGISTERED",
+  "AGENT_TOOL_DENIED",
+  "AGENT_BUDGET_EXCEEDED",
+  "AGENT_APPROVAL_REQUIRED",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -847,6 +875,8 @@ export const settingEntityTypeSchema = z.enum([
   "map",
   "power_system",
   "golden_finger",
+  "item",
+  "timeline_event",
 ]);
 export type SettingEntityType = z.infer<typeof settingEntityTypeSchema>;
 
@@ -855,6 +885,190 @@ export type SettingStatus = z.infer<typeof settingStatusSchema>;
 
 export const settingSourceSchema = z.enum(["author", "import", "ai", "canon"]);
 export type SettingSource = z.infer<typeof settingSourceSchema>;
+
+export const customFieldTypeSchema = z.enum([
+  "text",
+  "long_text",
+  "number",
+  "date",
+  "single_select",
+  "multi_select",
+  "boolean",
+  "relation_ref",
+]);
+export type CustomFieldType = z.infer<typeof customFieldTypeSchema>;
+
+export const customFieldAppliesToSchema = z.enum([
+  "all",
+  "world_rule",
+  "character",
+  "faction",
+  "map",
+  "power_system",
+  "golden_finger",
+  "item",
+  "timeline_event",
+]);
+export type CustomFieldAppliesTo = z.infer<typeof customFieldAppliesToSchema>;
+
+const customFieldOptionsSchema = z.array(z.string().trim().min(1).max(80)).max(100).default([]);
+
+const customFieldDefinitionBaseShape = {
+  label: z.string().trim().min(1).max(80),
+  fieldType: customFieldTypeSchema,
+  appliesTo: customFieldAppliesToSchema,
+  required: z.boolean().default(false),
+  options: customFieldOptionsSchema,
+  relationTarget: settingEntityTypeSchema.nullable().default(null),
+  sortOrder: z.number().int().min(0).max(10_000).default(0),
+};
+
+export const customFieldDefinitionCreateRequestSchema = z
+  .object({
+    key: z
+      .string()
+      .trim()
+      .regex(/^[a-z][a-z0-9_]{0,63}$/, "Expected a lowercase field key"),
+    ...customFieldDefinitionBaseShape,
+  })
+  .strict()
+  .superRefine(validateCustomFieldDefinitionShape);
+export type CustomFieldDefinitionCreateRequest = z.infer<
+  typeof customFieldDefinitionCreateRequestSchema
+>;
+
+export const customFieldDefinitionPatchRequestSchema = z
+  .object({
+    schemaVersion: z.number().int().positive(),
+    key: z.string().trim().optional(),
+    label: z.string().trim().min(1).max(80).optional(),
+    fieldType: customFieldTypeSchema.optional(),
+    appliesTo: customFieldAppliesToSchema.optional(),
+    required: z.boolean().optional(),
+    options: z.array(z.string().trim().min(1).max(80)).max(100).optional(),
+    relationTarget: settingEntityTypeSchema.nullable().optional(),
+    enabled: z.boolean().optional(),
+    sortOrder: z.number().int().min(0).max(10_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "schemaVersion"), {
+    message: "At least one custom field change is required",
+  });
+export type CustomFieldDefinitionPatchRequest = z.infer<
+  typeof customFieldDefinitionPatchRequestSchema
+>;
+
+export const customFieldDefinitionSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  key: z.string(),
+  label: z.string(),
+  fieldType: customFieldTypeSchema,
+  appliesTo: customFieldAppliesToSchema,
+  required: z.boolean(),
+  options: z.array(z.string()),
+  relationTarget: settingEntityTypeSchema.nullable(),
+  enabled: z.boolean(),
+  schemaVersion: z.number().int().positive(),
+  sortOrder: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type CustomFieldDefinition = z.infer<typeof customFieldDefinitionSchema>;
+
+export const customFieldValueSchema = z.union([
+  z.string(),
+  z.number().finite(),
+  z.boolean(),
+  z.array(z.string()),
+]);
+export type CustomFieldValue = z.infer<typeof customFieldValueSchema>;
+
+export const customFieldValuesSchema = z.record(z.string().trim().min(1).max(80), z.unknown());
+export type CustomFieldValues = z.infer<typeof customFieldValuesSchema>;
+
+export const customFieldDefinitionResponseSchema = apiEnvelopeSchema(customFieldDefinitionSchema);
+export const customFieldDefinitionListResponseSchema = apiEnvelopeSchema(
+  z.array(customFieldDefinitionSchema),
+);
+
+export const settingConflictTypeSchema = z.enum([
+  "none",
+  "duplicate_name",
+  "alias_collision",
+  "contradictory_fact",
+  "import_candidate",
+  "ai_disagreement",
+]);
+export type SettingConflictType = z.infer<typeof settingConflictTypeSchema>;
+
+export const settingEvidenceKindSchema = z.enum([
+  "chapter",
+  "entity",
+  "import",
+  "author_note",
+  "ai_suggestion",
+]);
+export type SettingEvidenceKind = z.infer<typeof settingEvidenceKindSchema>;
+
+export const settingEvidenceSchema = z
+  .object({
+    kind: settingEvidenceKindSchema,
+    sourceId: uuidV7Schema.nullable().default(null),
+    label: z.string().trim().min(1).max(200),
+    quote: z.string().max(5_000).default(""),
+    locator: z.string().max(500).default(""),
+    confidence: z.number().min(0).max(1).nullable().default(null),
+  })
+  .strict();
+export type SettingEvidence = z.infer<typeof settingEvidenceSchema>;
+
+export const settingProposalCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingProposalCreateRequest = z.infer<typeof settingProposalCreateRequestSchema>;
+
+export const settingProposalDecisionRequestSchema = z
+  .object({
+    decision: z.enum(["accept", "reject"]),
+    reason: z.string().trim().min(1).max(1_000),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingProposalDecisionRequest = z.infer<typeof settingProposalDecisionRequestSchema>;
+
+export const settingProposalStatusSchema = z.enum(["pending", "accepted", "rejected"]);
+export type SettingProposalStatus = z.infer<typeof settingProposalStatusSchema>;
+
+export const settingProposalSchema = z.object({
+  id: uuidV7Schema,
+  entityId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  entityVersion: z.number().int().positive(),
+  status: settingProposalStatusSchema,
+  conflictType: settingConflictTypeSchema,
+  evidence: z.array(settingEvidenceSchema),
+  reason: z.string(),
+  proposedBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+  decidedBy: uuidV7Schema.nullable(),
+  decidedAt: z.string().datetime().nullable(),
+  decisionReason: z.string().nullable(),
+  decisionEvidence: z.array(settingEvidenceSchema),
+  decisionConflictType: settingConflictTypeSchema.nullable(),
+});
+export type SettingProposal = z.infer<typeof settingProposalSchema>;
+
+export const settingProposalResponseSchema = apiEnvelopeSchema(settingProposalSchema);
+export const settingProposalListResponseSchema = apiEnvelopeSchema(z.array(settingProposalSchema));
 
 export const worldRuleDataSchema = z
   .object({
@@ -903,6 +1117,29 @@ export const powerSystemDataSchema = z
   .strict();
 export type PowerSystemData = z.infer<typeof powerSystemDataSchema>;
 
+export const itemDataSchema = z
+  .object({
+    category: z.string().trim().min(1).max(200),
+    grade: z.string().trim().max(200).default(""),
+    effect: z.string().trim().min(1).max(20_000),
+    cost: z.string().trim().max(20_000).default(""),
+    ownership: z.string().trim().max(500).default(""),
+    limits: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type ItemData = z.infer<typeof itemDataSchema>;
+
+export const timelineEventDataSchema = z
+  .object({
+    era: z.string().trim().max(200).default(""),
+    storyTime: z.string().trim().min(1).max(500),
+    storySortKey: z.number().int().optional(),
+    duration: z.string().trim().max(500).default(""),
+    event: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type TimelineEventData = z.infer<typeof timelineEventDataSchema>;
+
 const settingEntityBaseShape = {
   name: z.string().trim().min(1).max(120),
   aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
@@ -911,36 +1148,62 @@ const settingEntityBaseShape = {
   tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
 };
 
+const settingEntityPatchShape = {
+  name: z.string().trim().min(1).max(120).optional(),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  summary: z.string().trim().min(1).max(500).optional(),
+  description: z.string().max(20_000).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+};
+
 export const settingEntityCreateRequestSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("world_rule"),
     ...settingEntityBaseShape,
     data: worldRuleDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("character"),
     ...settingEntityBaseShape,
     data: characterDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("faction"),
     ...settingEntityBaseShape,
     data: factionDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("map"),
     ...settingEntityBaseShape,
     data: mapDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("power_system"),
     ...settingEntityBaseShape,
     data: powerSystemDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("golden_finger"),
     ...settingEntityBaseShape,
     data: goldenFingerDataSchema,
+    customFields: customFieldValuesSchema.default({}),
+  }),
+  z.object({
+    type: z.literal("item"),
+    ...settingEntityBaseShape,
+    data: itemDataSchema,
+    customFields: customFieldValuesSchema.default({}),
+  }),
+  z.object({
+    type: z.literal("timeline_event"),
+    ...settingEntityBaseShape,
+    data: timelineEventDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
 ]);
 export type SettingEntityCreateRequest = z.infer<typeof settingEntityCreateRequestSchema>;
@@ -948,11 +1211,8 @@ export type SettingEntityCreateRequest = z.infer<typeof settingEntityCreateReque
 export const settingEntityPatchRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    name: settingEntityBaseShape.name.optional(),
-    aliases: settingEntityBaseShape.aliases.optional(),
-    summary: settingEntityBaseShape.summary.optional(),
-    description: settingEntityBaseShape.description.optional(),
-    tags: settingEntityBaseShape.tags.optional(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
     data: z
       .union([
         worldRuleDataSchema.partial(),
@@ -961,6 +1221,8 @@ export const settingEntityPatchRequestSchema = z
         mapDataSchema.partial(),
         powerSystemDataSchema.partial(),
         goldenFingerDataSchema.partial(),
+        itemDataSchema.partial(),
+        timelineEventDataSchema.partial(),
       ])
       .optional(),
   })
@@ -971,10 +1233,83 @@ export const settingEntityPatchRequestSchema = z
       input.summary !== undefined ||
       input.description !== undefined ||
       input.tags !== undefined ||
+      input.customFields !== undefined ||
       input.data !== undefined,
     { message: "At least one setting field is required" },
   );
 export type SettingEntityPatchRequest = z.infer<typeof settingEntityPatchRequestSchema>;
+
+export const settingChangeRequestCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(120),
+    reason: z.string().trim().min(1).max(1_000),
+    after: z
+      .object({
+        ...settingEntityPatchShape,
+        customFields: customFieldValuesSchema.optional(),
+        data: z
+          .union([
+            worldRuleDataSchema.partial(),
+            characterDataSchema.partial(),
+            factionDataSchema.partial(),
+            mapDataSchema.partial(),
+            powerSystemDataSchema.partial(),
+            goldenFingerDataSchema.partial(),
+            itemDataSchema.partial(),
+            timelineEventDataSchema.partial(),
+          ])
+          .optional(),
+      })
+      .refine(
+        (input) =>
+          input.name !== undefined ||
+          input.aliases !== undefined ||
+          input.summary !== undefined ||
+          input.description !== undefined ||
+          input.tags !== undefined ||
+          input.customFields !== undefined ||
+          input.data !== undefined,
+        { message: "At least one setting field is required" },
+      ),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingChangeRequestCreateRequest = z.infer<
+  typeof settingChangeRequestCreateRequestSchema
+>;
+
+export const settingChangeRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "applied",
+]);
+export type SettingChangeRequestStatus = z.infer<typeof settingChangeRequestStatusSchema>;
+
+export const settingChangeRequestSchema = z.object({
+  id: uuidV7Schema,
+  entityId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  entityVersion: z.number().int().positive(),
+  title: z.string(),
+  reason: z.string(),
+  before: z.record(z.string(), z.unknown()),
+  after: z.record(z.string(), z.unknown()),
+  status: settingChangeRequestStatusSchema,
+  conflictType: settingConflictTypeSchema,
+  evidence: z.array(settingEvidenceSchema),
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type SettingChangeRequest = z.infer<typeof settingChangeRequestSchema>;
+
+export const settingChangeRequestResponseSchema = apiEnvelopeSchema(settingChangeRequestSchema);
+export const settingChangeRequestListResponseSchema = apiEnvelopeSchema(
+  z.array(settingChangeRequestSchema),
+);
 
 export const settingEntityLockRequestSchema = z.object({
   version: z.number().int().positive(),
@@ -990,6 +1325,7 @@ const settingEntityCommonShape = {
   summary: z.string(),
   description: z.string(),
   tags: z.array(z.string()),
+  customFields: z.record(z.string(), customFieldValueSchema),
   status: settingStatusSchema,
   source: settingSourceSchema,
   version: z.number().int().positive(),
@@ -1030,6 +1366,16 @@ export const settingEntitySchema = z.discriminatedUnion("type", [
     type: z.literal("golden_finger"),
     data: goldenFingerDataSchema,
   }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("item"),
+    data: itemDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("timeline_event"),
+    data: timelineEventDataSchema,
+  }),
 ]);
 export type SettingEntity = z.infer<typeof settingEntitySchema>;
 
@@ -1044,6 +1390,1074 @@ export const settingEntityListResponseSchema = apiEnvelopeSchema(z.array(setting
 export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
+
+export const domainRefTypeSchema = z.enum([
+  "character",
+  "faction",
+  "map",
+  "map_layer",
+  "map_node",
+  "map_edge",
+  "map_marker",
+  "territory",
+  "power_system",
+  "golden_finger",
+  "item",
+  "timeline_event",
+  "timeline_era",
+  "itinerary",
+  "fact",
+  "chapter",
+  "character_relationship",
+  "character_state",
+  "character_knowledge",
+]);
+export type DomainRefType = z.infer<typeof domainRefTypeSchema>;
+
+export const storyTimePointSchema = z
+  .object({
+    era: z.string().trim().min(1).max(120),
+    label: z.string().trim().min(1).max(200),
+    sortKey: z.number().int(),
+  })
+  .strict();
+export type StoryTimePoint = z.infer<typeof storyTimePointSchema>;
+
+export const versionRefSchema = z
+  .object({
+    branchId: uuidV7Schema,
+    versionNodeId: uuidV7Schema.nullable().default(null),
+    objectVersion: z.number().int().positive().nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if ((input.versionNodeId === null) !== (input.objectVersion === null)) {
+      context.addIssue({
+        code: "custom",
+        path: ["versionNodeId"],
+        message: "Version node and object version must be provided together",
+      });
+    }
+  });
+export type VersionRef = z.infer<typeof versionRefSchema>;
+
+export const domainRefSchema = z
+  .object({
+    type: domainRefTypeSchema,
+    id: uuidV7Schema,
+    branchId: uuidV7Schema,
+    label: z.string().trim().min(1).max(200).nullable().default(null),
+    version: versionRefSchema.nullable().default(null),
+  })
+  .strict();
+export type DomainRef = z.infer<typeof domainRefSchema>;
+
+export const validityIntervalSchema = z
+  .object({
+    fromChapter: z.number().int().positive(),
+    toChapter: z.number().int().positive().nullable().default(null),
+    fromStoryTime: storyTimePointSchema.nullable().default(null),
+    toStoryTime: storyTimePointSchema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.toChapter !== null && input.toChapter < input.fromChapter) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Validity end chapter cannot precede its start",
+      });
+    }
+    if (
+      input.fromStoryTime !== null &&
+      input.toStoryTime !== null &&
+      input.fromStoryTime.era === input.toStoryTime.era &&
+      input.toStoryTime.sortKey < input.fromStoryTime.sortKey
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["toStoryTime"],
+        message: "Validity end story time cannot precede its start",
+      });
+    }
+    if (input.fromStoryTime === null && input.toStoryTime !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["fromStoryTime"],
+        message: "Validity start story time is required when an end is provided",
+      });
+    }
+  });
+export type ValidityInterval = z.infer<typeof validityIntervalSchema>;
+
+const characterProfileFields = {
+  desire: z.string().trim().max(20_000).default(""),
+  fear: z.string().trim().max(20_000).default(""),
+  goal: z.string().trim().max(20_000).default(""),
+  voiceSample: z.string().trim().max(20_000).default(""),
+  voiceGuide: z.string().trim().max(20_000).default(""),
+  disguise: z.string().trim().max(20_000).default(""),
+};
+
+export const characterProfileSchema = z.object(characterProfileFields).strict();
+export type CharacterProfile = z.infer<typeof characterProfileSchema>;
+
+export const characterProfilePatchSchema = z
+  .object({
+    desire: characterProfileFields.desire.optional(),
+    fear: characterProfileFields.fear.optional(),
+    goal: characterProfileFields.goal.optional(),
+    voiceSample: characterProfileFields.voiceSample.optional(),
+    voiceGuide: characterProfileFields.voiceGuide.optional(),
+    disguise: characterProfileFields.disguise.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one character profile field is required",
+  });
+export type CharacterProfilePatch = z.infer<typeof characterProfilePatchSchema>;
+
+export const characterProfileUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    profile: characterProfilePatchSchema,
+  })
+  .strict();
+export type CharacterProfileUpdateRequest = z.infer<typeof characterProfileUpdateRequestSchema>;
+
+export const characterRelationshipTypeSchema = z.enum([
+  "kinship",
+  "ally",
+  "enemy",
+  "mentor",
+  "student",
+  "subordinate",
+  "superior",
+  "member_of",
+  "located_at",
+  "controls",
+  "owns",
+]);
+export type CharacterRelationshipType = z.infer<typeof characterRelationshipTypeSchema>;
+
+export const characterRelationshipCreateRequestSchema = z
+  .object({
+    target: domainRefSchema,
+    relationType: characterRelationshipTypeSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict();
+export type CharacterRelationshipCreateRequest = z.infer<
+  typeof characterRelationshipCreateRequestSchema
+>;
+
+export const characterStateKindSchema = z.enum(["body", "limb", "location", "ability", "disguise"]);
+export type CharacterStateKind = z.infer<typeof characterStateKindSchema>;
+
+export const characterStateKeySchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z][a-z0-9_]{0,63}$/, "Expected a lowercase state key");
+
+export const characterStateTransitionCreateRequestSchema = z
+  .object({
+    stateKind: characterStateKindSchema,
+    stateKey: characterStateKeySchema,
+    value: z.string().trim().min(1).max(20_000),
+    target: domainRefSchema.nullable().default(null),
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.stateKind === "location") {
+      if (input.target === null) {
+        context.addIssue({
+          code: "custom",
+          path: ["target"],
+          message: "Location transitions require a map or map node reference",
+        });
+      } else if (input.target.type !== "map" && input.target.type !== "map_node") {
+        context.addIssue({
+          code: "custom",
+          path: ["target", "type"],
+          message: "Location transitions must reference a map or map node",
+        });
+      }
+      return;
+    }
+    if (input.target !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["target"],
+        message: "Only location transitions can carry a domain reference",
+      });
+    }
+  });
+export type CharacterStateTransitionCreateRequest = z.infer<
+  typeof characterStateTransitionCreateRequestSchema
+>;
+
+export const characterKnowledgeStateKindSchema = z.enum([
+  "knowledge",
+  "belief",
+  "suspicion",
+  "misbelief",
+  "unknown",
+]);
+export type CharacterKnowledgeStateKind = z.infer<typeof characterKnowledgeStateKindSchema>;
+
+export const characterKnowledgeSourceKindSchema = z.enum([
+  "observed",
+  "told",
+  "inferred",
+  "read",
+  "assumed",
+]);
+export type CharacterKnowledgeSourceKind = z.infer<typeof characterKnowledgeSourceKindSchema>;
+
+export const characterKnowledgeStateCreateRequestSchema = z
+  .object({
+    objectiveFactId: uuidV7Schema,
+    state: characterKnowledgeStateKindSchema,
+    claimedContent: z.string().trim().max(20_000).nullable().default(null),
+    sourceKind: characterKnowledgeSourceKindSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const hasClaim = Boolean(input.claimedContent?.trim());
+    if (input.state === "unknown" && hasClaim) {
+      context.addIssue({
+        code: "custom",
+        path: ["claimedContent"],
+        message: "Unknown knowledge states cannot carry claimed content",
+      });
+    }
+    if (input.state !== "unknown" && !hasClaim) {
+      context.addIssue({
+        code: "custom",
+        path: ["claimedContent"],
+        message: "Known, believed, suspected and misbelieved states require content",
+      });
+    }
+  });
+export type CharacterKnowledgeStateCreateRequest = z.infer<
+  typeof characterKnowledgeStateCreateRequestSchema
+>;
+
+export const characterCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+    summary: z.string().trim().min(1).max(500),
+    description: z.string().max(20_000).default(""),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+    profile: characterProfileSchema.default({
+      desire: "",
+      fear: "",
+      goal: "",
+      voiceSample: "",
+      voiceGuide: "",
+      disguise: "",
+    }),
+  })
+  .strict();
+export type CharacterCreateRequest = z.infer<typeof characterCreateRequestSchema>;
+
+export const characterRelationshipSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  sourceCharacterId: uuidV7Schema,
+  target: domainRefSchema,
+  relationType: characterRelationshipTypeSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterRelationship = z.infer<typeof characterRelationshipSchema>;
+export const characterRelationshipResponseSchema = apiEnvelopeSchema(characterRelationshipSchema);
+
+export const characterStateTransitionSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  characterId: uuidV7Schema,
+  stateKind: characterStateKindSchema,
+  stateKey: characterStateKeySchema,
+  value: z.string(),
+  target: domainRefSchema.nullable(),
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterStateTransition = z.infer<typeof characterStateTransitionSchema>;
+export const characterStateTransitionResponseSchema = apiEnvelopeSchema(
+  characterStateTransitionSchema,
+);
+
+export const characterKnowledgeStateSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  characterId: uuidV7Schema,
+  objectiveFactId: uuidV7Schema,
+  state: characterKnowledgeStateKindSchema,
+  claimedContent: z.string().nullable(),
+  sourceKind: characterKnowledgeSourceKindSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterKnowledgeState = z.infer<typeof characterKnowledgeStateSchema>;
+export const characterKnowledgeStateResponseSchema = apiEnvelopeSchema(
+  characterKnowledgeStateSchema,
+);
+
+export const characterHealthFindingSchema = z.object({
+  code: z.string().min(1),
+  severity: z.enum(["info", "warning", "blocker"]),
+  message: z.string().min(1),
+});
+export type CharacterHealthFinding = z.infer<typeof characterHealthFindingSchema>;
+
+export const characterDetailSchema = z.object({
+  character: domainRefSchema,
+  profile: characterProfileSchema,
+  relationships: z.array(characterRelationshipSchema),
+  stateTransitions: z.array(characterStateTransitionSchema),
+  knowledgeStates: z.array(characterKnowledgeStateSchema),
+  health: z.array(characterHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type CharacterDetail = z.infer<typeof characterDetailSchema>;
+
+export const characterDetailResponseSchema = apiEnvelopeSchema(characterDetailSchema);
+export const characterListResponseSchema = apiEnvelopeSchema(z.array(characterDetailSchema));
+
+export const characterHistoryQuerySchema = z
+  .object({
+    chapterNumber: z.coerce.number().int().positive().optional(),
+    versionNodeId: uuidV7Schema.optional(),
+  })
+  .strict()
+  .refine((input) => input.chapterNumber !== undefined || input.versionNodeId !== undefined, {
+    message: "A chapter number or version node is required",
+  });
+export type CharacterHistoryQuery = z.infer<typeof characterHistoryQuerySchema>;
+
+export const characterHistorySchema = z.object({
+  character: domainRefSchema,
+  at: z.object({
+    chapterNumber: z.number().int().positive().nullable(),
+    versionNodeId: uuidV7Schema.nullable(),
+  }),
+  profile: characterProfileSchema,
+  relationships: z.array(characterRelationshipSchema),
+  stateTransitions: z.array(characterStateTransitionSchema),
+  knowledgeStates: z.array(characterKnowledgeStateSchema),
+});
+export type CharacterHistory = z.infer<typeof characterHistorySchema>;
+export const characterHistoryResponseSchema = apiEnvelopeSchema(characterHistorySchema);
+
+export const characterKnowledgeProjectionSchema = z.object({
+  knownFacts: z.array(
+    z.object({
+      id: uuidV7Schema,
+      subject: z.string(),
+      predicate: z.string(),
+      object: z.string(),
+      validFromChapter: z.number().int().positive(),
+      validToChapter: z.number().int().positive().nullable(),
+    }),
+  ),
+  beliefs: z.array(
+    z.object({
+      objectiveFactId: uuidV7Schema,
+      state: z.enum(["belief", "suspicion", "misbelief", "unknown"]),
+      claimedContent: z.string().nullable(),
+    }),
+  ),
+  hiddenFactIds: z.array(uuidV7Schema),
+});
+export type CharacterKnowledgeProjection = z.infer<typeof characterKnowledgeProjectionSchema>;
+export const characterKnowledgeProjectionResponseSchema = apiEnvelopeSchema(
+  characterKnowledgeProjectionSchema,
+);
+
+export const characterChangeRequestKindSchema = z.enum([
+  "profile",
+  "relationship",
+  "state_transition",
+  "knowledge_state",
+]);
+export type CharacterChangeRequestKind = z.infer<typeof characterChangeRequestKindSchema>;
+
+const characterChangeRequestBaseShape = {
+  version: z.number().int().positive(),
+  title: z.string().trim().min(1).max(120),
+  reason: z.string().trim().min(1).max(1_000),
+  evidence: z.array(settingEvidenceSchema).min(1).max(20),
+};
+
+export const characterChangeRequestCreateRequestSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("profile"),
+      after: characterProfilePatchSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("relationship"),
+      after: characterRelationshipCreateRequestSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("state_transition"),
+      after: characterStateTransitionCreateRequestSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("knowledge_state"),
+      after: characterKnowledgeStateCreateRequestSchema,
+    })
+    .strict(),
+]);
+export type CharacterChangeRequestCreateRequest = z.infer<
+  typeof characterChangeRequestCreateRequestSchema
+>;
+
+export const characterChangeRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "applied",
+]);
+export type CharacterChangeRequestStatus = z.infer<typeof characterChangeRequestStatusSchema>;
+
+export const characterChangeRequestSchema = z.object({
+  id: uuidV7Schema,
+  characterId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  version: z.number().int().positive(),
+  kind: characterChangeRequestKindSchema,
+  title: z.string(),
+  reason: z.string(),
+  before: z.record(z.string(), z.unknown()),
+  after: z.record(z.string(), z.unknown()),
+  status: characterChangeRequestStatusSchema,
+  evidence: z.array(settingEvidenceSchema),
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterChangeRequest = z.infer<typeof characterChangeRequestSchema>;
+
+export const characterChangeRequestResponseSchema = apiEnvelopeSchema(characterChangeRequestSchema);
+export const characterChangeRequestListResponseSchema = apiEnvelopeSchema(
+  z.array(characterChangeRequestSchema),
+);
+
+export const domainHealthFindingSchema = z.object({
+  code: z.string().min(1),
+  severity: z.enum(["info", "warning", "blocker"]),
+  message: z.string().min(1),
+  relatedIds: z.array(uuidV7Schema).max(20).default([]),
+});
+export type DomainHealthFinding = z.infer<typeof domainHealthFindingSchema>;
+
+const worldEntityBaseShape = {
+  name: z.string().trim().min(1).max(120),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  summary: z.string().trim().min(1).max(500),
+  description: z.string().max(20_000).default(""),
+  tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+};
+
+export const factionProfileSchema = z
+  .object({
+    overview: z.string().trim().max(20_000).default(""),
+    goals: z.string().trim().max(20_000).default(""),
+    resources: z.string().trim().max(20_000).default(""),
+    doctrine: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type FactionProfile = z.infer<typeof factionProfileSchema>;
+
+export const factionProfilePatchSchema = z
+  .object({
+    overview: z.string().trim().max(20_000).optional(),
+    goals: z.string().trim().max(20_000).optional(),
+    resources: z.string().trim().max(20_000).optional(),
+    doctrine: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one faction profile field is required",
+  });
+export type FactionProfilePatch = z.infer<typeof factionProfilePatchSchema>;
+
+export const factionProfileUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    profile: factionProfilePatchSchema,
+  })
+  .strict();
+export type FactionProfileUpdateRequest = z.infer<typeof factionProfileUpdateRequestSchema>;
+
+export const factionCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    profile: factionProfileSchema.default({
+      overview: "",
+      goals: "",
+      resources: "",
+      doctrine: "",
+    }),
+  })
+  .strict();
+export type FactionCreateRequest = z.infer<typeof factionCreateRequestSchema>;
+
+export const mapCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    details: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type MapCreateRequest = z.infer<typeof mapCreateRequestSchema>;
+
+export const factionRelationTypeSchema = z.enum([
+  "ally",
+  "enemy",
+  "vassal",
+  "overlord",
+  "trade",
+  "neutral",
+]);
+export type FactionRelationType = z.infer<typeof factionRelationTypeSchema>;
+
+export const factionRelationshipCreateRequestSchema = z
+  .object({
+    target: domainRefSchema,
+    relationType: factionRelationTypeSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.target.type !== "faction") {
+      context.addIssue({
+        code: "custom",
+        path: ["target", "type"],
+        message: "Faction relationships must target another faction",
+      });
+    }
+  });
+export type FactionRelationshipCreateRequest = z.infer<
+  typeof factionRelationshipCreateRequestSchema
+>;
+
+export const factionRelationshipSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  sourceFactionId: uuidV7Schema,
+  target: domainRefSchema,
+  relationType: factionRelationTypeSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type FactionRelationship = z.infer<typeof factionRelationshipSchema>;
+export const factionRelationshipResponseSchema = apiEnvelopeSchema(factionRelationshipSchema);
+
+export const territoryControlLevelSchema = z.enum(["direct", "military", "influence", "contested"]);
+export type TerritoryControlLevel = z.infer<typeof territoryControlLevelSchema>;
+
+export const territoryCreateRequestSchema = z
+  .object({
+    node: domainRefSchema,
+    controlLevel: territoryControlLevelSchema,
+    validity: validityIntervalSchema,
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.node.type !== "map_node" && input.node.type !== "map") {
+      context.addIssue({
+        code: "custom",
+        path: ["node", "type"],
+        message: "Territory control must reference a map or map node",
+      });
+    }
+  });
+export type TerritoryCreateRequest = z.infer<typeof territoryCreateRequestSchema>;
+
+export const territorySchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  factionId: uuidV7Schema,
+  node: domainRefSchema,
+  controlLevel: territoryControlLevelSchema,
+  validity: validityIntervalSchema,
+  evidence: z.array(settingEvidenceSchema),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type Territory = z.infer<typeof territorySchema>;
+export const territoryResponseSchema = apiEnvelopeSchema(territorySchema);
+
+export const mapLayerCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    parentLayerId: uuidV7Schema.nullable().default(null),
+    sortOrder: z.number().int().nonnegative().default(0),
+    minScale: z.number().finite().nonnegative().default(0),
+    maxScale: z.number().finite().nonnegative().default(100),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.maxScale < input.minScale) {
+      context.addIssue({
+        code: "custom",
+        path: ["maxScale"],
+        message: "Map layer maximum scale cannot be below its minimum",
+      });
+    }
+  });
+export type MapLayerCreateRequest = z.infer<typeof mapLayerCreateRequestSchema>;
+
+export const mapLayerSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  parentLayerId: uuidV7Schema.nullable(),
+  sortOrder: z.number().int().nonnegative(),
+  minScale: z.number(),
+  maxScale: z.number(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapLayer = z.infer<typeof mapLayerSchema>;
+export const mapLayerResponseSchema = apiEnvelopeSchema(mapLayerSchema);
+
+export const mapNodeTypeSchema = z.enum([
+  "region",
+  "settlement",
+  "landmark",
+  "passage",
+  "battlefield",
+  "sect",
+  "dungeon",
+  "other",
+]);
+export type MapNodeType = z.infer<typeof mapNodeTypeSchema>;
+
+const mapCoordinateSchema = z.number().finite().min(0).max(1);
+
+export const mapNodeCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    parentNodeId: uuidV7Schema.nullable().default(null),
+    name: z.string().trim().min(1).max(120),
+    nodeType: mapNodeTypeSchema,
+    summary: z.string().trim().max(5_000).default(""),
+    x: mapCoordinateSchema.nullable().default(null),
+    y: mapCoordinateSchema.nullable().default(null),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if ((input.x === null) !== (input.y === null)) {
+      context.addIssue({
+        code: "custom",
+        path: ["x"],
+        message: "Map node coordinates require both x and y",
+      });
+    }
+  });
+export type MapNodeCreateRequest = z.infer<typeof mapNodeCreateRequestSchema>;
+
+export const mapNodeSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  parentNodeId: uuidV7Schema.nullable(),
+  name: z.string(),
+  nodeType: mapNodeTypeSchema,
+  summary: z.string(),
+  x: z.number().nullable(),
+  y: z.number().nullable(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapNode = z.infer<typeof mapNodeSchema>;
+export const mapNodeResponseSchema = apiEnvelopeSchema(mapNodeSchema);
+
+export const mapRouteTypeSchema = z.enum(["road", "trail", "water", "air", "teleport", "secret"]);
+export type MapRouteType = z.infer<typeof mapRouteTypeSchema>;
+
+export const mapEdgeCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    fromNodeId: uuidV7Schema,
+    toNodeId: uuidV7Schema,
+    routeType: mapRouteTypeSchema,
+    bidirectional: z.boolean().default(true),
+    travelMinutes: z.number().int().positive(),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.fromNodeId === input.toNodeId) {
+      context.addIssue({
+        code: "custom",
+        path: ["toNodeId"],
+        message: "Route endpoints must differ",
+      });
+    }
+    if (input.travelMinutes <= 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["travelMinutes"],
+        message: "Travel time must be positive",
+      });
+    }
+  });
+export type MapEdgeCreateRequest = z.infer<typeof mapEdgeCreateRequestSchema>;
+
+export const mapEdgeSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  fromNodeId: uuidV7Schema,
+  toNodeId: uuidV7Schema,
+  routeType: mapRouteTypeSchema,
+  bidirectional: z.boolean(),
+  travelMinutes: z.number().int().positive(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapEdge = z.infer<typeof mapEdgeSchema>;
+export const mapEdgeResponseSchema = apiEnvelopeSchema(mapEdgeSchema);
+
+export const mapMarkerTypeSchema = z.enum(["danger", "event", "resource", "note", "character"]);
+export type MapMarkerType = z.infer<typeof mapMarkerTypeSchema>;
+
+export const mapMarkerCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    nodeId: uuidV7Schema.nullable().default(null),
+    label: z.string().trim().min(1).max(120),
+    markerType: mapMarkerTypeSchema,
+    x: mapCoordinateSchema,
+    y: mapCoordinateSchema,
+    validity: validityIntervalSchema,
+  })
+  .strict();
+export type MapMarkerCreateRequest = z.infer<typeof mapMarkerCreateRequestSchema>;
+
+export const mapMarkerSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  nodeId: uuidV7Schema.nullable(),
+  label: z.string(),
+  markerType: mapMarkerTypeSchema,
+  x: z.number(),
+  y: z.number(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapMarker = z.infer<typeof mapMarkerSchema>;
+export const mapMarkerResponseSchema = apiEnvelopeSchema(mapMarkerSchema);
+
+export const mapRouteQuerySchema = z
+  .object({
+    fromNodeId: uuidV7Schema,
+    toNodeId: uuidV7Schema,
+    chapterNumber: z.coerce.number().int().positive().optional(),
+  })
+  .strict();
+export type MapRouteQuery = z.infer<typeof mapRouteQuerySchema>;
+
+export const mapRouteSchema = z.object({
+  mapId: uuidV7Schema,
+  fromNodeId: uuidV7Schema,
+  toNodeId: uuidV7Schema,
+  pathNodeIds: z.array(uuidV7Schema),
+  edgeIds: z.array(uuidV7Schema),
+  travelMinutes: z.number().int().nonnegative(),
+});
+export type MapRoute = z.infer<typeof mapRouteSchema>;
+export const mapRouteResponseSchema = apiEnvelopeSchema(mapRouteSchema);
+
+export const timelineEraCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    orderIndex: z.number().int().nonnegative(),
+    startSortKey: z.number().int(),
+    endSortKey: z.number().int().nullable().default(null),
+    description: z.string().trim().max(20_000).default(""),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endSortKey !== null && input.endSortKey < input.startSortKey) {
+      context.addIssue({
+        code: "custom",
+        path: ["endSortKey"],
+        message: "Timeline era end cannot precede its start",
+      });
+    }
+  });
+export type TimelineEraCreateRequest = z.infer<typeof timelineEraCreateRequestSchema>;
+
+export const timelineEraSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  orderIndex: z.number().int().nonnegative(),
+  startSortKey: z.number().int(),
+  endSortKey: z.number().int().nullable(),
+  description: z.string(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type TimelineEra = z.infer<typeof timelineEraSchema>;
+export const timelineEraResponseSchema = apiEnvelopeSchema(timelineEraSchema);
+
+export const timelineEventCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    era: z.string().trim().min(1).max(120),
+    storyTime: storyTimePointSchema,
+    durationMinutes: z.number().int().nonnegative().default(0),
+    durationLabel: z.string().trim().max(200).default(""),
+    event: z.string().trim().min(1).max(20_000),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  });
+export type TimelineEventCreateRequest = z.infer<typeof timelineEventCreateRequestSchema>;
+
+export const timelineEventDetailSchema = z.object({
+  event: domainRefSchema,
+  era: z.string(),
+  storyTime: storyTimePointSchema,
+  durationMinutes: z.number().int().nonnegative(),
+  durationLabel: z.string(),
+  eventText: z.string(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type TimelineEventDetail = z.infer<typeof timelineEventDetailSchema>;
+export const timelineEventResponseSchema = apiEnvelopeSchema(timelineEventDetailSchema);
+
+export const characterItineraryCreateRequestSchema = z
+  .object({
+    character: domainRefSchema,
+    fromNode: domainRefSchema,
+    toNode: domainRefSchema,
+    departure: storyTimePointSchema,
+    arrival: storyTimePointSchema,
+    travelMinutes: z.number().int().positive(),
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.character.type !== "character") {
+      context.addIssue({
+        code: "custom",
+        path: ["character", "type"],
+        message: "Itineraries must reference a character",
+      });
+    }
+    if (input.fromNode.type !== "map_node" || input.toNode.type !== "map_node") {
+      context.addIssue({
+        code: "custom",
+        path: ["fromNode", "type"],
+        message: "Itineraries must reference map nodes",
+      });
+    }
+    if (
+      input.departure.era === input.arrival.era &&
+      input.arrival.sortKey <= input.departure.sortKey
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["arrival"],
+        message: "Itinerary arrival must follow departure",
+      });
+    }
+  });
+export type CharacterItineraryCreateRequest = z.infer<typeof characterItineraryCreateRequestSchema>;
+
+export const characterItinerarySchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  character: domainRefSchema,
+  fromNode: domainRefSchema,
+  toNode: domainRefSchema,
+  departure: storyTimePointSchema,
+  arrival: storyTimePointSchema,
+  routeTravelMinutes: z.number().int().positive(),
+  travelMinutes: z.number().int().positive(),
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  evidence: z.array(settingEvidenceSchema),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterItinerary = z.infer<typeof characterItinerarySchema>;
+export const characterItineraryResponseSchema = apiEnvelopeSchema(characterItinerarySchema);
+
+export const factionDetailSchema = z.object({
+  faction: domainRefSchema,
+  profile: factionProfileSchema,
+  relationships: z.array(factionRelationshipSchema),
+  territories: z.array(territorySchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type FactionDetail = z.infer<typeof factionDetailSchema>;
+export const factionDetailResponseSchema = apiEnvelopeSchema(factionDetailSchema);
+export const factionListResponseSchema = apiEnvelopeSchema(z.array(factionDetailSchema));
+
+export const mapDetailSchema = z.object({
+  map: domainRefSchema,
+  layers: z.array(mapLayerSchema),
+  nodes: z.array(mapNodeSchema),
+  edges: z.array(mapEdgeSchema),
+  markers: z.array(mapMarkerSchema),
+  controlAreas: z.array(territorySchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type MapDetail = z.infer<typeof mapDetailSchema>;
+export const mapDetailResponseSchema = apiEnvelopeSchema(mapDetailSchema);
+export const mapListResponseSchema = apiEnvelopeSchema(z.array(mapDetailSchema));
+
+export const worldTimelineSchema = z.object({
+  eras: z.array(timelineEraSchema),
+  events: z.array(timelineEventDetailSchema),
+  itineraries: z.array(characterItinerarySchema),
+  health: z.array(domainHealthFindingSchema),
+  latestVersionNodeId: uuidV7Schema,
+});
+export type WorldTimeline = z.infer<typeof worldTimelineSchema>;
+export const worldTimelineResponseSchema = apiEnvelopeSchema(worldTimelineSchema);
+
+export const worldSnapshotQuerySchema = z
+  .object({
+    versionNodeId: uuidV7Schema.optional(),
+    chapterNumber: z.coerce.number().int().positive().optional(),
+  })
+  .strict();
+export type WorldSnapshotQuery = z.infer<typeof worldSnapshotQuerySchema>;
+
+export const worldSnapshotSchema = z.object({
+  at: z.object({
+    versionNodeId: uuidV7Schema.nullable(),
+    chapterNumber: z.number().int().positive().nullable(),
+  }),
+  factions: z.array(factionDetailSchema),
+  maps: z.array(mapDetailSchema),
+  timeline: worldTimelineSchema,
+});
+export type WorldSnapshot = z.infer<typeof worldSnapshotSchema>;
+export const worldSnapshotResponseSchema = apiEnvelopeSchema(worldSnapshotSchema);
+
+function validateCustomFieldDefinitionShape(
+  input: Pick<CustomFieldDefinitionCreateRequest, "fieldType" | "options" | "relationTarget">,
+  context: z.RefinementCtx,
+): void {
+  const selectField = input.fieldType === "single_select" || input.fieldType === "multi_select";
+  if (selectField && input.options.length === 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Select fields require at least one option",
+    });
+  }
+  if (!selectField && input.options.length > 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Only select fields can define options",
+    });
+  }
+  if (new Set(input.options).size !== input.options.length) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Select field options must be unique",
+    });
+  }
+  if (input.fieldType === "relation_ref" && input.relationTarget === null) {
+    context.addIssue({
+      code: "custom",
+      path: ["relationTarget"],
+      message: "Relation fields require a target type",
+    });
+  }
+  if (input.fieldType !== "relation_ref" && input.relationTarget !== null) {
+    context.addIssue({
+      code: "custom",
+      path: ["relationTarget"],
+      message: "Only relation fields can define a target type",
+    });
+  }
+}
 
 export const confirmedSettingSchema = z
   .object({
@@ -1658,3 +3072,669 @@ export const generationJobResponseSchema = apiEnvelopeSchema(generationJobSchema
 export const generationJobListResponseSchema = apiEnvelopeSchema(z.array(generationJobSchema));
 export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
 export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);
+
+export const agentRoleSchema = z.enum([
+  "planner",
+  "context_curator",
+  "writer",
+  "critic",
+  "reviser",
+  "fact_extractor",
+  "canon_curator",
+]);
+export type AgentRole = z.infer<typeof agentRoleSchema>;
+
+export const toolSideEffectLevelSchema = z.enum(["S0", "S1", "S2", "S3", "S4"]);
+export type ToolSideEffectLevel = z.infer<typeof toolSideEffectLevelSchema>;
+
+export const toolCategorySchema = z.enum([
+  "read_story",
+  "read_context",
+  "write_draft",
+  "write_review",
+  "propose_fact",
+  "commit_canon",
+  "external_irreversible",
+]);
+export type ToolCategory = z.infer<typeof toolCategorySchema>;
+
+export const toolNameSchema = z
+  .string()
+  .min(3)
+  .max(100)
+  .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced tool name");
+export type ToolName = z.infer<typeof toolNameSchema>;
+
+export const jsonSchemaDocumentSchema = z
+  .record(z.string(), z.unknown())
+  .refine((schema) => typeof schema.type === "string", "JSON Schema must declare a root type");
+export type JsonSchemaDocument = z.infer<typeof jsonSchemaDocumentSchema>;
+
+export const agentToolDeclarationSchema = z
+  .object({
+    name: toolNameSchema,
+    required: z.boolean(),
+  })
+  .strict();
+export type AgentToolDeclaration = z.infer<typeof agentToolDeclarationSchema>;
+
+export const agentFailureSemanticsSchema = z
+  .object({
+    invalidOutput: z.literal("fail_run"),
+    toolDenied: z.literal("fail_run"),
+    budgetExceeded: z.literal("pause_task"),
+    retry: z
+      .object({
+        maxAttempts: z.number().int().min(1).max(5),
+        retryableCodes: z.array(z.string().min(1).max(100)).max(8),
+        exhaustedAction: z.enum(["fail_run", "pause_task", "escalate_to_author"]),
+        preserveCheckpoint: z.literal(true),
+      })
+      .strict(),
+  })
+  .strict();
+export type AgentFailureSemantics = z.infer<typeof agentFailureSemanticsSchema>;
+
+export const agentContractSchema = z
+  .object({
+    key: z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced contract key"),
+    version: z.number().int().positive(),
+    role: agentRoleSchema,
+    description: z.string().trim().min(1).max(2_000),
+    inputSchema: jsonSchemaDocumentSchema,
+    outputSchema: jsonSchemaDocumentSchema,
+    tools: z.array(agentToolDeclarationSchema).max(32),
+    failureSemantics: agentFailureSemanticsSchema,
+  })
+  .strict()
+  .superRefine((contract, context) => {
+    const names = contract.tools.map((tool) => tool.name);
+    if (new Set(names).size !== names.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tools"],
+        message: "Tool declarations must be unique",
+      });
+    }
+  });
+export type AgentContract = z.infer<typeof agentContractSchema>;
+
+export const toolRegistryEntrySchema = z
+  .object({
+    name: toolNameSchema,
+    category: toolCategorySchema,
+    sideEffect: toolSideEffectLevelSchema,
+    description: z.string().trim().min(1).max(2_000),
+    inputSchema: jsonSchemaDocumentSchema,
+    agentCallable: z.boolean(),
+    approval: z.enum(["none", "human"]),
+  })
+  .strict();
+export type ToolRegistryEntry = z.infer<typeof toolRegistryEntrySchema>;
+
+export const agentGrantStateSchema = z.enum(["active", "revoked", "expired"]);
+export type AgentGrantState = z.infer<typeof agentGrantStateSchema>;
+
+export const agentResourceScopeSchema = z
+  .object({
+    chapterIds: z.array(uuidV7Schema).max(500),
+    settingIds: z.array(uuidV7Schema).max(500),
+    includeCanon: z.boolean(),
+  })
+  .strict()
+  .superRefine((scope, context) => {
+    if (new Set(scope.chapterIds).size !== scope.chapterIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterIds"],
+        message: "Chapter scope entries must be unique",
+      });
+    }
+    if (new Set(scope.settingIds).size !== scope.settingIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["settingIds"],
+        message: "Setting scope entries must be unique",
+      });
+    }
+  });
+export type AgentResourceScope = z.infer<typeof agentResourceScopeSchema>;
+
+export const agentGrantBudgetLimitsSchema = z
+  .object({
+    maxCostCny: z.number().positive().max(1_000),
+    maxTokens: z.number().int().positive().max(10_000_000),
+    maxCalls: z.number().int().positive().max(10_000),
+  })
+  .strict();
+export type AgentGrantBudgetLimits = z.infer<typeof agentGrantBudgetLimitsSchema>;
+
+export const agentGrantBudgetSchema = agentGrantBudgetLimitsSchema
+  .extend({
+    spentCostCny: z.number().nonnegative(),
+    spentTokens: z.number().int().nonnegative(),
+    callCount: z.number().int().nonnegative(),
+  })
+  .strict()
+  .superRefine((budget, context) => {
+    if (budget.spentCostCny > budget.maxCostCny) {
+      context.addIssue({ code: "custom", path: ["spentCostCny"], message: "Cost budget exceeded" });
+    }
+    if (budget.spentTokens > budget.maxTokens) {
+      context.addIssue({
+        code: "custom",
+        path: ["spentTokens"],
+        message: "Token budget exceeded",
+      });
+    }
+    if (budget.callCount > budget.maxCalls) {
+      context.addIssue({ code: "custom", path: ["callCount"], message: "Call budget exceeded" });
+    }
+  });
+export type AgentGrantBudget = z.infer<typeof agentGrantBudgetSchema>;
+
+export const agentGrantMaxImpactSchema = z
+  .object({
+    maxSideEffect: toolSideEffectLevelSchema,
+    maxAffectedResources: z.number().int().positive().max(5_000),
+  })
+  .strict();
+export type AgentGrantMaxImpact = z.infer<typeof agentGrantMaxImpactSchema>;
+
+export const agentGrantCreateRequestSchema = z
+  .object({
+    taskId: uuidV7Schema,
+    role: agentRoleSchema,
+    tools: z.array(toolNameSchema).min(1).max(32),
+    resourceScope: agentResourceScopeSchema,
+    budget: agentGrantBudgetLimitsSchema,
+    maxImpact: agentGrantMaxImpactSchema,
+    expiresAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((request, context) => {
+    if (new Set(request.tools).size !== request.tools.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tools"],
+        message: "Grant tools must be unique",
+      });
+    }
+  });
+export type AgentGrantCreateRequest = z.infer<typeof agentGrantCreateRequestSchema>;
+
+export const agentGrantSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    taskId: uuidV7Schema,
+    userId: uuidV7Schema,
+    role: agentRoleSchema,
+    state: agentGrantStateSchema,
+    tools: z.array(toolNameSchema).min(1).max(32),
+    resourceScope: agentResourceScopeSchema,
+    budget: agentGrantBudgetSchema,
+    maxImpact: agentGrantMaxImpactSchema,
+    expiresAt: z.string().datetime(),
+    issuedBy: uuidV7Schema,
+    revokedAt: z.string().datetime().nullable(),
+    revokedBy: uuidV7Schema.nullable(),
+    revocationReason: z.string().min(1).max(500).nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((grant, context) => {
+    if (grant.state === "revoked") {
+      if (!grant.revokedAt || !grant.revokedBy || !grant.revocationReason) {
+        context.addIssue({
+          code: "custom",
+          path: ["revokedAt"],
+          message: "Revoked grants require revocation evidence",
+        });
+      }
+    } else if (grant.revokedAt || grant.revokedBy || grant.revocationReason) {
+      context.addIssue({
+        code: "custom",
+        path: ["revokedAt"],
+        message: "Only revoked grants may carry revocation evidence",
+      });
+    }
+  });
+export type AgentGrant = z.infer<typeof agentGrantSchema>;
+
+export const agentGrantRevokeRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type AgentGrantRevokeRequest = z.infer<typeof agentGrantRevokeRequestSchema>;
+
+export const agentToolApprovalSchema = z
+  .object({
+    approvalId: uuidV7Schema,
+    approvedBy: uuidV7Schema,
+    approvedSideEffect: toolSideEffectLevelSchema,
+  })
+  .strict();
+export type AgentToolApproval = z.infer<typeof agentToolApprovalSchema>;
+
+export const agentToolResourceSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("task"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("chapter"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("setting"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("canon"), id: uuidV7Schema.nullable() }).strict(),
+]);
+export type AgentToolResource = z.infer<typeof agentToolResourceSchema>;
+
+export const agentToolCallRequestSchema = z
+  .object({
+    grantId: uuidV7Schema,
+    taskId: uuidV7Schema,
+    toolName: toolNameSchema,
+    resource: agentToolResourceSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative().max(1_000),
+    estimatedTokens: z.number().int().nonnegative().max(10_000_000),
+    affectedResources: z.number().int().positive().max(5_000),
+    approval: agentToolApprovalSchema.nullable(),
+  })
+  .strict();
+export type AgentToolCallRequest = z.infer<typeof agentToolCallRequestSchema>;
+
+export const agentGrantResponseSchema = apiEnvelopeSchema(agentGrantSchema);
+export const agentGrantListResponseSchema = apiEnvelopeSchema(z.array(agentGrantSchema));
+export const agentGrantRevokeResponseSchema = agentGrantResponseSchema;
+
+export const ORCHESTRATOR_CONTRACT_VERSION = 1 as const;
+export const ORCHESTRATOR_SCHEMA_VERSION = ORCHESTRATOR_CONTRACT_VERSION;
+export const ORCHESTRATOR_AGENT_WORKFLOW_JOB = "agent_workflow" as const;
+
+export const orchestratorRunStatusSchema = generationJobStatusSchema;
+export type OrchestratorRunStatus = z.infer<typeof orchestratorRunStatusSchema>;
+
+export const orchestratorTaskStatusSchema = z.enum([
+  "pending",
+  "ready",
+  "running",
+  "waiting_review",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export type OrchestratorTaskStatus = z.infer<typeof orchestratorTaskStatusSchema>;
+
+export const orchestratorStepStatusSchema = z.enum([
+  "pending",
+  "running",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export type OrchestratorStepStatus = z.infer<typeof orchestratorStepStatusSchema>;
+
+export const orchestratorRiskSchema = z.enum(["low", "medium", "high"]);
+export type OrchestratorRisk = z.infer<typeof orchestratorRiskSchema>;
+
+export const orchestratorApprovalPolicySchema = z.enum(["none", "human"]);
+export type OrchestratorApprovalPolicy = z.infer<typeof orchestratorApprovalPolicySchema>;
+
+const orchestratorActorBaseShape = {
+  id: uuidV7Schema,
+};
+
+export const orchestratorHumanActorSchema = z
+  .object({
+    type: z.literal("human"),
+    ...orchestratorActorBaseShape,
+  })
+  .strict();
+export type OrchestratorHumanActor = z.infer<typeof orchestratorHumanActorSchema>;
+
+export const orchestratorAgentActorSchema = z
+  .object({
+    type: z.literal("agent"),
+    ...orchestratorActorBaseShape,
+  })
+  .strict();
+export type OrchestratorAgentActor = z.infer<typeof orchestratorAgentActorSchema>;
+
+export const orchestratorActorSchema = z.discriminatedUnion("type", [
+  orchestratorHumanActorSchema,
+  orchestratorAgentActorSchema,
+]);
+export type OrchestratorActor = z.infer<typeof orchestratorActorSchema>;
+
+export const orchestratorBudgetSchema = z
+  .object({
+    maxCostCny: z.number().positive().max(1_000),
+    maxTokens: z.number().int().positive().max(10_000_000),
+    maxCalls: z.number().int().positive().max(10_000),
+  })
+  .strict();
+export type OrchestratorBudget = z.infer<typeof orchestratorBudgetSchema>;
+
+export const orchestratorEnvelopeSchema = z
+  .object({
+    key: z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced envelope key"),
+    version: z.number().int().positive(),
+    maxTasks: z.number().int().min(1).max(1_000),
+    maxDepth: z.number().int().min(1).max(32),
+    maxFanOut: z.number().int().min(0).max(64),
+    maxConcurrency: z.number().int().min(1).max(8),
+    dynamicSubtasks: z.boolean(),
+    budget: orchestratorBudgetSchema,
+  })
+  .strict();
+export type OrchestratorEnvelope = z.infer<typeof orchestratorEnvelopeSchema>;
+
+export const orchestratorTaskKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_.-]*$/, "Expected a stable task key");
+export type OrchestratorTaskKey = z.infer<typeof orchestratorTaskKeySchema>;
+
+export const orchestratorStepKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_.-]*$/, "Expected a stable step key");
+export type OrchestratorStepKey = z.infer<typeof orchestratorStepKeySchema>;
+
+export const orchestratorTaskStepSchema = z
+  .object({
+    key: orchestratorStepKeySchema,
+    toolName: toolNameSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative().max(1_000),
+    estimatedTokens: z.number().int().nonnegative().max(10_000_000),
+  })
+  .strict();
+export type OrchestratorTaskStep = z.infer<typeof orchestratorTaskStepSchema>;
+
+export const orchestratorTaskSchema = z
+  .object({
+    id: uuidV7Schema,
+    key: orchestratorTaskKeySchema,
+    title: z.string().trim().min(1).max(200),
+    priority: z.number().int().min(0).max(100),
+    dependsOn: z.array(orchestratorTaskKeySchema).max(64),
+    role: agentRoleSchema,
+    grantId: uuidV7Schema,
+    resource: agentToolResourceSchema,
+    affectedResources: z.number().int().positive().max(5_000),
+    risk: orchestratorRiskSchema,
+    approval: orchestratorApprovalPolicySchema,
+    steps: z.array(orchestratorTaskStepSchema).min(1).max(32),
+  })
+  .strict()
+  .superRefine((task, context) => {
+    if (new Set(task.dependsOn).size !== task.dependsOn.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["dependsOn"],
+        message: "Task dependencies must be unique",
+      });
+    }
+    const stepKeys = task.steps.map((step) => step.key);
+    if (new Set(stepKeys).size !== stepKeys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["steps"],
+        message: "Task step keys must be unique",
+      });
+    }
+    if (task.risk === "high" && task.approval !== "human") {
+      context.addIssue({
+        code: "custom",
+        path: ["approval"],
+        message: "High-risk tasks require a human approval gate",
+      });
+    }
+  });
+export type OrchestratorTask = z.infer<typeof orchestratorTaskSchema>;
+
+const orchestratorCommandBaseShape = {
+  schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+  commandId: uuidV7Schema,
+  runId: uuidV7Schema,
+};
+
+export const orchestratorScheduleCommandSchema = z
+  .object({
+    type: z.literal("schedule"),
+    ...orchestratorCommandBaseShape,
+    idempotencyKey: z.string().trim().min(1).max(200),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    actor: orchestratorHumanActorSchema,
+    envelope: orchestratorEnvelopeSchema,
+    tasks: z.array(orchestratorTaskSchema).min(1).max(1_000),
+  })
+  .strict();
+export type OrchestratorScheduleCommand = z.infer<typeof orchestratorScheduleCommandSchema>;
+
+export const orchestratorPauseCommandSchema = z
+  .object({
+    type: z.literal("pause"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorPauseCommand = z.infer<typeof orchestratorPauseCommandSchema>;
+
+export const orchestratorResumeCommandSchema = z
+  .object({
+    type: z.literal("resume"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+  })
+  .strict();
+export type OrchestratorResumeCommand = z.infer<typeof orchestratorResumeCommandSchema>;
+
+export const orchestratorCancelCommandSchema = z
+  .object({
+    type: z.literal("cancel"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorCancelCommand = z.infer<typeof orchestratorCancelCommandSchema>;
+
+export const orchestratorApproveTaskCommandSchema = z
+  .object({
+    type: z.literal("approve_task"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    taskKey: orchestratorTaskKeySchema,
+    approvalId: uuidV7Schema,
+  })
+  .strict();
+export type OrchestratorApproveTaskCommand = z.infer<typeof orchestratorApproveTaskCommandSchema>;
+
+export const orchestratorEscalateTaskCommandSchema = z
+  .object({
+    type: z.literal("escalate_task"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorActorSchema,
+    taskKey: orchestratorTaskKeySchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorEscalateTaskCommand = z.infer<typeof orchestratorEscalateTaskCommandSchema>;
+
+export const orchestratorAddSubtasksCommandSchema = z
+  .object({
+    type: z.literal("add_subtasks"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorActorSchema,
+    parentTaskKey: orchestratorTaskKeySchema,
+    tasks: z.array(orchestratorTaskSchema).min(1).max(100),
+  })
+  .strict();
+export type OrchestratorAddSubtasksCommand = z.infer<typeof orchestratorAddSubtasksCommandSchema>;
+
+export const orchestratorCommandSchema = z.discriminatedUnion("type", [
+  orchestratorScheduleCommandSchema,
+  orchestratorPauseCommandSchema,
+  orchestratorResumeCommandSchema,
+  orchestratorCancelCommandSchema,
+  orchestratorApproveTaskCommandSchema,
+  orchestratorEscalateTaskCommandSchema,
+  orchestratorAddSubtasksCommandSchema,
+]);
+export type OrchestratorCommand = z.infer<typeof orchestratorCommandSchema>;
+
+export const orchestratorEventTypeSchema = z.enum([
+  "run.scheduled",
+  "run.started",
+  "run.pause_requested",
+  "run.paused",
+  "run.resumed",
+  "run.waiting_review",
+  "run.completed",
+  "run.failed",
+  "run.cancelled",
+  "tasks.added",
+  "task.ready",
+  "task.started",
+  "task.waiting_review",
+  "task.approved",
+  "task.escalated",
+  "task.succeeded",
+  "task.failed",
+  "task.skipped",
+  "task.cancelled",
+  "step.started",
+  "step.succeeded",
+  "step.failed",
+  "step.skipped",
+  "step.cancelled",
+]);
+export type OrchestratorEventType = z.infer<typeof orchestratorEventTypeSchema>;
+
+export const orchestratorEventSchema = z
+  .object({
+    schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+    eventId: z.string().min(1).max(120),
+    runId: uuidV7Schema,
+    sequence: z.number().int().positive(),
+    type: orchestratorEventTypeSchema,
+    occurredAt: z.string().datetime(),
+    taskKey: orchestratorTaskKeySchema.nullable().default(null),
+    stepKey: orchestratorStepKeySchema.nullable().default(null),
+    data: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type OrchestratorEvent = z.infer<typeof orchestratorEventSchema>;
+
+export const orchestratorTaskStepStateSchema = z
+  .object({
+    key: orchestratorStepKeySchema,
+    toolName: toolNameSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative(),
+    estimatedTokens: z.number().int().nonnegative(),
+    status: orchestratorStepStatusSchema,
+    attempt: z.number().int().nonnegative(),
+    output: z.record(z.string(), z.unknown()).default({}),
+    errorCode: z.string().min(1).max(100).nullable(),
+    errorMessage: z.string().min(1).max(2_000).nullable(),
+  })
+  .strict();
+export type OrchestratorTaskStepState = z.infer<typeof orchestratorTaskStepStateSchema>;
+
+export const orchestratorTaskStateSchema = z
+  .object({
+    id: uuidV7Schema,
+    key: orchestratorTaskKeySchema,
+    title: z.string().min(1),
+    priority: z.number().int().min(0).max(100),
+    dependsOn: z.array(orchestratorTaskKeySchema),
+    role: agentRoleSchema,
+    grantId: uuidV7Schema,
+    resource: agentToolResourceSchema,
+    affectedResources: z.number().int().positive(),
+    risk: orchestratorRiskSchema,
+    approval: orchestratorApprovalPolicySchema,
+    status: orchestratorTaskStatusSchema,
+    attempt: z.number().int().nonnegative(),
+    approvedBy: uuidV7Schema.nullable(),
+    approvalId: uuidV7Schema.nullable(),
+    escalationReason: z.string().min(1).max(500).nullable(),
+    steps: z.array(orchestratorTaskStepStateSchema).min(1),
+  })
+  .strict();
+export type OrchestratorTaskState = z.infer<typeof orchestratorTaskStateSchema>;
+
+export const orchestratorRunStateSchema = z
+  .object({
+    schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+    runId: uuidV7Schema,
+    ownerId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    workflowKey: z.string().min(1),
+    workflowVersion: z.number().int().positive(),
+    idempotencyKey: z.string().min(1),
+    envelope: orchestratorEnvelopeSchema,
+    status: orchestratorRunStatusSchema,
+    pauseRequested: z.boolean(),
+    cancelReason: z.string().min(1).max(500).nullable(),
+    failureMessage: z.string().min(1).max(2_000).nullable(),
+    lastSequence: z.number().int().nonnegative(),
+    appliedCommandIds: z.array(uuidV7Schema).max(10_000),
+    appliedEventIds: z.array(z.string().min(1).max(120)).max(20_000),
+    tasks: z.array(orchestratorTaskStateSchema).min(1),
+  })
+  .strict()
+  .superRefine((state, context) => {
+    const keys = state.tasks.map((task) => task.key);
+    if (new Set(keys).size !== keys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tasks"],
+        message: "Task keys must be unique",
+      });
+    }
+  });
+export type OrchestratorRunState = z.infer<typeof orchestratorRunStateSchema>;
+
+export const orchestratorValidationIssueSchema = z
+  .object({
+    code: z.enum([
+      "duplicate_task",
+      "unknown_dependency",
+      "cycle",
+      "task_limit_exceeded",
+      "depth_exceeded",
+      "fanout_exceeded",
+      "concurrency_exceeded",
+      "budget_exceeded",
+      "human_gate_required",
+      "dynamic_subtasks_disabled",
+      "invalid_child_task",
+      "tool_not_registered",
+      "role_tool_denied",
+      "tool_not_agent_callable",
+    ]),
+    message: z.string().min(1),
+    taskKey: orchestratorTaskKeySchema.nullable(),
+  })
+  .strict();
+export type OrchestratorValidationIssue = z.infer<typeof orchestratorValidationIssueSchema>;
+
+export const orchestratorRunResponseSchema = apiEnvelopeSchema(orchestratorRunStateSchema);
