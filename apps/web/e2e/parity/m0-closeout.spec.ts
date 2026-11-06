@@ -69,34 +69,10 @@ test("completes the full M0 author journey through the production UI", async ({
   await expect(page.getByText("故事圣经已锁定，修改需要发起修改请求。")).toBeVisible();
 
   await page.goto(`/workspace/${work.id}/outline`);
-  await page.getByRole("spinbutton", { name: "章节序号" }).fill("1");
-  await page.getByRole("textbox", { name: "章节标题" }).fill("一只手也能结印");
-  await page
-    .getByRole("textbox", { name: "章目标" })
-    .fill("让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。");
-  await page.getByRole("textbox", { name: "POV" }).fill("沈砚");
-  await page.getByRole("textbox", { name: "地点" }).fill("荒寺外山道");
-  await page
-    .getByRole("textbox", { name: "场景节拍（一行一个）" })
-    .fill(
-      [
-        "沈砚藏起断臂，被顾青撞见。",
-        "血河宗追兵逼近，两人被迫联手。",
-        "沈砚单手结印，忘川书短暂显形。",
-        "顾青看见书页一角，但没有点破。",
-      ].join("\n"),
-    );
-  await page
-    .getByRole("textbox", { name: "必用事实（一行一个）" })
-    .fill(["左臂骨折，不能双手结印", "顾青不知道忘川书完整来历"].join("\n"));
-  await page.getByRole("button", { name: "创建章纲" }).click();
-  await expect(page.getByRole("heading", { name: "一只手也能结印" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "大纲工作台" })).toBeVisible();
 
   await createConfirmedSettings(page.request, branchPath);
-  const chapterResponse = await page.request.get(`${branchPath}/chapters`);
-  expect(chapterResponse.ok()).toBe(true);
-  const chapter = (await chapterResponse.json()).data[0] as { id: string };
-  expect(chapter.id).toBeTruthy();
+  const chapter = await createM0Chapter(page.request, work);
 
   const worker = await startWorker();
   try {

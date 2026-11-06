@@ -188,7 +188,7 @@ test("creates, plants and pays off a foreshadow through the production page", as
   const laterChapter = await createChapter(page, work, 6, "写作进度");
   const databaseUrl =
     process.env.E2E_DATABASE_URL ??
-    "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e_146";
+    "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e";
   const pool = new Pool({ connectionString: databaseUrl });
   try {
     await pool.query(`UPDATE chapters SET status = 'writing', word_count = 3600 WHERE id = $1`, [
