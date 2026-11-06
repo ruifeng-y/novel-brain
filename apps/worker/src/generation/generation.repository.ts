@@ -4,10 +4,13 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   contextPackManifestSchema,
   contextPackVersionSchema,
+  WRITING_ACTION_STEPS,
   WORKER_JOB_STEPS,
   type ContextPackManifest,
   type GenerateChapterJob,
   type GenerationCost,
+  type WriteActionJob,
+  type WritingActionOutput,
   type WorkerJobStep,
 } from "@novel-brain/contracts";
 import {
@@ -39,6 +42,7 @@ import {
   usageRecords,
   users,
   versionNodes,
+  writingActions,
   workBranches,
   works,
   type DatabaseClient,
@@ -48,6 +52,8 @@ import { M0_COST_PER_TOKEN_CNY, type GenerationResult } from "@novel-brain/ai";
 import {
   outputRefsFromStepOutput,
   resolveRecoveryStep,
+  spliceSelectedText,
+  WRITING_ACTION_SPECS,
   type ChapterContextInput,
   type RecoveryStepStatus,
 } from "@novel-brain/core";
@@ -65,6 +71,26 @@ type DatabaseTransaction = Parameters<Parameters<DatabaseClient["transaction"]>[
 export interface LoadedGenerationJob {
   job: JobRecord;
   modelConfig: ModelConfigRecord;
+}
+
+export interface WorkerJobBase {
+  jobId: string;
+  workId: string;
+  branchId: string;
+  chapterId: string;
+  actorId: string;
+  modelConfigId: string;
+  idempotencyKey: string;
+}
+
+export interface LoadedWritingActionSource {
+  chapter: InferSelectModel<typeof chapters>;
+  version: InferSelectModel<typeof chapterVersions>;
+  branch: {
+    id: string;
+    status: "active" | "archived";
+    headNodeId: string | null;
+  };
 }
 
 export interface WorkerContextSources {
@@ -127,6 +153,20 @@ export interface StartedModelCall {
   attempt: number;
 }
 
+export class WritingActionNotEditableError extends Error {
+  constructor() {
+    super("Chapter is not editable for a writing action");
+    this.name = "WritingActionNotEditableError";
+  }
+}
+
+export class WritingActionSourceInvalidError extends Error {
+  constructor() {
+    super("Writing action source version is invalid");
+    this.name = "WritingActionSourceInvalidError";
+  }
+}
+
 const factSourceChapters = alias(chapters, "fact_source_chapters");
 
 @Injectable()
@@ -178,7 +218,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     }
   }
 
-  async loadJob(payload: GenerateChapterJob): Promise<LoadedGenerationJob | undefined> {
+  async loadJob(payload: WorkerJobBase): Promise<LoadedGenerationJob | undefined> {
     return this.withTenant(payload.actorId, async (transaction) => {
       const [row] = await transaction
         .select({ job: jobs, modelConfig: modelConfigs })
@@ -200,7 +240,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     });
   }
 
-  async loadSources(payload: GenerateChapterJob): Promise<WorkerContextSources | undefined> {
+  async loadSources(payload: WorkerJobBase): Promise<WorkerContextSources | undefined> {
     return this.withTenant(payload.actorId, async (transaction) => {
       const [chapter] = await transaction
         .select()
@@ -441,7 +481,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     });
   }
 
-  async begin(payload: GenerateChapterJob): Promise<JobRecord | "terminal" | undefined> {
+  async begin(payload: WorkerJobBase): Promise<JobRecord | "terminal" | undefined> {
     return this.withTenant(payload.actorId, async (transaction) => {
       const [current] = await transaction
         .select()
@@ -497,7 +537,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     });
   }
 
-  async isCancelled(payload: GenerateChapterJob): Promise<boolean> {
+  async isCancelled(payload: WorkerJobBase): Promise<boolean> {
     return this.withTenant(payload.actorId, async (transaction) => {
       const [job] = await transaction
         .select({ status: jobs.status })
@@ -508,8 +548,82 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     });
   }
 
+  async loadWritingActionSource(
+    payload: WriteActionJob,
+  ): Promise<LoadedWritingActionSource | undefined> {
+    return this.withTenant(payload.actorId, async (transaction) => {
+      const [row] = await transaction
+        .select({
+          chapter: chapters,
+          version: chapterVersions,
+          branch: {
+            id: workBranches.id,
+            status: workBranches.status,
+            headNodeId: workBranches.headNodeId,
+          },
+        })
+        .from(chapters)
+        .innerJoin(
+          chapterVersions,
+          and(
+            eq(chapterVersions.id, payload.sourceVersionId),
+            eq(chapterVersions.chapterId, chapters.id),
+            eq(chapterVersions.workId, chapters.workId),
+            eq(chapterVersions.branchId, chapters.branchId),
+            eq(chapterVersions.userId, chapters.userId),
+          ),
+        )
+        .innerJoin(
+          workBranches,
+          and(
+            eq(workBranches.id, chapters.branchId),
+            eq(workBranches.workId, chapters.workId),
+            eq(workBranches.userId, chapters.userId),
+          ),
+        )
+        .where(
+          and(
+            eq(chapters.id, payload.chapterId),
+            eq(chapters.workId, payload.workId),
+            eq(chapters.branchId, payload.branchId),
+            eq(chapters.userId, payload.actorId),
+          ),
+        )
+        .limit(1);
+      if (!row) {
+        return undefined;
+      }
+      return {
+        chapter: row.chapter,
+        version: row.version,
+        branch: {
+          ...row.branch,
+          status: row.branch.status as "active" | "archived",
+        },
+      };
+    });
+  }
+
+  async resumeWritingActionStep(
+    payload: WriteActionJob,
+  ): Promise<(typeof WRITING_ACTION_STEPS)[number]> {
+    return this.withTenant(payload.actorId, async (transaction) => {
+      const steps = await transaction
+        .select({ stepKey: jobSteps.stepKey, status: jobSteps.status })
+        .from(jobSteps)
+        .where(eq(jobSteps.jobId, payload.jobId));
+      return resolveRecoveryStep(
+        WRITING_ACTION_STEPS,
+        steps.map((step) => ({
+          stepKey: step.stepKey,
+          status: step.status as RecoveryStepStatus,
+        })),
+      ).step as (typeof WRITING_ACTION_STEPS)[number];
+    });
+  }
+
   async startStep(
-    payload: GenerateChapterJob,
+    payload: WorkerJobBase,
     step: string,
     inputHash: string,
     progress: number,
@@ -641,7 +755,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async succeedStep(input: {
-    payload: GenerateChapterJob;
+    payload: WorkerJobBase;
     step: string;
     progress: number;
     output: Record<string, unknown>;
@@ -755,7 +869,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async failStep(input: {
-    payload: GenerateChapterJob;
+    payload: WorkerJobBase;
     step: string;
     code: string;
     message: string;
@@ -921,7 +1035,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async persistContextPack(input: {
-    payload: GenerateChapterJob;
+    payload: WorkerJobBase;
     pack: ContextPackManifest;
   }): Promise<string> {
     return this.withTenant(input.payload.actorId, async (transaction) => {
@@ -956,7 +1070,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async saveGeneratedVersion(input: {
-    payload: GenerateChapterJob;
+    payload: WorkerJobBase;
     step: "draft" | "revise";
     content: string;
   }): Promise<{ id: string; version: number }> {
@@ -1073,9 +1187,265 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     });
   }
 
+  async saveWritingActionOutput(input: {
+    payload: WriteActionJob;
+    generatedText: string;
+    promptKey: string;
+    promptVersion: number;
+    promptHash: string;
+    modelProvider: string;
+    model: string;
+    modelParameters: Record<string, unknown>;
+  }): Promise<WritingActionOutput> {
+    return this.withTenant(input.payload.actorId, async (transaction) => {
+      await transaction.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext(${input.payload.branchId}))`,
+      );
+      const [existing] = await transaction
+        .select()
+        .from(writingActions)
+        .where(eq(writingActions.jobId, input.payload.jobId))
+        .limit(1);
+      if (existing) {
+        const content = existing.chapterVersionId
+          ? (
+              await transaction
+                .select({ content: chapterVersions.content })
+                .from(chapterVersions)
+                .where(eq(chapterVersions.id, existing.chapterVersionId))
+                .limit(1)
+            )[0]?.content
+          : undefined;
+        return toWritingActionOutput(existing, content);
+      }
+
+      const [source] = await transaction
+        .select({
+          chapter: chapters,
+          version: chapterVersions,
+          branch: workBranches,
+        })
+        .from(chapters)
+        .innerJoin(
+          chapterVersions,
+          and(
+            eq(chapterVersions.id, input.payload.sourceVersionId),
+            eq(chapterVersions.chapterId, chapters.id),
+            eq(chapterVersions.userId, chapters.userId),
+          ),
+        )
+        .innerJoin(
+          workBranches,
+          and(eq(workBranches.id, chapters.branchId), eq(workBranches.userId, chapters.userId)),
+        )
+        .where(
+          and(
+            eq(chapters.id, input.payload.chapterId),
+            eq(chapters.workId, input.payload.workId),
+            eq(chapters.branchId, input.payload.branchId),
+            eq(chapters.userId, input.payload.actorId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!source) {
+        throw new WritingActionSourceInvalidError();
+      }
+      if (!isChapterEditable(source.chapter.status)) {
+        throw new WritingActionNotEditableError();
+      }
+      if (source.branch.status !== "active") {
+        throw new WritingActionSourceInvalidError();
+      }
+      if (!source.branch.headNodeId) {
+        throw new WritingActionSourceInvalidError();
+      }
+
+      const spec = WRITING_ACTION_SPECS[input.payload.action];
+      const generatedText = input.generatedText.trim();
+      if (!generatedText) {
+        throw new WritingActionSourceInvalidError();
+      }
+      const [latest] = await transaction
+        .select({ version: sql<number>`coalesce(max(${writingActions.version}), 0)` })
+        .from(writingActions)
+        .where(eq(writingActions.chapterId, source.chapter.id));
+      const artifactVersion = Number(latest?.version ?? 0) + 1;
+      const now = new Date();
+      const versionNodeId = uuidv7();
+      let chapterVersionId: string | null = null;
+      let finalContent: string | undefined;
+      let affectedRange: Record<string, number> | null = null;
+      let artifact: Record<string, unknown>;
+
+      if (spec.chapterVersion) {
+        const applied = applyWritingActionText(
+          input.payload.action,
+          source.version.content,
+          generatedText,
+          input.payload.input,
+        );
+        const content = applied.content;
+        finalContent = content;
+        affectedRange = applied.affectedRange;
+        if (!content.trim()) {
+          throw new WritingActionSourceInvalidError();
+        }
+        const [latestChapterVersion] = await transaction
+          .select({ version: sql<number>`coalesce(max(${chapterVersions.version}), 0)` })
+          .from(chapterVersions)
+          .where(eq(chapterVersions.chapterId, source.chapter.id));
+        const chapterVersion = Number(latestChapterVersion?.version ?? 0) + 1;
+        const contentHash = sha256(content);
+        const wordCount = countWords(content);
+        chapterVersionId = uuidv7();
+        await transaction.insert(versionNodes).values({
+          id: versionNodeId,
+          workId: source.chapter.workId,
+          branchId: source.chapter.branchId,
+          userId: input.payload.actorId,
+          parentNodeId: source.branch.headNodeId,
+          nodeType: "chapter_version",
+          objectType: "chapter",
+          objectId: source.chapter.id,
+          objectVersion: chapterVersion,
+          payload: {
+            contentHash,
+            wordCount,
+            source: "writing_action",
+            action: input.payload.action,
+            jobId: input.payload.jobId,
+            sourceVersionId: input.payload.sourceVersionId,
+            affectedRange,
+          },
+          actorId: input.payload.actorId,
+          message: `写作动作：${writingActionLabel(input.payload.action)}`,
+          createdAt: now,
+        });
+        await transaction.insert(chapterVersions).values({
+          id: chapterVersionId,
+          workId: source.chapter.workId,
+          branchId: source.chapter.branchId,
+          userId: input.payload.actorId,
+          chapterId: source.chapter.id,
+          version: chapterVersion,
+          content,
+          contentHash,
+          versionNodeId,
+          source: "writing_action",
+          generationJobId: input.payload.jobId,
+          generationStep: `write_action:${input.payload.action}`,
+          createdAt: now,
+        });
+        await transaction
+          .update(chapters)
+          .set({
+            status: "writing",
+            currentVersionId: chapterVersionId,
+            wordCount,
+            version: source.chapter.version + 1,
+            updatedAt: now,
+          })
+          .where(eq(chapters.id, source.chapter.id));
+        artifact = { contentHash, wordCount };
+      } else {
+        artifact = writingActionArtifact(input.payload, generatedText);
+        await transaction.insert(versionNodes).values({
+          id: versionNodeId,
+          workId: source.chapter.workId,
+          branchId: source.chapter.branchId,
+          userId: input.payload.actorId,
+          parentNodeId: source.branch.headNodeId,
+          nodeType: "writing_action_output",
+          objectType: "writing_action",
+          objectId: input.payload.jobId,
+          objectVersion: artifactVersion,
+          payload: {
+            action: input.payload.action,
+            sourceVersionId: input.payload.sourceVersionId,
+            artifactHash: sha256(JSON.stringify(artifact)),
+          },
+          actorId: input.payload.actorId,
+          message: `写作动作：${writingActionLabel(input.payload.action)}`,
+          createdAt: now,
+        });
+      }
+      await transaction
+        .update(workBranches)
+        .set({ headNodeId: versionNodeId, updatedAt: now })
+        .where(eq(workBranches.id, source.branch.id));
+      const [output] = await transaction
+        .insert(writingActions)
+        .values({
+          id: uuidv7(),
+          jobId: input.payload.jobId,
+          workId: input.payload.workId,
+          branchId: input.payload.branchId,
+          userId: input.payload.actorId,
+          chapterId: input.payload.chapterId,
+          action: input.payload.action,
+          sourceVersionId: input.payload.sourceVersionId,
+          version: artifactVersion,
+          outputKind: spec.outputKind,
+          versionNodeId,
+          chapterVersionId,
+          affectedRange,
+          artifact,
+          promptKey: input.promptKey,
+          promptVersion: input.promptVersion,
+          promptHash: input.promptHash,
+          modelProvider: input.modelProvider,
+          model: input.model,
+          modelParameters: input.modelParameters,
+          createdAt: now,
+        })
+        .returning();
+      if (!output) {
+        throw new Error("Writing action output insert returned no row");
+      }
+      return toWritingActionOutput(output, finalContent);
+    });
+  }
+
+  async completeWritingAction(payload: WriteActionJob): Promise<void> {
+    await this.withTenant(payload.actorId, async (transaction) => {
+      const [job] = await transaction
+        .select()
+        .from(jobs)
+        .where(and(eq(jobs.id, payload.jobId), eq(jobs.userId, payload.actorId)))
+        .for("update")
+        .limit(1);
+      if (!job) {
+        return;
+      }
+      const now = new Date();
+      const [completed] = await transaction
+        .update(jobs)
+        .set({
+          status: "waiting_review",
+          progress: 100,
+          currentStep: "await_review",
+          errorCode: null,
+          errorMessage: null,
+          finishedAt: null,
+          updatedAt: now,
+        })
+        .where(eq(jobs.id, job.id))
+        .returning();
+      if (!completed) {
+        return;
+      }
+      await appendEvent(transaction, completed, "job.waiting_review", {
+        status: "waiting_review",
+        progress: 100,
+        checkpoint: completed.checkpoint,
+      });
+    });
+  }
+
   async recordAgentRun(input: {
-    payload: GenerateChapterJob;
-    step: "draft" | "verify" | "revise";
+    payload: WorkerJobBase;
+    step: string;
     role: string;
     inputHash: string;
     output: string;
@@ -1107,10 +1477,11 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async beginModelCall(input: {
-    payload: GenerateChapterJob;
-    step: "draft" | "verify" | "revise";
+    payload: WorkerJobBase;
+    step: string;
     attempt: number;
     role: "writer" | "critic" | "reviser";
+    promptKey?: string;
     prompt: string;
     system: string;
     citations: unknown[];
@@ -1150,6 +1521,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         payload: input.payload,
         step: input.step,
         role: input.role,
+        ...(input.promptKey ? { promptKey: input.promptKey } : {}),
         promptHash,
         systemHash,
         inputHash,
@@ -1231,8 +1603,8 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async completeModelCall(input: {
-    payload: GenerateChapterJob;
-    step: "draft" | "verify" | "revise";
+    payload: WorkerJobBase;
+    step: string;
     call: StartedModelCall;
     result: GenerationResult;
   }): Promise<void> {
@@ -1307,8 +1679,8 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async failModelCall(input: {
-    payload: GenerateChapterJob;
-    step: "draft" | "verify" | "revise";
+    payload: WorkerJobBase;
+    step: string;
     call: StartedModelCall;
     failureClass: string;
     errorCode: string;
@@ -1354,8 +1726,8 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async recordBudgetFailure(input: {
-    payload: GenerateChapterJob;
-    step: "draft" | "verify" | "revise";
+    payload: WorkerJobBase;
+    step: string;
     attempt: number;
     role: "writer" | "critic" | "reviser";
     prompt: string;
@@ -1474,8 +1846,8 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async recordUsage(input: {
-    payload: GenerateChapterJob;
-    step: "draft" | "verify" | "revise";
+    payload: WorkerJobBase;
+    step: string;
     model: string;
     inputTokens: number;
     outputTokens: number;
@@ -1500,7 +1872,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async findStepOutput(
-    payload: GenerateChapterJob,
+    payload: WorkerJobBase,
     step: string,
   ): Promise<Record<string, unknown> | undefined> {
     return this.withTenant(payload.actorId, async (transaction) => {
@@ -1530,7 +1902,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async findLatestGeneratedVersion(
-    payload: GenerateChapterJob,
+    payload: WorkerJobBase,
   ): Promise<{ id: string; content: string } | undefined> {
     return this.withTenant(payload.actorId, async (transaction) => {
       const [version] = await transaction
@@ -1577,7 +1949,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
   }
 
   async loadContextPack(
-    payload: GenerateChapterJob,
+    payload: WorkerJobBase,
     contextPackId: string,
   ): Promise<ContextPackManifest | undefined> {
     return this.withTenant(payload.actorId, async (transaction) => {
@@ -1631,7 +2003,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
 }
 
 function legacyManifest(
-  payload: GenerateChapterJob,
+  payload: WorkerJobBase,
   contract: {
     compilerVersion: string;
     tokenBudget: number;
@@ -1680,6 +2052,152 @@ function legacyManifest(
   };
 }
 
+function isChapterEditable(status: string): boolean {
+  return status === "planned" || status === "writing" || status === "changes_requested";
+}
+
+function appendWritingBlock(source: string, addition: string): string {
+  if (!source.trim()) {
+    return addition;
+  }
+  return `${source.replace(/\s+$/u, "")}\n\n${addition.trim()}`;
+}
+
+function applyWritingActionText(
+  action: WriteActionJob["action"],
+  sourceContent: string,
+  generatedText: string,
+  input: WriteActionJob["input"],
+): { content: string; affectedRange: Record<string, number> | null } {
+  if (action === "selection_rewrite" && input.action === "selection_rewrite") {
+    return spliceSelectedText(sourceContent, input.selection, generatedText);
+  }
+  if (action === "continue") {
+    return {
+      content: appendWritingBlock(sourceContent, generatedText),
+      affectedRange: null,
+    };
+  }
+  return { content: generatedText, affectedRange: null };
+}
+
+function writingActionArtifact(
+  payload: WriteActionJob,
+  generatedText: string,
+): Record<string, unknown> {
+  if (payload.action === "generate_title") {
+    const requested = payload.input.action === "generate_title" ? payload.input.count : 3;
+    const titles = generatedText
+      .split(/\r?\n/u)
+      .map((line) => line.replace(/^\s*(?:\d+[.、)]?|[-*])\s*/u, "").trim())
+      .filter(Boolean)
+      .slice(0, requested);
+    if (titles.length === 0) {
+      throw new WritingActionSourceInvalidError();
+    }
+    return { titles };
+  }
+  if (payload.action === "add_hook") {
+    const requested = payload.input.action === "add_hook" ? payload.input.count : 3;
+    const hooks = generatedText
+      .split(/\r?\n/u)
+      .map((line) => line.replace(/^\s*(?:\d+[.、)]?|[-*])\s*/u, "").trim())
+      .filter(Boolean)
+      .slice(0, requested);
+    if (hooks.length === 0) {
+      throw new WritingActionSourceInvalidError();
+    }
+    return { values: hooks };
+  }
+  if (payload.action === "generate_summary") {
+    const maxLength = payload.input.action === "generate_summary" ? payload.input.maxLength : 200;
+    const summary = Array.from(generatedText.replace(/\s+/gu, " ").trim())
+      .slice(0, maxLength)
+      .join("");
+    if (!summary) {
+      throw new WritingActionSourceInvalidError();
+    }
+    return { summary };
+  }
+  return { values: [generatedText] };
+}
+
+function toWritingActionOutput(
+  row: InferSelectModel<typeof writingActions>,
+  chapterContent: string | undefined,
+): WritingActionOutput {
+  const base = {
+    id: row.id,
+    action: row.action as WriteActionJob["action"],
+    version: row.version,
+    versionNodeId: row.versionNodeId,
+    sourceVersionId: row.sourceVersionId,
+    chapterVersionId: row.chapterVersionId,
+    affectedRange: row.affectedRange
+      ? {
+          originalStart: Number(row.affectedRange.originalStart),
+          originalEnd: Number(row.affectedRange.originalEnd),
+          start: Number(row.affectedRange.start),
+          end: Number(row.affectedRange.end),
+        }
+      : null,
+    provenance: {
+      promptKey: row.promptKey,
+      promptVersion: row.promptVersion,
+      promptHash: row.promptHash,
+      provider: row.modelProvider,
+      model: row.model,
+      parameters: row.modelParameters,
+    },
+    createdAt: row.createdAt.toISOString(),
+  };
+  if (row.outputKind === "chapter_text") {
+    return {
+      ...base,
+      kind: "chapter_text",
+      content: chapterContent ?? "",
+    };
+  }
+  if (row.outputKind === "title_options") {
+    return {
+      ...base,
+      kind: "title_options",
+      titles: Array.isArray(row.artifact.titles)
+        ? row.artifact.titles.filter((title): title is string => typeof title === "string")
+        : [],
+    };
+  }
+  if (row.outputKind === "summary") {
+    return {
+      ...base,
+      kind: "summary",
+      summary: typeof row.artifact.summary === "string" ? row.artifact.summary : "",
+    };
+  }
+  return {
+    ...base,
+    kind: "hooks",
+    hooks: Array.isArray(row.artifact.values)
+      ? row.artifact.values.filter((value): value is string => typeof value === "string")
+      : [],
+  };
+}
+
+function writingActionLabel(action: WriteActionJob["action"]): string {
+  const labels: Record<WriteActionJob["action"], string> = {
+    continue: "续写",
+    rewrite: "改写",
+    expand: "扩写",
+    condense: "缩写",
+    change_pov: "调整视角",
+    add_hook: "补章末钩子",
+    generate_title: "生成标题",
+    generate_summary: "生成摘要",
+    selection_rewrite: "选区重写",
+  };
+  return labels[action];
+}
+
 async function appendEvent(
   transaction: DatabaseTransaction,
   job: JobRecord,
@@ -1718,16 +2236,17 @@ function calculateCost(tokens: number): number {
 async function upsertPromptVersion(
   transaction: DatabaseTransaction,
   input: {
-    payload: GenerateChapterJob;
+    payload: WorkerJobBase;
     step: string;
     role: "writer" | "critic" | "reviser";
+    promptKey?: string;
     promptHash: string;
     systemHash: string;
     inputHash: string;
     now: Date;
   },
 ): Promise<{ id: string }> {
-  const key = `generation.${input.step}`;
+  const key = input.promptKey ?? `generation.${input.step}`;
   const [existing] = await transaction
     .select({ id: promptVersions.id })
     .from(promptVersions)
@@ -1781,7 +2300,7 @@ async function upsertPromptVersion(
 async function upsertAgentRun(
   transaction: DatabaseTransaction,
   input: {
-    payload: GenerateChapterJob;
+    payload: WorkerJobBase;
     step: string;
     role: "writer" | "critic" | "reviser";
     promptVersionId: string;

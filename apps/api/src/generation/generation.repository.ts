@@ -470,6 +470,7 @@ export class GenerationRepository implements OnModuleDestroy {
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
             eq(jobs.chapterId, context.chapterId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
             eq(jobs.idempotencyKey, idempotencyKey),
           ),
         )
@@ -499,6 +500,7 @@ export class GenerationRepository implements OnModuleDestroy {
           and(
             eq(jobs.userId, input.userId),
             eq(jobs.chapterId, input.context.chapterId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
             eq(jobs.idempotencyKey, input.idempotencyKey),
           ),
         )

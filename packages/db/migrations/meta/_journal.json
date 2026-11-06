@@ -246,6 +246,20 @@
       "when": 1793954539551,
       "tag": "0034_golden_three",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1793957111773,
+      "tag": "0035_writing_actions",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793958510316,
+      "tag": "0036_writing_action_idempotency_type",
+      "breakpoints": true
     }
   ]
 }

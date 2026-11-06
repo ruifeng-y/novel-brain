@@ -10,9 +10,11 @@ import { WorkerGenerationRepository } from "./generation/generation.repository";
 import { AI_GATEWAY } from "./generation/generation.tokens";
 import {
   ByokAiGatewayFactory,
+  isFakeGenerationOperation,
   resolveWorkerAiProviderMode,
 } from "./generation/model-provider.factory";
 import { WorkerService } from "./worker.service";
+import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 
 @Module({
   providers: [
@@ -29,6 +31,7 @@ import { WorkerService } from "./worker.service";
     },
     WorkerGenerationRepository,
     GenerationJobProcessor,
+    WritingActionProcessor,
     {
       provide: AI_GATEWAY,
       useFactory: () =>
@@ -37,9 +40,7 @@ import { WorkerService } from "./worker.service";
           failOperations: (process.env.FAKE_AI_FAILURE_STEP ?? "")
             .split(",")
             .map((value) => value.trim())
-            .filter((value): value is "draft" | "verify" | "revise" =>
-              ["draft", "verify", "revise"].includes(value),
-            ),
+            .filter(isFakeGenerationOperation),
         }),
     },
   ],

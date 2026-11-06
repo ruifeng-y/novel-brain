@@ -298,7 +298,7 @@ export const versionNodes = pgTable(
     index("version_nodes_user_work_idx").on(table.userId, table.workId),
     check(
       "version_nodes_node_type_check",
-      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
+      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'writing_action_output', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
     ),
   ],
 );
@@ -2280,6 +2280,9 @@ export const jobs = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    sourceVersionId: uuid("source_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
     modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
       onDelete: "restrict",
     }),
@@ -2293,6 +2296,8 @@ export const jobs = pgTable(
     checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull(),
     checkpointVersion: integer("checkpoint_version").notNull().default(0),
     orchestration: jsonb("orchestration").$type<Record<string, unknown>>(),
+    action: text("action"),
+    actionInput: jsonb("action_input").$type<Record<string, unknown>>(),
     cost: jsonb("cost").$type<Record<string, unknown>>().notNull(),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
@@ -2305,6 +2310,7 @@ export const jobs = pgTable(
     uniqueIndex("jobs_chapter_idempotency_unique").on(
       table.userId,
       table.chapterId,
+      table.type,
       table.idempotencyKey,
     ),
     uniqueIndex("jobs_workflow_idempotency_unique")
@@ -2312,16 +2318,89 @@ export const jobs = pgTable(
       .where(sql`${table.type} = 'agent_workflow'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
-    check("jobs_type_check", sql`${table.type} in ('generate_chapter', 'agent_workflow')`),
+    check(
+      "jobs_type_check",
+      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action')`,
+    ),
     check(
       "jobs_required_scope_check",
-      sql`(${table.type} = 'agent_workflow') or (${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+      sql`(${table.type} = 'agent_workflow') or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+    ),
+    check(
+      "jobs_writing_action_scope_check",
+      sql`(${table.type} = 'write_action' and ${table.action} is not null and ${table.sourceVersionId} is not null and ${table.actionInput} is not null) or (${table.type} <> 'write_action' and ${table.action} is null and ${table.sourceVersionId} is null and ${table.actionInput} is null)`,
     ),
     check(
       "jobs_status_check",
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
     ),
     check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
+  ],
+);
+
+export const writingActions = pgTable(
+  "writing_actions",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    version: integer("version").notNull(),
+    outputKind: text("output_kind").notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    affectedRange: jsonb("affected_range").$type<Record<string, number>>(),
+    artifact: jsonb("artifact").$type<Record<string, unknown>>().notNull(),
+    promptKey: text("prompt_key").notNull(),
+    promptVersion: integer("prompt_version").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    modelProvider: text("model_provider").notNull(),
+    model: text("model").notNull(),
+    modelParameters: jsonb("model_parameters")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("writing_actions_job_unique").on(table.jobId),
+    uniqueIndex("writing_actions_chapter_version_unique").on(table.chapterId, table.version),
+    index("writing_actions_user_work_idx").on(table.userId, table.workId),
+    index("writing_actions_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check(
+      "writing_actions_action_check",
+      sql`${table.action} in ('continue', 'rewrite', 'expand', 'condense', 'change_pov', 'add_hook', 'generate_title', 'generate_summary', 'selection_rewrite')`,
+    ),
+    check(
+      "writing_actions_output_kind_check",
+      sql`${table.outputKind} in ('chapter_text', 'title_options', 'summary', 'hooks')`,
+    ),
+    check("writing_actions_version_check", sql`${table.version} > 0`),
+    check(
+      "writing_actions_chapter_output_check",
+      sql`(${table.outputKind} = 'chapter_text' and ${table.chapterVersionId} is not null) or (${table.outputKind} <> 'chapter_text' and ${table.chapterVersionId} is null)`,
+    ),
+    check("writing_actions_prompt_hash_check", sql`${table.promptHash} ~ '^[a-f0-9]{64}$'`),
   ],
 );
 

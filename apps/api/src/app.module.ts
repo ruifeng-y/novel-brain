@@ -20,6 +20,7 @@ import { StoryLedgerModule } from "./story-ledger/story-ledger.module";
 import { UsersModule } from "./users/users.module";
 import { WorksModule } from "./works/works.module";
 import { WorldModule } from "./world/world.module";
+import { WritingActionModule } from "./writing-actions/writing-action.module";
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { WorldModule } from "./world/world.module";
     UsersModule,
     WorksModule,
     WorldModule,
+    WritingActionModule,
   ],
 })
 export class AppModule {}
