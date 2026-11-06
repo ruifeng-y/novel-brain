@@ -2522,7 +2522,12 @@
                                     "EQUIPMENT_SLOT_CONFLICT",
                                     "ITEM_NOT_EQUIPMENT",
                                     "JOB_BUDGET_EXCEEDED",
+                                    "JOB_CONTEXT_BRANCH_STALE",
+                                    "JOB_CONTEXT_WINDOW_TOO_SMALL",
                                     "JOB_CANCELLED",
+                                    "JOB_NOT_RECOVERABLE",
+                                    "JOB_RECOVERY_CONFLICT",
+                                    "JOB_ATTEMPTS_EXHAUSTED",
                                     "FACT_DECISION_REQUIRED",
                                     "FACT_SUBMISSION_BLOCKED",
                                     "CANON_CHAPTER_NOT_APPROVED",
@@ -3250,7 +3255,12 @@
                                   "EQUIPMENT_SLOT_CONFLICT",
                                   "ITEM_NOT_EQUIPMENT",
                                   "JOB_BUDGET_EXCEEDED",
+                                  "JOB_CONTEXT_BRANCH_STALE",
+                                  "JOB_CONTEXT_WINDOW_TOO_SMALL",
                                   "JOB_CANCELLED",
+                                  "JOB_NOT_RECOVERABLE",
+                                  "JOB_RECOVERY_CONFLICT",
+                                  "JOB_ATTEMPTS_EXHAUSTED",
                                   "FACT_DECISION_REQUIRED",
                                   "FACT_SUBMISSION_BLOCKED",
                                   "CANON_CHAPTER_NOT_APPROVED",
@@ -14387,6 +14397,17 @@
                         "checkpoint": {
                           "type": "object",
                           "properties": {
+                            "schemaVersion": {
+                              "default": 1,
+                              "type": "number",
+                              "enum": [1]
+                            },
+                            "revision": {
+                              "default": 0,
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
                             "step": {
                               "type": "string",
                               "enum": [
@@ -14399,12 +14420,53 @@
                                 "await_review"
                               ]
                             },
+                            "inputHash": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "outputRefs": {
+                              "default": [],
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "chapter_version",
+                                      "context_pack",
+                                      "fact_proposal",
+                                      "canon_commit",
+                                      "artifact"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": ["type", "id"],
+                                "additionalProperties": false
+                              }
+                            },
                             "payload": {
+                              "default": {},
                               "type": "object",
                               "additionalProperties": {}
                             }
                           },
-                          "required": ["step", "payload"],
+                          "required": [
+                            "schemaVersion",
+                            "revision",
+                            "step",
+                            "inputHash",
+                            "outputRefs",
+                            "payload"
+                          ],
                           "additionalProperties": false
                         },
                         "error": {
@@ -14463,7 +14525,12 @@
                                 "EQUIPMENT_SLOT_CONFLICT",
                                 "ITEM_NOT_EQUIPMENT",
                                 "JOB_BUDGET_EXCEEDED",
+                                "JOB_CONTEXT_BRANCH_STALE",
+                                "JOB_CONTEXT_WINDOW_TOO_SMALL",
                                 "JOB_CANCELLED",
+                                "JOB_NOT_RECOVERABLE",
+                                "JOB_RECOVERY_CONFLICT",
+                                "JOB_ATTEMPTS_EXHAUSTED",
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
@@ -14535,9 +14602,21 @@
                                     "type": "string",
                                     "minLength": 1
                                   },
-                                  "priority": {
+                                  "layer": {
                                     "type": "string",
-                                    "enum": ["required", "high", "normal"]
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  },
+                                  "priority": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": ["required", "high", "normal"]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                      }
+                                    ]
                                   },
                                   "content": {
                                     "type": "string",
@@ -14581,6 +14660,16 @@
                                       "required": ["sourceType", "sourceId", "label", "citation"],
                                       "additionalProperties": false
                                     }
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                      "p0_hard_constraint",
+                                      "scene_relevant_canon",
+                                      "recent_narrative",
+                                      "style_and_promise",
+                                      "optional_reference"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -14607,15 +14696,65 @@
                                     "type": "string",
                                     "minLength": 1
                                   },
+                                  "layer": {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  },
                                   "reason": {
                                     "type": "string",
-                                    "enum": ["token_budget"]
+                                    "enum": [
+                                      "token_budget",
+                                      "stale_branch",
+                                      "task_mismatch",
+                                      "pov_mismatch",
+                                      "future_fact",
+                                      "expired_fact",
+                                      "time_window",
+                                      "knowledge_boundary",
+                                      "empty_content",
+                                      "missing_source"
+                                    ]
                                   },
                                   "tokenCount": {
                                     "type": "integer",
                                     "minimum": 0,
                                     "exclusiveMinimum": true,
                                     "maximum": 9007199254740991
+                                  },
+                                  "sourceRefs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "sourceType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "story_bible",
+                                            "setting",
+                                            "chapter_brief",
+                                            "chapter_version",
+                                            "style"
+                                          ]
+                                        },
+                                        "sourceId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "citation": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": ["sourceType", "sourceId", "label", "citation"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "detail": {
+                                    "type": "string"
                                   }
                                 },
                                 "required": ["key", "label", "reason", "tokenCount"],
@@ -14658,6 +14797,265 @@
                               "type": "string",
                               "format": "date-time",
                               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "manifestHash": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "task": {
+                              "type": "string",
+                              "enum": [
+                                "chapter_draft",
+                                "chapter_revision",
+                                "continuity_check",
+                                "fact_extraction"
+                              ]
+                            },
+                            "chapterId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "chapterNumber": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "povCharacterId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "effectiveTokenBudget": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "budget": {
+                              "type": "object",
+                              "properties": {
+                                "requestedTokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "effectiveTokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "modelContextWindowTokens": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "reservedOutputTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenUsed": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenRemaining": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenEstimator": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "layers": {
+                                  "type": "object",
+                                  "properties": {
+                                    "P0": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P1": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P2": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P3": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P4": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": ["P0", "P1", "P2", "P3", "P4"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "requestedTokenBudget",
+                                "effectiveTokenBudget",
+                                "modelContextWindowTokens",
+                                "reservedOutputTokens",
+                                "tokenUsed",
+                                "tokenRemaining",
+                                "tokenEstimator",
+                                "layers"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -14809,9 +15207,21 @@
                                 "type": "string",
                                 "minLength": 1
                               },
-                              "priority": {
+                              "layer": {
                                 "type": "string",
-                                "enum": ["required", "high", "normal"]
+                                "enum": ["P0", "P1", "P2", "P3", "P4"]
+                              },
+                              "priority": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": ["required", "high", "normal"]
+                                  },
+                                  {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  }
+                                ]
                               },
                               "content": {
                                 "type": "string",
@@ -14855,6 +15265,16 @@
                                   "required": ["sourceType", "sourceId", "label", "citation"],
                                   "additionalProperties": false
                                 }
+                              },
+                              "reason": {
+                                "type": "string",
+                                "enum": [
+                                  "p0_hard_constraint",
+                                  "scene_relevant_canon",
+                                  "recent_narrative",
+                                  "style_and_promise",
+                                  "optional_reference"
+                                ]
                               }
                             },
                             "required": [
@@ -14881,15 +15301,65 @@
                                 "type": "string",
                                 "minLength": 1
                               },
+                              "layer": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2", "P3", "P4"]
+                              },
                               "reason": {
                                 "type": "string",
-                                "enum": ["token_budget"]
+                                "enum": [
+                                  "token_budget",
+                                  "stale_branch",
+                                  "task_mismatch",
+                                  "pov_mismatch",
+                                  "future_fact",
+                                  "expired_fact",
+                                  "time_window",
+                                  "knowledge_boundary",
+                                  "empty_content",
+                                  "missing_source"
+                                ]
                               },
                               "tokenCount": {
                                 "type": "integer",
                                 "minimum": 0,
                                 "exclusiveMinimum": true,
                                 "maximum": 9007199254740991
+                              },
+                              "sourceRefs": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "sourceType": {
+                                      "type": "string",
+                                      "enum": [
+                                        "story_bible",
+                                        "setting",
+                                        "chapter_brief",
+                                        "chapter_version",
+                                        "style"
+                                      ]
+                                    },
+                                    "sourceId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "citation": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    }
+                                  },
+                                  "required": ["sourceType", "sourceId", "label", "citation"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "detail": {
+                                "type": "string"
                               }
                             },
                             "required": ["key", "label", "reason", "tokenCount"],
@@ -14927,6 +15397,265 @@
                             "required": ["sourceType", "sourceId", "label", "citation"],
                             "additionalProperties": false
                           }
+                        },
+                        "manifestHash": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "task": {
+                          "type": "string",
+                          "enum": [
+                            "chapter_draft",
+                            "chapter_revision",
+                            "continuity_check",
+                            "fact_extraction"
+                          ]
+                        },
+                        "chapterId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "chapterNumber": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "povCharacterId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "effectiveTokenBudget": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "requestedTokenBudget": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "effectiveTokenBudget": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "modelContextWindowTokens": {
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "reservedOutputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "tokenUsed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "tokenRemaining": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "tokenEstimator": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "layers": {
+                              "type": "object",
+                              "properties": {
+                                "P0": {
+                                  "type": "object",
+                                  "properties": {
+                                    "selectedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "selectedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "selectedCount",
+                                    "selectedTokens",
+                                    "evictedCount",
+                                    "evictedTokens"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "P1": {
+                                  "type": "object",
+                                  "properties": {
+                                    "selectedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "selectedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "selectedCount",
+                                    "selectedTokens",
+                                    "evictedCount",
+                                    "evictedTokens"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "P2": {
+                                  "type": "object",
+                                  "properties": {
+                                    "selectedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "selectedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "selectedCount",
+                                    "selectedTokens",
+                                    "evictedCount",
+                                    "evictedTokens"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "P3": {
+                                  "type": "object",
+                                  "properties": {
+                                    "selectedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "selectedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "selectedCount",
+                                    "selectedTokens",
+                                    "evictedCount",
+                                    "evictedTokens"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "P4": {
+                                  "type": "object",
+                                  "properties": {
+                                    "selectedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "selectedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedCount": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "evictedTokens": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "selectedCount",
+                                    "selectedTokens",
+                                    "evictedCount",
+                                    "evictedTokens"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": ["P0", "P1", "P2", "P3", "P4"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "requestedTokenBudget",
+                            "effectiveTokenBudget",
+                            "modelContextWindowTokens",
+                            "reservedOutputTokens",
+                            "tokenUsed",
+                            "tokenRemaining",
+                            "tokenEstimator",
+                            "layers"
+                          ],
+                          "additionalProperties": false
                         }
                       },
                       "required": [
@@ -15103,6 +15832,17 @@
                           "checkpoint": {
                             "type": "object",
                             "properties": {
+                              "schemaVersion": {
+                                "default": 1,
+                                "type": "number",
+                                "enum": [1]
+                              },
+                              "revision": {
+                                "default": 0,
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
                               "step": {
                                 "type": "string",
                                 "enum": [
@@ -15115,12 +15855,53 @@
                                   "await_review"
                                 ]
                               },
+                              "inputHash": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "outputRefs": {
+                                "default": [],
+                                "maxItems": 100,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "chapter_version",
+                                        "context_pack",
+                                        "fact_proposal",
+                                        "canon_commit",
+                                        "artifact"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "required": ["type", "id"],
+                                  "additionalProperties": false
+                                }
+                              },
                               "payload": {
+                                "default": {},
                                 "type": "object",
                                 "additionalProperties": {}
                               }
                             },
-                            "required": ["step", "payload"],
+                            "required": [
+                              "schemaVersion",
+                              "revision",
+                              "step",
+                              "inputHash",
+                              "outputRefs",
+                              "payload"
+                            ],
                             "additionalProperties": false
                           },
                           "error": {
@@ -15179,7 +15960,12 @@
                                   "EQUIPMENT_SLOT_CONFLICT",
                                   "ITEM_NOT_EQUIPMENT",
                                   "JOB_BUDGET_EXCEEDED",
+                                  "JOB_CONTEXT_BRANCH_STALE",
+                                  "JOB_CONTEXT_WINDOW_TOO_SMALL",
                                   "JOB_CANCELLED",
+                                  "JOB_NOT_RECOVERABLE",
+                                  "JOB_RECOVERY_CONFLICT",
+                                  "JOB_ATTEMPTS_EXHAUSTED",
                                   "FACT_DECISION_REQUIRED",
                                   "FACT_SUBMISSION_BLOCKED",
                                   "CANON_CHAPTER_NOT_APPROVED",
@@ -15251,9 +16037,21 @@
                                       "type": "string",
                                       "minLength": 1
                                     },
-                                    "priority": {
+                                    "layer": {
                                       "type": "string",
-                                      "enum": ["required", "high", "normal"]
+                                      "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                    },
+                                    "priority": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": ["required", "high", "normal"]
+                                        },
+                                        {
+                                          "type": "string",
+                                          "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                        }
+                                      ]
                                     },
                                     "content": {
                                       "type": "string",
@@ -15297,6 +16095,16 @@
                                         "required": ["sourceType", "sourceId", "label", "citation"],
                                         "additionalProperties": false
                                       }
+                                    },
+                                    "reason": {
+                                      "type": "string",
+                                      "enum": [
+                                        "p0_hard_constraint",
+                                        "scene_relevant_canon",
+                                        "recent_narrative",
+                                        "style_and_promise",
+                                        "optional_reference"
+                                      ]
                                     }
                                   },
                                   "required": [
@@ -15323,15 +16131,65 @@
                                       "type": "string",
                                       "minLength": 1
                                     },
+                                    "layer": {
+                                      "type": "string",
+                                      "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                    },
                                     "reason": {
                                       "type": "string",
-                                      "enum": ["token_budget"]
+                                      "enum": [
+                                        "token_budget",
+                                        "stale_branch",
+                                        "task_mismatch",
+                                        "pov_mismatch",
+                                        "future_fact",
+                                        "expired_fact",
+                                        "time_window",
+                                        "knowledge_boundary",
+                                        "empty_content",
+                                        "missing_source"
+                                      ]
                                     },
                                     "tokenCount": {
                                       "type": "integer",
                                       "minimum": 0,
                                       "exclusiveMinimum": true,
                                       "maximum": 9007199254740991
+                                    },
+                                    "sourceRefs": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "sourceType": {
+                                            "type": "string",
+                                            "enum": [
+                                              "story_bible",
+                                              "setting",
+                                              "chapter_brief",
+                                              "chapter_version",
+                                              "style"
+                                            ]
+                                          },
+                                          "sourceId": {
+                                            "type": "string",
+                                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                          },
+                                          "label": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "citation": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          }
+                                        },
+                                        "required": ["sourceType", "sourceId", "label", "citation"],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "detail": {
+                                      "type": "string"
                                     }
                                   },
                                   "required": ["key", "label", "reason", "tokenCount"],
@@ -15374,6 +16232,265 @@
                                 "type": "string",
                                 "format": "date-time",
                                 "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "manifestHash": {
+                                "type": "string",
+                                "pattern": "^[a-f0-9]{64}$"
+                              },
+                              "task": {
+                                "type": "string",
+                                "enum": [
+                                  "chapter_draft",
+                                  "chapter_revision",
+                                  "continuity_check",
+                                  "fact_extraction"
+                                ]
+                              },
+                              "chapterId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterNumber": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "povCharacterId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "effectiveTokenBudget": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "budget": {
+                                "type": "object",
+                                "properties": {
+                                  "requestedTokenBudget": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "effectiveTokenBudget": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "modelContextWindowTokens": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "reservedOutputTokens": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tokenUsed": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tokenRemaining": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "tokenEstimator": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "layers": {
+                                    "type": "object",
+                                    "properties": {
+                                      "P0": {
+                                        "type": "object",
+                                        "properties": {
+                                          "selectedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "selectedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "selectedCount",
+                                          "selectedTokens",
+                                          "evictedCount",
+                                          "evictedTokens"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "P1": {
+                                        "type": "object",
+                                        "properties": {
+                                          "selectedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "selectedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "selectedCount",
+                                          "selectedTokens",
+                                          "evictedCount",
+                                          "evictedTokens"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "P2": {
+                                        "type": "object",
+                                        "properties": {
+                                          "selectedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "selectedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "selectedCount",
+                                          "selectedTokens",
+                                          "evictedCount",
+                                          "evictedTokens"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "P3": {
+                                        "type": "object",
+                                        "properties": {
+                                          "selectedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "selectedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "selectedCount",
+                                          "selectedTokens",
+                                          "evictedCount",
+                                          "evictedTokens"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "P4": {
+                                        "type": "object",
+                                        "properties": {
+                                          "selectedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "selectedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedCount": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "evictedTokens": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          }
+                                        },
+                                        "required": [
+                                          "selectedCount",
+                                          "selectedTokens",
+                                          "evictedCount",
+                                          "evictedTokens"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "required": ["P0", "P1", "P2", "P3", "P4"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "requestedTokenBudget",
+                                  "effectiveTokenBudget",
+                                  "modelContextWindowTokens",
+                                  "reservedOutputTokens",
+                                  "tokenUsed",
+                                  "tokenRemaining",
+                                  "tokenEstimator",
+                                  "layers"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -15591,6 +16708,17 @@
                         "checkpoint": {
                           "type": "object",
                           "properties": {
+                            "schemaVersion": {
+                              "default": 1,
+                              "type": "number",
+                              "enum": [1]
+                            },
+                            "revision": {
+                              "default": 0,
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
                             "step": {
                               "type": "string",
                               "enum": [
@@ -15603,12 +16731,53 @@
                                 "await_review"
                               ]
                             },
+                            "inputHash": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "outputRefs": {
+                              "default": [],
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "chapter_version",
+                                      "context_pack",
+                                      "fact_proposal",
+                                      "canon_commit",
+                                      "artifact"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": ["type", "id"],
+                                "additionalProperties": false
+                              }
+                            },
                             "payload": {
+                              "default": {},
                               "type": "object",
                               "additionalProperties": {}
                             }
                           },
-                          "required": ["step", "payload"],
+                          "required": [
+                            "schemaVersion",
+                            "revision",
+                            "step",
+                            "inputHash",
+                            "outputRefs",
+                            "payload"
+                          ],
                           "additionalProperties": false
                         },
                         "error": {
@@ -15667,7 +16836,12 @@
                                 "EQUIPMENT_SLOT_CONFLICT",
                                 "ITEM_NOT_EQUIPMENT",
                                 "JOB_BUDGET_EXCEEDED",
+                                "JOB_CONTEXT_BRANCH_STALE",
+                                "JOB_CONTEXT_WINDOW_TOO_SMALL",
                                 "JOB_CANCELLED",
+                                "JOB_NOT_RECOVERABLE",
+                                "JOB_RECOVERY_CONFLICT",
+                                "JOB_ATTEMPTS_EXHAUSTED",
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
@@ -15739,9 +16913,21 @@
                                     "type": "string",
                                     "minLength": 1
                                   },
-                                  "priority": {
+                                  "layer": {
                                     "type": "string",
-                                    "enum": ["required", "high", "normal"]
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  },
+                                  "priority": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": ["required", "high", "normal"]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                      }
+                                    ]
                                   },
                                   "content": {
                                     "type": "string",
@@ -15785,6 +16971,16 @@
                                       "required": ["sourceType", "sourceId", "label", "citation"],
                                       "additionalProperties": false
                                     }
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                      "p0_hard_constraint",
+                                      "scene_relevant_canon",
+                                      "recent_narrative",
+                                      "style_and_promise",
+                                      "optional_reference"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -15811,15 +17007,65 @@
                                     "type": "string",
                                     "minLength": 1
                                   },
+                                  "layer": {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  },
                                   "reason": {
                                     "type": "string",
-                                    "enum": ["token_budget"]
+                                    "enum": [
+                                      "token_budget",
+                                      "stale_branch",
+                                      "task_mismatch",
+                                      "pov_mismatch",
+                                      "future_fact",
+                                      "expired_fact",
+                                      "time_window",
+                                      "knowledge_boundary",
+                                      "empty_content",
+                                      "missing_source"
+                                    ]
                                   },
                                   "tokenCount": {
                                     "type": "integer",
                                     "minimum": 0,
                                     "exclusiveMinimum": true,
                                     "maximum": 9007199254740991
+                                  },
+                                  "sourceRefs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "sourceType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "story_bible",
+                                            "setting",
+                                            "chapter_brief",
+                                            "chapter_version",
+                                            "style"
+                                          ]
+                                        },
+                                        "sourceId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "citation": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": ["sourceType", "sourceId", "label", "citation"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "detail": {
+                                    "type": "string"
                                   }
                                 },
                                 "required": ["key", "label", "reason", "tokenCount"],
@@ -15862,6 +17108,265 @@
                               "type": "string",
                               "format": "date-time",
                               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "manifestHash": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "task": {
+                              "type": "string",
+                              "enum": [
+                                "chapter_draft",
+                                "chapter_revision",
+                                "continuity_check",
+                                "fact_extraction"
+                              ]
+                            },
+                            "chapterId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "chapterNumber": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "povCharacterId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "effectiveTokenBudget": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "budget": {
+                              "type": "object",
+                              "properties": {
+                                "requestedTokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "effectiveTokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "modelContextWindowTokens": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "reservedOutputTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenUsed": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenRemaining": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenEstimator": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "layers": {
+                                  "type": "object",
+                                  "properties": {
+                                    "P0": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P1": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P2": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P3": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P4": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": ["P0", "P1", "P2", "P3", "P4"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "requestedTokenBudget",
+                                "effectiveTokenBudget",
+                                "modelContextWindowTokens",
+                                "reservedOutputTokens",
+                                "tokenUsed",
+                                "tokenRemaining",
+                                "tokenEstimator",
+                                "layers"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -16078,6 +17583,17 @@
                         "checkpoint": {
                           "type": "object",
                           "properties": {
+                            "schemaVersion": {
+                              "default": 1,
+                              "type": "number",
+                              "enum": [1]
+                            },
+                            "revision": {
+                              "default": 0,
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
                             "step": {
                               "type": "string",
                               "enum": [
@@ -16090,12 +17606,53 @@
                                 "await_review"
                               ]
                             },
+                            "inputHash": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "outputRefs": {
+                              "default": [],
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "chapter_version",
+                                      "context_pack",
+                                      "fact_proposal",
+                                      "canon_commit",
+                                      "artifact"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": ["type", "id"],
+                                "additionalProperties": false
+                              }
+                            },
                             "payload": {
+                              "default": {},
                               "type": "object",
                               "additionalProperties": {}
                             }
                           },
-                          "required": ["step", "payload"],
+                          "required": [
+                            "schemaVersion",
+                            "revision",
+                            "step",
+                            "inputHash",
+                            "outputRefs",
+                            "payload"
+                          ],
                           "additionalProperties": false
                         },
                         "error": {
@@ -16154,7 +17711,12 @@
                                 "EQUIPMENT_SLOT_CONFLICT",
                                 "ITEM_NOT_EQUIPMENT",
                                 "JOB_BUDGET_EXCEEDED",
+                                "JOB_CONTEXT_BRANCH_STALE",
+                                "JOB_CONTEXT_WINDOW_TOO_SMALL",
                                 "JOB_CANCELLED",
+                                "JOB_NOT_RECOVERABLE",
+                                "JOB_RECOVERY_CONFLICT",
+                                "JOB_ATTEMPTS_EXHAUSTED",
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
@@ -16226,9 +17788,21 @@
                                     "type": "string",
                                     "minLength": 1
                                   },
-                                  "priority": {
+                                  "layer": {
                                     "type": "string",
-                                    "enum": ["required", "high", "normal"]
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  },
+                                  "priority": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": ["required", "high", "normal"]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                      }
+                                    ]
                                   },
                                   "content": {
                                     "type": "string",
@@ -16272,6 +17846,16 @@
                                       "required": ["sourceType", "sourceId", "label", "citation"],
                                       "additionalProperties": false
                                     }
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                      "p0_hard_constraint",
+                                      "scene_relevant_canon",
+                                      "recent_narrative",
+                                      "style_and_promise",
+                                      "optional_reference"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -16298,15 +17882,65 @@
                                     "type": "string",
                                     "minLength": 1
                                   },
+                                  "layer": {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  },
                                   "reason": {
                                     "type": "string",
-                                    "enum": ["token_budget"]
+                                    "enum": [
+                                      "token_budget",
+                                      "stale_branch",
+                                      "task_mismatch",
+                                      "pov_mismatch",
+                                      "future_fact",
+                                      "expired_fact",
+                                      "time_window",
+                                      "knowledge_boundary",
+                                      "empty_content",
+                                      "missing_source"
+                                    ]
                                   },
                                   "tokenCount": {
                                     "type": "integer",
                                     "minimum": 0,
                                     "exclusiveMinimum": true,
                                     "maximum": 9007199254740991
+                                  },
+                                  "sourceRefs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "sourceType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "story_bible",
+                                            "setting",
+                                            "chapter_brief",
+                                            "chapter_version",
+                                            "style"
+                                          ]
+                                        },
+                                        "sourceId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "citation": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": ["sourceType", "sourceId", "label", "citation"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "detail": {
+                                    "type": "string"
                                   }
                                 },
                                 "required": ["key", "label", "reason", "tokenCount"],
@@ -16349,6 +17983,265 @@
                               "type": "string",
                               "format": "date-time",
                               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "manifestHash": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "task": {
+                              "type": "string",
+                              "enum": [
+                                "chapter_draft",
+                                "chapter_revision",
+                                "continuity_check",
+                                "fact_extraction"
+                              ]
+                            },
+                            "chapterId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "chapterNumber": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "povCharacterId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "effectiveTokenBudget": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "budget": {
+                              "type": "object",
+                              "properties": {
+                                "requestedTokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "effectiveTokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "modelContextWindowTokens": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "reservedOutputTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenUsed": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenRemaining": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenEstimator": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "layers": {
+                                  "type": "object",
+                                  "properties": {
+                                    "P0": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P1": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P2": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P3": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P4": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": ["P0", "P1", "P2", "P3", "P4"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "requestedTokenBudget",
+                                "effectiveTokenBudget",
+                                "modelContextWindowTokens",
+                                "reservedOutputTokens",
+                                "tokenUsed",
+                                "tokenRemaining",
+                                "tokenEstimator",
+                                "layers"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -16565,6 +18458,17 @@
                         "checkpoint": {
                           "type": "object",
                           "properties": {
+                            "schemaVersion": {
+                              "default": 1,
+                              "type": "number",
+                              "enum": [1]
+                            },
+                            "revision": {
+                              "default": 0,
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
                             "step": {
                               "type": "string",
                               "enum": [
@@ -16577,12 +18481,53 @@
                                 "await_review"
                               ]
                             },
+                            "inputHash": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "outputRefs": {
+                              "default": [],
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "chapter_version",
+                                      "context_pack",
+                                      "fact_proposal",
+                                      "canon_commit",
+                                      "artifact"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "required": ["type", "id"],
+                                "additionalProperties": false
+                              }
+                            },
                             "payload": {
+                              "default": {},
                               "type": "object",
                               "additionalProperties": {}
                             }
                           },
-                          "required": ["step", "payload"],
+                          "required": [
+                            "schemaVersion",
+                            "revision",
+                            "step",
+                            "inputHash",
+                            "outputRefs",
+                            "payload"
+                          ],
                           "additionalProperties": false
                         },
                         "error": {
@@ -16641,7 +18586,12 @@
                                 "EQUIPMENT_SLOT_CONFLICT",
                                 "ITEM_NOT_EQUIPMENT",
                                 "JOB_BUDGET_EXCEEDED",
+                                "JOB_CONTEXT_BRANCH_STALE",
+                                "JOB_CONTEXT_WINDOW_TOO_SMALL",
                                 "JOB_CANCELLED",
+                                "JOB_NOT_RECOVERABLE",
+                                "JOB_RECOVERY_CONFLICT",
+                                "JOB_ATTEMPTS_EXHAUSTED",
                                 "FACT_DECISION_REQUIRED",
                                 "FACT_SUBMISSION_BLOCKED",
                                 "CANON_CHAPTER_NOT_APPROVED",
@@ -16713,9 +18663,21 @@
                                     "type": "string",
                                     "minLength": 1
                                   },
-                                  "priority": {
+                                  "layer": {
                                     "type": "string",
-                                    "enum": ["required", "high", "normal"]
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  },
+                                  "priority": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": ["required", "high", "normal"]
+                                      },
+                                      {
+                                        "type": "string",
+                                        "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                      }
+                                    ]
                                   },
                                   "content": {
                                     "type": "string",
@@ -16759,6 +18721,16 @@
                                       "required": ["sourceType", "sourceId", "label", "citation"],
                                       "additionalProperties": false
                                     }
+                                  },
+                                  "reason": {
+                                    "type": "string",
+                                    "enum": [
+                                      "p0_hard_constraint",
+                                      "scene_relevant_canon",
+                                      "recent_narrative",
+                                      "style_and_promise",
+                                      "optional_reference"
+                                    ]
                                   }
                                 },
                                 "required": [
@@ -16785,15 +18757,65 @@
                                     "type": "string",
                                     "minLength": 1
                                   },
+                                  "layer": {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3", "P4"]
+                                  },
                                   "reason": {
                                     "type": "string",
-                                    "enum": ["token_budget"]
+                                    "enum": [
+                                      "token_budget",
+                                      "stale_branch",
+                                      "task_mismatch",
+                                      "pov_mismatch",
+                                      "future_fact",
+                                      "expired_fact",
+                                      "time_window",
+                                      "knowledge_boundary",
+                                      "empty_content",
+                                      "missing_source"
+                                    ]
                                   },
                                   "tokenCount": {
                                     "type": "integer",
                                     "minimum": 0,
                                     "exclusiveMinimum": true,
                                     "maximum": 9007199254740991
+                                  },
+                                  "sourceRefs": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "sourceType": {
+                                          "type": "string",
+                                          "enum": [
+                                            "story_bible",
+                                            "setting",
+                                            "chapter_brief",
+                                            "chapter_version",
+                                            "style"
+                                          ]
+                                        },
+                                        "sourceId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        },
+                                        "citation": {
+                                          "type": "string",
+                                          "minLength": 1
+                                        }
+                                      },
+                                      "required": ["sourceType", "sourceId", "label", "citation"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "detail": {
+                                    "type": "string"
                                   }
                                 },
                                 "required": ["key", "label", "reason", "tokenCount"],
@@ -16836,6 +18858,265 @@
                               "type": "string",
                               "format": "date-time",
                               "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "manifestHash": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "task": {
+                              "type": "string",
+                              "enum": [
+                                "chapter_draft",
+                                "chapter_revision",
+                                "continuity_check",
+                                "fact_extraction"
+                              ]
+                            },
+                            "chapterId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "chapterNumber": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "povCharacterId": {
+                              "nullable": true,
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "effectiveTokenBudget": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "budget": {
+                              "type": "object",
+                              "properties": {
+                                "requestedTokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "effectiveTokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "modelContextWindowTokens": {
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "reservedOutputTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenUsed": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenRemaining": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenEstimator": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "layers": {
+                                  "type": "object",
+                                  "properties": {
+                                    "P0": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P1": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P2": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P3": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "P4": {
+                                      "type": "object",
+                                      "properties": {
+                                        "selectedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "selectedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedCount": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "evictedTokens": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        }
+                                      },
+                                      "required": [
+                                        "selectedCount",
+                                        "selectedTokens",
+                                        "evictedCount",
+                                        "evictedTokens"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "required": ["P0", "P1", "P2", "P3", "P4"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "requestedTokenBudget",
+                                "effectiveTokenBudget",
+                                "modelContextWindowTokens",
+                                "reservedOutputTokens",
+                                "tokenUsed",
+                                "tokenRemaining",
+                                "tokenEstimator",
+                                "layers"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -16888,6 +19169,664 @@
                         "startedAt",
                         "finishedAt"
                       ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["generation"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/jobs/{jobId}/recover": {
+      "post": {
+        "operationId": "GenerationController_recover",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jobId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "idempotencyKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "expectedCheckpointVersion": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": ["reason", "idempotencyKey"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Recovered generation job with an audit record",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "job": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "type": {
+                              "type": "string",
+                              "enum": ["generate_chapter"]
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "chapterId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "queued",
+                                "preparing",
+                                "running",
+                                "paused",
+                                "waiting_review",
+                                "completed",
+                                "failed",
+                                "cancelled"
+                              ]
+                            },
+                            "progress": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "currentStep": {
+                              "type": "string",
+                              "enum": [
+                                "prepare",
+                                "compile_context",
+                                "draft",
+                                "verify",
+                                "revise",
+                                "extract_facts",
+                                "await_review"
+                              ]
+                            },
+                            "budget": {
+                              "type": "object",
+                              "properties": {
+                                "maxCostCny": {
+                                  "type": "number",
+                                  "minimum": 0
+                                },
+                                "maxTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "maxRevisionRounds": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["maxCostCny", "maxTokens", "maxRevisionRounds"],
+                              "additionalProperties": false
+                            },
+                            "cost": {
+                              "type": "object",
+                              "properties": {
+                                "inputTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "outputTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "totalTokens": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "costCny": {
+                                  "type": "number",
+                                  "minimum": 0
+                                }
+                              },
+                              "required": ["inputTokens", "outputTokens", "totalTokens", "costCny"],
+                              "additionalProperties": false
+                            },
+                            "checkpoint": {
+                              "type": "object",
+                              "properties": {
+                                "schemaVersion": {
+                                  "default": 1,
+                                  "type": "number",
+                                  "enum": [1]
+                                },
+                                "revision": {
+                                  "default": 0,
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "step": {
+                                  "type": "string",
+                                  "enum": [
+                                    "prepare",
+                                    "compile_context",
+                                    "draft",
+                                    "verify",
+                                    "revise",
+                                    "extract_facts",
+                                    "await_review"
+                                  ]
+                                },
+                                "inputHash": {
+                                  "default": null,
+                                  "nullable": true,
+                                  "type": "string",
+                                  "pattern": "^[a-f0-9]{64}$"
+                                },
+                                "outputRefs": {
+                                  "default": [],
+                                  "maxItems": 100,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "type": {
+                                        "type": "string",
+                                        "enum": [
+                                          "chapter_version",
+                                          "context_pack",
+                                          "fact_proposal",
+                                          "canon_commit",
+                                          "artifact"
+                                        ]
+                                      },
+                                      "id": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "required": ["type", "id"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "payload": {
+                                  "default": {},
+                                  "type": "object",
+                                  "additionalProperties": {}
+                                }
+                              },
+                              "required": [
+                                "schemaVersion",
+                                "revision",
+                                "step",
+                                "inputHash",
+                                "outputRefs",
+                                "payload"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "error": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string",
+                                  "enum": [
+                                    "VALIDATION_INVALID",
+                                    "AUTH_CODE_INVALID",
+                                    "AUTH_RATE_LIMITED",
+                                    "AUTH_EMAIL_TAKEN",
+                                    "AUTH_PASSWORD_WEAK",
+                                    "AUTH_LOGIN_FAILED",
+                                    "AUTH_SESSION_INVALID",
+                                    "AUTH_CSRF_INVALID",
+                                    "AUTH_ORIGIN_INVALID",
+                                    "MODEL_KEY_INVALID",
+                                    "MODEL_CONNECTION_FAILED",
+                                    "MODEL_RATE_LIMITED",
+                                    "MODEL_TIMEOUT",
+                                    "MODEL_POLICY_BLOCKED",
+                                    "MODEL_RESPONSE_INVALID",
+                                    "MODEL_PROVIDER_ERROR",
+                                    "BIBLE_NOT_READY",
+                                    "BIBLE_LOCKED",
+                                    "BIBLE_NOT_LOCKED",
+                                    "SETTING_LOCKED",
+                                    "SETTING_NAME_CONFLICT",
+                                    "SETTING_ALIAS_CONFLICT",
+                                    "SETTING_CONFLICT_UNRESOLVED",
+                                    "SETTING_PROPOSAL_STATE",
+                                    "SETTING_NOT_LOCKED",
+                                    "CUSTOM_FIELD_REQUIRED",
+                                    "CUSTOM_FIELD_INVALID",
+                                    "CUSTOM_FIELD_IMMUTABLE",
+                                    "CUSTOM_FIELD_DUPLICATE",
+                                    "CHARACTER_STATE_OVERLAP",
+                                    "MAP_NODE_PARENT_MISMATCH",
+                                    "MAP_LAYER_MISMATCH",
+                                    "MAP_ROUTE_ENDPOINT_MISMATCH",
+                                    "MAP_ROUTE_DISCONNECTED",
+                                    "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+                                    "CONTROL_AREA_OVERLAP",
+                                    "TIMELINE_EVENT_OVERLAP",
+                                    "TIMELINE_ERA_NOT_FOUND",
+                                    "ITINERARY_TIME_ORDER",
+                                    "ITINERARY_OVERLAP",
+                                    "JOB_BUDGET_EXCEEDED",
+                                    "JOB_CANCELLED",
+                                    "JOB_NOT_RECOVERABLE",
+                                    "JOB_RECOVERY_CONFLICT",
+                                    "JOB_ATTEMPTS_EXHAUSTED",
+                                    "FACT_DECISION_REQUIRED",
+                                    "FACT_SUBMISSION_BLOCKED",
+                                    "CANON_CHAPTER_NOT_APPROVED",
+                                    "IMPORT_CONFLICT_UNRESOLVED",
+                                    "VERSION_CONFLICT",
+                                    "AGENT_CONTRACT_INVALID",
+                                    "AGENT_GRANT_INVALID",
+                                    "AGENT_GRANT_EXPIRED",
+                                    "AGENT_GRANT_REVOKED",
+                                    "AGENT_TOOL_NOT_REGISTERED",
+                                    "AGENT_TOOL_DENIED",
+                                    "AGENT_BUDGET_EXCEEDED",
+                                    "AGENT_APPROVAL_REQUIRED",
+                                    "FORBIDDEN_TENANT_ACCESS",
+                                    "INTERNAL_ERROR"
+                                  ]
+                                },
+                                "message": {
+                                  "type": "string",
+                                  "minLength": 1
+                                }
+                              },
+                              "required": ["code", "message"],
+                              "additionalProperties": false
+                            },
+                            "contextPack": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "jobId": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "version": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "compilerVersion": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "tokenBudget": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "tokenUsed": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "selected": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "key": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "priority": {
+                                        "type": "string",
+                                        "enum": ["required", "high", "normal"]
+                                      },
+                                      "content": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "tokenCount": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "exclusiveMinimum": true,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "sourceRefs": {
+                                        "minItems": 1,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "sourceType": {
+                                              "type": "string",
+                                              "enum": [
+                                                "story_bible",
+                                                "setting",
+                                                "chapter_brief",
+                                                "chapter_version",
+                                                "style"
+                                              ]
+                                            },
+                                            "sourceId": {
+                                              "type": "string",
+                                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                            },
+                                            "label": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            },
+                                            "citation": {
+                                              "type": "string",
+                                              "minLength": 1
+                                            }
+                                          },
+                                          "required": [
+                                            "sourceType",
+                                            "sourceId",
+                                            "label",
+                                            "citation"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      }
+                                    },
+                                    "required": [
+                                      "key",
+                                      "label",
+                                      "priority",
+                                      "content",
+                                      "tokenCount",
+                                      "sourceRefs"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "evicted": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "key": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "reason": {
+                                        "type": "string",
+                                        "enum": ["token_budget"]
+                                      },
+                                      "tokenCount": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "exclusiveMinimum": true,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["key", "label", "reason", "tokenCount"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "sourceRefs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "sourceType": {
+                                        "type": "string",
+                                        "enum": [
+                                          "story_bible",
+                                          "setting",
+                                          "chapter_brief",
+                                          "chapter_version",
+                                          "style"
+                                        ]
+                                      },
+                                      "sourceId": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      },
+                                      "citation": {
+                                        "type": "string",
+                                        "minLength": 1
+                                      }
+                                    },
+                                    "required": ["sourceType", "sourceId", "label", "citation"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "createdAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "jobId",
+                                "version",
+                                "compilerVersion",
+                                "tokenBudget",
+                                "tokenUsed",
+                                "selected",
+                                "evicted",
+                                "sourceRefs",
+                                "createdAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "startedAt": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "finishedAt": {
+                              "nullable": true,
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "type",
+                            "workId",
+                            "branchId",
+                            "chapterId",
+                            "status",
+                            "progress",
+                            "currentStep",
+                            "budget",
+                            "cost",
+                            "checkpoint",
+                            "error",
+                            "contextPack",
+                            "createdAt",
+                            "startedAt",
+                            "finishedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "recovery": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "jobId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "actorId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "action": {
+                              "type": "string",
+                              "enum": ["retry", "resume"]
+                            },
+                            "reason": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "idempotencyKey": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "fromStatus": {
+                              "type": "string",
+                              "enum": [
+                                "queued",
+                                "preparing",
+                                "running",
+                                "paused",
+                                "waiting_review",
+                                "completed",
+                                "failed",
+                                "cancelled"
+                              ]
+                            },
+                            "fromCheckpointVersion": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "resumeStep": {
+                              "type": "string",
+                              "enum": [
+                                "prepare",
+                                "compile_context",
+                                "draft",
+                                "verify",
+                                "revise",
+                                "extract_facts",
+                                "await_review"
+                              ]
+                            },
+                            "checkpointVersion": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "jobId",
+                            "actorId",
+                            "action",
+                            "reason",
+                            "idempotencyKey",
+                            "fromStatus",
+                            "fromCheckpointVersion",
+                            "resumeStep",
+                            "checkpointVersion",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": ["job", "recovery"],
                       "additionalProperties": false
                     },
                     "requestId": {

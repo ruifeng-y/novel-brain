@@ -22,7 +22,7 @@
 
 ## 数据与迁移
 
-- `packages/db/migrations/0031_brief_human_cannonball.sql`
+- `packages/db/migrations/0032_striped_sasquatch.sql`（合并 #115 的 `0031_recovery_protocol` 后重新生成）
 - 新表：`outline_nodes`、`volume_contracts`、`scene_cards`
 - 关键索引：同级顺序唯一、每分支单全书根、每章节单节点、场景卡/卷契约一对一。
 - 所有新表 `version_node_id` 外键指向唯一版本图；写入时先追加版本节点再写业务行。

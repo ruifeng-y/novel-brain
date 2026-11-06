@@ -15,6 +15,7 @@ import { FakeAiProvider } from "@novel-brain/ai";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
+import { uuidv7 } from "uuidv7";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
@@ -612,6 +613,68 @@ describe("fact proposal HTTP integration", () => {
     expect(settingsAfterSubmission.body.data).not.toEqual(settingsBeforeSubmission);
 
     const secondChapter = await createReadyChapter(owner, token, branchPath, 2, "余波");
+    const unknownContext = contextPackPreviewResponseSchema.parse(
+      (
+        await owner
+          .get(`${branchPath}/chapters/${secondChapter.id}/context-preview?tokenBudget=12000`)
+          .expect(200)
+      ).body,
+    ).data;
+    for (const fact of commit.facts) {
+      expect(unknownContext.selected.map((source) => source.key)).not.toContain(
+        `setting:${fact.id}`,
+      );
+      expect(unknownContext.evicted).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            key: `setting:${fact.id}`,
+            reason: "knowledge_boundary",
+          }),
+        ]),
+      );
+    }
+
+    const [povCharacter] = (
+      await databasePool.query<{ id: string; user_id: string }>(
+        `SELECT id, user_id FROM entities
+         WHERE work_id = $1 AND branch_id = $2 AND type = 'character' AND name = '沈砚'`,
+        [work.id, work.mainBranch.id],
+      )
+    ).rows;
+    if (!povCharacter) {
+      throw new Error("Expected the POV character to exist");
+    }
+    const [branchRow] = (
+      await databasePool.query<{ head_node_id: string | null }>(
+        `SELECT head_node_id FROM work_branches WHERE id = $1`,
+        [work.mainBranch.id],
+      )
+    ).rows;
+    if (!branchRow?.head_node_id) {
+      throw new Error("Expected the branch head to exist");
+    }
+    for (const fact of commit.facts) {
+      await databasePool.query(
+        `INSERT INTO character_knowledge_states
+          (id, work_id, branch_id, user_id, character_id, objective_fact_id, state,
+           claimed_content, source_kind, valid_from_chapter, valid_to_chapter,
+           source_chapter_id, version_node_id, created_by, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'knowledge', $7, 'observed', 1, null,
+                 $8, $9, $4, now())`,
+        [
+          uuidv7(),
+          work.id,
+          work.mainBranch.id,
+          povCharacter.user_id,
+          povCharacter.id,
+          fact.id,
+          `${fact.subject}${fact.predicate}${fact.object}`,
+          chapter.id,
+          branchRow.head_node_id,
+        ],
+      );
+    }
+
     const context = contextPackPreviewResponseSchema.parse(
       (
         await owner
@@ -653,6 +716,11 @@ describe("fact proposal HTTP integration", () => {
     expect(beforeValidity.selected.map((source) => source.key)).not.toContain(
       `setting:${futureFact.id}`,
     );
+    expect(beforeValidity.evicted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: `setting:${futureFact.id}`, reason: "future_fact" }),
+      ]),
+    );
 
     const thirdChapter = await createReadyChapter(owner, token, branchPath, 3, "回响");
     const afterValidity = contextPackPreviewResponseSchema.parse(
@@ -667,6 +735,11 @@ describe("fact proposal HTTP integration", () => {
     );
     expect(afterValidity.selected.map((source) => source.key)).not.toContain(
       `setting:${expiredFact.id}`,
+    );
+    expect(afterValidity.evicted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: `setting:${expiredFact.id}`, reason: "expired_fact" }),
+      ]),
     );
     expect(
       afterValidity.selected.find((source) => source.key === `setting:${futureFact.id}`)

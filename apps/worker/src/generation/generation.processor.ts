@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { Inject, Injectable } from "@nestjs/common";
 import {
   generateChapterJobSchema,
+  generationCheckpointSchema,
+  type ContextPackManifest,
   WORKER_JOB_STEPS,
   type GenerateChapterJob,
   type GenerationCost,
@@ -17,10 +19,11 @@ import {
   type GenerationOperation,
 } from "@novel-brain/ai";
 import {
-  compileChapterContext,
+  compileChapterContextManifest,
   ContextBudgetExceededError,
+  decideStepRecovery,
   extractFactCandidates,
-  type CompiledContextPack,
+  resolveModelContextWindow,
 } from "@novel-brain/core";
 
 import { AI_GATEWAY } from "./generation.tokens";
@@ -37,6 +40,13 @@ import {
 export interface GenerationTraceLogger {
   info(payload: Record<string, unknown>, message?: string): void;
   warn(payload: Record<string, unknown>, message?: string): void;
+}
+
+export type GenerationStepBoundaryHook = (step: WorkerJobStep) => void | Promise<void>;
+
+export interface GenerationRecoveryOptions {
+  maxAutomaticAttempts?: number;
+  sleep?: (delayMs: number) => Promise<void>;
 }
 
 const STEP_PROGRESS: Record<WorkerJobStep, number> = {
@@ -70,6 +80,13 @@ type AiGatewayResolver = AiGateway | Pick<ByokAiGatewayFactory, "create">;
 @Injectable()
 export class GenerationJobProcessor {
   private traceLogger: GenerationTraceLogger | undefined;
+  private boundaryHook: GenerationStepBoundaryHook | undefined;
+  private recoveryOptions: Required<GenerationRecoveryOptions> = {
+    maxAutomaticAttempts: 1,
+    sleep: async (delayMs) => {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    },
+  };
 
   constructor(
     private readonly repository: WorkerGenerationRepository,
@@ -78,6 +95,17 @@ export class GenerationJobProcessor {
 
   setTraceLogger(logger: GenerationTraceLogger): void {
     this.traceLogger = logger;
+  }
+
+  setStepBoundaryHook(hook: GenerationStepBoundaryHook | undefined): void {
+    this.boundaryHook = hook;
+  }
+
+  configureRecovery(options: GenerationRecoveryOptions): void {
+    this.recoveryOptions = {
+      ...this.recoveryOptions,
+      ...options,
+    };
   }
 
   async process(payload: GenerateChapterJob): Promise<void> {
@@ -107,8 +135,9 @@ export class GenerationJobProcessor {
     }
     const resumeStep = await this.repository.resumeStep(durablePayload);
     const startIndex = WORKER_JOB_STEPS.indexOf(resumeStep);
-    let contextPack: CompiledContextPack | undefined;
+    let contextPack: ContextPackManifest | undefined;
     let provider: AiGateway | undefined;
+    let checkpoint = generationCheckpointSchema.parse(loaded.job.checkpoint);
 
     for (const step of WORKER_JOB_STEPS) {
       const stepIndex = WORKER_JOB_STEPS.indexOf(step);
@@ -118,50 +147,76 @@ export class GenerationJobProcessor {
       if (await this.repository.isCancelled(durablePayload)) {
         return;
       }
-      try {
-        if (stepRequiresProvider(step) && !provider) {
-          try {
-            provider =
-              "generateText" in this.providerResolver
-                ? this.providerResolver
-                : this.providerResolver.create(loaded.modelConfig);
-          } catch {
-            throw new ModelConfigurationError();
+      while (true) {
+        let jobStep: Awaited<ReturnType<WorkerGenerationRepository["startStep"]>> | undefined;
+        try {
+          if (stepRequiresProvider(step) && !provider) {
+            try {
+              provider =
+                "generateText" in this.providerResolver
+                  ? this.providerResolver
+                  : this.providerResolver.create(loaded.modelConfig);
+            } catch {
+              throw new ModelConfigurationError();
+            }
           }
+          jobStep = await this.repository.startStep(
+            durablePayload,
+            step,
+            stepInputHash(durablePayload, step, checkpoint),
+            STEP_PROGRESS[step],
+          );
+          const result = await this.executeStep({
+            payload: durablePayload,
+            loaded,
+            ...(provider ? { provider } : {}),
+            step,
+            attempt: jobStep.attempt,
+            ...(contextPack ? { contextPack } : {}),
+          });
+          contextPack = result.contextPack ?? contextPack;
+          const committed = await this.repository.succeedStep({
+            payload: durablePayload,
+            step,
+            progress: STEP_PROGRESS[step],
+            output: result.output,
+            cost: result.cost,
+            checkpointPayload: result.checkpointPayload,
+          });
+          checkpoint = generationCheckpointSchema.parse(committed.checkpoint);
+          break;
+        } catch (error) {
+          const failure = toFailure(error);
+          const decision = decideStepRecovery({
+            failureClass: failure.failureClass,
+            attempt: jobStep?.attempt ?? 1,
+            maxAutomaticAttempts: this.recoveryOptions.maxAutomaticAttempts,
+          });
+          await this.repository.failStep({
+            payload: durablePayload,
+            step,
+            code: failure.code,
+            message: failure.message,
+            terminal: decision.terminal,
+          });
+          if (decision.terminal) {
+            return;
+          }
+          this.traceLogger?.warn(
+            {
+              event: "worker.step.retry_scheduled",
+              jobId: durablePayload.jobId,
+              step,
+              attempt: jobStep?.attempt ?? 1,
+              failureClass: failure.failureClass,
+              delayMs: decision.delayMs,
+            },
+            "Retryable generation step will resume from the committed checkpoint",
+          );
+          await this.recoveryOptions.sleep(decision.delayMs);
         }
-        const jobStep = await this.repository.startStep(
-          durablePayload,
-          step,
-          inputHash(durablePayload, step),
-          STEP_PROGRESS[step],
-        );
-        const result = await this.executeStep({
-          payload: durablePayload,
-          loaded,
-          ...(provider ? { provider } : {}),
-          step,
-          attempt: jobStep.attempt,
-          ...(contextPack ? { contextPack } : {}),
-        });
-        contextPack = result.contextPack ?? contextPack;
-        await this.repository.succeedStep({
-          payload: durablePayload,
-          step,
-          progress: STEP_PROGRESS[step],
-          output: result.output,
-          cost: result.cost,
-          checkpointPayload: result.checkpointPayload,
-        });
-      } catch (error) {
-        const failure = toFailure(error);
-        await this.repository.failStep({
-          payload: durablePayload,
-          step,
-          code: failure.code,
-          message: failure.message,
-        });
-        return;
       }
+      await this.boundaryHook?.(step);
     }
     await this.repository.complete(durablePayload);
   }
@@ -172,12 +227,12 @@ export class GenerationJobProcessor {
     provider?: AiGateway;
     step: WorkerJobStep;
     attempt: number;
-    contextPack?: CompiledContextPack;
+    contextPack?: ContextPackManifest;
   }): Promise<{
     output: Record<string, unknown>;
     cost: GenerationCost;
     checkpointPayload: Record<string, unknown>;
-    contextPack?: CompiledContextPack;
+    contextPack?: ContextPackManifest;
   }> {
     switch (input.step) {
       case "prepare": {
@@ -194,8 +249,11 @@ export class GenerationJobProcessor {
       }
       case "compile_context": {
         const sources = await this.requireSources(input.payload);
-        const pack = compileChapterContext(
+        const pack = compileChapterContextManifest(
           {
+            branchId: input.payload.branchId,
+            branchStatus: sources.branch.status,
+            compilerVersion: "m1-context-v1",
             chapter: {
               id: sources.chapter.id,
               number: sources.chapter.number,
@@ -225,6 +283,10 @@ export class GenerationJobProcessor {
               validToChapter: setting.validToChapter ?? null,
             })),
             previousVersions: sources.previousVersions,
+            povCharacterId: sources.povCharacterId ?? null,
+            modelContextWindowTokens: resolveModelContextWindow(input.loaded.modelConfig.model),
+            reservedOutputTokens: 2_000,
+            ...(sources.knowledge ? { knowledge: sources.knowledge } : {}),
           },
           input.payload.budget.maxTokens,
         );
@@ -359,7 +421,7 @@ export class GenerationJobProcessor {
     return sources;
   }
 
-  private async loadContextPack(payload: GenerateChapterJob): Promise<CompiledContextPack> {
+  private async loadContextPack(payload: GenerateChapterJob): Promise<ContextPackManifest> {
     const output = await this.repository.findStepOutput(payload, "compile_context");
     const contextPackId = output?.contextPackId;
     if (typeof contextPackId !== "string") {
@@ -514,7 +576,7 @@ function validateBrief(sources: WorkerContextSources): void {
   }
 }
 
-function promptFromPack(pack: CompiledContextPack, instruction: string): string {
+function promptFromPack(pack: ContextPackManifest, instruction: string): string {
   return [
     instruction,
     "本章参考：",
@@ -535,8 +597,23 @@ function requireProvider(provider: AiGateway | undefined): AiGateway {
   return provider;
 }
 
-function inputHash(payload: GenerateChapterJob, step: string): string {
-  return `${payload.jobId}:${payload.chapterId}:${step}:${payload.idempotencyKey}`;
+function stepInputHash(
+  payload: GenerateChapterJob,
+  step: WorkerJobStep,
+  checkpoint: ReturnType<typeof generationCheckpointSchema.parse>,
+): string {
+  return sha256(
+    stableStringify({
+      jobId: payload.jobId,
+      workId: payload.workId,
+      branchId: payload.branchId,
+      chapterId: payload.chapterId,
+      idempotencyKey: payload.idempotencyKey,
+      step,
+      checkpointOutputRefs: checkpoint.outputRefs,
+      checkpointPayload: checkpoint.payload,
+    }),
+  );
 }
 
 function estimateTokens(value: string): number {
@@ -671,4 +748,17 @@ function toFailure(error: unknown): {
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  return `{${Object.entries(value as Record<string, unknown>)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`)
+    .join(",")}}`;
 }
