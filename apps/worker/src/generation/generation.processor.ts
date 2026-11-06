@@ -283,6 +283,7 @@ export class GenerationJobProcessor {
               validToChapter: setting.validToChapter ?? null,
             })),
             previousVersions: sources.previousVersions,
+            summaries: sources.summaries,
             povCharacterId: sources.povCharacterId ?? null,
             modelContextWindowTokens: resolveModelContextWindow(input.loaded.modelConfig.model),
             reservedOutputTokens: 2_000,

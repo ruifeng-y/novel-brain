@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Expand,
   Bold,
   Check,
   ChevronLeft,
@@ -17,7 +18,10 @@ import {
   Send,
   ShieldCheck,
   Sparkles,
+  Shrink,
   TriangleAlert,
+  Users,
+  WandSparkles,
   XCircle,
 } from "lucide-react";
 import Link from "next/link";
@@ -38,6 +42,8 @@ import {
   generationJobListResponseSchema,
   generationJobResponseSchema,
   jobEventSchema,
+  writingActionJobListResponseSchema,
+  writingActionJobResponseSchema,
   workResponseSchema,
   type CanonCommit,
   type ChapterReadiness,
@@ -48,6 +54,8 @@ import {
   type GenerationJob,
   type GenerationReadiness,
   type WorkOverview,
+  type WritingActionJob,
+  type WritingActionRequest,
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
@@ -84,6 +92,18 @@ const failureClassLabels: Record<NonNullable<AgentRunTrace["run"]["failureClass"
   budget: "本章预算不足",
   cancelled: "生成已取消",
   unknown: "未知异常",
+};
+
+const writingActionLabels: Record<WritingActionJob["action"], string> = {
+  continue: "续写",
+  rewrite: "改写",
+  expand: "扩写",
+  condense: "缩写",
+  change_pov: "改视角",
+  add_hook: "补钩子",
+  generate_title: "生成标题",
+  generate_summary: "生成摘要",
+  selection_rewrite: "改写选中",
 };
 
 const factStatusLabels: Record<FactProposal["status"], string> = {
@@ -140,6 +160,10 @@ export function WritingWorkspace({
   const [readiness, setReadiness] = useState<GenerationReadiness | null>(null);
   const [runTraces, setRunTraces] = useState<AgentRunTrace[]>([]);
   const [generationBusy, setGenerationBusy] = useState(false);
+  const [writingActionJob, setWritingActionJob] = useState<WritingActionJob | null>(null);
+  const [writingActionBusy, setWritingActionBusy] = useState(false);
+  const [writingActionMenuOpen, setWritingActionMenuOpen] = useState(false);
+  const [povDraft, setPovDraft] = useState("顾青");
   const [factProposals, setFactProposals] = useState<FactProposal[]>([]);
   const [factsLoading, setFactsLoading] = useState(false);
   const [factBusyId, setFactBusyId] = useState<string | null>(null);
@@ -148,6 +172,7 @@ export function WritingWorkspace({
   const [submissionBusy, setSubmissionBusy] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const writingActionEventSourceRef = useRef<EventSource | null>(null);
   const submissionKeys = useRef(new Map<string, string>());
 
   const load = useCallback(async () => {
@@ -181,6 +206,7 @@ export function WritingWorkspace({
         await Promise.all([
           loadVersions(workData, nextSelectedId),
           loadGenerationJob(workData, nextSelectedId),
+          loadWritingActions(workData, nextSelectedId),
           loadFactProposals(workData, nextSelectedId),
           loadCanonCommit(workData, nextSelectedId),
           loadReadiness(workData, nextSelectedId),
@@ -188,6 +214,7 @@ export function WritingWorkspace({
       } else {
         setVersions([]);
         setGenerationJob(null);
+        setWritingActionJob(null);
         setRunTraces([]);
         setFactProposals([]);
         setCanonCommit(null);
@@ -207,6 +234,7 @@ export function WritingWorkspace({
   useEffect(
     () => () => {
       eventSourceRef.current?.close();
+      writingActionEventSourceRef.current?.close();
     },
     [],
   );
@@ -219,6 +247,17 @@ export function WritingWorkspace({
   const canSave = Boolean(selected && content.trim() && dirty && !saving);
   const generationActive = Boolean(
     generationJob && ["queued", "preparing", "running", "paused"].includes(generationJob.status),
+  );
+  const writingActionActive = Boolean(
+    writingActionJob &&
+    ["queued", "preparing", "running", "paused"].includes(writingActionJob.status),
+  );
+  const canUseWritingAction = Boolean(
+    selected?.currentVersionId &&
+    !dirty &&
+    !writingActionActive &&
+    !writingActionBusy &&
+    !generationActive,
   );
   const canGenerate = Boolean(
     selected &&
@@ -272,6 +311,7 @@ export function WritingWorkspace({
         await Promise.all([
           loadVersions(work, chapter.id),
           loadGenerationJob(work, chapter.id),
+          loadWritingActions(work, chapter.id),
           loadFactProposals(work, chapter.id),
           loadCanonCommit(work, chapter.id),
         ]);
@@ -330,6 +370,24 @@ export function WritingWorkspace({
       watchGeneration(workData, latest.id);
     } else {
       closeGenerationStream();
+    }
+  }
+
+  async function loadWritingActions(workData: WorkOverview, chapterId: string) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/write-actions`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      throw new Error(await readError(response, "写作动作状态加载失败。"));
+    }
+    const jobs = writingActionJobListResponseSchema.parse(await response.json()).data;
+    const latest = jobs[0] ?? null;
+    setWritingActionJob(latest);
+    if (latest && isActiveGeneration(latest.status)) {
+      watchWritingAction(workData, latest.id);
+    } else {
+      closeWritingActionStream();
     }
   }
 
@@ -432,6 +490,254 @@ export function WritingWorkspace({
       setActionError(caught instanceof Error ? caught.message : "生成任务创建失败。");
     } finally {
       setGenerationBusy(false);
+    }
+  }
+
+  async function startWritingAction(action: WritingActionJob["action"]) {
+    if (!work || !selected?.currentVersionId || !canUseWritingAction) {
+      return;
+    }
+    const sourceVersionId = selected.currentVersionId;
+    let selection: { start: number; end: number } | undefined;
+    if (action === "selection_rewrite") {
+      const editor = editorRef.current;
+      if (!editor || editor.selectionStart === editor.selectionEnd) {
+        setActionError("先在正文里选中要重写的片段。");
+        return;
+      }
+      selection = { start: editor.selectionStart, end: editor.selectionEnd };
+    }
+    const currentLength = wordCount(content);
+    const budget = {
+      maxCostCny: 1.5,
+      maxTokens: 20_000,
+      maxRevisionRounds: 0,
+    };
+    const request: WritingActionRequest =
+      action === "continue"
+        ? {
+            action,
+            sourceVersionId,
+            targetLength: 600,
+            budget,
+          }
+        : action === "rewrite"
+          ? {
+              action,
+              sourceVersionId,
+              instruction: "保留章纲事实，收紧节奏和动作描写。",
+              budget,
+            }
+          : action === "expand"
+            ? {
+                action,
+                sourceVersionId,
+                targetLength: Math.max(800, Math.ceil(currentLength * 1.5)),
+                budget,
+              }
+            : action === "condense"
+              ? {
+                  action,
+                  sourceVersionId,
+                  targetLength: Math.max(200, Math.ceil(currentLength * 0.6)),
+                  budget,
+                }
+              : action === "change_pov"
+                ? {
+                    action,
+                    sourceVersionId,
+                    pov: povDraft.trim(),
+                    budget,
+                  }
+                : action === "add_hook"
+                  ? {
+                      action,
+                      sourceVersionId,
+                      hookStyle: "reversal",
+                      count: 3,
+                      budget,
+                    }
+                  : action === "generate_title"
+                    ? {
+                        action,
+                        sourceVersionId,
+                        count: 3,
+                        budget,
+                      }
+                    : action === "generate_summary"
+                      ? {
+                          action,
+                          sourceVersionId,
+                          maxLength: 200,
+                          budget,
+                        }
+                      : {
+                          action,
+                          sourceVersionId,
+                          selection: selection as { start: number; end: number },
+                          instruction: "保留原意，只增强这一段的紧张感。",
+                          budget,
+                        };
+    setWritingActionBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}/write-actions`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "idempotency-key": crypto.randomUUID(),
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify(request),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "写作动作创建失败。"));
+      }
+      const job = writingActionJobResponseSchema.parse(await response.json()).data;
+      setWritingActionJob(job);
+      watchWritingAction(work, job.id);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "写作动作创建失败。");
+    } finally {
+      setWritingActionBusy(false);
+    }
+  }
+
+  async function cancelWritingAction() {
+    if (!work || !writingActionJob || !writingActionActive) {
+      return;
+    }
+    setWritingActionBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/write-actions/${writingActionJob.id}/cancel`,
+        {
+          method: "POST",
+          headers: { "x-csrf-token": await getCsrfToken() },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "取消写作动作失败。"));
+      }
+      setWritingActionJob(writingActionJobResponseSchema.parse(await response.json()).data);
+      closeWritingActionStream();
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "取消写作动作失败。");
+    } finally {
+      setWritingActionBusy(false);
+    }
+  }
+
+  async function retryWritingAction() {
+    if (!work || !writingActionJob || !["failed", "cancelled"].includes(writingActionJob.status)) {
+      return;
+    }
+    setWritingActionBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/write-actions/${writingActionJob.id}/retry`,
+        {
+          method: "POST",
+          headers: { "x-csrf-token": await getCsrfToken() },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "重试写作动作失败。"));
+      }
+      const job = writingActionJobResponseSchema.parse(await response.json()).data;
+      setWritingActionJob(job);
+      watchWritingAction(work, job.id);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "重试写作动作失败。");
+    } finally {
+      setWritingActionBusy(false);
+    }
+  }
+
+  function watchWritingAction(workData: WorkOverview, actionJobId: string) {
+    closeWritingActionStream();
+    const source = new EventSource(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/write-actions/${actionJobId}/events`,
+    );
+    writingActionEventSourceRef.current = source;
+    const handleEvent = () => {
+      void refreshWritingAction(workData, actionJobId);
+    };
+    for (const eventType of jobEventTypes) {
+      source.addEventListener(eventType, handleEvent);
+    }
+    source.onerror = () => {
+      if (source.readyState === EventSource.CLOSED) {
+        closeWritingActionStream();
+      }
+    };
+  }
+
+  async function refreshWritingAction(workData: WorkOverview, actionJobId: string) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/write-actions/${actionJobId}`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      return;
+    }
+    const job = writingActionJobResponseSchema.parse(await response.json()).data;
+    setWritingActionJob(job);
+    if (isActiveGeneration(job.status)) {
+      return;
+    }
+    closeWritingActionStream();
+    const chapterResponse = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${job.chapterId}`,
+      { cache: "no-store" },
+    );
+    if (!chapterResponse.ok) {
+      return;
+    }
+    const chapter = chapterWorkspaceResponseSchema.parse(await chapterResponse.json()).data;
+    setChapters((current) => current.map((item) => (item.id === chapter.id ? chapter : item)));
+    setContent(chapter.currentVersion?.content ?? "");
+    setSavedContent(chapter.currentVersion?.content ?? "");
+    await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
+  }
+
+  function closeWritingActionStream() {
+    writingActionEventSourceRef.current?.close();
+    writingActionEventSourceRef.current = null;
+  }
+
+  async function applyGeneratedTitle(title: string) {
+    if (!work || !selected || dirty) {
+      return;
+    }
+    setWritingActionBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selected.id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({ version: selected.version, title }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "标题应用失败。"));
+      }
+      const chapter = chapterWorkspaceResponseSchema.parse(await response.json()).data;
+      setChapters((current) => current.map((item) => (item.id === chapter.id ? chapter : item)));
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "标题应用失败。");
+    } finally {
+      setWritingActionBusy(false);
     }
   }
 
@@ -904,11 +1210,115 @@ export function WritingWorkspace({
               >
                 <Quote size={15} aria-hidden="true" />
               </button>
+              <span className="writing-toolbar-divider" aria-hidden="true" />
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("continue")}
+                type="button"
+              >
+                <Sparkles size={14} aria-hidden="true" />
+                续写
+              </button>
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("selection_rewrite")}
+                type="button"
+              >
+                <WandSparkles size={14} aria-hidden="true" />
+                改写选中
+              </button>
+              <button
+                aria-expanded={writingActionMenuOpen}
+                className="btn btn-ghost btn-small"
+                disabled={!canUseWritingAction}
+                onClick={() => setWritingActionMenuOpen((current) => !current)}
+                type="button"
+              >
+                <Expand size={14} aria-hidden="true" />
+                更多生成
+              </button>
             </div>
             <span className={`writing-save-state${dirty ? " dirty" : ""}`}>
               {saving ? "保存中" : saved ? "已保存" : dirty ? "有未保存修改" : "版本已同步"}
             </span>
           </div>
+          {writingActionMenuOpen ? (
+            <div className="writing-action-menu" aria-label="更多写作动作">
+              <button
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("rewrite")}
+                type="button"
+              >
+                <WandSparkles size={15} aria-hidden="true" />
+                <span>整章改写</span>
+                <small>保留事实，重新组织整章表达</small>
+              </button>
+              <button
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("expand")}
+                type="button"
+              >
+                <Maximize2 size={15} aria-hidden="true" />
+                <span>扩写</span>
+                <small>保留原意，补充动作与环境</small>
+              </button>
+              <button
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("condense")}
+                type="button"
+              >
+                <Shrink size={15} aria-hidden="true" />
+                <span>缩写</span>
+                <small>压缩篇幅，保留关键事实</small>
+              </button>
+              <button
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("change_pov")}
+                type="button"
+              >
+                <Users size={15} aria-hidden="true" />
+                <span>改视角</span>
+                <small>切换到指定人物视角</small>
+              </button>
+              <button
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("add_hook")}
+                type="button"
+              >
+                <Quote size={15} aria-hidden="true" />
+                <span>补钩子</span>
+                <small>给出三个章末悬念候选</small>
+              </button>
+              <button
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("generate_title")}
+                type="button"
+              >
+                <FileText size={15} aria-hidden="true" />
+                <span>生成标题</span>
+                <small>给出三个可选章名</small>
+              </button>
+              <button
+                disabled={!canUseWritingAction}
+                onClick={() => void startWritingAction("generate_summary")}
+                type="button"
+              >
+                <FileText size={15} aria-hidden="true" />
+                <span>生成摘要</span>
+                <small>整理本章短摘要</small>
+              </button>
+              <label className="writing-action-pov">
+                <span>改视角人物</span>
+                <input
+                  onChange={(event) => setPovDraft(event.target.value)}
+                  placeholder="输入人物名"
+                  value={povDraft}
+                />
+              </label>
+            </div>
+          ) : null}
           <div className="writing-paper">
             <div className="writing-chapter-heading">
               <span>
@@ -1090,6 +1500,125 @@ export function WritingWorkspace({
               </>
             ) : (
               <p className="writing-generation-empty">本章还没有生成记录。</p>
+            )}
+          </section>
+
+          <section className="panel writing-action-panel" aria-labelledby="writing-action-title">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">按需修改</span>
+                <h2 id="writing-action-title">写作动作</h2>
+              </div>
+              {writingActionJob ? (
+                <span className={`badge generation-status-${writingActionJob.status}`}>
+                  {generationStatusLabels[writingActionJob.status]}
+                </span>
+              ) : (
+                <span className="badge">待使用</span>
+              )}
+            </div>
+            {!writingActionJob ? (
+              <p className="writing-generation-empty">
+                先保存当前版本，再用续写、改写选中或更多生成调整正文。
+              </p>
+            ) : (
+              <>
+                <div className="writing-action-summary">
+                  <strong>{writingActionLabels[writingActionJob.action]}</strong>
+                  <span>{generationStatusLabels[writingActionJob.status]}</span>
+                </div>
+                {writingActionActive ? (
+                  <>
+                    <div
+                      aria-label={`写作动作进度 ${writingActionJob.progress}%`}
+                      aria-valuemax={100}
+                      aria-valuemin={0}
+                      aria-valuenow={writingActionJob.progress}
+                      className="writing-generation-progress"
+                      role="progressbar"
+                    >
+                      <span style={{ width: `${writingActionJob.progress}%` }} />
+                    </div>
+                    <button
+                      className="btn btn-ghost btn-small"
+                      disabled={writingActionBusy}
+                      onClick={() => void cancelWritingAction()}
+                      type="button"
+                    >
+                      <XCircle size={14} aria-hidden="true" />
+                      取消动作
+                    </button>
+                  </>
+                ) : null}
+                {writingActionJob.error ? (
+                  <div className="writing-generation-error" role="alert">
+                    <TriangleAlert size={16} aria-hidden="true" />
+                    <div>
+                      <strong>{writingActionJob.error.message}</strong>
+                      <small>{writingActionJob.error.code}</small>
+                    </div>
+                    <button
+                      className="btn btn-ghost btn-small"
+                      onClick={() => void retryWritingAction()}
+                      type="button"
+                    >
+                      <RefreshCw size={14} aria-hidden="true" />
+                      从断点重试
+                    </button>
+                  </div>
+                ) : null}
+                {writingActionJob.output ? (
+                  <div className="writing-action-output">
+                    <div className="writing-action-output-head">
+                      <span>第 {writingActionJob.output.version} 版结果</span>
+                      <small>
+                        {writingActionJob.output.chapterVersionId
+                          ? "新版本已生成，原稿保留在版本历史"
+                          : "产物已归档，不覆盖正文"}
+                      </small>
+                    </div>
+                    {writingActionJob.output.kind === "chapter_text" ? (
+                      <>
+                        {writingActionJob.output.affectedRange ? (
+                          <p className="writing-action-range">
+                            改写范围：第 {writingActionJob.output.affectedRange.start + 1}–
+                            {writingActionJob.output.affectedRange.end} 字
+                          </p>
+                        ) : null}
+                        <pre>{writingActionJob.output.content.slice(0, 600)}</pre>
+                      </>
+                    ) : null}
+                    {writingActionJob.output.kind === "title_options" ? (
+                      <div className="writing-action-title-options">
+                        {writingActionJob.output.titles.map((title) => (
+                          <button
+                            className="btn btn-ghost btn-small"
+                            disabled={writingActionBusy || dirty}
+                            key={title}
+                            onClick={() => void applyGeneratedTitle(title)}
+                            type="button"
+                          >
+                            <Check size={14} aria-hidden="true" />
+                            {title}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                    {writingActionJob.output.kind === "summary" ? (
+                      <p className="writing-action-summary-text">
+                        {writingActionJob.output.summary}
+                      </p>
+                    ) : null}
+                    {writingActionJob.output.kind === "hooks" ? (
+                      <ul className="writing-action-hooks">
+                        {writingActionJob.output.hooks.map((hook) => (
+                          <li key={hook}>{hook}</li>
+                        ))}
+                      </ul>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
             )}
           </section>
 

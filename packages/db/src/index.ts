@@ -5,3 +5,4 @@ export * from "./cost-ledger";
 export * from "./fact-proposals";
 export { runMigrations } from "./migrations";
 export * from "./schema";
+export * from "./summaries";

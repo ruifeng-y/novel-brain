@@ -10,7 +10,19 @@ export interface GenerationRequest {
   operation?: GenerationOperation;
 }
 
-export type GenerationOperation = "draft" | "verify" | "revise";
+export const WRITING_ACTION_OPERATIONS = [
+  "continue",
+  "rewrite",
+  "expand",
+  "condense",
+  "change_pov",
+  "add_hook",
+  "generate_title",
+  "generate_summary",
+  "selection_rewrite",
+] as const;
+export type WritingActionOperation = (typeof WRITING_ACTION_OPERATIONS)[number];
+export type GenerationOperation = "draft" | "verify" | "revise" | WritingActionOperation;
 
 export interface GenerationUsage {
   inputTokens: number;
@@ -336,6 +348,52 @@ function operationText(operation: GenerationOperation, fingerprint: string): str
       "顾青看见书页一角，却没有点破，只把追兵引向山道另一侧。",
       "风穿过残钟，沈砚记住这次代价，也记住了顾青没有说出口的疑问。",
     ].join("\n\n");
+  }
+  if (operation === "continue") {
+    return [
+      `续写片段 ${fingerprint}`,
+      "山门外传来第三声钟响时，沈砚终于看见雪地里那串不属于人的脚印。",
+    ].join("\n\n");
+  }
+  if (operation === "rewrite") {
+    return [
+      `改写稿 ${fingerprint}`,
+      "血顺着袖口滴在青石板上。沈砚收拢断臂，只用右手扣住印诀。",
+      "追兵逼近，忘川书在暮色里短暂显形，顾青看见了那一角书页。",
+    ].join("\n\n");
+  }
+  if (operation === "expand") {
+    return [
+      `扩写稿 ${fingerprint}`,
+      "风从荒寺残破的檐角灌下来，卷起满地枯叶，也卷起血腥气。",
+      "沈砚把断臂藏进衣袍，右手按住袖中那本发烫的古书，听见追兵的脚步一近再近。",
+    ].join("\n\n");
+  }
+  if (operation === "condense") {
+    return `缩写稿 ${fingerprint}：沈砚藏起断臂，单手结印，顾青看见忘川书的一角。`;
+  }
+  if (operation === "change_pov") {
+    return [
+      `改视角稿 ${fingerprint}`,
+      "顾青先看见的是雪里的血，然后才看见沈砚藏在身后的左手。",
+      "他没有点破，只把追兵引向山道另一侧。",
+    ].join("\n\n");
+  }
+  if (operation === "add_hook") {
+    return [
+      `残钟无风自鸣，碑上浮出了沈砚自己的名字。${fingerprint}`,
+      "顾青没有回头，却把一枚染血的铜牌放进了沈砚掌心。",
+      "沈砚终于想起，这一夜他并不是第一次杀死自己。",
+    ].join("\n");
+  }
+  if (operation === "generate_title") {
+    return [`断臂之后 ${fingerprint}`, "一只手也能结印", "忘川初现"].join("\n");
+  }
+  if (operation === "generate_summary") {
+    return `沈砚断臂后仍以单手结印脱身，顾青看见了忘川书的一角却没有点破。${fingerprint}`;
+  }
+  if (operation === "selection_rewrite") {
+    return `改写片段 ${fingerprint}：他收紧呼吸，把疼痛压回袖中。`;
   }
   return [
     `生成草稿 ${fingerprint}`,

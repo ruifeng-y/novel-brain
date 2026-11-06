@@ -437,6 +437,7 @@ export function compileGenerationContext(
         validToChapter: setting.validToChapter ?? null,
       })),
       previousVersions: sources.previousVersions,
+      summaries: sources.summaries,
       povCharacterId: sources.povCharacterId ?? null,
       modelContextWindowTokens: resolveModelContextWindow(sources.modelConfig.model),
       reservedOutputTokens: RESERVED_OUTPUT_TOKENS,

@@ -1604,6 +1604,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/summaries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SummariesController_workspace"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/summaries/rebuild": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SummariesController_rebuild"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/summaries/rebuilds/{runId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SummariesController_rebuildRun"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/users/me": {
     parameters: {
       query?: never;
@@ -2110,6 +2158,86 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["PowerItemsController_unequipItem"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/write-actions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WritingActionController_list"];
+    put?: never;
+    post: operations["WritingActionController_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/write-actions/{actionJobId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WritingActionController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/write-actions/{actionJobId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WritingActionController_cancel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/write-actions/{actionJobId}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WritingActionController_retry"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/write-actions/{actionJobId}/events": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WritingActionController_events"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3131,6 +3259,10 @@ export interface operations {
                   | "JOB_NOT_RECOVERABLE"
                   | "JOB_RECOVERY_CONFLICT"
                   | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -3420,6 +3552,10 @@ export interface operations {
                   | "JOB_NOT_RECOVERABLE"
                   | "JOB_RECOVERY_CONFLICT"
                   | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -7361,6 +7497,10 @@ export interface operations {
                   | "JOB_NOT_RECOVERABLE"
                   | "JOB_RECOVERY_CONFLICT"
                   | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -7412,7 +7552,12 @@ export interface operations {
                   sourceRefs: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -7434,6 +7579,7 @@ export interface operations {
                   reason:
                     | "token_budget"
                     | "stale_branch"
+                    | "summary_stale"
                     | "task_mismatch"
                     | "pov_mismatch"
                     | "future_fact"
@@ -7446,7 +7592,12 @@ export interface operations {
                   sourceRefs?: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -7456,7 +7607,12 @@ export interface operations {
                 sourceRefs: {
                   /** @enum {string} */
                   sourceType:
-                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
                   sourceId: string;
                   label: string;
                   citation: string;
@@ -7576,7 +7732,12 @@ export interface operations {
                 sourceRefs: {
                   /** @enum {string} */
                   sourceType:
-                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
                   sourceId: string;
                   label: string;
                   citation: string;
@@ -7598,6 +7759,7 @@ export interface operations {
                 reason:
                   | "token_budget"
                   | "stale_branch"
+                  | "summary_stale"
                   | "task_mismatch"
                   | "pov_mismatch"
                   | "future_fact"
@@ -7610,7 +7772,12 @@ export interface operations {
                 sourceRefs?: {
                   /** @enum {string} */
                   sourceType:
-                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
                   sourceId: string;
                   label: string;
                   citation: string;
@@ -7620,7 +7787,12 @@ export interface operations {
               sourceRefs: {
                 /** @enum {string} */
                 sourceType:
-                  "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                  | "story_bible"
+                  | "setting"
+                  | "chapter_brief"
+                  | "chapter_version"
+                  | "style"
+                  | "summary";
                 sourceId: string;
                 label: string;
                 citation: string;
@@ -7839,6 +8011,10 @@ export interface operations {
                   | "JOB_NOT_RECOVERABLE"
                   | "JOB_RECOVERY_CONFLICT"
                   | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -7890,7 +8066,12 @@ export interface operations {
                   sourceRefs: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -7912,6 +8093,7 @@ export interface operations {
                   reason:
                     | "token_budget"
                     | "stale_branch"
+                    | "summary_stale"
                     | "task_mismatch"
                     | "pov_mismatch"
                     | "future_fact"
@@ -7924,7 +8106,12 @@ export interface operations {
                   sourceRefs?: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -7934,7 +8121,12 @@ export interface operations {
                 sourceRefs: {
                   /** @enum {string} */
                   sourceType:
-                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
                   sourceId: string;
                   label: string;
                   citation: string;
@@ -8162,6 +8354,10 @@ export interface operations {
                   | "JOB_NOT_RECOVERABLE"
                   | "JOB_RECOVERY_CONFLICT"
                   | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -8213,7 +8409,12 @@ export interface operations {
                   sourceRefs: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -8235,6 +8436,7 @@ export interface operations {
                   reason:
                     | "token_budget"
                     | "stale_branch"
+                    | "summary_stale"
                     | "task_mismatch"
                     | "pov_mismatch"
                     | "future_fact"
@@ -8247,7 +8449,12 @@ export interface operations {
                   sourceRefs?: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -8257,7 +8464,12 @@ export interface operations {
                 sourceRefs: {
                   /** @enum {string} */
                   sourceType:
-                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
                   sourceId: string;
                   label: string;
                   citation: string;
@@ -8485,6 +8697,10 @@ export interface operations {
                   | "JOB_NOT_RECOVERABLE"
                   | "JOB_RECOVERY_CONFLICT"
                   | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -8536,7 +8752,12 @@ export interface operations {
                   sourceRefs: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -8558,6 +8779,7 @@ export interface operations {
                   reason:
                     | "token_budget"
                     | "stale_branch"
+                    | "summary_stale"
                     | "task_mismatch"
                     | "pov_mismatch"
                     | "future_fact"
@@ -8570,7 +8792,12 @@ export interface operations {
                   sourceRefs?: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -8580,7 +8807,12 @@ export interface operations {
                 sourceRefs: {
                   /** @enum {string} */
                   sourceType:
-                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
                   sourceId: string;
                   label: string;
                   citation: string;
@@ -8808,6 +9040,10 @@ export interface operations {
                   | "JOB_NOT_RECOVERABLE"
                   | "JOB_RECOVERY_CONFLICT"
                   | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
                   | "FACT_DECISION_REQUIRED"
                   | "FACT_SUBMISSION_BLOCKED"
                   | "CANON_CHAPTER_NOT_APPROVED"
@@ -8859,7 +9095,12 @@ export interface operations {
                   sourceRefs: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -8881,6 +9122,7 @@ export interface operations {
                   reason:
                     | "token_budget"
                     | "stale_branch"
+                    | "summary_stale"
                     | "task_mismatch"
                     | "pov_mismatch"
                     | "future_fact"
@@ -8893,7 +9135,12 @@ export interface operations {
                   sourceRefs?: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -8903,7 +9150,12 @@ export interface operations {
                 sourceRefs: {
                   /** @enum {string} */
                   sourceType:
-                    "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
                   sourceId: string;
                   label: string;
                   citation: string;
@@ -9140,6 +9392,10 @@ export interface operations {
                     | "JOB_NOT_RECOVERABLE"
                     | "JOB_RECOVERY_CONFLICT"
                     | "JOB_ATTEMPTS_EXHAUSTED"
+                    | "SUMMARY_REBUILD_FAILED"
+                    | "WRITING_ACTION_NOT_EDITABLE"
+                    | "WRITING_ACTION_SELECTION_INVALID"
+                    | "WRITING_ACTION_SOURCE_VERSION_INVALID"
                     | "FACT_DECISION_REQUIRED"
                     | "FACT_SUBMISSION_BLOCKED"
                     | "CANON_CHAPTER_NOT_APPROVED"
@@ -9191,7 +9447,12 @@ export interface operations {
                     sourceRefs: {
                       /** @enum {string} */
                       sourceType:
-                        "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                        | "story_bible"
+                        | "setting"
+                        | "chapter_brief"
+                        | "chapter_version"
+                        | "style"
+                        | "summary";
                       sourceId: string;
                       label: string;
                       citation: string;
@@ -9213,6 +9474,7 @@ export interface operations {
                     reason:
                       | "token_budget"
                       | "stale_branch"
+                      | "summary_stale"
                       | "task_mismatch"
                       | "pov_mismatch"
                       | "future_fact"
@@ -9225,7 +9487,12 @@ export interface operations {
                     sourceRefs?: {
                       /** @enum {string} */
                       sourceType:
-                        "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                        | "story_bible"
+                        | "setting"
+                        | "chapter_brief"
+                        | "chapter_version"
+                        | "style"
+                        | "summary";
                       sourceId: string;
                       label: string;
                       citation: string;
@@ -9235,7 +9502,12 @@ export interface operations {
                   sourceRefs: {
                     /** @enum {string} */
                     sourceType:
-                      "story_bible" | "setting" | "chapter_brief" | "chapter_version" | "style";
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
                     sourceId: string;
                     label: string;
                     citation: string;
@@ -23381,6 +23653,510 @@ export interface operations {
       };
     };
   };
+  SummariesController_workspace: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Hierarchical summary workspace */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              invalidationRuleVersion: "summary-invalidation-v1";
+              summaries: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                level: "chapter" | "stage" | "volume" | "book";
+                scopeId: string;
+                chapterId: string | null;
+                title: string;
+                content: string;
+                /** @enum {string} */
+                status: "fresh" | "stale" | "rebuilding";
+                version: number;
+                contentHash: string;
+                inputHash: string;
+                compilerVersion: string;
+                modelVersion: string;
+                sourceRanges: {
+                  nodeId: string;
+                  versionNodeId: string | null;
+                  objectVersion: number;
+                  chapterFrom: number;
+                  chapterTo: number | null;
+                }[];
+                fromChapter: number;
+                toChapter: number | null;
+                /** Format: date-time */
+                generatedAt: string;
+                /** Format: date-time */
+                invalidatedAt: string | null;
+                invalidationReason: string | null;
+              }[];
+              rebuilds: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                status: "queued" | "running" | "completed" | "failed" | "cancelled";
+                levels: ("chapter" | "stage" | "volume" | "book")[];
+                idempotencyKey: string;
+                compilerVersion: string;
+                modelVersion: string;
+                checkpointRevision: number;
+                totalItems: number;
+                completedItems: number;
+                failedItems: number;
+                error: {
+                  /** @enum {string} */
+                  code:
+                    | "VALIDATION_INVALID"
+                    | "AUTH_CODE_INVALID"
+                    | "AUTH_RATE_LIMITED"
+                    | "AUTH_EMAIL_TAKEN"
+                    | "AUTH_PASSWORD_WEAK"
+                    | "AUTH_LOGIN_FAILED"
+                    | "AUTH_SESSION_INVALID"
+                    | "AUTH_CSRF_INVALID"
+                    | "AUTH_ORIGIN_INVALID"
+                    | "MODEL_KEY_INVALID"
+                    | "MODEL_CONNECTION_FAILED"
+                    | "MODEL_RATE_LIMITED"
+                    | "MODEL_TIMEOUT"
+                    | "MODEL_POLICY_BLOCKED"
+                    | "MODEL_RESPONSE_INVALID"
+                    | "MODEL_PROVIDER_ERROR"
+                    | "GEN_READINESS_BLOCKED"
+                    | "BIBLE_NOT_READY"
+                    | "BIBLE_LOCKED"
+                    | "BIBLE_NOT_LOCKED"
+                    | "SETTING_LOCKED"
+                    | "SETTING_NAME_CONFLICT"
+                    | "SETTING_ALIAS_CONFLICT"
+                    | "SETTING_CONFLICT_UNRESOLVED"
+                    | "SETTING_PROPOSAL_STATE"
+                    | "SETTING_NOT_LOCKED"
+                    | "CUSTOM_FIELD_REQUIRED"
+                    | "CUSTOM_FIELD_INVALID"
+                    | "CUSTOM_FIELD_IMMUTABLE"
+                    | "CUSTOM_FIELD_DUPLICATE"
+                    | "CHARACTER_STATE_OVERLAP"
+                    | "MAP_NODE_PARENT_MISMATCH"
+                    | "MAP_LAYER_MISMATCH"
+                    | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                    | "MAP_ROUTE_DISCONNECTED"
+                    | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                    | "CONTROL_AREA_OVERLAP"
+                    | "TIMELINE_EVENT_OVERLAP"
+                    | "TIMELINE_ERA_NOT_FOUND"
+                    | "ITINERARY_TIME_ORDER"
+                    | "ITINERARY_OVERLAP"
+                    | "POWER_PATH_MISMATCH"
+                    | "POWER_REALM_LADDER_INVALID"
+                    | "POWER_LIFESPAN_POLICY_INVALID"
+                    | "ITEM_RIGHT_CONFLICT"
+                    | "ITEM_NOT_CONSUMABLE"
+                    | "ITEM_QUANTITY_INSUFFICIENT"
+                    | "EQUIPMENT_SLOT_CONFLICT"
+                    | "ITEM_NOT_EQUIPMENT"
+                    | "JOB_BUDGET_EXCEEDED"
+                    | "JOB_CONTEXT_BRANCH_STALE"
+                    | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                    | "JOB_CANCELLED"
+                    | "JOB_NOT_RECOVERABLE"
+                    | "JOB_RECOVERY_CONFLICT"
+                    | "JOB_ATTEMPTS_EXHAUSTED"
+                    | "SUMMARY_REBUILD_FAILED"
+                    | "WRITING_ACTION_NOT_EDITABLE"
+                    | "WRITING_ACTION_SELECTION_INVALID"
+                    | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                    | "FACT_DECISION_REQUIRED"
+                    | "FACT_SUBMISSION_BLOCKED"
+                    | "CANON_CHAPTER_NOT_APPROVED"
+                    | "IMPORT_CONFLICT_UNRESOLVED"
+                    | "OUTLINE_STRUCTURE_INVALID"
+                    | "OUTLINE_NODE_LOCKED"
+                    | "OUTLINE_PARENT_INVALID"
+                    | "OUTLINE_CHAPTER_INVALID"
+                    | "OUTLINE_REFERENCE_INVALID"
+                    | "GOLDEN_THREE_CANDIDATES_EXIST"
+                    | "GOLDEN_THREE_INVALID_CANDIDATES"
+                    | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                    | "GOLDEN_THREE_REVIEW_FAILED"
+                    | "GOLDEN_THREE_SELECTION_REQUIRED"
+                    | "GOLDEN_THREE_ALREADY_LOCKED"
+                    | "GOLDEN_THREE_OVERRIDE_INVALID"
+                    | "LEDGER_TRANSITION_INVALID"
+                    | "LEDGER_SOURCE_REQUIRED"
+                    | "LEDGER_EVIDENCE_REQUIRED"
+                    | "LEDGER_REFERENCE_INVALID"
+                    | "VERSION_CONFLICT"
+                    | "AGENT_CONTRACT_INVALID"
+                    | "AGENT_GRANT_INVALID"
+                    | "AGENT_GRANT_EXPIRED"
+                    | "AGENT_GRANT_REVOKED"
+                    | "AGENT_TOOL_NOT_REGISTERED"
+                    | "AGENT_TOOL_DENIED"
+                    | "AGENT_BUDGET_EXCEEDED"
+                    | "AGENT_APPROVAL_REQUIRED"
+                    | "FORBIDDEN_TENANT_ACCESS"
+                    | "INTERNAL_ERROR";
+                  message: string;
+                } | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                /** Format: date-time */
+                finishedAt: string | null;
+              }[];
+              stats: {
+                total: number;
+                fresh: number;
+                stale: number;
+                rebuilding: number;
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SummariesController_rebuild: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /**
+           * @default [
+           *       "chapter",
+           *       "stage",
+           *       "volume",
+           *       "book"
+           *     ]
+           */
+          levels?: ("chapter" | "stage" | "volume" | "book")[];
+          /** @default false */
+          force?: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Queued summary rebuild */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              status: "queued" | "running" | "completed" | "failed" | "cancelled";
+              levels: ("chapter" | "stage" | "volume" | "book")[];
+              idempotencyKey: string;
+              compilerVersion: string;
+              modelVersion: string;
+              checkpointRevision: number;
+              totalItems: number;
+              completedItems: number;
+              failedItems: number;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  SummariesController_rebuildRun: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Summary rebuild checkpoint status */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              status: "queued" | "running" | "completed" | "failed" | "cancelled";
+              levels: ("chapter" | "stage" | "volume" | "book")[];
+              idempotencyKey: string;
+              compilerVersion: string;
+              modelVersion: string;
+              checkpointRevision: number;
+              totalItems: number;
+              completedItems: number;
+              failedItems: number;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   UsersController_updateProfile: {
     parameters: {
       query?: never;
@@ -32620,6 +33396,2715 @@ export interface operations {
             };
           };
         };
+      };
+    };
+  };
+  WritingActionController_list: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Writing actions for one chapter */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "write_action";
+              /** @enum {string} */
+              action:
+                | "continue"
+                | "rewrite"
+                | "expand"
+                | "condense"
+                | "change_pov"
+                | "add_hook"
+                | "generate_title"
+                | "generate_summary"
+                | "selection_rewrite";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep: "prepare" | "generate" | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
+                /** @enum {string} */
+                step: "prepare" | "generate" | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              output:
+                | (
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "chapter_text";
+                        content: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "title_options";
+                        titles: string[];
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "summary";
+                        summary: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "hooks";
+                        hooks: string[];
+                      }
+                  )
+                | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "summary_stale"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
+                  tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
+              } | null;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WritingActionController_start: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same writing action request */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              /** @enum {string} */
+              action: "continue";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              instruction?: string;
+              targetLength?: number;
+            }
+          | {
+              /** @enum {string} */
+              action: "rewrite";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              instruction: string;
+            }
+          | {
+              /** @enum {string} */
+              action: "expand";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              instruction?: string;
+              targetLength: number;
+            }
+          | {
+              /** @enum {string} */
+              action: "condense";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              instruction?: string;
+              targetLength: number;
+            }
+          | {
+              /** @enum {string} */
+              action: "change_pov";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              pov: string;
+            }
+          | {
+              /** @enum {string} */
+              action: "add_hook";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              /** @enum {string} */
+              hookStyle?: "suspense" | "reversal" | "question";
+              /** @default 3 */
+              count?: number;
+            }
+          | {
+              /** @enum {string} */
+              action: "generate_title";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              /** @default 3 */
+              count?: number;
+            }
+          | {
+              /** @enum {string} */
+              action: "generate_summary";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              /** @default 200 */
+              maxLength?: number;
+            }
+          | {
+              /** @enum {string} */
+              action: "selection_rewrite";
+              sourceVersionId: string;
+              /**
+               * @default {
+               *       "maxCostCny": 2.5,
+               *       "maxTokens": 30000,
+               *       "maxRevisionRounds": 0
+               *     }
+               */
+              budget?: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              selection: {
+                start: number;
+                end: number;
+              };
+              instruction: string;
+            };
+      };
+    };
+    responses: {
+      /** @description Queued writing action */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "write_action";
+              /** @enum {string} */
+              action:
+                | "continue"
+                | "rewrite"
+                | "expand"
+                | "condense"
+                | "change_pov"
+                | "add_hook"
+                | "generate_title"
+                | "generate_summary"
+                | "selection_rewrite";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep: "prepare" | "generate" | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
+                /** @enum {string} */
+                step: "prepare" | "generate" | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              output:
+                | (
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "chapter_text";
+                        content: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "title_options";
+                        titles: string[];
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "summary";
+                        summary: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "hooks";
+                        hooks: string[];
+                      }
+                  )
+                | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "summary_stale"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
+                  tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
+              } | null;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WritingActionController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        actionJobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Writing action and versioned output */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "write_action";
+              /** @enum {string} */
+              action:
+                | "continue"
+                | "rewrite"
+                | "expand"
+                | "condense"
+                | "change_pov"
+                | "add_hook"
+                | "generate_title"
+                | "generate_summary"
+                | "selection_rewrite";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep: "prepare" | "generate" | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
+                /** @enum {string} */
+                step: "prepare" | "generate" | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              output:
+                | (
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "chapter_text";
+                        content: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "title_options";
+                        titles: string[];
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "summary";
+                        summary: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "hooks";
+                        hooks: string[];
+                      }
+                  )
+                | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "summary_stale"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
+                  tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
+              } | null;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WritingActionController_cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        actionJobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancelled writing action */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "write_action";
+              /** @enum {string} */
+              action:
+                | "continue"
+                | "rewrite"
+                | "expand"
+                | "condense"
+                | "change_pov"
+                | "add_hook"
+                | "generate_title"
+                | "generate_summary"
+                | "selection_rewrite";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep: "prepare" | "generate" | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
+                /** @enum {string} */
+                step: "prepare" | "generate" | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              output:
+                | (
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "chapter_text";
+                        content: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "title_options";
+                        titles: string[];
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "summary";
+                        summary: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "hooks";
+                        hooks: string[];
+                      }
+                  )
+                | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "summary_stale"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
+                  tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
+              } | null;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WritingActionController_retry: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        actionJobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Retried writing action */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              type: "write_action";
+              /** @enum {string} */
+              action:
+                | "continue"
+                | "rewrite"
+                | "expand"
+                | "condense"
+                | "change_pov"
+                | "add_hook"
+                | "generate_title"
+                | "generate_summary"
+                | "selection_rewrite";
+              workId: string;
+              branchId: string;
+              chapterId: string;
+              sourceVersionId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              progress: number;
+              /** @enum {string} */
+              currentStep: "prepare" | "generate" | "await_review";
+              budget: {
+                maxCostCny: number;
+                maxTokens: number;
+                maxRevisionRounds: number;
+              };
+              cost: {
+                inputTokens: number;
+                outputTokens: number;
+                totalTokens: number;
+                costCny: number;
+              };
+              checkpoint: {
+                /**
+                 * @default 1
+                 * @enum {number}
+                 */
+                schemaVersion: 1;
+                /** @default 0 */
+                revision: number;
+                /** @enum {string} */
+                step: "prepare" | "generate" | "await_review";
+                /** @default null */
+                inputHash: string | null;
+                /** @default [] */
+                outputRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter_version"
+                    | "context_pack"
+                    | "fact_proposal"
+                    | "canon_commit"
+                    | "artifact";
+                  id: string;
+                }[];
+                /** @default {} */
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              output:
+                | (
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "chapter_text";
+                        content: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "title_options";
+                        titles: string[];
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "summary";
+                        summary: string;
+                      }
+                    | {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          | "continue"
+                          | "rewrite"
+                          | "expand"
+                          | "condense"
+                          | "change_pov"
+                          | "add_hook"
+                          | "generate_title"
+                          | "generate_summary"
+                          | "selection_rewrite";
+                        version: number;
+                        versionNodeId: string;
+                        sourceVersionId: string;
+                        chapterVersionId: string | null;
+                        affectedRange: {
+                          originalStart: number;
+                          originalEnd: number;
+                          start: number;
+                          end: number;
+                        } | null;
+                        provenance: {
+                          promptKey: string;
+                          promptVersion: number;
+                          promptHash: string;
+                          provider: string;
+                          model: string;
+                          parameters: {
+                            [key: string]: unknown;
+                          };
+                        };
+                        /** Format: date-time */
+                        createdAt: string;
+                        /** @enum {string} */
+                        kind: "hooks";
+                        hooks: string[];
+                      }
+                  )
+                | null;
+              contextPack: {
+                id: string;
+                jobId: string;
+                version: number;
+                compilerVersion: string;
+                tokenBudget: number;
+                tokenUsed: number;
+                selected: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  priority: ("required" | "high" | "normal") | ("P0" | "P1" | "P2" | "P3" | "P4");
+                  content: string;
+                  tokenCount: number;
+                  sourceRefs: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  /** @enum {string} */
+                  reason?:
+                    | "p0_hard_constraint"
+                    | "scene_relevant_canon"
+                    | "recent_narrative"
+                    | "style_and_promise"
+                    | "optional_reference";
+                }[];
+                evicted: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  layer?: "P0" | "P1" | "P2" | "P3" | "P4";
+                  /** @enum {string} */
+                  reason:
+                    | "token_budget"
+                    | "stale_branch"
+                    | "summary_stale"
+                    | "task_mismatch"
+                    | "pov_mismatch"
+                    | "future_fact"
+                    | "expired_fact"
+                    | "time_window"
+                    | "knowledge_boundary"
+                    | "empty_content"
+                    | "missing_source";
+                  tokenCount: number;
+                  sourceRefs?: {
+                    /** @enum {string} */
+                    sourceType:
+                      | "story_bible"
+                      | "setting"
+                      | "chapter_brief"
+                      | "chapter_version"
+                      | "style"
+                      | "summary";
+                    sourceId: string;
+                    label: string;
+                    citation: string;
+                  }[];
+                  detail?: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  sourceType:
+                    | "story_bible"
+                    | "setting"
+                    | "chapter_brief"
+                    | "chapter_version"
+                    | "style"
+                    | "summary";
+                  sourceId: string;
+                  label: string;
+                  citation: string;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+                manifestHash?: string;
+                /** @enum {string} */
+                task?:
+                  "chapter_draft" | "chapter_revision" | "continuity_check" | "fact_extraction";
+                chapterId?: string;
+                chapterNumber?: number;
+                povCharacterId?: string | null;
+                branchId?: string;
+                effectiveTokenBudget?: number;
+                budget?: {
+                  requestedTokenBudget: number;
+                  effectiveTokenBudget: number;
+                  modelContextWindowTokens: number | null;
+                  reservedOutputTokens: number;
+                  tokenUsed: number;
+                  tokenRemaining: number;
+                  tokenEstimator: string;
+                  layers: {
+                    P0: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P1: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P2: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P3: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                    P4: {
+                      selectedCount: number;
+                      selectedTokens: number;
+                      evictedCount: number;
+                      evictedTokens: number;
+                    };
+                  };
+                };
+              } | null;
+              error: {
+                /** @enum {string} */
+                code:
+                  | "VALIDATION_INVALID"
+                  | "AUTH_CODE_INVALID"
+                  | "AUTH_RATE_LIMITED"
+                  | "AUTH_EMAIL_TAKEN"
+                  | "AUTH_PASSWORD_WEAK"
+                  | "AUTH_LOGIN_FAILED"
+                  | "AUTH_SESSION_INVALID"
+                  | "AUTH_CSRF_INVALID"
+                  | "AUTH_ORIGIN_INVALID"
+                  | "MODEL_KEY_INVALID"
+                  | "MODEL_CONNECTION_FAILED"
+                  | "MODEL_RATE_LIMITED"
+                  | "MODEL_TIMEOUT"
+                  | "MODEL_POLICY_BLOCKED"
+                  | "MODEL_RESPONSE_INVALID"
+                  | "MODEL_PROVIDER_ERROR"
+                  | "GEN_READINESS_BLOCKED"
+                  | "BIBLE_NOT_READY"
+                  | "BIBLE_LOCKED"
+                  | "BIBLE_NOT_LOCKED"
+                  | "SETTING_LOCKED"
+                  | "SETTING_NAME_CONFLICT"
+                  | "SETTING_ALIAS_CONFLICT"
+                  | "SETTING_CONFLICT_UNRESOLVED"
+                  | "SETTING_PROPOSAL_STATE"
+                  | "SETTING_NOT_LOCKED"
+                  | "CUSTOM_FIELD_REQUIRED"
+                  | "CUSTOM_FIELD_INVALID"
+                  | "CUSTOM_FIELD_IMMUTABLE"
+                  | "CUSTOM_FIELD_DUPLICATE"
+                  | "CHARACTER_STATE_OVERLAP"
+                  | "MAP_NODE_PARENT_MISMATCH"
+                  | "MAP_LAYER_MISMATCH"
+                  | "MAP_ROUTE_ENDPOINT_MISMATCH"
+                  | "MAP_ROUTE_DISCONNECTED"
+                  | "MAP_ROUTE_TRAVEL_TIME_CONFLICT"
+                  | "CONTROL_AREA_OVERLAP"
+                  | "TIMELINE_EVENT_OVERLAP"
+                  | "TIMELINE_ERA_NOT_FOUND"
+                  | "ITINERARY_TIME_ORDER"
+                  | "ITINERARY_OVERLAP"
+                  | "POWER_PATH_MISMATCH"
+                  | "POWER_REALM_LADDER_INVALID"
+                  | "POWER_LIFESPAN_POLICY_INVALID"
+                  | "ITEM_RIGHT_CONFLICT"
+                  | "ITEM_NOT_CONSUMABLE"
+                  | "ITEM_QUANTITY_INSUFFICIENT"
+                  | "EQUIPMENT_SLOT_CONFLICT"
+                  | "ITEM_NOT_EQUIPMENT"
+                  | "JOB_BUDGET_EXCEEDED"
+                  | "JOB_CONTEXT_BRANCH_STALE"
+                  | "JOB_CONTEXT_WINDOW_TOO_SMALL"
+                  | "JOB_CANCELLED"
+                  | "JOB_NOT_RECOVERABLE"
+                  | "JOB_RECOVERY_CONFLICT"
+                  | "JOB_ATTEMPTS_EXHAUSTED"
+                  | "SUMMARY_REBUILD_FAILED"
+                  | "WRITING_ACTION_NOT_EDITABLE"
+                  | "WRITING_ACTION_SELECTION_INVALID"
+                  | "WRITING_ACTION_SOURCE_VERSION_INVALID"
+                  | "FACT_DECISION_REQUIRED"
+                  | "FACT_SUBMISSION_BLOCKED"
+                  | "CANON_CHAPTER_NOT_APPROVED"
+                  | "IMPORT_CONFLICT_UNRESOLVED"
+                  | "OUTLINE_STRUCTURE_INVALID"
+                  | "OUTLINE_NODE_LOCKED"
+                  | "OUTLINE_PARENT_INVALID"
+                  | "OUTLINE_CHAPTER_INVALID"
+                  | "OUTLINE_REFERENCE_INVALID"
+                  | "GOLDEN_THREE_CANDIDATES_EXIST"
+                  | "GOLDEN_THREE_INVALID_CANDIDATES"
+                  | "GOLDEN_THREE_CANDIDATE_LOCKED"
+                  | "GOLDEN_THREE_REVIEW_FAILED"
+                  | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_ALREADY_LOCKED"
+                  | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
+                  | "VERSION_CONFLICT"
+                  | "AGENT_CONTRACT_INVALID"
+                  | "AGENT_GRANT_INVALID"
+                  | "AGENT_GRANT_EXPIRED"
+                  | "AGENT_GRANT_REVOKED"
+                  | "AGENT_TOOL_NOT_REGISTERED"
+                  | "AGENT_TOOL_DENIED"
+                  | "AGENT_BUDGET_EXCEEDED"
+                  | "AGENT_APPROVAL_REQUIRED"
+                  | "FORBIDDEN_TENANT_ACCESS"
+                  | "INTERNAL_ERROR";
+                message: string;
+              } | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              startedAt: string | null;
+              /** Format: date-time */
+              finishedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WritingActionController_events: {
+    parameters: {
+      query?: never;
+      header: {
+        "last-event-id": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        actionJobId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

@@ -57,6 +57,10 @@ export const ERROR_CODES = [
   "JOB_NOT_RECOVERABLE",
   "JOB_RECOVERY_CONFLICT",
   "JOB_ATTEMPTS_EXHAUSTED",
+  "SUMMARY_REBUILD_FAILED",
+  "WRITING_ACTION_NOT_EDITABLE",
+  "WRITING_ACTION_SELECTION_INVALID",
+  "WRITING_ACTION_SOURCE_VERSION_INVALID",
   "FACT_DECISION_REQUIRED",
   "FACT_SUBMISSION_BLOCKED",
   "CANON_CHAPTER_NOT_APPROVED",
@@ -4357,6 +4361,8 @@ export type WorkerReadinessData = z.infer<typeof workerReadinessDataSchema>;
 
 export const WORKER_QUEUE_NAME = "novel-brain-jobs";
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
+export const SUMMARY_REBUILD_JOB = "rebuild_summaries";
+export const WRITE_ACTION_JOB = "write_action";
 export const WORKER_JOB_STEPS = [
   "prepare",
   "compile_context",
@@ -4414,11 +4420,290 @@ export const generateChapterJobSchema = z.object({
 });
 export type GenerateChapterJob = z.infer<typeof generateChapterJobSchema>;
 
-export const workerJobSchema = z.discriminatedUnion("jobType", [generateChapterJobSchema]);
-export type WorkerJob = z.infer<typeof workerJobSchema>;
-
 export const generationBudgetSchema = generateChapterJobSchema.shape.budget;
 export type GenerationBudget = z.infer<typeof generationBudgetSchema>;
+
+export const WRITING_ACTION_KINDS = [
+  "continue",
+  "rewrite",
+  "expand",
+  "condense",
+  "change_pov",
+  "add_hook",
+  "generate_title",
+  "generate_summary",
+  "selection_rewrite",
+] as const;
+export const writingActionKindSchema = z.enum(WRITING_ACTION_KINDS);
+export type WritingActionKind = z.infer<typeof writingActionKindSchema>;
+
+export const WRITING_ACTION_STEPS = ["prepare", "generate", "await_review"] as const;
+export const writingActionStepSchema = z.enum(WRITING_ACTION_STEPS);
+export type WritingActionStep = z.infer<typeof writingActionStepSchema>;
+
+export const writingActionSelectionSchema = z
+  .object({
+    start: z.number().int().nonnegative(),
+    end: z.number().int().positive(),
+  })
+  .strict()
+  .refine((selection) => selection.end > selection.start, {
+    message: "Selection end must be after start",
+    path: ["end"],
+  });
+export type WritingActionSelection = z.infer<typeof writingActionSelectionSchema>;
+
+const writingActionBaseShape = {
+  sourceVersionId: uuidV7Schema,
+  budget: generationBudgetSchema.default({
+    maxCostCny: 2.5,
+    maxTokens: 30_000,
+    maxRevisionRounds: 0,
+  }),
+};
+
+export const continueWritingActionSchema = z
+  .object({
+    action: z.literal("continue"),
+    ...writingActionBaseShape,
+    instruction: z.string().trim().min(1).max(2_000).optional(),
+    targetLength: z.number().int().min(100).max(20_000).optional(),
+  })
+  .strict();
+
+export const rewriteWritingActionSchema = z
+  .object({
+    action: z.literal("rewrite"),
+    ...writingActionBaseShape,
+    instruction: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+
+export const expandWritingActionSchema = z
+  .object({
+    action: z.literal("expand"),
+    ...writingActionBaseShape,
+    instruction: z.string().trim().min(1).max(2_000).optional(),
+    targetLength: z.number().int().min(100).max(50_000),
+  })
+  .strict();
+
+export const condenseWritingActionSchema = z
+  .object({
+    action: z.literal("condense"),
+    ...writingActionBaseShape,
+    instruction: z.string().trim().min(1).max(2_000).optional(),
+    targetLength: z.number().int().min(100).max(50_000),
+  })
+  .strict();
+
+export const changePovWritingActionSchema = z
+  .object({
+    action: z.literal("change_pov"),
+    ...writingActionBaseShape,
+    pov: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+export const addHookWritingActionSchema = z
+  .object({
+    action: z.literal("add_hook"),
+    ...writingActionBaseShape,
+    hookStyle: z.enum(["suspense", "reversal", "question"]).optional(),
+    count: z.number().int().min(1).max(3).default(3),
+  })
+  .strict();
+
+export const generateTitleWritingActionSchema = z
+  .object({
+    action: z.literal("generate_title"),
+    ...writingActionBaseShape,
+    count: z.number().int().min(1).max(3).default(3),
+  })
+  .strict();
+
+export const generateSummaryWritingActionSchema = z
+  .object({
+    action: z.literal("generate_summary"),
+    ...writingActionBaseShape,
+    maxLength: z.number().int().min(50).max(1_000).default(200),
+  })
+  .strict();
+
+export const selectionRewriteWritingActionSchema = z
+  .object({
+    action: z.literal("selection_rewrite"),
+    ...writingActionBaseShape,
+    selection: writingActionSelectionSchema,
+    instruction: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+
+export const writingActionRequestSchema = z.discriminatedUnion("action", [
+  continueWritingActionSchema,
+  rewriteWritingActionSchema,
+  expandWritingActionSchema,
+  condenseWritingActionSchema,
+  changePovWritingActionSchema,
+  addHookWritingActionSchema,
+  generateTitleWritingActionSchema,
+  generateSummaryWritingActionSchema,
+  selectionRewriteWritingActionSchema,
+]);
+export type WritingActionRequest = z.infer<typeof writingActionRequestSchema>;
+export type ContinueWritingAction = z.infer<typeof continueWritingActionSchema>;
+export type RewriteWritingAction = z.infer<typeof rewriteWritingActionSchema>;
+export type ExpandWritingAction = z.infer<typeof expandWritingActionSchema>;
+export type CondenseWritingAction = z.infer<typeof condenseWritingActionSchema>;
+export type ChangePovWritingAction = z.infer<typeof changePovWritingActionSchema>;
+export type AddHookWritingAction = z.infer<typeof addHookWritingActionSchema>;
+export type GenerateTitleWritingAction = z.infer<typeof generateTitleWritingActionSchema>;
+export type GenerateSummaryWritingAction = z.infer<typeof generateSummaryWritingActionSchema>;
+export type SelectionRewriteWritingAction = z.infer<typeof selectionRewriteWritingActionSchema>;
+
+export const writingActionAffectedRangeSchema = z
+  .object({
+    originalStart: z.number().int().nonnegative(),
+    originalEnd: z.number().int().positive(),
+    start: z.number().int().nonnegative(),
+    end: z.number().int().positive(),
+  })
+  .strict()
+  .refine((range) => range.originalEnd > range.originalStart && range.end > range.start, {
+    message: "Affected range end must be after start",
+  });
+export type WritingActionAffectedRange = z.infer<typeof writingActionAffectedRangeSchema>;
+
+const writingActionOutputBaseShape = {
+  id: uuidV7Schema,
+  action: writingActionKindSchema,
+  version: z.number().int().positive(),
+  versionNodeId: uuidV7Schema,
+  sourceVersionId: uuidV7Schema,
+  chapterVersionId: uuidV7Schema.nullable(),
+  affectedRange: writingActionAffectedRangeSchema.nullable(),
+  provenance: z
+    .object({
+      promptKey: z.string().min(1).max(200),
+      promptVersion: z.number().int().positive(),
+      promptHash: z.string().regex(/^[a-f0-9]{64}$/),
+      provider: z.string().min(1).max(100),
+      model: z.string().min(1).max(200),
+      parameters: z.record(z.string(), z.unknown()),
+    })
+    .strict(),
+  createdAt: z.string().datetime(),
+};
+
+export const writingActionChapterTextOutputSchema = z
+  .object({
+    ...writingActionOutputBaseShape,
+    kind: z.literal("chapter_text"),
+    content: z.string().min(1).max(200_000),
+  })
+  .strict();
+export const writingActionTitleOutputSchema = z
+  .object({
+    ...writingActionOutputBaseShape,
+    kind: z.literal("title_options"),
+    titles: z.array(z.string().trim().min(1).max(200)).min(1).max(3),
+  })
+  .strict();
+export const writingActionSummaryOutputSchema = z
+  .object({
+    ...writingActionOutputBaseShape,
+    kind: z.literal("summary"),
+    summary: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export const writingActionHookOutputSchema = z
+  .object({
+    ...writingActionOutputBaseShape,
+    kind: z.literal("hooks"),
+    hooks: z.array(z.string().trim().min(1).max(1_000)).min(1).max(3),
+  })
+  .strict();
+export const writingActionOutputSchema = z
+  .discriminatedUnion("kind", [
+    writingActionChapterTextOutputSchema,
+    writingActionTitleOutputSchema,
+    writingActionSummaryOutputSchema,
+    writingActionHookOutputSchema,
+  ])
+  .superRefine((output, context) => {
+    if (output.kind === "chapter_text" && output.chapterVersionId === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterVersionId"],
+        message: "Chapter text output requires a chapter version",
+      });
+    }
+    if (output.kind !== "chapter_text" && output.chapterVersionId !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterVersionId"],
+        message: "Non-text output cannot replace a chapter version",
+      });
+    }
+    if (output.action === "selection_rewrite" && output.affectedRange === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["affectedRange"],
+        message: "Selection rewrite requires the affected range",
+      });
+    }
+    if (output.action !== "selection_rewrite" && output.affectedRange !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["affectedRange"],
+        message: "Only selection rewrite reports an affected range",
+      });
+    }
+  });
+export type WritingActionOutput = z.infer<typeof writingActionOutputSchema>;
+
+export const writingActionCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(RECOVERY_CHECKPOINT_SCHEMA_VERSION).default(1),
+    revision: z.number().int().nonnegative().default(0),
+    step: writingActionStepSchema,
+    inputHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable()
+      .default(null),
+    outputRefs: z.array(checkpointOutputRefSchema).max(100).default([]),
+    payload: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type WritingActionCheckpoint = z.infer<typeof writingActionCheckpointSchema>;
+
+export const writeActionJobSchema = z
+  .object({
+    jobId: uuidV7Schema,
+    jobType: z.literal(WRITE_ACTION_JOB),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    modelConfigId: uuidV7Schema,
+    idempotencyKey: z.string().min(1),
+    action: writingActionKindSchema,
+    sourceVersionId: uuidV7Schema,
+    input: writingActionRequestSchema,
+    budget: generationBudgetSchema,
+    checkpoint: writingActionCheckpointSchema,
+  })
+  .superRefine((job, context) => {
+    if (job.action !== job.input.action) {
+      context.addIssue({
+        code: "custom",
+        path: ["input", "action"],
+        message: "Writing action job and input must use the same action",
+      });
+    }
+  });
+export type WriteActionJob = z.infer<typeof writeActionJobSchema>;
 
 export const generationJobStatusSchema = z.enum([
   "queued",
@@ -4452,6 +4737,7 @@ export const contextSourceTypeSchema = z.enum([
   "chapter_brief",
   "chapter_version",
   "style",
+  "summary",
 ]);
 export type ContextSourceType = z.infer<typeof contextSourceTypeSchema>;
 
@@ -4489,6 +4775,7 @@ export type ContextInclusionReason = z.infer<typeof contextInclusionReasonSchema
 export const contextEvictionReasonSchema = z.enum([
   "token_budget",
   "stale_branch",
+  "summary_stale",
   "task_mismatch",
   "pov_mismatch",
   "future_fact",
@@ -4613,6 +4900,171 @@ export const contextPackPreviewSchema = z.object({
 });
 export type ContextPackPreview = z.infer<typeof contextPackPreviewSchema>;
 
+export const summaryLevelSchema = z.enum(["chapter", "stage", "volume", "book"]);
+export type SummaryLevel = z.infer<typeof summaryLevelSchema>;
+
+export const summaryStatusSchema = z.enum(["fresh", "stale", "rebuilding"]);
+export type SummaryStatus = z.infer<typeof summaryStatusSchema>;
+
+const summaryHashSchema = z.string().regex(/^[a-f0-9]{64}$/i, "Expected a SHA-256 hash");
+
+export const summarySourceRangeSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    versionNodeId: uuidV7Schema.nullable(),
+    objectVersion: z.number().int().positive(),
+    chapterFrom: z.number().int().positive(),
+    chapterTo: z.number().int().positive().nullable(),
+  })
+  .strict()
+  .superRefine((range, context) => {
+    if (range.chapterTo !== null && range.chapterTo < range.chapterFrom) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterTo"],
+        message: "Source range end cannot precede its start",
+      });
+    }
+  });
+export type SummarySourceRange = z.infer<typeof summarySourceRangeSchema>;
+
+export const summaryRecordSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    level: summaryLevelSchema,
+    scopeId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    title: z.string().trim().min(1).max(200),
+    content: z.string().trim().min(1).max(20_000),
+    status: summaryStatusSchema,
+    version: z.number().int().positive(),
+    contentHash: summaryHashSchema,
+    inputHash: summaryHashSchema,
+    compilerVersion: z.string().trim().min(1).max(100),
+    modelVersion: z.string().trim().min(1).max(200),
+    sourceRanges: z.array(summarySourceRangeSchema).min(1).max(10_000),
+    fromChapter: z.number().int().positive(),
+    toChapter: z.number().int().positive().nullable(),
+    generatedAt: z.string().datetime(),
+    invalidatedAt: z.string().datetime().nullable(),
+    invalidationReason: z.string().trim().min(1).max(500).nullable(),
+  })
+  .strict()
+  .superRefine((summary, context) => {
+    if (summary.toChapter !== null && summary.toChapter < summary.fromChapter) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Summary range end cannot precede its start",
+      });
+    }
+    if (summary.level === "chapter" && !summary.chapterId) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "Chapter summaries require a chapter",
+      });
+    }
+    if (summary.status === "fresh" && (summary.invalidatedAt || summary.invalidationReason)) {
+      context.addIssue({
+        code: "custom",
+        path: ["invalidatedAt"],
+        message: "Fresh summaries cannot carry invalidation evidence",
+      });
+    }
+    if (summary.status !== "fresh" && (!summary.invalidatedAt || !summary.invalidationReason)) {
+      context.addIssue({
+        code: "custom",
+        path: ["invalidatedAt"],
+        message: "Stale or rebuilding summaries require invalidation evidence",
+      });
+    }
+  });
+export type SummaryRecord = z.infer<typeof summaryRecordSchema>;
+
+export const summaryRebuildStatusSchema = z.enum([
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export type SummaryRebuildStatus = z.infer<typeof summaryRebuildStatusSchema>;
+
+export const summaryRebuildRequestSchema = z
+  .object({
+    levels: z.array(summaryLevelSchema).min(1).default(["chapter", "stage", "volume", "book"]),
+    force: z.boolean().default(false),
+  })
+  .strict();
+export type SummaryRebuildRequest = z.infer<typeof summaryRebuildRequestSchema>;
+
+export const summaryRebuildRunSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    status: summaryRebuildStatusSchema,
+    levels: z.array(summaryLevelSchema).min(1),
+    idempotencyKey: z.string().min(1).max(200),
+    compilerVersion: z.string().min(1).max(100),
+    modelVersion: z.string().min(1).max(200),
+    checkpointRevision: z.number().int().nonnegative(),
+    totalItems: z.number().int().nonnegative(),
+    completedItems: z.number().int().nonnegative(),
+    failedItems: z.number().int().nonnegative(),
+    error: generationJobErrorSchema.nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type SummaryRebuildRun = z.infer<typeof summaryRebuildRunSchema>;
+
+export const summaryStatsSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    fresh: z.number().int().nonnegative(),
+    stale: z.number().int().nonnegative(),
+    rebuilding: z.number().int().nonnegative(),
+  })
+  .strict();
+export type SummaryStats = z.infer<typeof summaryStatsSchema>;
+
+export const summaryWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    invalidationRuleVersion: z.literal("summary-invalidation-v1"),
+    summaries: z.array(summaryRecordSchema),
+    rebuilds: z.array(summaryRebuildRunSchema),
+    stats: summaryStatsSchema,
+  })
+  .strict();
+export type SummaryWorkspace = z.infer<typeof summaryWorkspaceSchema>;
+
+export const summaryWorkspaceResponseSchema = apiEnvelopeSchema(summaryWorkspaceSchema);
+export const summaryRebuildRunResponseSchema = apiEnvelopeSchema(summaryRebuildRunSchema);
+
+export const summaryRebuildJobSchema = z.object({
+  jobType: z.literal(SUMMARY_REBUILD_JOB),
+  runId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  actorId: uuidV7Schema,
+  idempotencyKey: z.string().min(1).max(200),
+});
+export type SummaryRebuildJob = z.infer<typeof summaryRebuildJobSchema>;
+
+export const workerJobSchema = z.discriminatedUnion("jobType", [
+  generateChapterJobSchema,
+  summaryRebuildJobSchema,
+  writeActionJobSchema,
+]);
+export type WorkerJob = z.infer<typeof workerJobSchema>;
+
 export const generationJobSchema = z.object({
   id: uuidV7Schema,
   type: z.literal(GENERATE_CHAPTER_JOB),
@@ -4632,6 +5084,31 @@ export const generationJobSchema = z.object({
   finishedAt: z.string().datetime().nullable(),
 });
 export type GenerationJob = z.infer<typeof generationJobSchema>;
+
+export const writingActionJobSchema = z
+  .object({
+    id: uuidV7Schema,
+    type: z.literal(WRITE_ACTION_JOB),
+    action: writingActionKindSchema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    sourceVersionId: uuidV7Schema,
+    status: generationJobStatusSchema,
+    progress: z.number().int().min(0).max(100),
+    currentStep: writingActionStepSchema,
+    budget: generationBudgetSchema,
+    cost: generationCostSchema,
+    checkpoint: writingActionCheckpointSchema,
+    output: writingActionOutputSchema.nullable(),
+    contextPack: contextPackVersionSchema.nullable(),
+    error: generationJobErrorSchema.nullable(),
+    createdAt: z.string().datetime(),
+    startedAt: z.string().datetime().nullable(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type WritingActionJob = z.infer<typeof writingActionJobSchema>;
 
 export const jobRecoveryActionSchema = z.enum(["retry", "resume"]);
 export type JobRecoveryAction = z.infer<typeof jobRecoveryActionSchema>;
@@ -4707,6 +5184,10 @@ export type JobEvent = z.infer<typeof jobEventSchema>;
 
 export const generationJobResponseSchema = apiEnvelopeSchema(generationJobSchema);
 export const generationJobListResponseSchema = apiEnvelopeSchema(z.array(generationJobSchema));
+export const writingActionJobResponseSchema = apiEnvelopeSchema(writingActionJobSchema);
+export const writingActionJobListResponseSchema = apiEnvelopeSchema(
+  z.array(writingActionJobSchema),
+);
 export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
 export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);
 

@@ -253,6 +253,20 @@
       "when": 1793955993732,
       "tag": "0035_fresh_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1793958670885,
+      "tag": "0036_summaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1793959387466,
+      "tag": "0037_writing_actions",
+      "breakpoints": true
     }
   ]
 }

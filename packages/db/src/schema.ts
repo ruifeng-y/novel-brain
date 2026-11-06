@@ -298,7 +298,7 @@ export const versionNodes = pgTable(
     index("version_nodes_user_work_idx").on(table.userId, table.workId),
     check(
       "version_nodes_node_type_check",
-      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
+      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'writing_action_output', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
     ),
   ],
 );
@@ -2280,6 +2280,9 @@ export const jobs = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    sourceVersionId: uuid("source_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
     modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
       onDelete: "restrict",
     }),
@@ -2293,6 +2296,8 @@ export const jobs = pgTable(
     checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull(),
     checkpointVersion: integer("checkpoint_version").notNull().default(0),
     orchestration: jsonb("orchestration").$type<Record<string, unknown>>(),
+    action: text("action"),
+    actionInput: jsonb("action_input").$type<Record<string, unknown>>(),
     cost: jsonb("cost").$type<Record<string, unknown>>().notNull(),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
@@ -2305,6 +2310,7 @@ export const jobs = pgTable(
     uniqueIndex("jobs_chapter_idempotency_unique").on(
       table.userId,
       table.chapterId,
+      table.type,
       table.idempotencyKey,
     ),
     uniqueIndex("jobs_workflow_idempotency_unique")
@@ -2312,16 +2318,89 @@ export const jobs = pgTable(
       .where(sql`${table.type} = 'agent_workflow'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
-    check("jobs_type_check", sql`${table.type} in ('generate_chapter', 'agent_workflow')`),
+    check(
+      "jobs_type_check",
+      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action')`,
+    ),
     check(
       "jobs_required_scope_check",
-      sql`(${table.type} = 'agent_workflow') or (${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+      sql`(${table.type} = 'agent_workflow') or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+    ),
+    check(
+      "jobs_writing_action_scope_check",
+      sql`(${table.type} = 'write_action' and ${table.action} is not null and ${table.sourceVersionId} is not null and ${table.actionInput} is not null) or (${table.type} <> 'write_action' and ${table.action} is null and ${table.sourceVersionId} is null and ${table.actionInput} is null)`,
     ),
     check(
       "jobs_status_check",
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
     ),
     check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
+  ],
+);
+
+export const writingActions = pgTable(
+  "writing_actions",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    version: integer("version").notNull(),
+    outputKind: text("output_kind").notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    affectedRange: jsonb("affected_range").$type<Record<string, number>>(),
+    artifact: jsonb("artifact").$type<Record<string, unknown>>().notNull(),
+    promptKey: text("prompt_key").notNull(),
+    promptVersion: integer("prompt_version").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    modelProvider: text("model_provider").notNull(),
+    model: text("model").notNull(),
+    modelParameters: jsonb("model_parameters")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("writing_actions_job_unique").on(table.jobId),
+    uniqueIndex("writing_actions_chapter_version_unique").on(table.chapterId, table.version),
+    index("writing_actions_user_work_idx").on(table.userId, table.workId),
+    index("writing_actions_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check(
+      "writing_actions_action_check",
+      sql`${table.action} in ('continue', 'rewrite', 'expand', 'condense', 'change_pov', 'add_hook', 'generate_title', 'generate_summary', 'selection_rewrite')`,
+    ),
+    check(
+      "writing_actions_output_kind_check",
+      sql`${table.outputKind} in ('chapter_text', 'title_options', 'summary', 'hooks')`,
+    ),
+    check("writing_actions_version_check", sql`${table.version} > 0`),
+    check(
+      "writing_actions_chapter_output_check",
+      sql`(${table.outputKind} = 'chapter_text' and ${table.chapterVersionId} is not null) or (${table.outputKind} <> 'chapter_text' and ${table.chapterVersionId} is null)`,
+    ),
+    check("writing_actions_prompt_hash_check", sql`${table.promptHash} ~ '^[a-f0-9]{64}$'`),
   ],
 );
 
@@ -3050,6 +3129,14 @@ export type SceneInformationReleaseJson = {
   constraint: string | null;
 };
 
+export type SummarySourceRangeJson = {
+  nodeId: string;
+  versionNodeId: string | null;
+  objectVersion: number;
+  chapterFrom: number;
+  chapterTo: number | null;
+};
+
 export type VolumePlotLineJson = {
   name: string;
   status: string;
@@ -3298,6 +3385,179 @@ export const searchDocuments = pgTable(
       "search_documents_to_story_time_check",
       sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
     ),
+  ],
+);
+
+export const summaryRecords = pgTable(
+  "summary_records",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    level: text("level").notNull(),
+    scopeId: uuid("scope_id").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    status: text("status").notNull().default("stale"),
+    version: integer("version").notNull().default(1),
+    contentHash: text("content_hash").notNull(),
+    inputHash: text("input_hash").notNull(),
+    compilerVersion: text("compiler_version").notNull(),
+    modelVersion: text("model_version").notNull(),
+    sourceRanges: jsonb("source_ranges").$type<SummarySourceRangeJson[]>().notNull(),
+    fromChapter: integer("from_chapter").notNull(),
+    toChapter: integer("to_chapter"),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
+    invalidationReason: text("invalidation_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("summary_records_branch_scope_unique").on(
+      table.branchId,
+      table.level,
+      table.scopeId,
+    ),
+    index("summary_records_user_work_branch_status_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.status,
+    ),
+    index("summary_records_branch_range_idx").on(
+      table.branchId,
+      table.fromChapter,
+      table.toChapter,
+    ),
+    check(
+      "summary_records_level_check",
+      sql`${table.level} in ('chapter', 'stage', 'volume', 'book')`,
+    ),
+    check("summary_records_status_check", sql`${table.status} in ('fresh', 'stale', 'rebuilding')`),
+    check("summary_records_version_check", sql`${table.version} > 0`),
+    check(
+      "summary_records_content_hash_check",
+      sql`${table.contentHash} ~ '^[a-fA-F0-9]{64}$' and ${table.inputHash} ~ '^[a-fA-F0-9]{64}$'`,
+    ),
+    check(
+      "summary_records_range_check",
+      sql`${table.toChapter} is null or ${table.toChapter} >= ${table.fromChapter}`,
+    ),
+    check(
+      "summary_records_invalidation_check",
+      sql`(${table.status} = 'fresh' and ${table.invalidatedAt} is null and ${table.invalidationReason} is null) or (${table.status} <> 'fresh' and ${table.invalidatedAt} is not null and length(trim(${table.invalidationReason})) > 0)`,
+    ),
+  ],
+);
+
+export const summaryRebuildRuns = pgTable(
+  "summary_rebuild_runs",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    levels: jsonb("levels").$type<string[]>().notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    compilerVersion: text("compiler_version").notNull(),
+    modelVersion: text("model_version").notNull(),
+    checkpointRevision: integer("checkpoint_revision").notNull().default(0),
+    totalItems: integer("total_items").notNull().default(0),
+    completedItems: integer("completed_items").notNull().default(0),
+    failedItems: integer("failed_items").notNull().default(0),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("summary_rebuild_runs_branch_idempotency_unique").on(
+      table.branchId,
+      table.idempotencyKey,
+    ),
+    index("summary_rebuild_runs_user_work_branch_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.createdAt,
+    ),
+    check(
+      "summary_rebuild_runs_status_check",
+      sql`${table.status} in ('queued', 'running', 'completed', 'failed', 'cancelled')`,
+    ),
+    check(
+      "summary_rebuild_runs_counts_check",
+      sql`${table.checkpointRevision} >= 0 and ${table.totalItems} >= 0 and ${table.completedItems} >= 0 and ${table.completedItems} <= ${table.totalItems} and ${table.failedItems} >= 0 and ${table.failedItems} <= ${table.totalItems}`,
+    ),
+  ],
+);
+
+export const summaryRebuildItems = pgTable(
+  "summary_rebuild_items",
+  {
+    id: uuid("id").primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => summaryRebuildRuns.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    level: text("level").notNull(),
+    scopeId: uuid("scope_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    inputHash: text("input_hash"),
+    outputSummaryId: uuid("output_summary_id").references(() => summaryRecords.id, {
+      onDelete: "set null",
+    }),
+    attempts: integer("attempts").notNull().default(0),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("summary_rebuild_items_run_ordinal_unique").on(table.runId, table.ordinal),
+    uniqueIndex("summary_rebuild_items_run_scope_unique").on(
+      table.runId,
+      table.level,
+      table.scopeId,
+    ),
+    index("summary_rebuild_items_run_status_idx").on(table.runId, table.status, table.ordinal),
+    check(
+      "summary_rebuild_items_level_check",
+      sql`${table.level} in ('chapter', 'stage', 'volume', 'book')`,
+    ),
+    check(
+      "summary_rebuild_items_status_check",
+      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed')`,
+    ),
+    check("summary_rebuild_items_ordinal_check", sql`${table.ordinal} >= 0`),
+    check("summary_rebuild_items_attempts_check", sql`${table.attempts} >= 0`),
   ],
 );
 
