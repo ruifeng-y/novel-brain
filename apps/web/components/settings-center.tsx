@@ -5,14 +5,17 @@ import {
   Check,
   ChevronRight,
   Circle,
+  GitPullRequest,
   Globe2,
   History,
   LoaderCircle,
   Lock,
   Map,
+  MessageSquare,
   Pencil,
   Plus,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   Swords,
   TriangleAlert,
@@ -24,14 +27,25 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   apiErrorSchema,
   confirmedSettingListResponseSchema,
+  customFieldDefinitionListResponseSchema,
+  customFieldDefinitionResponseSchema,
   settingEntityDeleteResponseSchema,
   settingEntityListResponseSchema,
   settingEntityResponseSchema,
+  settingChangeRequestListResponseSchema,
+  settingChangeRequestResponseSchema,
+  settingProposalListResponseSchema,
+  settingProposalResponseSchema,
   workResponseSchema,
   type ConfirmedSetting,
+  type CustomFieldDefinition,
+  type CustomFieldValue,
+  type SettingChangeRequest,
+  type SettingConflictType,
   type SettingEntity,
   type SettingEntityCreateRequest,
   type SettingEntityType,
+  type SettingProposal,
   type WorkOverview,
 } from "@novel-brain/contracts";
 
@@ -39,8 +53,11 @@ import { getCsrfToken } from "../lib/csrf-client";
 
 type ColumnKey = "world" | "characters" | "factions" | "map" | "power" | "items" | "timeline";
 
+type ViewMode = "columns" | "confirmed" | "fields";
+type EditorMode = "create" | "edit" | "change";
+
 type EditorState = {
-  mode: "create" | "edit";
+  mode: EditorMode;
   entityId?: string;
   version?: number;
   type: SettingEntityType;
@@ -58,6 +75,37 @@ type EditorState = {
   limits: string;
   growth: string;
   details: string;
+  itemCategory: string;
+  itemGrade: string;
+  itemEffect: string;
+  itemCost: string;
+  itemOwnership: string;
+  itemLimits: string;
+  timelineEra: string;
+  timelineStoryTime: string;
+  timelineDuration: string;
+  timelineEvent: string;
+  customFields: Record<string, CustomFieldValue | null>;
+  requestTitle: string;
+  requestReason: string;
+};
+
+type ProposalInput = {
+  reason: string;
+  conflictType: SettingConflictType;
+  evidenceLabel: string;
+  evidenceQuote: string;
+};
+
+type FieldFormState = {
+  key: string;
+  label: string;
+  fieldType: CustomFieldDefinition["fieldType"];
+  appliesTo: CustomFieldDefinition["appliesTo"];
+  required: boolean;
+  options: string;
+  relationTarget: CustomFieldDefinition["relationTarget"];
+  sortOrder: string;
 };
 
 const COLUMNS: Array<{
@@ -72,8 +120,8 @@ const COLUMNS: Array<{
   { key: "characters", label: "人物", contentLabel: "人物档案", icon: Users, supported: true },
   { key: "map", label: "地图", contentLabel: "地图", icon: Map, supported: true },
   { key: "power", label: "力量体系", contentLabel: "力量体系", icon: Zap, supported: true },
-  { key: "items", label: "物品功法", contentLabel: "物品功法", icon: Swords, supported: false },
-  { key: "timeline", label: "时间线", contentLabel: "时间线", icon: History, supported: false },
+  { key: "items", label: "物品功法", contentLabel: "物品功法", icon: Swords, supported: true },
+  { key: "timeline", label: "时间线", contentLabel: "时间线", icon: History, supported: true },
 ];
 
 const typeLabels: Record<SettingEntityType, string> = {
@@ -83,6 +131,8 @@ const typeLabels: Record<SettingEntityType, string> = {
   map: "地图",
   power_system: "力量体系",
   golden_finger: "金手指",
+  item: "物品功法",
+  timeline_event: "时间线事件",
 };
 
 const typeDescriptions: Record<SettingTypeColumn, string> = {
@@ -92,6 +142,8 @@ const typeDescriptions: Record<SettingTypeColumn, string> = {
   map: "地点层级、路径和场景边界",
   power_system: "层级、路径、突破条件和代价",
   golden_finger: "规则、代价、限制与成长",
+  item: "品阶、效果、代价、归属与限制",
+  timeline_event: "纪元、故事时间、持续时长与事件",
 };
 
 type SettingTypeColumn = SettingEntityType;
@@ -110,12 +162,60 @@ const statusLabels: Record<SettingEntity["status"], string> = {
   discarded: "已废弃",
 };
 
+const proposalStatusLabels: Record<SettingProposal["status"], string> = {
+  pending: "待裁决",
+  accepted: "已确认",
+  rejected: "已驳回",
+};
+
+const changeRequestStatusLabels: Record<SettingChangeRequest["status"], string> = {
+  pending: "待分析",
+  approved: "已批准",
+  rejected: "已驳回",
+  applied: "已应用",
+};
+
+const customFieldTypeLabels: Record<CustomFieldDefinition["fieldType"], string> = {
+  text: "文本",
+  long_text: "长文本",
+  number: "数字",
+  date: "日期",
+  single_select: "单选",
+  multi_select: "多选",
+  boolean: "布尔",
+  relation_ref: "关系引用",
+};
+
+const appliesToLabels: Record<CustomFieldDefinition["appliesTo"], string> = {
+  all: "全部设定",
+  world_rule: "世界规则",
+  character: "人物",
+  faction: "势力",
+  map: "地图",
+  power_system: "力量体系",
+  golden_finger: "金手指",
+  item: "物品功法",
+  timeline_event: "时间线",
+};
+
+const conflictTypeLabels: Record<SettingConflictType, string> = {
+  none: "无冲突",
+  duplicate_name: "重名",
+  alias_collision: "别名冲突",
+  contradictory_fact: "事实矛盾",
+  import_candidate: "导入候选冲突",
+  ai_disagreement: "AI 建议分歧",
+};
+
 export function SettingsCenter({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverview | null>(null);
   const [entities, setEntities] = useState<SettingEntity[]>([]);
   const [confirmed, setConfirmed] = useState<ConfirmedSetting[]>([]);
+  const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
+  const [proposals, setProposals] = useState<SettingProposal[]>([]);
+  const [changeRequests, setChangeRequests] = useState<SettingChangeRequest[]>([]);
   const [activeColumn, setActiveColumn] = useState<ColumnKey>("world");
-  const [view, setView] = useState<"columns" | "confirmed">("columns");
+  const [view, setView] = useState<ViewMode>("columns");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -134,9 +234,10 @@ export function SettingsCenter({ workId }: { workId: string }) {
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
       const basePath = settingsPath(workData);
-      const [entityResponse, confirmedResponse] = await Promise.all([
+      const [entityResponse, confirmedResponse, fieldResponse] = await Promise.all([
         fetch(`${basePath}/entities`, { cache: "no-store" }),
         fetch(`${basePath}/facts`, { cache: "no-store" }),
+        fetch(`${basePath}/custom-fields`, { cache: "no-store" }),
       ]);
       if (!entityResponse.ok) {
         throw new Error(await readError(entityResponse, "设定加载失败。"));
@@ -144,9 +245,15 @@ export function SettingsCenter({ workId }: { workId: string }) {
       if (!confirmedResponse.ok) {
         throw new Error(await readError(confirmedResponse, "已确认设定加载失败。"));
       }
+      if (!fieldResponse.ok) {
+        throw new Error(await readError(fieldResponse, "自定义字段加载失败。"));
+      }
       setWork(workData);
       setEntities(settingEntityListResponseSchema.parse(await entityResponse.json()).data);
       setConfirmed(confirmedSettingListResponseSchema.parse(await confirmedResponse.json()).data);
+      setCustomFields(
+        customFieldDefinitionListResponseSchema.parse(await fieldResponse.json()).data,
+      );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "设定中心加载失败。");
     } finally {
@@ -158,6 +265,37 @@ export function SettingsCenter({ workId }: { workId: string }) {
     void load();
   }, [load]);
 
+  const refreshDetail = useCallback(
+    async (entityId: string) => {
+      if (!work) {
+        return;
+      }
+      const basePath = settingsPath(work);
+      const [proposalResponse, changeResponse] = await Promise.all([
+        fetch(`${basePath}/entities/${entityId}/proposals`, { cache: "no-store" }),
+        fetch(`${basePath}/entities/${entityId}/change-requests`, { cache: "no-store" }),
+      ]);
+      if (proposalResponse.ok) {
+        setProposals(settingProposalListResponseSchema.parse(await proposalResponse.json()).data);
+      }
+      if (changeResponse.ok) {
+        setChangeRequests(
+          settingChangeRequestListResponseSchema.parse(await changeResponse.json()).data,
+        );
+      }
+    },
+    [work],
+  );
+
+  useEffect(() => {
+    if (view !== "columns" || !selectedId) {
+      setProposals([]);
+      setChangeRequests([]);
+      return;
+    }
+    void refreshDetail(selectedId);
+  }, [refreshDetail, selectedId, view]);
+
   const counts = useMemo(() => {
     return {
       world: entities.filter((entity) => entity.type === "world_rule").length,
@@ -167,8 +305,8 @@ export function SettingsCenter({ workId }: { workId: string }) {
       power: entities.filter(
         (entity) => entity.type === "power_system" || entity.type === "golden_finger",
       ).length,
-      items: 0,
-      timeline: 0,
+      items: entities.filter((entity) => entity.type === "item").length,
+      timeline: entities.filter((entity) => entity.type === "timeline_event").length,
     } satisfies Record<ColumnKey, number>;
   }, [entities]);
 
@@ -180,15 +318,21 @@ export function SettingsCenter({ workId }: { workId: string }) {
       return;
     }
     const basePath = settingsPath(work);
-    const [entityResponse, confirmedResponse] = await Promise.all([
+    const [entityResponse, confirmedResponse, fieldResponse] = await Promise.all([
       fetch(`${basePath}/entities`, { cache: "no-store" }),
       fetch(`${basePath}/facts`, { cache: "no-store" }),
+      fetch(`${basePath}/custom-fields`, { cache: "no-store" }),
     ]);
     if (entityResponse.ok) {
       setEntities(settingEntityListResponseSchema.parse(await entityResponse.json()).data);
     }
     if (confirmedResponse.ok) {
       setConfirmed(confirmedSettingListResponseSchema.parse(await confirmedResponse.json()).data);
+    }
+    if (fieldResponse.ok) {
+      setCustomFields(
+        customFieldDefinitionListResponseSchema.parse(await fieldResponse.json()).data,
+      );
     }
   }
 
@@ -227,6 +371,25 @@ export function SettingsCenter({ workId }: { workId: string }) {
     setActionError("");
     setNotice("");
     try {
+      if (editor.mode === "change") {
+        const request = await mutateChangeRequest(
+          `${settingsPath(work)}/entities/${editor.entityId}/change-requests`,
+          {
+            version: editor.version,
+            title: editor.requestTitle.trim(),
+            reason: editor.requestReason.trim(),
+            after: changePayload(editor),
+            conflictType: "none",
+            evidence: [authorNote(editor.requestReason)],
+          },
+          "修改请求提交失败。",
+        );
+        setChangeRequests((current) => [...current, request]);
+        setEditor(null);
+        setNotice(`“${request.title}”已提交，等待影响分析。`);
+        await refreshDetail(editor.entityId);
+        return;
+      }
       const updated = await mutateEntity(
         `${settingsPath(work)}/entities/${editor.entityId}`,
         "PATCH",
@@ -242,6 +405,137 @@ export function SettingsCenter({ workId }: { workId: string }) {
       await refreshProjection();
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "设定保存失败。");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function createProposal(entity: SettingEntity, input: ProposalInput) {
+    if (!work) {
+      return;
+    }
+    setBusy(`proposal-${entity.id}`);
+    setActionError("");
+    setNotice("");
+    try {
+      const proposal = await mutateProposal(
+        `${settingsPath(work)}/entities/${entity.id}/proposals`,
+        {
+          version: entity.version,
+          reason: input.reason.trim(),
+          conflictType: input.conflictType,
+          evidence: [
+            {
+              kind: "author_note",
+              sourceId: null,
+              label: input.evidenceLabel.trim() || "作者说明",
+              quote: input.evidenceQuote.trim() || input.reason.trim(),
+              locator: "",
+              confidence: null,
+            },
+          ],
+        },
+        "提案提交失败。",
+      );
+      setProposals((current) => [...current, proposal]);
+      await refreshProjection();
+      await refreshDetail(entity.id);
+      setNotice(`“${entity.name}”已提交提案，等待裁决。`);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "提案提交失败。");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function decideProposal(
+    entity: SettingEntity,
+    proposal: SettingProposal,
+    decision: "accept" | "reject",
+    reason: string,
+  ) {
+    if (!work) {
+      return;
+    }
+    setBusy(`decision-${proposal.id}`);
+    setActionError("");
+    setNotice("");
+    try {
+      const decided = await mutateProposal(
+        `${settingsPath(work)}/entities/${entity.id}/proposals/${proposal.id}/decision`,
+        {
+          decision,
+          reason: reason.trim() || (decision === "accept" ? "作者确认提案" : "作者驳回提案"),
+          conflictType: decision === "accept" ? "none" : proposal.conflictType,
+          evidence: proposal.evidence.length > 0 ? proposal.evidence : [authorNote(reason)],
+        },
+        decision === "accept" ? "提案确认失败。" : "提案驳回失败。",
+      );
+      setProposals((current) =>
+        current.map((candidate) => (candidate.id === decided.id ? decided : candidate)),
+      );
+      await refreshProjection();
+      await refreshDetail(entity.id);
+      setNotice(decision === "accept" ? "提案已确认并锁定。" : "提案已驳回，设定已废弃。");
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "提案裁决失败。");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function createCustomField(form: FieldFormState) {
+    if (!work) {
+      return;
+    }
+    setBusy("custom-field");
+    setActionError("");
+    setNotice("");
+    try {
+      const definition = await mutateCustomField(
+        `${settingsPath(work)}/custom-fields`,
+        "POST",
+        {
+          key: form.key.trim(),
+          label: form.label.trim(),
+          fieldType: form.fieldType,
+          appliesTo: form.appliesTo,
+          required: form.required,
+          options: splitList(form.options),
+          relationTarget: form.relationTarget,
+          sortOrder: Number(form.sortOrder) || 0,
+        },
+        "自定义字段创建失败。",
+      );
+      setCustomFields((current) => [...current, definition]);
+      setNotice(`字段“${definition.label}”已创建。`);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "自定义字段创建失败。");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function toggleCustomField(definition: CustomFieldDefinition) {
+    if (!work) {
+      return;
+    }
+    setBusy(`field-${definition.id}`);
+    setActionError("");
+    setNotice("");
+    try {
+      const updated = await mutateCustomField(
+        `${settingsPath(work)}/custom-fields/${definition.id}`,
+        "PATCH",
+        { schemaVersion: definition.schemaVersion, enabled: !definition.enabled },
+        "自定义字段更新失败。",
+      );
+      setCustomFields((current) =>
+        current.map((candidate) => (candidate.id === updated.id ? updated : candidate)),
+      );
+      setNotice(`字段“${updated.label}”已${updated.enabled ? "启用" : "停用"}。`);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "自定义字段更新失败。");
     } finally {
       setBusy("");
     }
@@ -328,6 +622,16 @@ export function SettingsCenter({ workId }: { workId: string }) {
     }, 0);
   }
 
+  function beginChangeRequest(entity: SettingEntity) {
+    const next = editorFromEntity(entity);
+    next.mode = "change";
+    next.requestTitle = `修改“${entity.name}”`;
+    next.requestReason = "";
+    setEditor(next);
+    setActionError("");
+    setNotice("");
+  }
+
   if (loading) {
     return (
       <section className="panel works-loading" aria-label="正在加载设定中心">
@@ -350,20 +654,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
   }
 
   const activeColumnMeta = COLUMNS.find((column) => column.key === activeColumn) ?? COLUMNS[0]!;
-  const visibleEntities =
-    activeColumn === "world"
-      ? entities.filter((entity) => entity.type === "world_rule")
-      : activeColumn === "characters"
-        ? entities.filter((entity) => entity.type === "character")
-        : activeColumn === "factions"
-          ? entities.filter((entity) => entity.type === "faction")
-          : activeColumn === "map"
-            ? entities.filter((entity) => entity.type === "map")
-            : activeColumn === "power"
-              ? entities.filter(
-                  (entity) => entity.type === "power_system" || entity.type === "golden_finger",
-                )
-              : [];
+  const visibleEntities = entitiesForColumn(entities, activeColumn);
 
   return (
     <>
@@ -382,6 +673,18 @@ export function SettingsCenter({ workId }: { workId: string }) {
             <ArrowLeft size={15} aria-hidden="true" />
             返回总览
           </Link>
+          <button
+            className="btn btn-ghost"
+            onClick={() => {
+              setView("fields");
+              setEditor(null);
+              setActionError("");
+            }}
+            type="button"
+          >
+            <SlidersHorizontal size={15} aria-hidden="true" />
+            自定义字段
+          </button>
           <button
             className="btn btn-ghost"
             onClick={() => {
@@ -440,17 +743,26 @@ export function SettingsCenter({ workId }: { workId: string }) {
           })}
           <div className="settings-column-note">
             <Sparkles size={15} aria-hidden="true" />
-            <span>M0 先维护世界规则、人物档案和金手指。</span>
+            <span>七个栏目都使用真实设定数据；锁定或提案中的条目要先完成状态流转。</span>
           </div>
         </aside>
 
         <main className="settings-content">
           {view === "confirmed" ? (
             <ConfirmedSettings items={confirmed} />
+          ) : view === "fields" ? (
+            <CustomFieldsPanel
+              busy={busy}
+              definitions={customFields}
+              onCreate={createCustomField}
+              onToggle={toggleCustomField}
+            />
           ) : editor ? (
             <SettingEditor
               busy={busy === "save"}
+              customFieldDefinitions={customFields}
               editor={editor}
+              entities={entities}
               onCancel={() => setEditor(null)}
               onChange={setEditor}
               onSave={() => (editor.mode === "create" ? createEntity() : saveEntity())}
@@ -479,11 +791,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
                 )}
               </div>
 
-              {!activeColumnMeta.supported ? (
-                <LaterColumnState column={activeColumnMeta.contentLabel} />
-              ) : activeColumn === "power" ? (
-                <PowerColumn entities={visibleEntities} onOpen={setSelectedId} />
-              ) : visibleEntities.length === 0 ? (
+              {visibleEntities.length === 0 ? (
                 <ColumnEmptyState
                   label={activeColumnMeta.contentLabel}
                   onCreate={() => beginCreate(typeForColumn(activeColumn))}
@@ -506,14 +814,29 @@ export function SettingsCenter({ workId }: { workId: string }) {
               <h2>已确认内容只读</h2>
               <p>这里展示已经锁定的设定，修改需要回到对应栏目发起新的修改。</p>
             </section>
+          ) : view === "fields" ? (
+            <section className="panel settings-detail-empty">
+              <SlidersHorizontal size={18} aria-hidden="true" />
+              <h2>字段变更只追加</h2>
+              <p>停用字段会保留历史值；新增字段不会破坏已有设定。</p>
+            </section>
           ) : selected ? (
             <EntityDetail
+              changeRequests={changeRequests}
               busy={busy}
+              customFieldDefinitions={customFields}
               entity={selected}
+              key={selected.id}
+              onChangeRequest={() => beginChangeRequest(selected)}
+              onCreateProposal={(input) => createProposal(selected, input)}
               onDelete={() => deleteEntity(selected)}
+              onDecideProposal={(proposal, decision, reason) =>
+                decideProposal(selected, proposal, decision, reason)
+              }
               onEdit={() => beginEdit(selected)}
               onEditAlias={() => beginEdit(selected, "alias")}
               onLock={() => lockEntity(selected)}
+              proposals={proposals}
             />
           ) : (
             <section className="panel settings-detail-empty">
@@ -530,28 +853,44 @@ export function SettingsCenter({ workId }: { workId: string }) {
 
 function SettingEditor({
   busy,
+  customFieldDefinitions,
   editor,
+  entities,
   onCancel,
   onChange,
   onSave,
 }: {
   busy: boolean;
+  customFieldDefinitions: CustomFieldDefinition[];
   editor: EditorState;
+  entities: SettingEntity[];
   onCancel: () => void;
   onChange: (editor: EditorState) => void;
   onSave: () => void;
 }) {
-  const update = (field: keyof EditorState, value: string) => {
+  const update = <Key extends keyof EditorState>(field: Key, value: EditorState[Key]) => {
     onChange({ ...editor, [field]: value });
   };
+  const applicableFields = customFieldDefinitions.filter(
+    (definition) =>
+      definition.enabled &&
+      (definition.appliesTo === "all" || definition.appliesTo === editor.type),
+  );
+  const changeMode = editor.mode === "change";
 
   return (
     <section className="panel settings-editor" aria-labelledby="settings-editor-title">
       <div className="panel-head">
         <div>
-          <span className="panel-kicker">{editor.mode === "create" ? "新增设定" : "编辑设定"}</span>
+          <span className="panel-kicker">
+            {editor.mode === "create" ? "新增设定" : changeMode ? "修改请求" : "编辑设定"}
+          </span>
           <h2 id="settings-editor-title">
-            {editor.mode === "create" ? "先写清最小结构" : editor.name}
+            {editor.mode === "create"
+              ? "先写清最小结构"
+              : changeMode
+                ? "锁定设定只能提交修改请求"
+                : editor.name}
           </h2>
         </div>
         <button className="text-btn small" onClick={onCancel} type="button">
@@ -559,11 +898,35 @@ function SettingEditor({
         </button>
       </div>
 
+      {changeMode ? (
+        <div className="settings-form-grid settings-change-request-form">
+          <label className="settings-field">
+            <span>修改标题</span>
+            <input
+              maxLength={120}
+              onChange={(event) => update("requestTitle", event.target.value)}
+              required
+              value={editor.requestTitle}
+            />
+          </label>
+          <label className="settings-field settings-field-wide">
+            <span>修改原因</span>
+            <textarea
+              onChange={(event) => update("requestReason", event.target.value)}
+              placeholder="说明正文、设定或连续性检查为什么需要这次修改"
+              required
+              rows={3}
+              value={editor.requestReason}
+            />
+          </label>
+        </div>
+      ) : null}
+
       <div className="settings-form-grid">
         <label className="settings-field">
           <span>设定类型</span>
           <select
-            disabled={editor.mode === "edit"}
+            disabled={editor.mode !== "create"}
             onChange={(event) => {
               const type = event.target.value as SettingEntityType;
               const next = emptyEditor(type);
@@ -584,6 +947,8 @@ function SettingEditor({
             <option value="map">地图</option>
             <option value="power_system">力量体系</option>
             <option value="golden_finger">金手指</option>
+            <option value="item">物品功法</option>
+            <option value="timeline_event">时间线事件</option>
           </select>
         </label>
         <label className="settings-field">
@@ -685,6 +1050,90 @@ function SettingEditor({
               value={editor.details}
             />
           </label>
+        ) : editor.type === "item" ? (
+          <div className="settings-form-grid">
+            <label className="settings-field">
+              <span>分类</span>
+              <input
+                onChange={(event) => update("itemCategory", event.target.value)}
+                required
+                value={editor.itemCategory}
+              />
+            </label>
+            <label className="settings-field">
+              <span>品阶</span>
+              <input
+                onChange={(event) => update("itemGrade", event.target.value)}
+                value={editor.itemGrade}
+              />
+            </label>
+            <label className="settings-field settings-field-wide">
+              <span>效果</span>
+              <textarea
+                onChange={(event) => update("itemEffect", event.target.value)}
+                required
+                rows={3}
+                value={editor.itemEffect}
+              />
+            </label>
+            <label className="settings-field">
+              <span>代价</span>
+              <textarea
+                onChange={(event) => update("itemCost", event.target.value)}
+                rows={3}
+                value={editor.itemCost}
+              />
+            </label>
+            <label className="settings-field">
+              <span>归属</span>
+              <input
+                onChange={(event) => update("itemOwnership", event.target.value)}
+                value={editor.itemOwnership}
+              />
+            </label>
+            <label className="settings-field settings-field-wide">
+              <span>限制</span>
+              <textarea
+                onChange={(event) => update("itemLimits", event.target.value)}
+                rows={3}
+                value={editor.itemLimits}
+              />
+            </label>
+          </div>
+        ) : editor.type === "timeline_event" ? (
+          <div className="settings-form-grid">
+            <label className="settings-field">
+              <span>纪元</span>
+              <input
+                onChange={(event) => update("timelineEra", event.target.value)}
+                value={editor.timelineEra}
+              />
+            </label>
+            <label className="settings-field">
+              <span>故事时间</span>
+              <input
+                onChange={(event) => update("timelineStoryTime", event.target.value)}
+                required
+                value={editor.timelineStoryTime}
+              />
+            </label>
+            <label className="settings-field">
+              <span>持续时长</span>
+              <input
+                onChange={(event) => update("timelineDuration", event.target.value)}
+                value={editor.timelineDuration}
+              />
+            </label>
+            <label className="settings-field settings-field-wide">
+              <span>事件</span>
+              <textarea
+                onChange={(event) => update("timelineEvent", event.target.value)}
+                required
+                rows={4}
+                value={editor.timelineEvent}
+              />
+            </label>
+          </div>
         ) : (
           <div className="settings-form-grid">
             <label className="settings-field">
@@ -727,6 +1176,26 @@ function SettingEditor({
         )}
       </div>
 
+      {applicableFields.length > 0 ? (
+        <div className="settings-type-fields">
+          <h3>自定义字段</h3>
+          <p>这些字段会进入设定详情、筛选和后续写作参考。</p>
+          <div className="settings-form-grid">
+            {applicableFields.map((definition) => (
+              <CustomFieldControl
+                definition={definition}
+                entities={entities}
+                key={definition.id}
+                onChange={(value) =>
+                  update("customFields", { ...editor.customFields, [definition.key]: value })
+                }
+                value={editor.customFields[definition.key]}
+              />
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       <div className="settings-editor-actions">
         <button className="btn btn-ghost" disabled={busy} onClick={onCancel} type="button">
           取消
@@ -737,10 +1206,135 @@ function SettingEditor({
           ) : (
             <Check size={15} aria-hidden="true" />
           )}
-          {editor.mode === "create" ? "创建设定" : "保存修改"}
+          {editor.mode === "create" ? "创建设定" : changeMode ? "提交修改请求" : "保存修改"}
         </button>
       </div>
     </section>
+  );
+}
+
+function CustomFieldControl({
+  definition,
+  entities,
+  onChange,
+  value,
+}: {
+  definition: CustomFieldDefinition;
+  entities: SettingEntity[];
+  onChange: (value: CustomFieldValue | null) => void;
+  value: CustomFieldValue | null | undefined;
+}) {
+  const label = `${definition.label}${definition.required ? "（必填）" : ""}`;
+  if (definition.fieldType === "boolean") {
+    return (
+      <label className="settings-field settings-check-field">
+        <span>{label}</span>
+        <input
+          checked={value === true}
+          onChange={(event) => onChange(event.target.checked)}
+          type="checkbox"
+        />
+      </label>
+    );
+  }
+  if (definition.fieldType === "multi_select") {
+    const selected = Array.isArray(value) ? value : [];
+    return (
+      <fieldset className="settings-field settings-field-wide settings-check-group">
+        <legend>{label}</legend>
+        {definition.options.map((option) => (
+          <label key={option}>
+            <input
+              checked={selected.includes(option)}
+              onChange={(event) =>
+                onChange(
+                  event.target.checked
+                    ? [...selected, option]
+                    : selected.filter((item) => item !== option),
+                )
+              }
+              type="checkbox"
+            />
+            <span>{option}</span>
+          </label>
+        ))}
+      </fieldset>
+    );
+  }
+  if (definition.fieldType === "single_select") {
+    return (
+      <label className="settings-field">
+        <span>{label}</span>
+        <select
+          onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
+          value={typeof value === "string" ? value : ""}
+        >
+          <option value="">请选择</option>
+          {definition.options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+  if (definition.fieldType === "relation_ref") {
+    const targets = entities.filter((entity) => entity.type === definition.relationTarget);
+    return (
+      <label className="settings-field">
+        <span>{label}</span>
+        <select
+          onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
+          value={typeof value === "string" ? value : ""}
+        >
+          <option value="">请选择</option>
+          {targets.map((entity) => (
+            <option key={entity.id} value={entity.id}>
+              {entity.name}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
+  if (definition.fieldType === "long_text") {
+    return (
+      <label className="settings-field settings-field-wide">
+        <span>{label}</span>
+        <textarea
+          onChange={(event) => onChange(event.target.value === "" ? null : event.target.value)}
+          rows={3}
+          value={typeof value === "string" ? value : ""}
+        />
+      </label>
+    );
+  }
+  const inputType =
+    definition.fieldType === "number"
+      ? "number"
+      : definition.fieldType === "date"
+        ? "date"
+        : "text";
+  return (
+    <label className="settings-field">
+      <span>{label}</span>
+      <input
+        onChange={(event) =>
+          onChange(
+            definition.fieldType === "number"
+              ? event.target.value === ""
+                ? null
+                : Number(event.target.value)
+              : event.target.value === ""
+                ? null
+                : event.target.value,
+          )
+        }
+        type={inputType}
+        value={typeof value === "number" ? String(value) : typeof value === "string" ? value : ""}
+      />
+    </label>
   );
 }
 
@@ -769,33 +1363,214 @@ function EntityCard({ entity, onOpen }: { entity: SettingEntity; onOpen: (id: st
   );
 }
 
-function PowerColumn({
-  entities,
-  onOpen,
+function CustomFieldsPanel({
+  busy,
+  definitions,
+  onCreate,
+  onToggle,
 }: {
-  entities: SettingEntity[];
-  onOpen: (id: string) => void;
+  busy: string;
+  definitions: CustomFieldDefinition[];
+  onCreate: (form: FieldFormState) => void;
+  onToggle: (definition: CustomFieldDefinition) => void;
 }) {
+  const [form, setForm] = useState<FieldFormState>(blankFieldForm());
+  const [showForm, setShowForm] = useState(false);
+  const update = <Key extends keyof FieldFormState>(field: Key, value: FieldFormState[Key]) => {
+    setForm((current) => ({ ...current, [field]: value }));
+  };
+
   return (
-    <>
-      <div className="settings-later-note">
-        <Sparkles size={16} aria-hidden="true" />
-        <span>力量体系结构将在后续能力中补齐，M0 先维护主角金手指。</span>
+    <section className="panel settings-custom-fields" aria-labelledby="custom-fields-title">
+      <div className="panel-head">
+        <div>
+          <span className="panel-kicker">项目级字段</span>
+          <h2 id="custom-fields-title">自定义字段</h2>
+          <p>让设定结构适配这本书；新增字段只追加，不会改动已有字段和数据。</p>
+        </div>
+        <button
+          className="btn btn-primary btn-small"
+          onClick={() => setShowForm((current) => !current)}
+          type="button"
+        >
+          <Plus size={14} aria-hidden="true" />
+          新增字段
+        </button>
       </div>
-      {entities.length === 0 ? (
-        <section className="panel settings-column-empty">
-          <Zap size={20} aria-hidden="true" />
-          <h2>还没有金手指</h2>
-          <p>写清规则、代价、限制和成长，避免优势变成没有边界的捷径。</p>
+
+      <div className="settings-note">
+        <Sparkles size={15} aria-hidden="true" />
+        <span>字段会进入设定详情、筛选和后续写作参考，不是普通备注。</span>
+      </div>
+
+      {showForm ? (
+        <div className="settings-field-form">
+          <div className="settings-form-grid">
+            <label className="settings-field">
+              <span>字段标识</span>
+              <input
+                onChange={(event) => update("key", event.target.value)}
+                placeholder="例如 fate"
+                value={form.key}
+              />
+            </label>
+            <label className="settings-field">
+              <span>字段名称</span>
+              <input
+                onChange={(event) => update("label", event.target.value)}
+                placeholder="例如 命格"
+                value={form.label}
+              />
+            </label>
+            <label className="settings-field">
+              <span>字段类型</span>
+              <select
+                onChange={(event) =>
+                  update("fieldType", event.target.value as FieldFormState["fieldType"])
+                }
+                value={form.fieldType}
+              >
+                {Object.entries(customFieldTypeLabels).map(([type, label]) => (
+                  <option key={type} value={type}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="settings-field">
+              <span>适用对象</span>
+              <select
+                onChange={(event) =>
+                  update("appliesTo", event.target.value as FieldFormState["appliesTo"])
+                }
+                value={form.appliesTo}
+              >
+                {Object.entries(appliesToLabels).map(([type, label]) => (
+                  <option key={type} value={type}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {form.fieldType === "single_select" || form.fieldType === "multi_select" ? (
+              <label className="settings-field settings-field-wide">
+                <span>选项</span>
+                <input
+                  onChange={(event) => update("options", event.target.value)}
+                  placeholder="用逗号分隔"
+                  value={form.options}
+                />
+              </label>
+            ) : null}
+            {form.fieldType === "relation_ref" ? (
+              <label className="settings-field">
+                <span>关系引用目标</span>
+                <select
+                  onChange={(event) =>
+                    update(
+                      "relationTarget",
+                      (event.target.value || null) as FieldFormState["relationTarget"],
+                    )
+                  }
+                  value={form.relationTarget ?? ""}
+                >
+                  <option value="">请选择</option>
+                  {Object.entries(appliesToLabels)
+                    .filter(([type]) => type !== "all")
+                    .map(([type, label]) => (
+                      <option key={type} value={type}>
+                        {label}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            ) : null}
+            <label className="settings-field">
+              <span>排序</span>
+              <input
+                min={0}
+                onChange={(event) => update("sortOrder", event.target.value)}
+                type="number"
+                value={form.sortOrder}
+              />
+            </label>
+            <label className="settings-field settings-check-field">
+              <span>必填</span>
+              <input
+                checked={form.required}
+                onChange={(event) => update("required", event.target.checked)}
+                type="checkbox"
+              />
+            </label>
+          </div>
+          <div className="settings-editor-actions">
+            <button className="btn btn-ghost" onClick={() => setShowForm(false)} type="button">
+              取消
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={busy === "custom-field"}
+              onClick={() => {
+                onCreate(form);
+                setForm(blankFieldForm());
+                setShowForm(false);
+              }}
+              type="button"
+            >
+              <Check size={15} aria-hidden="true" />
+              创建字段
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {definitions.length === 0 ? (
+        <section className="settings-column-empty">
+          <SlidersHorizontal size={20} aria-hidden="true" />
+          <h2>还没有自定义字段</h2>
+          <p>先创建最小字段，再让设定详情和后续写作逐步使用它。</p>
         </section>
       ) : (
-        <div className="settings-entity-list">
-          {entities.map((entity) => (
-            <EntityCard entity={entity} key={entity.id} onOpen={onOpen} />
+        <div className="settings-custom-field-list">
+          <div className="settings-custom-field-head">
+            <span>字段</span>
+            <span>类型</span>
+            <span>适用范围</span>
+            <span>规则</span>
+            <span>状态</span>
+            <span />
+          </div>
+          {definitions.map((definition) => (
+            <div className="settings-custom-field-row" key={definition.id}>
+              <div>
+                <strong>{definition.label}</strong>
+                <small>{definition.key}</small>
+              </div>
+              <span>{customFieldTypeLabels[definition.fieldType]}</span>
+              <span>{appliesToLabels[definition.appliesTo]}</span>
+              <span>
+                {definition.required ? "必填" : "选填"}
+                {definition.options.length > 0 ? ` · ${definition.options.join("、")}` : ""}
+              </span>
+              <span
+                className={`badge ${definition.enabled ? "settings-status-locked" : "settings-status-discarded"}`}
+              >
+                {definition.enabled ? "启用" : "停用"}
+              </span>
+              <button
+                aria-label={`${definition.enabled ? "停用" : "启用"}${definition.label}`}
+                className="text-btn small"
+                disabled={busy === `field-${definition.id}`}
+                onClick={() => onToggle(definition)}
+                type="button"
+              >
+                {definition.enabled ? "停用" : "启用"}
+              </button>
+            </div>
           ))}
         </div>
       )}
-    </>
+    </section>
   );
 }
 
@@ -813,33 +1588,51 @@ function ColumnEmptyState({ label, onCreate }: { label: string; onCreate: () => 
   );
 }
 
-function LaterColumnState({ column }: { column: string }) {
-  return (
-    <section className="panel settings-column-empty settings-later-column">
-      <Circle size={20} aria-hidden="true" />
-      <h2>{column}还没有开始</h2>
-      <p>这个栏目将在后续能力中开放。</p>
-      <small>M0 先维护世界规则、人物档案和金手指。</small>
-    </section>
-  );
-}
-
 function EntityDetail({
   busy,
+  changeRequests,
+  customFieldDefinitions,
   entity,
+  onChangeRequest,
+  onCreateProposal,
+  onDecideProposal,
   onDelete,
   onEdit,
   onEditAlias,
   onLock,
+  proposals,
 }: {
   busy: string;
+  changeRequests: SettingChangeRequest[];
+  customFieldDefinitions: CustomFieldDefinition[];
   entity: SettingEntity;
+  onChangeRequest: () => void;
+  onCreateProposal: (input: ProposalInput) => void;
+  onDecideProposal: (
+    proposal: SettingProposal,
+    decision: "accept" | "reject",
+    reason: string,
+  ) => void;
   onDelete: () => void;
   onEdit: () => void;
   onEditAlias: () => void;
   onLock: () => void;
+  proposals: SettingProposal[];
 }) {
   const locked = entity.status === "locked";
+  const proposed = entity.status === "proposed";
+  const discarded = entity.status === "discarded";
+  const [showProposalForm, setShowProposalForm] = useState(false);
+  const [proposalReason, setProposalReason] = useState("");
+  const [conflictType, setConflictType] = useState<SettingConflictType>("none");
+  const [evidenceLabel, setEvidenceLabel] = useState("作者说明");
+  const [evidenceQuote, setEvidenceQuote] = useState("");
+  const [decisionReasons, setDecisionReasons] = useState<Record<string, string>>({});
+  const applicableFields = customFieldDefinitions.filter(
+    (definition) =>
+      (definition.enabled || entity.customFields[definition.key] !== undefined) &&
+      (definition.appliesTo === "all" || definition.appliesTo === entity.type),
+  );
   return (
     <section className="panel settings-entity-detail" aria-labelledby="settings-detail-title">
       <div className="settings-detail-head">
@@ -901,6 +1694,52 @@ function EntityDetail({
           <h3>{typeLabels[entity.type]}</h3>
           <p>{entity.data.details}</p>
         </div>
+      ) : entity.type === "item" ? (
+        <div className="settings-golden-grid">
+          <div>
+            <span>分类</span>
+            <strong>{entity.data.category}</strong>
+          </div>
+          <div>
+            <span>品阶</span>
+            <strong>{entity.data.grade || "未定"}</strong>
+          </div>
+          <div>
+            <span>归属</span>
+            <strong>{entity.data.ownership || "未记录"}</strong>
+          </div>
+          <div>
+            <span>效果</span>
+            <strong>{entity.data.effect}</strong>
+          </div>
+          <div>
+            <span>代价</span>
+            <strong>{entity.data.cost || "未记录"}</strong>
+          </div>
+          <div>
+            <span>限制</span>
+            <strong>{entity.data.limits || "未记录"}</strong>
+          </div>
+        </div>
+      ) : entity.type === "timeline_event" ? (
+        <div className="settings-golden-grid">
+          <div>
+            <span>纪元</span>
+            <strong>{entity.data.era || "未记录"}</strong>
+          </div>
+          <div>
+            <span>故事时间</span>
+            <strong>{entity.data.storyTime}</strong>
+          </div>
+          <div>
+            <span>持续时长</span>
+            <strong>{entity.data.duration || "未记录"}</strong>
+          </div>
+          <div>
+            <span>事件</span>
+            <strong>{entity.data.event}</strong>
+          </div>
+        </div>
       ) : (
         <div className="settings-golden-grid">
           <div>
@@ -922,6 +1761,199 @@ function EntityDetail({
         </div>
       )}
 
+      {applicableFields.length > 0 ? (
+        <div className="settings-detail-block">
+          <h3>自定义字段</h3>
+          <dl className="settings-detail-meta">
+            {applicableFields.map((definition) => (
+              <div key={definition.id}>
+                <dt>{definition.label}</dt>
+                <dd>{formatCustomFieldValue(entity.customFields[definition.key])}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      ) : null}
+
+      {proposals.length > 0 ? (
+        <div className="settings-detail-block settings-proposal-history">
+          <h3>提案与证据</h3>
+          {proposals.map((proposal) => {
+            const pending = proposal.status === "pending";
+            const decisionReason = decisionReasons[proposal.id] ?? "作者确认提案";
+            return (
+              <article className="settings-proposal-card" key={proposal.id}>
+                <div className="settings-proposal-head">
+                  <strong>{proposalStatusLabels[proposal.status]}</strong>
+                  <span className="badge">{conflictTypeLabels[proposal.conflictType]}</span>
+                </div>
+                <p>{proposal.reason}</p>
+                <ul className="settings-evidence-list">
+                  {proposal.evidence.map((evidence, index) => (
+                    <li key={`${proposal.id}-${index}`}>
+                      <strong>{evidence.label}</strong>
+                      <span>{evidence.quote || "未提供摘录"}</span>
+                      {evidence.locator ? <small>{evidence.locator}</small> : null}
+                    </li>
+                  ))}
+                </ul>
+                {pending && proposed ? (
+                  <div className="settings-proposal-decision">
+                    <label className="settings-field">
+                      <span>裁决理由</span>
+                      <input
+                        onChange={(event) =>
+                          setDecisionReasons((current) => ({
+                            ...current,
+                            [proposal.id]: event.target.value,
+                          }))
+                        }
+                        value={decisionReason}
+                      />
+                    </label>
+                    {proposal.conflictType !== "none" ? (
+                      <p className="settings-inline-warning">
+                        该提案仍有冲突，需要先解决冲突才能确认。
+                      </p>
+                    ) : null}
+                    <div className="settings-detail-actions">
+                      <button
+                        className="btn btn-primary btn-small"
+                        disabled={
+                          busy === `decision-${proposal.id}` || proposal.conflictType !== "none"
+                        }
+                        onClick={() => onDecideProposal(proposal, "accept", decisionReason)}
+                        type="button"
+                      >
+                        <Check size={14} aria-hidden="true" />
+                        确认提案
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-small"
+                        disabled={busy === `decision-${proposal.id}`}
+                        onClick={() => onDecideProposal(proposal, "reject", decisionReason)}
+                        type="button"
+                      >
+                        驳回提案
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+                {proposal.status !== "pending" && proposal.decisionReason ? (
+                  <p className="settings-inline-note">裁决：{proposal.decisionReason}</p>
+                ) : null}
+              </article>
+            );
+          })}
+        </div>
+      ) : null}
+
+      {changeRequests.length > 0 ? (
+        <div className="settings-detail-block settings-change-history">
+          <h3>修改请求</h3>
+          {changeRequests.map((request) => (
+            <article className="settings-change-card" key={request.id}>
+              <div className="settings-proposal-head">
+                <strong>{request.title}</strong>
+                <span className="badge">{changeRequestStatusLabels[request.status]}</span>
+              </div>
+              <p>{request.reason}</p>
+              <dl className="settings-detail-meta">
+                <div>
+                  <dt>原版本</dt>
+                  <dd>第 {request.entityVersion} 版</dd>
+                </div>
+                <div>
+                  <dt>冲突</dt>
+                  <dd>{conflictTypeLabels[request.conflictType]}</dd>
+                </div>
+                <div>
+                  <dt>提交时间</dt>
+                  <dd>{formatDateTime(request.createdAt)}</dd>
+                </div>
+              </dl>
+              <ul className="settings-evidence-list">
+                {request.evidence.map((evidence, index) => (
+                  <li key={`${request.id}-${index}`}>
+                    <strong>{evidence.label}</strong>
+                    <span>{evidence.quote || "未提供摘录"}</span>
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {showProposalForm && !locked && !proposed && !discarded ? (
+        <div className="settings-proposal-form">
+          <h3>提交提案</h3>
+          <label className="settings-field settings-field-wide">
+            <span>提案理由</span>
+            <textarea
+              onChange={(event) => setProposalReason(event.target.value)}
+              placeholder="说明这条设定为什么需要作者确认"
+              rows={3}
+              value={proposalReason}
+            />
+          </label>
+          <label className="settings-field">
+            <span>冲突类型</span>
+            <select
+              onChange={(event) => setConflictType(event.target.value as SettingConflictType)}
+              value={conflictType}
+            >
+              {Object.entries(conflictTypeLabels).map(([type, label]) => (
+                <option key={type} value={type}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="settings-field">
+            <span>证据来源</span>
+            <input
+              onChange={(event) => setEvidenceLabel(event.target.value)}
+              value={evidenceLabel}
+            />
+          </label>
+          <label className="settings-field settings-field-wide">
+            <span>证据摘录</span>
+            <textarea
+              onChange={(event) => setEvidenceQuote(event.target.value)}
+              rows={3}
+              value={evidenceQuote}
+            />
+          </label>
+          <div className="settings-detail-actions">
+            <button
+              className="btn btn-primary btn-small"
+              disabled={busy === `proposal-${entity.id}` || proposalReason.trim().length === 0}
+              onClick={() => {
+                onCreateProposal({
+                  reason: proposalReason,
+                  conflictType,
+                  evidenceLabel,
+                  evidenceQuote,
+                });
+                setShowProposalForm(false);
+              }}
+              type="button"
+            >
+              <MessageSquare size={14} aria-hidden="true" />
+              提交提案
+            </button>
+            <button
+              className="btn btn-ghost btn-small"
+              onClick={() => setShowProposalForm(false)}
+              type="button"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="settings-detail-actions">
         {locked ? (
           <>
@@ -937,7 +1969,15 @@ function EntityDetail({
               <Lock size={14} aria-hidden="true" />
               已锁定 · 编辑需修改请求
             </button>
+            <button className="btn btn-primary btn-small" onClick={onChangeRequest} type="button">
+              <GitPullRequest size={14} aria-hidden="true" />
+              发起修改请求
+            </button>
           </>
+        ) : proposed ? (
+          <p className="settings-inline-note">待确认提案正在等待裁决，完成后才能继续编辑。</p>
+        ) : discarded ? (
+          <p className="settings-inline-note">这条设定已废弃，不能再编辑或锁定。</p>
         ) : (
           <>
             <button className="btn btn-ghost btn-small" onClick={onEditAlias} type="button">
@@ -968,6 +2008,14 @@ function EntityDetail({
                 <Lock size={14} aria-hidden="true" />
               )}
               锁定设定
+            </button>
+            <button
+              className="btn btn-ghost btn-small"
+              onClick={() => setShowProposalForm((current) => !current)}
+              type="button"
+            >
+              <MessageSquare size={14} aria-hidden="true" />
+              提交提案
             </button>
           </>
         )}
@@ -1035,6 +2083,19 @@ function emptyEditor(type: SettingEntityType): EditorState {
     limits: "",
     growth: "",
     details: "",
+    itemCategory: "",
+    itemGrade: "",
+    itemEffect: "",
+    itemCost: "",
+    itemOwnership: "",
+    itemLimits: "",
+    timelineEra: "",
+    timelineStoryTime: "",
+    timelineDuration: "",
+    timelineEvent: "",
+    customFields: {},
+    requestTitle: "",
+    requestReason: "",
   };
 }
 
@@ -1061,6 +2122,19 @@ function editorFromEntity(entity: SettingEntity): EditorState {
       entity.type === "faction" || entity.type === "map" || entity.type === "power_system"
         ? entity.data.details
         : "",
+    itemCategory: entity.type === "item" ? entity.data.category : "",
+    itemGrade: entity.type === "item" ? entity.data.grade : "",
+    itemEffect: entity.type === "item" ? entity.data.effect : "",
+    itemCost: entity.type === "item" ? entity.data.cost : "",
+    itemOwnership: entity.type === "item" ? entity.data.ownership : "",
+    itemLimits: entity.type === "item" ? entity.data.limits : "",
+    timelineEra: entity.type === "timeline_event" ? entity.data.era : "",
+    timelineStoryTime: entity.type === "timeline_event" ? entity.data.storyTime : "",
+    timelineDuration: entity.type === "timeline_event" ? entity.data.duration : "",
+    timelineEvent: entity.type === "timeline_event" ? entity.data.event : "",
+    customFields: { ...entity.customFields },
+    requestTitle: "",
+    requestReason: "",
   };
 }
 
@@ -1071,6 +2145,7 @@ function createPayload(editor: EditorState): SettingEntityCreateRequest {
     summary: editor.summary.trim(),
     description: editor.description.trim(),
     tags: splitList(editor.tags),
+    customFields: compactCustomFields(editor.customFields),
   };
   if (editor.type === "world_rule") {
     return { type: "world_rule", ...common, data: { rule: editor.rule.trim() } };
@@ -1093,26 +2168,59 @@ function createPayload(editor: EditorState): SettingEntityCreateRequest {
       data: { details: editor.details.trim() },
     };
   }
+  if (editor.type === "golden_finger") {
+    return {
+      type: "golden_finger",
+      ...common,
+      data: {
+        rules: editor.goldenRules.trim(),
+        cost: editor.cost.trim(),
+        limits: editor.limits.trim(),
+        growth: editor.growth.trim(),
+      },
+    };
+  }
+  if (editor.type === "item") {
+    return {
+      type: "item",
+      ...common,
+      data: {
+        category: editor.itemCategory.trim(),
+        grade: editor.itemGrade.trim(),
+        effect: editor.itemEffect.trim(),
+        cost: editor.itemCost.trim(),
+        ownership: editor.itemOwnership.trim(),
+        limits: editor.itemLimits.trim(),
+      },
+    };
+  }
   return {
-    type: "golden_finger",
+    type: "timeline_event",
     ...common,
     data: {
-      rules: editor.goldenRules.trim(),
-      cost: editor.cost.trim(),
-      limits: editor.limits.trim(),
-      growth: editor.growth.trim(),
+      era: editor.timelineEra.trim(),
+      storyTime: editor.timelineStoryTime.trim(),
+      duration: editor.timelineDuration.trim(),
+      event: editor.timelineEvent.trim(),
     },
   };
 }
 
 function patchPayload(editor: EditorState) {
-  const common = {
+  return {
     version: editor.version,
+    ...changePayload(editor),
+  };
+}
+
+function changePayload(editor: EditorState) {
+  const common = {
     name: editor.name.trim(),
     aliases: splitList(editor.aliases),
     summary: editor.summary.trim(),
     description: editor.description.trim(),
     tags: splitList(editor.tags),
+    customFields: compactCustomFields(editor.customFields),
   };
   if (editor.type === "world_rule") {
     return { ...common, data: { rule: editor.rule.trim() } };
@@ -1133,13 +2241,37 @@ function patchPayload(editor: EditorState) {
       data: { details: editor.details.trim() },
     };
   }
+  if (editor.type === "golden_finger") {
+    return {
+      ...common,
+      data: {
+        rules: editor.goldenRules.trim(),
+        cost: editor.cost.trim(),
+        limits: editor.limits.trim(),
+        growth: editor.growth.trim(),
+      },
+    };
+  }
+  if (editor.type === "item") {
+    return {
+      ...common,
+      data: {
+        category: editor.itemCategory.trim(),
+        grade: editor.itemGrade.trim(),
+        effect: editor.itemEffect.trim(),
+        cost: editor.itemCost.trim(),
+        ownership: editor.itemOwnership.trim(),
+        limits: editor.itemLimits.trim(),
+      },
+    };
+  }
   return {
     ...common,
     data: {
-      rules: editor.goldenRules.trim(),
-      cost: editor.cost.trim(),
-      limits: editor.limits.trim(),
-      growth: editor.growth.trim(),
+      era: editor.timelineEra.trim(),
+      storyTime: editor.timelineStoryTime.trim(),
+      duration: editor.timelineDuration.trim(),
+      event: editor.timelineEvent.trim(),
     },
   };
 }
@@ -1160,6 +2292,62 @@ async function mutateEntity(
     throw new Error(await readError(response, fallback));
   }
   return settingEntityResponseSchema.parse(await response.json()).data;
+}
+
+async function mutateProposal(
+  path: string,
+  body: Record<string, unknown>,
+  fallback: string,
+): Promise<SettingProposal> {
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(path, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, fallback));
+  }
+  return settingProposalResponseSchema.parse(await response.json()).data;
+}
+
+async function mutateChangeRequest(
+  path: string,
+  body: Record<string, unknown>,
+  fallback: string,
+): Promise<SettingChangeRequest> {
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(path, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "idempotency-key": crypto.randomUUID(),
+      "x-csrf-token": csrfToken,
+    },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, fallback));
+  }
+  return settingChangeRequestResponseSchema.parse(await response.json()).data;
+}
+
+async function mutateCustomField(
+  path: string,
+  method: "POST" | "PATCH",
+  body: Record<string, unknown>,
+  fallback: string,
+): Promise<CustomFieldDefinition> {
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(path, {
+    method,
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, fallback));
+  }
+  return customFieldDefinitionResponseSchema.parse(await response.json()).data;
 }
 
 async function mutateDelete(path: string, fallback: string) {
@@ -1186,6 +2374,56 @@ function splitList(value: string): string[] {
     .filter(Boolean);
 }
 
+function compactCustomFields(
+  values: Record<string, CustomFieldValue | null>,
+): Record<string, CustomFieldValue | null> {
+  const next: Record<string, CustomFieldValue | null> = {};
+  for (const [key, value] of Object.entries(values)) {
+    if (value === undefined || value === "") {
+      continue;
+    }
+    next[key] = value;
+  }
+  return next;
+}
+
+function authorNote(reason: string) {
+  return {
+    kind: "author_note" as const,
+    sourceId: null,
+    label: "作者说明",
+    quote: reason.trim() || "作者提交的设定变更",
+    locator: "",
+    confidence: null,
+  };
+}
+
+function formatCustomFieldValue(value: CustomFieldValue | undefined): string {
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join("、") : "未填写";
+  }
+  if (typeof value === "boolean") {
+    return value ? "是" : "否";
+  }
+  if (value === undefined || value === null || value === "") {
+    return "未填写";
+  }
+  return String(value);
+}
+
+function blankFieldForm(): FieldFormState {
+  return {
+    key: "",
+    label: "",
+    fieldType: "text",
+    appliesTo: "all",
+    required: false,
+    options: "",
+    relationTarget: null,
+    sortOrder: "0",
+  };
+}
+
 function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat("zh-CN", {
     dateStyle: "medium",
@@ -1198,27 +2436,57 @@ function settingsPath(work: WorkOverview): string {
 }
 
 function columnForType(type: SettingEntityType): ColumnKey {
-  return type === "world_rule"
-    ? "world"
-    : type === "character"
-      ? "characters"
-      : type === "faction"
-        ? "factions"
-        : type === "map"
-          ? "map"
-          : "power";
+  if (type === "world_rule") {
+    return "world";
+  }
+  if (type === "character") {
+    return "characters";
+  }
+  if (type === "faction") {
+    return "factions";
+  }
+  if (type === "map") {
+    return "map";
+  }
+  if (type === "item") {
+    return "items";
+  }
+  if (type === "timeline_event") {
+    return "timeline";
+  }
+  return "power";
 }
 
 function typeForColumn(column: ColumnKey): SettingEntityType {
-  return column === "characters"
-    ? "character"
-    : column === "factions"
-      ? "faction"
-      : column === "map"
-        ? "map"
-        : column === "power"
-          ? "power_system"
-          : "world_rule";
+  if (column === "characters") {
+    return "character";
+  }
+  if (column === "factions") {
+    return "faction";
+  }
+  if (column === "map") {
+    return "map";
+  }
+  if (column === "power") {
+    return "power_system";
+  }
+  if (column === "items") {
+    return "item";
+  }
+  if (column === "timeline") {
+    return "timeline_event";
+  }
+  return "world_rule";
+}
+
+function entitiesForColumn(entities: SettingEntity[], column: ColumnKey): SettingEntity[] {
+  if (column === "power") {
+    return entities.filter(
+      (entity) => entity.type === "power_system" || entity.type === "golden_finger",
+    );
+  }
+  const type = typeForColumn(column);
+  return entities.filter((entity) => entity.type === type);
 }
 
 function columnDescription(column: ColumnKey): string {
