@@ -4038,3 +4038,150 @@ export const goldenThreeLocks = pgTable(
     ),
   ],
 );
+
+export type QualityDimensionEvidenceJson = {
+  kind: string;
+  sourceId: string | null;
+  sourceVersionId: string | null;
+  chapterId: string;
+  chapterVersionId: string | null;
+  quote: string;
+  startOffset: number;
+  endOffset: number;
+  locator: string;
+  explanation: string;
+};
+
+export type QualityDimensionJson = {
+  dimension: string;
+  label: string;
+  score: number;
+  rationale: string;
+  evidence: QualityDimensionEvidenceJson[];
+};
+
+export const qualityReports = pgTable(
+  "quality_reports",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    rubricVersion: text("rubric_version").notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    dimensions: jsonb("dimensions").$type<QualityDimensionJson[]>().notNull(),
+    summary: text("summary").notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("quality_reports_user_work_idx").on(table.userId, table.workId),
+    index("quality_reports_chapter_created_idx").on(table.chapterId, table.createdAt),
+    index("quality_reports_version_created_idx").on(table.chapterVersionId, table.createdAt),
+    check(
+      "quality_reports_rubric_version_check",
+      sql`${table.rubricVersion} = 'm1-quality-rubric-v1'`,
+    ),
+    check("quality_reports_rule_version_check", sql`${table.ruleVersion} = 'm1-critic-rules-v1'`),
+    check("quality_reports_source_hash_check", sql`${table.sourceHash} ~ '^[a-f0-9]{64}$'`),
+    check(
+      "quality_reports_dimensions_check",
+      sql`jsonb_typeof(${table.dimensions}) = 'array' and jsonb_array_length(${table.dimensions}) = 6`,
+    ),
+  ],
+);
+
+export const qualityFindings = pgTable(
+  "quality_findings",
+  {
+    id: uuid("id").primaryKey(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => qualityReports.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    dimension: text("dimension").notNull(),
+    qualityDimension: text("quality_dimension").notNull(),
+    severity: text("severity").notNull(),
+    structural: boolean("structural").notNull().default(false),
+    code: text("code").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    evidence: jsonb("evidence").$type<QualityDimensionEvidenceJson[]>().notNull(),
+    sourceRefs: jsonb("source_refs").$type<Array<Record<string, unknown>>>().notNull(),
+    affectedObjects: jsonb("affected_objects").$type<Array<Record<string, unknown>>>().notNull(),
+    recommendation: text("recommendation").notNull(),
+    status: text("status").notNull().default("open"),
+    ignoredReason: text("ignored_reason"),
+    dismissedBy: uuid("dismissed_by").references(() => users.id, { onDelete: "set null" }),
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("quality_findings_report_dedupe_unique").on(table.reportId, table.dedupeKey),
+    index("quality_findings_user_work_idx").on(table.userId, table.workId),
+    index("quality_findings_chapter_status_idx").on(
+      table.chapterId,
+      table.chapterVersionId,
+      table.status,
+    ),
+    check(
+      "quality_findings_dimension_check",
+      sql`${table.dimension} in ('continuity', 'style', 'reader_experience')`,
+    ),
+    check(
+      "quality_findings_quality_dimension_check",
+      sql`${table.qualityDimension} in ('hook', 'pacing', 'information_density', 'character_voice', 'prose', 'continuity')`,
+    ),
+    check("quality_findings_severity_check", sql`${table.severity} in ('P0', 'P1', 'P2', 'P3')`),
+    check(
+      "quality_findings_status_check",
+      sql`${table.status} in ('open', 'dismissed', 'superseded')`,
+    ),
+    check(
+      "quality_findings_ignored_reason_check",
+      sql`(${table.status} = 'dismissed' and ${table.ignoredReason} is not null and length(trim(${table.ignoredReason})) > 0) or (${table.status} <> 'dismissed' and ${table.ignoredReason} is null and ${table.dismissedBy} is null and ${table.dismissedAt} is null)`,
+    ),
+    check(
+      "quality_findings_evidence_check",
+      sql`jsonb_typeof(${table.evidence}) = 'array' and jsonb_array_length(${table.evidence}) > 0`,
+    ),
+    check(
+      "quality_findings_source_refs_check",
+      sql`jsonb_typeof(${table.sourceRefs}) = 'array' and jsonb_array_length(${table.sourceRefs}) > 0`,
+    ),
+    check(
+      "quality_findings_affected_objects_check",
+      sql`jsonb_typeof(${table.affectedObjects}) = 'array' and jsonb_array_length(${table.affectedObjects}) > 0`,
+    ),
+  ],
+);

@@ -61,6 +61,8 @@ In the columns below, the prototype screenshot path and production test/golden p
 > #146 为 outline 增加剧情账本视图，并新建 foreshadows 生产页；foreshadows 的 four-viewport Playwright 与作者语言扫描已落地，尚待作者视觉签收后才能回到 `parity-verified`。
 
 > #147 在 outline 增加黄金三章候选比较、作者选择、六维失败阻断、例外理由和锁定后风格基线。生产动作与 `apps/web/e2e/parity/golden-three.spec.ts` 四档视口证据已落地；outline 生产 golden 仍需在 #145/#147 布局稳定后重新拍摄并签收。
+>
+> #117 在 writing 增加真实“检查本章”、六维证据、结构化 Finding、P0/P1 门禁和 P2/P3 忽略理由/恢复生命周期。`apps/web/e2e/parity/writing.spec.ts` 已覆盖四档视口；writing 生产 golden 仍需在 #116/#117 布局稳定后重新拍摄并签收。
 
 ## 4. UI issue ownership rules
 

@@ -89,6 +89,9 @@ export const ERROR_CODES = [
   "AGENT_TOOL_DENIED",
   "AGENT_BUDGET_EXCEEDED",
   "AGENT_APPROVAL_REQUIRED",
+  "CRITIC_VERSION_REQUIRED",
+  "CRITIC_FINDING_NOT_DISMISSIBLE",
+  "QUALITY_GATE_BLOCKED",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -6410,3 +6413,312 @@ export const goldenThreeWorkspaceSchema = z
 export type GoldenThreeWorkspace = z.infer<typeof goldenThreeWorkspaceSchema>;
 
 export const goldenThreeWorkspaceResponseSchema = apiEnvelopeSchema(goldenThreeWorkspaceSchema);
+
+export const QUALITY_RUBRIC_VERSION = "m1-quality-rubric-v1" as const;
+export const CRITIC_RULE_VERSION = "m1-critic-rules-v1" as const;
+
+export const QUALITY_DIMENSIONS = [
+  "hook",
+  "pacing",
+  "information_density",
+  "character_voice",
+  "prose",
+  "continuity",
+] as const;
+export const qualityDimensionSchema = z.enum(QUALITY_DIMENSIONS);
+export type QualityDimension = z.infer<typeof qualityDimensionSchema>;
+
+export const QUALITY_DIMENSION_LABELS: Record<QualityDimension, string> = {
+  hook: "章末钩子",
+  pacing: "节奏",
+  information_density: "信息密度",
+  character_voice: "人物声纹",
+  prose: "文笔",
+  continuity: "连续性",
+};
+
+export const criticFindingDimensionSchema = z.enum(["continuity", "style", "reader_experience"]);
+export type CriticFindingDimension = z.infer<typeof criticFindingDimensionSchema>;
+
+export const criticSeveritySchema = z.enum(["P0", "P1", "P2", "P3"]);
+export type CriticSeverity = z.infer<typeof criticSeveritySchema>;
+
+export const criticFindingStatusSchema = z.enum(["open", "dismissed", "superseded"]);
+export type CriticFindingStatus = z.infer<typeof criticFindingStatusSchema>;
+
+export const criticFindingCodeSchema = z.enum([
+  "FACT_CONTRADICTION",
+  "TIMELINE_CONFLICT",
+  "UNDISCLOSED_KNOWLEDGE",
+  "MOTIVATION_BREAK",
+  "LOCATION_CONFLICT",
+  "STYLE_DRIFT",
+  "WEAK_CHAPTER_END_HOOK",
+]);
+export type CriticFindingCode = z.infer<typeof criticFindingCodeSchema>;
+
+export const criticEvidenceKindSchema = z.enum([
+  "fact",
+  "timeline",
+  "knowledge",
+  "outline",
+  "location",
+  "voice",
+  "text",
+]);
+export type CriticEvidenceKind = z.infer<typeof criticEvidenceKindSchema>;
+
+export const criticEvidenceSchema = z
+  .object({
+    kind: criticEvidenceKindSchema,
+    sourceId: uuidV7Schema.nullable(),
+    sourceVersionId: uuidV7Schema.nullable(),
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema.nullable(),
+    quote: z.string().trim().min(1).max(2_000),
+    startOffset: z.number().int().nonnegative(),
+    endOffset: z.number().int().nonnegative(),
+    locator: z.string().trim().min(1).max(200),
+    explanation: z.string().trim().min(1).max(1_000),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endOffset <= input.startOffset) {
+      context.addIssue({
+        code: "custom",
+        path: ["endOffset"],
+        message: "Evidence end must follow its start",
+      });
+    }
+  });
+export type CriticEvidence = z.infer<typeof criticEvidenceSchema>;
+
+export const criticSourceRefTypeSchema = z.enum([
+  "fact",
+  "timeline_event",
+  "character_knowledge",
+  "outline_node",
+  "map",
+  "map_node",
+  "style_baseline",
+  "character",
+  "world_rule",
+  "golden_finger",
+  "chapter",
+  "chapter_version",
+  "story_bible",
+]);
+export type CriticSourceRefType = z.infer<typeof criticSourceRefTypeSchema>;
+
+export const criticSourceRefSchema = z
+  .object({
+    type: criticSourceRefTypeSchema,
+    id: uuidV7Schema,
+    versionId: uuidV7Schema.nullable(),
+    label: z.string().trim().min(1).max(200),
+  })
+  .strict();
+export type CriticSourceRef = z.infer<typeof criticSourceRefSchema>;
+
+export const criticAffectedObjectTypeSchema = z.enum([
+  "chapter",
+  "chapter_version",
+  "fact",
+  "timeline_event",
+  "character",
+  "world_rule",
+  "golden_finger",
+  "character_knowledge",
+  "outline_node",
+  "map",
+  "map_node",
+  "style_baseline",
+]);
+export type CriticAffectedObjectType = z.infer<typeof criticAffectedObjectTypeSchema>;
+
+export const criticAffectedObjectSchema = z
+  .object({
+    type: criticAffectedObjectTypeSchema,
+    id: uuidV7Schema,
+    label: z.string().trim().min(1).max(200).nullable(),
+  })
+  .strict();
+export type CriticAffectedObject = z.infer<typeof criticAffectedObjectSchema>;
+
+export const qualityDimensionResultSchema = z
+  .object({
+    dimension: qualityDimensionSchema,
+    label: z.string().trim().min(1).max(100),
+    score: z.number().int().min(1).max(5),
+    rationale: z.string().trim().min(1).max(1_000),
+    evidence: z.array(criticEvidenceSchema).min(1).max(3),
+  })
+  .strict();
+export type QualityDimensionResult = z.infer<typeof qualityDimensionResultSchema>;
+
+export const qualityReportSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    rubricVersion: z.literal(QUALITY_RUBRIC_VERSION),
+    ruleVersion: z.literal(CRITIC_RULE_VERSION),
+    sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+    dimensions: z.array(qualityDimensionResultSchema).length(QUALITY_DIMENSIONS.length),
+    summary: z.string().trim().min(1).max(2_000),
+    createdAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const dimensions = input.dimensions.map((entry) => entry.dimension);
+    if (new Set(dimensions).size !== QUALITY_DIMENSIONS.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["dimensions"],
+        message: "Each quality dimension must appear exactly once",
+      });
+    }
+  });
+export type QualityReport = z.infer<typeof qualityReportSchema>;
+
+export const criticFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    reportId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    dimension: criticFindingDimensionSchema,
+    qualityDimension: qualityDimensionSchema,
+    severity: criticSeveritySchema,
+    structural: z.boolean(),
+    code: criticFindingCodeSchema,
+    evidence: z.array(criticEvidenceSchema).min(1).max(5),
+    sourceRefs: z.array(criticSourceRefSchema).min(1).max(10),
+    affectedObjects: z.array(criticAffectedObjectSchema).min(1).max(10),
+    recommendation: z.string().trim().min(1).max(2_000),
+    status: criticFindingStatusSchema,
+    ignoredReason: z.string().trim().min(1).max(1_000).nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.status === "dismissed" && input.ignoredReason === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["ignoredReason"],
+        message: "Dismissed findings require an author reason",
+      });
+    }
+    if (input.status !== "dismissed" && input.ignoredReason !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["ignoredReason"],
+        message: "Only dismissed findings carry an ignored reason",
+      });
+    }
+  });
+export type CriticFinding = z.infer<typeof criticFindingSchema>;
+
+export const criticAnnotationSchema = z
+  .object({
+    findingId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    dimension: criticFindingDimensionSchema,
+    qualityDimension: qualityDimensionSchema,
+    severity: criticSeveritySchema,
+    structural: z.boolean(),
+    code: criticFindingCodeSchema,
+    quote: z.string().trim().min(1).max(2_000),
+    startOffset: z.number().int().nonnegative(),
+    endOffset: z.number().int().nonnegative(),
+    recommendation: z.string().trim().min(1).max(2_000),
+    status: criticFindingStatusSchema,
+    ignoredReason: z.string().nullable(),
+    version: z.number().int().positive(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endOffset <= input.startOffset) {
+      context.addIssue({
+        code: "custom",
+        path: ["endOffset"],
+        message: "Annotation end must follow its start",
+      });
+    }
+  });
+export type CriticAnnotation = z.infer<typeof criticAnnotationSchema>;
+
+export const qualityGateBlockerSchema = z
+  .object({
+    findingId: uuidV7Schema,
+    code: criticFindingCodeSchema,
+    severity: criticSeveritySchema,
+    gate: z.enum(["chapter_approval", "canon_commit", "both"]),
+    message: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type QualityGateBlocker = z.infer<typeof qualityGateBlockerSchema>;
+
+export const qualityGateSchema = z
+  .object({
+    canApprove: z.boolean(),
+    canCommitCanon: z.boolean(),
+    blockers: z.array(qualityGateBlockerSchema),
+  })
+  .strict();
+export type QualityGate = z.infer<typeof qualityGateSchema>;
+
+export const qualityWorkspaceSchema = z
+  .object({
+    report: qualityReportSchema.nullable(),
+    findings: z.array(criticFindingSchema),
+    annotations: z.array(criticAnnotationSchema),
+    gate: qualityGateSchema,
+  })
+  .strict();
+export type QualityWorkspace = z.infer<typeof qualityWorkspaceSchema>;
+
+export const criticVerifyRequestSchema = z
+  .object({
+    chapterVersionId: uuidV7Schema.optional(),
+  })
+  .strict();
+export type CriticVerifyRequest = z.infer<typeof criticVerifyRequestSchema>;
+
+export const criticAnnotationPatchRequestSchema = z
+  .object({
+    action: z.enum(["dismiss", "reopen"]),
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.action === "dismiss" && !input.reason) {
+      context.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "Dismissing a finding requires a reason",
+      });
+    }
+    if (input.action === "reopen" && input.reason) {
+      context.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "Reopening a finding does not accept a dismiss reason",
+      });
+    }
+  });
+export type CriticAnnotationPatchRequest = z.infer<typeof criticAnnotationPatchRequestSchema>;
+
+export const qualityWorkspaceResponseSchema = apiEnvelopeSchema(qualityWorkspaceSchema);
+export const criticAnnotationListResponseSchema = apiEnvelopeSchema(
+  z.array(criticAnnotationSchema),
+);
+export const criticAnnotationResponseSchema = apiEnvelopeSchema(criticAnnotationSchema);

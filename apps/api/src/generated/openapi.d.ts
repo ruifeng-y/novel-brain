@@ -1220,6 +1220,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/verify": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["QualityController_verify"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/quality": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["QualityController_quality"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/annotations": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["QualityController_annotations"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/annotations/{annotationId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["QualityController_patchAnnotation"];
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/retrieval/search": {
     parameters: {
       query?: never;
@@ -3275,6 +3339,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -3567,6 +3634,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -7399,6 +7469,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -7905,6 +7978,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8247,6 +8323,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8589,6 +8668,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8931,6 +9013,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9282,6 +9367,9 @@ export interface operations {
                     | "AGENT_TOOL_DENIED"
                     | "AGENT_BUDGET_EXCEEDED"
                     | "AGENT_APPROVAL_REQUIRED"
+                    | "CRITIC_VERSION_REQUIRED"
+                    | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                    | "QUALITY_GATE_BLOCKED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14906,6 +14994,597 @@ export interface operations {
                 /** Format: date-time */
                 decidedAt: string;
               };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  QualityController_verify: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          chapterVersionId?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Six-dimension critic report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              report: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                chapterVersionId: string;
+                /** @enum {string} */
+                rubricVersion: "m1-quality-rubric-v1";
+                /** @enum {string} */
+                ruleVersion: "m1-critic-rules-v1";
+                sourceHash: string;
+                dimensions: {
+                  /** @enum {string} */
+                  dimension:
+                    | "hook"
+                    | "pacing"
+                    | "information_density"
+                    | "character_voice"
+                    | "prose"
+                    | "continuity";
+                  label: string;
+                  score: number;
+                  rationale: string;
+                  evidence: {
+                    /** @enum {string} */
+                    kind:
+                      "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                    sourceId: string | null;
+                    sourceVersionId: string | null;
+                    chapterId: string;
+                    chapterVersionId: string | null;
+                    quote: string;
+                    startOffset: number;
+                    endOffset: number;
+                    locator: string;
+                    explanation: string;
+                  }[];
+                }[];
+                summary: string;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              findings: {
+                id: string;
+                reportId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                chapterVersionId: string;
+                /** @enum {string} */
+                dimension: "continuity" | "style" | "reader_experience";
+                /** @enum {string} */
+                qualityDimension:
+                  | "hook"
+                  | "pacing"
+                  | "information_density"
+                  | "character_voice"
+                  | "prose"
+                  | "continuity";
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2" | "P3";
+                structural: boolean;
+                /** @enum {string} */
+                code:
+                  | "FACT_CONTRADICTION"
+                  | "TIMELINE_CONFLICT"
+                  | "UNDISCLOSED_KNOWLEDGE"
+                  | "MOTIVATION_BREAK"
+                  | "LOCATION_CONFLICT"
+                  | "STYLE_DRIFT"
+                  | "WEAK_CHAPTER_END_HOOK";
+                evidence: {
+                  /** @enum {string} */
+                  kind:
+                    "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                  sourceId: string | null;
+                  sourceVersionId: string | null;
+                  chapterId: string;
+                  chapterVersionId: string | null;
+                  quote: string;
+                  startOffset: number;
+                  endOffset: number;
+                  locator: string;
+                  explanation: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "fact"
+                    | "timeline_event"
+                    | "character_knowledge"
+                    | "outline_node"
+                    | "map"
+                    | "map_node"
+                    | "style_baseline"
+                    | "character"
+                    | "world_rule"
+                    | "golden_finger"
+                    | "chapter"
+                    | "chapter_version"
+                    | "story_bible";
+                  id: string;
+                  versionId: string | null;
+                  label: string;
+                }[];
+                affectedObjects: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter"
+                    | "chapter_version"
+                    | "fact"
+                    | "timeline_event"
+                    | "character"
+                    | "world_rule"
+                    | "golden_finger"
+                    | "character_knowledge"
+                    | "outline_node"
+                    | "map"
+                    | "map_node"
+                    | "style_baseline";
+                  id: string;
+                  label: string | null;
+                }[];
+                recommendation: string;
+                /** @enum {string} */
+                status: "open" | "dismissed" | "superseded";
+                ignoredReason: string | null;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              annotations: {
+                findingId: string;
+                chapterId: string;
+                chapterVersionId: string;
+                /** @enum {string} */
+                dimension: "continuity" | "style" | "reader_experience";
+                /** @enum {string} */
+                qualityDimension:
+                  | "hook"
+                  | "pacing"
+                  | "information_density"
+                  | "character_voice"
+                  | "prose"
+                  | "continuity";
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2" | "P3";
+                structural: boolean;
+                /** @enum {string} */
+                code:
+                  | "FACT_CONTRADICTION"
+                  | "TIMELINE_CONFLICT"
+                  | "UNDISCLOSED_KNOWLEDGE"
+                  | "MOTIVATION_BREAK"
+                  | "LOCATION_CONFLICT"
+                  | "STYLE_DRIFT"
+                  | "WEAK_CHAPTER_END_HOOK";
+                quote: string;
+                startOffset: number;
+                endOffset: number;
+                recommendation: string;
+                /** @enum {string} */
+                status: "open" | "dismissed" | "superseded";
+                ignoredReason: string | null;
+                version: number;
+              }[];
+              gate: {
+                canApprove: boolean;
+                canCommitCanon: boolean;
+                blockers: {
+                  findingId: string;
+                  /** @enum {string} */
+                  code:
+                    | "FACT_CONTRADICTION"
+                    | "TIMELINE_CONFLICT"
+                    | "UNDISCLOSED_KNOWLEDGE"
+                    | "MOTIVATION_BREAK"
+                    | "LOCATION_CONFLICT"
+                    | "STYLE_DRIFT"
+                    | "WEAK_CHAPTER_END_HOOK";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  gate: "chapter_approval" | "canon_commit" | "both";
+                  message: string;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  QualityController_quality: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Latest chapter quality report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              report: {
+                id: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                chapterVersionId: string;
+                /** @enum {string} */
+                rubricVersion: "m1-quality-rubric-v1";
+                /** @enum {string} */
+                ruleVersion: "m1-critic-rules-v1";
+                sourceHash: string;
+                dimensions: {
+                  /** @enum {string} */
+                  dimension:
+                    | "hook"
+                    | "pacing"
+                    | "information_density"
+                    | "character_voice"
+                    | "prose"
+                    | "continuity";
+                  label: string;
+                  score: number;
+                  rationale: string;
+                  evidence: {
+                    /** @enum {string} */
+                    kind:
+                      "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                    sourceId: string | null;
+                    sourceVersionId: string | null;
+                    chapterId: string;
+                    chapterVersionId: string | null;
+                    quote: string;
+                    startOffset: number;
+                    endOffset: number;
+                    locator: string;
+                    explanation: string;
+                  }[];
+                }[];
+                summary: string;
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              findings: {
+                id: string;
+                reportId: string;
+                workId: string;
+                branchId: string;
+                chapterId: string;
+                chapterVersionId: string;
+                /** @enum {string} */
+                dimension: "continuity" | "style" | "reader_experience";
+                /** @enum {string} */
+                qualityDimension:
+                  | "hook"
+                  | "pacing"
+                  | "information_density"
+                  | "character_voice"
+                  | "prose"
+                  | "continuity";
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2" | "P3";
+                structural: boolean;
+                /** @enum {string} */
+                code:
+                  | "FACT_CONTRADICTION"
+                  | "TIMELINE_CONFLICT"
+                  | "UNDISCLOSED_KNOWLEDGE"
+                  | "MOTIVATION_BREAK"
+                  | "LOCATION_CONFLICT"
+                  | "STYLE_DRIFT"
+                  | "WEAK_CHAPTER_END_HOOK";
+                evidence: {
+                  /** @enum {string} */
+                  kind:
+                    "fact" | "timeline" | "knowledge" | "outline" | "location" | "voice" | "text";
+                  sourceId: string | null;
+                  sourceVersionId: string | null;
+                  chapterId: string;
+                  chapterVersionId: string | null;
+                  quote: string;
+                  startOffset: number;
+                  endOffset: number;
+                  locator: string;
+                  explanation: string;
+                }[];
+                sourceRefs: {
+                  /** @enum {string} */
+                  type:
+                    | "fact"
+                    | "timeline_event"
+                    | "character_knowledge"
+                    | "outline_node"
+                    | "map"
+                    | "map_node"
+                    | "style_baseline"
+                    | "character"
+                    | "world_rule"
+                    | "golden_finger"
+                    | "chapter"
+                    | "chapter_version"
+                    | "story_bible";
+                  id: string;
+                  versionId: string | null;
+                  label: string;
+                }[];
+                affectedObjects: {
+                  /** @enum {string} */
+                  type:
+                    | "chapter"
+                    | "chapter_version"
+                    | "fact"
+                    | "timeline_event"
+                    | "character"
+                    | "world_rule"
+                    | "golden_finger"
+                    | "character_knowledge"
+                    | "outline_node"
+                    | "map"
+                    | "map_node"
+                    | "style_baseline";
+                  id: string;
+                  label: string | null;
+                }[];
+                recommendation: string;
+                /** @enum {string} */
+                status: "open" | "dismissed" | "superseded";
+                ignoredReason: string | null;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              annotations: {
+                findingId: string;
+                chapterId: string;
+                chapterVersionId: string;
+                /** @enum {string} */
+                dimension: "continuity" | "style" | "reader_experience";
+                /** @enum {string} */
+                qualityDimension:
+                  | "hook"
+                  | "pacing"
+                  | "information_density"
+                  | "character_voice"
+                  | "prose"
+                  | "continuity";
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2" | "P3";
+                structural: boolean;
+                /** @enum {string} */
+                code:
+                  | "FACT_CONTRADICTION"
+                  | "TIMELINE_CONFLICT"
+                  | "UNDISCLOSED_KNOWLEDGE"
+                  | "MOTIVATION_BREAK"
+                  | "LOCATION_CONFLICT"
+                  | "STYLE_DRIFT"
+                  | "WEAK_CHAPTER_END_HOOK";
+                quote: string;
+                startOffset: number;
+                endOffset: number;
+                recommendation: string;
+                /** @enum {string} */
+                status: "open" | "dismissed" | "superseded";
+                ignoredReason: string | null;
+                version: number;
+              }[];
+              gate: {
+                canApprove: boolean;
+                canCommitCanon: boolean;
+                blockers: {
+                  findingId: string;
+                  /** @enum {string} */
+                  code:
+                    | "FACT_CONTRADICTION"
+                    | "TIMELINE_CONFLICT"
+                    | "UNDISCLOSED_KNOWLEDGE"
+                    | "MOTIVATION_BREAK"
+                    | "LOCATION_CONFLICT"
+                    | "STYLE_DRIFT"
+                    | "WEAK_CHAPTER_END_HOOK";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  gate: "chapter_approval" | "canon_commit" | "both";
+                  message: string;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  QualityController_annotations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        chapterId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Structured critic annotations */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              findingId: string;
+              chapterId: string;
+              chapterVersionId: string;
+              /** @enum {string} */
+              dimension: "continuity" | "style" | "reader_experience";
+              /** @enum {string} */
+              qualityDimension:
+                | "hook"
+                | "pacing"
+                | "information_density"
+                | "character_voice"
+                | "prose"
+                | "continuity";
+              /** @enum {string} */
+              severity: "P0" | "P1" | "P2" | "P3";
+              structural: boolean;
+              /** @enum {string} */
+              code:
+                | "FACT_CONTRADICTION"
+                | "TIMELINE_CONFLICT"
+                | "UNDISCLOSED_KNOWLEDGE"
+                | "MOTIVATION_BREAK"
+                | "LOCATION_CONFLICT"
+                | "STYLE_DRIFT"
+                | "WEAK_CHAPTER_END_HOOK";
+              quote: string;
+              startOffset: number;
+              endOffset: number;
+              recommendation: string;
+              /** @enum {string} */
+              status: "open" | "dismissed" | "superseded";
+              ignoredReason: string | null;
+              version: number;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  QualityController_patchAnnotation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        annotationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          action: "dismiss" | "reopen";
+          version: number;
+          reason?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated critic annotation */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              findingId: string;
+              chapterId: string;
+              chapterVersionId: string;
+              /** @enum {string} */
+              dimension: "continuity" | "style" | "reader_experience";
+              /** @enum {string} */
+              qualityDimension:
+                | "hook"
+                | "pacing"
+                | "information_density"
+                | "character_voice"
+                | "prose"
+                | "continuity";
+              /** @enum {string} */
+              severity: "P0" | "P1" | "P2" | "P3";
+              structural: boolean;
+              /** @enum {string} */
+              code:
+                | "FACT_CONTRADICTION"
+                | "TIMELINE_CONFLICT"
+                | "UNDISCLOSED_KNOWLEDGE"
+                | "MOTIVATION_BREAK"
+                | "LOCATION_CONFLICT"
+                | "STYLE_DRIFT"
+                | "WEAK_CHAPTER_END_HOOK";
+              quote: string;
+              startOffset: number;
+              endOffset: number;
+              recommendation: string;
+              /** @enum {string} */
+              status: "open" | "dismissed" | "superseded";
+              ignoredReason: string | null;
+              version: number;
             };
             /** Format: starts_with */
             requestId: string;
@@ -23671,6 +24350,9 @@ export interface operations {
                     | "AGENT_TOOL_DENIED"
                     | "AGENT_BUDGET_EXCEEDED"
                     | "AGENT_APPROVAL_REQUIRED"
+                    | "CRITIC_VERSION_REQUIRED"
+                    | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                    | "QUALITY_GATE_BLOCKED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -23842,6 +24524,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -23989,6 +24674,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -33731,6 +34419,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -34412,6 +35103,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -34912,6 +35606,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -35412,6 +36109,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -35912,6 +36612,9 @@ export interface operations {
                   | "AGENT_TOOL_DENIED"
                   | "AGENT_BUDGET_EXCEEDED"
                   | "AGENT_APPROVAL_REQUIRED"
+                  | "CRITIC_VERSION_REQUIRED"
+                  | "CRITIC_FINDING_NOT_DISMISSIBLE"
+                  | "QUALITY_GATE_BLOCKED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
