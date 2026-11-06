@@ -288,6 +288,13 @@
       "when": 1793966911289,
       "tag": "0040_panoramic_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793968893527,
+      "tag": "0041_deep_daredevil",
+      "breakpoints": true
     }
   ]
 }

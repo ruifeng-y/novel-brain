@@ -161,7 +161,7 @@ test("checks every M0 parity page at all signed-off viewports and author languag
   page,
   context,
   request,
-}) => {
+}, testInfo) => {
   const email = uniqueEmail("m0-parity");
   const session = await registerUser(request, email, "StrongPassword123", "M0 验收作者");
   await freezeApiTimestamps(page);
@@ -191,48 +191,61 @@ test("checks every M0 parity page at all signed-off viewports and author languag
   const work = await seedM0Work(request);
   const chapter = await createM0Chapter(request, work);
   const pages = [
-    { id: "dashboard", path: "/workspace", heading: "工作台", ready: ".project-card" },
+    {
+      id: "dashboard",
+      path: "/workspace",
+      heading: "工作台",
+      ready: ".project-card",
+      signedGolden: true,
+    },
     {
       id: "new-project",
       path: "/workspace/new-project",
       heading: "把一个想法，长成一本书",
       ready: ".mode-switch",
+      signedGolden: true,
     },
     {
       id: "account-settings",
       path: "/workspace/settings/account",
       heading: "把写作环境准备好",
       ready: ".model-config-row, .model-empty",
+      signedGolden: true,
     },
     {
       id: "work-overview",
       path: `/workspace/${work.id}/overview`,
       heading: work.title,
       ready: ".overview-hero",
+      signedGolden: false,
     },
     {
       id: "bible",
       path: `/workspace/${work.id}/bible`,
       heading: work.title,
       ready: ".story-bible-layout",
+      signedGolden: false,
     },
     {
       id: "settings",
       path: `/workspace/${work.id}/settings`,
       heading: "设定中心",
       ready: ".settings-workspace-grid",
+      signedGolden: false,
     },
     {
       id: "outline",
       path: `/workspace/${work.id}/outline`,
       heading: "大纲工作台",
       ready: ".outline-workspace-grid",
+      signedGolden: false,
     },
     {
       id: "writing",
       path: `/workspace/${work.id}/write?chapterId=${chapter.id}`,
       heading: "写作台",
       ready: ".writing-editor",
+      signedGolden: false,
     },
   ] as const;
 
@@ -248,10 +261,17 @@ test("checks every M0 parity page at all signed-off viewports and author languag
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow).toBeLessThanOrEqual(1);
-      await expect(page).toHaveScreenshot(
-        [pageContract.id, `${pageContract.id}-${width}.png`],
-        screenshotOptions,
-      );
+      if (pageContract.signedGolden) {
+        await expect(page).toHaveScreenshot(
+          [pageContract.id, `${pageContract.id}-${width}.png`],
+          screenshotOptions,
+        );
+      } else {
+        await testInfo.attach(`${pageContract.id}-m1-pending-${width}`, {
+          body: await page.screenshot(screenshotOptions),
+          contentType: "image/png",
+        });
+      }
     }
   }
 

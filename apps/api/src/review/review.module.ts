@@ -8,10 +8,20 @@ import { QualityService } from "./quality.service";
 import { ReviewController } from "./review.controller";
 import { ReviewRepository } from "./review.repository";
 import { ReviewService } from "./review.service";
+import { VolumeAuditController } from "./volume-audit.controller";
+import { VolumeAuditRepository } from "./volume-audit.repository";
+import { VolumeAuditService } from "./volume-audit.service";
 
 @Module({
   imports: [AuthModule, ChaptersModule],
-  controllers: [ReviewController, QualityController],
-  providers: [ReviewRepository, ReviewService, QualityRepository, QualityService],
+  controllers: [ReviewController, QualityController, VolumeAuditController],
+  providers: [
+    ReviewRepository,
+    ReviewService,
+    QualityRepository,
+    QualityService,
+    VolumeAuditRepository,
+    VolumeAuditService,
+  ],
 })
 export class ReviewModule {}

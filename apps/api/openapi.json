@@ -2565,6 +2565,10 @@
                                     "CRITIC_VERSION_REQUIRED",
                                     "CRITIC_FINDING_NOT_DISMISSIBLE",
                                     "QUALITY_GATE_BLOCKED",
+                                    "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                    "VOLUME_AUDIT_BLOCKED",
+                                    "VOLUME_AUDIT_STALE",
+                                    "GOLDEN_THREE_LOCK_REQUIRED",
                                     "STYLE_SOURCE_NOT_APPROVED",
                                     "STYLE_BASELINE_UNAPPROVED",
                                     "STYLE_BASELINE_REQUIRED",
@@ -3335,6 +3339,10 @@
                                   "CRITIC_VERSION_REQUIRED",
                                   "CRITIC_FINDING_NOT_DISMISSIBLE",
                                   "QUALITY_GATE_BLOCKED",
+                                  "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                  "VOLUME_AUDIT_BLOCKED",
+                                  "VOLUME_AUDIT_STALE",
+                                  "GOLDEN_THREE_LOCK_REQUIRED",
                                   "STYLE_SOURCE_NOT_APPROVED",
                                   "STYLE_BASELINE_UNAPPROVED",
                                   "STYLE_BASELINE_REQUIRED",
@@ -14975,6 +14983,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -16458,6 +16470,10 @@
                                   "CRITIC_VERSION_REQUIRED",
                                   "CRITIC_FINDING_NOT_DISMISSIBLE",
                                   "QUALITY_GATE_BLOCKED",
+                                  "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                  "VOLUME_AUDIT_BLOCKED",
+                                  "VOLUME_AUDIT_STALE",
+                                  "GOLDEN_THREE_LOCK_REQUIRED",
                                   "STYLE_SOURCE_NOT_APPROVED",
                                   "STYLE_BASELINE_UNAPPROVED",
                                   "STYLE_BASELINE_REQUIRED",
@@ -17375,6 +17391,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -18291,6 +18311,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -19207,6 +19231,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -20155,6 +20183,10 @@
                                     "CRITIC_VERSION_REQUIRED",
                                     "CRITIC_FINDING_NOT_DISMISSIBLE",
                                     "QUALITY_GATE_BLOCKED",
+                                    "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                    "VOLUME_AUDIT_BLOCKED",
+                                    "VOLUME_AUDIT_STALE",
+                                    "GOLDEN_THREE_LOCK_REQUIRED",
                                     "STYLE_SOURCE_NOT_APPROVED",
                                     "STYLE_BASELINE_UNAPPROVED",
                                     "STYLE_BASELINE_REQUIRED",
@@ -39509,7 +39541,8 @@
                                         "golden_finger",
                                         "chapter",
                                         "chapter_version",
-                                        "story_bible"
+                                        "story_bible",
+                                        "story_ledger_entry"
                                       ]
                                     },
                                     "id": {
@@ -39552,7 +39585,8 @@
                                         "outline_node",
                                         "map",
                                         "map_node",
-                                        "style_baseline"
+                                        "style_baseline",
+                                        "story_ledger_entry"
                                       ]
                                     },
                                     "id": {
@@ -40199,7 +40233,8 @@
                                         "golden_finger",
                                         "chapter",
                                         "chapter_version",
-                                        "story_bible"
+                                        "story_bible",
+                                        "story_ledger_entry"
                                       ]
                                     },
                                     "id": {
@@ -40242,7 +40277,8 @@
                                         "outline_node",
                                         "map",
                                         "map_node",
-                                        "style_baseline"
+                                        "style_baseline",
+                                        "story_ledger_entry"
                                       ]
                                     },
                                     "id": {
@@ -40852,6 +40888,1810 @@
           }
         },
         "tags": ["quality"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/volume-audits": {
+      "get": {
+        "operationId": "VolumeAuditController_workspace",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Volume audit workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "goldenThreeLocked": {
+                          "type": "boolean"
+                        },
+                        "volumes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "nodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "chapterFrom": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "chapterTo": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "chapterCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "writtenChapters": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "latestReportId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              }
+                            },
+                            "required": [
+                              "nodeId",
+                              "title",
+                              "chapterFrom",
+                              "chapterTo",
+                              "chapterCount",
+                              "writtenChapters",
+                              "latestReportId"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "latestReport": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "volumeNodeId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "volumeTitle": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "chapterFrom": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "chapterTo": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "ruleVersion": {
+                              "type": "string",
+                              "enum": ["m1-volume-audit-v1"]
+                            },
+                            "sourceHash": {
+                              "type": "string",
+                              "pattern": "^[a-f0-9]{64}$"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": ["passed", "warnings", "blocked"]
+                            },
+                            "findings": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "workId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "branchId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "dimension": {
+                                    "type": "string",
+                                    "enum": ["continuity", "style", "reader_experience"]
+                                  },
+                                  "qualityDimension": {
+                                    "type": "string",
+                                    "enum": [
+                                      "hook",
+                                      "pacing",
+                                      "information_density",
+                                      "character_voice",
+                                      "prose",
+                                      "continuity"
+                                    ]
+                                  },
+                                  "severity": {
+                                    "type": "string",
+                                    "enum": ["P0", "P1", "P2", "P3"]
+                                  },
+                                  "structural": {
+                                    "type": "boolean"
+                                  },
+                                  "code": {
+                                    "type": "string",
+                                    "enum": [
+                                      "FACT_CONTRADICTION",
+                                      "TIMELINE_CONFLICT",
+                                      "UNDISCLOSED_KNOWLEDGE",
+                                      "MOTIVATION_BREAK",
+                                      "LOCATION_CONFLICT",
+                                      "STYLE_DRIFT",
+                                      "WEAK_CHAPTER_END_HOOK",
+                                      "UNRESOLVED_LEDGER_ENTRY",
+                                      "ANTAGONIST_UNDERESTIMATION",
+                                      "POWER_INFLATION",
+                                      "VOLUME_CHAPTER_UNAUDITED"
+                                    ]
+                                  },
+                                  "evidence": {
+                                    "minItems": 1,
+                                    "maxItems": 5,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "kind": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fact",
+                                            "timeline",
+                                            "knowledge",
+                                            "outline",
+                                            "location",
+                                            "voice",
+                                            "text"
+                                          ]
+                                        },
+                                        "sourceId": {
+                                          "nullable": true,
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "sourceVersionId": {
+                                          "nullable": true,
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "chapterId": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "chapterVersionId": {
+                                          "nullable": true,
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "quote": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 2000
+                                        },
+                                        "startOffset": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "endOffset": {
+                                          "type": "integer",
+                                          "minimum": 0,
+                                          "maximum": 9007199254740991
+                                        },
+                                        "locator": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        },
+                                        "explanation": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 1000
+                                        }
+                                      },
+                                      "required": [
+                                        "kind",
+                                        "sourceId",
+                                        "sourceVersionId",
+                                        "chapterId",
+                                        "chapterVersionId",
+                                        "quote",
+                                        "startOffset",
+                                        "endOffset",
+                                        "locator",
+                                        "explanation"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "sourceRefs": {
+                                    "minItems": 1,
+                                    "maxItems": 10,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "fact",
+                                            "timeline_event",
+                                            "character_knowledge",
+                                            "outline_node",
+                                            "map",
+                                            "map_node",
+                                            "style_baseline",
+                                            "character",
+                                            "world_rule",
+                                            "golden_finger",
+                                            "chapter",
+                                            "chapter_version",
+                                            "story_bible",
+                                            "story_ledger_entry"
+                                          ]
+                                        },
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "versionId": {
+                                          "nullable": true,
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": ["type", "id", "versionId", "label"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "affectedObjects": {
+                                    "minItems": 1,
+                                    "maxItems": 10,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "type": {
+                                          "type": "string",
+                                          "enum": [
+                                            "chapter",
+                                            "chapter_version",
+                                            "fact",
+                                            "timeline_event",
+                                            "character",
+                                            "world_rule",
+                                            "golden_finger",
+                                            "character_knowledge",
+                                            "outline_node",
+                                            "map",
+                                            "map_node",
+                                            "style_baseline",
+                                            "story_ledger_entry"
+                                          ]
+                                        },
+                                        "id": {
+                                          "type": "string",
+                                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                        },
+                                        "label": {
+                                          "nullable": true,
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      },
+                                      "required": ["type", "id", "label"],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "recommendation": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  },
+                                  "upstreamFindingId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "createdAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "workId",
+                                  "branchId",
+                                  "chapterId",
+                                  "chapterVersionId",
+                                  "chapterNumber",
+                                  "dimension",
+                                  "qualityDimension",
+                                  "severity",
+                                  "structural",
+                                  "code",
+                                  "evidence",
+                                  "sourceRefs",
+                                  "affectedObjects",
+                                  "recommendation",
+                                  "upstreamFindingId",
+                                  "createdAt"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "coverage": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "chapterId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "chapterNumber": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "chapterVersionId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "wordCount": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "qualityReportId": {
+                                    "nullable": true,
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "qualityFindingCount": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "chapterId",
+                                  "chapterNumber",
+                                  "title",
+                                  "chapterVersionId",
+                                  "wordCount",
+                                  "qualityReportId",
+                                  "qualityFindingCount"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "summary": {
+                              "type": "object",
+                              "properties": {
+                                "total": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "blockers": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "warnings": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "unresolvedLedger": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "motivation": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "antagonist": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "powerInflation": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "mapTime": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "knowledgeLeak": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "other": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "total",
+                                "blockers",
+                                "warnings",
+                                "unresolvedLedger",
+                                "motivation",
+                                "antagonist",
+                                "powerInflation",
+                                "mapTime",
+                                "knowledgeLeak",
+                                "other"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "signoff": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "decision": {
+                                  "type": "string",
+                                  "enum": ["accepted", "changes_requested"]
+                                },
+                                "rationale": {
+                                  "type": "string",
+                                  "minLength": 10,
+                                  "maxLength": 2000
+                                },
+                                "signedOffBy": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "signedOffAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": ["decision", "rationale", "signedOffBy", "signedOffAt"],
+                              "additionalProperties": false
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "createdAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "workId",
+                            "branchId",
+                            "volumeNodeId",
+                            "volumeTitle",
+                            "chapterFrom",
+                            "chapterTo",
+                            "ruleVersion",
+                            "sourceHash",
+                            "status",
+                            "findings",
+                            "coverage",
+                            "summary",
+                            "signoff",
+                            "version",
+                            "createdAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "signoffUser": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "displayName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            }
+                          },
+                          "required": ["id", "displayName"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "workId",
+                        "branchId",
+                        "goldenThreeLocked",
+                        "volumes",
+                        "latestReport",
+                        "signoffUser"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["volume-audit"]
+      },
+      "post": {
+        "operationId": "VolumeAuditController_run",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "volumeNodeId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                  }
+                },
+                "required": ["volumeNodeId"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Volume audit report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "volumeNodeId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "volumeTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "chapterFrom": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "chapterTo": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "ruleVersion": {
+                          "type": "string",
+                          "enum": ["m1-volume-audit-v1"]
+                        },
+                        "sourceHash": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["passed", "warnings", "blocked"]
+                        },
+                        "findings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterVersionId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterNumber": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "dimension": {
+                                "type": "string",
+                                "enum": ["continuity", "style", "reader_experience"]
+                              },
+                              "qualityDimension": {
+                                "type": "string",
+                                "enum": [
+                                  "hook",
+                                  "pacing",
+                                  "information_density",
+                                  "character_voice",
+                                  "prose",
+                                  "continuity"
+                                ]
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2", "P3"]
+                              },
+                              "structural": {
+                                "type": "boolean"
+                              },
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "FACT_CONTRADICTION",
+                                  "TIMELINE_CONFLICT",
+                                  "UNDISCLOSED_KNOWLEDGE",
+                                  "MOTIVATION_BREAK",
+                                  "LOCATION_CONFLICT",
+                                  "STYLE_DRIFT",
+                                  "WEAK_CHAPTER_END_HOOK",
+                                  "UNRESOLVED_LEDGER_ENTRY",
+                                  "ANTAGONIST_UNDERESTIMATION",
+                                  "POWER_INFLATION",
+                                  "VOLUME_CHAPTER_UNAUDITED"
+                                ]
+                              },
+                              "evidence": {
+                                "minItems": 1,
+                                "maxItems": 5,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "fact",
+                                        "timeline",
+                                        "knowledge",
+                                        "outline",
+                                        "location",
+                                        "voice",
+                                        "text"
+                                      ]
+                                    },
+                                    "sourceId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "sourceVersionId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "chapterId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "chapterVersionId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "quote": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 2000
+                                    },
+                                    "startOffset": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "endOffset": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "locator": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "explanation": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 1000
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "sourceId",
+                                    "sourceVersionId",
+                                    "chapterId",
+                                    "chapterVersionId",
+                                    "quote",
+                                    "startOffset",
+                                    "endOffset",
+                                    "locator",
+                                    "explanation"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "sourceRefs": {
+                                "minItems": 1,
+                                "maxItems": 10,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "fact",
+                                        "timeline_event",
+                                        "character_knowledge",
+                                        "outline_node",
+                                        "map",
+                                        "map_node",
+                                        "style_baseline",
+                                        "character",
+                                        "world_rule",
+                                        "golden_finger",
+                                        "chapter",
+                                        "chapter_version",
+                                        "story_bible",
+                                        "story_ledger_entry"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "versionId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "required": ["type", "id", "versionId", "label"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "affectedObjects": {
+                                "minItems": 1,
+                                "maxItems": 10,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "chapter",
+                                        "chapter_version",
+                                        "fact",
+                                        "timeline_event",
+                                        "character",
+                                        "world_rule",
+                                        "golden_finger",
+                                        "character_knowledge",
+                                        "outline_node",
+                                        "map",
+                                        "map_node",
+                                        "style_baseline",
+                                        "story_ledger_entry"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "required": ["type", "id", "label"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "recommendation": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "upstreamFindingId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "workId",
+                              "branchId",
+                              "chapterId",
+                              "chapterVersionId",
+                              "chapterNumber",
+                              "dimension",
+                              "qualityDimension",
+                              "severity",
+                              "structural",
+                              "code",
+                              "evidence",
+                              "sourceRefs",
+                              "affectedObjects",
+                              "recommendation",
+                              "upstreamFindingId",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "coverage": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "chapterId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterNumber": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "chapterVersionId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "wordCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "qualityReportId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "qualityFindingCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "chapterId",
+                              "chapterNumber",
+                              "title",
+                              "chapterVersionId",
+                              "wordCount",
+                              "qualityReportId",
+                              "qualityFindingCount"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "blockers": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "warnings": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "unresolvedLedger": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "motivation": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "antagonist": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "powerInflation": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "mapTime": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "knowledgeLeak": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "other": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "blockers",
+                            "warnings",
+                            "unresolvedLedger",
+                            "motivation",
+                            "antagonist",
+                            "powerInflation",
+                            "mapTime",
+                            "knowledgeLeak",
+                            "other"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "signoff": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "decision": {
+                              "type": "string",
+                              "enum": ["accepted", "changes_requested"]
+                            },
+                            "rationale": {
+                              "type": "string",
+                              "minLength": 10,
+                              "maxLength": 2000
+                            },
+                            "signedOffBy": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "signedOffAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": ["decision", "rationale", "signedOffBy", "signedOffAt"],
+                          "additionalProperties": false
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "volumeNodeId",
+                        "volumeTitle",
+                        "chapterFrom",
+                        "chapterTo",
+                        "ruleVersion",
+                        "sourceHash",
+                        "status",
+                        "findings",
+                        "coverage",
+                        "summary",
+                        "signoff",
+                        "version",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["volume-audit"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/volume-audits/{auditId}/signoff": {
+      "post": {
+        "operationId": "VolumeAuditController_signoff",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "auditId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": ["accepted", "changes_requested"]
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "minLength": 10,
+                    "maxLength": 2000
+                  }
+                },
+                "required": ["version", "decision", "rationale"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Signed volume audit report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "volumeNodeId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "volumeTitle": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "chapterFrom": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "chapterTo": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "ruleVersion": {
+                          "type": "string",
+                          "enum": ["m1-volume-audit-v1"]
+                        },
+                        "sourceHash": {
+                          "type": "string",
+                          "pattern": "^[a-f0-9]{64}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["passed", "warnings", "blocked"]
+                        },
+                        "findings": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterVersionId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterNumber": {
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "dimension": {
+                                "type": "string",
+                                "enum": ["continuity", "style", "reader_experience"]
+                              },
+                              "qualityDimension": {
+                                "type": "string",
+                                "enum": [
+                                  "hook",
+                                  "pacing",
+                                  "information_density",
+                                  "character_voice",
+                                  "prose",
+                                  "continuity"
+                                ]
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["P0", "P1", "P2", "P3"]
+                              },
+                              "structural": {
+                                "type": "boolean"
+                              },
+                              "code": {
+                                "type": "string",
+                                "enum": [
+                                  "FACT_CONTRADICTION",
+                                  "TIMELINE_CONFLICT",
+                                  "UNDISCLOSED_KNOWLEDGE",
+                                  "MOTIVATION_BREAK",
+                                  "LOCATION_CONFLICT",
+                                  "STYLE_DRIFT",
+                                  "WEAK_CHAPTER_END_HOOK",
+                                  "UNRESOLVED_LEDGER_ENTRY",
+                                  "ANTAGONIST_UNDERESTIMATION",
+                                  "POWER_INFLATION",
+                                  "VOLUME_CHAPTER_UNAUDITED"
+                                ]
+                              },
+                              "evidence": {
+                                "minItems": 1,
+                                "maxItems": 5,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "fact",
+                                        "timeline",
+                                        "knowledge",
+                                        "outline",
+                                        "location",
+                                        "voice",
+                                        "text"
+                                      ]
+                                    },
+                                    "sourceId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "sourceVersionId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "chapterId": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "chapterVersionId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "quote": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 2000
+                                    },
+                                    "startOffset": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "endOffset": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "locator": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "explanation": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 1000
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "sourceId",
+                                    "sourceVersionId",
+                                    "chapterId",
+                                    "chapterVersionId",
+                                    "quote",
+                                    "startOffset",
+                                    "endOffset",
+                                    "locator",
+                                    "explanation"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "sourceRefs": {
+                                "minItems": 1,
+                                "maxItems": 10,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "fact",
+                                        "timeline_event",
+                                        "character_knowledge",
+                                        "outline_node",
+                                        "map",
+                                        "map_node",
+                                        "style_baseline",
+                                        "character",
+                                        "world_rule",
+                                        "golden_finger",
+                                        "chapter",
+                                        "chapter_version",
+                                        "story_bible",
+                                        "story_ledger_entry"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "versionId": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "required": ["type", "id", "versionId", "label"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "affectedObjects": {
+                                "minItems": 1,
+                                "maxItems": 10,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "type": {
+                                      "type": "string",
+                                      "enum": [
+                                        "chapter",
+                                        "chapter_version",
+                                        "fact",
+                                        "timeline_event",
+                                        "character",
+                                        "world_rule",
+                                        "golden_finger",
+                                        "character_knowledge",
+                                        "outline_node",
+                                        "map",
+                                        "map_node",
+                                        "style_baseline",
+                                        "story_ledger_entry"
+                                      ]
+                                    },
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "nullable": true,
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "required": ["type", "id", "label"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "recommendation": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000
+                              },
+                              "upstreamFindingId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "workId",
+                              "branchId",
+                              "chapterId",
+                              "chapterVersionId",
+                              "chapterNumber",
+                              "dimension",
+                              "qualityDimension",
+                              "severity",
+                              "structural",
+                              "code",
+                              "evidence",
+                              "sourceRefs",
+                              "affectedObjects",
+                              "recommendation",
+                              "upstreamFindingId",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "coverage": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "chapterId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterNumber": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "chapterVersionId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "wordCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "qualityReportId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "qualityFindingCount": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "chapterId",
+                              "chapterNumber",
+                              "title",
+                              "chapterVersionId",
+                              "wordCount",
+                              "qualityReportId",
+                              "qualityFindingCount"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "summary": {
+                          "type": "object",
+                          "properties": {
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "blockers": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "warnings": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "unresolvedLedger": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "motivation": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "antagonist": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "powerInflation": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "mapTime": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "knowledgeLeak": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "other": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": [
+                            "total",
+                            "blockers",
+                            "warnings",
+                            "unresolvedLedger",
+                            "motivation",
+                            "antagonist",
+                            "powerInflation",
+                            "mapTime",
+                            "knowledgeLeak",
+                            "other"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "signoff": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "decision": {
+                              "type": "string",
+                              "enum": ["accepted", "changes_requested"]
+                            },
+                            "rationale": {
+                              "type": "string",
+                              "minLength": 10,
+                              "maxLength": 2000
+                            },
+                            "signedOffBy": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "signedOffAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": ["decision", "rationale", "signedOffBy", "signedOffAt"],
+                          "additionalProperties": false
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "workId",
+                        "branchId",
+                        "volumeNodeId",
+                        "volumeTitle",
+                        "chapterFrom",
+                        "chapterTo",
+                        "ruleVersion",
+                        "sourceHash",
+                        "status",
+                        "findings",
+                        "coverage",
+                        "summary",
+                        "signoff",
+                        "version",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["volume-audit"]
       }
     },
     "/api/v1/works/{workId}/branches/{branchId}/retrieval/search": {
@@ -72314,6 +74154,10 @@
                                       "CRITIC_VERSION_REQUIRED",
                                       "CRITIC_FINDING_NOT_DISMISSIBLE",
                                       "QUALITY_GATE_BLOCKED",
+                                      "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                      "VOLUME_AUDIT_BLOCKED",
+                                      "VOLUME_AUDIT_STALE",
+                                      "GOLDEN_THREE_LOCK_REQUIRED",
                                       "STYLE_SOURCE_NOT_APPROVED",
                                       "STYLE_BASELINE_UNAPPROVED",
                                       "STYLE_BASELINE_REQUIRED",
@@ -72660,6 +74504,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -72941,6 +74789,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -101995,6 +103847,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -103508,6 +105364,10 @@
                                   "CRITIC_VERSION_REQUIRED",
                                   "CRITIC_FINDING_NOT_DISMISSIBLE",
                                   "QUALITY_GATE_BLOCKED",
+                                  "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                  "VOLUME_AUDIT_BLOCKED",
+                                  "VOLUME_AUDIT_STALE",
+                                  "GOLDEN_THREE_LOCK_REQUIRED",
                                   "STYLE_SOURCE_NOT_APPROVED",
                                   "STYLE_BASELINE_UNAPPROVED",
                                   "STYLE_BASELINE_REQUIRED",
@@ -105022,6 +106882,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -106535,6 +108399,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
@@ -108048,6 +109916,10 @@
                                 "CRITIC_VERSION_REQUIRED",
                                 "CRITIC_FINDING_NOT_DISMISSIBLE",
                                 "QUALITY_GATE_BLOCKED",
+                                "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+                                "VOLUME_AUDIT_BLOCKED",
+                                "VOLUME_AUDIT_STALE",
+                                "GOLDEN_THREE_LOCK_REQUIRED",
                                 "STYLE_SOURCE_NOT_APPROVED",
                                 "STYLE_BASELINE_UNAPPROVED",
                                 "STYLE_BASELINE_REQUIRED",
