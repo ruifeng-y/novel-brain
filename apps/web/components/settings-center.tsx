@@ -350,7 +350,15 @@ const conflictTypeLabels: Record<SettingConflictType, string> = {
   ai_disagreement: "AI 建议分歧",
 };
 
-export function SettingsCenter({ workId }: { workId: string }) {
+export function SettingsCenter({
+  initialColumn,
+  initialEntityId,
+  workId,
+}: {
+  initialColumn?: string | undefined;
+  initialEntityId?: string | undefined;
+  workId: string;
+}) {
   const [work, setWork] = useState<WorkOverview | null>(null);
   const [entities, setEntities] = useState<SettingEntity[]>([]);
   const [confirmed, setConfirmed] = useState<ConfirmedSetting[]>([]);
@@ -397,8 +405,22 @@ export function SettingsCenter({ workId }: { workId: string }) {
       if (!fieldResponse.ok) {
         throw new Error(await readError(fieldResponse, "自定义字段加载失败。"));
       }
+      const entityData = settingEntityListResponseSchema.parse(await entityResponse.json()).data;
       setWork(workData);
-      setEntities(settingEntityListResponseSchema.parse(await entityResponse.json()).data);
+      setEntities(entityData);
+      const requestedEntity = initialEntityId
+        ? entityData.find((entity) => entity.id === initialEntityId)
+        : undefined;
+      if (requestedEntity) {
+        setSelectedId(requestedEntity.id);
+        setActiveColumn(columnForType(requestedEntity.type));
+        setView("columns");
+      } else {
+        const requestedColumn = COLUMNS.find((column) => column.key === initialColumn);
+        if (requestedColumn) {
+          setActiveColumn(requestedColumn.key);
+        }
+      }
       setConfirmed(confirmedSettingListResponseSchema.parse(await confirmedResponse.json()).data);
       setCustomFields(
         customFieldDefinitionListResponseSchema.parse(await fieldResponse.json()).data,
@@ -408,7 +430,7 @@ export function SettingsCenter({ workId }: { workId: string }) {
     } finally {
       setLoading(false);
     }
-  }, [workId]);
+  }, [initialColumn, initialEntityId, workId]);
 
   useEffect(() => {
     void load();

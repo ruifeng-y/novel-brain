@@ -17,6 +17,7 @@ export const ERROR_CODES = [
   "MODEL_POLICY_BLOCKED",
   "MODEL_RESPONSE_INVALID",
   "MODEL_PROVIDER_ERROR",
+  "GEN_READINESS_BLOCKED",
   "BIBLE_NOT_READY",
   "BIBLE_LOCKED",
   "BIBLE_NOT_LOCKED",
@@ -5929,3 +5930,126 @@ export const goldenThreeWorkspaceSchema = z
 export type GoldenThreeWorkspace = z.infer<typeof goldenThreeWorkspaceSchema>;
 
 export const goldenThreeWorkspaceResponseSchema = apiEnvelopeSchema(goldenThreeWorkspaceSchema);
+
+export const GENERATION_READINESS_RULE_VERSION = "readiness-v1" as const;
+
+export const generationReadinessSeveritySchema = z.enum(["blocker", "warning"]);
+export type GenerationReadinessSeverity = z.infer<typeof generationReadinessSeveritySchema>;
+
+export const generationReadinessStatusSchema = z.enum(["not_ready", "partial", "ready"]);
+export type GenerationReadinessStatus = z.infer<typeof generationReadinessStatusSchema>;
+
+export const generationReadinessItemStateSchema = z.enum([
+  "ready",
+  "missing",
+  "unlocked",
+  "invalid",
+  "conflict",
+  "pending",
+]);
+export type GenerationReadinessItemState = z.infer<typeof generationReadinessItemStateSchema>;
+
+export const generationReadinessResourceTypeSchema = z.enum([
+  "story_bible",
+  "story_bible_card",
+  "world_rule",
+  "setting",
+  "character",
+  "outline_node",
+  "chapter",
+  "required_facts",
+  "model_config",
+  "budget",
+  "risk_approval",
+]);
+export type GenerationReadinessResourceType = z.infer<typeof generationReadinessResourceTypeSchema>;
+
+export const generationReadinessResourceRefSchema = z
+  .object({
+    type: generationReadinessResourceTypeSchema,
+    id: z.string().min(1).nullable(),
+    version: z.string().min(1).nullable(),
+    label: z.string().min(1),
+  })
+  .strict();
+export type GenerationReadinessResourceRef = z.infer<typeof generationReadinessResourceRefSchema>;
+
+export const generationReadinessEvidenceSchema = z
+  .object({
+    kind: z.enum([
+      "resource_state",
+      "missing_dependency",
+      "conflict",
+      "configuration",
+      "budget",
+      "pending_approval",
+    ]),
+    summary: z.string().min(1),
+    resource: generationReadinessResourceRefSchema,
+  })
+  .strict();
+export type GenerationReadinessEvidence = z.infer<typeof generationReadinessEvidenceSchema>;
+
+export const generationReadinessRemediationSchema = z
+  .object({
+    action: z.enum(["complete", "lock", "resolve", "configure", "review"]),
+    label: z.string().min(1),
+    href: z.string().regex(/^\/workspace(?:\/|$)/u),
+  })
+  .strict();
+export type GenerationReadinessRemediation = z.infer<typeof generationReadinessRemediationSchema>;
+
+export const generationReadinessItemSchema = z
+  .object({
+    key: z.string().min(1),
+    label: z.string().min(1),
+    severity: generationReadinessSeveritySchema,
+    state: generationReadinessItemStateSchema,
+    ready: z.boolean(),
+    reason: z.string().min(1),
+    resource: generationReadinessResourceRefSchema,
+    evidence: z.array(generationReadinessEvidenceSchema).max(20),
+    remediation: generationReadinessRemediationSchema.nullable(),
+  })
+  .strict();
+export type GenerationReadinessItem = z.infer<typeof generationReadinessItemSchema>;
+
+export const generationReadinessDependencySchema = z
+  .object({
+    key: z.string().min(1),
+    version: z.string().min(1),
+  })
+  .strict();
+export type GenerationReadinessDependency = z.infer<typeof generationReadinessDependencySchema>;
+
+export const generationReadinessSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    ruleVersion: z.literal(GENERATION_READINESS_RULE_VERSION),
+    status: generationReadinessStatusSchema,
+    canProceed: z.boolean(),
+    completed: z.number().int().nonnegative(),
+    total: z.number().int().positive(),
+    blockers: z.number().int().nonnegative(),
+    warnings: z.number().int().nonnegative(),
+    dependencyFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
+    dependencies: z.array(generationReadinessDependencySchema),
+    items: z.array(generationReadinessItemSchema).min(1),
+  })
+  .strict();
+export type GenerationReadiness = z.infer<typeof generationReadinessSchema>;
+
+export const generationReadinessQuerySchema = z
+  .object({
+    chapterId: uuidV7Schema.optional(),
+    modelConfigId: uuidV7Schema.optional(),
+    maxCostCny: z.coerce.number().nonnegative().optional(),
+    maxTokens: z.coerce.number().int().positive().optional(),
+    maxRevisionRounds: z.coerce.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type GenerationReadinessQuery = z.infer<typeof generationReadinessQuerySchema>;
+
+export const generationReadinessResponseSchema = apiEnvelopeSchema(generationReadinessSchema);

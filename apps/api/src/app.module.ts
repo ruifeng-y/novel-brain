@@ -13,6 +13,7 @@ import { ManuscriptImportModule } from "./imports/manuscript-import.module";
 import { SettingsImportModule } from "./imports/settings-import.module";
 import { ModelConfigModule } from "./model-config/model-config.module";
 import { OutlineModule } from "./outline/outline.module";
+import { ReadinessModule } from "./readiness/readiness.module";
 import { ReviewModule } from "./review/review.module";
 import { RetrievalModule } from "./retrieval/retrieval.module";
 import { SettingsModule } from "./settings/settings.module";
@@ -37,6 +38,7 @@ import { WorldModule } from "./world/world.module";
     SettingsImportModule,
     ModelConfigModule,
     OutlineModule,
+    ReadinessModule,
     ReviewModule,
     RetrievalModule,
     SettingsModule,

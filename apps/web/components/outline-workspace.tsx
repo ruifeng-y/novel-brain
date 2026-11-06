@@ -164,7 +164,13 @@ const nodeStatusLabels: Record<OutlineNode["status"], string> = {
   done: "已完成",
 };
 
-export function OutlineWorkspace({ workId }: { workId: string }) {
+export function OutlineWorkspace({
+  initialNodeId,
+  workId,
+}: {
+  initialNodeId?: string | undefined;
+  workId: string;
+}) {
   const [work, setWork] = useState<WorkOverview | null>(null);
   const [workspace, setWorkspace] = useState<OutlineWorkspace | null>(null);
   const [ledger, setLedger] = useState<StoryLedgerWorkspace | null>(null);
@@ -218,14 +224,16 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
       setSelectedId((current) =>
         current && outline.nodes.some((node) => node.id === current)
           ? current
-          : (outline.nodes[0]?.id ?? null),
+          : initialNodeId && outline.nodes.some((node) => node.id === initialNodeId)
+            ? initialNodeId
+            : (outline.nodes[0]?.id ?? null),
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "大纲加载失败。");
     } finally {
       setLoading(false);
     }
-  }, [workId]);
+  }, [initialNodeId, workId]);
 
   useEffect(() => {
     void load();
@@ -251,9 +259,11 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
     setSelectedId((current) =>
       current && outline.nodes.some((node) => node.id === current)
         ? current
-        : (outline.nodes[0]?.id ?? null),
+        : initialNodeId && outline.nodes.some((node) => node.id === initialNodeId)
+          ? initialNodeId
+          : (outline.nodes[0]?.id ?? null),
     );
-  }, [basePath]);
+  }, [basePath, initialNodeId]);
 
   const selected = useMemo(
     () => workspace?.nodes.find((node) => node.id === selectedId) ?? null,
