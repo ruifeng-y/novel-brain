@@ -1668,6 +1668,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/style": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["StyleController_workspace"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/style/profiles": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StyleController_createProfile"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/style/profiles/{profileId}/approve": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StyleController_approveProfile"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/style/drift": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StyleController_checkDrift"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/summaries": {
     parameters: {
       query?: never;
@@ -3359,6 +3423,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -3655,6 +3725,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -7603,6 +7679,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8120,6 +8202,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8466,6 +8554,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8812,6 +8906,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9158,6 +9258,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9513,6 +9619,12 @@ export interface operations {
                     | "CRITIC_VERSION_REQUIRED"
                     | "CRITIC_FINDING_NOT_DISMISSIBLE"
                     | "QUALITY_GATE_BLOCKED"
+                    | "STYLE_SOURCE_NOT_APPROVED"
+                    | "STYLE_BASELINE_UNAPPROVED"
+                    | "STYLE_BASELINE_REQUIRED"
+                    | "STYLE_REFERENCE_INVALID"
+                    | "STYLE_RANGE_EMPTY"
+                    | "CHAPTER_VERSION_REQUIRED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -24332,6 +24444,623 @@ export interface operations {
       };
     };
   };
+  StyleController_workspace: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Style baselines and latest drift reports */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              profiles: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                scope: "work" | "character";
+                scopeId: string | null;
+                /** @enum {string} */
+                dimension: "character_voice" | "prose";
+                name: string;
+                version: number;
+                /** @enum {string} */
+                approvalStatus: "pending" | "approved" | "rejected" | "superseded";
+                source: {
+                  /** @enum {string} */
+                  type: "author_sample" | "approved_chapter_version" | "golden_three";
+                  id: string;
+                  versionId: string;
+                  versionNodeId: string | null;
+                  label: string;
+                };
+                profile: {
+                  guides: string[];
+                  samples: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                    locator: string;
+                  }[];
+                  metrics: {
+                    averageSentenceLength: number;
+                    exclamationRate: number;
+                    dialogueRatio: number;
+                  };
+                };
+                approval: {
+                  approvedBy: string;
+                  /** Format: date-time */
+                  approvedAt: string;
+                  rationale: string;
+                } | null;
+                versionNodeId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              latestChapterReport: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                scope: "chapter" | "volume" | "cross_volume";
+                chapterId: string | null;
+                window: {
+                  fromChapter: number;
+                  toChapter: number;
+                };
+                baseline: {
+                  id: string;
+                  version: number;
+                  /** @enum {string} */
+                  dimension: "character_voice" | "prose";
+                  /** @enum {string} */
+                  sourceType: "author_sample" | "approved_chapter_version" | "golden_three";
+                };
+                profileVersion: number;
+                /** @enum {string} */
+                ruleVersion: "m1-style-drift-v1";
+                model: {
+                  provider: string;
+                  model: string;
+                  /** @default {} */
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                prompt: {
+                  key: string;
+                  version: number;
+                };
+                summary: string;
+                findings: {
+                  id: string;
+                  /** @enum {string} */
+                  code:
+                    | "CHARACTER_VOICE_DRIFT"
+                    | "WORK_STYLE_DRIFT"
+                    | "INTENTIONAL_CHARACTER_DEVELOPMENT";
+                  /** @enum {string} */
+                  classification: "drift" | "intentional_development";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  dimension: "character_voice" | "prose";
+                  chapterId: string;
+                  chapterVersionId: string;
+                  quote: string;
+                  startOffset: number;
+                  endOffset: number;
+                  locator: string;
+                  explanation: string;
+                  recommendation: string;
+                  growthEvidence: {
+                    markerId: string;
+                    startState: string;
+                    endState: string;
+                    reason: string;
+                  } | null;
+                }[];
+                trend: {
+                  chapterId: string;
+                  chapterVersionId: string;
+                  chapterNumber: number;
+                  exclamationRate: number;
+                  averageSentenceLength: number;
+                  dialogueRatio: number;
+                  deviationScore: number;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              latestVolumeReport: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                scope: "chapter" | "volume" | "cross_volume";
+                chapterId: string | null;
+                window: {
+                  fromChapter: number;
+                  toChapter: number;
+                };
+                baseline: {
+                  id: string;
+                  version: number;
+                  /** @enum {string} */
+                  dimension: "character_voice" | "prose";
+                  /** @enum {string} */
+                  sourceType: "author_sample" | "approved_chapter_version" | "golden_three";
+                };
+                profileVersion: number;
+                /** @enum {string} */
+                ruleVersion: "m1-style-drift-v1";
+                model: {
+                  provider: string;
+                  model: string;
+                  /** @default {} */
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                prompt: {
+                  key: string;
+                  version: number;
+                };
+                summary: string;
+                findings: {
+                  id: string;
+                  /** @enum {string} */
+                  code:
+                    | "CHARACTER_VOICE_DRIFT"
+                    | "WORK_STYLE_DRIFT"
+                    | "INTENTIONAL_CHARACTER_DEVELOPMENT";
+                  /** @enum {string} */
+                  classification: "drift" | "intentional_development";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  dimension: "character_voice" | "prose";
+                  chapterId: string;
+                  chapterVersionId: string;
+                  quote: string;
+                  startOffset: number;
+                  endOffset: number;
+                  locator: string;
+                  explanation: string;
+                  recommendation: string;
+                  growthEvidence: {
+                    markerId: string;
+                    startState: string;
+                    endState: string;
+                    reason: string;
+                  } | null;
+                }[];
+                trend: {
+                  chapterId: string;
+                  chapterVersionId: string;
+                  chapterNumber: number;
+                  exclamationRate: number;
+                  averageSentenceLength: number;
+                  dialogueRatio: number;
+                  deviationScore: number;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              latestCrossVolumeReport: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                scope: "chapter" | "volume" | "cross_volume";
+                chapterId: string | null;
+                window: {
+                  fromChapter: number;
+                  toChapter: number;
+                };
+                baseline: {
+                  id: string;
+                  version: number;
+                  /** @enum {string} */
+                  dimension: "character_voice" | "prose";
+                  /** @enum {string} */
+                  sourceType: "author_sample" | "approved_chapter_version" | "golden_three";
+                };
+                profileVersion: number;
+                /** @enum {string} */
+                ruleVersion: "m1-style-drift-v1";
+                model: {
+                  provider: string;
+                  model: string;
+                  /** @default {} */
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                prompt: {
+                  key: string;
+                  version: number;
+                };
+                summary: string;
+                findings: {
+                  id: string;
+                  /** @enum {string} */
+                  code:
+                    | "CHARACTER_VOICE_DRIFT"
+                    | "WORK_STYLE_DRIFT"
+                    | "INTENTIONAL_CHARACTER_DEVELOPMENT";
+                  /** @enum {string} */
+                  classification: "drift" | "intentional_development";
+                  /** @enum {string} */
+                  severity: "P0" | "P1" | "P2" | "P3";
+                  /** @enum {string} */
+                  dimension: "character_voice" | "prose";
+                  chapterId: string;
+                  chapterVersionId: string;
+                  quote: string;
+                  startOffset: number;
+                  endOffset: number;
+                  locator: string;
+                  explanation: string;
+                  recommendation: string;
+                  growthEvidence: {
+                    markerId: string;
+                    startState: string;
+                    endState: string;
+                    reason: string;
+                  } | null;
+                }[];
+                trend: {
+                  chapterId: string;
+                  chapterVersionId: string;
+                  chapterNumber: number;
+                  exclamationRate: number;
+                  averageSentenceLength: number;
+                  dialogueRatio: number;
+                  deviationScore: number;
+                }[];
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StyleController_createProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          scope: "work" | "character";
+          /** @default null */
+          scopeId?: string | null;
+          /** @enum {string} */
+          dimension: "character_voice" | "prose";
+          name: string;
+          /**
+           * @default pending
+           * @enum {string}
+           */
+          approvalStatus?: "pending";
+          source: {
+            /** @enum {string} */
+            type: "author_sample" | "approved_chapter_version" | "golden_three";
+            id: string;
+            versionId: string;
+            label: string;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Created style profile */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              scope: "work" | "character";
+              scopeId: string | null;
+              /** @enum {string} */
+              dimension: "character_voice" | "prose";
+              name: string;
+              version: number;
+              /** @enum {string} */
+              approvalStatus: "pending" | "approved" | "rejected" | "superseded";
+              source: {
+                /** @enum {string} */
+                type: "author_sample" | "approved_chapter_version" | "golden_three";
+                id: string;
+                versionId: string;
+                versionNodeId: string | null;
+                label: string;
+              };
+              profile: {
+                guides: string[];
+                samples: {
+                  chapterId: string;
+                  chapterVersionId: string;
+                  excerpt: string;
+                  locator: string;
+                }[];
+                metrics: {
+                  averageSentenceLength: number;
+                  exclamationRate: number;
+                  dialogueRatio: number;
+                };
+              };
+              approval: {
+                approvedBy: string;
+                /** Format: date-time */
+                approvedAt: string;
+                rationale: string;
+              } | null;
+              versionNodeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StyleController_approveProfile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        profileId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          rationale: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Approved style profile */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              scope: "work" | "character";
+              scopeId: string | null;
+              /** @enum {string} */
+              dimension: "character_voice" | "prose";
+              name: string;
+              version: number;
+              /** @enum {string} */
+              approvalStatus: "pending" | "approved" | "rejected" | "superseded";
+              source: {
+                /** @enum {string} */
+                type: "author_sample" | "approved_chapter_version" | "golden_three";
+                id: string;
+                versionId: string;
+                versionNodeId: string | null;
+                label: string;
+              };
+              profile: {
+                guides: string[];
+                samples: {
+                  chapterId: string;
+                  chapterVersionId: string;
+                  excerpt: string;
+                  locator: string;
+                }[];
+                metrics: {
+                  averageSentenceLength: number;
+                  exclamationRate: number;
+                  dialogueRatio: number;
+                };
+              };
+              approval: {
+                approvedBy: string;
+                /** Format: date-time */
+                approvedAt: string;
+                rationale: string;
+              } | null;
+              versionNodeId: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StyleController_checkDrift: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @enum {string} */
+          scope: "chapter" | "volume" | "cross_volume";
+          chapterId?: string;
+          fromChapter?: number;
+          toChapter?: number;
+          model: {
+            provider: string;
+            model: string;
+            /** @default {} */
+            parameters?: {
+              [key: string]: unknown;
+            };
+          };
+          prompt: {
+            key: string;
+            version: number;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Persisted style drift report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              /** @enum {string} */
+              scope: "chapter" | "volume" | "cross_volume";
+              chapterId: string | null;
+              window: {
+                fromChapter: number;
+                toChapter: number;
+              };
+              baseline: {
+                id: string;
+                version: number;
+                /** @enum {string} */
+                dimension: "character_voice" | "prose";
+                /** @enum {string} */
+                sourceType: "author_sample" | "approved_chapter_version" | "golden_three";
+              };
+              profileVersion: number;
+              /** @enum {string} */
+              ruleVersion: "m1-style-drift-v1";
+              model: {
+                provider: string;
+                model: string;
+                /** @default {} */
+                parameters: {
+                  [key: string]: unknown;
+                };
+              };
+              prompt: {
+                key: string;
+                version: number;
+              };
+              summary: string;
+              findings: {
+                id: string;
+                /** @enum {string} */
+                code:
+                  | "CHARACTER_VOICE_DRIFT"
+                  | "WORK_STYLE_DRIFT"
+                  | "INTENTIONAL_CHARACTER_DEVELOPMENT";
+                /** @enum {string} */
+                classification: "drift" | "intentional_development";
+                /** @enum {string} */
+                severity: "P0" | "P1" | "P2" | "P3";
+                /** @enum {string} */
+                dimension: "character_voice" | "prose";
+                chapterId: string;
+                chapterVersionId: string;
+                quote: string;
+                startOffset: number;
+                endOffset: number;
+                locator: string;
+                explanation: string;
+                recommendation: string;
+                growthEvidence: {
+                  markerId: string;
+                  startState: string;
+                  endState: string;
+                  reason: string;
+                } | null;
+              }[];
+              trend: {
+                chapterId: string;
+                chapterVersionId: string;
+                chapterNumber: number;
+                exclamationRate: number;
+                averageSentenceLength: number;
+                dialogueRatio: number;
+                deviationScore: number;
+              }[];
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   SummariesController_workspace: {
     parameters: {
       query?: never;
@@ -24497,6 +25226,12 @@ export interface operations {
                     | "CRITIC_VERSION_REQUIRED"
                     | "CRITIC_FINDING_NOT_DISMISSIBLE"
                     | "QUALITY_GATE_BLOCKED"
+                    | "STYLE_SOURCE_NOT_APPROVED"
+                    | "STYLE_BASELINE_UNAPPROVED"
+                    | "STYLE_BASELINE_REQUIRED"
+                    | "STYLE_REFERENCE_INVALID"
+                    | "STYLE_RANGE_EMPTY"
+                    | "CHAPTER_VERSION_REQUIRED"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -24672,6 +25407,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -24823,6 +25564,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -34569,6 +35316,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -35254,6 +36007,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -35758,6 +36517,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -36262,6 +37027,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -36766,6 +37537,12 @@ export interface operations {
                   | "CRITIC_VERSION_REQUIRED"
                   | "CRITIC_FINDING_NOT_DISMISSIBLE"
                   | "QUALITY_GATE_BLOCKED"
+                  | "STYLE_SOURCE_NOT_APPROVED"
+                  | "STYLE_BASELINE_UNAPPROVED"
+                  | "STYLE_BASELINE_REQUIRED"
+                  | "STYLE_REFERENCE_INVALID"
+                  | "STYLE_RANGE_EMPTY"
+                  | "CHAPTER_VERSION_REQUIRED"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;

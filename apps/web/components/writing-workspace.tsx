@@ -44,6 +44,8 @@ import {
   generationJobResponseSchema,
   jobEventSchema,
   qualityWorkspaceResponseSchema,
+  styleDriftReportResponseSchema,
+  styleDriftWorkspaceResponseSchema,
   writingActionJobListResponseSchema,
   writingActionJobResponseSchema,
   workResponseSchema,
@@ -55,6 +57,8 @@ import {
   type AgentRunTrace,
   type GenerationJob,
   type QualityWorkspace,
+  type StyleDriftFinding,
+  type StyleDriftWorkspace,
   type GenerationReadiness,
   type WorkOverview,
   type WritingActionJob,
@@ -63,6 +67,7 @@ import {
 
 import { getCsrfToken } from "../lib/csrf-client";
 import { ReadinessRemediation } from "./readiness-remediation";
+import { StyleDriftFindings } from "./style-drift-findings";
 
 const statusLabels: Record<ChapterWorkspace["status"], string> = {
   planned: "已规划",
@@ -207,6 +212,8 @@ export function WritingWorkspace({
   const [submissionBusy, setSubmissionBusy] = useState(false);
   const [qualityWorkspace, setQualityWorkspace] = useState<QualityWorkspace | null>(null);
   const [qualityBusy, setQualityBusy] = useState(false);
+  const [styleWorkspace, setStyleWorkspace] = useState<StyleDriftWorkspace | null>(null);
+  const [styleBusy, setStyleBusy] = useState(false);
   const [annotationBusyId, setAnnotationBusyId] = useState<string | null>(null);
   const [dismissingId, setDismissingId] = useState<string | null>(null);
   const [dismissReason, setDismissReason] = useState("");
@@ -250,6 +257,7 @@ export function WritingWorkspace({
           loadFactProposals(workData, nextSelectedId),
           loadCanonCommit(workData, nextSelectedId),
           loadQuality(workData, nextSelectedId),
+          loadStyleDrift(workData),
           loadReadiness(workData, nextSelectedId),
         ]);
       } else {
@@ -348,6 +356,16 @@ export function WritingWorkspace({
   const canCheckQuality = Boolean(
     selected?.currentVersionId && !dirty && !qualityBusy && !generationActive,
   );
+  const latestStyleChapterReport = styleWorkspace?.latestChapterReport ?? null;
+  const styleReport =
+    latestStyleChapterReport &&
+    latestStyleChapterReport.chapterId === selected?.id &&
+    latestStyleChapterReport.trend[0]?.chapterVersionId === selected?.currentVersionId
+      ? latestStyleChapterReport
+      : null;
+  const canCheckStyle = Boolean(
+    selected?.currentVersionId && !dirty && !styleBusy && !generationActive,
+  );
 
   async function selectChapter(chapter: ChapterWorkspace) {
     setSelectedId(chapter.id);
@@ -364,6 +382,7 @@ export function WritingWorkspace({
           loadFactProposals(work, chapter.id),
           loadCanonCommit(work, chapter.id),
           loadQuality(work, chapter.id),
+          loadStyleDrift(work),
         ]);
       } catch (caught) {
         setActionError(caught instanceof Error ? caught.message : "章节资料加载失败。");
@@ -489,6 +508,17 @@ export function WritingWorkspace({
       throw new Error(await readError(response, "质量报告加载失败。"));
     }
     setQualityWorkspace(qualityWorkspaceResponseSchema.parse(await response.json()).data);
+  }
+
+  async function loadStyleDrift(workData: WorkOverview) {
+    const response = await fetch(
+      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/style`,
+      { cache: "no-store" },
+    );
+    if (!response.ok) {
+      throw new Error(await readError(response, "声线与风格报告加载失败。"));
+    }
+    setStyleWorkspace(styleDriftWorkspaceResponseSchema.parse(await response.json()).data);
   }
 
   async function loadReadiness(
@@ -988,6 +1018,56 @@ export function WritingWorkspace({
     } finally {
       setQualityBusy(false);
     }
+  }
+
+  async function checkStyleDrift() {
+    if (!work || !selected || !canCheckStyle) {
+      return;
+    }
+    setStyleBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/style/drift`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            scope: "chapter",
+            chapterId: selected.id,
+            model: {
+              provider: "novel-brain",
+              model: "风格规则检查 v1",
+              parameters: {},
+            },
+            prompt: { key: "style-drift-review", version: 1 },
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "本章声线检查失败。"));
+      }
+      const report = styleDriftReportResponseSchema.parse(await response.json()).data;
+      setStyleWorkspace((current) =>
+        current ? { ...current, latestChapterReport: report } : current,
+      );
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "本章声线检查失败。");
+    } finally {
+      setStyleBusy(false);
+    }
+  }
+
+  function locateStyleEvidence(finding: StyleDriftFinding) {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    editor.focus();
+    editor.setSelectionRange(finding.startOffset, finding.endOffset);
   }
 
   async function updateAnnotation(
@@ -1948,6 +2028,39 @@ export function WritingWorkspace({
                   )}
                 </div>
               </>
+            )}
+          </section>
+
+          <section className="panel writing-style-drift" aria-labelledby="writing-style-title">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">声线与风格</span>
+                <h2 id="writing-style-title">漂移检查</h2>
+              </div>
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={!canCheckStyle}
+                onClick={() => void checkStyleDrift()}
+                type="button"
+              >
+                {styleBusy ? (
+                  <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                ) : (
+                  <Sparkles size={14} aria-hidden="true" />
+                )}
+                {styleReport ? "重新检查声线" : "检查本章声线"}
+              </button>
+            </div>
+            {!styleWorkspace?.profiles.some((profile) => profile.approvalStatus === "approved") ? (
+              <p className="style-drift-empty">
+                还没有已批准的声线或文风样本，请先在作品总览中确认基线。
+              </p>
+            ) : !styleReport ? (
+              <p className="style-drift-empty">
+                保存当前版本后检查人物声线和叙述文风，结果只定位证据，不会自动修改正文。
+              </p>
+            ) : (
+              <StyleDriftFindings onLocate={locateStyleEvidence} report={styleReport} />
             )}
           </section>
 

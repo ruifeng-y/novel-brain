@@ -4185,3 +4185,258 @@ export const qualityFindings = pgTable(
     ),
   ],
 );
+
+export type StyleProfileJson = {
+  guides: string[];
+  samples: Array<{
+    chapterId: string;
+    chapterVersionId: string;
+    excerpt: string;
+    locator: string;
+  }>;
+  metrics: {
+    averageSentenceLength: number;
+    exclamationRate: number;
+    dialogueRatio: number;
+  };
+};
+
+export type StyleDriftTrendJson = {
+  chapterId: string;
+  chapterVersionId: string;
+  chapterNumber: number;
+  exclamationRate: number;
+  averageSentenceLength: number;
+  dialogueRatio: number;
+  deviationScore: number;
+};
+
+export type StyleDriftGrowthEvidenceJson = {
+  markerId: string;
+  startState: string;
+  endState: string;
+  reason: string;
+};
+
+export const styleProfiles = pgTable(
+  "style_profiles",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    scopeId: uuid("scope_id").references(() => entities.id, { onDelete: "restrict" }),
+    dimension: text("dimension").notNull(),
+    name: text("name").notNull(),
+    version: integer("version").notNull(),
+    approvalStatus: text("approval_status").notNull().default("pending"),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    sourceVersionId: uuid("source_version_id").notNull(),
+    sourceVersionNodeId: uuid("source_version_node_id").references(() => versionNodes.id, {
+      onDelete: "set null",
+    }),
+    sourceLabel: text("source_label").notNull(),
+    profile: jsonb("profile").$type<StyleProfileJson>().notNull(),
+    approvalRationale: text("approval_rationale"),
+    approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    versionNodeId: uuid("version_node_id").references(() => versionNodes.id, {
+      onDelete: "set null",
+    }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("style_profiles_character_version_unique")
+      .on(table.workId, table.branchId, table.dimension, table.scopeId, table.version)
+      .where(sql`${table.scope} = 'character'`),
+    uniqueIndex("style_profiles_work_version_unique")
+      .on(table.workId, table.branchId, table.dimension, table.version)
+      .where(sql`${table.scope} = 'work'`),
+    index("style_profiles_user_work_idx").on(table.userId, table.workId),
+    index("style_profiles_branch_status_idx").on(table.branchId, table.approvalStatus),
+    check("style_profiles_scope_check", sql`${table.scope} in ('work', 'character')`),
+    check(
+      "style_profiles_scope_id_check",
+      sql`(${table.scope} = 'work' and ${table.scopeId} is null) or (${table.scope} = 'character' and ${table.scopeId} is not null)`,
+    ),
+    check(
+      "style_profiles_dimension_check",
+      sql`${table.dimension} in ('character_voice', 'prose')`,
+    ),
+    check("style_profiles_version_check", sql`${table.version} > 0`),
+    check(
+      "style_profiles_approval_status_check",
+      sql`${table.approvalStatus} in ('pending', 'approved', 'rejected', 'superseded')`,
+    ),
+    check(
+      "style_profiles_source_type_check",
+      sql`${table.sourceType} in ('author_sample', 'approved_chapter_version', 'golden_three')`,
+    ),
+    check(
+      "style_profiles_approval_check",
+      sql`(${table.approvalStatus} = 'approved' and ${table.approvedBy} is not null and ${table.approvedAt} is not null and ${table.approvalRationale} is not null and length(trim(${table.approvalRationale})) > 0) or (${table.approvalStatus} <> 'approved' and ${table.approvedBy} is null and ${table.approvedAt} is null and ${table.approvalRationale} is null)`,
+    ),
+    check(
+      "style_profiles_body_check",
+      sql`jsonb_typeof(${table.profile}) = 'object' and jsonb_typeof(${table.profile}->'samples') = 'array' and jsonb_array_length(${table.profile}->'samples') > 0`,
+    ),
+  ],
+);
+
+export const styleDriftReports = pgTable(
+  "style_drift_reports",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    baselineProfileId: uuid("baseline_profile_id")
+      .notNull()
+      .references(() => styleProfiles.id, { onDelete: "restrict" }),
+    baselineVersion: integer("baseline_version").notNull(),
+    baselineDimension: text("baseline_dimension").notNull(),
+    baselineSourceType: text("baseline_source_type").notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    modelProvider: text("model_provider").notNull(),
+    model: text("model").notNull(),
+    modelParameters: jsonb("model_parameters")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    promptKey: text("prompt_key").notNull(),
+    promptVersion: integer("prompt_version").notNull(),
+    profileVersion: integer("profile_version").notNull(),
+    windowFromChapter: integer("window_from_chapter").notNull(),
+    windowToChapter: integer("window_to_chapter").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    summary: text("summary").notNull(),
+    trend: jsonb("trend").$type<StyleDriftTrendJson[]>().notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("style_drift_reports_user_work_idx").on(table.userId, table.workId),
+    index("style_drift_reports_branch_scope_created_idx").on(
+      table.branchId,
+      table.scope,
+      table.createdAt,
+    ),
+    check(
+      "style_drift_reports_scope_check",
+      sql`${table.scope} in ('chapter', 'volume', 'cross_volume')`,
+    ),
+    check(
+      "style_drift_reports_window_check",
+      sql`${table.windowToChapter} >= ${table.windowFromChapter}`,
+    ),
+    check(
+      "style_drift_reports_scope_refs_check",
+      sql`(${table.scope} = 'chapter' and ${table.chapterId} is not null and ${table.chapterVersionId} is not null and ${table.windowFromChapter} = ${table.windowToChapter}) or (${table.scope} <> 'chapter' and ${table.chapterId} is null and ${table.chapterVersionId} is null)`,
+    ),
+    check(
+      "style_drift_reports_dimension_check",
+      sql`${table.baselineDimension} in ('character_voice', 'prose')`,
+    ),
+    check(
+      "style_drift_reports_source_type_check",
+      sql`${table.baselineSourceType} in ('author_sample', 'approved_chapter_version', 'golden_three')`,
+    ),
+    check(
+      "style_drift_reports_rule_version_check",
+      sql`${table.ruleVersion} = 'm1-style-drift-v1'`,
+    ),
+    check("style_drift_reports_source_hash_check", sql`${table.sourceHash} ~ '^[a-f0-9]{64}$'`),
+    check("style_drift_reports_trend_check", sql`jsonb_typeof(${table.trend}) = 'array'`),
+  ],
+);
+
+export const styleDriftFindings = pgTable(
+  "style_drift_findings",
+  {
+    id: uuid("id").primaryKey(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => styleDriftReports.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    baselineProfileId: uuid("baseline_profile_id")
+      .notNull()
+      .references(() => styleProfiles.id, { onDelete: "restrict" }),
+    baselineVersion: integer("baseline_version").notNull(),
+    dimension: text("dimension").notNull(),
+    classification: text("classification").notNull(),
+    severity: text("severity").notNull(),
+    code: text("code").notNull(),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    quote: text("quote").notNull(),
+    startOffset: integer("start_offset").notNull(),
+    endOffset: integer("end_offset").notNull(),
+    locator: text("locator").notNull(),
+    explanation: text("explanation").notNull(),
+    recommendation: text("recommendation").notNull(),
+    growthEvidence: jsonb("growth_evidence").$type<StyleDriftGrowthEvidenceJson>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("style_drift_findings_report_idx").on(table.reportId, table.classification),
+    index("style_drift_findings_user_work_idx").on(table.userId, table.workId),
+    check(
+      "style_drift_findings_dimension_check",
+      sql`${table.dimension} in ('character_voice', 'prose')`,
+    ),
+    check(
+      "style_drift_findings_classification_check",
+      sql`${table.classification} in ('drift', 'intentional_development')`,
+    ),
+    check("style_drift_findings_severity_check", sql`${table.severity} in ('P1', 'P2', 'P3')`),
+    check(
+      "style_drift_findings_code_check",
+      sql`${table.code} in ('CHARACTER_VOICE_DRIFT', 'WORK_STYLE_DRIFT', 'INTENTIONAL_CHARACTER_DEVELOPMENT')`,
+    ),
+    check(
+      "style_drift_findings_span_check",
+      sql`${table.startOffset} >= 0 and ${table.endOffset} > ${table.startOffset}`,
+    ),
+    check(
+      "style_drift_findings_growth_check",
+      sql`(${table.classification} = 'intentional_development' and ${table.code} = 'INTENTIONAL_CHARACTER_DEVELOPMENT' and ${table.growthEvidence} is not null) or (${table.classification} = 'drift' and ${table.code} <> 'INTENTIONAL_CHARACTER_DEVELOPMENT' and ${table.growthEvidence} is null)`,
+    ),
+  ],
+);
