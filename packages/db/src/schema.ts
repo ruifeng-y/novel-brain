@@ -298,7 +298,7 @@ export const versionNodes = pgTable(
     index("version_nodes_user_work_idx").on(table.userId, table.workId),
     check(
       "version_nodes_node_type_check",
-      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
+      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
     ),
   ],
 );
@@ -3218,6 +3218,252 @@ export const sceneCards = pgTable(
     check(
       "scene_cards_tension_check",
       sql`${table.tension} is null or (${table.tension} >= 0 and ${table.tension} <= 100)`,
+    ),
+  ],
+);
+
+export type StoryLedgerEvidenceJson = {
+  kind: string;
+  sourceId: string | null;
+  label: string;
+  quote: string;
+  locator: string;
+  confidence: number | null;
+  strength: "weak" | "strong";
+};
+
+export type StoryLedgerHistoryJson = {
+  id: string;
+  action: string;
+  fromStatus: string;
+  toStatus: string;
+  chapter: {
+    id: string;
+    number: number;
+    title: string;
+  } | null;
+  event: {
+    eventId: string;
+    label: string;
+    chapterNumber: number | null;
+    validFromChapter: number | null;
+    validToChapter: number | null;
+  } | null;
+  reason: string;
+  evidence: StoryLedgerEvidenceJson[];
+  actorId: string;
+  createdAt: string;
+};
+
+const ledgerStatusCheck = (column: AnyPgColumn) =>
+  sql`${column} in ('planned', 'planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned', 'deferred')`;
+
+const ledgerResponsibleRoleCheck = (column: AnyPgColumn) =>
+  sql`${column} in ('protagonist', 'antagonist', 'supporting', 'ensemble', 'author')`;
+
+const ledgerSourceCheck = (
+  status: AnyPgColumn,
+  sourceChapterId: AnyPgColumn,
+  sourceEventId: AnyPgColumn,
+) =>
+  sql`(${status} not in ('planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned') or ${sourceChapterId} is not null or ${sourceEventId} is not null)`;
+
+const ledgerHistoryCheck = (status: AnyPgColumn, history: AnyPgColumn) =>
+  sql`(${status} = 'planned' or jsonb_array_length(${history}) > 0)`;
+
+const ledgerEvidenceCheck = (status: AnyPgColumn, evidence: AnyPgColumn) =>
+  sql`(${status} not in ('paid_off', 'failed_payoff') or jsonb_array_length(${evidence}) > 0)`;
+
+export const plotThreads = pgTable(
+  "plot_threads",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("planned"),
+    responsibleRole: text("responsible_role").notNull(),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    sourceEventId: uuid("source_event_id").references(() => timelineEvents.id, {
+      onDelete: "set null",
+    }),
+    targetFromChapter: integer("target_from_chapter").notNull(),
+    targetToChapter: integer("target_to_chapter").notNull(),
+    prerequisiteEventIds: jsonb("prerequisite_event_ids").$type<string[]>().notNull().default([]),
+    evidence: jsonb("evidence").$type<StoryLedgerEvidenceJson[]>().notNull().default([]),
+    history: jsonb("history").$type<StoryLedgerHistoryJson[]>().notNull().default([]),
+    threadType: text("thread_type").notNull(),
+    stakes: text("stakes").notNull(),
+    tension: integer("tension"),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("plot_threads_user_work_idx").on(table.userId, table.workId),
+    index("plot_threads_branch_status_idx").on(table.branchId, table.status),
+    index("plot_threads_branch_target_idx").on(table.branchId, table.targetToChapter),
+    check(
+      "plot_threads_thread_type_check",
+      sql`${table.threadType} in ('main', 'subplot', 'character', 'faction', 'world', 'mystery', 'romance')`,
+    ),
+    check("plot_threads_status_check", ledgerStatusCheck(table.status)),
+    check("plot_threads_responsible_role_check", ledgerResponsibleRoleCheck(table.responsibleRole)),
+    check(
+      "plot_threads_source_check",
+      ledgerSourceCheck(table.status, table.sourceChapterId, table.sourceEventId),
+    ),
+    check("plot_threads_history_check", ledgerHistoryCheck(table.status, table.history)),
+    check("plot_threads_evidence_check", ledgerEvidenceCheck(table.status, table.evidence)),
+    check(
+      "plot_threads_target_window_check",
+      sql`${table.targetToChapter} >= ${table.targetFromChapter}`,
+    ),
+    check(
+      "plot_threads_tension_check",
+      sql`${table.tension} is null or (${table.tension} >= 0 and ${table.tension} <= 100)`,
+    ),
+  ],
+);
+
+export const foreshadows = pgTable(
+  "foreshadows",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("planned"),
+    responsibleRole: text("responsible_role").notNull(),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    sourceEventId: uuid("source_event_id").references(() => timelineEvents.id, {
+      onDelete: "set null",
+    }),
+    targetFromChapter: integer("target_from_chapter").notNull(),
+    targetToChapter: integer("target_to_chapter").notNull(),
+    prerequisiteEventIds: jsonb("prerequisite_event_ids").$type<string[]>().notNull().default([]),
+    evidence: jsonb("evidence").$type<StoryLedgerEvidenceJson[]>().notNull().default([]),
+    history: jsonb("history").$type<StoryLedgerHistoryJson[]>().notNull().default([]),
+    importance: text("importance").notNull().default("must"),
+    readerPromise: text("reader_promise").notNull(),
+    relatedCharacterIds: jsonb("related_character_ids").$type<string[]>().notNull().default([]),
+    relatedFactionIds: jsonb("related_faction_ids").$type<string[]>().notNull().default([]),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("foreshadows_user_work_idx").on(table.userId, table.workId),
+    index("foreshadows_branch_status_idx").on(table.branchId, table.status),
+    index("foreshadows_branch_target_idx").on(table.branchId, table.targetToChapter),
+    check("foreshadows_importance_check", sql`${table.importance} in ('must', 'optional')`),
+    check("foreshadows_status_check", ledgerStatusCheck(table.status)),
+    check("foreshadows_responsible_role_check", ledgerResponsibleRoleCheck(table.responsibleRole)),
+    check(
+      "foreshadows_source_check",
+      ledgerSourceCheck(table.status, table.sourceChapterId, table.sourceEventId),
+    ),
+    check("foreshadows_history_check", ledgerHistoryCheck(table.status, table.history)),
+    check("foreshadows_evidence_check", ledgerEvidenceCheck(table.status, table.evidence)),
+    check(
+      "foreshadows_target_window_check",
+      sql`${table.targetToChapter} >= ${table.targetFromChapter}`,
+    ),
+  ],
+);
+
+export const characterArcs = pgTable(
+  "character_arcs",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("planned"),
+    responsibleRole: text("responsible_role").notNull(),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    sourceEventId: uuid("source_event_id").references(() => timelineEvents.id, {
+      onDelete: "set null",
+    }),
+    targetFromChapter: integer("target_from_chapter").notNull(),
+    targetToChapter: integer("target_to_chapter").notNull(),
+    prerequisiteEventIds: jsonb("prerequisite_event_ids").$type<string[]>().notNull().default([]),
+    evidence: jsonb("evidence").$type<StoryLedgerEvidenceJson[]>().notNull().default([]),
+    history: jsonb("history").$type<StoryLedgerHistoryJson[]>().notNull().default([]),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "restrict" }),
+    startState: text("start_state").notNull(),
+    desire: text("desire").notNull(),
+    fear: text("fear").notNull(),
+    lie: text("lie").notNull(),
+    truth: text("truth").notNull(),
+    endState: text("end_state").notNull(),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_arcs_user_work_idx").on(table.userId, table.workId),
+    index("character_arcs_branch_status_idx").on(table.branchId, table.status),
+    index("character_arcs_branch_target_idx").on(table.branchId, table.targetToChapter),
+    index("character_arcs_character_idx").on(table.characterId),
+    check("character_arcs_status_check", ledgerStatusCheck(table.status)),
+    check(
+      "character_arcs_responsible_role_check",
+      ledgerResponsibleRoleCheck(table.responsibleRole),
+    ),
+    check(
+      "character_arcs_source_check",
+      ledgerSourceCheck(table.status, table.sourceChapterId, table.sourceEventId),
+    ),
+    check("character_arcs_history_check", ledgerHistoryCheck(table.status, table.history)),
+    check("character_arcs_evidence_check", ledgerEvidenceCheck(table.status, table.evidence)),
+    check(
+      "character_arcs_target_window_check",
+      sql`${table.targetToChapter} >= ${table.targetFromChapter}`,
     ),
   ],
 );

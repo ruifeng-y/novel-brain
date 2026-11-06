@@ -1508,6 +1508,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/ledger": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["StoryLedgerController_workspace"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/ledger/entries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StoryLedgerController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/ledger/entries/{entryId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations["StoryLedgerController_remove"];
+    options?: never;
+    head?: never;
+    patch: operations["StoryLedgerController_patch"];
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/ledger/entries/{entryId}/transitions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["StoryLedgerController_transition"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/users/me": {
     parameters: {
       query?: never;
@@ -3050,6 +3114,10 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
                   | "VERSION_CONFLICT"
                   | "AGENT_CONTRACT_INVALID"
                   | "AGENT_GRANT_INVALID"
@@ -3334,6 +3402,10 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
                   | "VERSION_CONFLICT"
                   | "AGENT_CONTRACT_INVALID"
                   | "AGENT_GRANT_INVALID"
@@ -7134,6 +7206,10 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
                   | "VERSION_CONFLICT"
                   | "AGENT_CONTRACT_INVALID"
                   | "AGENT_GRANT_INVALID"
@@ -7600,6 +7676,10 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
                   | "VERSION_CONFLICT"
                   | "AGENT_CONTRACT_INVALID"
                   | "AGENT_GRANT_INVALID"
@@ -7918,6 +7998,10 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
                   | "VERSION_CONFLICT"
                   | "AGENT_CONTRACT_INVALID"
                   | "AGENT_GRANT_INVALID"
@@ -8236,6 +8320,10 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
                   | "VERSION_CONFLICT"
                   | "AGENT_CONTRACT_INVALID"
                   | "AGENT_GRANT_INVALID"
@@ -8554,6 +8642,10 @@ export interface operations {
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
+                  | "LEDGER_TRANSITION_INVALID"
+                  | "LEDGER_SOURCE_REQUIRED"
+                  | "LEDGER_EVIDENCE_REQUIRED"
+                  | "LEDGER_REFERENCE_INVALID"
                   | "VERSION_CONFLICT"
                   | "AGENT_CONTRACT_INVALID"
                   | "AGENT_GRANT_INVALID"
@@ -8881,6 +8973,10 @@ export interface operations {
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
+                    | "LEDGER_TRANSITION_INVALID"
+                    | "LEDGER_SOURCE_REQUIRED"
+                    | "LEDGER_EVIDENCE_REQUIRED"
+                    | "LEDGER_REFERENCE_INVALID"
                     | "VERSION_CONFLICT"
                     | "AGENT_CONTRACT_INVALID"
                     | "AGENT_GRANT_INVALID"
@@ -18123,6 +18219,4691 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  StoryLedgerController_workspace: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Story ledger workspace */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              /** @enum {string} */
+              ruleVersion: "story-ledger-checks-v1";
+              workId: string;
+              branchId: string;
+              writtenThroughChapter: number;
+              entries: (
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "plot_thread";
+                    /** @enum {string} */
+                    threadType:
+                      | "main"
+                      | "subplot"
+                      | "character"
+                      | "faction"
+                      | "world"
+                      | "mystery"
+                      | "romance";
+                    stakes: string;
+                    tension: number | null;
+                  }
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "foreshadow";
+                    /** @enum {string} */
+                    importance: "must" | "optional";
+                    readerPromise: string;
+                    relatedCharacters: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    }[];
+                    relatedFactions: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    }[];
+                  }
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "character_arc";
+                    character: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    };
+                    startState: string;
+                    desire: string;
+                    fear: string;
+                    lie: string;
+                    truth: string;
+                    endState: string;
+                  }
+              )[];
+              findings: {
+                /** @enum {string} */
+                code:
+                  | "LEDGER_OVERDUE"
+                  | "LEDGER_DUPLICATE"
+                  | "LEDGER_PREMATURE_PAYOFF"
+                  | "LEDGER_WEAK_PAYOFF"
+                  | "LEDGER_UNSUPPORTED_PAYOFF"
+                  | "LEDGER_INVALIDATED_PAYOFF"
+                  | "LEDGER_NO_CAUSAL_PAYOFF";
+                /** @enum {string} */
+                severity: "warning" | "blocker";
+                entryId: string;
+                relatedEntryIds: string[];
+                message: string;
+                remediation: string;
+              }[];
+              summary: {
+                total: number;
+                open: number;
+                overdue: number;
+                mustPayoff: number;
+                paidOff: number;
+                abandoned: number;
+                weakPayoff: number;
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryLedgerController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              /** @enum {string} */
+              kind: "plot_thread";
+              title: string;
+              /** @default  */
+              summary?: string;
+              /** @enum {string} */
+              responsibleRole: "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+              /**
+               * @default planned
+               * @enum {string}
+               */
+              status?: "planned" | "planted";
+              /** @default null */
+              sourceChapterId?: string | null;
+              /** @default null */
+              sourceEventId?: string | null;
+              targetWindow: {
+                fromChapter: number;
+                toChapter: number;
+              };
+              /** @default [] */
+              prerequisiteEventIds?: string[];
+              /** @default [] */
+              evidence?: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+                /**
+                 * @default strong
+                 * @enum {string}
+                 */
+                strength?: "weak" | "strong";
+              }[];
+              reason?: string;
+              /** @enum {string} */
+              threadType:
+                "main" | "subplot" | "character" | "faction" | "world" | "mystery" | "romance";
+              stakes: string;
+              /** @default null */
+              tension?: number | null;
+            }
+          | {
+              /** @enum {string} */
+              kind: "foreshadow";
+              title: string;
+              /** @default  */
+              summary?: string;
+              /** @enum {string} */
+              responsibleRole: "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+              /**
+               * @default planned
+               * @enum {string}
+               */
+              status?: "planned" | "planted";
+              /** @default null */
+              sourceChapterId?: string | null;
+              /** @default null */
+              sourceEventId?: string | null;
+              targetWindow: {
+                fromChapter: number;
+                toChapter: number;
+              };
+              /** @default [] */
+              prerequisiteEventIds?: string[];
+              /** @default [] */
+              evidence?: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+                /**
+                 * @default strong
+                 * @enum {string}
+                 */
+                strength?: "weak" | "strong";
+              }[];
+              reason?: string;
+              /**
+               * @default must
+               * @enum {string}
+               */
+              importance?: "must" | "optional";
+              readerPromise: string;
+              /** @default [] */
+              relatedCharacterIds?: string[];
+              /** @default [] */
+              relatedFactionIds?: string[];
+            }
+          | {
+              /** @enum {string} */
+              kind: "character_arc";
+              title: string;
+              /** @default  */
+              summary?: string;
+              /** @enum {string} */
+              responsibleRole: "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+              /**
+               * @default planned
+               * @enum {string}
+               */
+              status?: "planned" | "planted";
+              /** @default null */
+              sourceChapterId?: string | null;
+              /** @default null */
+              sourceEventId?: string | null;
+              targetWindow: {
+                fromChapter: number;
+                toChapter: number;
+              };
+              /** @default [] */
+              prerequisiteEventIds?: string[];
+              /** @default [] */
+              evidence?: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+                /**
+                 * @default strong
+                 * @enum {string}
+                 */
+                strength?: "weak" | "strong";
+              }[];
+              reason?: string;
+              characterId: string;
+              startState: string;
+              desire: string;
+              fear: string;
+              lie: string;
+              truth: string;
+              endState: string;
+            };
+      };
+    };
+    responses: {
+      /** @description Created ledger entry */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workspace: {
+                /** @enum {string} */
+                ruleVersion: "story-ledger-checks-v1";
+                workId: string;
+                branchId: string;
+                writtenThroughChapter: number;
+                entries: (
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "plot_thread";
+                      /** @enum {string} */
+                      threadType:
+                        | "main"
+                        | "subplot"
+                        | "character"
+                        | "faction"
+                        | "world"
+                        | "mystery"
+                        | "romance";
+                      stakes: string;
+                      tension: number | null;
+                    }
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "foreshadow";
+                      /** @enum {string} */
+                      importance: "must" | "optional";
+                      readerPromise: string;
+                      relatedCharacters: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      }[];
+                      relatedFactions: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      }[];
+                    }
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "character_arc";
+                      character: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      };
+                      startState: string;
+                      desire: string;
+                      fear: string;
+                      lie: string;
+                      truth: string;
+                      endState: string;
+                    }
+                )[];
+                findings: {
+                  /** @enum {string} */
+                  code:
+                    | "LEDGER_OVERDUE"
+                    | "LEDGER_DUPLICATE"
+                    | "LEDGER_PREMATURE_PAYOFF"
+                    | "LEDGER_WEAK_PAYOFF"
+                    | "LEDGER_UNSUPPORTED_PAYOFF"
+                    | "LEDGER_INVALIDATED_PAYOFF"
+                    | "LEDGER_NO_CAUSAL_PAYOFF";
+                  /** @enum {string} */
+                  severity: "warning" | "blocker";
+                  entryId: string;
+                  relatedEntryIds: string[];
+                  message: string;
+                  remediation: string;
+                }[];
+                summary: {
+                  total: number;
+                  open: number;
+                  overdue: number;
+                  mustPayoff: number;
+                  paidOff: number;
+                  abandoned: number;
+                  weakPayoff: number;
+                };
+              };
+              entry:
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "plot_thread";
+                    /** @enum {string} */
+                    threadType:
+                      | "main"
+                      | "subplot"
+                      | "character"
+                      | "faction"
+                      | "world"
+                      | "mystery"
+                      | "romance";
+                    stakes: string;
+                    tension: number | null;
+                  }
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "foreshadow";
+                    /** @enum {string} */
+                    importance: "must" | "optional";
+                    readerPromise: string;
+                    relatedCharacters: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    }[];
+                    relatedFactions: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    }[];
+                  }
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "character_arc";
+                    character: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    };
+                    startState: string;
+                    desire: string;
+                    fear: string;
+                    lie: string;
+                    truth: string;
+                    endState: string;
+                  };
+              versionNodeId: string;
+              auditId: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryLedgerController_remove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Removed ledger entry */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workspace: {
+                /** @enum {string} */
+                ruleVersion: "story-ledger-checks-v1";
+                workId: string;
+                branchId: string;
+                writtenThroughChapter: number;
+                entries: (
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "plot_thread";
+                      /** @enum {string} */
+                      threadType:
+                        | "main"
+                        | "subplot"
+                        | "character"
+                        | "faction"
+                        | "world"
+                        | "mystery"
+                        | "romance";
+                      stakes: string;
+                      tension: number | null;
+                    }
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "foreshadow";
+                      /** @enum {string} */
+                      importance: "must" | "optional";
+                      readerPromise: string;
+                      relatedCharacters: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      }[];
+                      relatedFactions: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      }[];
+                    }
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "character_arc";
+                      character: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      };
+                      startState: string;
+                      desire: string;
+                      fear: string;
+                      lie: string;
+                      truth: string;
+                      endState: string;
+                    }
+                )[];
+                findings: {
+                  /** @enum {string} */
+                  code:
+                    | "LEDGER_OVERDUE"
+                    | "LEDGER_DUPLICATE"
+                    | "LEDGER_PREMATURE_PAYOFF"
+                    | "LEDGER_WEAK_PAYOFF"
+                    | "LEDGER_UNSUPPORTED_PAYOFF"
+                    | "LEDGER_INVALIDATED_PAYOFF"
+                    | "LEDGER_NO_CAUSAL_PAYOFF";
+                  /** @enum {string} */
+                  severity: "warning" | "blocker";
+                  entryId: string;
+                  relatedEntryIds: string[];
+                  message: string;
+                  remediation: string;
+                }[];
+                summary: {
+                  total: number;
+                  open: number;
+                  overdue: number;
+                  mustPayoff: number;
+                  paidOff: number;
+                  abandoned: number;
+                  weakPayoff: number;
+                };
+              };
+              entryId: string;
+              versionNodeId: string;
+              auditId: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryLedgerController_patch: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json":
+          | {
+              /** @enum {string} */
+              kind: "plot_thread";
+              version: number;
+              title?: string;
+              summary?: string;
+              /** @enum {string} */
+              responsibleRole?: "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+              sourceChapterId?: string | null;
+              sourceEventId?: string | null;
+              targetWindow?: {
+                fromChapter: number;
+                toChapter: number;
+              };
+              prerequisiteEventIds?: string[];
+              evidence?: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+                /**
+                 * @default strong
+                 * @enum {string}
+                 */
+                strength?: "weak" | "strong";
+              }[];
+              /** @enum {string} */
+              threadType?:
+                "main" | "subplot" | "character" | "faction" | "world" | "mystery" | "romance";
+              stakes?: string;
+              tension?: number | null;
+            }
+          | {
+              /** @enum {string} */
+              kind: "foreshadow";
+              version: number;
+              title?: string;
+              summary?: string;
+              /** @enum {string} */
+              responsibleRole?: "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+              sourceChapterId?: string | null;
+              sourceEventId?: string | null;
+              targetWindow?: {
+                fromChapter: number;
+                toChapter: number;
+              };
+              prerequisiteEventIds?: string[];
+              evidence?: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+                /**
+                 * @default strong
+                 * @enum {string}
+                 */
+                strength?: "weak" | "strong";
+              }[];
+              /** @enum {string} */
+              importance?: "must" | "optional";
+              readerPromise?: string;
+              relatedCharacterIds?: string[];
+              relatedFactionIds?: string[];
+            }
+          | {
+              /** @enum {string} */
+              kind: "character_arc";
+              version: number;
+              title?: string;
+              summary?: string;
+              /** @enum {string} */
+              responsibleRole?: "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+              sourceChapterId?: string | null;
+              sourceEventId?: string | null;
+              targetWindow?: {
+                fromChapter: number;
+                toChapter: number;
+              };
+              prerequisiteEventIds?: string[];
+              evidence?: {
+                /** @enum {string} */
+                kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                /** @default null */
+                sourceId?: string | null;
+                label: string;
+                /** @default  */
+                quote?: string;
+                /** @default  */
+                locator?: string;
+                /** @default null */
+                confidence?: number | null;
+                /**
+                 * @default strong
+                 * @enum {string}
+                 */
+                strength?: "weak" | "strong";
+              }[];
+              characterId?: string;
+              startState?: string;
+              desire?: string;
+              fear?: string;
+              lie?: string;
+              truth?: string;
+              endState?: string;
+            };
+      };
+    };
+    responses: {
+      /** @description Updated ledger entry */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workspace: {
+                /** @enum {string} */
+                ruleVersion: "story-ledger-checks-v1";
+                workId: string;
+                branchId: string;
+                writtenThroughChapter: number;
+                entries: (
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "plot_thread";
+                      /** @enum {string} */
+                      threadType:
+                        | "main"
+                        | "subplot"
+                        | "character"
+                        | "faction"
+                        | "world"
+                        | "mystery"
+                        | "romance";
+                      stakes: string;
+                      tension: number | null;
+                    }
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "foreshadow";
+                      /** @enum {string} */
+                      importance: "must" | "optional";
+                      readerPromise: string;
+                      relatedCharacters: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      }[];
+                      relatedFactions: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      }[];
+                    }
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "character_arc";
+                      character: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      };
+                      startState: string;
+                      desire: string;
+                      fear: string;
+                      lie: string;
+                      truth: string;
+                      endState: string;
+                    }
+                )[];
+                findings: {
+                  /** @enum {string} */
+                  code:
+                    | "LEDGER_OVERDUE"
+                    | "LEDGER_DUPLICATE"
+                    | "LEDGER_PREMATURE_PAYOFF"
+                    | "LEDGER_WEAK_PAYOFF"
+                    | "LEDGER_UNSUPPORTED_PAYOFF"
+                    | "LEDGER_INVALIDATED_PAYOFF"
+                    | "LEDGER_NO_CAUSAL_PAYOFF";
+                  /** @enum {string} */
+                  severity: "warning" | "blocker";
+                  entryId: string;
+                  relatedEntryIds: string[];
+                  message: string;
+                  remediation: string;
+                }[];
+                summary: {
+                  total: number;
+                  open: number;
+                  overdue: number;
+                  mustPayoff: number;
+                  paidOff: number;
+                  abandoned: number;
+                  weakPayoff: number;
+                };
+              };
+              entry:
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "plot_thread";
+                    /** @enum {string} */
+                    threadType:
+                      | "main"
+                      | "subplot"
+                      | "character"
+                      | "faction"
+                      | "world"
+                      | "mystery"
+                      | "romance";
+                    stakes: string;
+                    tension: number | null;
+                  }
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "foreshadow";
+                    /** @enum {string} */
+                    importance: "must" | "optional";
+                    readerPromise: string;
+                    relatedCharacters: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    }[];
+                    relatedFactions: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    }[];
+                  }
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "character_arc";
+                    character: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    };
+                    startState: string;
+                    desire: string;
+                    fear: string;
+                    lie: string;
+                    truth: string;
+                    endState: string;
+                  };
+              versionNodeId: string;
+              auditId: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  StoryLedgerController_transition: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entryId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          /** @enum {string} */
+          action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+          /** @default null */
+          chapterId?: string | null;
+          /** @default null */
+          eventId?: string | null;
+          reason: string;
+          /** @default [] */
+          evidence?: {
+            /** @enum {string} */
+            kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+            /** @default null */
+            sourceId?: string | null;
+            label: string;
+            /** @default  */
+            quote?: string;
+            /** @default  */
+            locator?: string;
+            /** @default null */
+            confidence?: number | null;
+            /**
+             * @default strong
+             * @enum {string}
+             */
+            strength?: "weak" | "strong";
+          }[];
+          targetWindow?: {
+            fromChapter: number;
+            toChapter: number;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Transitioned ledger entry */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workspace: {
+                /** @enum {string} */
+                ruleVersion: "story-ledger-checks-v1";
+                workId: string;
+                branchId: string;
+                writtenThroughChapter: number;
+                entries: (
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "plot_thread";
+                      /** @enum {string} */
+                      threadType:
+                        | "main"
+                        | "subplot"
+                        | "character"
+                        | "faction"
+                        | "world"
+                        | "mystery"
+                        | "romance";
+                      stakes: string;
+                      tension: number | null;
+                    }
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "foreshadow";
+                      /** @enum {string} */
+                      importance: "must" | "optional";
+                      readerPromise: string;
+                      relatedCharacters: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      }[];
+                      relatedFactions: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      }[];
+                    }
+                  | {
+                      id: string;
+                      workId: string;
+                      branchId: string;
+                      title: string;
+                      summary: string;
+                      /** @enum {string} */
+                      status:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      responsibleRole:
+                        "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                      sourceChapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      sourceEvent: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      targetWindow: {
+                        fromChapter: number;
+                        toChapter: number;
+                      };
+                      prerequisiteEvents: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      }[];
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      history: {
+                        id: string;
+                        /** @enum {string} */
+                        action:
+                          "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                        /** @enum {string} */
+                        fromStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        /** @enum {string} */
+                        toStatus:
+                          | "planned"
+                          | "planted"
+                          | "progressed"
+                          | "paid_off"
+                          | "failed_payoff"
+                          | "abandoned"
+                          | "deferred";
+                        chapter: {
+                          id: string;
+                          number: number;
+                          title: string;
+                        } | null;
+                        event: {
+                          eventId: string;
+                          label: string;
+                          chapterNumber: number | null;
+                          validFromChapter: number | null;
+                          validToChapter: number | null;
+                        } | null;
+                        reason: string;
+                        evidence: {
+                          /** @enum {string} */
+                          kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                          /** @default null */
+                          sourceId: string | null;
+                          label: string;
+                          /** @default  */
+                          quote: string;
+                          /** @default  */
+                          locator: string;
+                          /** @default null */
+                          confidence: number | null;
+                          /**
+                           * @default strong
+                           * @enum {string}
+                           */
+                          strength: "weak" | "strong";
+                        }[];
+                        actorId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                      }[];
+                      version: number;
+                      versionNodeId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                      /** Format: date-time */
+                      updatedAt: string;
+                      /** @enum {string} */
+                      kind: "character_arc";
+                      character: {
+                        /** @enum {string} */
+                        type:
+                          | "character"
+                          | "faction"
+                          | "map"
+                          | "map_layer"
+                          | "map_node"
+                          | "map_edge"
+                          | "map_marker"
+                          | "territory"
+                          | "power_system"
+                          | "golden_finger"
+                          | "item"
+                          | "timeline_event"
+                          | "timeline_era"
+                          | "itinerary"
+                          | "fact"
+                          | "chapter"
+                          | "character_relationship"
+                          | "character_state"
+                          | "character_knowledge";
+                        id: string;
+                        branchId: string;
+                        /** @default null */
+                        label: string | null;
+                        /** @default null */
+                        version: {
+                          branchId: string;
+                          /** @default null */
+                          versionNodeId: string | null;
+                          /** @default null */
+                          objectVersion: number | null;
+                        } | null;
+                      };
+                      startState: string;
+                      desire: string;
+                      fear: string;
+                      lie: string;
+                      truth: string;
+                      endState: string;
+                    }
+                )[];
+                findings: {
+                  /** @enum {string} */
+                  code:
+                    | "LEDGER_OVERDUE"
+                    | "LEDGER_DUPLICATE"
+                    | "LEDGER_PREMATURE_PAYOFF"
+                    | "LEDGER_WEAK_PAYOFF"
+                    | "LEDGER_UNSUPPORTED_PAYOFF"
+                    | "LEDGER_INVALIDATED_PAYOFF"
+                    | "LEDGER_NO_CAUSAL_PAYOFF";
+                  /** @enum {string} */
+                  severity: "warning" | "blocker";
+                  entryId: string;
+                  relatedEntryIds: string[];
+                  message: string;
+                  remediation: string;
+                }[];
+                summary: {
+                  total: number;
+                  open: number;
+                  overdue: number;
+                  mustPayoff: number;
+                  paidOff: number;
+                  abandoned: number;
+                  weakPayoff: number;
+                };
+              };
+              entry:
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "plot_thread";
+                    /** @enum {string} */
+                    threadType:
+                      | "main"
+                      | "subplot"
+                      | "character"
+                      | "faction"
+                      | "world"
+                      | "mystery"
+                      | "romance";
+                    stakes: string;
+                    tension: number | null;
+                  }
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "foreshadow";
+                    /** @enum {string} */
+                    importance: "must" | "optional";
+                    readerPromise: string;
+                    relatedCharacters: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    }[];
+                    relatedFactions: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    }[];
+                  }
+                | {
+                    id: string;
+                    workId: string;
+                    branchId: string;
+                    title: string;
+                    summary: string;
+                    /** @enum {string} */
+                    status:
+                      | "planned"
+                      | "planted"
+                      | "progressed"
+                      | "paid_off"
+                      | "failed_payoff"
+                      | "abandoned"
+                      | "deferred";
+                    /** @enum {string} */
+                    responsibleRole:
+                      "protagonist" | "antagonist" | "supporting" | "ensemble" | "author";
+                    sourceChapter: {
+                      id: string;
+                      number: number;
+                      title: string;
+                    } | null;
+                    sourceEvent: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    } | null;
+                    targetWindow: {
+                      fromChapter: number;
+                      toChapter: number;
+                    };
+                    prerequisiteEvents: {
+                      eventId: string;
+                      label: string;
+                      chapterNumber: number | null;
+                      validFromChapter: number | null;
+                      validToChapter: number | null;
+                    }[];
+                    evidence: {
+                      /** @enum {string} */
+                      kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                      /** @default null */
+                      sourceId: string | null;
+                      label: string;
+                      /** @default  */
+                      quote: string;
+                      /** @default  */
+                      locator: string;
+                      /** @default null */
+                      confidence: number | null;
+                      /**
+                       * @default strong
+                       * @enum {string}
+                       */
+                      strength: "weak" | "strong";
+                    }[];
+                    history: {
+                      id: string;
+                      /** @enum {string} */
+                      action: "setup" | "progress" | "payoff" | "fail_payoff" | "abandon" | "defer";
+                      /** @enum {string} */
+                      fromStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      /** @enum {string} */
+                      toStatus:
+                        | "planned"
+                        | "planted"
+                        | "progressed"
+                        | "paid_off"
+                        | "failed_payoff"
+                        | "abandoned"
+                        | "deferred";
+                      chapter: {
+                        id: string;
+                        number: number;
+                        title: string;
+                      } | null;
+                      event: {
+                        eventId: string;
+                        label: string;
+                        chapterNumber: number | null;
+                        validFromChapter: number | null;
+                        validToChapter: number | null;
+                      } | null;
+                      reason: string;
+                      evidence: {
+                        /** @enum {string} */
+                        kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                        /** @default null */
+                        sourceId: string | null;
+                        label: string;
+                        /** @default  */
+                        quote: string;
+                        /** @default  */
+                        locator: string;
+                        /** @default null */
+                        confidence: number | null;
+                        /**
+                         * @default strong
+                         * @enum {string}
+                         */
+                        strength: "weak" | "strong";
+                      }[];
+                      actorId: string;
+                      /** Format: date-time */
+                      createdAt: string;
+                    }[];
+                    version: number;
+                    versionNodeId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    /** Format: date-time */
+                    updatedAt: string;
+                    /** @enum {string} */
+                    kind: "character_arc";
+                    character: {
+                      /** @enum {string} */
+                      type:
+                        | "character"
+                        | "faction"
+                        | "map"
+                        | "map_layer"
+                        | "map_node"
+                        | "map_edge"
+                        | "map_marker"
+                        | "territory"
+                        | "power_system"
+                        | "golden_finger"
+                        | "item"
+                        | "timeline_event"
+                        | "timeline_era"
+                        | "itinerary"
+                        | "fact"
+                        | "chapter"
+                        | "character_relationship"
+                        | "character_state"
+                        | "character_knowledge";
+                      id: string;
+                      branchId: string;
+                      /** @default null */
+                      label: string | null;
+                      /** @default null */
+                      version: {
+                        branchId: string;
+                        /** @default null */
+                        versionNodeId: string | null;
+                        /** @default null */
+                        objectVersion: number | null;
+                      } | null;
+                    };
+                    startState: string;
+                    desire: string;
+                    fear: string;
+                    lie: string;
+                    truth: string;
+                    endState: string;
+                  };
+              versionNodeId: string;
+              auditId: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };

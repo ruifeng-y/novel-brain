@@ -72,6 +72,10 @@ export const ERROR_CODES = [
   "GOLDEN_THREE_SELECTION_REQUIRED",
   "GOLDEN_THREE_ALREADY_LOCKED",
   "GOLDEN_THREE_OVERRIDE_INVALID",
+  "LEDGER_TRANSITION_INVALID",
+  "LEDGER_SOURCE_REQUIRED",
+  "LEDGER_EVIDENCE_REQUIRED",
+  "LEDGER_REFERENCE_INVALID",
   "VERSION_CONFLICT",
   "AGENT_CONTRACT_INVALID",
   "AGENT_GRANT_INVALID",
@@ -3545,6 +3549,447 @@ export const outlineNodeMutationDataSchema = z
   .strict();
 export type OutlineNodeMutationData = z.infer<typeof outlineNodeMutationDataSchema>;
 export const outlineNodeMutationResponseSchema = apiEnvelopeSchema(outlineNodeMutationDataSchema);
+
+export const storyLedgerKindSchema = z.enum(["plot_thread", "foreshadow", "character_arc"]);
+export type StoryLedgerKind = z.infer<typeof storyLedgerKindSchema>;
+
+export const storyLedgerStatusSchema = z.enum([
+  "planned",
+  "planted",
+  "progressed",
+  "paid_off",
+  "failed_payoff",
+  "abandoned",
+  "deferred",
+]);
+export type StoryLedgerStatus = z.infer<typeof storyLedgerStatusSchema>;
+
+export const storyLedgerResponsibleRoleSchema = z.enum([
+  "protagonist",
+  "antagonist",
+  "supporting",
+  "ensemble",
+  "author",
+]);
+export type StoryLedgerResponsibleRole = z.infer<typeof storyLedgerResponsibleRoleSchema>;
+
+export const storyLedgerThreadTypeSchema = z.enum([
+  "main",
+  "subplot",
+  "character",
+  "faction",
+  "world",
+  "mystery",
+  "romance",
+]);
+export type StoryLedgerThreadType = z.infer<typeof storyLedgerThreadTypeSchema>;
+
+export const storyLedgerImportanceSchema = z.enum(["must", "optional"]);
+export type StoryLedgerImportance = z.infer<typeof storyLedgerImportanceSchema>;
+
+export const storyLedgerLifecycleActionSchema = z.enum([
+  "setup",
+  "progress",
+  "payoff",
+  "fail_payoff",
+  "abandon",
+  "defer",
+]);
+export type StoryLedgerLifecycleAction = z.infer<typeof storyLedgerLifecycleActionSchema>;
+
+export const storyLedgerTargetWindowSchema = z
+  .object({
+    fromChapter: z.number().int().positive(),
+    toChapter: z.number().int().positive(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.toChapter < input.fromChapter) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Target window end cannot precede its start",
+      });
+    }
+  });
+export type StoryLedgerTargetWindow = z.infer<typeof storyLedgerTargetWindowSchema>;
+
+export const storyLedgerChapterRefSchema = z
+  .object({
+    id: uuidV7Schema,
+    number: z.number().int().positive(),
+    title: z.string().min(1).max(200),
+  })
+  .strict();
+export type StoryLedgerChapterRef = z.infer<typeof storyLedgerChapterRefSchema>;
+
+export const storyLedgerEvidenceSchema = z
+  .object({
+    kind: settingEvidenceKindSchema,
+    sourceId: uuidV7Schema.nullable().default(null),
+    label: z.string().trim().min(1).max(200),
+    quote: z.string().max(5_000).default(""),
+    locator: z.string().max(500).default(""),
+    confidence: z.number().min(0).max(1).nullable().default(null),
+    strength: z.enum(["weak", "strong"]).default("strong"),
+  })
+  .strict();
+export type StoryLedgerEvidence = z.infer<typeof storyLedgerEvidenceSchema>;
+
+export const storyLedgerEventRefSchema = z
+  .object({
+    eventId: uuidV7Schema,
+    label: z.string().min(1).max(200),
+    chapterNumber: z.number().int().positive().nullable(),
+    validFromChapter: z.number().int().positive().nullable(),
+    validToChapter: z.number().int().positive().nullable(),
+  })
+  .strict();
+export type StoryLedgerEventRef = z.infer<typeof storyLedgerEventRefSchema>;
+
+export const storyLedgerLifecycleEventSchema = z
+  .object({
+    id: uuidV7Schema,
+    action: storyLedgerLifecycleActionSchema,
+    fromStatus: storyLedgerStatusSchema,
+    toStatus: storyLedgerStatusSchema,
+    chapter: storyLedgerChapterRefSchema.nullable(),
+    event: storyLedgerEventRefSchema.nullable(),
+    reason: z.string().min(1).max(1_000),
+    evidence: z.array(storyLedgerEvidenceSchema),
+    actorId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type StoryLedgerLifecycleEvent = z.infer<typeof storyLedgerLifecycleEventSchema>;
+
+export const storyLedgerFindingSchema = z
+  .object({
+    code: z.enum([
+      "LEDGER_OVERDUE",
+      "LEDGER_DUPLICATE",
+      "LEDGER_PREMATURE_PAYOFF",
+      "LEDGER_WEAK_PAYOFF",
+      "LEDGER_UNSUPPORTED_PAYOFF",
+      "LEDGER_INVALIDATED_PAYOFF",
+      "LEDGER_NO_CAUSAL_PAYOFF",
+    ]),
+    severity: z.enum(["warning", "blocker"]),
+    entryId: uuidV7Schema,
+    relatedEntryIds: z.array(uuidV7Schema),
+    message: z.string().min(1),
+    remediation: z.string().min(1),
+  })
+  .strict();
+export type StoryLedgerFinding = z.infer<typeof storyLedgerFindingSchema>;
+
+const storyLedgerEntryBaseShape = {
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  title: z.string().trim().min(1).max(200),
+  summary: z.string().max(2_000),
+  status: storyLedgerStatusSchema,
+  responsibleRole: storyLedgerResponsibleRoleSchema,
+  sourceChapter: storyLedgerChapterRefSchema.nullable(),
+  sourceEvent: storyLedgerEventRefSchema.nullable(),
+  targetWindow: storyLedgerTargetWindowSchema,
+  prerequisiteEvents: z.array(storyLedgerEventRefSchema),
+  evidence: z.array(storyLedgerEvidenceSchema),
+  history: z.array(storyLedgerLifecycleEventSchema),
+  version: z.number().int().positive(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+};
+
+export const plotThreadSchema = z
+  .object({
+    ...storyLedgerEntryBaseShape,
+    kind: z.literal("plot_thread"),
+    threadType: storyLedgerThreadTypeSchema,
+    stakes: z.string().trim().min(1).max(2_000),
+    tension: z.number().int().min(0).max(100).nullable(),
+  })
+  .strict();
+export type PlotThread = z.infer<typeof plotThreadSchema>;
+
+export const foreshadowSchema = z
+  .object({
+    ...storyLedgerEntryBaseShape,
+    kind: z.literal("foreshadow"),
+    importance: storyLedgerImportanceSchema,
+    readerPromise: z.string().trim().min(1).max(500),
+    relatedCharacters: z.array(domainRefSchema).max(20),
+    relatedFactions: z.array(domainRefSchema).max(20),
+  })
+  .strict();
+export type Foreshadow = z.infer<typeof foreshadowSchema>;
+
+export const characterArcSchema = z
+  .object({
+    ...storyLedgerEntryBaseShape,
+    kind: z.literal("character_arc"),
+    character: domainRefSchema,
+    startState: z.string().trim().min(1).max(2_000),
+    desire: z.string().trim().min(1).max(2_000),
+    fear: z.string().trim().min(1).max(2_000),
+    lie: z.string().trim().min(1).max(2_000),
+    truth: z.string().trim().min(1).max(2_000),
+    endState: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type CharacterArc = z.infer<typeof characterArcSchema>;
+
+export const storyLedgerEntrySchema = z.discriminatedUnion("kind", [
+  plotThreadSchema,
+  foreshadowSchema,
+  characterArcSchema,
+]);
+export type StoryLedgerEntry = z.infer<typeof storyLedgerEntrySchema>;
+
+const storyLedgerCreateBaseShape = {
+  title: z.string().trim().min(1).max(200),
+  summary: z.string().max(2_000).default(""),
+  responsibleRole: storyLedgerResponsibleRoleSchema,
+  status: z.enum(["planned", "planted"]).default("planned"),
+  sourceChapterId: uuidV7Schema.nullable().default(null),
+  sourceEventId: uuidV7Schema.nullable().default(null),
+  targetWindow: storyLedgerTargetWindowSchema,
+  prerequisiteEventIds: z.array(uuidV7Schema).max(20).default([]),
+  evidence: z.array(storyLedgerEvidenceSchema).max(20).default([]),
+  reason: z.string().trim().min(1).max(1_000).optional(),
+};
+
+type StoryLedgerCreateBase = {
+  status: "planned" | "planted";
+  sourceChapterId: string | null;
+  sourceEventId: string | null;
+  reason?: string | undefined;
+};
+
+const storyLedgerCreateRefinement = (input: StoryLedgerCreateBase, context: z.RefinementCtx) => {
+  if (input.status === "planted" && !input.sourceChapterId && !input.sourceEventId) {
+    context.addIssue({
+      code: "custom",
+      path: ["sourceChapterId"],
+      message: "Planted ledger entries require a source chapter or event",
+    });
+  }
+  if (input.status === "planted" && !input.reason) {
+    context.addIssue({
+      code: "custom",
+      path: ["reason"],
+      message: "Planted ledger entries require a reason",
+    });
+  }
+};
+
+export const plotThreadCreateRequestSchema = z
+  .object({
+    kind: z.literal("plot_thread"),
+    ...storyLedgerCreateBaseShape,
+    threadType: storyLedgerThreadTypeSchema,
+    stakes: z.string().trim().min(1).max(2_000),
+    tension: z.number().int().min(0).max(100).nullable().default(null),
+  })
+  .strict()
+  .superRefine(storyLedgerCreateRefinement);
+export type PlotThreadCreateRequest = z.infer<typeof plotThreadCreateRequestSchema>;
+
+export const foreshadowCreateRequestSchema = z
+  .object({
+    kind: z.literal("foreshadow"),
+    ...storyLedgerCreateBaseShape,
+    importance: storyLedgerImportanceSchema.default("must"),
+    readerPromise: z.string().trim().min(1).max(500),
+    relatedCharacterIds: z.array(uuidV7Schema).max(20).default([]),
+    relatedFactionIds: z.array(uuidV7Schema).max(20).default([]),
+  })
+  .strict()
+  .superRefine(storyLedgerCreateRefinement);
+export type ForeshadowCreateRequest = z.infer<typeof foreshadowCreateRequestSchema>;
+
+export const characterArcCreateRequestSchema = z
+  .object({
+    kind: z.literal("character_arc"),
+    ...storyLedgerCreateBaseShape,
+    characterId: uuidV7Schema,
+    startState: z.string().trim().min(1).max(2_000),
+    desire: z.string().trim().min(1).max(2_000),
+    fear: z.string().trim().min(1).max(2_000),
+    lie: z.string().trim().min(1).max(2_000),
+    truth: z.string().trim().min(1).max(2_000),
+    endState: z.string().trim().min(1).max(2_000),
+  })
+  .strict()
+  .superRefine(storyLedgerCreateRefinement);
+export type CharacterArcCreateRequest = z.infer<typeof characterArcCreateRequestSchema>;
+
+export const storyLedgerEntryCreateRequestSchema = z.discriminatedUnion("kind", [
+  plotThreadCreateRequestSchema,
+  foreshadowCreateRequestSchema,
+  characterArcCreateRequestSchema,
+]);
+export type StoryLedgerEntryCreateRequest = z.infer<typeof storyLedgerEntryCreateRequestSchema>;
+
+const storyLedgerPatchBaseShape = {
+  version: z.number().int().positive(),
+  title: z.string().trim().min(1).max(200).optional(),
+  summary: z.string().max(2_000).optional(),
+  responsibleRole: storyLedgerResponsibleRoleSchema.optional(),
+  sourceChapterId: uuidV7Schema.nullable().optional(),
+  sourceEventId: uuidV7Schema.nullable().optional(),
+  targetWindow: storyLedgerTargetWindowSchema.optional(),
+  prerequisiteEventIds: z.array(uuidV7Schema).max(20).optional(),
+  evidence: z.array(storyLedgerEvidenceSchema).max(20).optional(),
+};
+
+export const plotThreadPatchRequestSchema = z
+  .object({
+    kind: z.literal("plot_thread"),
+    ...storyLedgerPatchBaseShape,
+    threadType: storyLedgerThreadTypeSchema.optional(),
+    stakes: z.string().trim().min(1).max(2_000).optional(),
+    tension: z.number().int().min(0).max(100).nullable().optional(),
+  })
+  .strict();
+export type PlotThreadPatchRequest = z.infer<typeof plotThreadPatchRequestSchema>;
+
+export const foreshadowPatchRequestSchema = z
+  .object({
+    kind: z.literal("foreshadow"),
+    ...storyLedgerPatchBaseShape,
+    importance: storyLedgerImportanceSchema.optional(),
+    readerPromise: z.string().trim().min(1).max(500).optional(),
+    relatedCharacterIds: z.array(uuidV7Schema).max(20).optional(),
+    relatedFactionIds: z.array(uuidV7Schema).max(20).optional(),
+  })
+  .strict();
+export type ForeshadowPatchRequest = z.infer<typeof foreshadowPatchRequestSchema>;
+
+export const characterArcPatchRequestSchema = z
+  .object({
+    kind: z.literal("character_arc"),
+    ...storyLedgerPatchBaseShape,
+    characterId: uuidV7Schema.optional(),
+    startState: z.string().trim().min(1).max(2_000).optional(),
+    desire: z.string().trim().min(1).max(2_000).optional(),
+    fear: z.string().trim().min(1).max(2_000).optional(),
+    lie: z.string().trim().min(1).max(2_000).optional(),
+    truth: z.string().trim().min(1).max(2_000).optional(),
+    endState: z.string().trim().min(1).max(2_000).optional(),
+  })
+  .strict();
+export type CharacterArcPatchRequest = z.infer<typeof characterArcPatchRequestSchema>;
+
+export const storyLedgerEntryPatchRequestSchema = z.discriminatedUnion("kind", [
+  plotThreadPatchRequestSchema,
+  foreshadowPatchRequestSchema,
+  characterArcPatchRequestSchema,
+]);
+export type StoryLedgerEntryPatchRequest = z.infer<typeof storyLedgerEntryPatchRequestSchema>;
+
+export const storyLedgerDeleteRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type StoryLedgerDeleteRequest = z.infer<typeof storyLedgerDeleteRequestSchema>;
+
+export const storyLedgerLifecycleRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    action: storyLedgerLifecycleActionSchema,
+    chapterId: uuidV7Schema.nullable().default(null),
+    eventId: uuidV7Schema.nullable().default(null),
+    reason: z.string().trim().min(1).max(1_000),
+    evidence: z.array(storyLedgerEvidenceSchema).max(20).default([]),
+    targetWindow: storyLedgerTargetWindowSchema.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const sourceRequired = ["setup", "progress", "payoff", "fail_payoff", "abandon"].includes(
+      input.action,
+    );
+    if (sourceRequired && !input.chapterId && !input.eventId) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "This lifecycle action requires a source chapter or event",
+      });
+    }
+    if (["payoff", "fail_payoff"].includes(input.action) && input.evidence.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["evidence"],
+        message: "Payoff transitions require evidence",
+      });
+    }
+    if (input.action === "defer" && !input.targetWindow) {
+      context.addIssue({
+        code: "custom",
+        path: ["targetWindow"],
+        message: "Defer transitions require a new target window",
+      });
+    }
+  });
+export type StoryLedgerLifecycleRequest = z.infer<typeof storyLedgerLifecycleRequestSchema>;
+
+export const storyLedgerSummarySchema = z
+  .object({
+    total: z.number().int().min(0),
+    open: z.number().int().min(0),
+    overdue: z.number().int().min(0),
+    mustPayoff: z.number().int().min(0),
+    paidOff: z.number().int().min(0),
+    abandoned: z.number().int().min(0),
+    weakPayoff: z.number().int().min(0),
+  })
+  .strict();
+export type StoryLedgerSummary = z.infer<typeof storyLedgerSummarySchema>;
+
+export const storyLedgerWorkspaceSchema = z
+  .object({
+    ruleVersion: z.literal("story-ledger-checks-v1"),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    writtenThroughChapter: z.number().int().min(0),
+    entries: z.array(storyLedgerEntrySchema),
+    findings: z.array(storyLedgerFindingSchema),
+    summary: storyLedgerSummarySchema,
+  })
+  .strict();
+export type StoryLedgerWorkspace = z.infer<typeof storyLedgerWorkspaceSchema>;
+
+export const storyLedgerWorkspaceResponseSchema = apiEnvelopeSchema(storyLedgerWorkspaceSchema);
+export const storyLedgerEntryResponseSchema = apiEnvelopeSchema(storyLedgerEntrySchema);
+export const storyLedgerEntryListResponseSchema = apiEnvelopeSchema(
+  z.array(storyLedgerEntrySchema),
+);
+
+export const storyLedgerMutationDataSchema = z
+  .object({
+    workspace: storyLedgerWorkspaceSchema,
+    entry: storyLedgerEntrySchema,
+    versionNodeId: uuidV7Schema,
+    auditId: uuidV7Schema,
+  })
+  .strict();
+export type StoryLedgerMutationData = z.infer<typeof storyLedgerMutationDataSchema>;
+export const storyLedgerMutationResponseSchema = apiEnvelopeSchema(storyLedgerMutationDataSchema);
+
+export const storyLedgerDeleteDataSchema = z
+  .object({
+    workspace: storyLedgerWorkspaceSchema,
+    entryId: uuidV7Schema,
+    versionNodeId: uuidV7Schema,
+    auditId: uuidV7Schema,
+  })
+  .strict();
+export type StoryLedgerDeleteData = z.infer<typeof storyLedgerDeleteDataSchema>;
+export const storyLedgerDeleteResponseSchema = apiEnvelopeSchema(storyLedgerDeleteDataSchema);
 
 export const canonCommitRequestSchema = z.object({
   chapterVersionId: uuidV7Schema,

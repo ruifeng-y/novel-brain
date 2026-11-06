@@ -1,6 +1,6 @@
 {
-  "id": "fd9b02a2-8c05-4400-bc34-c56c6981f7e3",
-  "prevId": "819bb57a-5bce-4ec5-80fd-6fdfeb79bc01",
+  "id": "0bb7798b-63a8-438d-b3b0-11a1b413f8fc",
+  "prevId": "009a26dd-505c-41f3-9086-c11a86ebfe45",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -1782,6 +1782,385 @@
         "chapters_status_check": {
           "name": "chapters_status_check",
           "value": "\"chapters\".\"status\" in ('planned', 'writing', 'waiting_review', 'changes_requested', 'approved', 'locked', 'published', 'rejected')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.character_arcs": {
+      "name": "character_arcs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'planned'"
+        },
+        "responsible_role": {
+          "name": "responsible_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_chapter_id": {
+          "name": "source_chapter_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_event_id": {
+          "name": "source_event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_from_chapter": {
+          "name": "target_from_chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_to_chapter": {
+          "name": "target_to_chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prerequisite_event_ids": {
+          "name": "prerequisite_event_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "history": {
+          "name": "history",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "character_id": {
+          "name": "character_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_state": {
+          "name": "start_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "desire": {
+          "name": "desire",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fear": {
+          "name": "fear",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "lie": {
+          "name": "lie",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "truth": {
+          "name": "truth",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "end_state": {
+          "name": "end_state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "version_node_id": {
+          "name": "version_node_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "character_arcs_user_work_idx": {
+          "name": "character_arcs_user_work_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "character_arcs_branch_status_idx": {
+          "name": "character_arcs_branch_status_idx",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "character_arcs_branch_target_idx": {
+          "name": "character_arcs_branch_target_idx",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_to_chapter",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "character_arcs_character_idx": {
+          "name": "character_arcs_character_idx",
+          "columns": [
+            {
+              "expression": "character_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "character_arcs_work_id_works_id_fk": {
+          "name": "character_arcs_work_id_works_id_fk",
+          "tableFrom": "character_arcs",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "character_arcs_branch_id_work_branches_id_fk": {
+          "name": "character_arcs_branch_id_work_branches_id_fk",
+          "tableFrom": "character_arcs",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "character_arcs_user_id_users_id_fk": {
+          "name": "character_arcs_user_id_users_id_fk",
+          "tableFrom": "character_arcs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "character_arcs_source_chapter_id_chapters_id_fk": {
+          "name": "character_arcs_source_chapter_id_chapters_id_fk",
+          "tableFrom": "character_arcs",
+          "tableTo": "chapters",
+          "columnsFrom": [
+            "source_chapter_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "character_arcs_source_event_id_timeline_events_id_fk": {
+          "name": "character_arcs_source_event_id_timeline_events_id_fk",
+          "tableFrom": "character_arcs",
+          "tableTo": "timeline_events",
+          "columnsFrom": [
+            "source_event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "character_arcs_character_id_entities_id_fk": {
+          "name": "character_arcs_character_id_entities_id_fk",
+          "tableFrom": "character_arcs",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "character_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "character_arcs_version_node_id_version_nodes_id_fk": {
+          "name": "character_arcs_version_node_id_version_nodes_id_fk",
+          "tableFrom": "character_arcs",
+          "tableTo": "version_nodes",
+          "columnsFrom": [
+            "version_node_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "character_arcs_status_check": {
+          "name": "character_arcs_status_check",
+          "value": "\"character_arcs\".\"status\" in ('planned', 'planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned', 'deferred')"
+        },
+        "character_arcs_responsible_role_check": {
+          "name": "character_arcs_responsible_role_check",
+          "value": "\"character_arcs\".\"responsible_role\" in ('protagonist', 'antagonist', 'supporting', 'ensemble', 'author')"
+        },
+        "character_arcs_source_check": {
+          "name": "character_arcs_source_check",
+          "value": "(\"character_arcs\".\"status\" not in ('planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned') or \"character_arcs\".\"source_chapter_id\" is not null or \"character_arcs\".\"source_event_id\" is not null)"
+        },
+        "character_arcs_history_check": {
+          "name": "character_arcs_history_check",
+          "value": "(\"character_arcs\".\"status\" = 'planned' or jsonb_array_length(\"character_arcs\".\"history\") > 0)"
+        },
+        "character_arcs_evidence_check": {
+          "name": "character_arcs_evidence_check",
+          "value": "(\"character_arcs\".\"status\" not in ('paid_off', 'failed_payoff') or jsonb_array_length(\"character_arcs\".\"evidence\") > 0)"
+        },
+        "character_arcs_target_window_check": {
+          "name": "character_arcs_target_window_check",
+          "value": "\"character_arcs\".\"target_to_chapter\" >= \"character_arcs\".\"target_from_chapter\""
         }
       },
       "isRLSEnabled": false
@@ -6261,6 +6640,346 @@
         "facts_status_check": {
           "name": "facts_status_check",
           "value": "\"facts\".\"status\" in ('active', 'superseded')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.foreshadows": {
+      "name": "foreshadows",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'planned'"
+        },
+        "responsible_role": {
+          "name": "responsible_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_chapter_id": {
+          "name": "source_chapter_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_event_id": {
+          "name": "source_event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_from_chapter": {
+          "name": "target_from_chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_to_chapter": {
+          "name": "target_to_chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prerequisite_event_ids": {
+          "name": "prerequisite_event_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "history": {
+          "name": "history",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "importance": {
+          "name": "importance",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'must'"
+        },
+        "reader_promise": {
+          "name": "reader_promise",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "related_character_ids": {
+          "name": "related_character_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "related_faction_ids": {
+          "name": "related_faction_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "version_node_id": {
+          "name": "version_node_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "foreshadows_user_work_idx": {
+          "name": "foreshadows_user_work_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "foreshadows_branch_status_idx": {
+          "name": "foreshadows_branch_status_idx",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "foreshadows_branch_target_idx": {
+          "name": "foreshadows_branch_target_idx",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_to_chapter",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "foreshadows_work_id_works_id_fk": {
+          "name": "foreshadows_work_id_works_id_fk",
+          "tableFrom": "foreshadows",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "foreshadows_branch_id_work_branches_id_fk": {
+          "name": "foreshadows_branch_id_work_branches_id_fk",
+          "tableFrom": "foreshadows",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "foreshadows_user_id_users_id_fk": {
+          "name": "foreshadows_user_id_users_id_fk",
+          "tableFrom": "foreshadows",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "foreshadows_source_chapter_id_chapters_id_fk": {
+          "name": "foreshadows_source_chapter_id_chapters_id_fk",
+          "tableFrom": "foreshadows",
+          "tableTo": "chapters",
+          "columnsFrom": [
+            "source_chapter_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "foreshadows_source_event_id_timeline_events_id_fk": {
+          "name": "foreshadows_source_event_id_timeline_events_id_fk",
+          "tableFrom": "foreshadows",
+          "tableTo": "timeline_events",
+          "columnsFrom": [
+            "source_event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "foreshadows_version_node_id_version_nodes_id_fk": {
+          "name": "foreshadows_version_node_id_version_nodes_id_fk",
+          "tableFrom": "foreshadows",
+          "tableTo": "version_nodes",
+          "columnsFrom": [
+            "version_node_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "foreshadows_importance_check": {
+          "name": "foreshadows_importance_check",
+          "value": "\"foreshadows\".\"importance\" in ('must', 'optional')"
+        },
+        "foreshadows_status_check": {
+          "name": "foreshadows_status_check",
+          "value": "\"foreshadows\".\"status\" in ('planned', 'planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned', 'deferred')"
+        },
+        "foreshadows_responsible_role_check": {
+          "name": "foreshadows_responsible_role_check",
+          "value": "\"foreshadows\".\"responsible_role\" in ('protagonist', 'antagonist', 'supporting', 'ensemble', 'author')"
+        },
+        "foreshadows_source_check": {
+          "name": "foreshadows_source_check",
+          "value": "(\"foreshadows\".\"status\" not in ('planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned') or \"foreshadows\".\"source_chapter_id\" is not null or \"foreshadows\".\"source_event_id\" is not null)"
+        },
+        "foreshadows_history_check": {
+          "name": "foreshadows_history_check",
+          "value": "(\"foreshadows\".\"status\" = 'planned' or jsonb_array_length(\"foreshadows\".\"history\") > 0)"
+        },
+        "foreshadows_evidence_check": {
+          "name": "foreshadows_evidence_check",
+          "value": "(\"foreshadows\".\"status\" not in ('paid_off', 'failed_payoff') or jsonb_array_length(\"foreshadows\".\"evidence\") > 0)"
+        },
+        "foreshadows_target_window_check": {
+          "name": "foreshadows_target_window_check",
+          "value": "\"foreshadows\".\"target_to_chapter\" >= \"foreshadows\".\"target_from_chapter\""
         }
       },
       "isRLSEnabled": false
@@ -12708,6 +13427,341 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.plot_threads": {
+      "name": "plot_threads",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "work_id": {
+          "name": "work_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "branch_id": {
+          "name": "branch_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'planned'"
+        },
+        "responsible_role": {
+          "name": "responsible_role",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_chapter_id": {
+          "name": "source_chapter_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source_event_id": {
+          "name": "source_event_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "target_from_chapter": {
+          "name": "target_from_chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target_to_chapter": {
+          "name": "target_to_chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prerequisite_event_ids": {
+          "name": "prerequisite_event_ids",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "evidence": {
+          "name": "evidence",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "history": {
+          "name": "history",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "thread_type": {
+          "name": "thread_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stakes": {
+          "name": "stakes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tension": {
+          "name": "tension",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "version_node_id": {
+          "name": "version_node_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "plot_threads_user_work_idx": {
+          "name": "plot_threads_user_work_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "work_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "plot_threads_branch_status_idx": {
+          "name": "plot_threads_branch_status_idx",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "plot_threads_branch_target_idx": {
+          "name": "plot_threads_branch_target_idx",
+          "columns": [
+            {
+              "expression": "branch_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "target_to_chapter",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "plot_threads_work_id_works_id_fk": {
+          "name": "plot_threads_work_id_works_id_fk",
+          "tableFrom": "plot_threads",
+          "tableTo": "works",
+          "columnsFrom": [
+            "work_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "plot_threads_branch_id_work_branches_id_fk": {
+          "name": "plot_threads_branch_id_work_branches_id_fk",
+          "tableFrom": "plot_threads",
+          "tableTo": "work_branches",
+          "columnsFrom": [
+            "branch_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "plot_threads_user_id_users_id_fk": {
+          "name": "plot_threads_user_id_users_id_fk",
+          "tableFrom": "plot_threads",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "plot_threads_source_chapter_id_chapters_id_fk": {
+          "name": "plot_threads_source_chapter_id_chapters_id_fk",
+          "tableFrom": "plot_threads",
+          "tableTo": "chapters",
+          "columnsFrom": [
+            "source_chapter_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "plot_threads_source_event_id_timeline_events_id_fk": {
+          "name": "plot_threads_source_event_id_timeline_events_id_fk",
+          "tableFrom": "plot_threads",
+          "tableTo": "timeline_events",
+          "columnsFrom": [
+            "source_event_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "plot_threads_version_node_id_version_nodes_id_fk": {
+          "name": "plot_threads_version_node_id_version_nodes_id_fk",
+          "tableFrom": "plot_threads",
+          "tableTo": "version_nodes",
+          "columnsFrom": [
+            "version_node_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "plot_threads_thread_type_check": {
+          "name": "plot_threads_thread_type_check",
+          "value": "\"plot_threads\".\"thread_type\" in ('main', 'subplot', 'character', 'faction', 'world', 'mystery', 'romance')"
+        },
+        "plot_threads_status_check": {
+          "name": "plot_threads_status_check",
+          "value": "\"plot_threads\".\"status\" in ('planned', 'planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned', 'deferred')"
+        },
+        "plot_threads_responsible_role_check": {
+          "name": "plot_threads_responsible_role_check",
+          "value": "\"plot_threads\".\"responsible_role\" in ('protagonist', 'antagonist', 'supporting', 'ensemble', 'author')"
+        },
+        "plot_threads_source_check": {
+          "name": "plot_threads_source_check",
+          "value": "(\"plot_threads\".\"status\" not in ('planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned') or \"plot_threads\".\"source_chapter_id\" is not null or \"plot_threads\".\"source_event_id\" is not null)"
+        },
+        "plot_threads_history_check": {
+          "name": "plot_threads_history_check",
+          "value": "(\"plot_threads\".\"status\" = 'planned' or jsonb_array_length(\"plot_threads\".\"history\") > 0)"
+        },
+        "plot_threads_evidence_check": {
+          "name": "plot_threads_evidence_check",
+          "value": "(\"plot_threads\".\"status\" not in ('paid_off', 'failed_payoff') or jsonb_array_length(\"plot_threads\".\"evidence\") > 0)"
+        },
+        "plot_threads_target_window_check": {
+          "name": "plot_threads_target_window_check",
+          "value": "\"plot_threads\".\"target_to_chapter\" >= \"plot_threads\".\"target_from_chapter\""
+        },
+        "plot_threads_tension_check": {
+          "name": "plot_threads_tension_check",
+          "value": "\"plot_threads\".\"tension\" is null or (\"plot_threads\".\"tension\" >= 0 and \"plot_threads\".\"tension\" <= 100)"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.power_paths": {
       "name": "power_paths",
       "schema": "",
@@ -17155,7 +18209,7 @@
       "checkConstraints": {
         "version_nodes_node_type_check": {
           "name": "version_nodes_node_type_check",
-          "value": "\"version_nodes\".\"node_type\" in ('chapter_version', 'outline_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')"
+          "value": "\"version_nodes\".\"node_type\" in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')"
         }
       },
       "isRLSEnabled": false

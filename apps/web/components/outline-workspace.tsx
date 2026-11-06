@@ -11,6 +11,7 @@ import {
   Clapperboard,
   FilePlus2,
   FileText,
+  GitCommitHorizontal,
   GripVertical,
   Layers3,
   LayoutGrid,
@@ -32,6 +33,7 @@ import {
   outlineNodeMutationResponseSchema,
   outlineWorkspaceResponseSchema,
   settingEntityListResponseSchema,
+  storyLedgerWorkspaceResponseSchema,
   workResponseSchema,
   type ChapterBrief,
   type ChapterStatus,
@@ -42,6 +44,8 @@ import {
   type OutlineReadiness,
   type OutlineWorkspace,
   type SettingEntity,
+  type StoryLedgerEntry,
+  type StoryLedgerWorkspace,
   type VolumePlotLine,
   type WorkOverview,
 } from "@novel-brain/contracts";
@@ -49,7 +53,7 @@ import {
 import { getCsrfToken } from "../lib/csrf-client";
 import { GoldenThreePanel } from "./golden-three-panel";
 
-type OutlineView = "tree" | "board" | "tension" | "golden";
+type OutlineView = "tree" | "board" | "tension" | "ledger" | "golden";
 
 interface CreateForm {
   level: OutlineLevel;
@@ -163,6 +167,7 @@ const nodeStatusLabels: Record<OutlineNode["status"], string> = {
 export function OutlineWorkspace({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverview | null>(null);
   const [workspace, setWorkspace] = useState<OutlineWorkspace | null>(null);
+  const [ledger, setLedger] = useState<StoryLedgerWorkspace | null>(null);
   const [entities, setEntities] = useState<SettingEntity[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [view, setView] = useState<OutlineView>("tree");
@@ -191,9 +196,10 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
       const branchPath = `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}`;
-      const [outlineResponse, entityResponse] = await Promise.all([
+      const [outlineResponse, entityResponse, ledgerResponse] = await Promise.all([
         fetch(`${branchPath}/outline`, { cache: "no-store" }),
         fetch(`${branchPath}/entities`, { cache: "no-store" }),
+        fetch(`${branchPath}/ledger`, { cache: "no-store" }),
       ]);
       if (!outlineResponse.ok) {
         throw new Error(await readError(outlineResponse, "大纲加载失败。"));
@@ -201,10 +207,14 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
       if (!entityResponse.ok) {
         throw new Error(await readError(entityResponse, "设定加载失败。"));
       }
+      if (!ledgerResponse.ok) {
+        throw new Error(await readError(ledgerResponse, "伏笔账本加载失败。"));
+      }
       const outline = outlineWorkspaceResponseSchema.parse(await outlineResponse.json()).data;
       setWork(workData);
       setWorkspace(outline);
       setEntities(settingEntityListResponseSchema.parse(await entityResponse.json()).data);
+      setLedger(storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data);
       setSelectedId((current) =>
         current && outline.nodes.some((node) => node.id === current)
           ? current
@@ -225,12 +235,19 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
     if (!basePath) {
       return;
     }
-    const response = await fetch(`${basePath}/outline`, { cache: "no-store" });
+    const [response, ledgerResponse] = await Promise.all([
+      fetch(`${basePath}/outline`, { cache: "no-store" }),
+      fetch(`${basePath}/ledger`, { cache: "no-store" }),
+    ]);
     if (!response.ok) {
       throw new Error(await readError(response, "大纲刷新失败。"));
     }
+    if (!ledgerResponse.ok) {
+      throw new Error(await readError(ledgerResponse, "伏笔账本刷新失败。"));
+    }
     const outline = outlineWorkspaceResponseSchema.parse(await response.json()).data;
     setWorkspace(outline);
+    setLedger(storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data);
     setSelectedId((current) =>
       current && outline.nodes.some((node) => node.id === current)
         ? current
@@ -455,6 +472,15 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
             张力曲线
           </button>
           <button
+            className={`seg${view === "ledger" ? " active" : ""}`}
+            onClick={() => setView("ledger")}
+            role="tab"
+            type="button"
+          >
+            <GitCommitHorizontal size={14} aria-hidden="true" />
+            剧情账本
+          </button>
+          <button
             className={`seg${view === "golden" ? " active" : ""}`}
             onClick={() => setView("golden")}
             role="tab"
@@ -625,6 +651,21 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
               </div>
             </>
           )}
+        </section>
+      ) : null}
+
+      {view === "ledger" ? (
+        <section className="panel outline-ledger-panel" data-outline-ledger>
+          <div className="panel-head">
+            <div>
+              <span className="panel-kicker">剧情账本</span>
+              <h2>剧情线、伏笔与人物弧</h2>
+            </div>
+            <Link className="btn btn-ghost" href={`/workspace/${work.id}/foreshadows`}>
+              管理伏笔账本
+            </Link>
+          </div>
+          {renderLedger()}
         </section>
       ) : null}
 
@@ -1643,6 +1684,85 @@ export function OutlineWorkspace({ workId }: { workId: string }) {
     );
   }
 
+  function renderLedger() {
+    if (!work) {
+      return null;
+    }
+    const entries = ledger?.entries ?? [];
+    const kinds: Array<{ kind: StoryLedgerEntry["kind"]; label: string }> = [
+      { kind: "plot_thread", label: "剧情线" },
+      { kind: "foreshadow", label: "伏笔" },
+      { kind: "character_arc", label: "人物弧" },
+    ];
+    if (entries.length === 0) {
+      return (
+        <div className="outline-ledger-empty">
+          <GitCommitHorizontal size={24} aria-hidden="true" />
+          <strong>还没有账本记录</strong>
+          <p>先从主线、伏笔或人物弧中选一项，写清来源和目标窗口。</p>
+          <Link className="btn btn-primary" href={`/workspace/${work.id}/foreshadows`}>
+            新增记录
+          </Link>
+        </div>
+      );
+    }
+    return (
+      <>
+        <div className="outline-ledger-summary">
+          <span>{ledger?.summary.open ?? 0} 条未收束</span>
+          <span>{ledger?.summary.overdue ?? 0} 条逾期</span>
+          <span>{ledger?.summary.paidOff ?? 0} 条已回收</span>
+          <span>写到第 {ledger?.writtenThroughChapter ?? 0} 章</span>
+        </div>
+        <div className="outline-ledger-grid">
+          {kinds.map(({ kind, label }) => {
+            const items = entries.filter((entry) => entry.kind === kind).slice(0, 5);
+            return (
+              <div className="outline-ledger-column" data-ledger-kind={kind} key={kind}>
+                <div className="outline-ledger-column-head">
+                  <strong>{label}</strong>
+                  <span>{entries.filter((entry) => entry.kind === kind).length}</span>
+                </div>
+                {items.length === 0 ? (
+                  <p className="outline-plan-note">暂无记录</p>
+                ) : (
+                  items.map((entry) => (
+                    <div className="outline-ledger-row" key={entry.id}>
+                      <span className={`ledger-dot status-${entry.status}`} />
+                      <div>
+                        <strong>{entry.title}</strong>
+                        <small>
+                          第 {entry.targetWindow.fromChapter}–{entry.targetWindow.toChapter} 章 ·{" "}
+                          {ledgerStatusLabel(entry.status)}
+                        </small>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {ledger?.findings.length ? (
+          <div className="outline-ledger-findings">
+            <span className="panel-kicker">需要处理</span>
+            {ledger.findings.slice(0, 4).map((finding) => (
+              <Link
+                href={`/workspace/${work.id}/foreshadows`}
+                key={`${finding.entryId}:${finding.code}`}
+              >
+                <TriangleAlert size={14} aria-hidden="true" />
+                <span>{finding.message}</span>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <p className="outline-plan-note">目前没有逾期、重复或回收依据不足。</p>
+        )}
+      </>
+    );
+  }
+
   function renderBoard() {
     const columns: Array<{
       key: string;
@@ -2202,6 +2322,25 @@ function readinessLabel(status: OutlineReadiness["status"]): string {
 
 function severityLabel(severity: OutlineReadiness["items"][number]["severity"]): string {
   return severity === "blocker" ? "需补齐" : "建议";
+}
+
+function ledgerStatusLabel(status: StoryLedgerEntry["status"]): string {
+  switch (status) {
+    case "planned":
+      return "待埋设";
+    case "planted":
+      return "已埋设";
+    case "progressed":
+      return "推进中";
+    case "paid_off":
+      return "已回收";
+    case "failed_payoff":
+      return "回收失败";
+    case "abandoned":
+      return "已放弃";
+    case "deferred":
+      return "已延期";
+  }
 }
 
 function chartX(index: number, total: number): number {
