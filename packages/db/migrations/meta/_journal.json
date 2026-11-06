@@ -225,6 +225,13 @@
       "when": 1793942618567,
       "tag": "0031_recovery_protocol",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1793944926289,
+      "tag": "0032_striped_sasquatch",
+      "breakpoints": true
     }
   ]
 }

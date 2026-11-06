@@ -581,4 +581,5 @@ export * from "./world-simulation";
 export * from "./orchestrator";
 export * from "./logging";
 export * from "./power-items";
+export * from "./outline-planning";
 export * from "./recovery";

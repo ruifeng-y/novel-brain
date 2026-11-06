@@ -60,6 +60,11 @@ export const ERROR_CODES = [
   "FACT_SUBMISSION_BLOCKED",
   "CANON_CHAPTER_NOT_APPROVED",
   "IMPORT_CONFLICT_UNRESOLVED",
+  "OUTLINE_STRUCTURE_INVALID",
+  "OUTLINE_NODE_LOCKED",
+  "OUTLINE_PARENT_INVALID",
+  "OUTLINE_CHAPTER_INVALID",
+  "OUTLINE_REFERENCE_INVALID",
   "VERSION_CONFLICT",
   "AGENT_CONTRACT_INVALID",
   "AGENT_GRANT_INVALID",
@@ -3201,6 +3206,338 @@ export const chapterReviewDataSchema = z.object({
 });
 export type ChapterReviewData = z.infer<typeof chapterReviewDataSchema>;
 export const chapterReviewResponseSchema = apiEnvelopeSchema(chapterReviewDataSchema);
+
+export const outlineLevelSchema = z.enum(["book", "volume", "act", "chapter", "scene"]);
+export type OutlineLevel = z.infer<typeof outlineLevelSchema>;
+
+export const outlineNodeStatusSchema = z.enum(["planned", "active", "done"]);
+export type OutlineNodeStatus = z.infer<typeof outlineNodeStatusSchema>;
+
+export const outlineChapterRefSchema = z
+  .object({
+    id: uuidV7Schema,
+    number: z.number().int().positive(),
+    title: z.string().min(1).max(200),
+    status: chapterStatusSchema,
+    version: z.number().int().positive(),
+    wordCount: z.number().int().nonnegative(),
+    brief: chapterBriefSchema.nullable().default(null),
+  })
+  .strict();
+export type OutlineChapterRef = z.infer<typeof outlineChapterRefSchema>;
+
+export const outlineNodeSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    level: outlineLevelSchema,
+    parentId: uuidV7Schema.nullable(),
+    sortOrder: z.number().int().min(0).max(100_000),
+    title: z.string().trim().min(1).max(200),
+    summary: z.string().max(2_000),
+    status: outlineNodeStatusSchema,
+    locked: z.boolean(),
+    version: z.number().int().positive(),
+    chapter: outlineChapterRefSchema.nullable(),
+    tension: z.number().int().min(0).max(100).nullable(),
+    versionNodeId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type OutlineNode = z.infer<typeof outlineNodeSchema>;
+
+export const volumePlotLineSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    status: z.enum(["planned", "active", "resolved", "dropped"]),
+    note: z.string().max(500),
+  })
+  .strict();
+export type VolumePlotLine = z.infer<typeof volumePlotLineSchema>;
+
+export const volumeContractSchema = z
+  .object({
+    id: uuidV7Schema,
+    nodeId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    objective: z.string().trim().min(1).max(2_000),
+    conflict: z.string().trim().min(1).max(2_000),
+    turningPoints: z.array(z.string().trim().min(1).max(500)).max(30),
+    exitConditions: z.array(z.string().trim().min(1).max(500)).max(30),
+    plotLines: z.array(volumePlotLineSchema).max(30),
+    version: z.number().int().positive(),
+    versionNodeId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type VolumeContract = z.infer<typeof volumeContractSchema>;
+
+export const sceneBeatSchema = z
+  .object({
+    id: uuidV7Schema,
+    order: z.number().int().positive(),
+    description: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type SceneBeat = z.infer<typeof sceneBeatSchema>;
+
+export const sceneInformationReleaseSchema = z
+  .object({
+    id: uuidV7Schema,
+    order: z.number().int().positive(),
+    description: z.string().trim().min(1).max(500),
+    constraint: z.string().max(1_000).nullable(),
+  })
+  .strict();
+export type SceneInformationRelease = z.infer<typeof sceneInformationReleaseSchema>;
+
+export const sceneCardSchema = z
+  .object({
+    id: uuidV7Schema,
+    nodeId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    title: z.string().trim().min(1).max(200),
+    pov: domainRefSchema.nullable(),
+    location: domainRefSchema.nullable(),
+    storyTime: storyTimePointSchema.nullable(),
+    beats: z.array(sceneBeatSchema).max(50),
+    informationReleases: z.array(sceneInformationReleaseSchema).max(50),
+    tension: z.number().int().min(0).max(100).nullable(),
+    version: z.number().int().positive(),
+    versionNodeId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type SceneCard = z.infer<typeof sceneCardSchema>;
+
+export const outlineReadinessItemSchema = z
+  .object({
+    key: z.string().min(1),
+    label: z.string().min(1),
+    severity: z.enum(["blocker", "warning"]),
+    ready: z.boolean(),
+    resourceType: z.enum(["outline_branch", "outline_node"]),
+    resourceId: uuidV7Schema.nullable(),
+    remediation: z.string().min(1),
+  })
+  .strict();
+export type OutlineReadinessItem = z.infer<typeof outlineReadinessItemSchema>;
+
+export const outlineReadinessSchema = z
+  .object({
+    ruleVersion: z.literal("outline-readiness-v1"),
+    status: z.enum(["not_ready", "partial", "ready"]),
+    canProceed: z.boolean(),
+    completed: z.number().int().min(0),
+    total: z.number().int().min(0),
+    items: z.array(outlineReadinessItemSchema),
+  })
+  .strict();
+export type OutlineReadiness = z.infer<typeof outlineReadinessSchema>;
+
+export const outlineReplanIssueSchema = z
+  .object({
+    code: z.string().min(1),
+    message: z.string().min(1),
+    nodeId: uuidV7Schema.nullable(),
+  })
+  .strict();
+export type OutlineReplanIssue = z.infer<typeof outlineReplanIssueSchema>;
+
+export const outlineReplanResultSchema = z
+  .object({
+    ruleVersion: z.literal("outline-replan-v1"),
+    nodeId: uuidV7Schema,
+    canApply: z.boolean(),
+    impacted: z
+      .object({
+        nodeIds: z.array(uuidV7Schema),
+        chapterIds: z.array(uuidV7Schema),
+        sceneNodeIds: z.array(uuidV7Schema),
+        lockedNodeIds: z.array(uuidV7Schema),
+      })
+      .strict(),
+    blockers: z.array(outlineReplanIssueSchema),
+    warnings: z.array(outlineReplanIssueSchema),
+  })
+  .strict();
+export type OutlineReplanResult = z.infer<typeof outlineReplanResultSchema>;
+
+export const outlineStatsSchema = z
+  .object({
+    totalNodes: z.number().int().min(0),
+    chapterCount: z.number().int().min(0),
+    plannedChapters: z.number().int().min(0),
+    activeChapters: z.number().int().min(0),
+    lockedChapters: z.number().int().min(0),
+    wordCount: z.number().int().min(0),
+    tensionPoints: z.number().int().min(0),
+  })
+  .strict();
+export type OutlineStats = z.infer<typeof outlineStatsSchema>;
+
+export const outlineWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    nodes: z.array(outlineNodeSchema),
+    volumeContracts: z.array(volumeContractSchema),
+    sceneCards: z.array(sceneCardSchema),
+    readiness: outlineReadinessSchema,
+    stats: outlineStatsSchema,
+  })
+  .strict();
+export type OutlineWorkspace = z.infer<typeof outlineWorkspaceSchema>;
+
+export const outlineSceneCardWriteRequestSchema = z
+  .object({
+    version: z.number().int().positive().optional(),
+    title: z.string().trim().min(1).max(200),
+    pov: domainRefSchema.nullable().default(null),
+    location: domainRefSchema.nullable().default(null),
+    storyTime: storyTimePointSchema.nullable().default(null),
+    beats: z.array(z.object({ description: z.string().trim().min(1).max(1_000) }).strict()).max(50),
+    informationReleases: z
+      .array(
+        z
+          .object({
+            description: z.string().trim().min(1).max(500),
+            constraint: z.string().max(1_000).nullable().default(null),
+          })
+          .strict(),
+      )
+      .max(50),
+    tension: z.number().int().min(0).max(100).nullable().default(null),
+  })
+  .strict();
+export type OutlineSceneCardWriteRequest = z.infer<typeof outlineSceneCardWriteRequestSchema>;
+
+export const outlineNodeCreateRequestSchema = z
+  .object({
+    level: outlineLevelSchema,
+    parentId: uuidV7Schema.nullable(),
+    sortOrder: z.number().int().min(0).max(100_000).optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+    summary: z.string().max(2_000).default(""),
+    status: outlineNodeStatusSchema.default("planned"),
+    tension: z.number().int().min(0).max(100).nullable().default(null),
+    chapterId: uuidV7Schema.optional(),
+    chapterCreate: chapterCreateRequestSchema.optional(),
+    sceneCard: outlineSceneCardWriteRequestSchema.omit({ version: true }).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.level === "chapter") {
+      if (Boolean(input.chapterId) === Boolean(input.chapterCreate)) {
+        context.addIssue({
+          code: "custom",
+          path: ["chapterId"],
+          message: "Chapter nodes require exactly one existing chapter or a new chapter",
+        });
+      }
+    } else if (input.chapterId || input.chapterCreate) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "Only chapter nodes can reference a chapter",
+      });
+    }
+    if (input.sceneCard && input.level !== "scene") {
+      context.addIssue({
+        code: "custom",
+        path: ["sceneCard"],
+        message: "Only scene nodes can carry a scene card",
+      });
+    }
+    if (!input.title && !input.sceneCard?.title && input.level !== "chapter") {
+      context.addIssue({
+        code: "custom",
+        path: ["title"],
+        message: "Title is required for non-chapter nodes",
+      });
+    }
+  });
+export type OutlineNodeCreateRequest = z.infer<typeof outlineNodeCreateRequestSchema>;
+
+export const outlineNodePatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(200).optional(),
+    summary: z.string().max(2_000).optional(),
+    status: outlineNodeStatusSchema.optional(),
+    tension: z.number().int().min(0).max(100).nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (input) =>
+      input.title !== undefined ||
+      input.summary !== undefined ||
+      input.status !== undefined ||
+      input.tension !== undefined,
+    { message: "At least one outline node field is required" },
+  );
+export type OutlineNodePatchRequest = z.infer<typeof outlineNodePatchRequestSchema>;
+
+export const outlineNodeMoveRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    parentId: uuidV7Schema.nullable(),
+    sortOrder: z.number().int().min(0).max(100_000).optional(),
+  })
+  .strict();
+export type OutlineNodeMoveRequest = z.infer<typeof outlineNodeMoveRequestSchema>;
+
+export const outlineNodeVersionRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type OutlineNodeVersionRequest = z.infer<typeof outlineNodeVersionRequestSchema>;
+
+export const outlineVolumeContractWriteRequestSchema = z
+  .object({
+    version: z.number().int().positive().optional(),
+    objective: z.string().trim().min(1).max(2_000),
+    conflict: z.string().trim().min(1).max(2_000),
+    turningPoints: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
+    exitConditions: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
+    plotLines: z.array(volumePlotLineSchema).max(30).default([]),
+  })
+  .strict();
+export type OutlineVolumeContractWriteRequest = z.infer<
+  typeof outlineVolumeContractWriteRequestSchema
+>;
+
+export const outlineReplanCheckRequestSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    proposedParentId: uuidV7Schema.nullable().optional(),
+    proposedSortOrder: z.number().int().min(0).max(100_000).optional(),
+  })
+  .strict();
+export type OutlineReplanCheckRequest = z.infer<typeof outlineReplanCheckRequestSchema>;
+
+export const outlineWorkspaceResponseSchema = apiEnvelopeSchema(outlineWorkspaceSchema);
+export const outlineReadinessResponseSchema = apiEnvelopeSchema(outlineReadinessSchema);
+export const outlineReplanResponseSchema = apiEnvelopeSchema(outlineReplanResultSchema);
+
+export const outlineNodeMutationDataSchema = z
+  .object({
+    workspace: outlineWorkspaceSchema,
+    node: outlineNodeSchema,
+    versionNodeId: uuidV7Schema,
+    auditId: uuidV7Schema,
+    replan: outlineReplanResultSchema,
+  })
+  .strict();
+export type OutlineNodeMutationData = z.infer<typeof outlineNodeMutationDataSchema>;
+export const outlineNodeMutationResponseSchema = apiEnvelopeSchema(outlineNodeMutationDataSchema);
 
 export const canonCommitRequestSchema = z.object({
   chapterVersionId: uuidV7Schema,
