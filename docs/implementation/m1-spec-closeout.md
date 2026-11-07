@@ -2,8 +2,32 @@
 
 > Spec: #80 完整仙侠创作闭环
 > Integration branch: `codex/m1-full-loop`
-> HEAD: `2f39b98`
-> 日期: 2026-11-06
+> HEAD: `f027197`
+> 日期: 2026-11-08
+
+## 2026-11-08 集成加固与当前证据
+
+在当前 integration branch 上追加并合并了以下修复：
+
+- `#112`：未传显式版本点时按目标章节当前版本解析检索边界；目标章节缺失或没有章节版本时失败关闭，排除未来实体、关系和知识。
+- 成本硬停：provider 请求的 `maxTokens` 与 reservation 使用同一预算；超支在同一事务中记录实际 usage/cost、usage record、失败轨迹和 `job.budget.exceeded`，停止后续调用并保持重投幂等。
+- `#144`：设定实体和自定义字段使用游标分页；所有消费方完整拉取分页；恢复旧版本会创建新 `rollback` 节点并精确恢复实体、角色档案和自定义字段，锁定内容仍走修改请求门禁；查询参数 OpenAPI 由共享 Zod schema 生成。
+- 写作台：生成任务尚未完全结束时，质量检查和声线检查按钮不再显示为可执行；消除点击被静默忽略的状态。
+
+当前自动化证据：
+
+- `pnpm check`：44 个测试文件、267 项测试通过。
+- `pnpm test:integration`：26 个测试文件、162 项测试通过。
+- `pnpm exec playwright test --grep-invert "checks every M0 parity page"`：96 项通过，覆盖 M0 回归旅程、M1 全链路、M1 页面四档视口、作者语言与真实动作。
+- `pnpm --filter @novel-brain/api openapi:check`：通过。
+- `node scripts/validate-readiness.mjs`：通过；119 个能力、119 个主 issue 映射、85 节点/318 blocker edges 无环。
+
+仍未完成的签收门禁：
+
+- M1 生产 golden、作者视觉签收与真实样片产品验收仍未完成。
+- `#142` 作品设置/复制存在独立 worktree 实验实现，但规范依赖仍含未完成的 `#134`，且复制边界与单一版本图仍有未决问题，因此未合入当前 integration branch。
+- 黄金三章 ADR 0007 与当前“每个候选固定三章”的契约仍冲突，相关签收暂停，等待权威决策。
+- `#80` 原文要求的“所有 list endpoint 使用 cursor pagination”在设定中心之外仍有缺口，不能据此关闭 spec。
 
 ## 已集成范围
 
