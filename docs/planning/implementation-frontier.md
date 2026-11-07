@@ -40,6 +40,7 @@ M1 foundations:
 ## 4. M2 leaf sequencing
 
 - #151 consumes #110; #152 consumes #151/#115. #91 is the package/integration parent.
+- 2026-11-07：#151 已完成批量计划层级、`job_work_items`、DAG 校验、并发策略和幂等 API；执行状态机仍由 #152 负责。证据见 `docs/implementation/m2-01a-batch-plan.md`。
 - #92 adds history/urban Genre Packs after the #84/#85 contracts.
 - #149/#150 consume #91 plus the Critic/readiness and runtime provenance/recovery contracts; #93 is their package parent.
 - #120 → #121 → #122 is the change request/impact/apply path.
