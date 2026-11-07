@@ -457,7 +457,7 @@ test("holds the error state at all four viewports", async ({ page, context }, te
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
-    await page.route(`**${entitiesPath}`, async (route) => {
+    await page.route(`**${entitiesPath}*`, async (route) => {
       await route.fulfill({
         status: 500,
         contentType: "application/json",
@@ -475,7 +475,7 @@ test("holds the error state at all four viewports", async ({ page, context }, te
     await expect(page.getByText("设定加载失败。")).toBeVisible();
     await expectNoOverflow(page);
     await capture(page, testInfo, `settings-error-${width}`);
-    await page.unroute(`**${entitiesPath}`);
+    await page.unroute(`**${entitiesPath}*`);
   }
 });
 
@@ -487,12 +487,12 @@ test("shows a loading state and recovers from a failed settings load", async ({
   const work = await createSettingsWork(page);
   const entitiesPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
 
-  await page.route(`**${entitiesPath}`, async (route) => {
+  await page.route(`**${entitiesPath}*`, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     await route.continue();
   });
   await page.goto(`/workspace/${work.id}/settings`);
   await expect(page.getByText("正在加载设定中心")).toBeVisible();
-  await page.unroute(`**${entitiesPath}`);
+  await page.unroute(`**${entitiesPath}*`);
   await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
 });
