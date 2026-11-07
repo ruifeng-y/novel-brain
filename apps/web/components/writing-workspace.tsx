@@ -1934,7 +1934,7 @@ export function WritingWorkspace({
               </button>
               <button
                 className="btn btn-ghost btn-small"
-                disabled={qualityBusy}
+                disabled={!canCheckQuality}
                 onClick={() => {
                   setNoteTab("quality");
                   void checkQuality();
@@ -1950,7 +1950,7 @@ export function WritingWorkspace({
               </button>
               <button
                 className="btn btn-ghost btn-small"
-                disabled={styleBusy}
+                disabled={!canCheckStyle}
                 onClick={() => {
                   setNoteTab("suggestions");
                   void checkStyleDrift();
