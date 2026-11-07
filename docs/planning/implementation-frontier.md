@@ -45,6 +45,7 @@ M1 foundations:
 - 2026-11-07：#91 的 API/Worker 包验收已由 #151/#152 满足，但 Batch 页面、审核队列和成本报告尚缺，父包保持打开。签收矩阵见 `docs/implementation/m2-01-batch-orchestration-closeout.md`。
 - #92 adds history/urban Genre Packs after the #84/#85 contracts.
 - #149/#150 consume #91 plus the Critic/readiness and runtime provenance/recovery contracts; #93 is their package parent.
+- 2026-11-07：M2-03 依赖按代码完成状态收口，见 `docs/planning/m2-03-dependency-acceptance.md`；#149/#150 可在新上下文实现，但不关闭 #91/#114/#115/#117/#147。
 - #120 → #121 → #122 is the change request/impact/apply path.
 - #123 uses the M0 version graph and #144/#106–#108; #124 consumes branch and impact/diff contracts; #125 consumes selective decisions and high-risk policy.
 - #126/#127 provide large import and optional setting extraction; #128 adds Chinese search/indexing after relevant data/retrieval/import contracts.
