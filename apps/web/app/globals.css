@@ -5216,6 +5216,32 @@ a:focus-visible {
   overflow-wrap: anywhere;
 }
 
+.writing-budget-recovery-fields {
+  gap: 8px !important;
+}
+
+.writing-budget-recovery-fields label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.writing-budget-recovery-fields input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  color: var(--ink);
+  font: inherit;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.writing-budget-recovery-fields button {
+  justify-self: start;
+}
+
 .writing-run-trace {
   margin-top: 12px;
   padding: 10px;

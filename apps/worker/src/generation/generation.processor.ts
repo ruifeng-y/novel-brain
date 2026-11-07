@@ -13,30 +13,34 @@ import {
 import {
   AiProviderError,
   M0_COST_PER_TOKEN_CNY,
-  classifyAiFailure,
   type AiGateway,
   type GenerationResult,
-  type GenerationOperation,
 } from "@novel-brain/ai";
 import {
   compileChapterContextManifest,
   ContextBudgetExceededError,
   decideStepRecovery,
   extractFactCandidates,
-  planProviderCallBudget,
   PROVIDER_CALL_MAX_OUTPUT_TOKENS,
   resolveModelContextWindow,
 } from "@novel-brain/core";
+import { calculateModelCallCost } from "@novel-brain/db";
 import { AI_GATEWAY } from "./generation.tokens";
 import type { ByokAiGatewayFactory } from "./model-provider.factory";
+import {
+  BUDGET_EXHAUSTED_ESCALATION,
+  BUDGET_EXHAUSTED_MESSAGE,
+  BudgetedProviderCallExecutor,
+  CostBudgetOverrunRecordedError,
+  ProviderBudgetExceededError,
+  describeProviderFailure,
+} from "./budgeted-provider-call";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
-  CostBudgetOverrunRecordedError,
   JobStoppedError,
   WorkerGenerationRepository,
   type LoadedGenerationJob,
-  type StartedModelCall,
   type WorkerContextSources,
 } from "./generation.repository";
 
@@ -61,14 +65,6 @@ const STEP_PROGRESS: Record<WorkerJobStep, number> = {
   extract_facts: 96,
   await_review: 100,
 };
-class JobBudgetExceededError extends Error {
-  readonly failureClass = "budget" as const;
-
-  constructor() {
-    super("Generation budget exhausted");
-    this.name = "JobBudgetExceededError";
-  }
-}
 class ModelConfigurationError extends Error {
   readonly failureClass = "policy" as const;
 
@@ -82,6 +78,7 @@ type AiGatewayResolver = AiGateway | Pick<ByokAiGatewayFactory, "create">;
 
 @Injectable()
 export class GenerationJobProcessor {
+  private readonly providerCalls: BudgetedProviderCallExecutor;
   private traceLogger: GenerationTraceLogger | undefined;
   private boundaryHook: GenerationStepBoundaryHook | undefined;
   private recoveryOptions: Required<GenerationRecoveryOptions> = {
@@ -94,7 +91,9 @@ export class GenerationJobProcessor {
   constructor(
     private readonly repository: WorkerGenerationRepository,
     @Inject(AI_GATEWAY) private readonly providerResolver: AiGatewayResolver,
-  ) {}
+  ) {
+    this.providerCalls = new BudgetedProviderCallExecutor(repository);
+  }
 
   setTraceLogger(logger: GenerationTraceLogger): void {
     this.traceLogger = logger;
@@ -198,7 +197,29 @@ export class GenerationJobProcessor {
           ) {
             return;
           }
+          if (error instanceof ProviderBudgetExceededError) {
+            await this.repository.failStep({
+              payload: durablePayload,
+              step,
+              code: "JOB_BUDGET_EXCEEDED",
+              message: BUDGET_EXHAUSTED_MESSAGE,
+              terminal: true,
+              terminalStatus: "paused",
+            });
+            return;
+          }
           const failure = toFailure(error);
+          if (failure.failureClass === "budget") {
+            await this.repository.failStep({
+              payload: durablePayload,
+              step,
+              code: failure.code,
+              message: failure.message,
+              terminal: true,
+              terminalStatus: "paused",
+            });
+            return;
+          }
           const decision = decideStepRecovery({
             failureClass: failure.failureClass,
             attempt: jobStep?.attempt ?? 1,
@@ -317,7 +338,7 @@ export class GenerationJobProcessor {
       case "draft": {
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
         const prompt = promptFromPack(pack, "根据本章章纲起草完整章节。");
-        const result = await this.callProvider({
+        const result = await this.providerCalls.call({
           payload: input.payload,
           provider: requireProvider(input.provider),
           step: "draft",
@@ -327,6 +348,8 @@ export class GenerationJobProcessor {
           prompt,
           system: "你是长篇仙侠小说写作助手。只输出本章正文。",
           citations: pack.sourceRefs,
+          parameters: { operation: "draft" },
+          ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         const version = await this.repository.saveGeneratedVersion({
           payload: input.payload,
@@ -346,7 +369,7 @@ export class GenerationJobProcessor {
         }
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
         const prompt = `${promptFromPack(pack, "检查草稿与章纲、已确认设定和必用事实是否一致。")}\n\n草稿：\n${draft}`;
-        const result = await this.callProvider({
+        const result = await this.providerCalls.call({
           payload: input.payload,
           provider: requireProvider(input.provider),
           step: "verify",
@@ -356,6 +379,8 @@ export class GenerationJobProcessor {
           prompt,
           system: "你是连续性与知识边界审校员。输出简短、确定的审校结论。",
           citations: pack.sourceRefs,
+          parameters: { operation: "verify" },
+          ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         return {
           output: { verification: result.text },
@@ -371,7 +396,7 @@ export class GenerationJobProcessor {
         }
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
         const prompt = `${promptFromPack(pack, "根据审校结论定向修订草稿，保留已满足的章纲和必用事实。")}\n\n草稿：\n${draft}\n\n审校：\n${String(verifyOutput?.verification ?? "")}`;
-        const result = await this.callProvider({
+        const result = await this.providerCalls.call({
           payload: input.payload,
           provider: requireProvider(input.provider),
           step: "revise",
@@ -381,6 +406,8 @@ export class GenerationJobProcessor {
           prompt,
           system: "你是定向修订编辑。只输出修订后的完整本章正文。",
           citations: pack.sourceRefs,
+          parameters: { operation: "revise" },
+          ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         const version = await this.repository.saveGeneratedVersion({
           payload: input.payload,
@@ -445,143 +472,6 @@ export class GenerationJobProcessor {
       throw new Error("Versioned context pack is missing");
     }
     return pack;
-  }
-
-  private async callProvider(input: {
-    payload: GenerateChapterJob;
-    provider: AiGateway;
-    step: "draft" | "verify" | "revise";
-    attempt: number;
-    role: "writer" | "critic" | "reviser";
-    operation: GenerationOperation;
-    prompt: string;
-    system: string;
-    citations: unknown[];
-  }): Promise<GenerationResult> {
-    const providerBudget = planProviderCallBudget({
-      system: input.system,
-      prompt: input.prompt,
-      maxOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
-    });
-    const estimatedTokens = providerBudget.reservedTokens;
-    const estimatedCostCny = calculateCost(estimatedTokens);
-    const parameters = {
-      operation: input.operation,
-      maxTokens: providerBudget.maxOutputTokens,
-      stream: false,
-    };
-    let call: StartedModelCall;
-    try {
-      call = await this.repository.beginModelCall({
-        payload: input.payload,
-        step: input.step,
-        attempt: input.attempt,
-        role: input.role,
-        prompt: input.prompt,
-        system: input.system,
-        citations: input.citations,
-        estimatedTokens,
-        estimatedCostCny,
-        parameters,
-      });
-    } catch (error) {
-      if (error instanceof JobBudgetExceededError) {
-        throw error;
-      }
-      if (error instanceof Error && error.name === "BudgetReservationError") {
-        await this.repository.recordBudgetFailure({
-          payload: input.payload,
-          step: input.step,
-          attempt: input.attempt,
-          role: input.role,
-          prompt: input.prompt,
-          system: input.system,
-          estimatedTokens,
-          estimatedCostCny,
-          errorCode: "JOB_BUDGET_EXCEEDED",
-          message: "本章生成预算已用完，草稿和检查点已保留",
-          escalationReason: "本章预算已用完，请调整预算后再从断点重试",
-        });
-        throw new JobBudgetExceededError();
-      }
-      throw error;
-    }
-
-    const startedAt = Date.now();
-    this.traceLogger?.info({
-      event: "worker.model_call.started",
-      jobId: input.payload.jobId,
-      runId: call.runId,
-      modelCallId: call.modelCallId,
-      reservationId: call.reservationId,
-      step: input.step,
-      inputHash: sha256(input.system + input.prompt).slice(0, 12),
-    });
-    let result: GenerationResult | undefined;
-    try {
-      result = await input.provider.generateText({
-        prompt: input.prompt,
-        system: input.system,
-        maxTokens: providerBudget.maxOutputTokens,
-        operation: input.operation,
-      });
-    } catch (error) {
-      const failure = toProviderFailure(error);
-      await this.repository.failModelCall({
-        payload: input.payload,
-        step: input.step,
-        call,
-        failureClass: failure.failureClass,
-        errorCode: failure.code,
-        message: failure.message,
-        escalationReason: failure.escalationReason,
-      });
-      this.traceLogger?.warn({
-        event: "worker.model_call.failed",
-        jobId: input.payload.jobId,
-        runId: call.runId,
-        modelCallId: call.modelCallId,
-        step: input.step,
-        failureClass: failure.failureClass,
-        errorCode: failure.code,
-        latencyMs: Date.now() - startedAt,
-      });
-      throw error;
-    }
-    if (!result) {
-      throw new Error("Provider returned no generation result");
-    }
-    const budgetOverrun = await this.repository.completeModelCall({
-      payload: input.payload,
-      step: input.step,
-      call,
-      result,
-    });
-    if (budgetOverrun) {
-      this.traceLogger?.warn({
-        event: "worker.model_call.budget_overrun",
-        jobId: input.payload.jobId,
-        runId: call.runId,
-        modelCallId: call.modelCallId,
-        reservationId: call.reservationId,
-        step: input.step,
-        actualTokens: result.usage.inputTokens + result.usage.outputTokens,
-        failureClass: "budget",
-      });
-      throw new CostBudgetOverrunRecordedError();
-    }
-    this.traceLogger?.info({
-      event: "worker.model_call.succeeded",
-      jobId: input.payload.jobId,
-      runId: call.runId,
-      modelCallId: call.modelCallId,
-      step: input.step,
-      inputTokens: result.usage.inputTokens,
-      outputTokens: result.usage.outputTokens,
-      costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
-      latencyMs: Date.now() - startedAt,
-    });
-    return result;
   }
 }
 
@@ -651,80 +541,17 @@ function stepInputHash(
 }
 
 function toCost(result: GenerationResult): GenerationCost {
+  const totalTokens = result.usage.inputTokens + result.usage.outputTokens;
   return {
     inputTokens: result.usage.inputTokens,
     outputTokens: result.usage.outputTokens,
-    totalTokens: result.usage.inputTokens + result.usage.outputTokens,
-    costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
+    totalTokens,
+    costCny: calculateModelCallCost(totalTokens, M0_COST_PER_TOKEN_CNY),
   };
-}
-
-function calculateCost(tokens: number): number {
-  return Number((tokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
 }
 
 function zeroCost(): GenerationCost {
   return { inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 };
-}
-
-function toProviderFailure(error: unknown): {
-  failureClass:
-    | "provider"
-    | "timeout"
-    | "rate_limit"
-    | "schema"
-    | "policy"
-    | "budget"
-    | "cancelled"
-    | "unknown";
-  code: string;
-  message: string;
-  escalationReason: string;
-} {
-  const failureClass = error instanceof AiProviderError ? classifyAiFailure(error) : "provider";
-  const mapping = {
-    timeout: {
-      code: "MODEL_TIMEOUT",
-      message: "模型服务响应超时，草稿和检查点已保留",
-      escalationReason: "模型响应超时，可稍后从断点重试",
-    },
-    rate_limit: {
-      code: "MODEL_RATE_LIMITED",
-      message: "模型服务繁忙，草稿和检查点已保留",
-      escalationReason: "模型服务限流，请稍后从断点重试",
-    },
-    policy: {
-      code: "MODEL_POLICY_BLOCKED",
-      message: "模型拒绝了本次请求，草稿和检查点已保留",
-      escalationReason: "模型拒绝请求，请检查正文模型配置或稍后重试",
-    },
-    schema: {
-      code: "MODEL_RESPONSE_INVALID",
-      message: "模型返回内容无法识别，草稿和检查点已保留",
-      escalationReason: "模型返回格式异常，请从断点重试",
-    },
-    budget: {
-      code: "JOB_BUDGET_EXCEEDED",
-      message: "本章生成预算已用完，草稿和检查点已保留",
-      escalationReason: "本章预算已用完，请调整预算后再从断点重试",
-    },
-    cancelled: {
-      code: "JOB_CANCELLED",
-      message: "生成已取消，草稿和检查点已保留",
-      escalationReason: "生成已取消",
-    },
-    provider: {
-      code: "MODEL_PROVIDER_ERROR",
-      message: "模型服务暂时不可用，草稿和检查点已保留",
-      escalationReason: "模型服务异常，请稍后从断点重试",
-    },
-    unknown: {
-      code: "MODEL_PROVIDER_ERROR",
-      message: "模型服务暂时不可用，草稿和检查点已保留",
-      escalationReason: "模型调用异常，请稍后从断点重试",
-    },
-  } as const;
-  return { failureClass, ...mapping[failureClass] };
 }
 
 function toFailure(error: unknown): {
@@ -741,16 +568,8 @@ function toFailure(error: unknown): {
     | "unknown";
   escalationReason: string;
 } {
-  if (error instanceof JobBudgetExceededError) {
-    return {
-      code: "JOB_BUDGET_EXCEEDED",
-      message: "本章生成预算已用完，草稿和检查点已保留",
-      failureClass: "budget",
-      escalationReason: "本章预算已用完，请调整预算后再从断点重试",
-    };
-  }
   if (error instanceof AiProviderError) {
-    return toProviderFailure(error);
+    return describeProviderFailure(error);
   }
   if (error instanceof ModelConfigurationError) {
     return {
@@ -763,9 +582,9 @@ function toFailure(error: unknown): {
   if (error instanceof ContextBudgetExceededError) {
     return {
       code: "JOB_BUDGET_EXCEEDED",
-      message: "本章生成预算已用完，草稿和检查点已保留",
+      message: BUDGET_EXHAUSTED_MESSAGE,
       failureClass: "budget",
-      escalationReason: "本章预算已用完，请调整预算后再从断点重试",
+      escalationReason: BUDGET_EXHAUSTED_ESCALATION,
     };
   }
   return {

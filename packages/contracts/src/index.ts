@@ -56,6 +56,7 @@ export const ERROR_CODES = [
   "JOB_CANCELLED",
   "JOB_NOT_RECOVERABLE",
   "JOB_RECOVERY_CONFLICT",
+  "JOB_RECOVERY_BUDGET_INVALID",
   "JOB_ATTEMPTS_EXHAUSTED",
   "SUMMARY_REBUILD_FAILED",
   "WRITING_ACTION_NOT_EDITABLE",
@@ -5348,11 +5349,23 @@ export type WritingActionJob = z.infer<typeof writingActionJobSchema>;
 export const jobRecoveryActionSchema = z.enum(["retry", "resume"]);
 export type JobRecoveryAction = z.infer<typeof jobRecoveryActionSchema>;
 
+export const jobRecoveryBudgetIncreaseSchema = z
+  .object({
+    maxTokens: z.number().int().positive().optional(),
+    maxCostCny: z.number().positive().optional(),
+  })
+  .strict()
+  .refine((budget) => budget.maxTokens !== undefined || budget.maxCostCny !== undefined, {
+    message: "Recovery budget must increase at least one limit",
+  });
+export type JobRecoveryBudgetIncrease = z.infer<typeof jobRecoveryBudgetIncreaseSchema>;
+
 export const jobRecoveryRequestSchema = z
   .object({
     reason: z.string().trim().min(1).max(1_000),
     idempotencyKey: z.string().trim().min(1).max(200),
     expectedCheckpointVersion: z.number().int().nonnegative().optional(),
+    budget: jobRecoveryBudgetIncreaseSchema.optional(),
   })
   .strict();
 export type JobRecoveryRequest = z.infer<typeof jobRecoveryRequestSchema>;
@@ -5367,7 +5380,7 @@ export const jobRecoveryRecordSchema = z
     idempotencyKey: z.string().min(1),
     fromStatus: generationJobStatusSchema,
     fromCheckpointVersion: z.number().int().nonnegative(),
-    resumeStep: workerJobStepSchema,
+    resumeStep: z.union([workerJobStepSchema, writingActionStepSchema]),
     checkpointVersion: z.number().int().nonnegative(),
     createdAt: z.string().datetime(),
   })
@@ -5377,6 +5390,13 @@ export type JobRecoveryRecord = z.infer<typeof jobRecoveryRecordSchema>;
 export const jobRecoveryResponseSchema = apiEnvelopeSchema(
   z.object({
     job: generationJobSchema,
+    recovery: jobRecoveryRecordSchema,
+  }),
+);
+
+export const writingActionRecoveryResponseSchema = apiEnvelopeSchema(
+  z.object({
+    job: writingActionJobSchema,
     recovery: jobRecoveryRecordSchema,
   }),
 );

@@ -24,6 +24,7 @@ import {
   type DatabaseClient,
 } from "@novel-brain/db";
 import {
+  generationBudgetSchema,
   generationCheckpointSchema,
   jobRecoveryRecordSchema,
   type ContextPackEviction,
@@ -148,6 +149,13 @@ export class JobRecoveryConflictError extends Error {
   constructor() {
     super("Generation checkpoint changed before recovery");
     this.name = "JobRecoveryConflictError";
+  }
+}
+
+export class JobRecoveryBudgetInvalidError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "JobRecoveryBudgetInvalidError";
   }
 }
 
@@ -771,6 +779,12 @@ export class GenerationRepository implements OnModuleDestroy {
       ) {
         throw new JobRecoveryConflictError();
       }
+      const currentBudget = generationBudgetSchema.parse(current.budget);
+      const nextBudget = recoveryBudget(
+        currentBudget,
+        input.request.budget,
+        current.errorCode === "JOB_BUDGET_EXCEEDED",
+      );
 
       const steps = await transaction
         .select({ stepKey: jobSteps.stepKey, status: jobSteps.status })
@@ -797,7 +811,16 @@ export class GenerationRepository implements OnModuleDestroy {
         step: resume.step,
         inputHash: resumeStepRecord?.inputHash ?? null,
         outputRefs: previousCheckpoint.outputRefs,
-        payload: previousCheckpoint.payload,
+        payload: {
+          ...previousCheckpoint.payload,
+          recovery: {
+            reason: input.request.reason,
+            idempotencyKey: input.request.idempotencyKey,
+            fromCheckpointVersion: current.checkpointVersion,
+            budgetBefore: currentBudget,
+            budgetAfter: nextBudget,
+          },
+        },
       });
       const now = new Date();
       const action = current.status === "paused" ? "resume" : "retry";
@@ -805,6 +828,7 @@ export class GenerationRepository implements OnModuleDestroy {
         .update(jobs)
         .set({
           status: "queued",
+          budget: nextBudget,
           currentStep: resume.step,
           checkpoint,
           checkpointVersion,
@@ -873,6 +897,8 @@ export class GenerationRepository implements OnModuleDestroy {
         recoveryId,
         reason: input.request.reason,
         resumeStep: resume.step,
+        budgetBefore: currentBudget,
+        budgetAfter: nextBudget,
         checkpoint,
       });
       return {
@@ -997,5 +1023,29 @@ function toJobRecoveryRecord(row: InferSelectModel<typeof jobRecoveries>): JobRe
     resumeStep: row.resumeStep,
     checkpointVersion: row.checkpointVersion,
     createdAt: row.createdAt.toISOString(),
+  });
+}
+
+function recoveryBudget(
+  current: ReturnType<typeof generationBudgetSchema.parse>,
+  increase: JobRecoveryRequest["budget"],
+  required: boolean,
+): ReturnType<typeof generationBudgetSchema.parse> {
+  if (!increase) {
+    if (required) {
+      throw new JobRecoveryBudgetInvalidError("预算暂停任务恢复前必须明确提高预算");
+    }
+    return current;
+  }
+  if (increase.maxTokens !== undefined && increase.maxTokens <= current.maxTokens) {
+    throw new JobRecoveryBudgetInvalidError("恢复预算的 maxTokens 必须高于当前上限");
+  }
+  if (increase.maxCostCny !== undefined && increase.maxCostCny <= current.maxCostCny) {
+    throw new JobRecoveryBudgetInvalidError("恢复预算的 maxCostCny 必须高于当前上限");
+  }
+  return generationBudgetSchema.parse({
+    ...current,
+    ...(increase.maxTokens !== undefined ? { maxTokens: increase.maxTokens } : {}),
+    ...(increase.maxCostCny !== undefined ? { maxCostCny: increase.maxCostCny } : {}),
   });
 }

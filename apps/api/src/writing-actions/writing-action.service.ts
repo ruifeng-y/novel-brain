@@ -4,6 +4,7 @@ import { Injectable } from "@nestjs/common";
 import {
   jobEventSchema,
   type JobEvent,
+  type JobRecoveryRecord,
   type JobRecoveryRequest,
   type WritingActionJob,
   type WritingActionRequest,
@@ -14,6 +15,7 @@ import { ApiError } from "../common/api-error";
 // Nest uses the runtime class references for dependency injection metadata.
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 import {
+  WritingActionRecoveryBudgetInvalidError,
   WritingActionNotRecoverableError,
   WritingActionRecoveryConflictError,
   WritingActionRepository,
@@ -147,16 +149,18 @@ export class WritingActionService {
     jobId: string,
     audit: WritingActionAuditContext,
   ): Promise<WritingActionJob> {
-    return this.recover(
-      userId,
-      context,
-      jobId,
-      {
-        reason: "作者手动重试写作动作",
-        idempotencyKey: `write-action-retry:${jobId}:${randomUUID()}`,
-      },
-      audit,
-    );
+    return (
+      await this.recover(
+        userId,
+        context,
+        jobId,
+        {
+          reason: "作者手动重试写作动作",
+          idempotencyKey: `write-action-retry:${jobId}:${randomUUID()}`,
+        },
+        audit,
+      )
+    ).job;
   }
 
   async recover(
@@ -165,7 +169,7 @@ export class WritingActionService {
     jobId: string,
     request: JobRecoveryRequest,
     audit: WritingActionAuditContext,
-  ): Promise<WritingActionJob> {
+  ): Promise<{ job: WritingActionJob; recovery: JobRecoveryRecord }> {
     try {
       const result = await this.repository.recover({
         userId,
@@ -180,10 +184,16 @@ export class WritingActionService {
       if (result.job.job.status === "queued") {
         await this.queue.enqueue(toWriteActionWorkerJob(result.job));
       }
-      return toWritingActionJobContract(result.job);
+      return {
+        job: toWritingActionJobContract(result.job),
+        recovery: result.recovery,
+      };
     } catch (error) {
       if (error instanceof WritingActionRecoveryConflictError) {
         throw new ApiError(409, "JOB_RECOVERY_CONFLICT", "写作动作检查点已更新，请刷新后重试");
+      }
+      if (error instanceof WritingActionRecoveryBudgetInvalidError) {
+        throw new ApiError(409, "JOB_RECOVERY_BUDGET_INVALID", error.message);
       }
       if (error instanceof WritingActionNotRecoverableError) {
         throw new ApiError(409, "JOB_NOT_RECOVERABLE", "当前状态不能执行写作动作恢复");
@@ -227,5 +237,5 @@ export class WritingActionService {
 }
 
 function isTerminal(status: string): boolean {
-  return ["completed", "waiting_review", "failed", "cancelled"].includes(status);
+  return ["completed", "waiting_review", "paused", "failed", "cancelled"].includes(status);
 }

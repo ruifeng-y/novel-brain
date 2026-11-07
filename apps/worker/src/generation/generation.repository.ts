@@ -18,6 +18,7 @@ import {
   chapterVersions,
   chapters,
   characterKnowledgeStates,
+  calculateModelCallCost,
   contextPackVersions,
   costReservations,
   CostSettlementConflictError,
@@ -64,6 +65,7 @@ import {
   type ChapterContextInput,
   type RecoveryStepStatus,
 } from "@novel-brain/core";
+import { BUDGET_EXHAUSTED_ESCALATION, BUDGET_EXHAUSTED_MESSAGE } from "./provider-call-errors";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -201,15 +203,6 @@ export class JobStoppedError extends Error {
   constructor(readonly status: "paused" | "cancelled") {
     super(`Generation job is ${status}`);
     this.name = "JobStoppedError";
-  }
-}
-
-export class CostBudgetOverrunRecordedError extends Error {
-  readonly failureClass = "budget" as const;
-
-  constructor() {
-    super("Cost budget overrun was recorded and the job was failed");
-    this.name = "CostBudgetOverrunRecordedError";
   }
 }
 
@@ -993,6 +986,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     code: string;
     message: string;
     terminal?: boolean;
+    terminalStatus?: "failed" | "paused";
   }): Promise<void> {
     await this.withTenant(input.payload.actorId, async (transaction) => {
       const [job] = await transaction
@@ -1069,7 +1063,14 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       });
       const keepCancelled = job.status === "cancelled";
       const terminal = input.terminal !== false || keepCancelled;
-      const status = keepCancelled ? "cancelled" : terminal ? "failed" : "running";
+      const paused = !keepCancelled && terminal && input.terminalStatus === "paused";
+      const status = keepCancelled
+        ? "cancelled"
+        : paused
+          ? "paused"
+          : terminal
+            ? "failed"
+            : "running";
       const [failed] = await transaction
         .update(jobs)
         .set({
@@ -1079,7 +1080,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           checkpointVersion: revision,
           errorCode: input.code,
           errorMessage: input.message,
-          finishedAt: terminal ? now : null,
+          finishedAt: terminal && !paused ? now : null,
           updatedAt: now,
         })
         .where(eq(jobs.id, job.id))
@@ -1094,11 +1095,19 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         checkpoint,
       });
       if (terminal && !keepCancelled) {
-        await appendEvent(transaction, failed, "job.failed", {
-          status: "failed",
-          error: { code: input.code, message: input.message },
-          checkpoint,
-        });
+        if (paused) {
+          await appendEvent(transaction, failed, "job.paused", {
+            status: "paused",
+            error: { code: input.code, message: input.message },
+            checkpoint,
+          });
+        } else {
+          await appendEvent(transaction, failed, "job.failed", {
+            status: "failed",
+            error: { code: input.code, message: input.message },
+            checkpoint,
+          });
+        }
       }
     });
   }
@@ -1699,6 +1708,9 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!job) {
         throw new Error("Generation job no longer exists");
       }
+      if (job.status === "paused" || job.status === "cancelled") {
+        throw new JobStoppedError(job.status);
+      }
       const [modelConfig] = await transaction
         .select()
         .from(modelConfigs)
@@ -1811,7 +1823,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     const inputTokens = input.result.usage.inputTokens;
     const outputTokens = input.result.usage.outputTokens;
     const totalTokens = inputTokens + outputTokens;
-    const costCny = calculateCost(totalTokens);
+    const costCny = calculateModelCallCost(totalTokens, M0_COST_PER_TOKEN_CNY);
     const outputHash = sha256(input.result.text);
     return this.withTenant(input.payload.actorId, async (transaction) => {
       const [job] = await transaction
@@ -1848,15 +1860,22 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         if (
           existingCall.inputTokens !== inputTokens ||
           existingCall.outputTokens !== outputTokens ||
-          calculateCost(existingCall.inputTokens + existingCall.outputTokens) !== costCny
+          calculateModelCallCost(
+            existingCall.inputTokens + existingCall.outputTokens,
+            M0_COST_PER_TOKEN_CNY,
+          ) !== costCny
         ) {
           throw new CostSettlementConflictError(
             "Model call was already completed with different usage",
           );
         }
-        return (
-          existingCall.failureClass === "budget" && existingCall.errorCode === "JOB_BUDGET_EXCEEDED"
-        );
+        const budgetOverrun =
+          existingCall.failureClass === "budget" &&
+          existingCall.errorCode === "JOB_BUDGET_EXCEEDED";
+        if (budgetOverrun) {
+          await markTargetedRevisionFailedInTransaction(transaction, job, new Date());
+        }
+        return budgetOverrun;
       }
       const settlement = await settleBudgetInTransaction(transaction, {
         userId: input.payload.actorId,
@@ -1886,7 +1905,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
             ? {
                 failureClass: "budget",
                 errorCode: "JOB_BUDGET_EXCEEDED",
-                escalationReason: "模型实际用量超过预算预留，任务已停止",
+                escalationReason: BUDGET_EXHAUSTED_ESCALATION,
               }
             : {}),
           finishedAt: now,
@@ -1902,7 +1921,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           },
           usage: { inputTokens, outputTokens, costCny },
           failureClass: budgetOverrun ? "budget" : null,
-          escalationReason: budgetOverrun ? "模型实际用量超过预算预留，任务已停止" : null,
+          escalationReason: budgetOverrun ? BUDGET_EXHAUSTED_ESCALATION : null,
           finishedAt: now,
         })
         .where(eq(agentRuns.id, input.call.runId));
@@ -1942,7 +1961,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         .set({
           status: "failed",
           errorCode: "JOB_BUDGET_EXCEEDED",
-          errorMessage: "模型实际用量超过预算预留，任务已停止",
+          errorMessage: BUDGET_EXHAUSTED_MESSAGE,
           finishedAt: now,
         })
         .where(and(eq(jobSteps.jobId, job.id), eq(jobSteps.stepKey, input.step)));
@@ -1952,7 +1971,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           status: "failed",
           checkpointRevision: revision,
           errorCode: "JOB_BUDGET_EXCEEDED",
-          errorMessage: "模型实际用量超过预算预留，任务已停止",
+          errorMessage: BUDGET_EXHAUSTED_MESSAGE,
           finishedAt: now,
         })
         .where(
@@ -1976,19 +1995,20 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         outputRefs: previousCheckpoint.outputRefs ?? [],
         payload: checkpoint,
         errorCode: "JOB_BUDGET_EXCEEDED",
-        errorMessage: "模型实际用量超过预算预留，任务已停止",
+        errorMessage: BUDGET_EXHAUSTED_MESSAGE,
         createdAt: now,
       });
+      await markTargetedRevisionFailedInTransaction(transaction, job, now);
       const [failedJob] = await transaction
         .update(jobs)
         .set({
-          status: "failed",
+          status: "paused",
           currentStep: input.step,
           checkpoint,
           checkpointVersion: revision,
           errorCode: "JOB_BUDGET_EXCEEDED",
-          errorMessage: "模型实际用量超过预算预留，任务已停止",
-          finishedAt: now,
+          errorMessage: BUDGET_EXHAUSTED_MESSAGE,
+          finishedAt: null,
           updatedAt: now,
         })
         .where(eq(jobs.id, job.id))
@@ -2008,15 +2028,15 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           attempt: input.call.attempt,
           error: {
             code: "JOB_BUDGET_EXCEEDED",
-            message: "模型实际用量超过预算预留，任务已停止",
+            message: BUDGET_EXHAUSTED_MESSAGE,
           },
           checkpoint,
         });
-        await appendEvent(transaction, failedJob, "job.failed", {
-          status: "failed",
+        await appendEvent(transaction, failedJob, "job.paused", {
+          status: "paused",
           error: {
             code: "JOB_BUDGET_EXCEEDED",
-            message: "模型实际用量超过预算预留，任务已停止",
+            message: BUDGET_EXHAUSTED_MESSAGE,
           },
           checkpoint,
         });
@@ -2558,6 +2578,34 @@ function writingActionLabel(action: WriteActionJob["action"]): string {
   return labels[action];
 }
 
+async function markTargetedRevisionFailedInTransaction(
+  transaction: DatabaseTransaction,
+  job: JobRecord,
+  now: Date,
+): Promise<void> {
+  if (job.type !== "write_action" || job.action !== "targeted_revision") {
+    return;
+  }
+  const [round] = await transaction
+    .select()
+    .from(revisionRounds)
+    .where(eq(revisionRounds.jobId, job.id))
+    .for("update")
+    .limit(1);
+  if (!round || ["waiting_review", "accepted", "rejected", "failed"].includes(round.status)) {
+    return;
+  }
+  await transaction
+    .update(revisionRounds)
+    .set({
+      status: "failed",
+      version: round.version + 1,
+      updatedAt: now,
+      finishedAt: now,
+    })
+    .where(eq(revisionRounds.id, round.id));
+}
+
 async function appendEvent(
   transaction: DatabaseTransaction,
   job: JobRecord,
@@ -2587,10 +2635,6 @@ function countWords(content: string): number {
 
 function sha256(value: string): string {
   return createHash("sha256").update(value).digest("hex");
-}
-
-function calculateCost(tokens: number): number {
-  return Number((tokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
 }
 
 async function upsertPromptVersion(

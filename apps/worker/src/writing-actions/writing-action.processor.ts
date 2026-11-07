@@ -5,13 +5,11 @@ import {
   WRITING_ACTION_STEPS,
   writeActionJobSchema,
   type WriteActionJob,
-  type WritingActionKind,
   type WritingActionStep,
 } from "@novel-brain/contracts";
 import {
   AiProviderError,
   M0_COST_PER_TOKEN_CNY,
-  classifyAiFailure,
   type AiGateway,
   type GenerationResult,
 } from "@novel-brain/ai";
@@ -20,25 +18,31 @@ import {
   compileWritingActionPrompt,
   ContextBudgetExceededError,
   decideStepRecovery,
-  planProviderCallBudget,
   PROVIDER_CALL_MAX_OUTPUT_TOKENS,
   resolveModelContextWindow,
   TargetedRevisionError,
   WRITING_ACTION_SPECS,
 } from "@novel-brain/core";
+import { calculateModelCallCost } from "@novel-brain/db";
 
+import {
+  BUDGET_EXHAUSTED_ESCALATION,
+  BUDGET_EXHAUSTED_MESSAGE,
+  BudgetedProviderCallExecutor,
+  CostBudgetOverrunRecordedError,
+  ProviderBudgetExceededError,
+  describeProviderFailure,
+} from "../generation/budgeted-provider-call";
 import { AI_GATEWAY } from "../generation/generation.tokens";
 import type { ByokAiGatewayFactory } from "../generation/model-provider.factory";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
-  CostBudgetOverrunRecordedError,
   WorkerGenerationRepository,
   WritingActionNotEditableError,
   WritingActionSourceInvalidError,
   type LoadedGenerationJob,
   type LoadedWritingActionSource,
-  type StartedModelCall,
   type WorkerContextSources,
 } from "../generation/generation.repository";
 
@@ -48,6 +52,7 @@ export interface WritingActionTraceLogger {
 }
 
 export type WritingActionStepBoundaryHook = (step: WritingActionStep) => void | Promise<void>;
+export type WritingActionModelCallBoundaryHook = () => void | Promise<void>;
 
 const STEP_PROGRESS: Record<WritingActionStep, number> = {
   prepare: 20,
@@ -55,26 +60,21 @@ const STEP_PROGRESS: Record<WritingActionStep, number> = {
   await_review: 100,
 };
 
-class WritingActionBudgetExceededError extends Error {
-  readonly failureClass = "budget" as const;
-
-  constructor() {
-    super("Writing action budget exhausted");
-    this.name = "WritingActionBudgetExceededError";
-  }
-}
-
 type AiGatewayResolver = AiGateway | Pick<ByokAiGatewayFactory, "create">;
 
 @Injectable()
 export class WritingActionProcessor {
+  private readonly providerCalls: BudgetedProviderCallExecutor;
   private traceLogger: WritingActionTraceLogger | undefined;
   private boundaryHook: WritingActionStepBoundaryHook | undefined;
+  private modelCallBoundaryHook: WritingActionModelCallBoundaryHook | undefined;
 
   constructor(
     private readonly repository: WorkerGenerationRepository,
     @Inject(AI_GATEWAY) private readonly providerResolver: AiGatewayResolver,
-  ) {}
+  ) {
+    this.providerCalls = new BudgetedProviderCallExecutor(repository);
+  }
 
   setTraceLogger(logger: WritingActionTraceLogger): void {
     this.traceLogger = logger;
@@ -82,6 +82,10 @@ export class WritingActionProcessor {
 
   setStepBoundaryHook(hook: WritingActionStepBoundaryHook | undefined): void {
     this.boundaryHook = hook;
+  }
+
+  setModelCallBoundaryHook(hook: WritingActionModelCallBoundaryHook | undefined): void {
+    this.modelCallBoundaryHook = hook;
   }
 
   async process(payload: WriteActionJob): Promise<void> {
@@ -160,10 +164,21 @@ export class WritingActionProcessor {
             error instanceof CostBudgetOverrunRecordedError ||
             (error instanceof Error && error.name === "CostBudgetOverrunRecordedError")
           ) {
-            await this.repository.markRevisionRoundFailed(durable, "JOB_BUDGET_EXCEEDED");
+            await this.modelCallBoundaryHook?.();
             return;
           }
           const failure = toFailure(error);
+          if (failure.failureClass === "budget") {
+            await this.repository.failStep({
+              payload: durable,
+              step,
+              code: failure.code,
+              message: failure.message,
+              terminal: true,
+              terminalStatus: "paused",
+            });
+            return;
+          }
           const decision = decideStepRecovery({
             failureClass: failure.failureClass,
             attempt: jobStep?.attempt ?? 1,
@@ -320,7 +335,7 @@ export class WritingActionProcessor {
             ? { maxLength: input.payload.input.maxLength }
             : {}),
         });
-        const result = await this.callProvider({
+        const result = await this.providerCalls.call({
           payload: input.payload,
           provider: requireProvider(input.provider),
           step: "generate",
@@ -332,6 +347,12 @@ export class WritingActionProcessor {
           prompt: prompt.prompt,
           system: prompt.system,
           citations: pack.sourceRefs,
+          parameters: {
+            operation: input.payload.action,
+            promptKey: spec.promptKey,
+            promptVersion: spec.promptVersion,
+          },
+          ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         const output = await this.repository.saveWritingActionOutput({
           payload: input.payload,
@@ -370,103 +391,6 @@ export class WritingActionProcessor {
           checkpointPayload: { awaiting: "author_review" },
         };
     }
-  }
-
-  private async callProvider(input: {
-    payload: WriteActionJob;
-    provider: AiGateway;
-    step: "generate";
-    attempt: number;
-    role: "writer" | "reviser";
-    promptKey: string;
-    promptVersion: number;
-    operation: WritingActionKind;
-    prompt: string;
-    system: string;
-    citations: unknown[];
-  }): Promise<GenerationResult> {
-    const providerBudget = planProviderCallBudget({
-      system: input.system,
-      prompt: input.prompt,
-      maxOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
-    });
-    const estimatedTokens = providerBudget.reservedTokens;
-    const estimatedCostCny = calculateCost(estimatedTokens);
-    const parameters = {
-      operation: input.operation,
-      promptKey: input.promptKey,
-      promptVersion: input.promptVersion,
-      maxTokens: providerBudget.maxOutputTokens,
-      stream: false,
-    };
-    let call: StartedModelCall;
-    try {
-      call = await this.repository.beginModelCall({
-        payload: input.payload,
-        step: input.step,
-        attempt: input.attempt,
-        role: input.role,
-        promptKey: input.promptKey,
-        prompt: input.prompt,
-        system: input.system,
-        citations: input.citations,
-        estimatedTokens,
-        estimatedCostCny,
-        parameters,
-      });
-    } catch (error) {
-      if (error instanceof Error && error.name === "BudgetReservationError") {
-        await this.repository.recordBudgetFailure({
-          payload: input.payload,
-          step: input.step,
-          attempt: input.attempt,
-          role: input.role,
-          prompt: input.prompt,
-          system: input.system,
-          estimatedTokens,
-          estimatedCostCny,
-          errorCode: "JOB_BUDGET_EXCEEDED",
-          message: "写作动作预算已用完，原稿和检查点已保留",
-          escalationReason: "预算已用完，请调整预算后从断点重试",
-        });
-        throw new WritingActionBudgetExceededError();
-      }
-      throw error;
-    }
-    let result: GenerationResult | undefined;
-    try {
-      result = await input.provider.generateText({
-        prompt: input.prompt,
-        system: input.system,
-        maxTokens: providerBudget.maxOutputTokens,
-        operation: input.operation,
-      });
-    } catch (error) {
-      const failure = toProviderFailure(error);
-      await this.repository.failModelCall({
-        payload: input.payload,
-        step: input.step,
-        call,
-        failureClass: failure.failureClass,
-        errorCode: failure.code,
-        message: failure.message,
-        escalationReason: failure.escalationReason,
-      });
-      throw error;
-    }
-    if (!result) {
-      throw new Error("Provider returned no generation result");
-    }
-    const budgetOverrun = await this.repository.completeModelCall({
-      payload: input.payload,
-      step: input.step,
-      call,
-      result,
-    });
-    if (budgetOverrun) {
-      throw new CostBudgetOverrunRecordedError();
-    }
-    return result;
   }
 
   private async requireSource(payload: WriteActionJob): Promise<LoadedWritingActionSource> {
@@ -520,16 +444,12 @@ function toCost(result: GenerationResult) {
     inputTokens: result.usage.inputTokens,
     outputTokens: result.usage.outputTokens,
     totalTokens,
-    costCny: calculateCost(totalTokens),
+    costCny: calculateModelCallCost(totalTokens, M0_COST_PER_TOKEN_CNY),
   };
 }
 
 function zeroCost() {
   return { inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 };
-}
-
-function calculateCost(tokens: number): number {
-  return Number((tokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
 }
 
 function sha256(value: string): string {
@@ -549,63 +469,17 @@ function stableStringify(value: unknown): string {
     .join(",")}}`;
 }
 
-function toProviderFailure(error: unknown) {
-  const failureClass = error instanceof AiProviderError ? classifyAiFailure(error) : "provider";
-  const mapping = {
-    timeout: {
-      code: "MODEL_TIMEOUT",
-      message: "模型服务响应超时，原稿和检查点已保留",
-      escalationReason: "模型响应超时，可稍后从断点重试",
-    },
-    rate_limit: {
-      code: "MODEL_RATE_LIMITED",
-      message: "模型服务繁忙，原稿和检查点已保留",
-      escalationReason: "模型服务限流，请稍后从断点重试",
-    },
-    policy: {
-      code: "MODEL_POLICY_BLOCKED",
-      message: "模型拒绝了本次请求，原稿和检查点已保留",
-      escalationReason: "模型拒绝请求，请检查正文模型配置或稍后重试",
-    },
-    schema: {
-      code: "MODEL_RESPONSE_INVALID",
-      message: "模型返回内容无法识别，原稿和检查点已保留",
-      escalationReason: "模型返回格式异常，请从断点重试",
-    },
-    budget: {
-      code: "JOB_BUDGET_EXCEEDED",
-      message: "写作动作预算已用完，原稿和检查点已保留",
-      escalationReason: "预算已用完，请调整预算后再从断点重试",
-    },
-    cancelled: {
-      code: "JOB_CANCELLED",
-      message: "写作动作已取消，原稿和检查点已保留",
-      escalationReason: "写作动作已取消",
-    },
-    provider: {
-      code: "MODEL_PROVIDER_ERROR",
-      message: "模型服务暂时不可用，原稿和检查点已保留",
-      escalationReason: "模型服务异常，请稍后从断点重试",
-    },
-    unknown: {
-      code: "MODEL_PROVIDER_ERROR",
-      message: "模型服务暂时不可用，原稿和检查点已保留",
-      escalationReason: "模型调用异常，请稍后从断点重试",
-    },
-  } as const;
-  return { failureClass, ...mapping[failureClass] };
-}
-
 function toFailure(error: unknown) {
-  if (error instanceof WritingActionBudgetExceededError) {
+  if (error instanceof ProviderBudgetExceededError) {
     return {
       code: "JOB_BUDGET_EXCEEDED",
-      message: "写作动作预算已用完，原稿和检查点已保留",
+      message: BUDGET_EXHAUSTED_MESSAGE,
       failureClass: "budget" as const,
+      escalationReason: BUDGET_EXHAUSTED_ESCALATION,
     };
   }
   if (error instanceof AiProviderError) {
-    return toProviderFailure(error);
+    return describeProviderFailure(error);
   }
   if (error instanceof WritingActionNotEditableError) {
     return {
@@ -631,8 +505,9 @@ function toFailure(error: unknown) {
   if (error instanceof ContextBudgetExceededError) {
     return {
       code: "JOB_BUDGET_EXCEEDED",
-      message: "写作动作预算已用完，原稿和检查点已保留",
+      message: BUDGET_EXHAUSTED_MESSAGE,
       failureClass: "budget" as const,
+      escalationReason: BUDGET_EXHAUSTED_ESCALATION,
     };
   }
   return {
