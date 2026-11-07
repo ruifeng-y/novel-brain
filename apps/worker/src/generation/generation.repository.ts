@@ -20,6 +20,7 @@ import {
   characterKnowledgeStates,
   contextPackVersions,
   costReservations,
+  CostSettlementConflictError,
   createDatabaseClient,
   createDatabasePool,
   entities,
@@ -200,6 +201,15 @@ export class JobStoppedError extends Error {
   constructor(readonly status: "paused" | "cancelled") {
     super(`Generation job is ${status}`);
     this.name = "JobStoppedError";
+  }
+}
+
+export class CostBudgetOverrunRecordedError extends Error {
+  readonly failureClass = "budget" as const;
+
+  constructor() {
+    super("Cost budget overrun was recorded and the job was failed");
+    this.name = "CostBudgetOverrunRecordedError";
   }
 }
 
@@ -1797,13 +1807,13 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     step: string;
     call: StartedModelCall;
     result: GenerationResult;
-  }): Promise<void> {
+  }): Promise<boolean> {
     const inputTokens = input.result.usage.inputTokens;
     const outputTokens = input.result.usage.outputTokens;
     const totalTokens = inputTokens + outputTokens;
     const costCny = calculateCost(totalTokens);
     const outputHash = sha256(input.result.text);
-    await this.withTenant(input.payload.actorId, async (transaction) => {
+    return this.withTenant(input.payload.actorId, async (transaction) => {
       const [job] = await transaction
         .select()
         .from(jobs)
@@ -1813,18 +1823,56 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (!job) {
         throw new Error("Generation job no longer exists");
       }
-      await settleBudgetInTransaction(transaction, {
+      const [existingCall] = await transaction
+        .select({
+          status: modelCalls.status,
+          inputTokens: modelCalls.inputTokens,
+          outputTokens: modelCalls.outputTokens,
+          failureClass: modelCalls.failureClass,
+          errorCode: modelCalls.errorCode,
+          inputHash: modelCalls.inputHash,
+        })
+        .from(modelCalls)
+        .where(
+          and(
+            eq(modelCalls.id, input.call.modelCallId),
+            eq(modelCalls.userId, input.payload.actorId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!existingCall) {
+        throw new Error("Model call no longer exists");
+      }
+      if (existingCall.status !== "started") {
+        if (
+          existingCall.inputTokens !== inputTokens ||
+          existingCall.outputTokens !== outputTokens ||
+          calculateCost(existingCall.inputTokens + existingCall.outputTokens) !== costCny
+        ) {
+          throw new CostSettlementConflictError(
+            "Model call was already completed with different usage",
+          );
+        }
+        return (
+          existingCall.failureClass === "budget" && existingCall.errorCode === "JOB_BUDGET_EXCEEDED"
+        );
+      }
+      const settlement = await settleBudgetInTransaction(transaction, {
         userId: input.payload.actorId,
         jobId: input.payload.jobId,
         idempotencyKey: input.call.reservationKey,
         actualTokens: totalTokens,
         actualCostCny: costCny,
+        actualInputTokens: inputTokens,
+        actualOutputTokens: outputTokens,
       });
+      const budgetOverrun = settlement.failureClass === "budget";
       const now = new Date();
       await transaction
         .update(modelCalls)
         .set({
-          status: "succeeded",
+          status: budgetOverrun ? "failed" : "succeeded",
           outputHash,
           outputSummary: {
             outputBytes: Buffer.byteLength(input.result.text, "utf8"),
@@ -1834,20 +1882,27 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           outputTokens,
           costCny,
           providerRequestId: input.result.providerRequestId ?? null,
+          ...(budgetOverrun
+            ? {
+                failureClass: "budget",
+                errorCode: "JOB_BUDGET_EXCEEDED",
+                escalationReason: "模型实际用量超过预算预留，任务已停止",
+              }
+            : {}),
           finishedAt: now,
         })
         .where(eq(modelCalls.id, input.call.modelCallId));
       await transaction
         .update(agentRuns)
         .set({
-          status: "succeeded",
+          status: budgetOverrun ? "failed" : "succeeded",
           outputHash,
           outputSummary: {
             outputBytes: Buffer.byteLength(input.result.text, "utf8"),
           },
           usage: { inputTokens, outputTokens, costCny },
-          failureClass: null,
-          escalationReason: null,
+          failureClass: budgetOverrun ? "budget" : null,
+          escalationReason: budgetOverrun ? "模型实际用量超过预算预留，任务已停止" : null,
           finishedAt: now,
         })
         .where(eq(agentRuns.id, input.call.runId));
@@ -1865,6 +1920,108 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           costCny,
         })
         .onConflictDoNothing();
+      if (!budgetOverrun) {
+        return false;
+      }
+
+      const previousCheckpoint = job.checkpoint as {
+        payload?: Record<string, unknown>;
+        outputRefs?: Array<{ type: string; id: string }>;
+      };
+      const revision = job.checkpointVersion + 1;
+      const checkpoint = {
+        schemaVersion: 1,
+        revision,
+        step: input.step,
+        inputHash: existingCall.inputHash,
+        outputRefs: previousCheckpoint.outputRefs ?? [],
+        payload: previousCheckpoint.payload ?? {},
+      };
+      await transaction
+        .update(jobSteps)
+        .set({
+          status: "failed",
+          errorCode: "JOB_BUDGET_EXCEEDED",
+          errorMessage: "模型实际用量超过预算预留，任务已停止",
+          finishedAt: now,
+        })
+        .where(and(eq(jobSteps.jobId, job.id), eq(jobSteps.stepKey, input.step)));
+      await transaction
+        .update(jobStepAttempts)
+        .set({
+          status: "failed",
+          checkpointRevision: revision,
+          errorCode: "JOB_BUDGET_EXCEEDED",
+          errorMessage: "模型实际用量超过预算预留，任务已停止",
+          finishedAt: now,
+        })
+        .where(
+          and(
+            eq(jobStepAttempts.jobId, job.id),
+            eq(jobStepAttempts.stepKey, input.step),
+            eq(jobStepAttempts.attempt, input.call.attempt),
+          ),
+        );
+      await transaction.insert(jobCheckpoints).values({
+        id: uuidv7(),
+        jobId: job.id,
+        workId: job.workId,
+        branchId: job.branchId,
+        userId: job.userId,
+        stepKey: input.step,
+        schemaVersion: 1,
+        revision,
+        attempt: input.call.attempt,
+        inputHash: existingCall.inputHash,
+        outputRefs: previousCheckpoint.outputRefs ?? [],
+        payload: checkpoint,
+        errorCode: "JOB_BUDGET_EXCEEDED",
+        errorMessage: "模型实际用量超过预算预留，任务已停止",
+        createdAt: now,
+      });
+      const [failedJob] = await transaction
+        .update(jobs)
+        .set({
+          status: "failed",
+          currentStep: input.step,
+          checkpoint,
+          checkpointVersion: revision,
+          errorCode: "JOB_BUDGET_EXCEEDED",
+          errorMessage: "模型实际用量超过预算预留，任务已停止",
+          finishedAt: now,
+          updatedAt: now,
+        })
+        .where(eq(jobs.id, job.id))
+        .returning();
+      if (failedJob) {
+        await appendEvent(transaction, failedJob, "job.budget.exceeded", {
+          step: input.step,
+          attempt: input.call.attempt,
+          reservationId: settlement.id,
+          reservedTokens: settlement.reservedTokens,
+          reservedCostCny: settlement.reservedCostCny,
+          actualTokens: totalTokens,
+          actualCostCny: costCny,
+        });
+        await appendEvent(transaction, failedJob, "job.step.failed", {
+          step: input.step,
+          attempt: input.call.attempt,
+          error: {
+            code: "JOB_BUDGET_EXCEEDED",
+            message: "模型实际用量超过预算预留，任务已停止",
+          },
+          checkpoint,
+        });
+        await appendEvent(transaction, failedJob, "job.failed", {
+          status: "failed",
+          error: {
+            code: "JOB_BUDGET_EXCEEDED",
+            message: "模型实际用量超过预算预留，任务已停止",
+          },
+          checkpoint,
+        });
+      }
+      return true;
     });
   }
 

@@ -23,14 +23,16 @@ import {
   ContextBudgetExceededError,
   decideStepRecovery,
   extractFactCandidates,
+  planProviderCallBudget,
+  PROVIDER_CALL_MAX_OUTPUT_TOKENS,
   resolveModelContextWindow,
 } from "@novel-brain/core";
-
 import { AI_GATEWAY } from "./generation.tokens";
 import type { ByokAiGatewayFactory } from "./model-provider.factory";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
+  CostBudgetOverrunRecordedError,
   JobStoppedError,
   WorkerGenerationRepository,
   type LoadedGenerationJob,
@@ -190,6 +192,12 @@ export class GenerationJobProcessor {
           if (error instanceof JobStoppedError) {
             return;
           }
+          if (
+            error instanceof CostBudgetOverrunRecordedError ||
+            (error instanceof Error && error.name === "CostBudgetOverrunRecordedError")
+          ) {
+            return;
+          }
           const failure = toFailure(error);
           const decision = decideStepRecovery({
             failureClass: failure.failureClass,
@@ -290,7 +298,7 @@ export class GenerationJobProcessor {
             summaries: sources.summaries,
             povCharacterId: sources.povCharacterId ?? null,
             modelContextWindowTokens: resolveModelContextWindow(input.loaded.modelConfig.model),
-            reservedOutputTokens: 2_000,
+            reservedOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
             ...(sources.knowledge ? { knowledge: sources.knowledge } : {}),
           },
           input.payload.budget.maxTokens,
@@ -450,11 +458,16 @@ export class GenerationJobProcessor {
     system: string;
     citations: unknown[];
   }): Promise<GenerationResult> {
-    const estimatedTokens = estimateTokens(input.prompt) + 600;
+    const providerBudget = planProviderCallBudget({
+      system: input.system,
+      prompt: input.prompt,
+      maxOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
+    });
+    const estimatedTokens = providerBudget.reservedTokens;
     const estimatedCostCny = calculateCost(estimatedTokens);
     const parameters = {
       operation: input.operation,
-      maxTokens: 2_000,
+      maxTokens: providerBudget.maxOutputTokens,
       stream: false,
     };
     let call: StartedModelCall;
@@ -504,12 +517,12 @@ export class GenerationJobProcessor {
       step: input.step,
       inputHash: sha256(input.system + input.prompt).slice(0, 12),
     });
-    let result: GenerationResult;
+    let result: GenerationResult | undefined;
     try {
       result = await input.provider.generateText({
         prompt: input.prompt,
         system: input.system,
-        maxTokens: 2_000,
+        maxTokens: providerBudget.maxOutputTokens,
         operation: input.operation,
       });
     } catch (error) {
@@ -535,12 +548,28 @@ export class GenerationJobProcessor {
       });
       throw error;
     }
-    await this.repository.completeModelCall({
+    if (!result) {
+      throw new Error("Provider returned no generation result");
+    }
+    const budgetOverrun = await this.repository.completeModelCall({
       payload: input.payload,
       step: input.step,
       call,
       result,
     });
+    if (budgetOverrun) {
+      this.traceLogger?.warn({
+        event: "worker.model_call.budget_overrun",
+        jobId: input.payload.jobId,
+        runId: call.runId,
+        modelCallId: call.modelCallId,
+        reservationId: call.reservationId,
+        step: input.step,
+        actualTokens: result.usage.inputTokens + result.usage.outputTokens,
+        failureClass: "budget",
+      });
+      throw new CostBudgetOverrunRecordedError();
+    }
     this.traceLogger?.info({
       event: "worker.model_call.succeeded",
       jobId: input.payload.jobId,
@@ -619,10 +648,6 @@ function stepInputHash(
       checkpointPayload: checkpoint.payload,
     }),
   );
-}
-
-function estimateTokens(value: string): number {
-  return Math.max(1, Math.ceil(Array.from(value.replace(/\s/gu, "")).length / 2));
 }
 
 function toCost(result: GenerationResult): GenerationCost {

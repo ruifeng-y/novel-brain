@@ -408,6 +408,131 @@ describe("writing action HTTP and worker integration", () => {
     expect(await versionCount(fixture.chapterId)).toBe(beforeFailure + 1);
   });
 
+  it("settles overruns atomically and stops duplicate retries from charging again", async () => {
+    const owner = await createAuthenticatedAgent("writing-action-overrun@example.com");
+    const fixture = await createWritingFixture(owner);
+    const before = await versionCount(fixture.chapterId);
+    const job = await startAction(
+      owner,
+      fixture.branchPath,
+      fixture.chapterId,
+      {
+        action: "rewrite",
+        sourceVersionId: fixture.sourceVersionId,
+        instruction: "保留事实，收紧节奏",
+        budget: {
+          maxCostCny: 100,
+          maxTokens: 1_000_000,
+          maxRevisionRounds: 0,
+        },
+      },
+      "writing-action-overrun",
+    );
+    let providerCalls = 0;
+    const provider: AiGateway = {
+      async generateText(input) {
+        providerCalls += 1;
+        return {
+          text: "超量返回的修订稿",
+          model: input.model ?? "fake-overrun",
+          finishReason: "stop",
+          usage: { inputTokens: 0, outputTokens: 500_000 },
+        };
+      },
+      async *streamText() {
+        yield { text: "", done: true };
+      },
+    };
+
+    const payload = await readWorkerPayload(job.id);
+    const repository = new WorkerGenerationRepository();
+    try {
+      const processor = new WritingActionProcessor(repository, provider);
+      await processor.process(payload);
+      await processor.process(payload);
+    } finally {
+      await repository.onModuleDestroy();
+    }
+
+    const failed = writingActionJobResponseSchema.parse(
+      (await owner.get(`${fixture.branchPath}/write-actions/${job.id}`).expect(200)).body,
+    ).data;
+    expect(failed).toMatchObject({
+      status: "failed",
+      output: null,
+      checkpoint: { step: "generate" },
+      error: { code: "JOB_BUDGET_EXCEEDED" },
+      cost: {
+        inputTokens: 0,
+        outputTokens: 500_000,
+        totalTokens: 500_000,
+        costCny: 1,
+      },
+    });
+    expect(providerCalls).toBe(1);
+    expect(await versionCount(fixture.chapterId)).toBe(before);
+    const modelCall = await databasePool.query<{
+      status: string;
+      failure_class: string;
+      input_tokens: number;
+      output_tokens: number;
+    }>(
+      `SELECT status, failure_class, input_tokens, output_tokens
+       FROM model_calls
+       WHERE job_id = $1`,
+      [job.id],
+    );
+    expect(modelCall.rows[0]).toEqual({
+      status: "failed",
+      failure_class: "budget",
+      input_tokens: 0,
+      output_tokens: 500_000,
+    });
+    const usage = await databasePool.query<{
+      prompt_tokens: number;
+      completion_tokens: number;
+      cost_cny: number;
+    }>(
+      `SELECT prompt_tokens, completion_tokens, cost_cny
+       FROM usage_records
+       WHERE job_id = $1 AND step_key = 'generate'`,
+      [job.id],
+    );
+    expect(usage.rows).toEqual([
+      {
+        prompt_tokens: 0,
+        completion_tokens: 500_000,
+        cost_cny: 1,
+      },
+    ]);
+    const reservation = await databasePool.query<{
+      status: string;
+      settled_tokens: number;
+      settled_cost_cny: number;
+      failure_class: string;
+    }>(
+      `SELECT status, settled_tokens, settled_cost_cny, failure_class
+       FROM cost_reservations
+       WHERE job_id = $1 AND idempotency_key LIKE 'generation:generate:%'`,
+      [job.id],
+    );
+    expect(reservation.rows).toEqual([
+      {
+        status: "settled",
+        settled_tokens: 500_000,
+        settled_cost_cny: 1,
+        failure_class: "budget",
+      },
+    ]);
+    const overrunEvents = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM job_events
+       WHERE job_id = $1 AND event_type = 'job.budget.exceeded'`,
+      [job.id],
+    );
+    expect(overrunEvents.rows[0]?.count).toBe("1");
+  });
+
   async function startAction(
     agent: SuperAgentTest,
     branchPath: string,

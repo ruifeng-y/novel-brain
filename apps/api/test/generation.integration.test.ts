@@ -507,6 +507,85 @@ describe("generation HTTP integration", () => {
     }
   });
 
+  it("settles an overrun reservation and preserves the actual job cost", async () => {
+    const owner = await createAuthenticatedAgent("generation-cost-overrun@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      "generation-cost-overrun",
+      { maxCostCny: 1, maxTokens: 30_000, maxRevisionRounds: 2 },
+    );
+    const ledger = new CostLedger(databaseUrl);
+    const userId = await userIdFor(owner);
+    try {
+      const reserved = await ledger.reserve({
+        userId,
+        workId: work.id,
+        branchId: work.mainBranch.id,
+        jobId: job.id,
+        idempotencyKey: "overrun",
+        estimatedTokens: 1_000,
+        estimatedCostCny: 0.4,
+      });
+
+      const settled = await ledger.settle({
+        userId,
+        jobId: job.id,
+        idempotencyKey: reserved.reservation.idempotencyKey,
+        actualTokens: 1_001,
+        actualCostCny: 0.41,
+      });
+      expect(settled).toMatchObject({
+        status: "settled",
+        settledTokens: 1_001,
+        settledCostCny: 0.41,
+        failureClass: "budget",
+      });
+      const replay = await ledger.settle({
+        userId,
+        jobId: job.id,
+        idempotencyKey: reserved.reservation.idempotencyKey,
+        actualTokens: 1_001,
+        actualCostCny: 0.41,
+      });
+      expect(replay).toEqual(settled);
+
+      const stored = await databasePool.query<{ total: string; cost: string }>(
+        "SELECT cost->>'totalTokens' AS total, cost->>'costCny' AS cost FROM jobs WHERE id = $1",
+        [job.id],
+      );
+      expect(stored.rows[0]).toEqual({ total: "1001", cost: "0.41" });
+      const reservation = await databasePool.query<{
+        status: string;
+        settled_tokens: number;
+        settled_cost_cny: number;
+        failure_class: string;
+      }>(
+        `SELECT status, settled_tokens, settled_cost_cny, failure_class
+         FROM cost_reservations
+         WHERE id = $1`,
+        [reserved.reservation.id],
+      );
+      expect(reservation.rows[0]).toEqual({
+        status: "settled",
+        settled_tokens: 1_001,
+        settled_cost_cny: 0.41,
+        failure_class: "budget",
+      });
+    } finally {
+      await ledger.close();
+    }
+  });
+
   it("classifies provider rate limits with trace evidence and an author escalation reason", async () => {
     const owner = await createAuthenticatedAgent("generation-rate-limit@example.com");
     const work = await createWork(owner);
@@ -980,7 +1059,7 @@ describe("generation HTTP integration", () => {
     expect(Number(after.rows[0]?.revise_calls)).toBe(Number(before.rows[0]?.revise_calls) + 1);
   });
 
-  it("stops at the budget limit after preserving the generated draft and checkpoint", async () => {
+  it("stops before the provider call when the full output allowance exceeds the job budget", async () => {
     const owner = await createAuthenticatedAgent("generation-budget@example.com");
     const work = await createWork(owner);
     const token = await csrf(owner);
@@ -1008,15 +1087,17 @@ describe("generation HTTP integration", () => {
       .expect(202);
     const job = generationJobResponseSchema.parse(started.body).data;
 
-    await new GenerationJobProcessor(
-      new WorkerGenerationRepository(),
-      new FakeAiProvider(),
-    ).process(await readWorkerPayload(job.id));
+    const provider = new FakeAiProvider();
+    const generateText = vi.spyOn(provider, "generateText");
+    await new GenerationJobProcessor(new WorkerGenerationRepository(), provider).process(
+      await readWorkerPayload(job.id),
+    );
 
+    expect(generateText).not.toHaveBeenCalled();
     const failed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
     expect(generationJobResponseSchema.parse(failed.body).data).toMatchObject({
       status: "failed",
-      checkpoint: { step: "verify" },
+      checkpoint: { step: "draft" },
       error: {
         code: "JOB_BUDGET_EXCEEDED",
         message: "本章生成预算已用完，草稿和检查点已保留",
@@ -1028,12 +1109,90 @@ describe("generation HTTP integration", () => {
        WHERE generation_job_id = $1`,
       [job.id],
     );
-    expect(versions.rows).toEqual([{ source: "generated_draft", generation_step: "draft" }]);
+    expect(versions.rows).toEqual([]);
     const packs = await databasePool.query<{ count: string }>(
       "SELECT count(*) FROM context_pack_versions WHERE job_id = $1",
       [job.id],
     );
     expect(packs.rows[0]?.count).toBe("1");
+  });
+
+  it("records generation overruns once and stops duplicate worker deliveries", async () => {
+    const owner = await createAuthenticatedAgent("generation-overrun@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    await createCompleteBible(owner, token, branchPath);
+    await createConfirmedSettings(owner, token, branchPath);
+    const chapter = await createChapter(owner, token, branchPath);
+    await createModelConfig(owner, token);
+    const job = await startGeneration(owner, token, branchPath, chapter.id, "generation-overrun", {
+      maxCostCny: 100,
+      maxTokens: 30_000,
+      maxRevisionRounds: 2,
+    });
+    const payload = await readWorkerPayload(job.id);
+    let providerCalls = 0;
+    const provider: AiGateway = {
+      async generateText(input) {
+        providerCalls += 1;
+        return {
+          text: "超量返回的正文",
+          model: input.model ?? "fake-overrun",
+          finishReason: "stop",
+          usage: { inputTokens: 0, outputTokens: 500_000 },
+        };
+      },
+      async *streamText() {
+        yield { text: "", done: true };
+      },
+    };
+    const repository = new WorkerGenerationRepository();
+    try {
+      const processor = new GenerationJobProcessor(repository, provider);
+      await processor.process(payload);
+      await processor.process(payload);
+    } finally {
+      await repository.onModuleDestroy();
+    }
+
+    const failed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    expect(generationJobResponseSchema.parse(failed.body).data).toMatchObject({
+      status: "failed",
+      checkpoint: { step: "draft" },
+      error: { code: "JOB_BUDGET_EXCEEDED" },
+      cost: {
+        inputTokens: 0,
+        outputTokens: 500_000,
+        totalTokens: 500_000,
+        costCny: 1,
+      },
+    });
+    expect(providerCalls).toBe(1);
+    const usage = await databasePool.query<{
+      prompt_tokens: number;
+      completion_tokens: number;
+      cost_cny: number;
+    }>(
+      `SELECT prompt_tokens, completion_tokens, cost_cny
+       FROM usage_records
+       WHERE job_id = $1 AND step_key = 'draft'`,
+      [job.id],
+    );
+    expect(usage.rows).toEqual([
+      {
+        prompt_tokens: 0,
+        completion_tokens: 500_000,
+        cost_cny: 1,
+      },
+    ]);
+    const overrunEvents = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM job_events
+       WHERE job_id = $1 AND event_type = 'job.budget.exceeded'`,
+      [job.id],
+    );
+    expect(overrunEvents.rows[0]?.count).toBe("1");
   });
 
   it("restarts after a kill at every step boundary without duplicating versions or charges", async () => {
