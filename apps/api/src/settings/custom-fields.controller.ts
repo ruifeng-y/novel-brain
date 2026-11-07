@@ -6,11 +6,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
   customFieldDefinitionCreateRequestSchema,
+  customFieldDefinitionListQuerySchema,
   customFieldDefinitionListResponseSchema,
   customFieldDefinitionPatchRequestSchema,
   customFieldDefinitionResponseSchema,
@@ -20,6 +22,7 @@ import {
   ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiQuery,
   ApiTags,
   type SchemaObject,
 } from "@nestjs/swagger";
@@ -50,21 +53,26 @@ export class CustomFieldsController {
   constructor(private readonly service: SettingsService) {}
 
   @Get()
+  @ApiQuery({ name: "cursor", required: false })
+  @ApiQuery({ name: "limit", required: false })
   @ApiOkResponse({ description: "Custom field definitions", schema: listResponseJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const result = await this.service.listCustomFields(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      customFieldDefinitionListQuerySchema.parse(query ?? {}),
+    );
     return customFieldDefinitionListResponseSchema.parse({
-      data: await this.service.listCustomFields(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-      ),
+      data: result.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 

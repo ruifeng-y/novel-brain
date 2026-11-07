@@ -16,6 +16,7 @@ import {
   ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiQuery,
   ApiTags,
   type SchemaObject,
 } from "@nestjs/swagger";
@@ -26,6 +27,7 @@ import {
   settingEntityListResponseSchema,
   settingEntityLockRequestSchema,
   settingEntityPatchRequestSchema,
+  settingEntityRestoreRequestSchema,
   settingEntityResponseSchema,
   settingChangeRequestCreateRequestSchema,
   settingChangeRequestListResponseSchema,
@@ -54,6 +56,7 @@ function schemaOf(schema: z.ZodType, io: "input" | "output"): SchemaObject {
 const createBodyJsonSchema = schemaOf(settingEntityCreateRequestSchema, "input");
 const patchBodyJsonSchema = schemaOf(settingEntityPatchRequestSchema, "input");
 const lockBodyJsonSchema = schemaOf(settingEntityLockRequestSchema, "input");
+const restoreBodyJsonSchema = schemaOf(settingEntityRestoreRequestSchema, "input");
 const listResponseJsonSchema = schemaOf(settingEntityListResponseSchema, "output");
 const entityResponseJsonSchema = schemaOf(settingEntityResponseSchema, "output");
 const proposalResponseJsonSchema = schemaOf(settingProposalResponseSchema, "output");
@@ -74,6 +77,10 @@ export class SettingsController {
   constructor(private readonly service: SettingsService) {}
 
   @Get()
+  @ApiQuery({ name: "type", required: false })
+  @ApiQuery({ name: "status", required: false })
+  @ApiQuery({ name: "cursor", required: false })
+  @ApiQuery({ name: "limit", required: false })
   @ApiOkResponse({ description: "Settings entities", schema: listResponseJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
@@ -82,15 +89,16 @@ export class SettingsController {
     @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const result = await this.service.list(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      settingEntityListQuerySchema.parse(query ?? {}),
+    );
     return settingEntityListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        settingEntityListQuerySchema.parse(query),
-      ),
+      data: result.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 
@@ -322,6 +330,35 @@ export class SettingsController {
         uuidV7Schema.parse(branchId),
         uuidV7Schema.parse(entityId),
         settingEntityLockRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":entityId/restore")
+  @HttpCode(200)
+  @ApiBody({ schema: restoreBodyJsonSchema })
+  @ApiOkResponse({
+    description: "Restored setting as a new append-only version",
+    schema: entityResponseJsonSchema,
+  })
+  async restore(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("entityId") entityId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return settingEntityResponseSchema.parse({
+      data: await this.service.restore(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(entityId),
+        settingEntityRestoreRequestSchema.parse(body),
         this.auditContext(request, requestId),
       ),
       requestId,

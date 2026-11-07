@@ -27,8 +27,10 @@ import {
   itemDataSchema,
   mapDataSchema,
   powerSystemDataSchema,
+  settingEntityCreateRequestSchema,
   timelineEventDataSchema,
   worldRuleDataSchema,
+  type CustomFieldDefinitionListQuery,
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
   type SettingChangeRequestCreateRequest,
@@ -38,8 +40,9 @@ import {
   type SettingEntityCreateRequest,
   type SettingEntityListQuery,
   type SettingEntityPatchRequest,
+  type SettingEntityRestoreRequest,
 } from "@novel-brain/contracts";
-import { and, asc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -125,23 +128,47 @@ export class SettingsRepository implements OnModuleDestroy {
     userId: string,
     context: SettingsWorkContext,
     input: SettingEntityListQuery,
-  ): Promise<SettingEntityRecord[]> {
-    return this.withTenant(userId, async (transaction) =>
-      transaction
+  ): Promise<{ records: SettingEntityRecord[]; nextCursor: string | null } | "invalid_cursor"> {
+    return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        sql`${entities.deletedAt} is null`,
+        input.type ? eq(entities.type, input.type) : undefined,
+        input.status ? eq(entities.status, input.status) : undefined,
+      );
+      const cursor = input.cursor
+        ? (
+            await transaction
+              .select({ id: entities.id, createdAt: entities.createdAt })
+              .from(entities)
+              .where(and(scope, eq(entities.id, input.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (input.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
         .select()
         .from(entities)
         .where(
           and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            sql`${entities.deletedAt} is null`,
-            input.type ? eq(entities.type, input.type) : undefined,
-            input.status ? eq(entities.status, input.status) : undefined,
+            scope,
+            cursor
+              ? sql`(${entities.createdAt}, ${entities.id}) > (${cursor.createdAt}, ${cursor.id}::uuid)`
+              : undefined,
           ),
         )
-        .orderBy(asc(entities.createdAt)),
-    );
+        .orderBy(asc(entities.createdAt), asc(entities.id))
+        .limit(input.limit + 1);
+      const records = rows.slice(0, input.limit);
+      return {
+        records,
+        nextCursor: rows.length > input.limit ? (records.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async listCanonFacts(userId: string, context: SettingsWorkContext): Promise<CanonFactRecord[]> {
@@ -161,23 +188,79 @@ export class SettingsRepository implements OnModuleDestroy {
     );
   }
 
+  async listLockedEntities(
+    userId: string,
+    context: SettingsWorkContext,
+  ): Promise<SettingEntityRecord[]> {
+    return this.withTenant(userId, async (transaction) =>
+      transaction
+        .select()
+        .from(entities)
+        .where(
+          and(
+            eq(entities.userId, userId),
+            eq(entities.workId, context.workId),
+            eq(entities.branchId, context.branchId),
+            eq(entities.status, "locked"),
+            sql`${entities.deletedAt} is null`,
+          ),
+        )
+        .orderBy(asc(entities.createdAt), asc(entities.id)),
+    );
+  }
+
   async listCustomFields(
     userId: string,
     context: SettingsWorkContext,
-  ): Promise<CustomFieldDefinitionRecord[]> {
-    return this.withTenant(userId, async (transaction) =>
-      transaction
+    input: CustomFieldDefinitionListQuery,
+  ): Promise<
+    { definitions: CustomFieldDefinitionRecord[]; nextCursor: string | null } | "invalid_cursor"
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(customFieldDefinitions.userId, userId),
+        eq(customFieldDefinitions.workId, context.workId),
+        eq(customFieldDefinitions.branchId, context.branchId),
+      );
+      const cursor = input.cursor
+        ? (
+            await transaction
+              .select({
+                id: customFieldDefinitions.id,
+                sortOrder: customFieldDefinitions.sortOrder,
+                createdAt: customFieldDefinitions.createdAt,
+              })
+              .from(customFieldDefinitions)
+              .where(and(scope, eq(customFieldDefinitions.id, input.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (input.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
         .select()
         .from(customFieldDefinitions)
         .where(
           and(
-            eq(customFieldDefinitions.userId, userId),
-            eq(customFieldDefinitions.workId, context.workId),
-            eq(customFieldDefinitions.branchId, context.branchId),
+            scope,
+            cursor
+              ? sql`(${customFieldDefinitions.sortOrder}, ${customFieldDefinitions.createdAt}, ${customFieldDefinitions.id}) > (${cursor.sortOrder}, ${cursor.createdAt}, ${cursor.id}::uuid)`
+              : undefined,
           ),
         )
-        .orderBy(asc(customFieldDefinitions.sortOrder), asc(customFieldDefinitions.createdAt)),
-    );
+        .orderBy(
+          asc(customFieldDefinitions.sortOrder),
+          asc(customFieldDefinitions.createdAt),
+          asc(customFieldDefinitions.id),
+        )
+        .limit(input.limit + 1);
+      const definitions = rows.slice(0, input.limit);
+      return {
+        definitions,
+        nextCursor: rows.length > input.limit ? (definitions.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async listEntityCustomFieldValues(
@@ -1077,6 +1160,156 @@ export class SettingsRepository implements OnModuleDestroy {
     });
   }
 
+  async restore(
+    userId: string,
+    context: SettingsWorkContext,
+    entityId: string,
+    input: SettingEntityRestoreRequest,
+    audit: SettingsAuditContext,
+  ): Promise<
+    | "not_found"
+    | "locked"
+    | "proposed"
+    | "discarded"
+    | "version_conflict"
+    | "version_not_found"
+    | "invalid_snapshot"
+    | SettingWriteViolation
+    | SettingEntityRecord
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      await lockBranch(transaction, context.branchId);
+      const [current] = await transaction
+        .select()
+        .from(entities)
+        .where(
+          and(
+            eq(entities.id, entityId),
+            eq(entities.userId, userId),
+            eq(entities.workId, context.workId),
+            eq(entities.branchId, context.branchId),
+            sql`${entities.deletedAt} is null`,
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!current) {
+        return "not_found";
+      }
+      if (current.status === "locked") {
+        return "locked";
+      }
+      if (current.status === "proposed") {
+        return "proposed";
+      }
+      if (current.status === "discarded") {
+        return "discarded";
+      }
+      if (current.version !== input.version) {
+        return "version_conflict";
+      }
+
+      const [historical] = await transaction
+        .select({ snapshot: entityVersions.snapshot })
+        .from(entityVersions)
+        .innerJoin(versionNodes, eq(versionNodes.id, entityVersions.versionNodeId))
+        .where(
+          and(
+            eq(entityVersions.entityId, current.id),
+            eq(entityVersions.userId, userId),
+            eq(entityVersions.workId, context.workId),
+            eq(entityVersions.branchId, context.branchId),
+            eq(entityVersions.version, input.targetVersion),
+            lt(entityVersions.version, current.version),
+            eq(versionNodes.userId, userId),
+            eq(versionNodes.workId, context.workId),
+            eq(versionNodes.branchId, context.branchId),
+            eq(versionNodes.objectType, "setting"),
+            eq(versionNodes.objectId, current.id),
+            inArray(versionNodes.nodeType, ["entity_version", "rollback"]),
+          ),
+        )
+        .limit(1);
+      if (!historical) {
+        return "version_not_found";
+      }
+
+      const restoredInput = parseSettingSnapshot(historical.snapshot);
+      if (!restoredInput || restoredInput.type !== current.type) {
+        return "invalid_snapshot";
+      }
+      const conflict = await findSettingConflict(
+        transaction,
+        userId,
+        context,
+        restoredInput.type,
+        restoredInput.name,
+        restoredInput.aliases,
+        current.id,
+      );
+      if (conflict) {
+        return conflict;
+      }
+      const customFields = await resolveCustomFieldWrite(
+        transaction,
+        userId,
+        context,
+        current.type,
+        current.id,
+        restoredInput.customFields,
+      );
+      if ("kind" in customFields) {
+        return customFields;
+      }
+
+      const headNodeId = await requireBranchHead(transaction, userId, context);
+      const now = new Date();
+      const [restored] = await transaction
+        .update(entities)
+        .set({
+          name: restoredInput.name,
+          aliases: restoredInput.aliases,
+          summary: restoredInput.summary,
+          description: restoredInput.description,
+          attributes: restoredInput.data,
+          tags: restoredInput.tags,
+          status: "draft",
+          lockedAt: null,
+          lockedBy: null,
+          version: current.version + 1,
+          updatedAt: now,
+        })
+        .where(and(eq(entities.id, current.id), eq(entities.version, current.version)))
+        .returning();
+      if (!restored) {
+        return "version_conflict";
+      }
+
+      await writeCustomFieldValues(
+        transaction,
+        userId,
+        context,
+        restored.id,
+        customFields.values,
+        customFields.definitions,
+        now,
+      );
+      const versionNodeId = await this.appendVersion(
+        transaction,
+        userId,
+        restored,
+        headNodeId,
+        "setting.restored",
+        `恢复第 ${input.targetVersion} 版：${input.reason}`,
+        audit,
+        customFields.values,
+        "rollback",
+      );
+      await syncWorldProjection(transaction, userId, restored, versionNodeId, now);
+      return restored;
+    });
+  }
+
   async remove(
     userId: string,
     context: SettingsWorkContext,
@@ -1151,6 +1384,7 @@ export class SettingsRepository implements OnModuleDestroy {
     message: string,
     audit: SettingsAuditContext,
     customFields: Record<string, unknown>,
+    nodeType: "entity_version" | "rollback" = "entity_version",
   ): Promise<string> {
     const now = new Date();
     const entityVersionId = uuidv7();
@@ -1196,7 +1430,7 @@ export class SettingsRepository implements OnModuleDestroy {
       branchId: entity.branchId,
       userId,
       parentNodeId,
-      nodeType: "entity_version",
+      nodeType,
       objectType: "setting",
       objectId: entity.id,
       objectVersion: entity.version,
@@ -1751,6 +1985,20 @@ function settingAttributeNumber(value: unknown): number | undefined {
 
 function normalizeSettingIdentifier(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
+}
+
+function parseSettingSnapshot(snapshot: Record<string, unknown>) {
+  const parsed = settingEntityCreateRequestSchema.safeParse({
+    type: snapshot.type,
+    name: snapshot.name,
+    aliases: snapshot.aliases,
+    summary: snapshot.summary,
+    description: snapshot.description,
+    tags: snapshot.tags,
+    data: snapshot.attributes,
+    customFields: snapshot.customFields,
+  });
+  return parsed.success ? parsed.data : undefined;
 }
 
 async function computeSettingImpact(

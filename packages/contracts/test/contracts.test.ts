@@ -24,6 +24,8 @@ import {
   contextPackVersionSchema,
   csrfResponseSchema,
   customFieldDefinitionCreateRequestSchema,
+  customFieldDefinitionListQuerySchema,
+  customFieldDefinitionListResponseSchema,
   domainRefSchema,
   factProposalDecisionRequestSchema,
   factProposalSchema,
@@ -62,6 +64,9 @@ import {
   settingsImportConflictDecisionRequestSchema,
   settingChangeRequestCreateRequestSchema,
   settingEntityCreateRequestSchema,
+  settingEntityListQuerySchema,
+  settingEntityListResponseSchema,
+  settingEntityRestoreRequestSchema,
   settingEntitySchema,
   settingProposalCreateRequestSchema,
   outlineNodeCreateRequestSchema,
@@ -1360,6 +1365,23 @@ describe("shared contracts", () => {
   });
 
   it("validates seven-column setting entities, custom fields and proposal evidence", () => {
+    expect(settingEntityListQuerySchema.parse({})).toEqual({ limit: 20 });
+    expect(customFieldDefinitionListQuerySchema.parse({})).toEqual({ limit: 20 });
+    expect(() =>
+      settingEntityListResponseSchema.parse({
+        data: [],
+        requestId: "req_settings",
+        meta: {},
+      }),
+    ).toThrow();
+    expect(() =>
+      customFieldDefinitionListResponseSchema.parse({
+        data: [],
+        requestId: "req_custom_fields",
+        meta: {},
+      }),
+    ).toThrow();
+
     const item = settingEntityCreateRequestSchema.parse({
       type: "item",
       name: "听潮剑",
@@ -1498,6 +1520,27 @@ describe("shared contracts", () => {
       hidden: false,
       marks: ["潮"],
     });
+  });
+
+  it("validates append-only setting version restoration requests", () => {
+    expect(
+      settingEntityRestoreRequestSchema.parse({
+        version: 3,
+        targetVersion: 1,
+        reason: "恢复被误改的天门规则。",
+      }),
+    ).toEqual({
+      version: 3,
+      targetVersion: 1,
+      reason: "恢复被误改的天门规则。",
+    });
+    expect(() =>
+      settingEntityRestoreRequestSchema.parse({
+        version: 3,
+        targetVersion: 1,
+        reason: "",
+      }),
+    ).toThrow();
   });
 });
 

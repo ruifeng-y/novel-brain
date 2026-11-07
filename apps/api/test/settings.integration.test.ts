@@ -1322,6 +1322,226 @@ describe("settings center HTTP integration", () => {
     });
   });
 
+  it("paginates setting entities with tenant-scoped stable cursors", async () => {
+    const owner = await createAuthenticatedAgent("settings-entity-pagination@example.com");
+    const other = await createAuthenticatedAgent("settings-entity-pagination-other@example.com");
+    const work = await createWork(owner);
+    const otherWork = await createWork(other, "另一本设定分页作品");
+    const token = await csrf(owner);
+    const otherToken = await csrf(other);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const otherPath = `/api/v1/works/${otherWork.id}/branches/${otherWork.mainBranch.id}/entities`;
+    const createdIds: string[] = [];
+    for (const [index, name] of ["天门一", "天门二", "天门三"].entries()) {
+      const created = await createWorldRule(owner, path, token, name, index);
+      createdIds.push(created.id);
+    }
+    const foreign = await createWorldRule(other, otherPath, otherToken, "他人设定", 0);
+
+    const first = await owner.get(`${path}?limit=2`).expect(200);
+    expect(first.body.data).toHaveLength(2);
+    expect(first.body.meta.nextCursor).toEqual(expect.any(String));
+    expect(first.body.data.map((entity: { id: string }) => entity.id)).toEqual(
+      createdIds.slice(0, 2),
+    );
+
+    const last = await owner
+      .get(`${path}?limit=2&cursor=${first.body.meta.nextCursor}`)
+      .expect(200);
+    expect(last.body.data.map((entity: { id: string }) => entity.id)).toEqual(createdIds.slice(2));
+    expect(last.body.meta.nextCursor).toBeNull();
+
+    expect((await owner.get(`${path}?cursor=not-a-uuid`).expect(400)).body.error.code).toBe(
+      "VALIDATION_INVALID",
+    );
+    expect((await owner.get(`${path}?limit=0`).expect(400)).body.error.code).toBe(
+      "VALIDATION_INVALID",
+    );
+    expect(
+      (await owner.get(`${path}?limit=1&cursor=${foreign.id}`).expect(400)).body.error.code,
+    ).toBe("VALIDATION_INVALID");
+  });
+
+  it("paginates custom field definitions with tenant-scoped stable cursors", async () => {
+    const owner = await createAuthenticatedAgent("settings-field-pagination@example.com");
+    const other = await createAuthenticatedAgent("settings-field-pagination-other@example.com");
+    const work = await createWork(owner);
+    const otherWork = await createWork(other, "另一本字段分页作品");
+    const token = await csrf(owner);
+    const otherToken = await csrf(other);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/custom-fields`;
+    const otherPath = `/api/v1/works/${otherWork.id}/branches/${otherWork.mainBranch.id}/custom-fields`;
+    const createdIds: string[] = [];
+    for (const [index, key] of ["field_a", "field_b", "field_c"].entries()) {
+      const created = await owner
+        .post(path)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({
+          key,
+          label: `字段${index + 1}`,
+          fieldType: "text",
+          appliesTo: "all",
+          required: false,
+          options: [],
+          relationTarget: null,
+          sortOrder: 0,
+        })
+        .expect(201);
+      createdIds.push(created.body.data.id);
+    }
+    const foreign = await other
+      .post(otherPath)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({
+        key: "foreign",
+        label: "他人字段",
+        fieldType: "text",
+        appliesTo: "all",
+        required: false,
+        options: [],
+        relationTarget: null,
+        sortOrder: 0,
+      })
+      .expect(201);
+
+    const first = await owner.get(`${path}?limit=2`).expect(200);
+    expect(first.body.data.map((field: { id: string }) => field.id)).toEqual(
+      createdIds.slice(0, 2),
+    );
+    expect(first.body.meta.nextCursor).toEqual(expect.any(String));
+
+    const last = await owner
+      .get(`${path}?limit=2&cursor=${first.body.meta.nextCursor}`)
+      .expect(200);
+    expect(last.body.data.map((field: { id: string }) => field.id)).toEqual(createdIds.slice(2));
+    expect(last.body.meta.nextCursor).toBeNull();
+
+    expect((await owner.get(`${path}?cursor=not-a-uuid`).expect(400)).body.error.code).toBe(
+      "VALIDATION_INVALID",
+    );
+    expect(
+      (await owner.get(`${path}?limit=1&cursor=${foreign.body.data.id}`).expect(400)).body.error
+        .code,
+    ).toBe("VALIDATION_INVALID");
+  });
+
+  it("restores an old setting version through a new rollback node without rewriting history", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-version@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const created = await createWorldRule(owner, path, token, "天门旧规", 0);
+    const edited = await owner
+      .patch(`${path}/${created.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: created.version,
+        summary: "后来被改坏的天门规则。",
+        aliases: ["错误别名"],
+      })
+      .expect(200);
+
+    const previousSnapshots = await databasePool.query<{
+      version: number;
+      snapshot: Record<string, unknown>;
+      version_node_id: string;
+    }>(
+      `SELECT ev.version, ev.snapshot, ev.version_node_id
+         FROM entity_versions ev
+        WHERE ev.entity_id = $1
+        ORDER BY ev.version`,
+      [created.id],
+    );
+    expect(previousSnapshots.rows.map((row) => row.version)).toEqual([1, 2]);
+
+    const restored = await owner
+      .post(`${path}/${created.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: edited.body.data.version,
+        targetVersion: 1,
+        reason: "恢复第一版天门规则。",
+      })
+      .expect(200);
+    expect(restored.body.data).toMatchObject({
+      id: created.id,
+      name: "天门旧规",
+      summary: "第一版天门规则",
+      aliases: [],
+      status: "draft",
+      version: 3,
+    });
+
+    const history = await databasePool.query<{
+      version: number;
+      snapshot: Record<string, unknown>;
+      version_node_id: string;
+      node_type: string;
+      parent_node_id: string | null;
+    }>(
+      `SELECT ev.version, ev.snapshot, ev.version_node_id, vn.node_type, vn.parent_node_id
+         FROM entity_versions ev
+         JOIN version_nodes vn ON vn.id = ev.version_node_id
+        WHERE ev.entity_id = $1
+        ORDER BY ev.version`,
+      [created.id],
+    );
+    expect(history.rows.map((row) => row.version)).toEqual([1, 2, 3]);
+    expect(history.rows.map((row) => row.node_type)).toEqual([
+      "entity_version",
+      "entity_version",
+      "rollback",
+    ]);
+    expect(history.rows[0]?.snapshot).toEqual(previousSnapshots.rows[0]?.snapshot);
+    expect(history.rows[1]?.snapshot).toEqual(previousSnapshots.rows[1]?.snapshot);
+    expect(history.rows[2]?.snapshot).toMatchObject({
+      name: "天门旧规",
+      summary: "第一版天门规则",
+      version: 3,
+    });
+    expect(history.rows[2]?.parent_node_id).toBe(history.rows[1]?.version_node_id);
+    const branch = await databasePool.query<{ head_node_id: string }>(
+      "SELECT head_node_id FROM work_branches WHERE id = $1",
+      [work.mainBranch.id],
+    );
+    expect(branch.rows[0]?.head_node_id).toBe(history.rows[2]?.version_node_id);
+
+    const locked = await owner
+      .post(`${path}/${created.id}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: restored.body.data.version })
+      .expect(200);
+    const nodesBeforeBlockedRestore = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM version_nodes
+        WHERE object_type = 'setting' AND object_id = $1`,
+      [created.id],
+    );
+    const blocked = await owner
+      .post(`${path}/${created.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: locked.body.data.version,
+        targetVersion: 2,
+        reason: "锁定记录不能绕过修改请求直接恢复。",
+      })
+      .expect(409);
+    expect(blocked.body.error.code).toBe("SETTING_LOCKED");
+    const nodesAfterBlockedRestore = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM version_nodes
+        WHERE object_type = 'setting' AND object_id = $1`,
+      [created.id],
+    );
+    expect(nodesAfterBlockedRestore.rows[0]?.count).toBe(nodesBeforeBlockedRestore.rows[0]?.count);
+  });
+
   it("fails closed across tenants for custom fields, proposals and change requests", async () => {
     const owner = await createAuthenticatedAgent("settings-child-owner@example.com");
     const other = await createAuthenticatedAgent("settings-child-other@example.com");
@@ -1511,6 +1731,30 @@ describe("settings center HTTP integration", () => {
       id: string;
       mainBranch: { id: string };
     };
+  }
+
+  async function createWorldRule(
+    agent: SuperAgentTest,
+    path: string,
+    token: string,
+    name: string,
+    index: number,
+  ): Promise<{ id: string; version: number }> {
+    const response = await agent
+      .post(path)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "world_rule",
+        name,
+        aliases: [],
+        summary: index === 0 ? "第一版天门规则" : `第${index + 1}版天门规则`,
+        description: "",
+        tags: [],
+        data: { rule: `第${index + 1}版天门规则正文。` },
+      })
+      .expect(201);
+    return response.body.data as { id: string; version: number };
   }
 });
 
