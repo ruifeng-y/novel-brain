@@ -12,6 +12,8 @@ import {
   jobSteps,
   jobs,
   modelConfigs,
+  revisionPlans,
+  revisionRounds,
   workBranches,
   writingActions,
   type DatabaseClient,
@@ -21,12 +23,15 @@ import {
   WRITING_ACTION_STEPS,
   contextPackManifestSchema,
   contextPackVersionSchema,
+  generationBudgetSchema,
+  jobRecoveryRecordSchema,
   writingActionCheckpointSchema,
   writingActionJobSchema,
   writingActionOutputSchema,
   writeActionJobSchema,
   type ContextPackVersion,
   type JobEvent,
+  type JobRecoveryRecord,
   type JobRecoveryRequest,
   type WriteActionJob,
   type WritingActionJob,
@@ -85,7 +90,7 @@ export type WritingActionCreationContext =
 
 export interface WritingActionRecoveryResult {
   job: WritingActionWithOutput;
-  recoveryId: string;
+  recovery: JobRecoveryRecord;
   created: boolean;
 }
 
@@ -443,7 +448,7 @@ export class WritingActionRepository implements OnModuleDestroy {
       if (existing) {
         return {
           job: await this.hydrateJob(transaction, current),
-          recoveryId: existing.id,
+          recovery: toJobRecoveryRecord(existing),
           created: false,
         };
       }
@@ -456,6 +461,12 @@ export class WritingActionRepository implements OnModuleDestroy {
       ) {
         throw new WritingActionRecoveryConflictError();
       }
+      const currentBudget = generationBudgetSchema.parse(current.budget);
+      const nextBudget = recoveryBudget(
+        currentBudget,
+        input.request.budget,
+        current.errorCode === "JOB_BUDGET_EXCEEDED",
+      );
       const steps = await transaction
         .select({ stepKey: jobSteps.stepKey, status: jobSteps.status })
         .from(jobSteps)
@@ -475,7 +486,16 @@ export class WritingActionRepository implements OnModuleDestroy {
         step: resume.step,
         inputHash: previousCheckpoint.inputHash,
         outputRefs: previousCheckpoint.outputRefs,
-        payload: previousCheckpoint.payload,
+        payload: {
+          ...previousCheckpoint.payload,
+          recovery: {
+            reason: input.request.reason,
+            idempotencyKey: input.request.idempotencyKey,
+            fromCheckpointVersion: current.checkpointVersion,
+            budgetBefore: currentBudget,
+            budgetAfter: nextBudget,
+          },
+        },
       });
       const now = new Date();
       const action = current.status === "paused" ? "resume" : "retry";
@@ -483,6 +503,7 @@ export class WritingActionRepository implements OnModuleDestroy {
         .update(jobs)
         .set({
           status: "queued",
+          budget: nextBudget,
           currentStep: resume.step,
           checkpoint,
           checkpointVersion,
@@ -495,6 +516,34 @@ export class WritingActionRepository implements OnModuleDestroy {
         .returning();
       if (!job) {
         throw new Error("Failed to recover writing action");
+      }
+      if (job.action === "targeted_revision") {
+        const [round] = await transaction
+          .select()
+          .from(revisionRounds)
+          .where(eq(revisionRounds.jobId, job.id))
+          .for("update")
+          .limit(1);
+        if (round && ["queued", "running", "failed"].includes(round.status)) {
+          await transaction
+            .update(revisionRounds)
+            .set({
+              status: "queued",
+              version: round.version + 1,
+              updatedAt: now,
+              finishedAt: null,
+            })
+            .where(eq(revisionRounds.id, round.id));
+          await transaction
+            .update(revisionPlans)
+            .set({
+              status: "active",
+              version: sql`${revisionPlans.version} + 1`,
+              updatedAt: now,
+              completedAt: null,
+            })
+            .where(eq(revisionPlans.id, round.planId));
+        }
       }
       await transaction.insert(jobCheckpoints).values({
         id: uuidv7(),
@@ -551,11 +600,13 @@ export class WritingActionRepository implements OnModuleDestroy {
         recoveryId: recovery.id,
         reason: input.request.reason,
         resumeStep: resume.step,
+        budgetBefore: currentBudget,
+        budgetAfter: nextBudget,
         checkpoint,
       });
       return {
         job: await this.hydrateJob(transaction, job),
-        recoveryId: recovery.id,
+        recovery: toJobRecoveryRecord(recovery),
         created: true,
       };
     });
@@ -643,11 +694,58 @@ export class WritingActionRecoveryConflictError extends Error {
   }
 }
 
+export class WritingActionRecoveryBudgetInvalidError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "WritingActionRecoveryBudgetInvalidError";
+  }
+}
+
 export class WritingActionNotRecoverableError extends Error {
   constructor(readonly status: string) {
     super(`Writing action in status ${status} cannot be recovered`);
     this.name = "WritingActionNotRecoverableError";
   }
+}
+
+function recoveryBudget(
+  current: ReturnType<typeof generationBudgetSchema.parse>,
+  increase: JobRecoveryRequest["budget"],
+  required: boolean,
+): ReturnType<typeof generationBudgetSchema.parse> {
+  if (!increase) {
+    if (required) {
+      throw new WritingActionRecoveryBudgetInvalidError("预算暂停写作动作恢复前必须明确提高预算");
+    }
+    return current;
+  }
+  if (increase.maxTokens !== undefined && increase.maxTokens <= current.maxTokens) {
+    throw new WritingActionRecoveryBudgetInvalidError("恢复预算的 maxTokens 必须高于当前上限");
+  }
+  if (increase.maxCostCny !== undefined && increase.maxCostCny <= current.maxCostCny) {
+    throw new WritingActionRecoveryBudgetInvalidError("恢复预算的 maxCostCny 必须高于当前上限");
+  }
+  return generationBudgetSchema.parse({
+    ...current,
+    ...(increase.maxTokens !== undefined ? { maxTokens: increase.maxTokens } : {}),
+    ...(increase.maxCostCny !== undefined ? { maxCostCny: increase.maxCostCny } : {}),
+  });
+}
+
+function toJobRecoveryRecord(row: InferSelectModel<typeof jobRecoveries>): JobRecoveryRecord {
+  return jobRecoveryRecordSchema.parse({
+    id: row.id,
+    jobId: row.jobId,
+    actorId: row.actorId,
+    action: row.action,
+    reason: row.reason,
+    idempotencyKey: row.idempotencyKey,
+    fromStatus: row.fromStatus,
+    fromCheckpointVersion: row.fromCheckpointVersion,
+    resumeStep: row.resumeStep,
+    checkpointVersion: row.checkpointVersion,
+    createdAt: row.createdAt.toISOString(),
+  });
 }
 
 function contextPackVersionSchemaFromRecord(

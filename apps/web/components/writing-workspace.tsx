@@ -45,6 +45,7 @@ import {
   generationJobListResponseSchema,
   generationJobResponseSchema,
   jobEventSchema,
+  jobRecoveryResponseSchema,
   outlineWorkspaceResponseSchema,
   qualityWorkspaceResponseSchema,
   settingEntityListResponseSchema,
@@ -55,6 +56,7 @@ import {
   revisionPlanWorkspaceResponseSchema,
   writingActionJobListResponseSchema,
   writingActionJobResponseSchema,
+  writingActionRecoveryResponseSchema,
   workResponseSchema,
   type CanonCommit,
   type ChapterReadiness,
@@ -279,6 +281,10 @@ export function WritingWorkspace({
   const [generationRefreshPending, setGenerationRefreshPending] = useState(false);
   const [writingActionJob, setWritingActionJob] = useState<WritingActionJob | null>(null);
   const [writingActionBusy, setWritingActionBusy] = useState(false);
+  const [recoveryReason, setRecoveryReason] = useState("作者确认提高预算并从断点恢复");
+  const [recoveryMaxTokens, setRecoveryMaxTokens] = useState("");
+  const [recoveryMaxCostCny, setRecoveryMaxCostCny] = useState("");
+  const [recoveryBusy, setRecoveryBusy] = useState(false);
   const [writingActionMenuOpen, setWritingActionMenuOpen] = useState(false);
   const [povDraft, setPovDraft] = useState("顾青");
   const [factProposals, setFactProposals] = useState<FactProposal[]>([]);
@@ -468,24 +474,48 @@ export function WritingWorkspace({
   );
   const dirty = content !== savedContent;
   const canSave = Boolean(selected && content.trim() && dirty && !saving);
+  const generationAwaitingRecovery = generationJob?.status === "paused";
+  const writingActionAwaitingRecovery = writingActionJob?.status === "paused";
   const generationActive = Boolean(
-    generationJob && ["queued", "preparing", "running", "paused"].includes(generationJob.status),
+    generationJob && ["queued", "preparing", "running"].includes(generationJob.status),
   );
   const writingActionActive = Boolean(
-    writingActionJob &&
-    ["queued", "preparing", "running", "paused"].includes(writingActionJob.status),
+    writingActionJob && ["queued", "preparing", "running"].includes(writingActionJob.status),
   );
+  const recoveryJob = generationAwaitingRecovery
+    ? generationJob
+    : writingActionAwaitingRecovery
+      ? writingActionJob
+      : null;
+
+  useEffect(() => {
+    if (!recoveryJob) {
+      return;
+    }
+    setRecoveryReason("作者确认提高预算并从断点恢复");
+    setRecoveryMaxTokens(String(recoveryJob.budget.maxTokens));
+    setRecoveryMaxCostCny(String(recoveryJob.budget.maxCostCny));
+  }, [
+    recoveryJob?.id,
+    recoveryJob?.status,
+    recoveryJob?.budget.maxTokens,
+    recoveryJob?.budget.maxCostCny,
+  ]);
+
   const canUseWritingAction = Boolean(
     selected?.currentVersionId &&
     !dirty &&
     !writingActionActive &&
+    !writingActionAwaitingRecovery &&
     !writingActionBusy &&
-    !generationActive,
+    !generationActive &&
+    !generationAwaitingRecovery,
   );
   const canGenerate = Boolean(
     selected &&
     (readiness ? readiness.canProceed : selected.readiness.canStartWriting) &&
     !generationActive &&
+    !generationAwaitingRecovery &&
     !generationBusy,
   );
   const currentFactProposals = factProposals.filter(
@@ -1271,6 +1301,154 @@ export function WritingWorkspace({
     } finally {
       setGenerationBusy(false);
     }
+  }
+
+  function recoveryBudgetFor(job: GenerationJob | WritingActionJob) {
+    const maxTokens = Number(recoveryMaxTokens);
+    const maxCostCny = Number(recoveryMaxCostCny);
+    if (!Number.isInteger(maxTokens) || maxTokens <= 0) {
+      throw new Error("请输入有效的用量上限。");
+    }
+    if (!Number.isFinite(maxCostCny) || maxCostCny <= 0) {
+      throw new Error("请输入有效的费用上限。");
+    }
+    const budget: { maxTokens?: number; maxCostCny?: number } = {};
+    if (maxTokens > job.budget.maxTokens) {
+      budget.maxTokens = maxTokens;
+    }
+    if (maxCostCny > job.budget.maxCostCny) {
+      budget.maxCostCny = maxCostCny;
+    }
+    if (budget.maxTokens === undefined && budget.maxCostCny === undefined) {
+      throw new Error("至少提高一项预算上限。");
+    }
+    return budget;
+  }
+
+  async function recoverGeneration() {
+    if (!work || !generationJob || generationJob.status !== "paused") {
+      return;
+    }
+    setRecoveryBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/jobs/${generationJob.id}/recover`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            reason: recoveryReason.trim(),
+            idempotencyKey: crypto.randomUUID(),
+            expectedCheckpointVersion: generationJob.checkpoint.revision,
+            budget: recoveryBudgetFor(generationJob),
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "恢复生成失败。"));
+      }
+      const job = jobRecoveryResponseSchema.parse(await response.json()).data.job;
+      setGenerationJob(job);
+      watchGeneration(work, job.id);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "恢复生成失败。");
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  async function recoverWritingAction() {
+    if (!work || !writingActionJob || writingActionJob.status !== "paused") {
+      return;
+    }
+    setRecoveryBusy(true);
+    setActionError("");
+    try {
+      const response = await fetch(
+        `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/write-actions/${writingActionJob.id}/recover`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": await getCsrfToken(),
+          },
+          body: JSON.stringify({
+            reason: recoveryReason.trim(),
+            idempotencyKey: crypto.randomUUID(),
+            expectedCheckpointVersion: writingActionJob.checkpoint.revision,
+            budget: recoveryBudgetFor(writingActionJob),
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readError(response, "恢复写作动作失败。"));
+      }
+      const job = writingActionRecoveryResponseSchema.parse(await response.json()).data.job;
+      setWritingActionJob(job);
+      watchWritingAction(work, job.id);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "恢复写作动作失败。");
+    } finally {
+      setRecoveryBusy(false);
+    }
+  }
+
+  function renderBudgetRecovery(
+    job: GenerationJob | WritingActionJob,
+    onRecover: () => Promise<void>,
+  ) {
+    return (
+      <div className="writing-generation-error writing-budget-recovery" role="alert">
+        <TriangleAlert size={16} aria-hidden="true" />
+        <div className="writing-budget-recovery-fields">
+          <strong>预算已用完，任务已暂停在断点。</strong>
+          <label>
+            用量上限
+            <input
+              aria-label="恢复后的用量上限"
+              min={job.budget.maxTokens + 1}
+              onChange={(event) => setRecoveryMaxTokens(event.target.value)}
+              step={1}
+              type="number"
+              value={recoveryMaxTokens}
+            />
+          </label>
+          <label>
+            费用上限（元）
+            <input
+              aria-label="恢复后的费用上限"
+              min={job.budget.maxCostCny}
+              onChange={(event) => setRecoveryMaxCostCny(event.target.value)}
+              step="0.01"
+              type="number"
+              value={recoveryMaxCostCny}
+            />
+          </label>
+          <label>
+            恢复原因
+            <input
+              aria-label="恢复原因"
+              onChange={(event) => setRecoveryReason(event.target.value)}
+              type="text"
+              value={recoveryReason}
+            />
+          </label>
+          <button
+            className="btn btn-ghost btn-small"
+            disabled={recoveryBusy || !recoveryReason.trim()}
+            onClick={() => void onRecover()}
+            type="button"
+          >
+            <Coins size={14} aria-hidden="true" />
+            提高预算并恢复
+          </button>
+        </div>
+      </div>
+    );
   }
 
   function watchGeneration(workData: WorkOverview, jobId: string) {
@@ -2196,6 +2374,9 @@ export function WritingWorkspace({
                         </div>
                       </div>
                     ) : null}
+                    {generationJob.status === "paused"
+                      ? renderBudgetRecovery(generationJob, recoverGeneration)
+                      : null}
                     {traceCalls.length > 0 ? (
                       <div className="writing-run-trace" aria-label="生成记录">
                         <div className="writing-run-trace-head">
@@ -2335,7 +2516,9 @@ export function WritingWorkspace({
                         </button>
                       </>
                     ) : null}
-                    {writingActionJob.error ? (
+                    {writingActionJob.status === "paused" ? (
+                      renderBudgetRecovery(writingActionJob, recoverWritingAction)
+                    ) : writingActionJob.error ? (
                       <div className="writing-generation-error" role="alert">
                         <TriangleAlert size={16} aria-hidden="true" />
                         <div>
@@ -3341,7 +3524,7 @@ function revisionBlocksForFindings(
 }
 
 function isActiveGeneration(status: GenerationJob["status"]): boolean {
-  return ["queued", "preparing", "running", "paused"].includes(status);
+  return ["queued", "preparing", "running"].includes(status);
 }
 
 function generationStepLabel(step: GenerationJob["currentStep"]): string {

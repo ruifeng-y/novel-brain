@@ -78,7 +78,10 @@ describe("generation HTTP integration", () => {
     process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1";
 
     await runMigrations(databaseUrl);
-    databasePool = createDatabasePool(databaseUrl);
+    databasePool = createDatabasePool(databaseUrl, {
+      query_timeout: 30_000,
+      statement_timeout: 30_000,
+    });
     redis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -1096,11 +1099,11 @@ describe("generation HTTP integration", () => {
     expect(generateText).not.toHaveBeenCalled();
     const failed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
     expect(generationJobResponseSchema.parse(failed.body).data).toMatchObject({
-      status: "failed",
+      status: "paused",
       checkpoint: { step: "draft" },
       error: {
         code: "JOB_BUDGET_EXCEEDED",
-        message: "本章生成预算已用完，草稿和检查点已保留",
+        message: "本次任务预算已用完，原稿和检查点已保留",
       },
     });
     const versions = await databasePool.query<{ source: string; generation_step: string }>(
@@ -1156,9 +1159,10 @@ describe("generation HTTP integration", () => {
       await repository.onModuleDestroy();
     }
 
-    const failed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
-    expect(generationJobResponseSchema.parse(failed.body).data).toMatchObject({
-      status: "failed",
+    const paused = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    const pausedJob = generationJobResponseSchema.parse(paused.body).data;
+    expect(pausedJob).toMatchObject({
+      status: "paused",
       checkpoint: { step: "draft" },
       error: { code: "JOB_BUDGET_EXCEEDED" },
       cost: {
@@ -1193,6 +1197,61 @@ describe("generation HTTP integration", () => {
       [job.id],
     );
     expect(overrunEvents.rows[0]?.count).toBe("1");
+
+    const recoveryRequest = {
+      reason: "作者确认提高本章预算并从草稿步骤继续",
+      idempotencyKey: "generation-overrun-recover",
+      expectedCheckpointVersion: pausedJob.checkpoint.revision,
+      budget: {
+        maxTokens: 600_000,
+      },
+    };
+    const recovered = await owner
+      .post(`${branchPath}/jobs/${job.id}/recover`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send(recoveryRequest)
+      .expect(202);
+    const recoveredData = jobRecoveryResponseSchema.parse(recovered.body).data;
+    expect(recoveredData.job).toMatchObject({
+      status: "queued",
+      budget: {
+        maxTokens: 600_000,
+        maxCostCny: 100,
+        maxRevisionRounds: 2,
+      },
+      checkpoint: { step: "draft" },
+    });
+
+    const replay = await owner
+      .post(`${branchPath}/jobs/${job.id}/recover`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send(recoveryRequest)
+      .expect(202);
+    expect(jobRecoveryResponseSchema.parse(replay.body).data.recovery.id).toBe(
+      recoveredData.recovery.id,
+    );
+
+    const resumedRepository = new WorkerGenerationRepository();
+    try {
+      await new GenerationJobProcessor(resumedRepository, new FakeAiProvider()).process(payload);
+    } finally {
+      await resumedRepository.onModuleDestroy();
+    }
+
+    const completed = await owner.get(`${branchPath}/jobs/${job.id}`).expect(200);
+    expect(generationJobResponseSchema.parse(completed.body).data).toMatchObject({
+      status: "waiting_review",
+      error: null,
+    });
+    const overrunUsage = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM usage_records
+       WHERE job_id = $1 AND step_key = 'draft' AND completion_tokens = 500_000`,
+      [job.id],
+    );
+    expect(overrunUsage.rows[0]?.count).toBe("1");
   });
 
   it("restarts after a kill at every step boundary without duplicating versions or charges", async () => {

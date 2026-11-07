@@ -787,6 +787,139 @@ function deferred() {
   return { promise, resolve };
 }
 
+test("recovers a paused writing action only after the author raises its budget", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const actionId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2b3001";
+  const sourceVersionId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2b3002";
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const pausedJob = {
+    id: actionId,
+    type: "write_action",
+    action: "rewrite",
+    workId: work.id,
+    branchId: work.mainBranch.id,
+    chapterId: chapter.id,
+    sourceVersionId,
+    status: "paused",
+    progress: 70,
+    currentStep: "generate",
+    budget: {
+      maxCostCny: 1.5,
+      maxTokens: 1_000,
+      maxRevisionRounds: 0,
+    },
+    cost: {
+      inputTokens: 100,
+      outputTokens: 900,
+      totalTokens: 1_000,
+      costCny: 1.5,
+    },
+    checkpoint: {
+      schemaVersion: 1,
+      revision: 3,
+      step: "generate",
+      inputHash: null,
+      outputRefs: [],
+      payload: {},
+    },
+    output: null,
+    contextPack: null,
+    error: {
+      code: "JOB_BUDGET_EXCEEDED",
+      message: "本次任务预算已用完，原稿和检查点已保留",
+    },
+    createdAt: "2026-11-08T00:00:00.000Z",
+    startedAt: "2026-11-08T00:00:00.000Z",
+    finishedAt: null,
+  };
+  let recoveryBody: Record<string, unknown> | undefined;
+
+  await page.route(
+    (url) => url.pathname === `${branchPath}/chapters/${chapter.id}/write-actions`,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [pausedJob],
+          requestId: "req_writing_recovery_list",
+          meta: { nextCursor: null },
+        }),
+      });
+    },
+  );
+  await page.route(
+    (url) => url.pathname === `${branchPath}/write-actions/${actionId}/recover`,
+    async (route) => {
+      recoveryBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            job: {
+              ...pausedJob,
+              status: "queued",
+              error: null,
+              budget: {
+                ...pausedJob.budget,
+                maxCostCny: 3,
+                maxTokens: 2_000,
+              },
+            },
+            recovery: {
+              id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2b3003",
+              jobId: actionId,
+              actorId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2b3004",
+              action: "resume",
+              reason: "作者确认提高预算并从断点恢复",
+              idempotencyKey: "ui-recovery",
+              fromStatus: "paused",
+              fromCheckpointVersion: 3,
+              resumeStep: "generate",
+              checkpointVersion: 4,
+              createdAt: "2026-11-08T00:00:01.000Z",
+            },
+          },
+          requestId: "req_writing_recovery",
+          meta: {},
+        }),
+      });
+    },
+  );
+
+  await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+  await page.getByRole("tab", { name: "生成" }).click();
+  const actionPanel = page.locator(".writing-action-panel");
+  await expect(actionPanel.getByText("预算已用完，任务已暂停在断点。")).toBeVisible();
+  for (const width of [390, 900, 1180, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(actionPanel.getByRole("button", { name: "提高预算并恢复" })).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+  await actionPanel.getByLabel("恢复后的用量上限").fill("2000");
+  await actionPanel.getByLabel("恢复后的费用上限").fill("3");
+  await actionPanel.getByRole("button", { name: "提高预算并恢复" }).click();
+
+  await expect(actionPanel.locator(".writing-action-summary")).toContainText("排队中");
+  expect(recoveryBody).toMatchObject({
+    expectedCheckpointVersion: 3,
+    budget: {
+      maxTokens: 2_000,
+      maxCostCny: 3,
+    },
+  });
+  expect(recoveryBody?.reason).toBeTruthy();
+  expect(recoveryBody?.idempotencyKey).toBeTruthy();
+});
+
 test("confirms two fact proposals without changing confirmed settings", async ({
   page,
   context,

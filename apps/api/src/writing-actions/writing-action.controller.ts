@@ -14,6 +14,8 @@ import {
 } from "@nestjs/common";
 import {
   cursorPageQuerySchema,
+  jobRecoveryRequestSchema,
+  writingActionRecoveryResponseSchema,
   writingActionJobListResponseSchema,
   writingActionJobResponseSchema,
   writingActionRequestSchema,
@@ -48,6 +50,8 @@ function schemaOf(schema: z.ZodType, io: "input" | "output" = "output"): SchemaO
 const actionBodyJsonSchema = schemaOf(writingActionRequestSchema, "input");
 const jobJsonSchema = schemaOf(writingActionJobResponseSchema);
 const jobListJsonSchema = schemaOf(writingActionJobListResponseSchema);
+const recoveryBodyJsonSchema = schemaOf(jobRecoveryRequestSchema, "input");
+const recoveryJsonSchema = schemaOf(writingActionRecoveryResponseSchema);
 
 @ApiTags("writing-actions")
 @Controller("works/:workId/branches/:branchId")
@@ -167,6 +171,34 @@ export class WritingActionController {
         this.userId(request),
         this.branchContext(workId, branchId),
         uuidV7Schema.parse(actionJobId),
+        this.audit(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("write-actions/:actionJobId/recover")
+  @HttpCode(202)
+  @ApiBody({ schema: recoveryBodyJsonSchema })
+  @ApiAcceptedResponse({
+    description: "Recovered writing action with an audit record",
+    schema: recoveryJsonSchema,
+  })
+  async recover(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("actionJobId") actionJobId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return writingActionRecoveryResponseSchema.parse({
+      data: await this.service.recover(
+        this.userId(request),
+        this.branchContext(workId, branchId),
+        uuidV7Schema.parse(actionJobId),
+        jobRecoveryRequestSchema.parse(body ?? {}),
         this.audit(request, requestId),
       ),
       requestId,
