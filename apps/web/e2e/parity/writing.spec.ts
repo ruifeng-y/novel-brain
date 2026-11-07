@@ -47,13 +47,18 @@ function chaptersPath(work: { id: string; mainBranch: { id: string } }) {
   return `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters`;
 }
 
-async function createChapter(page: Page, work: { id: string; mainBranch: { id: string } }) {
+async function createChapter(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  number = 1,
+  title = "一只手也能结印",
+) {
   const token = await getCsrf(page.request);
   const response = await page.request.post(chaptersPath(work), {
     headers: { Origin: origin, "X-CSRF-Token": token },
     data: {
-      number: 1,
-      title: "一只手也能结印",
+      number,
+      title,
       brief: {
         goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",
         pov: "沈砚",
@@ -568,6 +573,138 @@ test("generates a chapter with progress, references, citations, cost and checkpo
   }
 });
 
+test("keeps chapter checks disabled until generation and writing actions settle", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const actionChapter = await createChapter(page, work, 2, "山雨欲来");
+  const chapterPath = `${chaptersPath(work)}/${chapter.id}`;
+  const actionChapterPath = `${chaptersPath(work)}/${actionChapter.id}`;
+  const token = await getCsrf(page.request);
+  const initialVersion = await page.request.post(`${chapterPath}/versions`, {
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+    },
+    data: {
+      version: chapter.version,
+      content: "沈砚把断臂藏进袖中。\n\n钟声未响。",
+    },
+  });
+  expect(initialVersion.status(), await initialVersion.text()).toBe(201);
+  const actionVersion = await page.request.post(`${actionChapterPath}/versions`, {
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+    },
+    data: {
+      version: actionChapter.version,
+      content: "山雨压着荒寺，沈砚听见远处的钟声。",
+    },
+  });
+  expect(actionVersion.status(), await actionVersion.text()).toBe(201);
+
+  let worker: Awaited<ReturnType<typeof startWorker>> | undefined;
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    const quality = page.getByRole("button", { name: "检查本章", exact: true });
+    const style = page.getByRole("button", { name: "检查本章声线" });
+    await expect(quality).toBeEnabled();
+    await expect(style).toBeEnabled();
+
+    const generateRequestHeld = deferred();
+    const releaseGenerateRequest = deferred();
+    const generatePath = `${chapterPath}/generate`;
+    await page.route(`**${generatePath}`, async (route) => {
+      if (route.request().method() === "POST") {
+        generateRequestHeld.resolve();
+        await releaseGenerateRequest.promise;
+      }
+      await route.continue();
+    });
+    await page.getByRole("button", { name: "生成整章" }).click();
+    await generateRequestHeld.promise;
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+
+    releaseGenerateRequest.resolve();
+    worker = await startWorker();
+
+    const chapterRefreshHeld = deferred();
+    const releaseChapterRefresh = deferred();
+    let holdChapterRefresh = true;
+    await page.route(`**${chapterPath}`, async (route) => {
+      if (route.request().method() === "GET" && holdChapterRefresh) {
+        holdChapterRefresh = false;
+        chapterRefreshHeld.resolve();
+        await releaseChapterRefresh.promise;
+      }
+      await route.continue();
+    });
+
+    const versionsPath = `${chapterPath}/versions`;
+    const versionsRefreshHeld = deferred();
+    const releaseVersionsRefresh = deferred();
+    let holdVersionsRefresh = true;
+    await page.route(`**${versionsPath}`, async (route) => {
+      if (route.request().method() === "GET" && holdVersionsRefresh) {
+        holdVersionsRefresh = false;
+        versionsRefreshHeld.resolve();
+        await releaseVersionsRefresh.promise;
+      }
+      await route.continue();
+    });
+
+    await chapterRefreshHeld.promise;
+    await expect(
+      page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+
+    releaseChapterRefresh.resolve();
+    await versionsRefreshHeld.promise;
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+
+    const chapterResponse = await page.request.get(chapterPath);
+    expect(chapterResponse.ok()).toBe(true);
+    const refreshedVersionId = (await chapterResponse.json()).data.currentVersionId as string;
+    expect(refreshedVersionId).toBeTruthy();
+
+    releaseVersionsRefresh.resolve();
+    await expect(quality).toBeEnabled();
+    await expect(style).toBeEnabled();
+
+    let checkedVersionId: string | undefined;
+    const verifyPath = `${chapterPath}/verify`;
+    await page.route(`**${verifyPath}`, async (route) => {
+      const body = route.request().postDataJSON() as { chapterVersionId?: string };
+      checkedVersionId = body.chapterVersionId;
+      await route.continue();
+    });
+    await quality.click();
+    await expect.poll(() => checkedVersionId).toBe(refreshedVersionId);
+    await expect(quality).toBeEnabled();
+
+    await worker.stop();
+    worker = undefined;
+    await page.goto(`/workspace/${work.id}/write?chapterId=${actionChapter.id}`);
+    await expect(page.getByRole("heading", { name: "山雨欲来" })).toBeVisible();
+    await expect(quality).toBeEnabled();
+    await page.getByRole("button", { name: "续写" }).click();
+    await expect(
+      page.locator(".writing-action-summary").getByText("续写", { exact: true }),
+    ).toBeVisible();
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+  } finally {
+    await worker?.stop();
+  }
+});
+
 test("rewrites only the selected draft and applies a generated title at four viewports", async ({
   page,
   context,
@@ -641,6 +778,14 @@ test("rewrites only the selected draft and applies a generated title at four vie
     await worker.stop();
   }
 });
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
 
 test("confirms two fact proposals without changing confirmed settings", async ({
   page,
