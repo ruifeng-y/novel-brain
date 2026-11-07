@@ -531,6 +531,7 @@ function countItems(items: readonly BatchPlanItemDraft[]): BatchPlanCounts {
     pending: 0,
     ready: 0,
     running: 0,
+    paused: 0,
     waiting_review: 0,
     succeeded: 0,
     failed: 0,

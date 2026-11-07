@@ -5,6 +5,10 @@ import { AgentGrantStore } from "@novel-brain/db";
 import { AgentGrantGuard, WorkerAgentGrantStore } from "./agent-runtime/agent-grant.guard";
 import { AgentOrchestrator } from "./agent-runtime/agent-orchestrator";
 import { AgentOrchestratorRepository } from "./agent-runtime/agent-orchestrator.repository";
+import { BatchPlanTickProcessor } from "./batch-plan/batch-plan.processor";
+import { BatchPlanChildQueue } from "./batch-plan/batch-plan-child.queue";
+import { WorkerBatchPlanQueue } from "./batch-plan/batch-plan.queue";
+import { WorkerBatchPlanRepository } from "./batch-plan/batch-plan.repository";
 import { GenerationJobProcessor } from "./generation/generation.processor";
 import { WorkerGenerationRepository } from "./generation/generation.repository";
 import { AI_GATEWAY } from "./generation/generation.tokens";
@@ -21,6 +25,10 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
 @Module({
   providers: [
     WorkerService,
+    WorkerBatchPlanRepository,
+    WorkerBatchPlanQueue,
+    BatchPlanChildQueue,
+    BatchPlanTickProcessor,
     AgentGrantGuard,
     AgentOrchestrator,
     {

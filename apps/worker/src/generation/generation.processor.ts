@@ -31,6 +31,7 @@ import type { ByokAiGatewayFactory } from "./model-provider.factory";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
+  JobStoppedError,
   WorkerGenerationRepository,
   type LoadedGenerationJob,
   type StartedModelCall,
@@ -144,7 +145,7 @@ export class GenerationJobProcessor {
       if (stepIndex < startIndex) {
         continue;
       }
-      if (await this.repository.isCancelled(durablePayload)) {
+      if ((await this.repository.stopReason(durablePayload)) !== null) {
         return;
       }
       while (true) {
@@ -186,6 +187,9 @@ export class GenerationJobProcessor {
           checkpoint = generationCheckpointSchema.parse(committed.checkpoint);
           break;
         } catch (error) {
+          if (error instanceof JobStoppedError) {
+            return;
+          }
           const failure = toFailure(error);
           const decision = decideStepRecovery({
             failureClass: failure.failureClass,

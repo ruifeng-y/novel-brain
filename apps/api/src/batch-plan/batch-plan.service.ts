@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import { Injectable } from "@nestjs/common";
 import {
+  batchPlanActionRequestSchema,
   batchPlanCreateRequestSchema,
   type BatchPlanCreateRequest,
   type BatchPlanScope,
@@ -23,12 +24,17 @@ import {
   BatchPlanRepository,
   BatchPlanRepositoryError,
   type BatchPlanContext,
+  type BatchPlanAuditContext,
+  type BatchPlanControlAction,
   type BatchPlanItemFilters,
   type BatchPlanItemPage,
   type BatchPlanSources,
   type ChapterSource,
   type OutlineNodeSource,
 } from "./batch-plan.repository";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { BatchPlanQueue } from "./batch-plan.queue";
 
 export interface BatchPlanListQuery {
   type?: BatchWorkItem["type"];
@@ -39,7 +45,10 @@ export interface BatchPlanListQuery {
 
 @Injectable()
 export class BatchPlanService {
-  constructor(private readonly repository: BatchPlanRepository) {}
+  constructor(
+    private readonly repository: BatchPlanRepository,
+    private readonly queue: BatchPlanQueue,
+  ) {}
 
   async create(
     userId: string,
@@ -154,6 +163,73 @@ export class BatchPlanService {
       throw new ApiError(404, "BATCH_PLAN_NOT_FOUND", "批量计划不存在或无权访问");
     }
     return page;
+  }
+
+  async control(
+    userId: string,
+    context: BatchPlanContext,
+    planId: string,
+    action: BatchPlanControlAction,
+    idempotencyKey: string,
+    body: unknown,
+    audit: BatchPlanAuditContext,
+  ): Promise<BatchPlanSummary> {
+    const key = idempotencyKey.trim();
+    if (!key || key.length > 200) {
+      throw new ApiError(400, "VALIDATION_INVALID", "缺少有效的 Idempotency-Key");
+    }
+    const request = batchPlanActionRequestSchema.parse(body ?? {});
+    let summary: BatchPlanSummary | undefined;
+    try {
+      summary = await this.repository.controlPlan({
+        userId,
+        context,
+        planId,
+        action,
+        idempotencyKey: key,
+        reason: request.reason ?? defaultReason(action),
+        audit,
+      });
+    } catch (error) {
+      if (error instanceof BatchPlanRepositoryError) {
+        throw new ApiError(
+          error.code === "BATCH_PLAN_IDEMPOTENCY_CONFLICT" ? 409 : 400,
+          error.code,
+          error.message,
+          error.details,
+        );
+      }
+      throw error;
+    }
+    if (!summary) {
+      throw new ApiError(404, "BATCH_PLAN_NOT_FOUND", "批量计划不存在或无权访问");
+    }
+    if (action === "start" || action === "resume" || action === "retry") {
+      await this.queue.enqueueTick({
+        jobType: "batch_tick",
+        planId,
+        workId: context.workId,
+        branchId: context.branchId,
+        actorId: userId,
+        reason: request.reason ?? defaultReason(action),
+      });
+    }
+    return summary;
+  }
+}
+
+function defaultReason(action: BatchPlanControlAction): string {
+  switch (action) {
+    case "start":
+      return "作者开始批量计划";
+    case "pause":
+      return "作者暂停批量计划";
+    case "resume":
+      return "作者恢复批量计划";
+    case "cancel":
+      return "作者取消批量计划";
+    case "retry":
+      return "作者重试批量失败章节";
   }
 }
 

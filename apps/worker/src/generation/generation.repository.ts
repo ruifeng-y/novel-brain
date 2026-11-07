@@ -196,6 +196,13 @@ export class WritingActionSourceInvalidError extends Error {
   }
 }
 
+export class JobStoppedError extends Error {
+  constructor(readonly status: "paused" | "cancelled") {
+    super(`Generation job is ${status}`);
+    this.name = "JobStoppedError";
+  }
+}
+
 const factSourceChapters = alias(chapters, "fact_source_chapters");
 
 @Injectable()
@@ -589,6 +596,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
       if (
         current.status === "completed" ||
         current.status === "waiting_review" ||
+        current.status === "paused" ||
         current.status === "failed" ||
         current.status === "cancelled"
       ) {
@@ -631,15 +639,19 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     });
   }
 
-  async isCancelled(payload: WorkerJobBase): Promise<boolean> {
+  async stopReason(payload: WorkerJobBase): Promise<"paused" | "cancelled" | null> {
     return this.withTenant(payload.actorId, async (transaction) => {
       const [job] = await transaction
         .select({ status: jobs.status })
         .from(jobs)
         .where(and(eq(jobs.id, payload.jobId), eq(jobs.userId, payload.actorId)))
         .limit(1);
-      return job?.status === "cancelled";
+      return job?.status === "cancelled" || job?.status === "paused" ? job.status : null;
     });
+  }
+
+  async isCancelled(payload: WorkerJobBase): Promise<boolean> {
+    return (await this.stopReason(payload)) === "cancelled";
   }
 
   async loadWritingActionSource(
@@ -731,6 +743,9 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         .limit(1);
       if (!job) {
         throw new Error("Generation job no longer exists");
+      }
+      if (job.status === "paused" || job.status === "cancelled") {
+        throw new JobStoppedError(job.status);
       }
       const interrupted = await transaction
         .select({

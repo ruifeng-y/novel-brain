@@ -2351,6 +2351,7 @@ export const jobs = pgTable(
       .where(sql`${table.type} = 'batch_plan'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
+    index("jobs_parent_created_idx").on(table.parentJobId, table.createdAt),
     check(
       "jobs_type_check",
       sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan')`,
@@ -2443,7 +2444,7 @@ export const jobWorkItems = pgTable(
     ),
     check(
       "job_work_items_status_check",
-      sql`${table.status} in ('pending', 'ready', 'running', 'waiting_review', 'succeeded', 'failed', 'skipped', 'cancelled')`,
+      sql`${table.status} in ('pending', 'ready', 'running', 'paused', 'waiting_review', 'succeeded', 'failed', 'skipped', 'cancelled')`,
     ),
     check(
       "job_work_items_priority_class_check",

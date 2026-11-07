@@ -5228,10 +5228,24 @@ export const summaryRebuildJobSchema = z.object({
 });
 export type SummaryRebuildJob = z.infer<typeof summaryRebuildJobSchema>;
 
+export const BATCH_TICK_JOB = "batch_tick" as const;
+export const batchTickJobSchema = z
+  .object({
+    jobType: z.literal(BATCH_TICK_JOB),
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
+export type BatchTickJob = z.infer<typeof batchTickJobSchema>;
+
 export const workerJobSchema = z.discriminatedUnion("jobType", [
   generateChapterJobSchema,
   summaryRebuildJobSchema,
   writeActionJobSchema,
+  batchTickJobSchema,
 ]);
 export type WorkerJob = z.infer<typeof workerJobSchema>;
 
@@ -5372,6 +5386,7 @@ export const batchWorkItemStatusSchema = z.enum([
   "pending",
   "ready",
   "running",
+  "paused",
   "waiting_review",
   "succeeded",
   "failed",
@@ -5444,6 +5459,13 @@ export const batchPlanCreateRequestSchema = z
   });
 export type BatchPlanCreateRequest = z.infer<typeof batchPlanCreateRequestSchema>;
 
+export const batchPlanActionRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
+export type BatchPlanActionRequest = z.infer<typeof batchPlanActionRequestSchema>;
+
 export const batchWorkItemKeySchema = z
   .string()
   .min(1)
@@ -5497,6 +5519,7 @@ export const batchPlanCountsSchema = z
     pending: z.number().int().nonnegative(),
     ready: z.number().int().nonnegative(),
     running: z.number().int().nonnegative(),
+    paused: z.number().int().nonnegative(),
     waiting_review: z.number().int().nonnegative(),
     succeeded: z.number().int().nonnegative(),
     failed: z.number().int().nonnegative(),

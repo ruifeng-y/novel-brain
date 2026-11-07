@@ -308,6 +308,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/pause": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_pause"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/resume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_resume"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_cancel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_retry"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
     parameters: {
       query?: never;
@@ -4133,6 +4213,7 @@ export interface operations {
                 pending: number;
                 ready: number;
                 running: number;
+                paused: number;
                 waiting_review: number;
                 succeeded: number;
                 failed: number;
@@ -4236,6 +4317,7 @@ export interface operations {
                 pending: number;
                 ready: number;
                 running: number;
+                paused: number;
                 waiting_review: number;
                 succeeded: number;
                 failed: number;
@@ -4310,6 +4392,7 @@ export interface operations {
                 | "pending"
                 | "ready"
                 | "running"
+                | "paused"
                 | "waiting_review"
                 | "succeeded"
                 | "failed"
@@ -4346,6 +4429,536 @@ export interface operations {
             requestId: string;
             meta: {
               nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_start: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Started batch plan */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_pause: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Paused batch plan */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_resume: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Resumed batch plan */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_cancel: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancelled batch plan */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_retry: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Retried failed batch work */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
             };
           };
         };

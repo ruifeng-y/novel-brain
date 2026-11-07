@@ -1,15 +1,26 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   batchPlanMetadataSchema,
+  generationCheckpointSchema,
+  WORKER_JOB_STEPS,
   type BatchPlanCounts,
   type BatchPlanMetadata,
   type BatchPlanSummary,
   type BatchWorkItem,
   type GenerationJobStatus,
 } from "@novel-brain/contracts";
-import type { BuiltBatchPlan } from "@novel-brain/core";
+import {
+  canCancelBatchPlan,
+  canPauseBatchPlan,
+  canResumeBatchPlan,
+  canRetryBatchPlan,
+  canStartBatchPlan,
+  resolveRecoveryStep,
+  type BuiltBatchPlan,
+} from "@novel-brain/core";
 import { createDatabasePool } from "@novel-brain/db";
 import type { Pool, PoolClient } from "pg";
+import { uuidv7 } from "uuidv7";
 
 type BatchPlanTransaction = Pick<PoolClient, "query">;
 
@@ -73,6 +84,14 @@ export interface BatchPlanItemPage {
   items: BatchWorkItem[];
   nextCursor: string | null;
 }
+
+export interface BatchPlanAuditContext {
+  requestId: string;
+  ip: string;
+  userAgent: string;
+}
+
+export type BatchPlanControlAction = "start" | "pause" | "resume" | "cancel" | "retry";
 
 interface JobRow {
   id: string;
@@ -327,6 +346,72 @@ export class BatchPlanRepository implements OnModuleDestroy {
     });
   }
 
+  async controlPlan(input: {
+    userId: string;
+    context: BatchPlanContext;
+    planId: string;
+    action: BatchPlanControlAction;
+    idempotencyKey: string;
+    reason: string;
+    audit: BatchPlanAuditContext;
+  }): Promise<BatchPlanSummary | undefined> {
+    return this.withTenant(input.userId, async (transaction) => {
+      const plan = await lockPlan(transaction, input.userId, input.context, input.planId);
+      if (!plan) {
+        return undefined;
+      }
+      const scope = `batch_plan.${input.action}.${input.planId}`;
+      const existing = await findIdempotentAction(
+        transaction,
+        input.userId,
+        scope,
+        input.idempotencyKey,
+      );
+      if (existing) {
+        const counts = await aggregateCounts(transaction, input.userId, input.planId);
+        return summaryFrom(plan, counts);
+      }
+
+      switch (input.action) {
+        case "start":
+          await startPlan(transaction, plan, input.userId, input.reason);
+          break;
+        case "pause":
+          await pausePlan(transaction, plan, input.userId, input.reason);
+          break;
+        case "resume":
+          await resumePlan(transaction, plan, input.userId, input.reason);
+          break;
+        case "cancel":
+          await cancelPlan(transaction, plan, input.userId, input.reason);
+          break;
+        case "retry":
+          await retryFailedPlan(transaction, plan, input.userId, input.reason, input.audit);
+          break;
+      }
+
+      await rememberIdempotentAction(
+        transaction,
+        input.userId,
+        scope,
+        input.idempotencyKey,
+        input.planId,
+      );
+      await insertAuditLog(transaction, {
+        userId: input.userId,
+        planId: input.planId,
+        action: `batch_plan.${input.action}`,
+        audit: input.audit,
+      });
+      const updated = await reloadPlan(transaction, input.userId, input.context, input.planId);
+      if (!updated) {
+        return undefined;
+      }
+      const counts = await aggregateCounts(transaction, input.userId, input.planId);
+      return summaryFrom(updated, counts);
+    });
+  }
+
   private async withTenant<T>(
     userId: string,
     operation: (transaction: BatchPlanTransaction) => Promise<T>,
@@ -496,6 +581,7 @@ function emptyCounts(): BatchPlanCounts {
     pending: 0,
     ready: 0,
     running: 0,
+    paused: 0,
     waiting_review: 0,
     succeeded: 0,
     failed: 0,
@@ -674,4 +760,563 @@ function toWorkItem(row: WorkItemRow): BatchWorkItem {
     createdAt: row.created_at.toISOString(),
     updatedAt: row.updated_at.toISOString(),
   };
+}
+
+async function lockPlan(
+  transaction: BatchPlanTransaction,
+  userId: string,
+  context: BatchPlanContext,
+  planId: string,
+): Promise<BatchPlanJobRecord | null> {
+  const result = await transaction.query<JobRow>(
+    `SELECT j.id, j.work_id, j.branch_id, j.user_id, j.status, j.idempotency_key,
+            j.orchestration, j.created_at, j.updated_at
+     FROM jobs j
+     INNER JOIN works w ON w.id = j.work_id AND w.user_id = j.user_id
+     WHERE j.id = $1
+       AND j.user_id = $2
+       AND j.work_id = $3
+       AND j.branch_id = $4
+       AND j.type = 'batch_plan'
+       AND w.deleted_at IS NULL
+     FOR UPDATE OF j`,
+    [planId, userId, context.workId, context.branchId],
+  );
+  return result.rows[0] ? toJobRecord(result.rows[0]) : null;
+}
+
+async function reloadPlan(
+  transaction: BatchPlanTransaction,
+  userId: string,
+  context: BatchPlanContext,
+  planId: string,
+): Promise<BatchPlanJobRecord | null> {
+  return findPlan(transaction, userId, context, planId);
+}
+
+async function startPlan(
+  transaction: BatchPlanTransaction,
+  plan: BatchPlanJobRecord,
+  userId: string,
+  reason: string,
+): Promise<void> {
+  if (plan.status === "running") {
+    return;
+  }
+  if (!canStartBatchPlan(plan.status)) {
+    throw new BatchPlanRepositoryError(
+      "BATCH_PLAN_INVALID",
+      `批量计划状态 ${plan.status} 不能开始`,
+      { status: plan.status },
+    );
+  }
+  await updatePlanStatus(transaction, plan.id, userId, {
+    status: "running",
+    currentStep: "execute",
+    errorCode: null,
+    errorMessage: null,
+    started: true,
+    finished: false,
+  });
+  await appendPlanEvent(transaction, plan, "job.preparing", {
+    status: "running",
+    reason,
+  });
+}
+
+async function pausePlan(
+  transaction: BatchPlanTransaction,
+  plan: BatchPlanJobRecord,
+  userId: string,
+  reason: string,
+): Promise<void> {
+  if (plan.status === "paused") {
+    return;
+  }
+  if (!canPauseBatchPlan(plan.status)) {
+    throw new BatchPlanRepositoryError(
+      "BATCH_PLAN_INVALID",
+      `批量计划状态 ${plan.status} 不能暂停`,
+      { status: plan.status },
+    );
+  }
+  await updatePlanStatus(transaction, plan.id, userId, {
+    status: "paused",
+    currentStep: "paused",
+    errorCode: null,
+    errorMessage: null,
+    finished: false,
+  });
+  await transaction.query(
+    `UPDATE job_work_items
+     SET status = 'paused', updated_at = now()
+     WHERE job_id = $1 AND user_id = $2 AND status IN ('pending', 'ready', 'running')`,
+    [plan.id, userId],
+  );
+  await transaction.query(
+    `UPDATE jobs
+     SET status = 'paused', updated_at = now()
+     WHERE parent_job_id = $1
+       AND user_id = $2
+       AND type = 'generate_chapter'
+       AND status IN ('queued', 'preparing', 'running')`,
+    [plan.id, userId],
+  );
+  await appendPlanEvent(transaction, plan, "job.paused", {
+    status: "paused",
+    reason,
+  });
+}
+
+async function resumePlan(
+  transaction: BatchPlanTransaction,
+  plan: BatchPlanJobRecord,
+  userId: string,
+  reason: string,
+): Promise<void> {
+  if (plan.status === "running") {
+    return;
+  }
+  if (!canResumeBatchPlan(plan.status)) {
+    throw new BatchPlanRepositoryError(
+      "BATCH_PLAN_INVALID",
+      `批量计划状态 ${plan.status} 不能恢复`,
+      { status: plan.status },
+    );
+  }
+  await transaction.query(
+    `UPDATE job_work_items
+     SET status = 'pending', updated_at = now()
+     WHERE job_id = $1 AND user_id = $2 AND status = 'paused'`,
+    [plan.id, userId],
+  );
+  await transaction.query(
+    `UPDATE job_work_items
+     SET status = 'ready', updated_at = now()
+     WHERE job_id = $1
+       AND user_id = $2
+       AND item_type = 'step'
+       AND status = 'pending'
+       AND dependencies = '[]'::jsonb`,
+    [plan.id, userId],
+  );
+  await transaction.query(
+    `UPDATE job_work_items step
+     SET status = 'ready', updated_at = now()
+     WHERE step.job_id = $1
+       AND step.user_id = $2
+       AND step.item_type = 'step'
+       AND step.status = 'pending'
+       AND EXISTS (
+         SELECT 1
+         FROM job_work_items volume
+         WHERE volume.job_id = step.job_id
+           AND volume.user_id = step.user_id
+           AND volume.item_type = 'volume'
+           AND volume.status = 'succeeded'
+           AND step.dependencies ? volume.work_item_key
+       )`,
+    [plan.id, userId],
+  );
+  await transaction.query(
+    `UPDATE jobs
+     SET status = 'queued', updated_at = now()
+     WHERE parent_job_id = $1
+       AND user_id = $2
+       AND type = 'generate_chapter'
+       AND status = 'paused'`,
+    [plan.id, userId],
+  );
+  await updatePlanStatus(transaction, plan.id, userId, {
+    status: "running",
+    currentStep: "execute",
+    errorCode: null,
+    errorMessage: null,
+    finished: false,
+  });
+  await appendPlanEvent(transaction, plan, "job.resumed", {
+    status: "running",
+    reason,
+  });
+}
+
+async function cancelPlan(
+  transaction: BatchPlanTransaction,
+  plan: BatchPlanJobRecord,
+  userId: string,
+  reason: string,
+): Promise<void> {
+  if (plan.status === "cancelled") {
+    return;
+  }
+  if (!canCancelBatchPlan(plan.status)) {
+    throw new BatchPlanRepositoryError(
+      "BATCH_PLAN_INVALID",
+      `批量计划状态 ${plan.status} 不能取消`,
+      { status: plan.status },
+    );
+  }
+  await updatePlanStatus(transaction, plan.id, userId, {
+    status: "cancelled",
+    currentStep: "cancelled",
+    errorCode: "JOB_CANCELLED",
+    errorMessage: "批量计划已取消，已完成章节和检查点保留",
+    finished: true,
+  });
+  await transaction.query(
+    `UPDATE job_work_items
+     SET status = 'cancelled', updated_at = now()
+     WHERE job_id = $1
+       AND user_id = $2
+       AND status NOT IN ('succeeded', 'waiting_review', 'failed', 'skipped', 'cancelled')`,
+    [plan.id, userId],
+  );
+  await transaction.query(
+    `UPDATE jobs
+     SET status = 'cancelled', error_code = 'JOB_CANCELLED',
+         error_message = '批量计划已取消', finished_at = now(), updated_at = now()
+     WHERE parent_job_id = $1
+       AND user_id = $2
+       AND type = 'generate_chapter'
+       AND status NOT IN ('completed', 'waiting_review', 'failed', 'cancelled')`,
+    [plan.id, userId],
+  );
+  await transaction.query(
+    `UPDATE cost_reservations
+     SET status = 'released', failure_class = 'cancelled', settled_at = now()
+     WHERE user_id = $2
+       AND status = 'reserved'
+       AND job_id IN (
+         SELECT id FROM jobs WHERE parent_job_id = $1 AND user_id = $2
+       )`,
+    [plan.id, userId],
+  );
+  await transaction.query(
+    `UPDATE model_calls
+     SET status = 'failed', failure_class = 'cancelled',
+         error_code = 'JOB_CANCELLED', finished_at = now()
+     WHERE user_id = $2
+       AND status = 'started'
+       AND job_id IN (
+         SELECT id FROM jobs WHERE parent_job_id = $1 AND user_id = $2
+       )`,
+    [plan.id, userId],
+  );
+  await transaction.query(
+    `UPDATE agent_runs
+     SET status = 'failed', failure_class = 'cancelled',
+         escalation_reason = '批量计划已取消', finished_at = now()
+     WHERE user_id = $2
+       AND status = 'running'
+       AND job_id IN (
+         SELECT id FROM jobs WHERE parent_job_id = $1 AND user_id = $2
+       )`,
+    [plan.id, userId],
+  );
+  await appendPlanEvent(transaction, plan, "job.canceled", {
+    status: "cancelled",
+    reason,
+  });
+}
+
+async function retryFailedPlan(
+  transaction: BatchPlanTransaction,
+  plan: BatchPlanJobRecord,
+  userId: string,
+  reason: string,
+  audit: BatchPlanAuditContext,
+): Promise<void> {
+  if (!canRetryBatchPlan(plan.status)) {
+    throw new BatchPlanRepositoryError(
+      "BATCH_PLAN_INVALID",
+      `批量计划状态 ${plan.status} 不能重试`,
+      { status: plan.status },
+    );
+  }
+  const firstStepKey = plan.metadata.stepKeys[0] ?? WORKER_JOB_STEPS[0];
+  const failedChildren = await transaction.query<{
+    id: string;
+    work_id: string;
+    branch_id: string;
+    user_id: string;
+    chapter_id: string;
+    status: string;
+    current_step: string;
+    checkpoint: unknown;
+    checkpoint_version: number;
+  }>(
+    `SELECT id, work_id, branch_id, user_id, chapter_id, status, current_step,
+            checkpoint, checkpoint_version
+     FROM jobs
+     WHERE parent_job_id = $1 AND user_id = $2
+       AND type = 'generate_chapter' AND status = 'failed'
+     FOR UPDATE`,
+    [plan.id, userId],
+  );
+  const resumeStepByChapter = new Map<string, string>();
+  const recoveryByChild = new Map<
+    string,
+    {
+      resumeStep: string;
+      previousCheckpoint: ReturnType<typeof generationCheckpointSchema.parse>;
+      checkpointVersion: number;
+      checkpoint: ReturnType<typeof generationCheckpointSchema.parse>;
+    }
+  >();
+  for (const child of failedChildren.rows) {
+    const steps = await transaction.query<{ step_key: string; status: string }>(
+      `SELECT step_key, status FROM job_steps WHERE job_id = $1 AND user_id = $2`,
+      [child.id, userId],
+    );
+    const resumeStep = resolveRecoveryStep(
+      WORKER_JOB_STEPS,
+      steps.rows.map((step) => ({
+        stepKey: step.step_key,
+        status: step.status as
+          "pending" | "running" | "succeeded" | "failed" | "skipped" | "cancelled",
+      })),
+    ).step;
+    const previousCheckpoint = generationCheckpointSchema.parse(child.checkpoint);
+    const checkpointVersion = child.checkpoint_version + 1;
+    const checkpoint = generationCheckpointSchema.parse({
+      schemaVersion: 1,
+      revision: checkpointVersion,
+      step: resumeStep,
+      inputHash: previousCheckpoint.inputHash,
+      outputRefs: previousCheckpoint.outputRefs,
+      payload: previousCheckpoint.payload,
+    });
+    resumeStepByChapter.set(child.chapter_id, resumeStep);
+    recoveryByChild.set(child.id, {
+      resumeStep,
+      previousCheckpoint,
+      checkpointVersion,
+      checkpoint,
+    });
+  }
+
+  const failedChapters = await transaction.query<{ id: string; chapter_id: string | null }>(
+    `SELECT id, chapter_id
+     FROM job_work_items
+     WHERE job_id = $1 AND user_id = $2 AND item_type = 'chapter' AND status = 'failed'`,
+    [plan.id, userId],
+  );
+  for (const chapter of failedChapters.rows) {
+    const resumeStep =
+      (chapter.chapter_id ? resumeStepByChapter.get(chapter.chapter_id) : undefined) ??
+      firstStepKey;
+    await transaction.query(
+      `UPDATE job_work_items SET status = 'pending', attempt = attempt + 1, updated_at = now()
+       WHERE id = $1 AND user_id = $2`,
+      [chapter.id, userId],
+    );
+    if (chapter.chapter_id) {
+      await transaction.query(
+        `UPDATE job_work_items
+         SET status = CASE
+           WHEN work_item_key = $3 THEN 'ready'
+           WHEN status IN ('failed', 'running') THEN 'pending'
+           ELSE status
+         END,
+         updated_at = now()
+         WHERE job_id = $1 AND user_id = $2 AND item_type = 'step' AND chapter_id = $4`,
+        [plan.id, userId, `step:${chapter.chapter_id}:${resumeStep}`, chapter.chapter_id],
+      );
+    }
+  }
+  await transaction.query(
+    `UPDATE job_work_items SET status = 'pending', updated_at = now()
+     WHERE job_id = $1 AND user_id = $2 AND item_type = 'volume' AND status = 'failed'`,
+    [plan.id, userId],
+  );
+
+  for (const child of failedChildren.rows) {
+    const recovery = recoveryByChild.get(child.id);
+    if (!recovery) {
+      continue;
+    }
+    const { resumeStep, checkpointVersion, checkpoint } = recovery;
+    await transaction.query(
+      `INSERT INTO job_checkpoints (
+         id, job_id, work_id, branch_id, user_id, step_key, schema_version,
+         revision, attempt, input_hash, output_refs, payload, created_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, 1, $7, 0, $8, $9::jsonb, $10::jsonb, now())
+       ON CONFLICT (job_id, revision) DO NOTHING`,
+      [
+        uuidv7(),
+        child.id,
+        child.work_id,
+        child.branch_id,
+        child.user_id,
+        resumeStep,
+        checkpointVersion,
+        checkpoint.inputHash,
+        JSON.stringify(checkpoint.outputRefs),
+        JSON.stringify(checkpoint),
+      ],
+    );
+    await transaction.query(
+      `UPDATE jobs
+       SET status = 'queued', current_step = $2, checkpoint = $3::jsonb,
+           checkpoint_version = $4, error_code = NULL, error_message = NULL,
+           finished_at = NULL, updated_at = now()
+       WHERE id = $1 AND user_id = $5`,
+      [child.id, resumeStep, JSON.stringify(checkpoint), checkpointVersion, userId],
+    );
+    await transaction.query(
+      `INSERT INTO job_recoveries (
+         id, job_id, work_id, branch_id, user_id, actor_id, action, reason,
+         idempotency_key, from_status, from_checkpoint_version, checkpoint_version,
+         resume_step, correlation_id, created_at
+       ) VALUES ($1, $2, $3, $4, $5, $5, 'retry', $6, $7, 'failed', $8, $9, $10, $11, now())
+       ON CONFLICT (job_id, idempotency_key) DO NOTHING`,
+      [
+        uuidv7(),
+        child.id,
+        child.work_id,
+        child.branch_id,
+        child.user_id,
+        reason,
+        `batch-retry:${plan.id}:${child.id}`,
+        child.checkpoint_version,
+        checkpointVersion,
+        resumeStep,
+        audit.requestId,
+      ],
+    );
+  }
+  await updatePlanStatus(transaction, plan.id, userId, {
+    status: "running",
+    currentStep: "execute",
+    errorCode: null,
+    errorMessage: null,
+    finished: false,
+  });
+  await appendPlanEvent(transaction, plan, "job.recovered", {
+    status: "running",
+    reason,
+    resumedChapters: failedChapters.rows.length,
+  });
+}
+
+async function updatePlanStatus(
+  transaction: BatchPlanTransaction,
+  planId: string,
+  userId: string,
+  input: {
+    status: string;
+    currentStep: string;
+    errorCode: string | null;
+    errorMessage: string | null;
+    started?: boolean;
+    finished: boolean;
+  },
+): Promise<void> {
+  await transaction.query(
+    `UPDATE jobs
+     SET status = $3,
+         current_step = $4,
+         error_code = $5,
+         error_message = $6,
+         started_at = CASE WHEN $7 THEN COALESCE(started_at, now()) ELSE started_at END,
+         finished_at = CASE WHEN $8 THEN now() ELSE NULL END,
+         updated_at = now()
+     WHERE id = $1 AND user_id = $2 AND type = 'batch_plan'`,
+    [
+      planId,
+      userId,
+      input.status,
+      input.currentStep,
+      input.errorCode,
+      input.errorMessage,
+      input.started === true,
+      input.finished,
+    ],
+  );
+}
+
+async function appendPlanEvent(
+  transaction: BatchPlanTransaction,
+  plan: BatchPlanJobRecord,
+  eventType: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  await transaction.query(
+    `INSERT INTO job_events (
+       id, job_id, work_id, branch_id, user_id, sequence, event_type, payload, occurred_at
+     ) VALUES (
+       $1, $2, $3, $4, $5,
+       COALESCE((SELECT max(sequence) FROM job_events WHERE job_id = $2), 0) + 1,
+       $6, $7::jsonb, now()
+     )
+     ON CONFLICT (job_id, sequence) DO NOTHING`,
+    [
+      uuidv7(),
+      plan.id,
+      plan.workId,
+      plan.branchId,
+      plan.userId,
+      eventType,
+      JSON.stringify(payload),
+    ],
+  );
+}
+
+async function findIdempotentAction(
+  transaction: BatchPlanTransaction,
+  userId: string,
+  scope: string,
+  idempotencyKey: string,
+): Promise<{ resourceId: string } | null> {
+  const result = await transaction.query<{ resource_id: string }>(
+    `SELECT resource_id
+     FROM idempotency_records
+     WHERE user_id = $1 AND scope = $2 AND idempotency_key = $3
+     LIMIT 1`,
+    [userId, scope, idempotencyKey],
+  );
+  const row = result.rows[0];
+  return row ? { resourceId: row.resource_id } : null;
+}
+
+async function rememberIdempotentAction(
+  transaction: BatchPlanTransaction,
+  userId: string,
+  scope: string,
+  idempotencyKey: string,
+  planId: string,
+): Promise<void> {
+  await transaction.query(
+    `INSERT INTO idempotency_records (
+       id, user_id, scope, idempotency_key, resource_type, resource_id, created_at
+     ) VALUES ($1, $2, $3, $4, 'batch_plan', $5, now())
+     ON CONFLICT (user_id, scope, idempotency_key) DO NOTHING`,
+    [uuidv7(), userId, scope, idempotencyKey, planId],
+  );
+}
+
+async function insertAuditLog(
+  transaction: BatchPlanTransaction,
+  input: {
+    userId: string;
+    planId: string;
+    action: string;
+    audit: BatchPlanAuditContext;
+  },
+): Promise<void> {
+  await transaction.query(
+    `INSERT INTO audit_logs (
+       id, actor_id, action, target_type, target_id, decision,
+       correlation_id, ip, user_agent, created_at
+     ) VALUES ($1, $2, $3, 'job', $4, 'allowed', $5, $6, $7, now())`,
+    [
+      uuidv7(),
+      input.userId,
+      input.action,
+      input.planId,
+      input.audit.requestId,
+      input.audit.ip,
+      input.audit.userAgent,
+    ],
+  );
 }

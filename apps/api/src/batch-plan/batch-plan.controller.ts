@@ -21,6 +21,7 @@ import {
 } from "@nestjs/swagger";
 import {
   batchJobItemTypeSchema,
+  batchPlanActionRequestSchema,
   batchPlanCreateRequestSchema,
   batchPlanItemListResponseSchema,
   batchPlanResponseSchema,
@@ -32,6 +33,7 @@ import { createRequestId } from "@novel-brain/core";
 import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
+import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -144,6 +146,114 @@ export class BatchPlanController {
       data: page.items,
       requestId,
       meta: { nextCursor: page.nextCursor },
+    });
+  }
+
+  @Post(":planId/start")
+  @HttpCode(202)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiAcceptedResponse({ description: "Started batch plan", schema: planJsonSchema })
+  async start(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("planId") planId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return this.control(request, workId, branchId, planId, "start", idempotencyKey, body);
+  }
+
+  @Post(":planId/pause")
+  @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiOkResponse({ description: "Paused batch plan", schema: planJsonSchema })
+  async pause(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("planId") planId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return this.control(request, workId, branchId, planId, "pause", idempotencyKey, body);
+  }
+
+  @Post(":planId/resume")
+  @HttpCode(202)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiAcceptedResponse({ description: "Resumed batch plan", schema: planJsonSchema })
+  async resume(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("planId") planId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return this.control(request, workId, branchId, planId, "resume", idempotencyKey, body);
+  }
+
+  @Post(":planId/cancel")
+  @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiOkResponse({ description: "Cancelled batch plan", schema: planJsonSchema })
+  async cancel(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("planId") planId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return this.control(request, workId, branchId, planId, "cancel", idempotencyKey, body);
+  }
+
+  @Post(":planId/retry")
+  @HttpCode(202)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiAcceptedResponse({ description: "Retried failed batch work", schema: planJsonSchema })
+  async retry(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("planId") planId: string,
+    @Headers("idempotency-key") idempotencyKey: string | undefined,
+    @Body() body: unknown,
+  ) {
+    return this.control(request, workId, branchId, planId, "retry", idempotencyKey, body);
+  }
+
+  private async control(
+    request: AuthenticatedRequest,
+    workId: string,
+    branchId: string,
+    planId: string,
+    action: "start" | "pause" | "resume" | "cancel" | "retry",
+    idempotencyKey: string | undefined,
+    body: unknown,
+  ) {
+    const requestId = createRequestId();
+    batchPlanActionRequestSchema.parse(body ?? {});
+    return batchPlanResponseSchema.parse({
+      data: await this.service.control(
+        this.userId(request),
+        {
+          workId: uuidV7Schema.parse(workId),
+          branchId: uuidV7Schema.parse(branchId),
+        },
+        uuidV7Schema.parse(planId),
+        action,
+        idempotencyKey ?? "",
+        body,
+        {
+          requestId,
+          ip: getClientIp(request) || "unknown",
+          userAgent: String(request.headers["user-agent"] ?? "").trim() || "unknown",
+        },
+      ),
+      requestId,
+      meta: {},
     });
   }
 

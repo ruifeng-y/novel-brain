@@ -577,6 +577,7 @@ function uniqueSourceRefs(refs: ContextSourceRef[]): ContextSourceRef[] {
 
 export * from "./agent-runtime";
 export * from "./batch-plan";
+export * from "./batch-execution";
 export * from "./context-compiler";
 export * from "./world-simulation";
 export * from "./orchestrator";
