@@ -2,16 +2,23 @@
 
 import {
   ArrowLeft,
+  ArrowUpRight,
   BookMarked,
+  BookOpenCheck,
   Check,
   CheckCircle2,
   Circle,
+  Database,
+  Gauge,
   GitBranch,
+  GitCommitHorizontal,
   LoaderCircle,
   Mic2,
   PenLine,
   ScanSearch,
+  ShieldAlert,
   TriangleAlert,
+  Type,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
@@ -19,12 +26,17 @@ import {
   apiErrorSchema,
   chapterWorkspaceListResponseSchema,
   generationReadinessResponseSchema,
+  settingEntityListResponseSchema,
   styleDriftReportResponseSchema,
   styleDriftWorkspaceResponseSchema,
   styleProfileResponseSchema,
+  storyLedgerWorkspaceResponseSchema,
   workResponseSchema,
+  type ChapterWorkspace,
   type GenerationReadiness,
+  type SettingEntity,
   type StyleDriftWorkspace,
+  type StoryLedgerWorkspace,
   type Work,
   type WorkOverview as WorkOverviewData,
 } from "@novel-brain/contracts";
@@ -56,10 +68,24 @@ const genreLabels: Record<Work["genre"], string> = {
   urban: "都市",
 };
 
+const chapterStatusLabels: Record<ChapterWorkspace["status"], string> = {
+  planned: "待写",
+  writing: "写作中",
+  waiting_review: "待审核",
+  changes_requested: "需修改",
+  approved: "已批准",
+  locked: "已锁定",
+  published: "已发布",
+  rejected: "已驳回",
+};
+
 export function WorkOverview({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverviewData | null>(null);
   const [readiness, setReadiness] = useState<GenerationReadiness | null>(null);
   const [styleWorkspace, setStyleWorkspace] = useState<StyleDriftWorkspace | null>(null);
+  const [chapters, setChapters] = useState<ChapterWorkspace[]>([]);
+  const [entities, setEntities] = useState<SettingEntity[]>([]);
+  const [ledger, setLedger] = useState<StoryLedgerWorkspace | null>(null);
   const [styleError, setStyleError] = useState("");
   const [styleBusy, setStyleBusy] = useState(false);
   const [approvingProfileId, setApprovingProfileId] = useState<string | null>(null);
@@ -76,19 +102,35 @@ export function WorkOverview({ workId }: { workId: string }) {
         throw new Error(await readError(response));
       }
       const workData = workResponseSchema.parse(await response.json()).data;
-      const [readinessResponse, styleResponse] = await Promise.all([
-        fetch(`/api/v1/works/${workId}/branches/${workData.mainBranch.id}/readiness`, {
-          cache: "no-store",
-        }),
-        fetch(`/api/v1/works/${workId}/branches/${workData.mainBranch.id}/style`, {
-          cache: "no-store",
-        }),
-      ]);
+      const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
+      const [readinessResponse, styleResponse, chaptersResponse, entitiesResponse, ledgerResponse] =
+        await Promise.all([
+          fetch(`${basePath}/readiness`, { cache: "no-store" }),
+          fetch(`${basePath}/style`, { cache: "no-store" }),
+          fetch(`${basePath}/chapters`, { cache: "no-store" }),
+          fetch(`${basePath}/entities`, { cache: "no-store" }),
+          fetch(`${basePath}/ledger`, { cache: "no-store" }),
+        ]);
       if (!readinessResponse.ok) {
         throw new Error(await readError(readinessResponse));
       }
       setWork(workData);
       setReadiness(generationReadinessResponseSchema.parse(await readinessResponse.json()).data);
+      setChapters(
+        chaptersResponse.ok
+          ? chapterWorkspaceListResponseSchema.parse(await chaptersResponse.json()).data
+          : [],
+      );
+      setEntities(
+        entitiesResponse.ok
+          ? settingEntityListResponseSchema.parse(await entitiesResponse.json()).data
+          : [],
+      );
+      setLedger(
+        ledgerResponse.ok
+          ? storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data
+          : null,
+      );
       if (styleResponse.ok) {
         setStyleWorkspace(styleDriftWorkspaceResponseSchema.parse(await styleResponse.json()).data);
         setStyleError("");
@@ -229,6 +271,26 @@ export function WorkOverview({ workId }: { workId: string }) {
     );
   }
 
+  const totalWords = chapters.reduce((sum, chapter) => sum + chapter.wordCount, 0);
+  const confirmedSettings = entities.filter((entity) => entity.status === "locked").length;
+  const pendingReminders = readiness ? readiness.blockers + readiness.warnings : 0;
+  const readinessPercent =
+    work.readiness.total > 0
+      ? Math.round((work.readiness.completed / work.readiness.total) * 100)
+      : 0;
+  const latestChapterNumber = chapters.reduce(
+    (highest, chapter) => Math.max(highest, chapter.number),
+    0,
+  );
+  const nextChapter = chapters.find((chapter) => chapter.status === "planned") ?? null;
+  const nextChapterNumber = nextChapter?.number ?? latestChapterNumber + 1;
+  const nextChapterHref = nextChapter
+    ? `/workspace/${workId}/write?chapterId=${nextChapter.id}`
+    : `/workspace/${workId}/write`;
+  const recentChapters = [...chapters]
+    .sort((left, right) => right.number - left.number)
+    .slice(0, 3);
+
   return (
     <>
       <section className="page-head">
@@ -256,7 +318,7 @@ export function WorkOverview({ workId }: { workId: string }) {
               继续写作
             </button>
           ) : (
-            <Link className="btn btn-primary" href={`/workspace/${workId}/write`}>
+            <Link className="btn btn-primary" href={nextChapterHref}>
               <PenLine size={15} aria-hidden="true" />
               继续写作
             </Link>
@@ -287,13 +349,99 @@ export function WorkOverview({ workId }: { workId: string }) {
                 ? work.idea
                 : "还没有故事灵感"}
           </p>
+          <div className="overview-progress">
+            <div className="progress">
+              <span style={{ width: `${readinessPercent}%` }} />
+            </div>
+            <span>
+              准备度 {work.readiness.completed} / {work.readiness.total}
+            </span>
+          </div>
           <div className="overview-meta">
             <span>作品状态 {statusLabels[work.status]}</span>
             <span>创作线状态 {work.mainBranch.status === "active" ? "可写作" : "已归档"}</span>
             <span>当前版本 {work.mainBranch.headNodeId.slice(0, 8)}</span>
           </div>
         </div>
+        <div className="overview-next">
+          <span>下一章</span>
+          <strong>第 {nextChapterNumber} 章</strong>
+          <p>{nextChapter?.title || "待创建章节"}</p>
+          <Link className="text-btn small" href={nextChapterHref}>
+            进入写作台 <ArrowUpRight size={14} aria-hidden="true" />
+          </Link>
+          <small>
+            {pendingReminders > 0 ? `已准备 ${pendingReminders} 条提醒` : "暂无待处理提醒"}
+          </small>
+        </div>
       </article>
+
+      <div className="stat-grid overview-stats">
+        <article className="stat-card">
+          <span className="stat-icon jade">
+            <Type size={17} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>{totalWords.toLocaleString("zh-CN")}</strong>
+            <span>累计字数</span>
+          </div>
+          <small>已写 {chapters.length} 章</small>
+        </article>
+        <article className="stat-card">
+          <span className="stat-icon cinnabar">
+            <BookOpenCheck size={17} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>{chapters.length}</strong>
+            <span>已写章节</span>
+          </div>
+          <small>最近第 {latestChapterNumber || 0} 章</small>
+        </article>
+        <article className="stat-card">
+          <span className="stat-icon gold">
+            <Database size={17} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>{confirmedSettings}</strong>
+            <span>已确认设定</span>
+          </div>
+          <small>共 {entities.length} 条设定</small>
+        </article>
+        <article className="stat-card">
+          <span className="stat-icon blue">
+            <ShieldAlert size={17} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>{pendingReminders}</strong>
+            <span>待处理提醒</span>
+          </div>
+          <small>
+            {readiness?.blockers ?? 0} 阻断 · {readiness?.warnings ?? 0} 提醒
+          </small>
+        </article>
+        <article className="stat-card">
+          <span className="stat-icon gold">
+            <Gauge size={17} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>{readinessPercent}%</strong>
+            <span>准备度</span>
+          </div>
+          <small>
+            {work.readiness.completed} / {work.readiness.total} 项
+          </small>
+        </article>
+        <article className="stat-card">
+          <span className="stat-icon cinnabar">
+            <GitCommitHorizontal size={17} aria-hidden="true" />
+          </span>
+          <div>
+            <strong>{ledger?.summary.open ?? 0}</strong>
+            <span>未回收伏笔</span>
+          </div>
+          <small>{ledger?.summary.overdue ?? 0} 条逾期</small>
+        </article>
+      </div>
 
       <section className="overview-grid">
         <article className="panel overview-readiness">
@@ -373,6 +521,71 @@ export function WorkOverview({ workId }: { workId: string }) {
             </li>
           </ul>
         </aside>
+      </section>
+
+      <section className="overview-grid overview-grid-wide">
+        <section className="panel overview-chapters" aria-labelledby="overview-chapters-title">
+          <div className="panel-head">
+            <div>
+              <span className="panel-kicker">最近章节</span>
+              <h3 id="overview-chapters-title">写到哪儿了</h3>
+            </div>
+            <Link className="text-btn small" href={`/workspace/${workId}/write`}>
+              打开写作台 <ArrowUpRight size={14} aria-hidden="true" />
+            </Link>
+          </div>
+          {recentChapters.length === 0 ? (
+            <p className="style-drift-empty">还没有章节。可以先从大纲创建第一章。</p>
+          ) : (
+            <div className="overview-chapter-list">
+              {recentChapters.map((chapter) => (
+                <Link
+                  className="overview-chapter"
+                  href={`/workspace/${workId}/write?chapterId=${chapter.id}`}
+                  key={chapter.id}
+                >
+                  <span className="chapter-no">{chapter.number}</span>
+                  <span>
+                    <strong>{chapter.title}</strong>
+                    <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
+                  </span>
+                  <span className="badge">{chapterStatusLabels[chapter.status]}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <section className="panel overview-links" aria-labelledby="overview-links-title">
+          <div className="panel-head">
+            <div>
+              <span className="panel-kicker">快捷入口</span>
+              <h3 id="overview-links-title">下一步去哪里</h3>
+            </div>
+          </div>
+          <div className="quick-link-grid">
+            <Link href={`/workspace/${workId}/bible`}>
+              <BookMarked size={17} aria-hidden="true" />
+              <span>故事圣经</span>
+              <small>九卡与完成度</small>
+            </Link>
+            <Link href={`/workspace/${workId}/settings`}>
+              <GitBranch size={17} aria-hidden="true" />
+              <span>设定中心</span>
+              <small>人物、势力、地图</small>
+            </Link>
+            <Link href={`/workspace/${workId}/outline`}>
+              <PenLine size={17} aria-hidden="true" />
+              <span>大纲工作台</span>
+              <small>卷纲、幕纲与章纲</small>
+            </Link>
+            <Link href={`/workspace/${workId}/foreshadows`}>
+              <GitCommitHorizontal size={17} aria-hidden="true" />
+              <span>伏笔账本</span>
+              <small>埋设、推进与回收</small>
+            </Link>
+          </div>
+        </section>
       </section>
 
       <section className="panel overview-style" aria-labelledby="overview-style-title">

@@ -187,7 +187,9 @@ test("opens a planned chapter, saves twice and compares two versions", async ({
   await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
   await expect(page.getByRole("heading", { name: "写作台" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "一只手也能结印" })).toBeVisible();
-  await expect(page.getByText("已规划", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(".writing-chapter-heading").getByText("已规划", { exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("部分就绪")).toBeVisible();
   await expectAuthorFacingLanguage(page);
 
@@ -195,7 +197,10 @@ test("opens a planned chapter, saves twice and compares two versions", async ({
   await editor.fill("血从袖口滴下来，落在青石板上。");
   await expect(page.getByRole("button", { name: "保存版本" })).toBeEnabled();
   await page.getByRole("button", { name: "保存版本" }).click();
-  await expect(page.getByText("写作中", { exact: true })).toBeVisible();
+  await expect(
+    page.locator(".writing-chapter-heading").getByText("写作中", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("tab", { name: "版本" }).click();
   await expect(page.locator(".writing-version-list").getByText("第 1 版")).toBeVisible();
   await expect(page.getByText("已保存")).toBeVisible();
 
@@ -254,6 +259,7 @@ test("shows empty and error states and keeps the editor usable at four viewports
     await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
     await expect(page.getByRole("heading", { name: "一只手也能结印" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "章节正文" })).toBeVisible();
+    await page.getByRole("tab", { name: "本章参考" }).click();
     await expect(page.getByText("故事圣经尚未锁定")).toBeVisible();
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -453,6 +459,7 @@ test("runs a targeted revision, records feedback and keeps approval gates intact
     await page.getByRole("button", { name: "保存版本" }).click();
     await expect(page.getByText("已保存")).toBeVisible();
     await page.getByRole("button", { name: "检查本章", exact: true }).click();
+    await page.getByRole("tab", { name: "编辑建议" }).click();
 
     const revisions = page.locator(".writing-revisions");
     await expect(revisions.getByRole("heading", { name: "定向修订" })).toBeVisible();
@@ -467,7 +474,9 @@ test("runs a targeted revision, records feedback and keeps approval gates intact
     await expect(round.locator(".writing-revision-diff")).toContainText("修订前");
     await expect(round.locator(".writing-revision-diff")).toContainText("修订后");
     await expect(editor).toHaveValue(/修订块/);
-    await expect(page.getByText("写作中", { exact: true })).toBeVisible();
+    await expect(
+      page.locator(".writing-chapter-heading").getByText("写作中", { exact: true }),
+    ).toBeVisible();
 
     await round.getByLabel("原因").fill("接受这轮定向修订，不改动事实。");
     await round.getByRole("button", { name: "记录反馈" }).click();
@@ -537,7 +546,9 @@ test("generates a chapter with progress, references, citations, cost and checkpo
     await expect(generationPanel.getByText("已锁定故事圣经")).toBeVisible();
     await expect(generationPanel.locator(".writing-source-item").first()).toContainText("第 1 章");
     await expect(page.getByRole("textbox", { name: "章节正文" })).toHaveValue(/修订稿/);
+    await page.getByRole("tab", { name: "版本" }).click();
     await expect(page.locator(".writing-version-list").getByText("第 2 版")).toBeVisible();
+    await page.getByRole("tab", { name: "生成" }).click();
     await expectAuthorFacingLanguage(page);
 
     for (const width of [390, 900, 1180, 1440]) {
@@ -571,6 +582,7 @@ test("rewrites only the selected draft and applies a generated title at four vie
     await editor.fill(source);
     await page.getByRole("button", { name: "保存版本" }).click();
     await expect(page.getByText("已保存")).toBeVisible();
+    await page.getByRole("tab", { name: "版本" }).click();
     await expect(page.locator(".writing-version-list").getByText("第 1 版")).toBeVisible();
 
     await editor.evaluate(
@@ -596,6 +608,7 @@ test("rewrites only the selected draft and applies a generated title at four vie
     await expect(editor).toHaveValue(/钟声未响。$/);
     await expect(actionPanel.getByText(/改写范围：第 \d+–\d+ 字/)).toBeVisible();
     await expect(actionPanel.getByText("新版本已生成，原稿保留在版本历史")).toBeVisible();
+    await page.getByRole("tab", { name: "版本" }).click();
     await expect(page.locator(".writing-version-list").getByText("第 1 版")).toBeVisible();
     await expectAuthorFacingLanguage(page);
 
@@ -650,6 +663,7 @@ test("confirms two fact proposals without changing confirmed settings", async ({
     await expect(
       page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
     ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("tab", { name: "事实" }).click();
     const factsPanel = page.getByRole("region", { name: "本章事实" });
     await expect(factsPanel).toBeVisible();
     await expect(factsPanel.getByText("待确认", { exact: true }).first()).toBeVisible();
@@ -690,6 +704,7 @@ test("approves, confirms required facts and submits the chapter end to end", asy
     await expect(
       page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
     ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("tab", { name: "事实" }).click();
 
     const factsPanel = page.getByRole("region", { name: "本章事实" });
     const submit = factsPanel.getByRole("button", { name: "提交本章事实" });
@@ -705,6 +720,7 @@ test("approves, confirms required facts and submits the chapter end to end", asy
     await expect(
       page.locator(".writing-quality").getByText("当前版本没有阻断级质量问题。"),
     ).toBeVisible();
+    await page.getByRole("tab", { name: "事实" }).click();
     await factsPanel.getByRole("button", { name: "批准本章" }).click();
     await expect(factsPanel.getByRole("button", { name: "本章已批准" })).toBeDisabled();
     await expect(submit).toBeDisabled();
@@ -734,7 +750,9 @@ test("approves, confirms required facts and submits the chapter end to end", asy
     await submit.click();
     await expect(factsPanel.getByRole("button", { name: "本章事实已提交" })).toBeDisabled();
     await expect(factsPanel.getByText("摘要已更新")).toBeVisible();
-    await expect(page.getByText("已批准", { exact: true })).toBeVisible();
+    await expect(
+      page.locator(".writing-chapter-heading").getByText("已批准", { exact: true }),
+    ).toBeVisible();
 
     const settingsAfterSubmission = await page.request.get(`${branchPath}/facts`);
     const submittedSettings = (await settingsAfterSubmission.json()).data as Array<{

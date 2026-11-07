@@ -165,9 +165,11 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await page.getByLabel("装备位").fill("main_hand");
   await page.getByLabel("限制", { exact: true }).fill("不能离开主人超过七日。");
   await page.getByRole("button", { name: "创建设定" }).click();
+  const itemDetail = page.locator(".settings-entity-detail");
+  await expect(itemDetail.getByText("唯一")).toBeVisible();
+  await expect(itemDetail.getByText("main_hand")).toBeVisible();
+  await itemDetail.getByRole("button", { name: "返回设定中心" }).first().click();
   await expect(page.locator(".settings-entity-card", { hasText: "听潮剑" })).toBeVisible();
-  await expect(page.locator(".settings-entity-detail").getByText("唯一")).toBeVisible();
-  await expect(page.locator(".settings-entity-detail").getByText("main_hand")).toBeVisible();
 
   await page
     .locator(".settings-column-nav")
@@ -181,6 +183,10 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await page.getByLabel("持续时长", { exact: true }).fill("一夜");
   await page.getByLabel("事件", { exact: true }).fill("沈砚父母被杀，真相被伪装成自杀。");
   await page.getByRole("button", { name: "创建设定" }).click();
+  await expect(
+    page.locator(".settings-entity-detail").getByRole("heading", { name: "忘川村灭门" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "返回设定中心" }).first().click();
   await expect(page.locator(".settings-entity-card", { hasText: "忘川村灭门" })).toBeVisible();
 
   await page.locator(".settings-column-nav").getByRole("button", { name: /^人物/ }).click();
@@ -213,6 +219,7 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await expect(detail.getByText("补全沈砚状态")).toBeVisible();
   await expect(detail.getByText("第 48 章正文写明左臂恢复了一部分。").first()).toBeVisible();
 
+  await page.getByRole("button", { name: "返回设定中心" }).first().click();
   await page.locator(".settings-column-nav").getByRole("button", { name: /^世界/ }).click();
   await page.getByRole("button", { name: "新增世界规则" }).first().click();
   await page.getByLabel("名称").fill("天门只认完整记忆");
@@ -233,6 +240,54 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await detail.getByRole("button", { name: "确认提案" }).click();
   await expect(detail.getByText("已锁定").first()).toBeVisible();
   await expect(detail.getByRole("button", { name: "已锁定 · 编辑需修改请求" })).toBeDisabled();
+});
+
+test("filters settings by search and status and opens recent updates", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  await createEntity(page, work, {
+    type: "world_rule",
+    name: "天门只认完整记忆",
+    aliases: [],
+    summary: "失去关键记忆的人无法通过天门。",
+    description: "",
+    tags: [],
+    data: { rule: "主动抹除关键记忆会导致天门通行失败。" },
+  });
+  const locked = await createEntity(page, work, {
+    type: "world_rule",
+    name: "已锁定的规则",
+    aliases: [],
+    summary: "已经确认并锁定的世界规则。",
+    description: "",
+    tags: [],
+    data: { rule: "锁定后的规则只能通过修改请求调整。" },
+  });
+  await lockEntity(page, work, locked);
+
+  await page.goto(`/workspace/${work.id}/settings`);
+  await expect(page.locator(".settings-entity-card")).toHaveCount(2);
+  await expect(page.locator(".settings-recent-item")).toHaveCount(2);
+
+  await page.getByLabel("搜索设定").fill("已锁定");
+  await expect(page.locator(".settings-entity-card")).toHaveCount(1);
+  await expect(page.locator(".settings-entity-card", { hasText: "已锁定的规则" })).toBeVisible();
+
+  await page.getByLabel("按状态筛选").selectOption("draft");
+  await expect(page.getByText("没有匹配的设定")).toBeVisible();
+  await page.getByLabel("搜索设定").fill("");
+  await expect(page.locator(".settings-entity-card")).toHaveCount(1);
+  await expect(
+    page.locator(".settings-entity-card", { hasText: "天门只认完整记忆" }),
+  ).toBeVisible();
+
+  await page.getByLabel("按状态筛选").selectOption("all");
+  await expect(page.locator(".settings-entity-card")).toHaveCount(2);
+  await page.locator(".settings-recent-item", { hasText: "已锁定的规则" }).click();
+  await expect(page.getByRole("heading", { name: "已锁定的规则" })).toBeVisible();
 });
 
 test("holds the empty settings state at all four viewports", async ({

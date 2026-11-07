@@ -595,7 +595,7 @@ async function createProposal(
 
 async function openCharacter(page: Page, work: { id: string }, name = "沈砚") {
   await page.goto(`/workspace/${work.id}/settings`);
-  await page.getByRole("button", { name: /^人物/ }).click();
+  await page.locator(".settings-column-nav").getByRole("button", { name: /^人物/ }).click();
   await page
     .locator(".settings-entity-card")
     .filter({ has: page.getByRole("heading", { name, exact: true }) })
@@ -606,7 +606,7 @@ async function openCharacter(page: Page, work: { id: string }, name = "沈砚") 
 
 async function openEntity(page: Page, work: { id: string }, column: RegExp, name: string) {
   await page.goto(`/workspace/${work.id}/settings`);
-  await page.getByRole("button", { name: column }).click();
+  await page.locator(".settings-column-nav").getByRole("button", { name: column }).click();
   await page
     .locator(".settings-entity-card")
     .filter({ has: page.getByRole("heading", { name, exact: true }) })
@@ -616,10 +616,26 @@ async function openEntity(page: Page, work: { id: string }, column: RegExp, name
 }
 
 async function expectNoOverflow(page: Page) {
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(0);
+  const result = await page.evaluate(() => {
+    const viewportWidth = document.documentElement.clientWidth;
+    const overflow = document.documentElement.scrollWidth - viewportWidth;
+    const offenders = Array.from(document.querySelectorAll("body *"))
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.right > viewportWidth + 0.5 || rect.left < -0.5;
+      })
+      .slice(0, 5)
+      .map((element) => {
+        const className = element.getAttribute("class") ?? "";
+        const rect = element.getBoundingClientRect();
+        return `${element.tagName.toLowerCase()}.${className} [left=${rect.left.toFixed(1)}, right=${rect.right.toFixed(1)}, width=${rect.width.toFixed(1)}]`;
+      });
+    return { overflow, offenders, viewportWidth };
+  });
+  expect(
+    result.overflow,
+    `viewport=${result.viewportWidth}; overflowing elements: ${result.offenders.join(", ")}`,
+  ).toBeLessThanOrEqual(0);
 }
 
 async function capture(page: Page, testInfo: TestInfo, name: string) {
@@ -631,6 +647,48 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 
 test.beforeEach(async () => {
   await resetRateLimits();
+});
+
+test("opens entity detail as a full page with directory navigation and returns to settings", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "idea",
+    title: "忘川书",
+    idea: "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    genre: "xianxia",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+  await createCharacter(page, work, "沈砚");
+
+  await page.goto(`/workspace/${work.id}/settings`);
+  await page.locator(".settings-column-nav").getByRole("button", { name: /^人物/ }).click();
+  await page
+    .locator(".settings-entity-card", { hasText: "沈砚" })
+    .first()
+    .getByRole("button", { name: "查看设定详情" })
+    .click();
+
+  await expect(page).toHaveURL(
+    new RegExp(`/workspace/${work.id}/settings\\?column=characters&entityId=`, "u"),
+  );
+  await expect(page.locator(".entity-page-hero")).toBeVisible();
+  await expect(page.locator(".entity-page-layout")).toBeVisible();
+  await expect(page.locator(".settings-detail-rail")).toHaveCount(0);
+  await expect(page.locator(".entity-page-nav-item")).toHaveCount(5);
+  await expect(page.getByRole("heading", { name: "沈砚" })).toBeVisible();
+
+  const relationsTab = page.locator(".entity-page-nav-item", { hasText: "关系" });
+  await relationsTab.click();
+  await expect(relationsTab).toHaveClass(/active/);
+
+  await page.getByRole("button", { name: "返回设定中心" }).first().click();
+  await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
+  await expect(page).not.toHaveURL(/entityId=/);
+  await expect(page.locator(".entity-page-layout")).toHaveCount(0);
 });
 
 test("loads the dedicated character profile, relationships, state history and health", async ({
@@ -1315,7 +1373,10 @@ test("holds locked, proposal, long and error states for power and item domains",
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto(`/workspace/${work.id}/settings`);
-    await page.getByRole("button", { name: /^物品功法/ }).click();
+    await page
+      .locator(".settings-column-nav")
+      .getByRole("button", { name: /^物品功法/ })
+      .click();
     await expect(page.locator(".settings-entity-card")).toHaveCount(11);
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-item-long-${width}`);

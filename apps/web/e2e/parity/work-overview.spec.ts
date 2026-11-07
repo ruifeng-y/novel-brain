@@ -55,6 +55,10 @@ test("shows title, status, main branch, scale target and readiness", async ({ pa
   await expect(
     page.locator(".readiness-item").getByText("故事圣经", { exact: true }),
   ).toBeVisible();
+  await expect(page.locator(".overview-next")).toBeVisible();
+  await expect(page.locator(".stat-grid .stat-card")).toHaveCount(6);
+  await expect(page.locator(".overview-chapters")).toBeVisible();
+  await expect(page.locator(".overview-links")).toBeVisible();
 });
 
 test("overview handles error and four viewports", async ({ page, context }, testInfo) => {

@@ -114,6 +114,7 @@ test("renders locked, partial and ready readiness on the writing page", async ({
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${fixture.work.id}/write?chapterId=${fixture.chapterId}`);
+    await page.getByRole("tab", { name: "本章参考" }).click();
     await expect(page.locator("#writing-readiness")).toContainText("所有准备项已就绪");
     await expectNoOverflow(page);
     await testInfo.attach(`readiness-writing-ready-${width}`, {
@@ -159,6 +160,7 @@ test("renders locked, partial and ready readiness on the writing page", async ({
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/workspace/${fixture.work.id}/write?chapterId=${fixture.chapterId}`);
+  await page.getByRole("tab", { name: "本章参考" }).click();
   await expect(
     page.locator(`[data-readiness-key="outline:scene_information:${fixture.sceneId}"]`),
   ).toBeVisible();
@@ -234,7 +236,8 @@ test("targets the conflicting setting and denies cross-tenant access", async ({
       "u",
     ),
   );
-  await expect(page.getByRole("heading", { name: "人物档案" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "顾青" })).toBeVisible();
+  await expect(page.getByText("人物档案").first()).toBeVisible();
 
   const otherEmail = uniqueEmail("readiness-permission");
   const otherSession = await registerUser(

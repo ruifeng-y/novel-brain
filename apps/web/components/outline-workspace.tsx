@@ -53,7 +53,7 @@ import {
 import { getCsrfToken } from "../lib/csrf-client";
 import { GoldenThreePanel } from "./golden-three-panel";
 
-type OutlineView = "tree" | "board" | "tension" | "ledger" | "golden";
+type OutlineView = "tree" | "board" | "tension" | "ledger";
 
 interface CreateForm {
   level: OutlineLevel;
@@ -226,7 +226,9 @@ export function OutlineWorkspace({
           ? current
           : initialNodeId && outline.nodes.some((node) => node.id === initialNodeId)
             ? initialNodeId
-            : (outline.nodes[0]?.id ?? null),
+            : (outline.nodes.find((node) => node.level === "volume")?.id ??
+              outline.nodes[0]?.id ??
+              null),
       );
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "大纲加载失败。");
@@ -261,7 +263,9 @@ export function OutlineWorkspace({
         ? current
         : initialNodeId && outline.nodes.some((node) => node.id === initialNodeId)
           ? initialNodeId
-          : (outline.nodes[0]?.id ?? null),
+          : (outline.nodes.find((node) => node.level === "volume")?.id ??
+            outline.nodes[0]?.id ??
+            null),
     );
   }, [basePath, initialNodeId]);
 
@@ -413,6 +417,21 @@ export function OutlineWorkspace({
         (left.chapter?.number ?? 0) - (right.chapter?.number ?? 0) ||
         left.sortOrder - right.sortOrder,
     );
+  const volumeNodes = workspace.nodes
+    .filter((node) => node.level === "volume")
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+  const selectedVolume = findVolumeAncestor(workspace.nodes, selected?.id ?? null);
+  const activeVolume = selectedVolume ?? volumeNodes[0] ?? null;
+  const activeVolumeChapters = activeVolume
+    ? descendantChapterNodes(workspace.nodes, activeVolume.id)
+    : [];
+  const activeVolumeWordCount = activeVolumeChapters.reduce(
+    (sum, node) => sum + (node.chapter?.wordCount ?? 0),
+    0,
+  );
+  const activeVolumeIndex = activeVolume
+    ? volumeNodes.findIndex((node) => node.id === activeVolume.id) + 1
+    : 0;
   const tensionNodes = chapterNodes.filter((node) => node.tension !== null);
   const expectedParent = outlineParentLevelFor(createForm.level);
   const parentOptions = workspace.nodes.filter((node) => node.level === expectedParent);
@@ -490,15 +509,6 @@ export function OutlineWorkspace({
             <GitCommitHorizontal size={14} aria-hidden="true" />
             剧情账本
           </button>
-          <button
-            className={`seg${view === "golden" ? " active" : ""}`}
-            onClick={() => setView("golden")}
-            role="tab"
-            type="button"
-          >
-            <BookOpen size={14} aria-hidden="true" />
-            黄金三章
-          </button>
         </div>
         <div className="outline-plan-stats">
           <span>{workspace.stats.totalNodes} 个节点</span>
@@ -547,29 +557,115 @@ export function OutlineWorkspace({
       ) : null}
 
       {view === "tree" ? (
-        <div className="outline-plan-grid">
-          <aside className="panel outline-plan-panel outline-plan-tree-panel">
-            <div className="panel-head">
-              <div>
-                <span className="panel-kicker">五层结构</span>
-                <h2>全书到场景</h2>
+        <>
+          <div className="outline-plan-grid">
+            <aside className="panel outline-plan-panel outline-plan-tree-panel">
+              <div className="panel-head">
+                <div>
+                  <span className="panel-kicker">五层结构</span>
+                  <h2>全书到场景</h2>
+                </div>
+                <span className="badge">{workspace.stats.totalNodes}</span>
               </div>
-              <span className="badge">{workspace.stats.totalNodes}</span>
-            </div>
-            <div className="outline-plan-tree" role="tree" aria-label="五层大纲树">
-              {renderTree(null, 0)}
-            </div>
-          </aside>
+              <div className="outline-plan-tree" role="tree" aria-label="五层大纲树">
+                {renderTree(null, 0)}
+              </div>
+              {volumeNodes.length > 0 ? (
+                <div className="outline-plan-volume-list">
+                  <div className="panel-head">
+                    <div>
+                      <span className="panel-kicker">全书结构</span>
+                      <h3>卷列表</h3>
+                    </div>
+                    <span className="badge">{volumeNodes.length} 卷</span>
+                  </div>
+                  {volumeNodes.map((volume, index) => {
+                    const chapters = descendantChapterNodes(workspace.nodes, volume.id);
+                    const words = chapters.reduce(
+                      (sum, node) => sum + (node.chapter?.wordCount ?? 0),
+                      0,
+                    );
+                    return (
+                      <button
+                        className={`outline-plan-volume-item${volume.id === activeVolume?.id ? " active" : ""}`}
+                        key={volume.id}
+                        onClick={() => setSelectedId(volume.id)}
+                        type="button"
+                      >
+                        <span className="outline-plan-volume-index">
+                          {String(index + 1).padStart(2, "0")}
+                        </span>
+                        <span className="outline-plan-volume-copy">
+                          <strong>{volume.title}</strong>
+                          <small>
+                            {chapters.length} 章 · {words.toLocaleString("zh-CN")} 字
+                          </small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </aside>
 
-          <main className="outline-plan-panel outline-plan-main">
-            {selected ? renderSelected() : null}
-          </main>
+            <main className="outline-plan-panel outline-plan-main">
+              {activeVolume ? (
+                <section className="outline-plan-volume-plan" aria-label="当前卷章节">
+                  <div className="outline-plan-volume-head">
+                    <div>
+                      <span className="panel-kicker">第 {activeVolumeIndex} 卷</span>
+                      <h2>{activeVolume.title}</h2>
+                      <p>{activeVolume.summary || "还没有卷摘要。"}</p>
+                    </div>
+                    <div className="outline-plan-volume-stats">
+                      <span>{activeVolumeChapters.length} 章</span>
+                      <span>{activeVolumeWordCount.toLocaleString("zh-CN")} 字</span>
+                    </div>
+                  </div>
+                  {activeVolumeChapters.length === 0 ? (
+                    <p className="outline-plan-note">这一卷还没有章节。先在树中新增章节节点。</p>
+                  ) : (
+                    <div className="outline-plan-chapter-list">
+                      {activeVolumeChapters.map((chapter) => (
+                        <button
+                          className={`outline-plan-chapter-item${chapter.id === selectedId ? " active" : ""}${chapter.locked ? " locked" : ""}`}
+                          key={chapter.id}
+                          onClick={() => setSelectedId(chapter.id)}
+                          type="button"
+                        >
+                          <span className="chapter-no">{chapter.chapter?.number ?? "-"}</span>
+                          <span className="outline-plan-chapter-copy">
+                            <strong>{chapter.title}</strong>
+                            <small>
+                              {chapter.chapter?.brief?.goal ||
+                                chapter.summary ||
+                                "还没有章纲摘要。"}
+                            </small>
+                          </span>
+                          <span className="badge">
+                            {chapter.chapter
+                              ? chapterStatusLabels[chapter.chapter.status]
+                              : "未关联章节"}
+                          </span>
+                          <small className="outline-plan-chapter-words">
+                            {(chapter.chapter?.wordCount ?? 0).toLocaleString("zh-CN")} 字
+                          </small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              ) : null}
+              {selected ? renderSelected() : null}
+            </main>
 
-          <aside className="panel outline-plan-panel outline-plan-side">
-            {renderReadiness()}
-            {renderCreate()}
-          </aside>
-        </div>
+            <aside className="panel outline-plan-panel outline-plan-side">
+              {renderReadiness()}
+              {renderCreate()}
+            </aside>
+          </div>
+          <GoldenThreePanel branchId={work.mainBranch.id} workId={work.id} />
+        </>
       ) : null}
 
       {view === "board" ? (
@@ -677,10 +773,6 @@ export function OutlineWorkspace({
           </div>
           {renderLedger()}
         </section>
-      ) : null}
-
-      {view === "golden" ? (
-        <GoldenThreePanel branchId={work.mainBranch.id} workId={work.id} />
       ) : null}
     </div>
   );
@@ -872,7 +964,7 @@ export function OutlineWorkspace({
             />
           </label>
           <label>
-            <span>张力（0–100）</span>
+            <span>规划张力（0–100）</span>
             <input
               disabled={!editable}
               max="100"
@@ -888,7 +980,11 @@ export function OutlineWorkspace({
           </label>
         </div>
         <div className="outline-form-actions">
-          <span>{editable ? "保存后会追加一条版本记录。" : "解锁后才能保存。"}</span>
+          <span>
+            {editable
+              ? "规划张力用于观察节奏起伏，不是质量评分；保存后会追加一条版本记录。"
+              : "解锁后才能保存。"}
+          </span>
           <button className="btn btn-primary" disabled={!editable || busy === "node"} type="submit">
             <Save size={14} aria-hidden="true" />
             保存节点
@@ -915,7 +1011,7 @@ export function OutlineWorkspace({
         </div>
         <div className="outline-form-grid">
           <label>
-            <span>张力（0–100）</span>
+            <span>规划张力（0–100）</span>
             <input
               disabled={!editable}
               max="100"
@@ -931,7 +1027,7 @@ export function OutlineWorkspace({
           </label>
         </div>
         <div className="outline-form-actions">
-          <span>章节正文状态由写作台管理，这里只调整规划强度。</span>
+          <span>章节正文状态由写作台管理；规划张力用于观察节奏起伏，不是质量评分。</span>
           <button className="btn btn-primary" disabled={!editable || busy === "node"} type="submit">
             <Save size={14} aria-hidden="true" />
             保存
@@ -1311,7 +1407,7 @@ export function OutlineWorkspace({
             />
           </label>
           <label>
-            <span>张力（0–100）</span>
+            <span>规划张力（0–100）</span>
             <input
               disabled={!editable}
               max="100"
@@ -1327,7 +1423,11 @@ export function OutlineWorkspace({
           </label>
         </div>
         <div className="outline-form-actions">
-          <span>{editable ? "场景卡保存后会进入准备度检查。" : "解锁后才能保存。"}</span>
+          <span>
+            {editable
+              ? "规划张力用于观察节奏起伏，不是质量评分；场景卡保存后会进入准备度检查。"
+              : "解锁后才能保存。"}
+          </span>
           <button
             className="btn btn-primary"
             disabled={!editable || busy === "scene"}
@@ -1559,7 +1659,7 @@ export function OutlineWorkspace({
                   />
                 </label>
                 <label>
-                  <span>张力（0–100）</span>
+                  <span>规划张力（0–100）</span>
                   <input
                     max="100"
                     min="0"
@@ -1661,7 +1761,7 @@ export function OutlineWorkspace({
                   />
                 </label>
                 <label>
-                  <span>场景张力（0–100）</span>
+                  <span>场景规划张力（0–100）</span>
                   <input
                     max="100"
                     min="0"
@@ -1679,7 +1779,9 @@ export function OutlineWorkspace({
             ) : null}
           </div>
           <div className="outline-form-actions">
-            <span>拖动树节点可以调整顺序或移动到新的上级下。</span>
+            <span>
+              拖动树节点可以调整顺序或移动到新的上级下；规划张力用于观察节奏起伏，不是质量评分。
+            </span>
             <button className="btn btn-primary" disabled={busy === "create"} type="submit">
               {busy === "create" ? (
                 <LoaderCircle className="spin" size={14} aria-hidden="true" />
@@ -2240,6 +2342,53 @@ function isLockedByAncestor(nodes: OutlineNode[], nodeId: string): boolean {
     current = byId.get(current.parentId);
   }
   return false;
+}
+
+function findVolumeAncestor(nodes: OutlineNode[], nodeId: string | null): OutlineNode | null {
+  if (!nodeId) {
+    return null;
+  }
+  const byId = new Map(nodes.map((node) => [node.id, node]));
+  let current = byId.get(nodeId);
+  const seen = new Set<string>();
+  while (current && !seen.has(current.id)) {
+    if (current.level === "volume") {
+      return current;
+    }
+    seen.add(current.id);
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+  return null;
+}
+
+function descendantChapterNodes(nodes: OutlineNode[], ancestorId: string): OutlineNode[] {
+  const childrenByParent = new Map<string, OutlineNode[]>();
+  for (const node of nodes) {
+    if (!node.parentId) {
+      continue;
+    }
+    const siblings = childrenByParent.get(node.parentId) ?? [];
+    siblings.push(node);
+    childrenByParent.set(node.parentId, siblings);
+  }
+  const chapters: OutlineNode[] = [];
+  const visit = (parentId: string) => {
+    const children = (childrenByParent.get(parentId) ?? []).sort(
+      (left, right) => left.sortOrder - right.sortOrder,
+    );
+    for (const child of children) {
+      if (child.level === "chapter") {
+        chapters.push(child);
+      }
+      visit(child.id);
+    }
+  };
+  visit(ancestorId);
+  return chapters.sort(
+    (left, right) =>
+      (left.chapter?.number ?? 0) - (right.chapter?.number ?? 0) ||
+      left.sortOrder - right.sortOrder,
+  );
 }
 
 function entityRef(

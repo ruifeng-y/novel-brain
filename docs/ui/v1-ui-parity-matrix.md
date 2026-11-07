@@ -50,7 +50,7 @@ In the columns below, the prototype screenshot path and production test/golden p
 | changes | #changes | /workspace/[workId]/changes | M2 | #120 | 121–125, 97 | change request/impact/version/branch/merge; Changes/Version APIs | loading / error / conflict / partial / disabled / stale-version | `prototype/screens/v1-baseline/changes-{390,900,1180,1440}.png` | `apps/web/e2e/parity/changes.spec.ts` | `artifacts/ui/golden/changes/changes-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
 | export-publish | #export-publish | /workspace/[workId]/export | M3 | #129 | 130, 131 | export receipt/manifest, publish checks and reader preview; Export APIs | loading / empty / error / partial / expired / long | `prototype/screens/v1-baseline/export-publish-{390,900,1180,1440}.png` | `apps/web/e2e/parity/export-publish.spec.ts` | `artifacts/ui/golden/export-publish/export-publish-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
 | work-settings | #work-settings | /workspace/[workId]/work-settings | M1 | #142 | 134 | cover/tags/status/copy/archive/trash; Works APIs | loading / error / disabled / permission / readonly / confirmation | `prototype/screens/v1-baseline/work-settings-{390,900,1180,1440}.png` | `apps/web/e2e/parity/work-settings.spec.ts` | `artifacts/ui/golden/work-settings/work-settings-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
-| entity-detail | #entity-detail | /workspace/[workId]/settings (embedded detail) | M1 | #106 | 74, 107, 108, 144, 90 | entity/relationship/knowledge/resource state; domain APIs | loading / empty / error / disabled / locked / proposal / long | `prototype/screens/v1-baseline/entity-detail-{390,900,1180,1440}.png` | `apps/web/e2e/parity/entity-detail.spec.ts`, `apps/web/e2e/parity/m1-closeout.spec.ts` | `artifacts/ui/golden/entity-detail/entity-detail-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
+| entity-detail | #entity-detail | /workspace/[workId]/settings?column=<column>&entityId=<entityId> | M1 | #106 | 74, 107, 108, 144, 90 | entity/relationship/knowledge/resource state; domain APIs | loading / empty / error / disabled / locked / proposal / long | `prototype/screens/v1-baseline/entity-detail-{390,900,1180,1440}.png` | `apps/web/e2e/parity/entity-detail.spec.ts`, `apps/web/e2e/parity/m1-closeout.spec.ts` | `artifacts/ui/golden/entity-detail/entity-detail-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
 | account-settings | #account-settings | /workspace/settings · /workspace/settings/account | M0→M1/M3 | #69 | 141, 134, 90 | provider/model configuration, pen names, sessions, account export/delete; Users/ModelConfig APIs | loading / error / disabled / permission / partial / rate-limit | `prototype/screens/v1-baseline/account-settings-{390,900,1180,1440}.png` | `apps/web/e2e/parity/account-settings.spec.ts`, `apps/web/e2e/parity/m1-closeout.spec.ts` | `artifacts/ui/golden/account-settings/account-settings-{390,900,1180,1440}.png` (after author sign-off) | production-built |
 | help | #help | /help | M3 | #131 | 104 | help/FAQ content and navigation; static content contract | static / empty / error | `prototype/screens/v1-baseline/help-{390,900,1180,1440}.png` | `apps/web/e2e/parity/help.spec.ts` | `artifacts/ui/golden/help/help-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
 | legal | #legal | /legal/* | M3 | #131 | 104 | privacy/terms/AI disclosure/appeal content; static + moderation contract | static / error | `prototype/screens/v1-baseline/legal-{390,900,1180,1440}.png` | `apps/web/e2e/parity/legal.spec.ts` | `artifacts/ui/golden/legal/legal-{390,900,1180,1440}.png` (after author sign-off) | production-pending |
@@ -58,14 +58,26 @@ In the columns below, the prototype screenshot path and production test/golden p
 
 > #145 将 outline 扩展为五层大纲、卷契约和场景卡，页面结构与动作已变化；M0 的 outline golden 不再代表当前生产页面，状态回退为 `production-built`，需重新拍摄并完成作者视觉签收后才能回到 `parity-verified`。
 >
+> entity-detail 按原型保持独立整页，而不是设定中心右侧详情栏：页面结构为返回按钮、档案 Hero、左侧五段目录和右侧分区内容，URL 使用 `?column=<column>&entityId=<entityId>` 保留可回退的详情状态。
+>
+> 2026-11-07 M1 结构审计修复了 work-overview（补回三列 Hero、统计卡、最近章节、快捷入口）和 settings（补回搜索、状态筛选、最近更新）的未授权结构漂移；详细对照见 `docs/ui/m1-parity-audit.md`。这两页的 M1 生产 golden 仍需重新拍摄和作者签收。
+>
 > #146 为 outline 增加剧情账本视图，并新建 foreshadows 生产页；foreshadows 的 four-viewport Playwright 与作者语言扫描已落地，尚待作者视觉签收后才能回到 `parity-verified`。
 
 > #147 在 outline 增加黄金三章候选比较、作者选择、六维失败阻断、例外理由和锁定后风格基线。生产动作与 `apps/web/e2e/parity/golden-three.spec.ts` 四档视口证据已落地；outline 生产 golden 仍需在 #145/#147 布局稳定后重新拍摄并签收。
+>
+> outline 的“规划张力（0–100）”字段已由作者批准保留：它用于驱动张力曲线、观察章节/场景节奏起伏，不是质量评分。原型节点编辑器和 V1 需求字段清单已同步补入该字段；生产标签与帮助文案同步为“规划张力”。
+>
+> 2026-11-07：outline 结构审计补回左侧卷列表、中央卷章节列表和黄金三章页内区块，移除黄金三章第 5 个 tab；章节/场景编辑表单仍留在中央以保证宽度，右侧保留准备度/新增节点，待作者签收确认。
+>
+> outline 的账本视图生产为三列总览（剧情线 / 伏笔 / 人物弧），原型为三个子 tab；签收前需确认是否改为子 tab。
 >
 > #117 在 writing 增加真实“检查本章”、六维证据、结构化 Finding、P0/P1 门禁和 P2/P3 忽略理由/恢复生命周期。`apps/web/e2e/parity/writing.spec.ts` 已覆盖四档视口；writing 生产 golden 仍需在 #116/#117 布局稳定后重新拍摄并签收。
 >
 > #119 在 work-overview 增加声线/文风基线批准与跨卷趋势，在 writing 增加单章漂移、证据定位和成长依据。`apps/web/e2e/parity/work-overview.spec.ts` 与 `apps/web/e2e/parity/writing.spec.ts` 已覆盖四档视口；两个页面的生产 golden 均需在新布局稳定后重新拍摄并签收，当前不沿用旧 `parity-verified` 状态。
 > #118 在 writing 增加低中风险问题选择、定向修订轮次、前后差异、未解决项和作者接受/拒绝/再改写反馈。`apps/web/e2e/parity/writing.spec.ts` 已覆盖两轮边界外的真实修订与事实提交门禁反例；writing 生产 golden 仍需在 #116–#118 布局稳定后重新拍摄并签收。
+>
+> 2026-11-07：writing 右侧信息区已按原型改为 9 个 tab（编辑建议 / 本章参考 / 连续性 / 伏笔 / 事实 / 人物 / 质量 / 生成 / 版本），所有 tab 仍消费真实 API；伏笔和人物 tab 新增读取 `/ledger`、`/entities`。左侧卷导航/搜索和顶部题材规则条已补齐；原型题材切换按钮属于演示内容，不进入生产。编辑建议 tab 目前复用真实质量/修订面板，静态建议卡排版待签收确认。
 >
 > #90 在 work-overview 增加真实卷末审计：选择卷、运行审计、定位章节/账本证据、记录作者通过或要求修改。`apps/web/e2e/parity/m1-closeout.spec.ts` 对 bible/settings/entity-detail/outline/foreshadows/writing/work-overview/account-settings 做四档视口、作者语言和溢出检查，并仅附加截图。上述页面的生产 golden 与作者视觉签收仍待完成；#90 不把任何页面提升为 `parity-verified`。
 
@@ -75,7 +87,7 @@ In the columns below, the prototype screenshot path and production test/golden p
 - Supporting feature issues must add action/API/state evidence to the page spec and must not declare the whole page parity-verified on their own.
 - Package issues #85/#88/#89/#94/#95/#96/#98–#103 integrate cross-page work; they are not substitutes for primary leaf owners.
 - #104 is the global closeout for all 17 production page rows; #79 closes the M0 subset. Both aggregate evidence and may not fabricate missing page evidence.
-- Entity detail is embedded inside Settings, not a new route. It remains a distinct page contract/state surface because the prototype contains a separately testable page panel.
+- Entity detail is a full-page state inside the Settings route, selected by `?column=<column>&entityId=<entityId>`; it is not a separate route. It remains a distinct page contract/state surface because the prototype contains a separately testable page panel.
 - states is prototype-only and does not count as a production route or release page.
 
 ## 5. Page completion checklist

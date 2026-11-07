@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Pencil,
   Plus,
+  Search,
   Shield,
   SlidersHorizontal,
   Sparkles,
@@ -23,7 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import {
   apiErrorSchema,
   characterDetailResponseSchema,
@@ -130,6 +131,32 @@ type WorldDomainDetail =
   | { kind: "mechanism"; value: SpecialMechanism }
   | { kind: "item"; value: ItemDomain };
 
+type EntityDetailSection = "overview" | "relations" | "history" | "references" | "health";
+
+const ENTITY_DETAIL_TABS: Array<{
+  key: EntityDetailSection;
+  label: string;
+  hint: string;
+}> = [
+  { key: "overview", label: "基本信息", hint: "摘要、状态、认知" },
+  { key: "relations", label: "关系", hint: "类型、对象、信息差" },
+  { key: "history", label: "状态历史", hint: "按章节追踪变化" },
+  { key: "references", label: "引用", hint: "正文、大纲、伏笔" },
+  { key: "health", label: "体检", hint: "完整度与冲突" },
+];
+
+const ENTITY_DETAIL_TAB_LABELS: Partial<
+  Record<SettingEntityType, Partial<Record<EntityDetailSection, string>>>
+> = {
+  world_rule: { relations: "规则关联", history: "规则变化" },
+  faction: { relations: "势力关系", history: "兴衰时间线" },
+  map: { relations: "地点关系", history: "控制变化" },
+  power_system: { relations: "体系关联", history: "境界变化" },
+  golden_finger: { relations: "机制关联", history: "所有权变化" },
+  item: { relations: "关联", history: "流转历史" },
+  timeline_event: { relations: "时间关联", history: "关键节点" },
+};
+
 type FieldFormState = {
   key: string;
   label: string;
@@ -177,6 +204,17 @@ const typeDescriptions: Record<SettingTypeColumn, string> = {
   golden_finger: "规则、代价、限制与成长",
   item: "品阶、效果、代价、归属与限制",
   timeline_event: "纪元、故事时间、持续时长与事件",
+};
+
+const entityHeroDescriptions: Record<SettingEntityType, string> = {
+  world_rule: "不可违背的世界边界",
+  character: "身体状态、知识边界与关系",
+  faction: "组织立场、控制范围与关系",
+  map: "区域、路径与场景边界",
+  power_system: "层级、路径、突破条件与代价",
+  golden_finger: "能力规则、代价与限制",
+  item: "品阶、效果、归属与限制",
+  timeline_event: "纪元、故事时间与关键节点",
 };
 
 type SettingTypeColumn = SettingEntityType;
@@ -389,6 +427,8 @@ export function SettingsCenter({
   const [notice, setNotice] = useState("");
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | SettingEntity["status"]>("all");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -444,6 +484,24 @@ export function SettingsCenter({
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    function handlePopState() {
+      const params = new URLSearchParams(window.location.search);
+      const entityId = params.get("entityId");
+      const column = params.get("column");
+      const nextColumn = COLUMNS.find((candidate) => candidate.key === column);
+      if (nextColumn) {
+        setActiveColumn(nextColumn.key);
+      }
+      setView("columns");
+      setEditor(null);
+      setSelectedId(entityId);
+    }
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const refreshDetail = useCallback(
     async (entityId: string, entityType: SettingEntityType) => {
@@ -595,6 +653,43 @@ export function SettingsCenter({
   const selected =
     view === "columns" ? (entities.find((entity) => entity.id === selectedId) ?? null) : null;
 
+  const openEntityDetail = useCallback(
+    (entityId: string, column?: ColumnKey) => {
+      const entity = entities.find((candidate) => candidate.id === entityId);
+      const resolvedColumn = column ?? (entity ? columnForType(entity.type) : activeColumn);
+      setSelectedId(entityId);
+      setActiveColumn(resolvedColumn);
+      setView("columns");
+      if (typeof window !== "undefined") {
+        const url = settingsUrl(workId, resolvedColumn, entityId);
+        const alreadyInDetail = Boolean(window.history.state?.novelBrainEntityDetail);
+        window.history[alreadyInDetail ? "replaceState" : "pushState"](
+          { ...window.history.state, novelBrainEntityDetail: true },
+          "",
+          url,
+        );
+      }
+    },
+    [activeColumn, entities, workId],
+  );
+
+  const closeEntityDetail = useCallback(() => {
+    setSelectedId(null);
+    setEditor(null);
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (window.history.state?.novelBrainEntityDetail) {
+      window.history.back();
+      return;
+    }
+    window.history.replaceState(
+      { ...window.history.state, novelBrainEntityDetail: false },
+      "",
+      settingsUrl(workId, activeColumn),
+    );
+  }, [activeColumn, workId]);
+
   async function refreshProjection() {
     if (!work) {
       return;
@@ -628,9 +723,8 @@ export function SettingsCenter({
     try {
       if (editor.type === "faction" || editor.type === "map") {
         const created = await createWorldEntity(work, editor);
-        setSelectedId(created.id);
-        setActiveColumn(columnForType(editor.type));
         setEditor(null);
+        openEntityDetail(created.id, columnForType(editor.type));
         setNotice(`“${created.name}”已创建。`);
         await refreshProjection();
         return;
@@ -641,9 +735,8 @@ export function SettingsCenter({
         editor.type === "item"
       ) {
         const created = await createPowerItemEntity(work, editor);
-        setSelectedId(created.id);
-        setActiveColumn(columnForType(editor.type));
         setEditor(null);
+        openEntityDetail(created.id, columnForType(editor.type));
         setNotice(`“${created.name}”已创建。`);
         await refreshProjection();
         return;
@@ -655,9 +748,8 @@ export function SettingsCenter({
         "设定创建失败。",
       );
       setEntities((current) => [...current, created]);
-      setSelectedId(created.id);
-      setActiveColumn(columnForType(created.type));
       setEditor(null);
+      openEntityDetail(created.id, columnForType(created.type));
       setNotice(`“${created.name}”已创建。`);
       await refreshProjection();
     } catch (caught) {
@@ -700,8 +792,8 @@ export function SettingsCenter({
         editor.type === "item"
       ) {
         const updated = await updatePowerItemEntity(work, editor);
-        setSelectedId(updated.id);
         setEditor(null);
+        openEntityDetail(updated.id, columnForType(editor.type));
         setNotice(`“${updated.name}”已保存。`);
         await refreshProjection();
         await refreshDetail(updated.id, editor.type);
@@ -716,8 +808,8 @@ export function SettingsCenter({
       setEntities((current) =>
         current.map((entity) => (entity.id === updated.id ? updated : entity)),
       );
-      setSelectedId(updated.id);
       setEditor(null);
+      openEntityDetail(updated.id, columnForType(updated.type));
       setNotice(`“${updated.name}”已保存。`);
       await refreshProjection();
     } catch (caught) {
@@ -875,8 +967,8 @@ export function SettingsCenter({
       setEntities((current) =>
         current.map((candidate) => (candidate.id === locked.id ? locked : candidate)),
       );
-      setSelectedId(locked.id);
       setEditor(null);
+      openEntityDetail(locked.id, columnForType(locked.type));
       setNotice(`“${locked.name}”已锁定并进入已确认设定。`);
       await refreshProjection();
     } catch (caught) {
@@ -905,7 +997,7 @@ export function SettingsCenter({
         throw new Error("设定删除失败。");
       }
       setEntities((current) => current.filter((candidate) => candidate.id !== entity.id));
-      setSelectedId(null);
+      closeEntityDetail();
       setNotice(`“${entity.name}”已删除。`);
       await refreshProjection();
     } catch (caught) {
@@ -920,6 +1012,9 @@ export function SettingsCenter({
     setView("columns");
     setEditor(null);
     setActionError("");
+    if (typeof window !== "undefined") {
+      window.history.replaceState({ ...window.history.state }, "", settingsUrl(workId, key));
+    }
   }
 
   function beginCreate(type: SettingEntityType = "world_rule") {
@@ -994,8 +1089,69 @@ export function SettingsCenter({
     );
   }
 
+  if (selected && !editor) {
+    return (
+      <>
+        {actionError ? (
+          <div className="settings-center-notice danger" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{actionError}</span>
+          </div>
+        ) : null}
+        {notice ? (
+          <div className="settings-center-notice success" role="status">
+            <Check size={16} aria-hidden="true" />
+            <span>{notice}</span>
+          </div>
+        ) : null}
+        <EntityDetail
+          changeRequests={changeRequests}
+          busy={busy}
+          characterDetail={characterDetail}
+          characterDetailError={characterDetailError}
+          characterDetailLoading={characterDetailLoading}
+          customFieldDefinitions={customFields}
+          entity={selected}
+          key={selected.id}
+          onBack={closeEntityDetail}
+          onChangeRequest={() => beginChangeRequest(selected)}
+          onCreateProposal={(input) => createProposal(selected, input)}
+          onDelete={() => deleteEntity(selected)}
+          onDecideProposal={(proposal, decision, reason) =>
+            decideProposal(selected, proposal, decision, reason)
+          }
+          onEdit={() => beginEdit(selected)}
+          onEditAlias={() => beginEdit(selected, "alias")}
+          onLock={() => lockEntity(selected)}
+          onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
+          onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
+          proposals={proposals}
+          worldDetail={worldDetail}
+          worldDetailError={worldDetailError}
+          worldDetailLoading={worldDetailLoading}
+        />
+      </>
+    );
+  }
+
   const activeColumnMeta = COLUMNS.find((column) => column.key === activeColumn) ?? COLUMNS[0]!;
-  const visibleEntities = entitiesForColumn(entities, activeColumn);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const columnEntities = entitiesForColumn(entities, activeColumn);
+  const visibleEntities = columnEntities.filter((entity) => {
+    if (statusFilter !== "all" && entity.status !== statusFilter) {
+      return false;
+    }
+    if (!normalizedQuery) {
+      return true;
+    }
+    return [entity.name, entity.summary, entity.description, ...entity.aliases].some((value) =>
+      value.toLowerCase().includes(normalizedQuery),
+    );
+  });
+  const hasActiveFilter = normalizedQuery.length > 0 || statusFilter !== "all";
+  const recentEntities = [...entities]
+    .sort((left, right) => Date.parse(right.updatedAt) - Date.parse(left.updatedAt))
+    .slice(0, 5);
 
   return (
     <>
@@ -1038,10 +1194,6 @@ export function SettingsCenter({
             <Check size={15} aria-hidden="true" />
             查看已确认设定
           </button>
-          <button className="btn btn-primary" onClick={() => beginCreate()} type="button">
-            <Plus size={15} aria-hidden="true" />
-            新增设定
-          </button>
         </div>
       </section>
 
@@ -1056,6 +1208,66 @@ export function SettingsCenter({
           <Check size={16} aria-hidden="true" />
           <span>{notice}</span>
         </div>
+      ) : null}
+
+      {view === "columns" && !editor ? (
+        <>
+          <div className="settings-toolbar">
+            <label className="mini-search">
+              <Search size={15} aria-hidden="true" />
+              <input
+                aria-label="搜索设定"
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="搜索名称、别名或摘要"
+                value={searchQuery}
+              />
+            </label>
+            <select
+              aria-label="按状态筛选"
+              className="select"
+              onChange={(event) =>
+                setStatusFilter(event.target.value as "all" | SettingEntity["status"])
+              }
+              value={statusFilter}
+            >
+              <option value="all">全部状态</option>
+              <option value="draft">草稿</option>
+              <option value="proposed">待确认</option>
+              <option value="locked">已锁定</option>
+              <option value="discarded">已废弃</option>
+            </select>
+            <button className="btn btn-primary" onClick={() => beginCreate()} type="button">
+              <Plus size={15} aria-hidden="true" />
+              新增设定
+            </button>
+          </div>
+
+          {recentEntities.length > 0 ? (
+            <section className="panel settings-recent" aria-label="最近更新的设定">
+              <div className="settings-recent-head">
+                <span className="panel-kicker">最近更新</span>
+                <strong>继续处理手头的设定</strong>
+              </div>
+              <div className="settings-recent-list">
+                {recentEntities.map((entity) => (
+                  <button
+                    aria-label={`打开${entity.name}的设定详情`}
+                    className="settings-recent-item"
+                    key={entity.id}
+                    onClick={() => openEntityDetail(entity.id)}
+                    type="button"
+                  >
+                    <span>{typeLabels[entity.type]}</span>
+                    <strong>{entity.name}</strong>
+                    <small>
+                      {statusLabels[entity.status]} · 第 {entity.version} 版
+                    </small>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </>
       ) : null}
 
       <div className="settings-workspace-grid">
@@ -1133,68 +1345,38 @@ export function SettingsCenter({
               </div>
 
               {visibleEntities.length === 0 ? (
-                <ColumnEmptyState
-                  label={activeColumnMeta.contentLabel}
-                  onCreate={() => beginCreate(typeForColumn(activeColumn))}
-                />
+                hasActiveFilter ? (
+                  <div className="panel settings-column-empty">
+                    <Search size={18} aria-hidden="true" />
+                    <h2>没有匹配的设定</h2>
+                    <p>试试换一个关键词，或把状态筛选切回全部。</p>
+                    <button
+                      className="btn btn-ghost btn-small"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setStatusFilter("all");
+                      }}
+                      type="button"
+                    >
+                      清除筛选
+                    </button>
+                  </div>
+                ) : (
+                  <ColumnEmptyState
+                    label={activeColumnMeta.contentLabel}
+                    onCreate={() => beginCreate(typeForColumn(activeColumn))}
+                  />
+                )
               ) : (
                 <div className="settings-entity-list">
                   {visibleEntities.map((entity) => (
-                    <EntityCard entity={entity} key={entity.id} onOpen={setSelectedId} />
+                    <EntityCard entity={entity} key={entity.id} onOpen={openEntityDetail} />
                   ))}
                 </div>
               )}
             </section>
           )}
         </main>
-
-        <aside className="settings-detail-rail" aria-label="设定详情">
-          {view === "confirmed" ? (
-            <section className="panel settings-detail-empty">
-              <Lock size={18} aria-hidden="true" />
-              <h2>已确认内容只读</h2>
-              <p>这里展示已经锁定的设定，修改需要回到对应栏目发起新的修改。</p>
-            </section>
-          ) : view === "fields" ? (
-            <section className="panel settings-detail-empty">
-              <SlidersHorizontal size={18} aria-hidden="true" />
-              <h2>字段变更只追加</h2>
-              <p>停用字段会保留历史值；新增字段不会破坏已有设定。</p>
-            </section>
-          ) : selected ? (
-            <EntityDetail
-              changeRequests={changeRequests}
-              busy={busy}
-              characterDetail={characterDetail}
-              characterDetailError={characterDetailError}
-              characterDetailLoading={characterDetailLoading}
-              customFieldDefinitions={customFields}
-              entity={selected}
-              key={selected.id}
-              onChangeRequest={() => beginChangeRequest(selected)}
-              onCreateProposal={(input) => createProposal(selected, input)}
-              onDelete={() => deleteEntity(selected)}
-              onDecideProposal={(proposal, decision, reason) =>
-                decideProposal(selected, proposal, decision, reason)
-              }
-              onEdit={() => beginEdit(selected)}
-              onEditAlias={() => beginEdit(selected, "alias")}
-              onLock={() => lockEntity(selected)}
-              onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
-              onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
-              proposals={proposals}
-              worldDetail={worldDetail}
-              worldDetailError={worldDetailError}
-              worldDetailLoading={worldDetailLoading}
-            />
-          ) : (
-            <section className="panel settings-detail-empty">
-              <Circle size={18} aria-hidden="true" />
-              <h2>选择一条设定</h2>
-              <p>查看状态、来源、版本和类型专属字段。</p>
-            </section>
-          )}
-        </aside>
       </div>
     </>
   );
@@ -2062,6 +2244,7 @@ function EntityDetail({
   characterDetailLoading,
   customFieldDefinitions,
   entity,
+  onBack,
   onChangeRequest,
   onCreateProposal,
   onDecideProposal,
@@ -2083,6 +2266,7 @@ function EntityDetail({
   characterDetailLoading: boolean;
   customFieldDefinitions: CustomFieldDefinition[];
   entity: SettingEntity;
+  onBack: () => void;
   onChangeRequest: () => void;
   onCreateProposal: (input: ProposalInput) => void;
   onDecideProposal: (
@@ -2115,507 +2299,865 @@ function EntityDetail({
       (definition.enabled || entity.customFields[definition.key] !== undefined) &&
       (definition.appliesTo === "all" || definition.appliesTo === entity.type),
   );
+  const [activeSection, setActiveSection] = useState<EntityDetailSection>("overview");
+  const tabLabels = {
+    overview: "基本信息",
+    relations: "关系",
+    history: "状态历史",
+    references: "引用",
+    health: "体检",
+    ...ENTITY_DETAIL_TAB_LABELS[entity.type],
+  };
+  const findings =
+    entity.type === "character"
+      ? (characterDetail?.health ?? [])
+      : (worldDetail?.value.health ?? []);
+  const detailLoading = entity.type === "character" ? characterDetailLoading : worldDetailLoading;
+  const detailError = entity.type === "character" ? characterDetailError : worldDetailError;
+  const blockerCount = findings.filter((finding) => finding.severity === "blocker").length;
+  const warningCount = findings.filter((finding) => finding.severity === "warning").length;
+
+  function scrollToSection(section: EntityDetailSection) {
+    setActiveSection(section);
+    if (section === "overview") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    document
+      .getElementById(`entity-section-${section}`)
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  const actionButtons = locked ? (
+    <>
+      <button className="btn btn-ghost btn-small" disabled type="button">
+        <Lock size={14} aria-hidden="true" />
+        已锁定 · 别名需修改请求
+      </button>
+      <button className="btn btn-ghost btn-small" disabled type="button">
+        <Lock size={14} aria-hidden="true" />
+        已锁定 · 删除需修改请求
+      </button>
+      <button className="btn btn-primary btn-small" disabled type="button">
+        <Lock size={14} aria-hidden="true" />
+        已锁定 · 编辑需修改请求
+      </button>
+      <button className="btn btn-primary btn-small" onClick={onChangeRequest} type="button">
+        <GitPullRequest size={14} aria-hidden="true" />
+        发起修改请求
+      </button>
+    </>
+  ) : proposed ? (
+    <p className="settings-inline-note">待确认提案正在等待裁决，完成后才能继续编辑。</p>
+  ) : discarded ? (
+    <p className="settings-inline-note">这条设定已废弃，不能再编辑或锁定。</p>
+  ) : (
+    <>
+      <button className="btn btn-ghost btn-small" onClick={onEditAlias} type="button">
+        <Pencil size={14} aria-hidden="true" />
+        编辑别名
+      </button>
+      <button
+        className="btn btn-ghost btn-small"
+        disabled={busy === `delete-${entity.id}`}
+        onClick={onDelete}
+        type="button"
+      >
+        删除设定
+      </button>
+      <button className="btn btn-ghost btn-small" onClick={onEdit} type="button">
+        <Pencil size={14} aria-hidden="true" />
+        编辑设定
+      </button>
+      <button
+        className="btn btn-primary btn-small"
+        disabled={busy === `lock-${entity.id}`}
+        onClick={onLock}
+        type="button"
+      >
+        {busy === `lock-${entity.id}` ? (
+          <LoaderCircle className="spin" size={14} aria-hidden="true" />
+        ) : (
+          <Lock size={14} aria-hidden="true" />
+        )}
+        锁定设定
+      </button>
+      <button
+        className="btn btn-ghost btn-small"
+        onClick={() => {
+          setShowProposalForm((current) => !current);
+          window.setTimeout(() => scrollToSection("references"), 0);
+        }}
+        type="button"
+      >
+        <MessageSquare size={14} aria-hidden="true" />
+        提交提案
+      </button>
+    </>
+  );
+
   return (
-    <section className="panel settings-entity-detail" aria-labelledby="settings-detail-title">
-      <div className="settings-detail-head">
-        <div>
-          <span className="panel-kicker">{typeLabels[entity.type]}</span>
-          <h2 id="settings-detail-title">{entity.name}</h2>
+    <div className="entity-detail-page settings-entity-detail">
+      <div className="entity-page-head">
+        <button className="text-btn entity-back-btn" onClick={onBack} type="button">
+          <ArrowLeft size={15} aria-hidden="true" />
+          返回设定中心
+        </button>
+        <div className="entity-page-hero">
+          <span
+            className={`entity-page-avatar${entity.type === "character" ? " is-character" : ""}`}
+            aria-hidden="true"
+          >
+            {entity.name.slice(0, 1) || "设"}
+          </span>
+          <div className="entity-page-title">
+            <span className="panel-kicker">{typeLabels[entity.type]}</span>
+            <div className="entity-page-title-row">
+              <h1>{entity.name}</h1>
+              <span className={`badge settings-status-${entity.status}`}>
+                {statusLabels[entity.status]}
+              </span>
+            </div>
+            <p>{entityHeroDescriptions[entity.type]}</p>
+            <div className="entity-page-meta">
+              <span>
+                <small>别名</small>
+                {entity.aliases.length > 0 ? entity.aliases.join("、") : "暂无别名"}
+              </span>
+              <span>
+                <small>类型</small>
+                {typeLabels[entity.type]}
+              </span>
+              <span>
+                <small>作用域</small>全书
+              </span>
+              <span>
+                <small>来源</small>
+                {sourceLabels[entity.source]}
+              </span>
+              <span>
+                <small>版本</small>第 {entity.version} 版
+              </span>
+            </div>
+          </div>
+          <div className="head-actions entity-page-actions">{actionButtons}</div>
         </div>
-        <span className={`badge settings-status-${entity.status}`}>
-          {statusLabels[entity.status]}
-        </span>
       </div>
-      <p className="settings-detail-summary">{entity.summary}</p>
-      <dl className="settings-detail-meta">
-        <div>
-          <dt>来源</dt>
-          <dd>{sourceLabels[entity.source]}</dd>
-        </div>
-        <div>
-          <dt>状态</dt>
-          <dd>{statusLabels[entity.status]}</dd>
-        </div>
-        <div>
-          <dt>版本</dt>
-          <dd>第 {entity.version} 版</dd>
-        </div>
-        <div>
-          <dt>别名</dt>
-          <dd>{entity.aliases.length > 0 ? entity.aliases.join("、") : "暂无别名"}</dd>
-        </div>
-      </dl>
 
-      <div className="settings-detail-block">
-        <h3>详细说明</h3>
-        <p>{entity.description || "尚未补充详细说明。"}</p>
+      <div className="entity-page-layout">
+        <aside className="panel entity-page-nav" aria-label="档案目录">
+          <div className="entity-page-nav-head">
+            <span className="panel-kicker">档案目录</span>
+            <small>5 个部分</small>
+          </div>
+          {ENTITY_DETAIL_TABS.map((tab) => (
+            <button
+              aria-current={activeSection === tab.key ? "true" : undefined}
+              className={`entity-page-nav-item${activeSection === tab.key ? " active" : ""}`}
+              key={tab.key}
+              onClick={() => scrollToSection(tab.key)}
+              type="button"
+            >
+              <span>{tabLabels[tab.key] ?? tab.label}</span>
+              <small>{tab.hint}</small>
+            </button>
+          ))}
+          <div className="entity-page-nav-health">
+            <div className="entity-page-nav-score">
+              <span>设定健康度</span>
+              <strong>{findings.length === 0 ? "通过" : `${findings.length} 项`}</strong>
+            </div>
+            <small>
+              {findings.length === 0
+                ? "核心信息完整，暂未发现冲突。"
+                : `${blockerCount} 项阻断 · ${warningCount} 项提醒`}
+            </small>
+          </div>
+          <button className="btn btn-ghost btn-block" onClick={onBack} type="button">
+            <ArrowLeft size={14} aria-hidden="true" />
+            返回设定中心
+          </button>
+        </aside>
+
+        <div className="entity-page-main">
+          <EntityDetailSection
+            badge={typeLabels[entity.type]}
+            id="overview"
+            index="01"
+            title="基本信息"
+          >
+            <div className="entity-summary-card">
+              <p>{entity.summary || "尚未补充摘要。"}</p>
+              {entity.tags.length > 0 ? (
+                <div className="entity-tag-row">
+                  {entity.tags.map((tag) => (
+                    <span className="entity-tag" key={tag}>
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <dl className="entity-quick-facts">
+              <div>
+                <span>状态</span>
+                <strong>{statusLabels[entity.status]}</strong>
+              </div>
+              <div>
+                <span>版本</span>
+                <strong>第 {entity.version} 版</strong>
+              </div>
+              <div>
+                <span>来源</span>
+                <strong>{sourceLabels[entity.source]}</strong>
+              </div>
+              <div>
+                <span>别名</span>
+                <strong>
+                  {entity.aliases.length > 0 ? entity.aliases.join("、") : "暂无别名"}
+                </strong>
+              </div>
+            </dl>
+
+            <div className="settings-detail-block">
+              <h3>详细说明</h3>
+              <p>{entity.description || "尚未补充详细说明。"}</p>
+            </div>
+
+            <DomainDetailSections
+              characterDetail={characterDetail}
+              characterDetailError={characterDetailError}
+              characterDetailLoading={characterDetailLoading}
+              entity={entity}
+              onRetryCharacterDetail={onRetryCharacterDetail}
+              onRetryWorldDetail={onRetryWorldDetail}
+              section="overview"
+              worldDetail={worldDetail}
+              worldDetailError={worldDetailError}
+              worldDetailLoading={worldDetailLoading}
+            />
+          </EntityDetailSection>
+
+          <EntityDetailSection id="relations" index="02" title={tabLabels.relations}>
+            <DomainDetailSections
+              characterDetail={characterDetail}
+              characterDetailError={characterDetailError}
+              characterDetailLoading={characterDetailLoading}
+              entity={entity}
+              onRetryCharacterDetail={onRetryCharacterDetail}
+              onRetryWorldDetail={onRetryWorldDetail}
+              section="relations"
+              worldDetail={worldDetail}
+              worldDetailError={worldDetailError}
+              worldDetailLoading={worldDetailLoading}
+            />
+          </EntityDetailSection>
+
+          <EntityDetailSection id="history" index="03" title={tabLabels.history}>
+            <DomainDetailSections
+              characterDetail={characterDetail}
+              characterDetailError={characterDetailError}
+              characterDetailLoading={characterDetailLoading}
+              entity={entity}
+              onRetryCharacterDetail={onRetryCharacterDetail}
+              onRetryWorldDetail={onRetryWorldDetail}
+              section="history"
+              worldDetail={worldDetail}
+              worldDetailError={worldDetailError}
+              worldDetailLoading={worldDetailLoading}
+            />
+          </EntityDetailSection>
+
+          <EntityDetailSection id="references" index="04" title={tabLabels.references}>
+            <DomainDetailSections
+              characterDetail={characterDetail}
+              characterDetailError={characterDetailError}
+              characterDetailLoading={characterDetailLoading}
+              entity={entity}
+              onRetryCharacterDetail={onRetryCharacterDetail}
+              onRetryWorldDetail={onRetryWorldDetail}
+              section="references"
+              worldDetail={worldDetail}
+              worldDetailError={worldDetailError}
+              worldDetailLoading={worldDetailLoading}
+            />
+            {applicableFields.length > 0 ? (
+              <div className="settings-detail-block">
+                <h3>自定义字段</h3>
+                <dl className="settings-detail-meta">
+                  {applicableFields.map((definition) => (
+                    <div key={definition.id}>
+                      <dt>{definition.label}</dt>
+                      <dd>{formatCustomFieldValue(entity.customFields[definition.key])}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ) : null}
+
+            {proposals.length > 0 ? (
+              <div className="settings-detail-block settings-proposal-history">
+                <h3>提案与证据</h3>
+                {proposals.map((proposal) => {
+                  const pending = proposal.status === "pending";
+                  const decisionReason = decisionReasons[proposal.id] ?? "作者确认提案";
+                  return (
+                    <article className="settings-proposal-card" key={proposal.id}>
+                      <div className="settings-proposal-head">
+                        <strong>{proposalStatusLabels[proposal.status]}</strong>
+                        <span className="badge">{conflictTypeLabels[proposal.conflictType]}</span>
+                      </div>
+                      <p>{proposal.reason}</p>
+                      <ul className="settings-evidence-list">
+                        {proposal.evidence.map((evidence, index) => (
+                          <li key={`${proposal.id}-${index}`}>
+                            <strong>{evidence.label}</strong>
+                            <span>{evidence.quote || "未提供摘录"}</span>
+                            {evidence.locator ? <small>{evidence.locator}</small> : null}
+                          </li>
+                        ))}
+                      </ul>
+                      {pending && proposed ? (
+                        <div className="settings-proposal-decision">
+                          <label className="settings-field">
+                            <span>裁决理由</span>
+                            <input
+                              onChange={(event) =>
+                                setDecisionReasons((current) => ({
+                                  ...current,
+                                  [proposal.id]: event.target.value,
+                                }))
+                              }
+                              value={decisionReason}
+                            />
+                          </label>
+                          {proposal.conflictType !== "none" ? (
+                            <p className="settings-inline-warning">
+                              该提案仍有冲突，需要先解决冲突才能确认。
+                            </p>
+                          ) : null}
+                          <div className="settings-detail-actions">
+                            <button
+                              className="btn btn-primary btn-small"
+                              disabled={
+                                busy === `decision-${proposal.id}` ||
+                                proposal.conflictType !== "none"
+                              }
+                              onClick={() => onDecideProposal(proposal, "accept", decisionReason)}
+                              type="button"
+                            >
+                              <Check size={14} aria-hidden="true" />
+                              确认提案
+                            </button>
+                            <button
+                              className="btn btn-ghost btn-small"
+                              disabled={busy === `decision-${proposal.id}`}
+                              onClick={() => onDecideProposal(proposal, "reject", decisionReason)}
+                              type="button"
+                            >
+                              驳回提案
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                      {proposal.status !== "pending" && proposal.decisionReason ? (
+                        <p className="settings-inline-note">裁决：{proposal.decisionReason}</p>
+                      ) : null}
+                    </article>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {changeRequests.length > 0 ? (
+              <div className="settings-detail-block settings-change-history">
+                <h3>修改请求</h3>
+                {changeRequests.map((request) => (
+                  <article className="settings-change-card" key={request.id}>
+                    <div className="settings-proposal-head">
+                      <strong>{request.title}</strong>
+                      <span className="badge">{changeRequestStatusLabels[request.status]}</span>
+                    </div>
+                    <p>{request.reason}</p>
+                    <dl className="settings-detail-meta">
+                      <div>
+                        <dt>原版本</dt>
+                        <dd>第 {request.entityVersion} 版</dd>
+                      </div>
+                      <div>
+                        <dt>冲突</dt>
+                        <dd>{conflictTypeLabels[request.conflictType]}</dd>
+                      </div>
+                      <div>
+                        <dt>提交时间</dt>
+                        <dd>{formatDateTime(request.createdAt)}</dd>
+                      </div>
+                    </dl>
+                    <div
+                      className={`settings-change-impact${request.impact.hasImpact ? "" : " is-empty"}`}
+                      role="status"
+                    >
+                      <strong>影响提示</strong>
+                      <p>{request.impact.message}</p>
+                      {request.impact.resources.length > 0 ? (
+                        <ul>
+                          {request.impact.resources.map((resource) => (
+                            <li key={`${request.id}:${resource.type}:${resource.id}`}>
+                              <span>{impactResourceTypeLabels[resource.type]}</span>
+                              {resource.label}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </div>
+                    <ul className="settings-evidence-list">
+                      {request.evidence.map((evidence, index) => (
+                        <li key={`${request.id}-${index}`}>
+                          <strong>{evidence.label}</strong>
+                          <span>{evidence.quote || "未提供摘录"}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+
+            {showProposalForm && !locked && !proposed && !discarded ? (
+              <div className="settings-proposal-form">
+                <h3>提交提案</h3>
+                <label className="settings-field settings-field-wide">
+                  <span>提案理由</span>
+                  <textarea
+                    onChange={(event) => setProposalReason(event.target.value)}
+                    placeholder="说明这条设定为什么需要作者确认"
+                    rows={3}
+                    value={proposalReason}
+                  />
+                </label>
+                <label className="settings-field">
+                  <span>冲突类型</span>
+                  <select
+                    onChange={(event) => setConflictType(event.target.value as SettingConflictType)}
+                    value={conflictType}
+                  >
+                    {Object.entries(conflictTypeLabels).map(([type, label]) => (
+                      <option key={type} value={type}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="settings-field">
+                  <span>证据来源</span>
+                  <input
+                    onChange={(event) => setEvidenceLabel(event.target.value)}
+                    value={evidenceLabel}
+                  />
+                </label>
+                <label className="settings-field settings-field-wide">
+                  <span>证据摘录</span>
+                  <textarea
+                    onChange={(event) => setEvidenceQuote(event.target.value)}
+                    rows={3}
+                    value={evidenceQuote}
+                  />
+                </label>
+                <div className="settings-detail-actions">
+                  <button
+                    className="btn btn-primary btn-small"
+                    disabled={
+                      busy === `proposal-${entity.id}` || proposalReason.trim().length === 0
+                    }
+                    onClick={() => {
+                      onCreateProposal({
+                        reason: proposalReason,
+                        conflictType,
+                        evidenceLabel,
+                        evidenceQuote,
+                      });
+                      setShowProposalForm(false);
+                    }}
+                    type="button"
+                  >
+                    <MessageSquare size={14} aria-hidden="true" />
+                    提交提案
+                  </button>
+                  <button
+                    className="btn btn-ghost btn-small"
+                    onClick={() => setShowProposalForm(false)}
+                    type="button"
+                  >
+                    取消
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </EntityDetailSection>
+
+          <EntityDetailSection
+            badge={findings.length === 0 ? "通过" : `${findings.length} 项`}
+            id="health"
+            index="05"
+            title="设定体检"
+          >
+            {detailLoading ? (
+              <p className="entity-page-empty">正在读取体检结果…</p>
+            ) : detailError ? (
+              <p className="entity-page-empty">档案未加载，暂时无法完成体检。</p>
+            ) : (
+              <WorldHealth findings={findings} showHeading={false} />
+            )}
+          </EntityDetailSection>
+        </div>
       </div>
+    </div>
+  );
+}
 
-      {entity.type === "world_rule" ? (
+function EntityDetailSection({
+  badge,
+  children,
+  id,
+  index,
+  title,
+}: {
+  badge?: string;
+  children: ReactNode;
+  id: EntityDetailSection;
+  index: string;
+  title: string;
+}) {
+  return (
+    <section
+      aria-labelledby={`entity-section-${id}-title`}
+      className="panel entity-page-section"
+      id={`entity-section-${id}`}
+    >
+      <div className="entity-page-section-head">
+        <div>
+          <span className="panel-kicker">{index}</span>
+          <h2 id={`entity-section-${id}-title`}>{title}</h2>
+        </div>
+        {badge ? <span className="badge">{badge}</span> : null}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function DetailEmpty({ children }: { children: ReactNode }) {
+  return <p className="entity-page-empty">{children}</p>;
+}
+
+function DomainDetailSections({
+  characterDetail,
+  characterDetailError,
+  characterDetailLoading,
+  entity,
+  onRetryCharacterDetail,
+  onRetryWorldDetail,
+  section,
+  worldDetail,
+  worldDetailError,
+  worldDetailLoading,
+}: {
+  characterDetail: CharacterDetail | null;
+  characterDetailError: string;
+  characterDetailLoading: boolean;
+  entity: SettingEntity;
+  onRetryCharacterDetail: () => void;
+  onRetryWorldDetail: () => void;
+  section: EntityDetailSection;
+  worldDetail: WorldDomainDetail | null;
+  worldDetailError: string;
+  worldDetailLoading: boolean;
+}) {
+  if (entity.type === "world_rule") {
+    if (section === "overview") {
+      return (
         <div className="settings-detail-block">
           <h3>世界规则</h3>
           <p>内容：{entity.data.rule}</p>
         </div>
-      ) : entity.type === "character" ? (
-        <div className="settings-character-domain">
-          {characterDetailLoading ? (
-            <div className="settings-detail-block settings-character-loading" role="status">
-              <LoaderCircle className="spin" size={16} aria-hidden="true" />
-              <span>正在加载人物档案</span>
-            </div>
-          ) : characterDetailError ? (
-            <div className="settings-detail-block settings-character-error" role="alert">
-              <TriangleAlert size={16} aria-hidden="true" />
-              <span>{characterDetailError}</span>
-              <button className="text-btn small" onClick={onRetryCharacterDetail} type="button">
-                重试
-              </button>
-            </div>
-          ) : characterDetail ? (
-            <>
-              <div className="settings-detail-block">
-                <h3>基本档案</h3>
-                <dl className="settings-character-grid">
-                  <div>
-                    <dt>欲望</dt>
-                    <dd>{characterDetail.profile.desire || "尚未记录"}</dd>
-                  </div>
-                  <div>
-                    <dt>恐惧</dt>
-                    <dd>{characterDetail.profile.fear || "尚未记录"}</dd>
-                  </div>
-                  <div>
-                    <dt>目标</dt>
-                    <dd>{characterDetail.profile.goal || "尚未记录"}</dd>
-                  </div>
-                  <div>
-                    <dt>伪装</dt>
-                    <dd>{characterDetail.profile.disguise || "尚未记录"}</dd>
-                  </div>
-                  <div>
-                    <dt>声线样本</dt>
-                    <dd>{characterDetail.profile.voiceSample || "尚未记录"}</dd>
-                  </div>
-                  <div>
-                    <dt>声线提示</dt>
-                    <dd>{characterDetail.profile.voiceGuide || "尚未记录"}</dd>
-                  </div>
-                </dl>
-              </div>
+      );
+    }
+    if (section === "relations") {
+      return <DetailEmpty>还没有规则关联。</DetailEmpty>;
+    }
+    if (section === "history") {
+      return <DetailEmpty>还没有规则变化。</DetailEmpty>;
+    }
+    return null;
+  }
 
-              <div className="settings-detail-block">
-                <h3>关系</h3>
-                {characterDetail.relationships.length === 0 ? (
-                  <p>还没有类型化关系。</p>
-                ) : (
-                  <ul className="settings-character-records">
-                    {characterDetail.relationships.map((relationship) => (
-                      <li key={relationship.id}>
-                        <div>
-                          <strong>
-                            {relationshipTypeLabels[relationship.relationType]} ·{" "}
-                            {relationship.target.label ?? "未命名目标"}
-                          </strong>
-                          <span>{formatValidity(relationship.validity)}</span>
-                        </div>
-                        <small>
-                          {relationship.sourceChapterId ? "来源：章节记录" : "来源：作者补录"}
-                        </small>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+  if (entity.type === "character") {
+    return (
+      <CharacterDomainView
+        detail={characterDetail}
+        entity={entity}
+        error={characterDetailError}
+        loading={characterDetailLoading}
+        onRetry={onRetryCharacterDetail}
+        section={section}
+      />
+    );
+  }
 
-              <div className="settings-detail-block">
-                <h3>状态历史</h3>
-                {characterDetail.stateTransitions.length === 0 ? (
-                  <p>还没有身体、位置或能力状态记录。</p>
-                ) : (
-                  <ul className="settings-character-records">
-                    {characterDetail.stateTransitions.map((state) => (
-                      <li key={state.id}>
-                        <div>
-                          <strong>
-                            {characterStateLabels[state.stateKind]} · {state.stateKey}
-                          </strong>
-                          <span>{formatValidity(state.validity)}</span>
-                        </div>
-                        <p>{state.value}</p>
-                        {state.target?.label ? <small>地点：{state.target.label}</small> : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+  if (entity.type === "faction") {
+    return (
+      <FactionDomainView
+        detail={worldDetail?.kind === "faction" ? worldDetail.value : null}
+        error={worldDetailError}
+        loading={worldDetailLoading}
+        onRetry={onRetryWorldDetail}
+        section={section}
+      />
+    );
+  }
 
-              <div className="settings-detail-block">
-                <h3>角色认知与引用</h3>
-                {characterDetail.knowledgeStates.length === 0 ? (
-                  <p>还没有角色认知记录。</p>
-                ) : (
-                  <ul className="settings-character-records">
-                    {characterDetail.knowledgeStates.map((state) => (
-                      <li key={state.id}>
-                        <div>
-                          <strong>{knowledgeStateLabels[state.state]}</strong>
-                          <span>{formatValidity(state.validity)}</span>
-                        </div>
-                        <p>{state.claimedContent || "明确记录为未知。"}</p>
-                        <small>
-                          {state.sourceChapterId ? "来源：章节记录" : "来源：作者补录"} ·{" "}
-                          客观事实引用已保留
-                        </small>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
+  if (entity.type === "map") {
+    return (
+      <MapDomainView
+        detail={worldDetail?.kind === "map" ? worldDetail.value : null}
+        error={worldDetailError}
+        loading={worldDetailLoading}
+        onRetry={onRetryWorldDetail}
+        section={section}
+      />
+    );
+  }
 
-              <div className="settings-detail-block">
-                <h3>设定体检</h3>
-                {characterDetail.health.length === 0 ? (
-                  <p>基础检查通过。</p>
-                ) : (
-                  <ul className="settings-health-list">
-                    {characterDetail.health.map((finding) => (
-                      <li className={`severity-${finding.severity}`} key={finding.code}>
-                        <span>{finding.severity === "blocker" ? "阻断" : "提醒"}</span>
-                        <p>{finding.message}</p>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="settings-detail-block">
-              <p>尚未载入人物专用档案。</p>
-            </div>
-          )}
-        </div>
-      ) : entity.type === "faction" ? (
-        <FactionDomainView
-          detail={worldDetail?.kind === "faction" ? worldDetail.value : null}
-          error={worldDetailError}
-          loading={worldDetailLoading}
-          onRetry={onRetryWorldDetail}
-        />
-      ) : entity.type === "map" ? (
-        <MapDomainView
-          detail={worldDetail?.kind === "map" ? worldDetail.value : null}
-          error={worldDetailError}
-          loading={worldDetailLoading}
-          onRetry={onRetryWorldDetail}
-        />
-      ) : entity.type === "power_system" ? (
-        <PowerDomainView
-          detail={worldDetail?.kind === "power" ? worldDetail.value : null}
-          error={worldDetailError}
-          loading={worldDetailLoading}
-          onRetry={onRetryWorldDetail}
-        />
-      ) : entity.type === "item" ? (
-        <ItemDomainView
-          detail={worldDetail?.kind === "item" ? worldDetail.value : null}
-          error={worldDetailError}
-          loading={worldDetailLoading}
-          onRetry={onRetryWorldDetail}
-        />
-      ) : entity.type === "timeline_event" ? (
-        <TimelineDomainView
-          detail={worldDetail?.kind === "timeline" ? worldDetail.value : null}
-          entity={entity}
-          error={worldDetailError}
-          loading={worldDetailLoading}
-          onRetry={onRetryWorldDetail}
-        />
-      ) : (
-        <MechanismDomainView
-          detail={worldDetail?.kind === "mechanism" ? worldDetail.value : null}
-          error={worldDetailError}
-          loading={worldDetailLoading}
-          onRetry={onRetryWorldDetail}
-        />
-      )}
+  if (entity.type === "power_system") {
+    return (
+      <PowerDomainView
+        detail={worldDetail?.kind === "power" ? worldDetail.value : null}
+        error={worldDetailError}
+        loading={worldDetailLoading}
+        onRetry={onRetryWorldDetail}
+        section={section}
+      />
+    );
+  }
 
-      {applicableFields.length > 0 ? (
-        <div className="settings-detail-block">
-          <h3>自定义字段</h3>
-          <dl className="settings-detail-meta">
-            {applicableFields.map((definition) => (
-              <div key={definition.id}>
-                <dt>{definition.label}</dt>
-                <dd>{formatCustomFieldValue(entity.customFields[definition.key])}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      ) : null}
+  if (entity.type === "item") {
+    return (
+      <ItemDomainView
+        detail={worldDetail?.kind === "item" ? worldDetail.value : null}
+        error={worldDetailError}
+        loading={worldDetailLoading}
+        onRetry={onRetryWorldDetail}
+        section={section}
+      />
+    );
+  }
 
-      {proposals.length > 0 ? (
-        <div className="settings-detail-block settings-proposal-history">
-          <h3>提案与证据</h3>
-          {proposals.map((proposal) => {
-            const pending = proposal.status === "pending";
-            const decisionReason = decisionReasons[proposal.id] ?? "作者确认提案";
-            return (
-              <article className="settings-proposal-card" key={proposal.id}>
-                <div className="settings-proposal-head">
-                  <strong>{proposalStatusLabels[proposal.status]}</strong>
-                  <span className="badge">{conflictTypeLabels[proposal.conflictType]}</span>
-                </div>
-                <p>{proposal.reason}</p>
-                <ul className="settings-evidence-list">
-                  {proposal.evidence.map((evidence, index) => (
-                    <li key={`${proposal.id}-${index}`}>
-                      <strong>{evidence.label}</strong>
-                      <span>{evidence.quote || "未提供摘录"}</span>
-                      {evidence.locator ? <small>{evidence.locator}</small> : null}
-                    </li>
-                  ))}
-                </ul>
-                {pending && proposed ? (
-                  <div className="settings-proposal-decision">
-                    <label className="settings-field">
-                      <span>裁决理由</span>
-                      <input
-                        onChange={(event) =>
-                          setDecisionReasons((current) => ({
-                            ...current,
-                            [proposal.id]: event.target.value,
-                          }))
-                        }
-                        value={decisionReason}
-                      />
-                    </label>
-                    {proposal.conflictType !== "none" ? (
-                      <p className="settings-inline-warning">
-                        该提案仍有冲突，需要先解决冲突才能确认。
-                      </p>
-                    ) : null}
-                    <div className="settings-detail-actions">
-                      <button
-                        className="btn btn-primary btn-small"
-                        disabled={
-                          busy === `decision-${proposal.id}` || proposal.conflictType !== "none"
-                        }
-                        onClick={() => onDecideProposal(proposal, "accept", decisionReason)}
-                        type="button"
-                      >
-                        <Check size={14} aria-hidden="true" />
-                        确认提案
-                      </button>
-                      <button
-                        className="btn btn-ghost btn-small"
-                        disabled={busy === `decision-${proposal.id}`}
-                        onClick={() => onDecideProposal(proposal, "reject", decisionReason)}
-                        type="button"
-                      >
-                        驳回提案
-                      </button>
-                    </div>
-                  </div>
-                ) : null}
-                {proposal.status !== "pending" && proposal.decisionReason ? (
-                  <p className="settings-inline-note">裁决：{proposal.decisionReason}</p>
-                ) : null}
-              </article>
-            );
-          })}
-        </div>
-      ) : null}
+  if (entity.type === "timeline_event") {
+    return (
+      <TimelineDomainView
+        detail={worldDetail?.kind === "timeline" ? worldDetail.value : null}
+        entity={entity}
+        error={worldDetailError}
+        loading={worldDetailLoading}
+        onRetry={onRetryWorldDetail}
+        section={section}
+      />
+    );
+  }
 
-      {changeRequests.length > 0 ? (
-        <div className="settings-detail-block settings-change-history">
-          <h3>修改请求</h3>
-          {changeRequests.map((request) => (
-            <article className="settings-change-card" key={request.id}>
-              <div className="settings-proposal-head">
-                <strong>{request.title}</strong>
-                <span className="badge">{changeRequestStatusLabels[request.status]}</span>
-              </div>
-              <p>{request.reason}</p>
-              <dl className="settings-detail-meta">
-                <div>
-                  <dt>原版本</dt>
-                  <dd>第 {request.entityVersion} 版</dd>
-                </div>
-                <div>
-                  <dt>冲突</dt>
-                  <dd>{conflictTypeLabels[request.conflictType]}</dd>
-                </div>
-                <div>
-                  <dt>提交时间</dt>
-                  <dd>{formatDateTime(request.createdAt)}</dd>
-                </div>
-              </dl>
-              <div
-                className={`settings-change-impact${request.impact.hasImpact ? "" : " is-empty"}`}
-                role="status"
-              >
-                <strong>影响提示</strong>
-                <p>{request.impact.message}</p>
-                {request.impact.resources.length > 0 ? (
-                  <ul>
-                    {request.impact.resources.map((resource) => (
-                      <li key={`${request.id}:${resource.type}:${resource.id}`}>
-                        <span>{impactResourceTypeLabels[resource.type]}</span>
-                        {resource.label}
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-              </div>
-              <ul className="settings-evidence-list">
-                {request.evidence.map((evidence, index) => (
-                  <li key={`${request.id}-${index}`}>
-                    <strong>{evidence.label}</strong>
-                    <span>{evidence.quote || "未提供摘录"}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </div>
-      ) : null}
+  return (
+    <MechanismDomainView
+      detail={worldDetail?.kind === "mechanism" ? worldDetail.value : null}
+      error={worldDetailError}
+      loading={worldDetailLoading}
+      onRetry={onRetryWorldDetail}
+      section={section}
+    />
+  );
+}
 
-      {showProposalForm && !locked && !proposed && !discarded ? (
-        <div className="settings-proposal-form">
-          <h3>提交提案</h3>
-          <label className="settings-field settings-field-wide">
-            <span>提案理由</span>
-            <textarea
-              onChange={(event) => setProposalReason(event.target.value)}
-              placeholder="说明这条设定为什么需要作者确认"
-              rows={3}
-              value={proposalReason}
-            />
-          </label>
-          <label className="settings-field">
-            <span>冲突类型</span>
-            <select
-              onChange={(event) => setConflictType(event.target.value as SettingConflictType)}
-              value={conflictType}
-            >
-              {Object.entries(conflictTypeLabels).map(([type, label]) => (
-                <option key={type} value={type}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="settings-field">
-            <span>证据来源</span>
-            <input
-              onChange={(event) => setEvidenceLabel(event.target.value)}
-              value={evidenceLabel}
-            />
-          </label>
-          <label className="settings-field settings-field-wide">
-            <span>证据摘录</span>
-            <textarea
-              onChange={(event) => setEvidenceQuote(event.target.value)}
-              rows={3}
-              value={evidenceQuote}
-            />
-          </label>
-          <div className="settings-detail-actions">
-            <button
-              className="btn btn-primary btn-small"
-              disabled={busy === `proposal-${entity.id}` || proposalReason.trim().length === 0}
-              onClick={() => {
-                onCreateProposal({
-                  reason: proposalReason,
-                  conflictType,
-                  evidenceLabel,
-                  evidenceQuote,
-                });
-                setShowProposalForm(false);
-              }}
-              type="button"
-            >
-              <MessageSquare size={14} aria-hidden="true" />
-              提交提案
-            </button>
-            <button
-              className="btn btn-ghost btn-small"
-              onClick={() => setShowProposalForm(false)}
-              type="button"
-            >
-              取消
+function CharacterDomainView({
+  detail,
+  entity,
+  error,
+  loading,
+  onRetry,
+  section,
+}: {
+  detail: CharacterDetail | null;
+  entity: Extract<SettingEntity, { type: "character" }>;
+  error: string;
+  loading: boolean;
+  onRetry: () => void;
+  section: EntityDetailSection;
+}) {
+  if (section === "health") {
+    return null;
+  }
+
+  if (section === "overview") {
+    return (
+      <div className="settings-character-domain">
+        {loading ? (
+          <div className="settings-detail-block settings-character-loading" role="status">
+            <LoaderCircle className="spin" size={16} aria-hidden="true" />
+            <span>正在加载人物档案</span>
+          </div>
+        ) : error ? (
+          <div className="settings-detail-block settings-character-error" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{error}</span>
+            <button className="text-btn small" onClick={onRetry} type="button">
+              重试
             </button>
           </div>
-        </div>
-      ) : null}
-
-      <div className="settings-detail-actions">
-        {locked ? (
+        ) : detail ? (
           <>
-            <button className="btn btn-ghost btn-small" disabled type="button">
-              <Lock size={14} aria-hidden="true" />
-              已锁定 · 别名需修改请求
-            </button>
-            <button className="btn btn-ghost btn-small" disabled type="button">
-              <Lock size={14} aria-hidden="true" />
-              已锁定 · 删除需修改请求
-            </button>
-            <button className="btn btn-primary btn-small" disabled type="button">
-              <Lock size={14} aria-hidden="true" />
-              已锁定 · 编辑需修改请求
-            </button>
-            <button className="btn btn-primary btn-small" onClick={onChangeRequest} type="button">
-              <GitPullRequest size={14} aria-hidden="true" />
-              发起修改请求
-            </button>
+            <div className="settings-detail-block">
+              <h3>档案摘要</h3>
+              <dl className="settings-character-grid">
+                <div>
+                  <dt>当前身体状态</dt>
+                  <dd>{entity.data.bodyState || "尚未记录"}</dd>
+                </div>
+                <div>
+                  <dt>知识边界</dt>
+                  <dd>{entity.data.knowledgeBoundary || "尚未记录"}</dd>
+                </div>
+                <div>
+                  <dt>关系摘要</dt>
+                  <dd>{entity.data.relationshipSummary || "尚未记录"}</dd>
+                </div>
+              </dl>
+            </div>
+            <div className="settings-detail-block">
+              <h3>基本档案</h3>
+              <dl className="settings-character-grid">
+                <div>
+                  <dt>欲望</dt>
+                  <dd>{detail.profile.desire || "尚未记录"}</dd>
+                </div>
+                <div>
+                  <dt>恐惧</dt>
+                  <dd>{detail.profile.fear || "尚未记录"}</dd>
+                </div>
+                <div>
+                  <dt>目标</dt>
+                  <dd>{detail.profile.goal || "尚未记录"}</dd>
+                </div>
+                <div>
+                  <dt>伪装</dt>
+                  <dd>{detail.profile.disguise || "尚未记录"}</dd>
+                </div>
+                <div>
+                  <dt>声线样本</dt>
+                  <dd>{detail.profile.voiceSample || "尚未记录"}</dd>
+                </div>
+                <div>
+                  <dt>声线提示</dt>
+                  <dd>{detail.profile.voiceGuide || "尚未记录"}</dd>
+                </div>
+              </dl>
+            </div>
           </>
-        ) : proposed ? (
-          <p className="settings-inline-note">待确认提案正在等待裁决，完成后才能继续编辑。</p>
-        ) : discarded ? (
-          <p className="settings-inline-note">这条设定已废弃，不能再编辑或锁定。</p>
         ) : (
-          <>
-            <button className="btn btn-ghost btn-small" onClick={onEditAlias} type="button">
-              <Pencil size={14} aria-hidden="true" />
-              编辑别名
-            </button>
-            <button
-              className="btn btn-ghost btn-small"
-              disabled={busy === `delete-${entity.id}`}
-              onClick={onDelete}
-              type="button"
-            >
-              删除设定
-            </button>
-            <button className="btn btn-ghost btn-small" onClick={onEdit} type="button">
-              <Pencil size={14} aria-hidden="true" />
-              编辑设定
-            </button>
-            <button
-              className="btn btn-primary btn-small"
-              disabled={busy === `lock-${entity.id}`}
-              onClick={onLock}
-              type="button"
-            >
-              {busy === `lock-${entity.id}` ? (
-                <LoaderCircle className="spin" size={14} aria-hidden="true" />
-              ) : (
-                <Lock size={14} aria-hidden="true" />
-              )}
-              锁定设定
-            </button>
-            <button
-              className="btn btn-ghost btn-small"
-              onClick={() => setShowProposalForm((current) => !current)}
-              type="button"
-            >
-              <MessageSquare size={14} aria-hidden="true" />
-              提交提案
-            </button>
-          </>
+          <div className="settings-detail-block">
+            <p>尚未载入人物专用档案。</p>
+          </div>
         )}
       </div>
-    </section>
+    );
+  }
+
+  if (!detail) {
+    return null;
+  }
+
+  if (section === "relations") {
+    return (
+      <div className="settings-character-domain">
+        <div className="settings-detail-block">
+          <h3>关系摘要</h3>
+          <p>{entity.data.relationshipSummary || "还没有记录关系摘要。"}</p>
+        </div>
+        <div className="settings-detail-block">
+          <h3>类型化关系</h3>
+          {detail.relationships.length === 0 ? (
+            <p>还没有类型化关系。</p>
+          ) : (
+            <ul className="settings-character-records">
+              {detail.relationships.map((relationship) => (
+                <li key={relationship.id}>
+                  <div>
+                    <strong>
+                      {relationshipTypeLabels[relationship.relationType]} ·{" "}
+                      {relationship.target.label ?? "未命名目标"}
+                    </strong>
+                    <span>{formatValidity(relationship.validity)}</span>
+                  </div>
+                  <small>
+                    {relationship.sourceChapterId ? "来源：章节记录" : "来源：作者补录"}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (section === "history") {
+    return (
+      <div className="settings-character-domain">
+        <div className="settings-detail-block">
+          {detail.stateTransitions.length === 0 ? (
+            <p>还没有身体、位置或能力状态记录。</p>
+          ) : (
+            <ul className="settings-character-records">
+              {detail.stateTransitions.map((state) => (
+                <li key={state.id}>
+                  <div>
+                    <strong>
+                      {characterStateLabels[state.stateKind]} · {state.stateKey}
+                    </strong>
+                    <span>{formatValidity(state.validity)}</span>
+                  </div>
+                  <p>{state.value}</p>
+                  {state.target?.label ? <small>地点：{state.target.label}</small> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="settings-character-domain">
+      <div className="settings-detail-block">
+        <h3>角色认知与引用</h3>
+        {detail.knowledgeStates.length === 0 ? (
+          <p>还没有角色认知记录。</p>
+        ) : (
+          <ul className="settings-character-records">
+            {detail.knowledgeStates.map((state) => (
+              <li key={state.id}>
+                <div>
+                  <strong>{knowledgeStateLabels[state.state]}</strong>
+                  <span>{formatValidity(state.validity)}</span>
+                </div>
+                <p>{state.claimedContent || "明确记录为未知。"}</p>
+                <small>
+                  {state.sourceChapterId ? "来源：章节记录" : "来源：作者补录"} · 客观事实引用已保留
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -2624,29 +3166,35 @@ function FactionDomainView({
   error,
   loading,
   onRetry,
+  section,
 }: {
   detail: FactionDetail | null;
   error: string;
   loading: boolean;
   onRetry: () => void;
+  section: EntityDetailSection;
 }) {
-  return (
-    <div className="settings-character-domain">
-      {loading ? (
-        <div className="settings-detail-block settings-character-loading" role="status">
-          <LoaderCircle className="spin" size={16} aria-hidden="true" />
-          <span>正在加载势力档案</span>
-        </div>
-      ) : error ? (
-        <div className="settings-detail-block settings-character-error" role="alert">
-          <TriangleAlert size={16} aria-hidden="true" />
-          <span>{error}</span>
-          <button className="text-btn small" onClick={onRetry} type="button">
-            重试
-          </button>
-        </div>
-      ) : detail ? (
-        <>
+  if (section === "references" || section === "health") {
+    return null;
+  }
+
+  if (section === "overview") {
+    return (
+      <div className="settings-character-domain">
+        {loading ? (
+          <div className="settings-detail-block settings-character-loading" role="status">
+            <LoaderCircle className="spin" size={16} aria-hidden="true" />
+            <span>正在加载势力档案</span>
+          </div>
+        ) : error ? (
+          <div className="settings-detail-block settings-character-error" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{error}</span>
+            <button className="text-btn small" onClick={onRetry} type="button">
+              重试
+            </button>
+          </div>
+        ) : detail ? (
           <div className="settings-detail-block">
             <h3>组织目标</h3>
             <dl className="settings-character-grid">
@@ -2668,61 +3216,73 @@ function FactionDomainView({
               </div>
             </dl>
           </div>
-
+        ) : (
           <div className="settings-detail-block">
-            <h3>势力关系</h3>
-            {detail.relationships.length === 0 ? (
-              <p>还没有类型化势力关系。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.relationships.map((relationship) => (
-                  <li key={relationship.id}>
-                    <div>
-                      <strong>
-                        {factionRelationLabels[relationship.relationType]} ·{" "}
-                        {relationship.target.label ?? "未命名势力"}
-                      </strong>
-                      <span>{formatValidity(relationship.validity)}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <p>尚未载入势力专用档案。</p>
           </div>
+        )}
+      </div>
+    );
+  }
 
-          <div className="settings-detail-block">
-            <h3>控制区</h3>
-            {detail.territories.length === 0 ? (
-              <p>还没有记录控制区。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.territories.map((territory) => (
-                  <li key={territory.id}>
-                    <div>
-                      <strong>
-                        {territory.node.label ?? "未命名地点"} ·{" "}
-                        {controlLevelLabels[territory.controlLevel]}
-                      </strong>
-                      <span>{formatValidity(territory.validity)}</span>
-                    </div>
-                    <small>
-                      {territory.evidence.length > 0
-                        ? `来源证据 ${territory.evidence.length} 条`
-                        : "来源：作者补录"}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+  if (!detail) {
+    return null;
+  }
 
-          <WorldHealth findings={detail.health} />
-        </>
-      ) : (
+  if (section === "relations") {
+    return (
+      <div className="settings-character-domain">
         <div className="settings-detail-block">
-          <p>尚未载入势力专用档案。</p>
+          <h3>势力关系</h3>
+          {detail.relationships.length === 0 ? (
+            <p>还没有类型化势力关系。</p>
+          ) : (
+            <ul className="settings-character-records">
+              {detail.relationships.map((relationship) => (
+                <li key={relationship.id}>
+                  <div>
+                    <strong>
+                      {factionRelationLabels[relationship.relationType]} ·{" "}
+                      {relationship.target.label ?? "未命名势力"}
+                    </strong>
+                    <span>{formatValidity(relationship.validity)}</span>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="settings-character-domain">
+      <div className="settings-detail-block">
+        <h3>控制区</h3>
+        {detail.territories.length === 0 ? (
+          <p>还没有记录控制区。</p>
+        ) : (
+          <ul className="settings-character-records">
+            {detail.territories.map((territory) => (
+              <li key={territory.id}>
+                <div>
+                  <strong>
+                    {territory.node.label ?? "未命名地点"} ·{" "}
+                    {controlLevelLabels[territory.controlLevel]}
+                  </strong>
+                  <span>{formatValidity(territory.validity)}</span>
+                </div>
+                <small>
+                  {territory.evidence.length > 0
+                    ? `来源证据 ${territory.evidence.length} 条`
+                    : "来源：作者补录"}
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -2732,153 +3292,174 @@ function MapDomainView({
   error,
   loading,
   onRetry,
+  section,
 }: {
   detail: MapDetail | null;
   error: string;
   loading: boolean;
   onRetry: () => void;
+  section: EntityDetailSection;
 }) {
   const nodeNames = new Map((detail?.nodes ?? []).map((node) => [node.id, node.name] as const));
+
+  if (section === "references" || section === "health") {
+    return null;
+  }
+
+  if (section === "overview") {
+    return (
+      <div className="settings-character-domain">
+        {loading ? (
+          <div className="settings-detail-block settings-character-loading" role="status">
+            <LoaderCircle className="spin" size={16} aria-hidden="true" />
+            <span>正在加载地图档案</span>
+          </div>
+        ) : error ? (
+          <div className="settings-detail-block settings-character-error" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{error}</span>
+            <button className="text-btn small" onClick={onRetry} type="button">
+              重试
+            </button>
+          </div>
+        ) : detail ? (
+          <>
+            <div className="settings-detail-block">
+              <h3>地图图层</h3>
+              {detail.layers.length === 0 ? (
+                <p>还没有记录地图图层。</p>
+              ) : (
+                <ul className="settings-character-records">
+                  {detail.layers.map((layer) => (
+                    <li key={layer.id}>
+                      <div>
+                        <strong>{layer.name}</strong>
+                        <span>{formatValidity(layer.validity)}</span>
+                      </div>
+                      <small>
+                        层级顺序 {layer.sortOrder + 1} · 显示范围 {layer.minScale}–{layer.maxScale}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="settings-detail-block">
+              <h3>地点层级</h3>
+              {detail.nodes.length === 0 ? (
+                <p>还没有记录地点节点。</p>
+              ) : (
+                <ul className="settings-character-records">
+                  {detail.nodes.map((node) => (
+                    <li key={node.id}>
+                      <div>
+                        <strong>
+                          {node.name} · {mapNodeTypeLabels[node.nodeType]}
+                        </strong>
+                        <span>{formatValidity(node.validity)}</span>
+                      </div>
+                      <p>{node.summary || "尚未补充地点说明。"}</p>
+                      <small>
+                        {node.parentNodeId
+                          ? `上级地点：${nodeNames.get(node.parentNodeId) ?? "未命名地点"}`
+                          : "地图根部节点"}
+                      </small>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </>
+        ) : (
+          <div className="settings-detail-block">
+            <p>尚未载入地图专用档案。</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return null;
+  }
+
+  if (section === "relations") {
+    return (
+      <div className="settings-character-domain">
+        <div className="settings-detail-block">
+          <h3>路线与旅行时间</h3>
+          {detail.edges.length === 0 ? (
+            <p>还没有记录地点路线。</p>
+          ) : (
+            <ul className="settings-character-records">
+              {detail.edges.map((edge) => (
+                <li key={edge.id}>
+                  <div>
+                    <strong>
+                      {nodeNames.get(edge.fromNodeId) ?? "未命名地点"} →{" "}
+                      {nodeNames.get(edge.toNodeId) ?? "未命名地点"}
+                    </strong>
+                    <span>{edge.travelMinutes} 分钟</span>
+                  </div>
+                  <small>
+                    {mapRouteTypeLabels[edge.routeType]}
+                    {edge.bidirectional ? " · 可双向通行" : " · 单向通行"}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="settings-detail-block">
+          <h3>地图标记</h3>
+          {detail.markers.length === 0 ? (
+            <p>还没有地图标记。</p>
+          ) : (
+            <ul className="settings-character-records">
+              {detail.markers.map((marker) => (
+                <li key={marker.id}>
+                  <div>
+                    <strong>
+                      {marker.label} · {mapMarkerTypeLabels[marker.markerType]}
+                    </strong>
+                    <span>{formatValidity(marker.validity)}</span>
+                  </div>
+                  {marker.nodeId ? (
+                    <small>关联地点：{nodeNames.get(marker.nodeId) ?? "未命名地点"}</small>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="settings-character-domain">
-      {loading ? (
-        <div className="settings-detail-block settings-character-loading" role="status">
-          <LoaderCircle className="spin" size={16} aria-hidden="true" />
-          <span>正在加载地图档案</span>
-        </div>
-      ) : error ? (
-        <div className="settings-detail-block settings-character-error" role="alert">
-          <TriangleAlert size={16} aria-hidden="true" />
-          <span>{error}</span>
-          <button className="text-btn small" onClick={onRetry} type="button">
-            重试
-          </button>
-        </div>
-      ) : detail ? (
-        <>
-          <div className="settings-detail-block">
-            <h3>地图图层</h3>
-            {detail.layers.length === 0 ? (
-              <p>还没有记录地图图层。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.layers.map((layer) => (
-                  <li key={layer.id}>
-                    <div>
-                      <strong>{layer.name}</strong>
-                      <span>{formatValidity(layer.validity)}</span>
-                    </div>
-                    <small>
-                      层级顺序 {layer.sortOrder + 1} · 显示范围 {layer.minScale}–{layer.maxScale}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>地点层级</h3>
-            {detail.nodes.length === 0 ? (
-              <p>还没有记录地点节点。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.nodes.map((node) => (
-                  <li key={node.id}>
-                    <div>
-                      <strong>
-                        {node.name} · {mapNodeTypeLabels[node.nodeType]}
-                      </strong>
-                      <span>{formatValidity(node.validity)}</span>
-                    </div>
-                    <p>{node.summary || "尚未补充地点说明。"}</p>
-                    <small>
-                      {node.parentNodeId
-                        ? `上级地点：${nodeNames.get(node.parentNodeId) ?? "未命名地点"}`
-                        : "地图根部节点"}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>路线与旅行时间</h3>
-            {detail.edges.length === 0 ? (
-              <p>还没有记录地点路线。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.edges.map((edge) => (
-                  <li key={edge.id}>
-                    <div>
-                      <strong>
-                        {nodeNames.get(edge.fromNodeId) ?? "未命名地点"} →{" "}
-                        {nodeNames.get(edge.toNodeId) ?? "未命名地点"}
-                      </strong>
-                      <span>{edge.travelMinutes} 分钟</span>
-                    </div>
-                    <small>
-                      {mapRouteTypeLabels[edge.routeType]}
-                      {edge.bidirectional ? " · 可双向通行" : " · 单向通行"}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>地图标记</h3>
-            {detail.markers.length === 0 ? (
-              <p>还没有地图标记。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.markers.map((marker) => (
-                  <li key={marker.id}>
-                    <div>
-                      <strong>
-                        {marker.label} · {mapMarkerTypeLabels[marker.markerType]}
-                      </strong>
-                      <span>{formatValidity(marker.validity)}</span>
-                    </div>
-                    {marker.nodeId ? (
-                      <small>关联地点：{nodeNames.get(marker.nodeId) ?? "未命名地点"}</small>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>控制区</h3>
-            {detail.controlAreas.length === 0 ? (
-              <p>还没有记录势力控制区。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.controlAreas.map((territory) => (
-                  <li key={territory.id}>
-                    <div>
-                      <strong>
-                        {territory.node.label ?? "未命名地点"} ·{" "}
-                        {controlLevelLabels[territory.controlLevel]}
-                      </strong>
-                      <span>{formatValidity(territory.validity)}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <WorldHealth findings={detail.health} />
-        </>
-      ) : (
-        <div className="settings-detail-block">
-          <p>尚未载入地图专用档案。</p>
-        </div>
-      )}
+      <div className="settings-detail-block">
+        <h3>控制区</h3>
+        {detail.controlAreas.length === 0 ? (
+          <p>还没有记录势力控制区。</p>
+        ) : (
+          <ul className="settings-character-records">
+            {detail.controlAreas.map((territory) => (
+              <li key={territory.id}>
+                <div>
+                  <strong>
+                    {territory.node.label ?? "未命名地点"} ·{" "}
+                    {controlLevelLabels[territory.controlLevel]}
+                  </strong>
+                  <span>{formatValidity(territory.validity)}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -2888,118 +3469,136 @@ function PowerDomainView({
   error,
   loading,
   onRetry,
+  section,
 }: {
   detail: PowerSystem | null;
   error: string;
   loading: boolean;
   onRetry: () => void;
+  section: EntityDetailSection;
 }) {
+  if (section === "references" || section === "health") {
+    return null;
+  }
+
+  if (section === "overview") {
+    return (
+      <div className="settings-character-domain">
+        {loading ? (
+          <div className="settings-detail-block settings-character-loading" role="status">
+            <LoaderCircle className="spin" size={16} aria-hidden="true" />
+            <span>正在加载力量体系</span>
+          </div>
+        ) : error ? (
+          <div className="settings-detail-block settings-character-error" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{error}</span>
+            <button className="text-btn small" onClick={onRetry} type="button">
+              重试
+            </button>
+          </div>
+        ) : detail ? (
+          <>
+            <div className="settings-detail-block">
+              <h3>体系概览</h3>
+              <p>{detail.overview || "尚未补充力量体系概览。"}</p>
+            </div>
+
+            <div className="settings-detail-block">
+              <h3>寿命绑定</h3>
+              <dl className="settings-character-grid">
+                <div>
+                  <dt>绑定方式</dt>
+                  <dd>{powerLifespanModeLabels[detail.lifespanPolicy.mode]}</dd>
+                </div>
+                <div>
+                  <dt>单位</dt>
+                  <dd>{detail.lifespanPolicy.unit}</dd>
+                </div>
+                <div>
+                  <dt>依据</dt>
+                  <dd>{detail.lifespanPolicy.basis || "未指定"}</dd>
+                </div>
+                <div>
+                  <dt>规则说明</dt>
+                  <dd>{detail.lifespanPolicy.description || "未指定"}</dd>
+                </div>
+                {detail.lifespanPolicy.mode === "fixed" ? (
+                  <div>
+                    <dt>固定寿命</dt>
+                    <dd>
+                      {detail.lifespanPolicy.fixedAmount} {detail.lifespanPolicy.unit}
+                    </dd>
+                  </div>
+                ) : null}
+              </dl>
+            </div>
+          </>
+        ) : (
+          <div className="settings-detail-block">
+            <p>尚未载入力量体系专用档案。</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return null;
+  }
+
+  if (section === "relations") {
+    return <DetailEmpty>还没有记录体系关联。</DetailEmpty>;
+  }
+
   return (
     <div className="settings-character-domain">
-      {loading ? (
-        <div className="settings-detail-block settings-character-loading" role="status">
-          <LoaderCircle className="spin" size={16} aria-hidden="true" />
-          <span>正在加载力量体系</span>
-        </div>
-      ) : error ? (
-        <div className="settings-detail-block settings-character-error" role="alert">
-          <TriangleAlert size={16} aria-hidden="true" />
-          <span>{error}</span>
-          <button className="text-btn small" onClick={onRetry} type="button">
-            重试
-          </button>
-        </div>
-      ) : detail ? (
-        <>
-          <div className="settings-detail-block">
-            <h3>体系概览</h3>
-            <p>{detail.overview || "尚未补充力量体系概览。"}</p>
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>寿命绑定</h3>
-            <dl className="settings-character-grid">
-              <div>
-                <dt>绑定方式</dt>
-                <dd>{powerLifespanModeLabels[detail.lifespanPolicy.mode]}</dd>
-              </div>
-              <div>
-                <dt>单位</dt>
-                <dd>{detail.lifespanPolicy.unit}</dd>
-              </div>
-              <div>
-                <dt>依据</dt>
-                <dd>{detail.lifespanPolicy.basis || "未指定"}</dd>
-              </div>
-              <div>
-                <dt>规则说明</dt>
-                <dd>{detail.lifespanPolicy.description || "未指定"}</dd>
-              </div>
-              {detail.lifespanPolicy.mode === "fixed" ? (
+      <div className="settings-detail-block">
+        <h3>路径与境界</h3>
+        {detail.paths.length === 0 ? (
+          <p>还没有记录力量路径。</p>
+        ) : (
+          <div className="settings-character-records">
+            {detail.paths.map((path) => (
+              <div key={path.id}>
                 <div>
-                  <dt>固定寿命</dt>
-                  <dd>
-                    {detail.lifespanPolicy.fixedAmount} {detail.lifespanPolicy.unit}
-                  </dd>
+                  <strong>
+                    {path.name} · {path.pathType}
+                  </strong>
+                  <span>{path.realms.length} 个境界</span>
                 </div>
-              ) : null}
-            </dl>
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>路径与境界</h3>
-            {detail.paths.length === 0 ? (
-              <p>还没有记录力量路径。</p>
-            ) : (
-              <div className="settings-character-records">
-                {detail.paths.map((path) => (
-                  <div key={path.id}>
-                    <div>
-                      <strong>
-                        {path.name} · {path.pathType}
-                      </strong>
-                      <span>{path.realms.length} 个境界</span>
-                    </div>
-                    {path.description ? <p>{path.description}</p> : null}
-                    {path.realms.length === 0 ? (
-                      <small>这条路径还没有境界。</small>
-                    ) : (
-                      <ul className="settings-evidence-list">
-                        {path.realms.map((realm) => (
-                          <li key={realm.id}>
-                            <strong>
-                              第 {realm.rank} 层 · {realm.name}
-                            </strong>
-                            <span>突破条件：{realm.breakthroughConditions}</span>
-                            {realm.breakthroughCosts ? (
-                              <small>代价：{realm.breakthroughCosts}</small>
-                            ) : null}
-                            {realm.bottlenecks ? <small>瓶颈：{realm.bottlenecks}</small> : null}
-                            {realm.counters ? <small>克制：{realm.counters}</small> : null}
-                            {realm.counteredBy ? <small>被克制：{realm.counteredBy}</small> : null}
-                            <small>
-                              寿命：
-                              {realm.lifespanAmount
-                                ? `${realm.lifespanAmount} ${detail.lifespanPolicy.unit}`
-                                : "未配置"}
-                            </small>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                ))}
+                {path.description ? <p>{path.description}</p> : null}
+                {path.realms.length === 0 ? (
+                  <small>这条路径还没有境界。</small>
+                ) : (
+                  <ul className="settings-evidence-list">
+                    {path.realms.map((realm) => (
+                      <li key={realm.id}>
+                        <strong>
+                          第 {realm.rank} 层 · {realm.name}
+                        </strong>
+                        <span>突破条件：{realm.breakthroughConditions}</span>
+                        {realm.breakthroughCosts ? (
+                          <small>代价：{realm.breakthroughCosts}</small>
+                        ) : null}
+                        {realm.bottlenecks ? <small>瓶颈：{realm.bottlenecks}</small> : null}
+                        {realm.counters ? <small>克制：{realm.counters}</small> : null}
+                        {realm.counteredBy ? <small>被克制：{realm.counteredBy}</small> : null}
+                        <small>
+                          寿命：
+                          {realm.lifespanAmount
+                            ? `${realm.lifespanAmount} ${detail.lifespanPolicy.unit}`
+                            : "未配置"}
+                        </small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            )}
+            ))}
           </div>
-
-          <WorldHealth findings={detail.health} />
-        </>
-      ) : (
-        <div className="settings-detail-block">
-          <p>尚未载入力量体系专用档案。</p>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -3009,47 +3608,35 @@ function MechanismDomainView({
   error,
   loading,
   onRetry,
+  section,
 }: {
   detail: SpecialMechanism | null;
   error: string;
   loading: boolean;
   onRetry: () => void;
+  section: EntityDetailSection;
 }) {
-  return (
-    <div className="settings-character-domain">
-      {loading ? (
-        <div className="settings-detail-block settings-character-loading" role="status">
-          <LoaderCircle className="spin" size={16} aria-hidden="true" />
-          <span>正在加载特殊机制</span>
-        </div>
-      ) : error ? (
-        <div className="settings-detail-block settings-character-error" role="alert">
-          <TriangleAlert size={16} aria-hidden="true" />
-          <span>{error}</span>
-          <button className="text-btn small" onClick={onRetry} type="button">
-            重试
-          </button>
-        </div>
-      ) : detail ? (
-        <>
-          <div className="settings-detail-block">
-            <h3>机制归属</h3>
-            <dl className="settings-character-grid">
-              <div>
-                <dt>机制类型</dt>
-                <dd>{detail.mechanismType}</dd>
-              </div>
-              <div>
-                <dt>所有者</dt>
-                <dd>{detail.owner?.label ?? "尚未记录"}</dd>
-              </div>
-              <div>
-                <dt>关联体系</dt>
-                <dd>{detail.powerSystem?.label ?? "未关联"}</dd>
-              </div>
-            </dl>
-          </div>
+  if (section === "references" || section === "health") {
+    return null;
+  }
 
+  if (section === "overview") {
+    return (
+      <div className="settings-character-domain">
+        {loading ? (
+          <div className="settings-detail-block settings-character-loading" role="status">
+            <LoaderCircle className="spin" size={16} aria-hidden="true" />
+            <span>正在加载特殊机制</span>
+          </div>
+        ) : error ? (
+          <div className="settings-detail-block settings-character-error" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{error}</span>
+            <button className="text-btn small" onClick={onRetry} type="button">
+              重试
+            </button>
+          </div>
+        ) : detail ? (
           <div className="settings-detail-block">
             <h3>规则、代价、限制与成长</h3>
             <dl className="settings-character-grid">
@@ -3071,43 +3658,73 @@ function MechanismDomainView({
               </div>
             </dl>
           </div>
-
+        ) : (
           <div className="settings-detail-block">
-            <h3>所有权历史</h3>
-            {detail.ownershipHistory.length === 0 ? (
-              <p>还没有记录所有权变更。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.ownershipHistory.map((record) => (
-                  <li key={record.id}>
-                    <div>
-                      <strong>
-                        {record.previousOwner
-                          ? `${record.previousOwner.label ?? "原所有者"} → `
-                          : "首次登记 · "}
-                        {record.owner.label ?? "未命名所有者"}
-                      </strong>
-                      <span>{formatValidity(record.validity)}</span>
-                    </div>
-                    <p>{record.reason}</p>
-                    <small>
-                      {record.evidence.length > 0
-                        ? `来源证据 ${record.evidence.length} 条`
-                        : "来源：作者补录"}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <p>尚未载入特殊机制专用档案。</p>
           </div>
+        )}
+      </div>
+    );
+  }
 
-          <WorldHealth findings={detail.health} />
-        </>
-      ) : (
+  if (!detail) {
+    return null;
+  }
+
+  if (section === "relations") {
+    return (
+      <div className="settings-character-domain">
         <div className="settings-detail-block">
-          <p>尚未载入特殊机制专用档案。</p>
+          <h3>机制归属</h3>
+          <dl className="settings-character-grid">
+            <div>
+              <dt>机制类型</dt>
+              <dd>{detail.mechanismType}</dd>
+            </div>
+            <div>
+              <dt>所有者</dt>
+              <dd>{detail.owner?.label ?? "尚未记录"}</dd>
+            </div>
+            <div>
+              <dt>关联体系</dt>
+              <dd>{detail.powerSystem?.label ?? "未关联"}</dd>
+            </div>
+          </dl>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="settings-character-domain">
+      <div className="settings-detail-block">
+        <h3>所有权历史</h3>
+        {detail.ownershipHistory.length === 0 ? (
+          <p>还没有记录所有权变更。</p>
+        ) : (
+          <ul className="settings-character-records">
+            {detail.ownershipHistory.map((record) => (
+              <li key={record.id}>
+                <div>
+                  <strong>
+                    {record.previousOwner
+                      ? `${record.previousOwner.label ?? "原所有者"} → `
+                      : "首次登记 · "}
+                    {record.owner.label ?? "未命名所有者"}
+                  </strong>
+                  <span>{formatValidity(record.validity)}</span>
+                </div>
+                <p>{record.reason}</p>
+                <small>
+                  {record.evidence.length > 0
+                    ? `来源证据 ${record.evidence.length} 条`
+                    : "来源：作者补录"}
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -3117,120 +3734,137 @@ function ItemDomainView({
   error,
   loading,
   onRetry,
+  section,
 }: {
   detail: ItemDomain | null;
   error: string;
   loading: boolean;
   onRetry: () => void;
+  section: EntityDetailSection;
 }) {
+  if (section === "references" || section === "health") {
+    return null;
+  }
+
+  if (section === "overview") {
+    return (
+      <div className="settings-character-domain">
+        {loading ? (
+          <div className="settings-detail-block settings-character-loading" role="status">
+            <LoaderCircle className="spin" size={16} aria-hidden="true" />
+            <span>正在加载物品功法</span>
+          </div>
+        ) : error ? (
+          <div className="settings-detail-block settings-character-error" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{error}</span>
+            <button className="text-btn small" onClick={onRetry} type="button">
+              重试
+            </button>
+          </div>
+        ) : detail ? (
+          <>
+            <div className="settings-detail-block">
+              <h3>物品档案</h3>
+              <dl className="settings-character-grid">
+                <div>
+                  <dt>类型</dt>
+                  <dd>{itemKindLabels[detail.kind]}</dd>
+                </div>
+                <div>
+                  <dt>分类</dt>
+                  <dd>{detail.category}</dd>
+                </div>
+                <div>
+                  <dt>品阶</dt>
+                  <dd>{detail.grade || "未定"}</dd>
+                </div>
+                <div>
+                  <dt>归属方式</dt>
+                  <dd>{itemOwnershipModelLabels[detail.ownershipModel]}</dd>
+                </div>
+                <div>
+                  <dt>数量</dt>
+                  <dd>{detail.quantity}</dd>
+                </div>
+                <div>
+                  <dt>消耗品</dt>
+                  <dd>{detail.consumable ? "是" : "否"}</dd>
+                </div>
+                <div>
+                  <dt>装备位</dt>
+                  <dd>{detail.equipmentSlot || "不适用"}</dd>
+                </div>
+                <div>
+                  <dt>当前装备者</dt>
+                  <dd>{detail.equippedBy?.label ?? "未装备"}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div className="settings-detail-block">
+              <h3>效果、代价与限制</h3>
+              <dl className="settings-character-grid">
+                <div>
+                  <dt>效果</dt>
+                  <dd>{detail.effect}</dd>
+                </div>
+                <div>
+                  <dt>代价</dt>
+                  <dd>{detail.cost || "尚未记录"}</dd>
+                </div>
+                <div>
+                  <dt>限制</dt>
+                  <dd>{detail.limits || "尚未记录"}</dd>
+                </div>
+              </dl>
+            </div>
+          </>
+        ) : (
+          <div className="settings-detail-block">
+            <p>尚未载入物品功法专用档案。</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return null;
+  }
+
+  if (section === "history") {
+    return <DetailEmpty>还没有记录流转历史。</DetailEmpty>;
+  }
+
   return (
     <div className="settings-character-domain">
-      {loading ? (
-        <div className="settings-detail-block settings-character-loading" role="status">
-          <LoaderCircle className="spin" size={16} aria-hidden="true" />
-          <span>正在加载物品功法</span>
-        </div>
-      ) : error ? (
-        <div className="settings-detail-block settings-character-error" role="alert">
-          <TriangleAlert size={16} aria-hidden="true" />
-          <span>{error}</span>
-          <button className="text-btn small" onClick={onRetry} type="button">
-            重试
-          </button>
-        </div>
-      ) : detail ? (
-        <>
-          <div className="settings-detail-block">
-            <h3>物品档案</h3>
-            <dl className="settings-character-grid">
-              <div>
-                <dt>类型</dt>
-                <dd>{itemKindLabels[detail.kind]}</dd>
-              </div>
-              <div>
-                <dt>分类</dt>
-                <dd>{detail.category}</dd>
-              </div>
-              <div>
-                <dt>品阶</dt>
-                <dd>{detail.grade || "未定"}</dd>
-              </div>
-              <div>
-                <dt>归属方式</dt>
-                <dd>{itemOwnershipModelLabels[detail.ownershipModel]}</dd>
-              </div>
-              <div>
-                <dt>数量</dt>
-                <dd>{detail.quantity}</dd>
-              </div>
-              <div>
-                <dt>消耗品</dt>
-                <dd>{detail.consumable ? "是" : "否"}</dd>
-              </div>
-              <div>
-                <dt>装备位</dt>
-                <dd>{detail.equipmentSlot || "不适用"}</dd>
-              </div>
-              <div>
-                <dt>当前装备者</dt>
-                <dd>{detail.equippedBy?.label ?? "未装备"}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>效果、代价与限制</h3>
-            <dl className="settings-character-grid">
-              <div>
-                <dt>效果</dt>
-                <dd>{detail.effect}</dd>
-              </div>
-              <div>
-                <dt>代价</dt>
-                <dd>{detail.cost || "尚未记录"}</dd>
-              </div>
-              <div>
-                <dt>限制</dt>
-                <dd>{detail.limits || "尚未记录"}</dd>
-              </div>
-            </dl>
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>权利记录</h3>
-            {detail.rights.length === 0 ? (
-              <p>还没有记录归属、保管、位置、使用权或处置权。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.rights.map((right) => (
-                  <li key={right.id}>
-                    <div>
-                      <strong>
-                        {itemRightTypeLabels[right.rightType]} ·{" "}
-                        {right.holder.label ?? "未命名持有者"}
-                      </strong>
-                      <span>{formatValidity(right.validity)}</span>
-                    </div>
-                    <p>{right.reason}</p>
-                    <small>
-                      {right.sharePercent !== null ? `份额 ${right.sharePercent}% · ` : ""}
-                      {right.evidence.length > 0
-                        ? `来源证据 ${right.evidence.length} 条`
-                        : "来源：作者补录"}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <WorldHealth findings={detail.health} />
-        </>
-      ) : (
-        <div className="settings-detail-block">
-          <p>尚未载入物品功法专用档案。</p>
-        </div>
-      )}
+      <div className="settings-detail-block">
+        <h3>权利记录</h3>
+        {detail.rights.length === 0 ? (
+          <p>还没有记录归属、保管、位置、使用权或处置权。</p>
+        ) : (
+          <ul className="settings-character-records">
+            {detail.rights.map((right) => (
+              <li key={right.id}>
+                <div>
+                  <strong>
+                    {itemRightTypeLabels[right.rightType]} · {right.holder.label ?? "未命名持有者"}
+                  </strong>
+                  <span>{formatValidity(right.validity)}</span>
+                </div>
+                <p>{right.reason}</p>
+                <small>
+                  {right.sharePercent !== null ? `份额 ${right.sharePercent}% · ` : ""}
+                  {right.evidence.length > 0
+                    ? `来源证据 ${right.evidence.length} 条`
+                    : "来源：作者补录"}
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
@@ -3241,114 +3875,140 @@ function TimelineDomainView({
   error,
   loading,
   onRetry,
+  section,
 }: {
   detail: WorldTimeline | null;
   entity: Extract<SettingEntity, { type: "timeline_event" }>;
   error: string;
   loading: boolean;
   onRetry: () => void;
+  section: EntityDetailSection;
 }) {
   const selectedEvent = detail?.events.find((event) => event.event.id === entity.id) ?? null;
+  if (section === "references" || section === "health") {
+    return null;
+  }
+
+  if (section === "overview") {
+    return (
+      <div className="settings-character-domain">
+        {loading ? (
+          <div className="settings-detail-block settings-character-loading" role="status">
+            <LoaderCircle className="spin" size={16} aria-hidden="true" />
+            <span>正在加载故事时间线</span>
+          </div>
+        ) : error ? (
+          <div className="settings-detail-block settings-character-error" role="alert">
+            <TriangleAlert size={16} aria-hidden="true" />
+            <span>{error}</span>
+            <button className="text-btn small" onClick={onRetry} type="button">
+              重试
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="settings-golden-grid">
+              <div>
+                <span>纪元</span>
+                <strong>{selectedEvent?.storyTime.era ?? entity.data.era ?? "未记录"}</strong>
+              </div>
+              <div>
+                <span>故事时间</span>
+                <strong>{selectedEvent?.storyTime.label ?? entity.data.storyTime}</strong>
+              </div>
+              <div>
+                <span>持续时长</span>
+                <strong>{selectedEvent?.durationLabel || entity.data.duration || "未记录"}</strong>
+              </div>
+              <div>
+                <span>事件</span>
+                <strong>{selectedEvent?.eventText ?? entity.data.event}</strong>
+              </div>
+            </div>
+            {selectedEvent ? (
+              <div className="settings-detail-block">
+                <h3>生效范围</h3>
+                <p>{formatValidity(selectedEvent.validity)}</p>
+              </div>
+            ) : null}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  if (!detail) {
+    return null;
+  }
+
+  if (section === "relations") {
+    return (
+      <div className="settings-character-domain">
+        <div className="settings-detail-block">
+          <h3>角色行程</h3>
+          {detail.itineraries.length === 0 ? (
+            <p>还没有记录角色行程。</p>
+          ) : (
+            <ul className="settings-character-records">
+              {detail.itineraries.map((itinerary) => (
+                <li key={itinerary.id}>
+                  <div>
+                    <strong>
+                      {itinerary.character.label ?? "未命名人物"} ·{" "}
+                      {itinerary.fromNode.label ?? "未命名地点"} →{" "}
+                      {itinerary.toNode.label ?? "未命名地点"}
+                    </strong>
+                    <span>{itinerary.travelMinutes} 分钟</span>
+                  </div>
+                  <small>
+                    {itinerary.departure.era} · {itinerary.departure.label} 至{" "}
+                    {itinerary.arrival.label}
+                  </small>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="settings-character-domain">
-      {loading ? (
-        <div className="settings-detail-block settings-character-loading" role="status">
-          <LoaderCircle className="spin" size={16} aria-hidden="true" />
-          <span>正在加载故事时间线</span>
-        </div>
-      ) : error ? (
-        <div className="settings-detail-block settings-character-error" role="alert">
-          <TriangleAlert size={16} aria-hidden="true" />
-          <span>{error}</span>
-          <button className="text-btn small" onClick={onRetry} type="button">
-            重试
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="settings-golden-grid">
-            <div>
-              <span>纪元</span>
-              <strong>{selectedEvent?.storyTime.era ?? entity.data.era ?? "未记录"}</strong>
-            </div>
-            <div>
-              <span>故事时间</span>
-              <strong>{selectedEvent?.storyTime.label ?? entity.data.storyTime}</strong>
-            </div>
-            <div>
-              <span>持续时长</span>
-              <strong>{selectedEvent?.durationLabel || entity.data.duration || "未记录"}</strong>
-            </div>
-            <div>
-              <span>事件</span>
-              <strong>{selectedEvent?.eventText ?? entity.data.event}</strong>
-            </div>
-          </div>
-          {selectedEvent ? (
-            <div className="settings-detail-block">
-              <h3>生效范围</h3>
-              <p>{formatValidity(selectedEvent.validity)}</p>
-            </div>
-          ) : null}
-
-          <div className="settings-detail-block">
-            <h3>事件序列</h3>
-            {!detail || detail.events.length === 0 ? (
-              <p>还没有记录故事事件。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.events.map((event) => (
-                  <li key={event.event.id}>
-                    <div>
-                      <strong>
-                        {event.storyTime.era} · {event.storyTime.label}
-                      </strong>
-                      <span>{event.event.label ?? "未命名事件"}</span>
-                    </div>
-                    <p>{event.eventText}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          <div className="settings-detail-block">
-            <h3>角色行程</h3>
-            {!detail || detail.itineraries.length === 0 ? (
-              <p>还没有记录角色行程。</p>
-            ) : (
-              <ul className="settings-character-records">
-                {detail.itineraries.map((itinerary) => (
-                  <li key={itinerary.id}>
-                    <div>
-                      <strong>
-                        {itinerary.character.label ?? "未命名人物"} ·{" "}
-                        {itinerary.fromNode.label ?? "未命名地点"} →{" "}
-                        {itinerary.toNode.label ?? "未命名地点"}
-                      </strong>
-                      <span>{itinerary.travelMinutes} 分钟</span>
-                    </div>
-                    <small>
-                      {itinerary.departure.era} · {itinerary.departure.label} 至{" "}
-                      {itinerary.arrival.label}
-                    </small>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {detail ? <WorldHealth findings={detail.health} /> : null}
-        </>
-      )}
+      <div className="settings-detail-block">
+        <h3>事件序列</h3>
+        {detail.events.length === 0 ? (
+          <p>还没有记录故事事件。</p>
+        ) : (
+          <ul className="settings-character-records">
+            {detail.events.map((event) => (
+              <li key={event.event.id}>
+                <div>
+                  <strong>
+                    {event.storyTime.era} · {event.storyTime.label}
+                  </strong>
+                  <span>{event.event.label ?? "未命名事件"}</span>
+                </div>
+                <p>{event.eventText}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }
 
-function WorldHealth({ findings }: { findings: FactionDetail["health"] }) {
+function WorldHealth({
+  findings,
+  showHeading = true,
+}: {
+  findings: Array<{ code: string; severity: "info" | "warning" | "blocker"; message: string }>;
+  showHeading?: boolean;
+}) {
   return (
     <div className="settings-detail-block">
-      <h3>设定体检</h3>
+      {showHeading ? <h3>设定体检</h3> : null}
       {findings.length === 0 ? (
         <p>基础检查通过。</p>
       ) : (
@@ -4077,6 +4737,18 @@ function worldDetailErrorLabel(type: SettingEntityType): string {
 
 function settingsPath(work: WorkOverview): string {
   return `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+}
+
+function settingsUrl(workId: string, column?: ColumnKey, entityId?: string): string {
+  const params = new URLSearchParams();
+  if (column) {
+    params.set("column", column);
+  }
+  if (entityId) {
+    params.set("entityId", entityId);
+  }
+  const query = params.toString();
+  return `/workspace/${workId}/settings${query ? `?${query}` : ""}`;
 }
 
 function columnForType(type: SettingEntityType): ColumnKey {

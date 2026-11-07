@@ -213,7 +213,6 @@ test("compares candidates, blocks a failed dimension, selects and locks at four 
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`/workspace/${work.id}/outline`);
-  await page.getByRole("tab", { name: "黄金三章" }).click();
   await expect(page.getByRole("heading", { name: "黄金三章候选" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "候选 A · 钩子优先" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "候选 B · 人物优先" })).toBeVisible();

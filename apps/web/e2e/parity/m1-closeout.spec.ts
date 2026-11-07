@@ -98,7 +98,6 @@ test("completes the M1 author loop through outline, writing, facts and volume au
   await writeChapterVersionThroughUi(page, work.id, chapterThree.id, chapterThreeContent());
 
   await page.goto(`/workspace/${work.id}/outline`);
-  await page.getByRole("tab", { name: "黄金三章" }).click();
   await page.getByRole("button", { name: "生成 3 个候选" }).click();
   await expect(page.locator(".golden-three-candidate")).toHaveCount(3);
   await page
@@ -129,6 +128,7 @@ test("completes the M1 author loop through outline, writing, facts and volume au
     await expect(
       page.locator(".writing-quality").getByText("当前版本没有阻断级质量问题。"),
     ).toBeVisible();
+    await page.getByRole("tab", { name: "事实" }).click();
 
     const factsPanel = page.getByRole("region", { name: "本章事实" });
     const optionalFact = factsPanel
@@ -366,6 +366,8 @@ async function createSettingsThroughUi(page: Page) {
     await expect(detail.getByRole("heading", { name: setting.name })).toBeVisible();
     await detail.getByRole("button", { name: "锁定设定" }).click();
     await expect(detail.getByText("已锁定 · 编辑需修改请求")).toBeVisible();
+    await detail.getByRole("button", { name: "返回设定中心" }).first().click();
+    await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
   }
 }
 

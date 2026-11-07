@@ -81,6 +81,7 @@ test("completes the full M0 author journey through the production UI", async ({
     await expect(
       page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
     ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("tab", { name: "事实" }).click();
 
     const factsPanel = page.getByRole("region", { name: "本章事实" });
     const optionalFact = factsPanel
@@ -105,6 +106,7 @@ test("completes the full M0 author journey through the production UI", async ({
 
     await page.getByRole("button", { name: "检查本章", exact: true }).click();
     await expect(page.locator(".writing-quality")).toContainText("质量报告");
+    await page.getByRole("tab", { name: "事实" }).click();
     await expect(factsPanel.getByText("先批准本章，才能提交事实。")).toBeVisible();
     await factsPanel.getByRole("button", { name: "批准本章" }).click();
     await expect(factsPanel.getByRole("button", { name: "本章已批准" })).toBeDisabled();
@@ -216,7 +218,7 @@ test("checks every M0 parity page at all signed-off viewports and author languag
       id: "outline",
       path: `/workspace/${work.id}/outline`,
       heading: "大纲工作台",
-      ready: ".outline-workspace-grid",
+      ready: ".outline-plan-grid",
       signedGolden: false,
     },
     {

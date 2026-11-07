@@ -10,7 +10,7 @@
 - 每次创建、编辑、重排、锁定、解锁、卷契约和场景卡保存都追加 `outline_version` 版本节点并写审计记录。
 - 章节点只引用现有 `chapters`；章纲仍由 `chapters.brief` 持有，不复制正文或另造章节状态机。
 - 卷契约记录目标、冲突、转折点、退出条件和相关剧情线。
-- 场景卡记录有序节拍、POV、地点、故事时间、信息释放与知情边界、张力。
+- 场景卡记录有序节拍、POV、地点、故事时间、信息释放与知情边界、规划张力（0–100，用于观察节奏起伏，不是质量评分）。
 - 结构化 readiness 与 re-planning 影响结果，固定 `ruleVersion`。
 
 ## 契约与不变量
@@ -36,7 +36,7 @@
 | GET | `/` | 工作台：节点、卷契约、场景卡、准备度、统计 |
 | GET | `/planning-readiness` | 结构化准备度（避免与 M0 `outline/readiness` 冲突） |
 | POST | `/nodes` | 创建节点；章节点可引用现有章节或同时创建章节 |
-| PATCH | `/nodes/:nodeId` | 编辑标题/摘要/状态/张力 |
+| PATCH | `/nodes/:nodeId` | 编辑标题/摘要/状态/规划张力 |
 | POST | `/nodes/:nodeId/move` | 重排或跨父移动 |
 | POST | `/nodes/:nodeId/lock` | 锁定并追加版本 |
 | POST | `/nodes/:nodeId/unlock` | 解锁并追加版本 |
@@ -49,6 +49,7 @@ Web 代理 `apps/web/app/api/v1/[...path]/route.ts` 已补 `PUT` 转发，确保
 ## 页面与状态
 
 - `apps/web/components/outline-workspace.tsx`：树状大纲、章节看板、张力曲线；节点详情、章纲、卷契约、场景卡编辑；拖拽/上下移动；锁定/解锁；准备度面板。
+- 规划张力由作者按 0–100 填写，章节节点和场景卡使用同一语义：它是节奏观察值，不是正文质量评分；张力曲线只使用这些规划值绘制。
 - `apps/web/e2e/parity/outline.spec.ts` 覆盖：
   - empty / tree / board / tension
   - partial readiness

@@ -336,12 +336,30 @@ test("renders empty, tree, board and tension states at four viewports", async ({
     await page.locator(`[data-outline-node-id="${fixture.chapter.id}"]`).click();
     await expect(page.getByRole("heading", { name: "这一章要完成什么" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "章节标题" })).toHaveValue("一只手也能结印");
+    const chapterTensionForm = page
+      .locator("form.outline-plan-form")
+      .filter({ hasText: "章节规划强度" });
+    await expect(chapterTensionForm.getByLabel("规划张力（0–100）")).toBeVisible();
+    await expect(
+      chapterTensionForm.getByText(
+        "章节正文状态由写作台管理；规划张力用于观察节奏起伏，不是质量评分。",
+      ),
+    ).toBeVisible();
 
     await page.locator(`[data-outline-node-id="${fixture.scene.id}"]`).click();
     await expect(page.getByRole("heading", { name: "POV、地点、时间和信息释放" })).toBeVisible();
     await expect(page.getByRole("combobox", { name: "视角人物" })).toHaveValue(
       fixture.character.id,
     );
+    const sceneTensionForm = page
+      .locator("form.outline-plan-form")
+      .filter({ hasText: "POV、地点、时间和信息释放" });
+    await expect(sceneTensionForm.getByLabel("规划张力（0–100）")).toBeVisible();
+    await expect(
+      sceneTensionForm.getByText(
+        "规划张力用于观察节奏起伏，不是质量评分；场景卡保存后会进入准备度检查。",
+      ),
+    ).toBeVisible();
 
     await page.getByRole("tab", { name: "章节看板" }).click();
     await expect(page.getByRole("button", { name: /第 48 章/ })).toBeVisible();
