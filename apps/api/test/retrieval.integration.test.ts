@@ -381,6 +381,92 @@ describe("structured retrieval HTTP integration", () => {
     expect(findResult(withPov, knownFact.id)?.source.version?.versionNodeId).toBeTruthy();
   });
 
+  it("uses the target chapter version when versionNodeId is omitted", async () => {
+    const owner = await createAuthenticatedAgent("retrieval-implicit-version@example.com");
+    const { work, token } = await createWork(owner, "忘川隐式版本录");
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const earlyCharacter = await createCharacter(owner, token, base, {
+      name: "沈砚",
+      aliases: [],
+      summary: "第一章之前已经出场的主角。",
+    });
+
+    const firstChapter = await createChapterWithVersion(owner, token, base, 1, "断臂藏锋");
+
+    const futureCharacter = await createCharacter(owner, token, base, {
+      name: "顾青",
+      aliases: [],
+      summary: "第二章之后才入场的内门弟子。",
+    });
+
+    const chapterOne = await search(owner, token, base, {
+      query: "顾青",
+      chapterNumber: 1,
+    });
+    expect(findResult(chapterOne, futureCharacter.character.id)).toBeUndefined();
+
+    const current = await search(owner, token, base, {
+      query: "顾青",
+      chapterNumber: 2,
+    });
+    expect(findResult(current, futureCharacter.character.id)).toBeDefined();
+
+    const early = await search(owner, token, base, {
+      query: "沈砚",
+      chapterNumber: 1,
+    });
+    expect(findResult(early, earlyCharacter.character.id)).toBeDefined();
+    expect(
+      early.find((result) => result.id === earlyCharacter.character.id)?.source.version
+        ?.versionNodeId,
+    ).toBe(earlyCharacter.latestVersionNodeId);
+
+    const explicitlyAnchored = await search(owner, token, base, {
+      query: "顾青",
+      chapterNumber: 1,
+      versionNodeId: firstChapter.version.versionNodeId,
+    });
+    expect(findResult(explicitlyAnchored, futureCharacter.character.id)).toBeUndefined();
+  });
+
+  it("does not expand relationships introduced after the target chapter", async () => {
+    const owner = await createAuthenticatedAgent("retrieval-relationship-version@example.com");
+    const { work, token } = await createWork(owner, "忘川关系版本录");
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const shen = await createCharacter(owner, token, base, {
+      name: "沈砚",
+      aliases: [],
+      summary: "第一章之前已经出场的主角。",
+    });
+    const gu = await createCharacter(owner, token, base, {
+      name: "顾青",
+      aliases: [],
+      summary: "第一章之前已经出场的同门。",
+    });
+
+    await createChapterWithVersion(owner, token, base, 1, "断臂藏锋");
+    await addRelationship(owner, token, base, shen.character.id, {
+      target: ref("character", gu.character.id, work.mainBranch.id, "顾青"),
+      relationType: "ally",
+      validity: chapterValidity(1, null),
+      sourceChapterId: null,
+    });
+
+    const chapterOne = await search(owner, token, base, {
+      query: "沈砚",
+      chapterNumber: 1,
+      relationshipDepth: 1,
+    });
+    expect(findResult(chapterOne, gu.character.id)).toBeUndefined();
+
+    const current = await search(owner, token, base, {
+      query: "沈砚",
+      chapterNumber: 2,
+      relationshipDepth: 1,
+    });
+    expect(findResult(current, gu.character.id)).toBeDefined();
+  });
+
   it("disambiguates same-name Chinese entities", async () => {
     const owner = await createAuthenticatedAgent("retrieval-homonyms@example.com");
     const { work, token } = await createWork(owner, "忘川同名录");
@@ -417,6 +503,7 @@ describe("structured retrieval HTTP integration", () => {
     const first = await createWork(owner, "忘川甲录");
     const second = await createWork(owner, "忘川乙录");
     const token = await csrf(owner);
+    const userId = await userIdFor("retrieval-tenant-a@example.com");
     const firstBase = `/api/v1/works/${first.work.id}/branches/${first.work.mainBranch.id}`;
     const secondBase = `/api/v1/works/${second.work.id}/branches/${second.work.mainBranch.id}`;
     const firstCharacter = await createCharacter(owner, token, firstBase, {
@@ -429,6 +516,14 @@ describe("structured retrieval HTTP integration", () => {
       aliases: [],
       summary: "乙作品的人物。",
     });
+    const siblingBranch = await insertBranchWithCharacter({
+      databasePool,
+      userId,
+      workId: first.work.id,
+      name: "苏照",
+      summary: "甲作品的平行版本人物。",
+    });
+    const siblingBase = `/api/v1/works/${first.work.id}/branches/${siblingBranch.branchId}`;
 
     const inFirst = await search(owner, token, firstBase, {
       query: "沈砚",
@@ -436,6 +531,7 @@ describe("structured retrieval HTTP integration", () => {
     });
     expect(findResult(inFirst, firstCharacter.character.id)).toBeDefined();
     expect(findResult(inFirst, secondCharacter.character.id)).toBeUndefined();
+    expect(findResult(inFirst, siblingBranch.characterId)).toBeUndefined();
 
     const inSecond = await search(owner, token, secondBase, {
       query: "沈砚",
@@ -443,6 +539,13 @@ describe("structured retrieval HTTP integration", () => {
     });
     expect(findResult(inSecond, secondCharacter.character.id)).toBeDefined();
     expect(findResult(inSecond, firstCharacter.character.id)).toBeUndefined();
+
+    const inSibling = await search(owner, token, siblingBase, {
+      query: "苏照",
+      chapterNumber: 5,
+    });
+    expect(findResult(inSibling, siblingBranch.characterId)).toBeDefined();
+    expect(findResult(inSibling, firstCharacter.character.id)).toBeUndefined();
 
     await searchExpectStatus(
       intruder,
@@ -592,6 +695,39 @@ describe("structured retrieval HTTP integration", () => {
         id: string;
         mainBranch: { id: string; headNodeId: string };
       },
+    };
+  }
+
+  async function createChapterWithVersion(
+    agent: SuperAgentTest,
+    token: string,
+    base: string,
+    number: number,
+    title: string,
+  ) {
+    const created = await postJson(agent, token, `${base}/chapters`, {
+      number,
+      title,
+      brief: retrievalChapterBrief(),
+    });
+    if (created.status !== 201) {
+      throw new Error(`${created.status}: ${JSON.stringify(created.body)}`);
+    }
+    const saved = await postJson(
+      agent,
+      token,
+      `${base}/chapters/${created.body.data.id}/versions`,
+      {
+        version: created.body.data.version,
+        content: `第 ${number} 章正文。`,
+      },
+    );
+    if (saved.status !== 201) {
+      throw new Error(`${saved.status}: ${JSON.stringify(saved.body)}`);
+    }
+    return saved.body.data as {
+      chapter: { id: string; number: number; version: number };
+      version: { id: string; versionNodeId: string };
     };
   }
 
@@ -839,6 +975,21 @@ function chapterValidity(fromChapter: number, toChapter: number | null) {
   };
 }
 
+function retrievalChapterBrief() {
+  return {
+    goal: "让沈砚在断臂后找到新的战斗方式。",
+    pov: "沈砚",
+    location: "荒寺外山道",
+    sceneBeats: [
+      "沈砚藏起断臂，被顾青撞见。",
+      "血河宗追兵逼近，两人被迫联手。",
+      "沈砚单手结印，忘川书短暂显形。",
+      "顾青看见书页一角，但没有点破。",
+    ],
+    requiredFacts: ["左臂骨折，不能双手结印", "顾青不知道忘川书完整来历"],
+  };
+}
+
 function ref(
   type: "character" | "item" | "map" | "faction" | "map_node" | "timeline_event",
   id: string,
@@ -1080,6 +1231,44 @@ async function insertDuplicateCharacter(input: {
     [versionNodeId, now, input.branchId],
   );
   return entityId;
+}
+
+async function insertBranchWithCharacter(input: {
+  databasePool: ReturnType<typeof createDatabasePool>;
+  userId: string;
+  workId: string;
+  name: string;
+  summary: string;
+}): Promise<{ branchId: string; characterId: string }> {
+  const branchId = uuidv7();
+  const rootNodeId = uuidv7();
+  const now = new Date();
+  await input.databasePool.query(
+    `INSERT INTO work_branches
+      (id, work_id, user_id, name, status, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, 'active', $5, $5)`,
+    [branchId, input.workId, input.userId, "what-if", now],
+  );
+  await input.databasePool.query(
+    `INSERT INTO version_nodes
+      (id, work_id, branch_id, user_id, node_type, object_type, object_id, object_version,
+       snapshot_id, payload, actor_id, message, created_at)
+     VALUES ($1, $2, $3, $4, 'snapshot', 'work', $2, 1, $1, '{}'::jsonb, $4, $5, $6)`,
+    [rootNodeId, input.workId, branchId, input.userId, "创建平行版本", now],
+  );
+  await input.databasePool.query(
+    "UPDATE work_branches SET head_node_id = $1, updated_at = $2 WHERE id = $3",
+    [rootNodeId, now, branchId],
+  );
+  const characterId = await insertDuplicateCharacter({
+    databasePool: input.databasePool,
+    userId: input.userId,
+    workId: input.workId,
+    branchId,
+    name: input.name,
+    summary: input.summary,
+  });
+  return { branchId, characterId };
 }
 
 async function seedSearchDocuments(input: {

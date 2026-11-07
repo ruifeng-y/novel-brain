@@ -8,6 +8,8 @@ import {
   type StoryTimePoint,
 } from "@novel-brain/contracts";
 import {
+  chapters,
+  chapterVersions,
   createDatabaseClient,
   createDatabasePool,
   works,
@@ -146,9 +148,16 @@ export class RetrievalRepository implements OnModuleDestroy {
   ): Promise<RetrievalSearchOutcome> {
     const startedAt = performance.now();
     const results = await this.withTenant(userId, async (transaction) => {
-      const rows = await this.searchRows(transaction, userId, workId, branchId, input);
+      const scopedInput = await this.scopeToTargetChapterVersion(
+        transaction,
+        userId,
+        workId,
+        branchId,
+        input,
+      );
+      const rows = await this.searchRows(transaction, userId, workId, branchId, scopedInput);
       const direct = rows.map((row) => this.toResult(row));
-      if (!input.expandRelationships || input.relationshipDepth === 0) {
+      if (!scopedInput.expandRelationships || scopedInput.relationshipDepth === 0) {
         return direct;
       }
       const expanded = await this.expandRelationships(
@@ -156,7 +165,7 @@ export class RetrievalRepository implements OnModuleDestroy {
         userId,
         workId,
         branchId,
-        input,
+        scopedInput,
         direct,
       );
       const directById = new Map(direct.map((result) => [result.id, result]));
@@ -180,6 +189,40 @@ export class RetrievalRepository implements OnModuleDestroy {
       results: ranked,
       tookMs: Math.round((performance.now() - startedAt) * 10) / 10,
     };
+  }
+
+  private async scopeToTargetChapterVersion(
+    transaction: DatabaseTransaction,
+    userId: string,
+    workId: string,
+    branchId: string,
+    input: RetrievalQuery,
+  ): Promise<RetrievalQuery> {
+    if (input.versionNodeId !== null) {
+      return input;
+    }
+    const [anchor] = await transaction
+      .select({ versionNodeId: chapterVersions.versionNodeId })
+      .from(chapters)
+      .innerJoin(
+        chapterVersions,
+        and(
+          eq(chapterVersions.id, chapters.currentVersionId),
+          eq(chapterVersions.userId, userId),
+          eq(chapterVersions.workId, workId),
+          eq(chapterVersions.branchId, branchId),
+        ),
+      )
+      .where(
+        and(
+          eq(chapters.userId, userId),
+          eq(chapters.workId, workId),
+          eq(chapters.branchId, branchId),
+          eq(chapters.number, input.chapterNumber),
+        ),
+      )
+      .limit(1);
+    return anchor ? { ...input, versionNodeId: anchor.versionNodeId } : input;
   }
 
   private async searchRows(
@@ -472,6 +515,20 @@ export class RetrievalRepository implements OnModuleDestroy {
   ): Promise<RelationshipRow[]> {
     const storyTime = input.storyTime;
     const result = await transaction.execute(sql`
+      WITH RECURSIVE ancestors AS (
+        SELECT node.id, node.parent_node_id
+        FROM version_nodes AS node
+        WHERE ${input.versionNodeId}::uuid IS NOT NULL
+          AND node.id = ${input.versionNodeId}::uuid
+          AND node.user_id = ${userId}::uuid
+          AND node.branch_id = ${branchId}::uuid
+        UNION ALL
+        SELECT parent.id, parent.parent_node_id
+        FROM version_nodes AS parent
+        INNER JOIN ancestors AS child ON parent.id = child.parent_node_id
+        WHERE parent.user_id = ${userId}::uuid
+          AND parent.branch_id = ${branchId}::uuid
+      )
       SELECT
         relationship.id AS relation_id,
         'character'::text AS source_type,
@@ -489,6 +546,14 @@ export class RetrievalRepository implements OnModuleDestroy {
         AND (
           relationship.source_character_id = ${nodeId}::uuid
           OR relationship.target_id = ${nodeId}::uuid
+        )
+        AND (
+          ${input.versionNodeId}::uuid IS NULL
+          OR EXISTS (
+            SELECT 1
+            FROM ancestors
+            WHERE ancestors.id = relationship.version_node_id
+          )
         )
         AND relationship.valid_from_chapter <= ${input.chapterNumber}
         AND (
@@ -524,6 +589,14 @@ export class RetrievalRepository implements OnModuleDestroy {
         AND (
           relationship.source_faction_id = ${nodeId}::uuid
           OR relationship.target_id = ${nodeId}::uuid
+        )
+        AND (
+          ${input.versionNodeId}::uuid IS NULL
+          OR EXISTS (
+            SELECT 1
+            FROM ancestors
+            WHERE ancestors.id = relationship.version_node_id
+          )
         )
         AND relationship.valid_from_chapter <= ${input.chapterNumber}
         AND (
