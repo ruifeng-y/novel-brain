@@ -48,6 +48,8 @@ Issue #90 已完成卷末审计、固定仙侠样片、M1 全链路 E2E 和 M1 �
 
 2026-11-07：writing 右侧信息区按原型改为 9 个 tab，所有 tab 继续消费真实质量、事实、修订、版本、生成接口；伏笔/人物 tab 新增读取真实账本和人物档案。左侧卷导航/搜索和顶部题材规则条已补齐；原型题材切换按钮属于演示内容，不进入生产。编辑建议 tab 目前复用真实质量/修订面板，静态建议卡排版待签收确认。
 
+2026-11-07：作者确认 `2adc945` 的 M1 候选截图，覆盖 work-overview、bible、settings、entity-detail、outline、foreshadows、writing、account-settings 共 8 页 × 390 / 900 / 1180 / 1440 四档视口（`artifacts/ui/candidates/m1/`）。该确认只针对页面结构与布局；正式 Linux/CI golden 仍需按 ADR 0027 重新拍摄并由作者完成 golden 比对签收，在完成前上述页面不得提升为 `parity-verified`。
+
 ## 2026-11-06 M1 黄金三章生产变更
 
 Issue #147 在 outline 页加入黄金三章候选比较、六维评分与证据、作者选择、失败阻断、例外锁定和风格基线。`apps/web/e2e/parity/golden-three.spec.ts` 已覆盖四档视口与真实 API 动作；现有 outline 生产 golden 已不代表新布局，需在 M1 布局稳定后重新拍摄并完成作者视觉签收。

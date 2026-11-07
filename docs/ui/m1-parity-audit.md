@@ -42,6 +42,8 @@
   - `artifacts/ui/candidates/m1/outline-planning-tension-{1440,390}.png`
   - `artifacts/ui/candidates/m1/outline-workspace-parity-{1440,390}.png`
   - `artifacts/ui/candidates/m1/writing-workspace-aligned-{1440,390}.png`
+  - `artifacts/ui/candidates/m1/m1-signoff-overview.png`（8 页 × 4 档总览）
+- 2026-11-07 作者已确认 `2adc945` 的 8 页 × 4 档候选截图（清单见 `artifacts/ui/candidates/m1/m1-capture-results.json`）；该确认不替代正式 Linux/CI golden 比对签收。
 
 ## 4. 签收前剩余事项
 
