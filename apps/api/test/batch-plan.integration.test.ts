@@ -756,6 +756,11 @@ describe("batch plan integration", () => {
       const workerRepository = new WorkerGenerationRepository();
       try {
         const payload = toGenerateChapterJob(child!);
+        expect(payload.budget).toEqual({
+          maxCostCny: 2.5,
+          maxTokens: 30_000,
+          maxRevisionRounds: 2,
+        });
         await expect(workerRepository.stopReason(payload)).resolves.toBe("paused");
         await expect(
           workerRepository.startStep(payload, "prepare", "a".repeat(64), 10),

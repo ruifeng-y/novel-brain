@@ -23,8 +23,11 @@ import {
   ContextBudgetExceededError,
   decideStepRecovery,
   extractFactCandidates,
+  planProviderCallBudget,
+  PROVIDER_CALL_MAX_OUTPUT_TOKENS,
   resolveModelContextWindow,
 } from "@novel-brain/core";
+import { CostSettlementExceedsReservationError } from "@novel-brain/db";
 
 import { AI_GATEWAY } from "./generation.tokens";
 import type { ByokAiGatewayFactory } from "./model-provider.factory";
@@ -290,7 +293,7 @@ export class GenerationJobProcessor {
             summaries: sources.summaries,
             povCharacterId: sources.povCharacterId ?? null,
             modelContextWindowTokens: resolveModelContextWindow(input.loaded.modelConfig.model),
-            reservedOutputTokens: 2_000,
+            reservedOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
             ...(sources.knowledge ? { knowledge: sources.knowledge } : {}),
           },
           input.payload.budget.maxTokens,
@@ -450,11 +453,16 @@ export class GenerationJobProcessor {
     system: string;
     citations: unknown[];
   }): Promise<GenerationResult> {
-    const estimatedTokens = estimateTokens(input.prompt) + 600;
+    const providerBudget = planProviderCallBudget({
+      system: input.system,
+      prompt: input.prompt,
+      maxOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
+    });
+    const estimatedTokens = providerBudget.reservedTokens;
     const estimatedCostCny = calculateCost(estimatedTokens);
     const parameters = {
       operation: input.operation,
-      maxTokens: 2_000,
+      maxTokens: providerBudget.maxOutputTokens,
       stream: false,
     };
     let call: StartedModelCall;
@@ -504,15 +512,48 @@ export class GenerationJobProcessor {
       step: input.step,
       inputHash: sha256(input.system + input.prompt).slice(0, 12),
     });
-    let result: GenerationResult;
+    let result: GenerationResult | undefined;
     try {
       result = await input.provider.generateText({
         prompt: input.prompt,
         system: input.system,
-        maxTokens: 2_000,
+        maxTokens: providerBudget.maxOutputTokens,
         operation: input.operation,
       });
+      await this.repository.completeModelCall({
+        payload: input.payload,
+        step: input.step,
+        call,
+        result,
+      });
     } catch (error) {
+      if (error instanceof CostSettlementExceedsReservationError && result) {
+        await this.repository.failModelCall({
+          payload: input.payload,
+          step: input.step,
+          call,
+          failureClass: "budget",
+          errorCode: "JOB_BUDGET_EXCEEDED",
+          message: "模型实际用量超过预算预留，草稿和检查点已保留",
+          escalationReason: "模型实际用量与预算预留不符，请检查预算后从断点重试",
+          actualUsage: {
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
+          },
+        });
+        this.traceLogger?.warn({
+          event: "worker.model_call.budget_overrun",
+          jobId: input.payload.jobId,
+          runId: call.runId,
+          modelCallId: call.modelCallId,
+          reservationId: call.reservationId,
+          step: input.step,
+          actualTokens: result.usage.inputTokens + result.usage.outputTokens,
+          failureClass: "budget",
+        });
+        throw new JobBudgetExceededError();
+      }
       const failure = toProviderFailure(error);
       await this.repository.failModelCall({
         payload: input.payload,
@@ -535,12 +576,9 @@ export class GenerationJobProcessor {
       });
       throw error;
     }
-    await this.repository.completeModelCall({
-      payload: input.payload,
-      step: input.step,
-      call,
-      result,
-    });
+    if (!result) {
+      throw new Error("Provider returned no generation result");
+    }
     this.traceLogger?.info({
       event: "worker.model_call.succeeded",
       jobId: input.payload.jobId,
@@ -619,10 +657,6 @@ function stepInputHash(
       checkpointPayload: checkpoint.payload,
     }),
   );
-}
-
-function estimateTokens(value: string): number {
-  return Math.max(1, Math.ceil(Array.from(value.replace(/\s/gu, "")).length / 2));
 }
 
 function toCost(result: GenerationResult): GenerationCost {

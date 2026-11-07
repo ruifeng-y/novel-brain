@@ -20,10 +20,13 @@ import {
   compileWritingActionPrompt,
   ContextBudgetExceededError,
   decideStepRecovery,
+  planProviderCallBudget,
+  PROVIDER_CALL_MAX_OUTPUT_TOKENS,
   resolveModelContextWindow,
   TargetedRevisionError,
   WRITING_ACTION_SPECS,
 } from "@novel-brain/core";
+import { CostSettlementExceedsReservationError } from "@novel-brain/db";
 
 import { AI_GATEWAY } from "../generation/generation.tokens";
 import type { ByokAiGatewayFactory } from "../generation/model-provider.factory";
@@ -251,7 +254,7 @@ export class WritingActionProcessor {
             previousVersions: sources.previousVersions,
             povCharacterId: sources.povCharacterId ?? null,
             modelContextWindowTokens: resolveModelContextWindow(input.loaded.modelConfig.model),
-            reservedOutputTokens: 2_000,
+            reservedOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
             ...(sources.knowledge ? { knowledge: sources.knowledge } : {}),
           },
           input.payload.budget.maxTokens,
@@ -335,7 +338,7 @@ export class WritingActionProcessor {
             action: input.payload.action,
             promptKey: spec.promptKey,
             promptVersion: spec.promptVersion,
-            maxTokens: 2_000,
+            maxTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
             stream: false,
           },
         });
@@ -375,13 +378,18 @@ export class WritingActionProcessor {
     system: string;
     citations: unknown[];
   }): Promise<GenerationResult> {
-    const estimatedTokens = estimateTokens(input.prompt) + 600;
+    const providerBudget = planProviderCallBudget({
+      system: input.system,
+      prompt: input.prompt,
+      maxOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
+    });
+    const estimatedTokens = providerBudget.reservedTokens;
     const estimatedCostCny = calculateCost(estimatedTokens);
     const parameters = {
       operation: input.operation,
       promptKey: input.promptKey,
       promptVersion: input.promptVersion,
-      maxTokens: 2_000,
+      maxTokens: providerBudget.maxOutputTokens,
       stream: false,
     };
     let call: StartedModelCall;
@@ -418,11 +426,12 @@ export class WritingActionProcessor {
       }
       throw error;
     }
+    let result: GenerationResult | undefined;
     try {
-      const result = await input.provider.generateText({
+      result = await input.provider.generateText({
         prompt: input.prompt,
         system: input.system,
-        maxTokens: 2_000,
+        maxTokens: providerBudget.maxOutputTokens,
         operation: input.operation,
       });
       await this.repository.completeModelCall({
@@ -433,6 +442,23 @@ export class WritingActionProcessor {
       });
       return result;
     } catch (error) {
+      if (error instanceof CostSettlementExceedsReservationError && result) {
+        await this.repository.failModelCall({
+          payload: input.payload,
+          step: input.step,
+          call,
+          failureClass: "budget",
+          errorCode: "JOB_BUDGET_EXCEEDED",
+          message: "写作动作实际用量超过预算预留，原稿和检查点已保留",
+          escalationReason: "模型实际用量与预算预留不符，请检查预算后从断点重试",
+          actualUsage: {
+            inputTokens: result.usage.inputTokens,
+            outputTokens: result.usage.outputTokens,
+            costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
+          },
+        });
+        throw new WritingActionBudgetExceededError();
+      }
       const failure = toProviderFailure(error);
       await this.repository.failModelCall({
         payload: input.payload,
@@ -508,10 +534,6 @@ function zeroCost() {
 
 function calculateCost(tokens: number): number {
   return Number((tokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
-}
-
-function estimateTokens(value: string): number {
-  return Math.max(1, Math.ceil(Array.from(value.replace(/\s/gu, "")).length / 2));
 }
 
 function sha256(value: string): string {

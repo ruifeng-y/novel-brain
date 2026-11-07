@@ -408,6 +408,72 @@ describe("writing action HTTP and worker integration", () => {
     expect(await versionCount(fixture.chapterId)).toBe(beforeFailure + 1);
   });
 
+  it("fails closed when provider usage exceeds the cost reservation", async () => {
+    const owner = await createAuthenticatedAgent("writing-action-overrun@example.com");
+    const fixture = await createWritingFixture(owner);
+    const before = await versionCount(fixture.chapterId);
+    const job = await startAction(
+      owner,
+      fixture.branchPath,
+      fixture.chapterId,
+      {
+        action: "rewrite",
+        sourceVersionId: fixture.sourceVersionId,
+        instruction: "保留事实，收紧节奏",
+        budget: {
+          maxCostCny: 100,
+          maxTokens: 1_000_000,
+          maxRevisionRounds: 0,
+        },
+      },
+      "writing-action-overrun",
+    );
+    const provider: AiGateway = {
+      async generateText(input) {
+        return {
+          text: "超量返回的修订稿",
+          model: input.model ?? "fake-overrun",
+          finishReason: "stop",
+          usage: { inputTokens: 0, outputTokens: 50_000 },
+        };
+      },
+      async *streamText() {
+        yield { text: "", done: true };
+      },
+    };
+
+    await runWorker(job.id, provider);
+
+    const failed = writingActionJobResponseSchema.parse(
+      (await owner.get(`${fixture.branchPath}/write-actions/${job.id}`).expect(200)).body,
+    ).data;
+    expect(failed).toMatchObject({
+      status: "failed",
+      output: null,
+      checkpoint: { step: "generate" },
+      error: { code: "JOB_BUDGET_EXCEEDED" },
+      cost: { totalTokens: 0 },
+    });
+    expect(await versionCount(fixture.chapterId)).toBe(before);
+    const modelCall = await databasePool.query<{
+      status: string;
+      failure_class: string;
+      input_tokens: number;
+      output_tokens: number;
+    }>(
+      `SELECT status, failure_class, input_tokens, output_tokens
+       FROM model_calls
+       WHERE job_id = $1`,
+      [job.id],
+    );
+    expect(modelCall.rows[0]).toEqual({
+      status: "failed",
+      failure_class: "budget",
+      input_tokens: 0,
+      output_tokens: 50_000,
+    });
+  });
+
   async function startAction(
     agent: SuperAgentTest,
     branchPath: string,

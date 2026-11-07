@@ -1876,6 +1876,11 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     errorCode: string;
     message: string;
     escalationReason: string;
+    actualUsage?: {
+      inputTokens: number;
+      outputTokens: number;
+      costCny: number;
+    };
   }): Promise<void> {
     await this.withTenant(input.payload.actorId, async (transaction) => {
       await releaseBudgetInTransaction(transaction, {
@@ -1900,6 +1905,13 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           failureClass: input.failureClass,
           errorCode: input.errorCode,
           escalationReason: input.escalationReason,
+          ...(input.actualUsage
+            ? {
+                inputTokens: input.actualUsage.inputTokens,
+                outputTokens: input.actualUsage.outputTokens,
+                costCny: input.actualUsage.costCny,
+              }
+            : {}),
           finishedAt: now,
         })
         .where(eq(modelCalls.id, input.call.modelCallId));
@@ -1909,6 +1921,15 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           status: "failed",
           failureClass: input.failureClass,
           escalationReason: input.escalationReason,
+          ...(input.actualUsage
+            ? {
+                usage: {
+                  inputTokens: input.actualUsage.inputTokens,
+                  outputTokens: input.actualUsage.outputTokens,
+                  costCny: input.actualUsage.costCny,
+                },
+              }
+            : {}),
           finishedAt: now,
         })
         .where(eq(agentRuns.id, input.call.runId));

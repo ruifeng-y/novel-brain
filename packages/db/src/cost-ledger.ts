@@ -57,6 +57,23 @@ export class CostSettlementConflictError extends Error {
   }
 }
 
+export class CostSettlementExceedsReservationError extends Error {
+  readonly failureClass = "budget" as const;
+
+  constructor(
+    readonly details: {
+      reservationId: string;
+      reservedTokens: number;
+      reservedCostCny: number;
+      actualTokens: number;
+      actualCostCny: number;
+    },
+  ) {
+    super("Cost settlement exceeds the reserved budget");
+    this.name = "CostSettlementExceedsReservationError";
+  }
+}
+
 export async function reserveBudgetInTransaction(
   transaction: Transaction,
   input: {
@@ -103,6 +120,7 @@ export async function reserveBudgetInTransaction(
   const usedTokens = finiteNumber(cost.totalTokens, 0);
   const maxCostCny = finiteNumber(budget.maxCostCny, Number.POSITIVE_INFINITY);
   const maxTokens = finiteNumber(budget.maxTokens, Number.POSITIVE_INFINITY);
+  // ADR 0021 has no supplemental-reservation state; overruns must fail closed.
   if (
     usedCostCny + active.costCny + input.estimatedCostCny > maxCostCny ||
     usedTokens + active.tokens + input.estimatedTokens > maxTokens
@@ -189,6 +207,18 @@ export async function settleBudgetInTransaction(
       throw new CostSettlementConflictError();
     }
     return toReservationRecord(existing);
+  }
+  if (
+    input.actualTokens > existing.reservedTokens ||
+    roundCost(input.actualCostCny) > roundCost(existing.reservedCostCny)
+  ) {
+    throw new CostSettlementExceedsReservationError({
+      reservationId: existing.id,
+      reservedTokens: existing.reservedTokens,
+      reservedCostCny: existing.reservedCostCny,
+      actualTokens: input.actualTokens,
+      actualCostCny: input.actualCostCny,
+    });
   }
 
   const [settled] = await transaction
