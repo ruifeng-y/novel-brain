@@ -2098,6 +2098,26 @@ export class WorldRepository implements OnModuleDestroy {
     audit: WorldAuditContext,
   ): Promise<void> {
     const entityVersionId = uuidv7();
+    const snapshot = entitySnapshot(entity);
+    if (entity.type === "faction") {
+      const [profile] = await transaction
+        .select()
+        .from(factionProfiles)
+        .where(
+          and(
+            eq(factionProfiles.entityId, entity.id),
+            eq(factionProfiles.userId, userId),
+            eq(factionProfiles.workId, context.workId),
+            eq(factionProfiles.branchId, context.branchId),
+          ),
+        )
+        .limit(1);
+      if (profile) {
+        snapshot.domain = {
+          profile: toFactionProfileContract(profile),
+        };
+      }
+    }
     await transaction
       .update(versionNodes)
       .set({ snapshotId: entityVersionId, objectVersion: entity.version })
@@ -2109,7 +2129,7 @@ export class WorldRepository implements OnModuleDestroy {
       branchId: context.branchId,
       userId,
       version: entity.version,
-      snapshot: entitySnapshot(entity),
+      snapshot,
       versionNodeId,
       createdBy: userId,
       createdAt: new Date(),

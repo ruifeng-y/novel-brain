@@ -1514,15 +1514,22 @@ export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
 
 export const settingEntityVersionSnapshotSummarySchema = z
   .object({
-    type: settingEntityTypeSchema,
-    name: z.string(),
-    summary: z.string(),
-    status: settingStatusSchema,
+    name: z.string().nullable(),
+    summary: z.string().nullable(),
+    status: settingStatusSchema.nullable(),
   })
   .strict();
 export type SettingEntityVersionSnapshotSummary = z.infer<
   typeof settingEntityVersionSnapshotSummarySchema
 >;
+
+export const settingEntityVersionSnapshotSchema = z
+  .object({
+    domain: settingEntityTypeSchema,
+    payload: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+export type SettingEntityVersionSnapshot = z.infer<typeof settingEntityVersionSnapshotSchema>;
 
 export const settingEntityVersionSchema = z
   .object({
@@ -1531,7 +1538,8 @@ export const settingEntityVersionSchema = z
     createdAt: z.string().datetime(),
     actor: uuidV7Schema,
     reason: z.string(),
-    snapshot: settingEntityVersionSnapshotSummarySchema,
+    snapshot: settingEntityVersionSnapshotSchema,
+    summary: settingEntityVersionSnapshotSummarySchema,
   })
   .strict();
 export type SettingEntityVersion = z.infer<typeof settingEntityVersionSchema>;

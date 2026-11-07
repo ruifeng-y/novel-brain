@@ -1565,10 +1565,46 @@ describe("shared contracts", () => {
             actor: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1ca3",
             reason: "修订天门规则",
             snapshot: {
-              type: "world_rule",
+              domain: "world_rule",
+              payload: {
+                type: "world_rule",
+                name: "天门规则",
+                summary: "历史摘要",
+                status: "draft",
+              },
+            },
+            summary: {
               name: "天门规则",
               summary: "历史摘要",
               status: "draft",
+            },
+          },
+          {
+            version: 1,
+            node: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1ca4",
+            createdAt: "2026-11-08T02:00:00.000Z",
+            actor: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1ca3",
+            reason: "创建人物档案",
+            snapshot: {
+              domain: "character",
+              payload: {
+                profile: {
+                  desire: "找回记忆",
+                  fear: "被吞噬",
+                  goal: "进入天门",
+                  voiceSample: "",
+                  voiceGuide: "",
+                  disguise: "",
+                },
+                relationships: [],
+                stateTransitions: [],
+                knowledgeStates: [],
+              },
+            },
+            summary: {
+              name: null,
+              summary: null,
+              status: null,
             },
           },
         ],

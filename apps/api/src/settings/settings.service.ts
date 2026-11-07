@@ -10,7 +10,9 @@ import {
   goldenFingerDataSchema,
   mapDataSchema,
   powerSystemDataSchema,
+  settingEntityTypeSchema,
   settingEntityVersionSnapshotSummarySchema,
+  settingStatusSchema,
   type CharacterData,
   type ConfirmedSetting,
   type GoldenFingerData,
@@ -91,13 +93,17 @@ export class SettingsService {
     if (page === "invalid_cursor") {
       throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新历史后重试");
     }
+    const domain = settingEntityTypeSchema.parse(page.domain);
     return {
       data: page.versions.map((version) => {
-        const snapshot = settingEntityVersionSnapshotSummarySchema.parse({
-          type: version.snapshot.type,
-          name: version.snapshot.name,
-          summary: version.snapshot.summary,
-          status: version.snapshot.status,
+        const name = typeof version.snapshot.name === "string" ? version.snapshot.name : null;
+        const summary =
+          typeof version.snapshot.summary === "string" ? version.snapshot.summary : null;
+        const parsedStatus = settingStatusSchema.safeParse(version.snapshot.status);
+        const snapshotSummary = settingEntityVersionSnapshotSummarySchema.parse({
+          name,
+          summary,
+          status: parsedStatus.success ? parsedStatus.data : null,
         });
         return {
           version: version.version,
@@ -105,7 +111,11 @@ export class SettingsService {
           createdAt: version.createdAt.toISOString(),
           actor: version.actor,
           reason: version.reason,
-          snapshot,
+          snapshot: {
+            domain,
+            payload: version.snapshot,
+          },
+          summary: snapshotSummary,
         };
       }),
       nextCursor: page.nextCursor,

@@ -18993,7 +18993,7 @@ export interface operations {
               reason: string;
               snapshot: {
                 /** @enum {string} */
-                type:
+                domain:
                   | "world_rule"
                   | "character"
                   | "faction"
@@ -19002,10 +19002,15 @@ export interface operations {
                   | "golden_finger"
                   | "item"
                   | "timeline_event";
-                name: string;
-                summary: string;
-                /** @enum {string} */
-                status: "draft" | "proposed" | "locked" | "discarded";
+                payload: {
+                  [key: string]: unknown;
+                };
+              };
+              summary: {
+                name: string | null;
+                summary: string | null;
+                /** @enum {string|null} */
+                status: "draft" | "proposed" | "locked" | "discarded" | null;
               };
             }[];
             /** Format: starts_with */

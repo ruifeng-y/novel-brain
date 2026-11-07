@@ -987,11 +987,27 @@ export class CharactersRepository implements OnModuleDestroy {
     if (!aggregate) {
       throw new Error("Character snapshot is missing its aggregate");
     }
-    const snapshot: CharacterSnapshotPayload & Record<string, unknown> = {
+    const characterDomain = {
       profile: toProfileContract(aggregate.profile),
       relationships: aggregate.relationships.map(toRelationshipContract),
       stateTransitions: aggregate.stateTransitions.map(toStateContract),
       knowledgeStates: aggregate.knowledgeStates.map(toKnowledgeContract),
+    };
+    const snapshot: CharacterSnapshotPayload & Record<string, unknown> = {
+      type: "character",
+      name: entity.name,
+      aliases: entity.aliases,
+      summary: entity.summary,
+      description: entity.description,
+      attributes: entity.attributes,
+      tags: entity.tags,
+      status: entity.status,
+      source: entity.source,
+      version: entity.version,
+      lockedAt: entity.lockedAt?.toISOString() ?? null,
+      lockedBy: entity.lockedBy,
+      ...characterDomain,
+      domain: characterDomain,
     };
     const entityVersionId = uuidv7();
     await transaction
@@ -1520,21 +1536,25 @@ function characterHealth(aggregate: CharacterAggregate): CharacterHealthFinding[
 function parseCharacterSnapshot(
   value: Record<string, unknown>,
 ): CharacterSnapshotPayload | undefined {
-  const characterProfile = value.profile ?? value.characterProfile;
+  const domain =
+    typeof value.domain === "object" && value.domain !== null && !Array.isArray(value.domain)
+      ? (value.domain as Record<string, unknown>)
+      : undefined;
+  const characterProfile = domain?.profile ?? value.profile ?? value.characterProfile;
   if (!characterProfile || typeof characterProfile !== "object") {
     return undefined;
   }
   const profile = characterProfileSchema.parse(characterProfile);
   return {
     profile,
-    relationships: Array.isArray(value.relationships)
-      ? (value.relationships as CharacterRelationship[])
+    relationships: Array.isArray(domain?.relationships ?? value.relationships)
+      ? ((domain?.relationships ?? value.relationships) as CharacterRelationship[])
       : [],
-    stateTransitions: Array.isArray(value.stateTransitions)
-      ? (value.stateTransitions as CharacterStateTransition[])
+    stateTransitions: Array.isArray(domain?.stateTransitions ?? value.stateTransitions)
+      ? ((domain?.stateTransitions ?? value.stateTransitions) as CharacterStateTransition[])
       : [],
-    knowledgeStates: Array.isArray(value.knowledgeStates)
-      ? (value.knowledgeStates as CharacterKnowledgeState[])
+    knowledgeStates: Array.isArray(domain?.knowledgeStates ?? value.knowledgeStates)
+      ? ((domain?.knowledgeStates ?? value.knowledgeStates) as CharacterKnowledgeState[])
       : [],
   };
 }

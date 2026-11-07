@@ -2720,7 +2720,8 @@ function EntityDetail({
                           </span>
                           <span>{version.reason || "未记录说明"}</span>
                           <small>
-                            {version.snapshot.name} · {version.snapshot.summary || "无摘要"}
+                            {version.summary.name ?? entity.name} ·{" "}
+                            {version.summary.summary || "无摘要"}
                           </small>
                           {current ? <em>当前版本</em> : null}
                         </button>

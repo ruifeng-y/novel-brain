@@ -50357,7 +50357,7 @@
                           "snapshot": {
                             "type": "object",
                             "properties": {
-                              "type": {
+                              "domain": {
                                 "type": "string",
                                 "enum": [
                                   "world_rule",
@@ -50370,22 +50370,44 @@
                                   "timeline_event"
                                 ]
                               },
+                              "payload": {
+                                "type": "object",
+                                "additionalProperties": {}
+                              }
+                            },
+                            "required": ["domain", "payload"],
+                            "additionalProperties": false
+                          },
+                          "summary": {
+                            "type": "object",
+                            "properties": {
                               "name": {
+                                "nullable": true,
                                 "type": "string"
                               },
                               "summary": {
+                                "nullable": true,
                                 "type": "string"
                               },
                               "status": {
+                                "nullable": true,
                                 "type": "string",
                                 "enum": ["draft", "proposed", "locked", "discarded"]
                               }
                             },
-                            "required": ["type", "name", "summary", "status"],
+                            "required": ["name", "summary", "status"],
                             "additionalProperties": false
                           }
                         },
-                        "required": ["version", "node", "createdAt", "actor", "reason", "snapshot"],
+                        "required": [
+                          "version",
+                          "node",
+                          "createdAt",
+                          "actor",
+                          "reason",
+                          "snapshot",
+                          "summary"
+                        ],
                         "additionalProperties": false
                       }
                     },
