@@ -386,6 +386,57 @@ describe("structured retrieval HTTP integration", () => {
     expect(earlyStoryTime.every((result) => result.canonicalName !== "问剑大会")).toBe(true);
   });
 
+  it("requires POV knowledge to be present in the target version ancestry", async () => {
+    const owner = await createAuthenticatedAgent("retrieval-pov-version@example.com");
+    const { work, token } = await createWork(owner, "忘川认知版本录");
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const userId = await userIdFor("retrieval-pov-version@example.com");
+    const shen = await createCharacter(owner, token, base, {
+      name: "沈砚",
+      aliases: [],
+      summary: "第一章时尚未获得后续认知的主角。",
+    });
+    const knownFact = await createFact({
+      databasePool,
+      userId,
+      workId: work.id,
+      branchId: work.mainBranch.id,
+      chapterNumber: 1,
+      subject: "玄铁令",
+      predicate: "由",
+      object: "沈砚持有",
+      validFromChapter: 1,
+    });
+    const beforeKnowledge = knownFact.versionNodeId;
+
+    await addKnowledgeState(owner, token, base, shen.character.id, {
+      objectiveFactId: knownFact.id,
+      state: "knowledge",
+      claimedContent: "沈砚后来才知道玄铁令在自己手里。",
+      sourceKind: "told",
+      validity: chapterValidity(1, null),
+      sourceChapterId: null,
+    });
+    await createChapterWithVersion(owner, token, base, 2, "旧事重提");
+
+    const beforeKnowledgeRecall = await search(owner, token, base, {
+      query: "玄铁令",
+      chapterNumber: 1,
+      versionNodeId: beforeKnowledge,
+      sourceKinds: ["fact"],
+      povCharacterId: shen.character.id,
+    });
+    expect(findResult(beforeKnowledgeRecall, knownFact.id)).toBeUndefined();
+
+    const afterKnowledgeRecall = await search(owner, token, base, {
+      query: "玄铁令",
+      chapterNumber: 2,
+      sourceKinds: ["fact"],
+      povCharacterId: shen.character.id,
+    });
+    expect(findResult(afterKnowledgeRecall, knownFact.id)).toBeDefined();
+  });
+
   it("uses the target chapter version when versionNodeId is omitted", async () => {
     const owner = await createAuthenticatedAgent("retrieval-implicit-version@example.com");
     const { work, token } = await createWork(owner, "忘川隐式版本录");
@@ -1124,7 +1175,7 @@ const factChapters = new Map<
 >();
 const timelineEras = new Set<string>();
 
-async function createFact(input: FactFixtureInput): Promise<{ id: string }> {
+async function createFact(input: FactFixtureInput): Promise<{ id: string; versionNodeId: string }> {
   const chapter = await ensureFactChapter(input);
   const proposalId = uuidv7();
   const decisionId = uuidv7();
@@ -1185,7 +1236,7 @@ async function createFact(input: FactFixtureInput): Promise<{ id: string }> {
       now,
     ],
   );
-  return { id: factId };
+  return { id: factId, versionNodeId: chapter.versionNodeId };
 }
 
 async function ensureFactChapter(input: FactFixtureInput) {

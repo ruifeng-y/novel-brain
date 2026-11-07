@@ -276,6 +276,7 @@ export function WritingWorkspace({
   const [readiness, setReadiness] = useState<GenerationReadiness | null>(null);
   const [runTraces, setRunTraces] = useState<AgentRunTrace[]>([]);
   const [generationBusy, setGenerationBusy] = useState(false);
+  const [generationRefreshPending, setGenerationRefreshPending] = useState(false);
   const [writingActionJob, setWritingActionJob] = useState<WritingActionJob | null>(null);
   const [writingActionBusy, setWritingActionBusy] = useState(false);
   const [writingActionMenuOpen, setWritingActionMenuOpen] = useState(false);
@@ -527,7 +528,13 @@ export function WritingWorkspace({
   const traceCost = traceCalls.reduce((sum, call) => sum + call.costCny, 0);
   const failedTrace = runTraces.find((trace) => trace.run.status === "failed");
   const canCheckQuality = Boolean(
-    selected?.currentVersionId && !dirty && !qualityBusy && !generationActive,
+    selected?.currentVersionId &&
+    !dirty &&
+    !qualityBusy &&
+    !generationActive &&
+    !generationBusy &&
+    !generationRefreshPending &&
+    !writingActionActive,
   );
   const latestStyleChapterReport = styleWorkspace?.latestChapterReport ?? null;
   const styleReport =
@@ -537,7 +544,13 @@ export function WritingWorkspace({
       ? latestStyleChapterReport
       : null;
   const canCheckStyle = Boolean(
-    selected?.currentVersionId && !dirty && !styleBusy && !generationActive,
+    selected?.currentVersionId &&
+    !dirty &&
+    !styleBusy &&
+    !generationActive &&
+    !generationBusy &&
+    !generationRefreshPending &&
+    !writingActionActive,
   );
   const revisionCandidates =
     qualityWorkspace?.findings.filter(
@@ -1218,8 +1231,12 @@ export function WritingWorkspace({
       if (!response.ok) {
         throw new Error(await readError(response, "取消生成失败。"));
       }
-      setGenerationJob(generationJobResponseSchema.parse(await response.json()).data);
+      const job = generationJobResponseSchema.parse(await response.json()).data;
+      setGenerationJob(job);
       closeGenerationStream();
+      if (!isActiveGeneration(job.status)) {
+        await refreshGenerationWorkspace(work, job.chapterId);
+      }
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "取消生成失败。");
     } finally {
@@ -1288,28 +1305,41 @@ export function WritingWorkspace({
       return;
     }
     const job = generationJobResponseSchema.parse(await response.json()).data;
-    setGenerationJob(job);
     await loadRunTraces(workData, job.id);
     if (!isActiveGeneration(job.status)) {
       closeGenerationStream();
+      setGenerationRefreshPending(true);
+    }
+    setGenerationJob(job);
+    if (isActiveGeneration(job.status)) {
+      return;
+    }
+    await refreshGenerationWorkspace(workData, job.chapterId);
+  }
+
+  async function refreshGenerationWorkspace(workData: WorkOverview, chapterId: string) {
+    setGenerationRefreshPending(true);
+    try {
       const chapterResponse = await fetch(
-        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${job.chapterId}`,
+        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}`,
         { cache: "no-store" },
       );
-      if (chapterResponse.ok) {
-        const chapter = chapterWorkspaceResponseSchema.parse(await chapterResponse.json()).data;
-        if (chapter) {
-          setChapters((current) =>
-            current.map((item) => (item.id === chapter.id ? chapter : item)),
-          );
-          setContent(chapter.currentVersion?.content ?? "");
-          setSavedContent(chapter.currentVersion?.content ?? "");
-          await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
-          await loadFactProposals(workData, chapter.id);
-          await loadCanonCommit(workData, chapter.id);
-          await loadQuality(workData, chapter.id);
-        }
+      if (!chapterResponse.ok) {
+        throw new Error(await readError(chapterResponse, "章节刷新失败。"));
       }
+      const chapter = chapterWorkspaceResponseSchema.parse(await chapterResponse.json()).data;
+      setChapters((current) => current.map((item) => (item.id === chapter.id ? chapter : item)));
+      setContent(chapter.currentVersion?.content ?? "");
+      setSavedContent(chapter.currentVersion?.content ?? "");
+      await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
+      setGenerationRefreshPending(false);
+      await Promise.all([
+        loadFactProposals(workData, chapter.id),
+        loadCanonCommit(workData, chapter.id),
+        loadQuality(workData, chapter.id),
+      ]);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "章节刷新失败。");
     }
   }
 

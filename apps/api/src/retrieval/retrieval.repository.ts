@@ -315,6 +315,11 @@ export class RetrievalRepository implements OnModuleDestroy {
                 AND knowledge.branch_id = ${branchId}::uuid
                 AND knowledge.character_id = ${input.povCharacterId}::uuid
                 AND knowledge.objective_fact_id = document.source_id
+                AND EXISTS (
+                  SELECT 1
+                  FROM ancestors AS knowledge_version
+                  WHERE knowledge_version.id = knowledge.version_node_id
+                )
                 AND knowledge.state = 'knowledge'
                 AND knowledge.valid_from_chapter <= ${input.chapterNumber}
                 AND (
