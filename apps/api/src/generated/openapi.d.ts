@@ -18147,10 +18147,18 @@ export interface operations {
   SettingsController_list: {
     parameters: {
       query?: {
-        limit?: unknown;
-        cursor?: unknown;
-        status?: unknown;
-        type?: unknown;
+        cursor?: string;
+        limit?: number;
+        type?:
+          | "world_rule"
+          | "character"
+          | "faction"
+          | "map"
+          | "power_system"
+          | "golden_finger"
+          | "item"
+          | "timeline_event";
+        status?: "draft" | "proposed" | "locked" | "discarded";
       };
       header?: never;
       path: {
@@ -20911,8 +20919,8 @@ export interface operations {
   CustomFieldsController_list: {
     parameters: {
       query?: {
-        limit?: unknown;
-        cursor?: unknown;
+        cursor?: string;
+        limit?: number;
       };
       header?: never;
       path: {

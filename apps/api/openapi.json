@@ -47248,28 +47248,51 @@
             }
           },
           {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          },
-          {
             "name": "cursor",
             "required": false,
             "in": "query",
-            "schema": {}
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
           },
           {
-            "name": "status",
+            "name": "limit",
             "required": false,
             "in": "query",
-            "schema": {}
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           },
           {
             "name": "type",
             "required": false,
             "in": "query",
-            "schema": {}
+            "schema": {
+              "type": "string",
+              "enum": [
+                "world_rule",
+                "character",
+                "faction",
+                "map",
+                "power_system",
+                "golden_finger",
+                "item",
+                "timeline_event"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["draft", "proposed", "locked", "discarded"]
+            }
           }
         ],
         "responses": {
@@ -57482,16 +57505,24 @@
             }
           },
           {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          },
-          {
             "name": "cursor",
             "required": false,
             "in": "query",
-            "schema": {}
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {

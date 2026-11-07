@@ -51,6 +51,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 import { GoldenThreePanel } from "./golden-three-panel";
 
 type OutlineView = "tree" | "board" | "tension" | "ledger";
@@ -202,16 +203,17 @@ export function OutlineWorkspace({
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
       const branchPath = `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}`;
-      const [outlineResponse, entityResponse, ledgerResponse] = await Promise.all([
+      const [outlineResponse, entityData, ledgerResponse] = await Promise.all([
         fetch(`${branchPath}/outline`, { cache: "no-store" }),
-        fetch(`${branchPath}/entities`, { cache: "no-store" }),
+        fetchAllCursorPages(
+          `${branchPath}/entities`,
+          settingEntityListResponseSchema.parse,
+          "设定加载失败。",
+        ),
         fetch(`${branchPath}/ledger`, { cache: "no-store" }),
       ]);
       if (!outlineResponse.ok) {
         throw new Error(await readError(outlineResponse, "大纲加载失败。"));
-      }
-      if (!entityResponse.ok) {
-        throw new Error(await readError(entityResponse, "设定加载失败。"));
       }
       if (!ledgerResponse.ok) {
         throw new Error(await readError(ledgerResponse, "伏笔账本加载失败。"));
@@ -219,7 +221,7 @@ export function OutlineWorkspace({
       const outline = outlineWorkspaceResponseSchema.parse(await outlineResponse.json()).data;
       setWork(workData);
       setWorkspace(outline);
-      setEntities(settingEntityListResponseSchema.parse(await entityResponse.json()).data);
+      setEntities(entityData);
       setLedger(storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data);
       setSelectedId((current) =>
         current && outline.nodes.some((node) => node.id === current)

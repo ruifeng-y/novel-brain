@@ -37,6 +37,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 
 const kindLabels: Record<StoryLedgerEntry["kind"], string> = {
   plot_thread: "剧情线",
@@ -206,22 +207,21 @@ export function ForeshadowsWorkspace({ workId }: { workId: string }) {
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
       const branchPath = `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}`;
-      const [ledgerResponse, chapterResponse, entityResponse, timelineResponse] = await Promise.all(
-        [
-          fetch(`${branchPath}/ledger`, { cache: "no-store" }),
-          fetch(`${branchPath}/chapters`, { cache: "no-store" }),
-          fetch(`${branchPath}/entities`, { cache: "no-store" }),
-          fetch(`${branchPath}/world/timeline`, { cache: "no-store" }),
-        ],
-      );
+      const [ledgerResponse, chapterResponse, entityData, timelineResponse] = await Promise.all([
+        fetch(`${branchPath}/ledger`, { cache: "no-store" }),
+        fetch(`${branchPath}/chapters`, { cache: "no-store" }),
+        fetchAllCursorPages(
+          `${branchPath}/entities`,
+          settingEntityListResponseSchema.parse,
+          "人物与势力加载失败。",
+        ),
+        fetch(`${branchPath}/world/timeline`, { cache: "no-store" }),
+      ]);
       if (!ledgerResponse.ok) {
         throw new Error(await readError(ledgerResponse, "伏笔账本加载失败。"));
       }
       if (!chapterResponse.ok) {
         throw new Error(await readError(chapterResponse, "章节列表加载失败。"));
-      }
-      if (!entityResponse.ok) {
-        throw new Error(await readError(entityResponse, "人物与势力加载失败。"));
       }
       if (!timelineResponse.ok) {
         throw new Error(await readError(timelineResponse, "时间线加载失败。"));
@@ -229,7 +229,7 @@ export function ForeshadowsWorkspace({ workId }: { workId: string }) {
       setWork(workData);
       setWorkspace(storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data);
       setChapters(chapterWorkspaceListResponseSchema.parse(await chapterResponse.json()).data);
-      setEntities(settingEntityListResponseSchema.parse(await entityResponse.json()).data);
+      setEntities(entityData);
       setTimelineEvents(
         worldTimelineResponseSchema.parse(await timelineResponse.json()).data.events,
       );

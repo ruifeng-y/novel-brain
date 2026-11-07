@@ -21,6 +21,7 @@ import {
   type DatabaseClient,
 } from "@novel-brain/db";
 import {
+  characterProfileSchema,
   characterDataSchema,
   factionDataSchema,
   goldenFingerDataSchema,
@@ -1238,6 +1239,13 @@ export class SettingsRepository implements OnModuleDestroy {
       if (!restoredInput || restoredInput.type !== current.type) {
         return "invalid_snapshot";
       }
+      const historicalCharacterProfile =
+        current.type === "character"
+          ? characterProfileSchema.safeParse(historical.snapshot.characterProfile ?? {})
+          : undefined;
+      if (historicalCharacterProfile && !historicalCharacterProfile.success) {
+        return "invalid_snapshot";
+      }
       const conflict = await findSettingConflict(
         transaction,
         userId,
@@ -1257,6 +1265,7 @@ export class SettingsRepository implements OnModuleDestroy {
         current.type,
         current.id,
         restoredInput.customFields,
+        "replace",
       );
       if ("kind" in customFields) {
         return customFields;
@@ -1285,6 +1294,23 @@ export class SettingsRepository implements OnModuleDestroy {
         return "version_conflict";
       }
 
+      if (historicalCharacterProfile?.success) {
+        await transaction
+          .insert(characterProfiles)
+          .values({
+            entityId: restored.id,
+            workId: context.workId,
+            branchId: context.branchId,
+            userId,
+            ...historicalCharacterProfile.data,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .onConflictDoUpdate({
+            target: characterProfiles.entityId,
+            set: { ...historicalCharacterProfile.data, updatedAt: now },
+          });
+      }
       await writeCustomFieldValues(
         transaction,
         userId,
@@ -1613,6 +1639,7 @@ async function resolveCustomFieldWrite(
   entityType: string,
   entityId: string,
   patch: Record<string, unknown> | undefined,
+  mode: "merge" | "replace" = "merge",
 ): Promise<
   | { values: Record<string, unknown>; definitions: CustomFieldDefinitionRecord[] }
   | SettingWriteValidationError
@@ -1634,7 +1661,7 @@ async function resolveCustomFieldWrite(
     return { values: existing ?? {}, definitions };
   }
 
-  const values = { ...existing };
+  const values = mode === "replace" ? {} : { ...existing };
   for (const [key, value] of Object.entries(patch)) {
     const definition = definitions.find((candidate) => candidate.key === key);
     if (!definition) {

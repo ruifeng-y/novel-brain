@@ -22,7 +22,6 @@ import {
   ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
-  ApiQuery,
   ApiTags,
   type SchemaObject,
 } from "@nestjs/swagger";
@@ -33,6 +32,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SettingsService } from "./settings.service";
@@ -53,8 +53,7 @@ export class CustomFieldsController {
   constructor(private readonly service: SettingsService) {}
 
   @Get()
-  @ApiQuery({ name: "cursor", required: false })
-  @ApiQuery({ name: "limit", required: false })
+  @ApiQuerySchema(customFieldDefinitionListQuerySchema)
   @ApiOkResponse({ description: "Custom field definitions", schema: listResponseJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,

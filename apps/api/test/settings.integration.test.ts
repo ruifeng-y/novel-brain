@@ -1542,6 +1542,247 @@ describe("settings center HTTP integration", () => {
     expect(nodesAfterBlockedRestore.rows[0]?.count).toBe(nodesBeforeBlockedRestore.rows[0]?.count);
   });
 
+  it("restores the exact historical custom-field snapshot without newer values", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-custom-fields@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+    await owner
+      .post(`${base}/custom-fields`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        key: "fate",
+        label: "命格",
+        fieldType: "text",
+        appliesTo: "all",
+        required: false,
+        options: [],
+        relationTarget: null,
+        sortOrder: 0,
+      })
+      .expect(201);
+    const created = await owner
+      .post(`${base}/entities`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "world_rule",
+        name: "天门命格律",
+        aliases: [],
+        summary: "第一版命格规则。",
+        description: "",
+        tags: [],
+        data: { rule: "命格决定天门开启顺序。" },
+        customFields: { fate: "剑骨" },
+      })
+      .expect(201);
+    await owner
+      .post(`${base}/custom-fields`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        key: "curse",
+        label: "反噬",
+        fieldType: "text",
+        appliesTo: "all",
+        required: false,
+        options: [],
+        relationTarget: null,
+        sortOrder: 1,
+      })
+      .expect(201);
+    const edited = await owner
+      .patch(`${base}/entities/${created.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: created.body.data.version,
+        customFields: { fate: "仙骨", curse: "每七日反噬一次" },
+      })
+      .expect(200);
+    expect(edited.body.data.customFields).toEqual({
+      fate: "仙骨",
+      curse: "每七日反噬一次",
+    });
+
+    const restored = await owner
+      .post(`${base}/entities/${created.body.data.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: edited.body.data.version,
+        targetVersion: 1,
+        reason: "恢复第一版命格，同时移除后来增加的反噬字段。",
+      })
+      .expect(200);
+    expect(restored.body.data.customFields).toEqual({ fate: "剑骨" });
+    const stored = await databasePool.query<{ key: string; value: unknown }>(
+      `SELECT cfd.key, cfv.value
+         FROM custom_field_values cfv
+         JOIN custom_field_definitions cfd ON cfd.id = cfv.field_definition_id
+        WHERE cfv.entity_id = $1
+        ORDER BY cfd.key`,
+      [created.body.data.id],
+    );
+    expect(stored.rows).toEqual([{ key: "fate", value: "剑骨" }]);
+  });
+
+  it("restores character profiles from the historical entity snapshot", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-character@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const character = await owner
+      .post(`${base}/entities`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "character",
+        name: "沈砚",
+        aliases: [],
+        summary: "外门杂役。",
+        description: "",
+        tags: [],
+        data: {
+          bodyState: "左臂骨折。",
+          knowledgeBoundary: "不知道父母死因。",
+          relationshipSummary: "顾青负责监视他。",
+        },
+      })
+      .expect(201);
+
+    const updated = await owner
+      .patch(`${base}/characters/${character.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: character.body.data.version,
+        profile: {
+          desire: "找回失去的记忆",
+          fear: "再次被宗门抛弃",
+          goal: "进入内门",
+          voiceSample: "我不欠任何人。",
+          voiceGuide: "短句，克制。",
+          disguise: "装作不在意。",
+        },
+      })
+      .expect(200);
+    expect(updated.body.data.profile).toMatchObject({
+      desire: "找回失去的记忆",
+      goal: "进入内门",
+    });
+
+    const restored = await owner
+      .post(`${base}/entities/${character.body.data.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: updated.body.data.version,
+        targetVersion: 1,
+        reason: "恢复人物初版档案。",
+      })
+      .expect(200);
+    expect(restored.body.data.version).toBe(3);
+    const profile = await databasePool.query<{
+      desire: string;
+      fear: string;
+      goal: string;
+      voice_sample: string;
+      voice_guide: string;
+      disguise: string;
+    }>(
+      `SELECT desire, fear, goal, voice_sample, voice_guide, disguise
+         FROM character_profiles
+        WHERE entity_id = $1`,
+      [character.body.data.id],
+    );
+    expect(profile.rows[0]).toEqual({
+      desire: "",
+      fear: "",
+      goal: "",
+      voice_sample: "",
+      voice_guide: "",
+      disguise: "",
+    });
+  });
+
+  it("allows only one concurrent restore for the same current version", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-concurrency@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const created = await createWorldRule(owner, path, token, "并发恢复规则", 0);
+    const edited = await owner
+      .patch(`${path}/${created.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: created.version, summary: "并发恢复前的第二版。" })
+      .expect(200);
+    const payload = {
+      version: edited.body.data.version,
+      targetVersion: 1,
+      reason: "只允许一个并发恢复成功。",
+    };
+    const restore = () =>
+      owner
+        .post(`${path}/${created.id}/restore`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send(payload);
+
+    const responses = await Promise.all([restore(), restore()]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    expect(responses.find((response) => response.status === 409)?.body.error.code).toBe(
+      "VERSION_CONFLICT",
+    );
+    const versions = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM entity_versions
+        WHERE entity_id = $1`,
+      [created.id],
+    );
+    expect(versions.rows[0]?.count).toBe("3");
+  });
+
+  it("fails closed when another tenant attempts to restore a setting version", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-owner@example.com");
+    const other = await createAuthenticatedAgent("settings-restore-other@example.com");
+    const work = await createWork(owner);
+    const ownerToken = await csrf(owner);
+    const otherToken = await csrf(other);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const created = await createWorldRule(owner, path, ownerToken, "租户恢复规则", 0);
+    const edited = await owner
+      .patch(`${path}/${created.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerToken)
+      .send({ version: created.version, summary: "租户恢复第二版。" })
+      .expect(200);
+    const before = await databasePool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM entity_versions WHERE entity_id = $1",
+      [created.id],
+    );
+
+    const denied = await other
+      .post(`${path}/${created.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({
+        version: edited.body.data.version,
+        targetVersion: 1,
+        reason: "越权恢复。",
+      })
+      .expect(403);
+    expect(denied.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    const after = await databasePool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM entity_versions WHERE entity_id = $1",
+      [created.id],
+    );
+    expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+  });
+
   it("fails closed across tenants for custom fields, proposals and change requests", async () => {
     const owner = await createAuthenticatedAgent("settings-child-owner@example.com");
     const other = await createAuthenticatedAgent("settings-child-other@example.com");

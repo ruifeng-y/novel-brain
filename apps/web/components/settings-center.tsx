@@ -65,6 +65,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 
 type ColumnKey = "world" | "characters" | "factions" | "map" | "power" | "items" | "timeline";
 
@@ -440,21 +441,22 @@ export function SettingsCenter({
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
       const basePath = settingsPath(workData);
-      const [entityResponse, confirmedResponse, fieldResponse] = await Promise.all([
-        fetch(`${basePath}/entities`, { cache: "no-store" }),
+      const [entityData, confirmedResponse, fieldData] = await Promise.all([
+        fetchAllCursorPages(
+          `${basePath}/entities`,
+          settingEntityListResponseSchema.parse,
+          "设定加载失败。",
+        ),
         fetch(`${basePath}/facts`, { cache: "no-store" }),
-        fetch(`${basePath}/custom-fields`, { cache: "no-store" }),
+        fetchAllCursorPages(
+          `${basePath}/custom-fields`,
+          customFieldDefinitionListResponseSchema.parse,
+          "自定义字段加载失败。",
+        ),
       ]);
-      if (!entityResponse.ok) {
-        throw new Error(await readError(entityResponse, "设定加载失败。"));
-      }
       if (!confirmedResponse.ok) {
         throw new Error(await readError(confirmedResponse, "已确认设定加载失败。"));
       }
-      if (!fieldResponse.ok) {
-        throw new Error(await readError(fieldResponse, "自定义字段加载失败。"));
-      }
-      const entityData = settingEntityListResponseSchema.parse(await entityResponse.json()).data;
       setWork(workData);
       setEntities(entityData);
       const requestedEntity = initialEntityId
@@ -471,9 +473,7 @@ export function SettingsCenter({
         }
       }
       setConfirmed(confirmedSettingListResponseSchema.parse(await confirmedResponse.json()).data);
-      setCustomFields(
-        customFieldDefinitionListResponseSchema.parse(await fieldResponse.json()).data,
-      );
+      setCustomFields(fieldData);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "设定中心加载失败。");
     } finally {
@@ -695,22 +695,24 @@ export function SettingsCenter({
       return;
     }
     const basePath = settingsPath(work);
-    const [entityResponse, confirmedResponse, fieldResponse] = await Promise.all([
-      fetch(`${basePath}/entities`, { cache: "no-store" }),
+    const [entityData, confirmedResponse, fieldData] = await Promise.all([
+      fetchAllCursorPages(
+        `${basePath}/entities`,
+        settingEntityListResponseSchema.parse,
+        "设定加载失败。",
+      ),
       fetch(`${basePath}/facts`, { cache: "no-store" }),
-      fetch(`${basePath}/custom-fields`, { cache: "no-store" }),
+      fetchAllCursorPages(
+        `${basePath}/custom-fields`,
+        customFieldDefinitionListResponseSchema.parse,
+        "自定义字段加载失败。",
+      ),
     ]);
-    if (entityResponse.ok) {
-      setEntities(settingEntityListResponseSchema.parse(await entityResponse.json()).data);
-    }
+    setEntities(entityData);
     if (confirmedResponse.ok) {
       setConfirmed(confirmedSettingListResponseSchema.parse(await confirmedResponse.json()).data);
     }
-    if (fieldResponse.ok) {
-      setCustomFields(
-        customFieldDefinitionListResponseSchema.parse(await fieldResponse.json()).data,
-      );
-    }
+    setCustomFields(fieldData);
   }
 
   async function createEntity() {

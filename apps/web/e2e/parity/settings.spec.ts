@@ -386,6 +386,70 @@ test("holds a long settings list at all four viewports", async ({ page, context 
   }
 });
 
+test("loads every entity and custom-field cursor page across settings consumers", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+  for (let index = 1; index <= 21; index += 1) {
+    await createEntity(page, work, {
+      type: "world_rule",
+      name: `分页世界规则 ${index}`,
+      aliases: [],
+      summary: "用于验证超过默认分页上限的真实页面。",
+      description: "",
+      tags: [],
+      data: { rule: "所有页面都必须消费完整分页结果。" },
+    });
+  }
+  const token = await getCsrf(page.request);
+  for (let index = 1; index <= 21; index += 1) {
+    const field = await page.request.post(`${base}/custom-fields`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        key: `page_field_${index}`,
+        label: `分页字段 ${index}`,
+        fieldType: "text",
+        appliesTo: "all",
+        required: false,
+        options: [],
+        relationTarget: null,
+        sortOrder: index,
+      },
+    });
+    expect(field.status()).toBe(201);
+  }
+
+  const entityCursorRequests: string[] = [];
+  page.on("request", (request) => {
+    const url = new URL(request.url());
+    if (
+      request.method() === "GET" &&
+      url.pathname.endsWith("/entities") &&
+      url.searchParams.has("cursor")
+    ) {
+      entityCursorRequests.push(request.url());
+    }
+  });
+
+  for (const path of ["write", "outline", "foreshadows", "overview", "settings"]) {
+    entityCursorRequests.length = 0;
+    await page.goto(`/workspace/${work.id}/${path}`);
+    await expect
+      .poll(() => entityCursorRequests.length, {
+        message: `${path} should load the second /entities page`,
+      })
+      .toBeGreaterThan(0);
+  }
+
+  await expect(page.locator(".settings-entity-card")).toHaveCount(21);
+  await page.getByRole("button", { name: "自定义字段", exact: true }).click();
+  await expect(page.locator(".settings-custom-field-row")).toHaveCount(21);
+});
+
 test("holds the error state at all four viewports", async ({ page, context }, testInfo) => {
   await authenticatedPage(page, context);
   const work = await createSettingsWork(page);
