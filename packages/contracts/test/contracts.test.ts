@@ -63,12 +63,18 @@ import {
   settingsImportConfirmRequestSchema,
   settingsImportConflictDecisionRequestSchema,
   settingChangeRequestCreateRequestSchema,
+  settingChangeRequestListQuerySchema,
+  settingChangeRequestListResponseSchema,
   settingEntityCreateRequestSchema,
   settingEntityListQuerySchema,
   settingEntityListResponseSchema,
   settingEntityRestoreRequestSchema,
   settingEntitySchema,
+  settingEntityVersionListQuerySchema,
+  settingEntityVersionListResponseSchema,
   settingProposalCreateRequestSchema,
+  settingProposalListQuerySchema,
+  settingProposalListResponseSchema,
   outlineNodeCreateRequestSchema,
   outlineNodeSchema,
   outlineReadinessSchema,
@@ -1541,6 +1547,50 @@ describe("shared contracts", () => {
         reason: "",
       }),
     ).toThrow();
+  });
+
+  it("validates cursor metadata for setting history sublists", () => {
+    const cursor = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1ca1";
+    expect(settingEntityVersionListQuerySchema.parse({ limit: "2" })).toEqual({ limit: 2 });
+    expect(settingProposalListQuerySchema.parse({ cursor })).toEqual({ cursor, limit: 20 });
+    expect(settingChangeRequestListQuerySchema.parse({ limit: "1" })).toEqual({ limit: 1 });
+
+    expect(
+      settingEntityVersionListResponseSchema.parse({
+        data: [
+          {
+            version: 2,
+            node: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1ca2",
+            createdAt: "2026-11-08T03:00:00.000Z",
+            actor: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1ca3",
+            reason: "修订天门规则",
+            snapshot: {
+              type: "world_rule",
+              name: "天门规则",
+              summary: "历史摘要",
+              status: "draft",
+            },
+          },
+        ],
+        requestId: "req_settings_versions",
+        meta: { nextCursor: cursor },
+      }).data[0]?.version,
+    ).toBe(2);
+
+    expect(
+      settingProposalListResponseSchema.parse({
+        data: [],
+        requestId: "req_settings_proposals",
+        meta: { nextCursor: null },
+      }).meta.nextCursor,
+    ).toBeNull();
+    expect(
+      settingChangeRequestListResponseSchema.parse({
+        data: [],
+        requestId: "req_settings_changes",
+        meta: { nextCursor: cursor },
+      }).meta.nextCursor,
+    ).toBe(cursor);
   });
 });
 

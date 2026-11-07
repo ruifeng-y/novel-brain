@@ -5,6 +5,7 @@ import { Test } from "@nestjs/testing";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
+import { uuidv7 } from "uuidv7";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
@@ -148,6 +149,85 @@ describe("settings center HTTP integration", () => {
       version_nodes: "3",
       node_types: ["entity_version", "entity_version", "entity_version"],
     });
+  });
+
+  it("lists entity versions with cursor pagination and rejects foreign cursors", async () => {
+    const owner = await createAuthenticatedAgent("settings-version-list-owner@example.com");
+    const other = await createAuthenticatedAgent("settings-version-list-other@example.com");
+    const work = await createWork(owner);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const token = await csrf(owner);
+    const createdResponse = await owner
+      .post(path)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "world_rule",
+        name: "版本列表规则",
+        aliases: [],
+        summary: "第一版摘要",
+        description: "",
+        tags: [],
+        data: { rule: "第一版规则正文。" },
+      });
+    if (createdResponse.status !== 201) {
+      throw new Error(`Failed to create versioned rule: ${JSON.stringify(createdResponse.body)}`);
+    }
+    const created = createdResponse.body.data as { id: string; version: number };
+
+    let currentVersion = created.version;
+    for (const summary of ["版本二摘要", "版本三摘要"]) {
+      const edited = await owner
+        .patch(`${path}/${created.id}`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({ version: currentVersion, summary })
+        .expect(200);
+      currentVersion = edited.body.data.version;
+    }
+
+    const first = await owner.get(`${path}/${created.id}/versions?limit=2`).expect(200);
+    expect(first.body.data).toHaveLength(2);
+    expect(first.body.data.map((entry: { version: number }) => entry.version)).toEqual([3, 2]);
+    expect(first.body.data[0]).toMatchObject({
+      version: 3,
+      node: expect.any(String),
+      createdAt: expect.any(String),
+      actor: expect.any(String),
+      reason: expect.any(String),
+      snapshot: {
+        type: "world_rule",
+        name: "版本列表规则",
+        summary: "版本三摘要",
+        status: "draft",
+      },
+    });
+    expect(first.body.meta.nextCursor).toEqual(expect.any(String));
+
+    const second = await owner
+      .get(`${path}/${created.id}/versions?limit=2&cursor=${first.body.meta.nextCursor}`)
+      .expect(200);
+    expect(second.body.data.map((entry: { version: number }) => entry.version)).toEqual([1]);
+    expect(second.body.meta.nextCursor).toBeNull();
+
+    const otherWork = await createWork(other);
+    const otherToken = await csrf(other);
+    const otherPath = `/api/v1/works/${otherWork.id}/branches/${otherWork.mainBranch.id}/entities`;
+    const otherRule = await createWorldRule(other, otherPath, otherToken, "其他租户规则", 0);
+    await other
+      .patch(`${otherPath}/${otherRule.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({ version: otherRule.version, summary: "其他租户第二版。" })
+      .expect(200);
+    const foreignPage = await other
+      .get(`${otherPath}/${otherRule.id}/versions?limit=1`)
+      .expect(200);
+
+    const invalidCursor = await owner
+      .get(`${path}/${created.id}/versions?limit=1&cursor=${foreignPage.body.meta.nextCursor}`)
+      .expect(400);
+    expect(invalidCursor.body.error.code).toBe("VALIDATION_INVALID");
   });
 
   it("stores a character body state, knowledge boundary and relationship summary", async () => {
@@ -1427,6 +1507,177 @@ describe("settings center HTTP integration", () => {
     ).toBe("VALIDATION_INVALID");
   });
 
+  it("paginates setting proposals with tenant-scoped cursors", async () => {
+    const owner = await createAuthenticatedAgent("settings-proposal-page-owner@example.com");
+    const other = await createAuthenticatedAgent("settings-proposal-page-other@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const created = await createWorldRule(owner, path, token, "分页提案规则", 0);
+    const proposalIds = [uuidv7(), uuidv7(), uuidv7()];
+    const evidence = JSON.stringify([
+      {
+        kind: "author_note",
+        sourceId: null,
+        label: "作者说明",
+        quote: "用于验证分页。",
+        locator: "",
+        confidence: null,
+      },
+    ]);
+    for (const [index, proposalId] of proposalIds.entries()) {
+      await databasePool.query(
+        `INSERT INTO setting_proposals
+          (id, entity_id, work_id, branch_id, user_id, entity_version, status, conflict_type,
+           evidence, reason, proposed_by, created_at)
+         VALUES ($1, $2, $3, $4, (SELECT id FROM users ORDER BY created_at LIMIT 1), 1,
+                 'pending', 'none', $5::jsonb, $6, (SELECT id FROM users ORDER BY created_at LIMIT 1),
+                 now() - ($7::text || ' seconds')::interval)`,
+        [
+          proposalId,
+          created.id,
+          work.id,
+          work.mainBranch.id,
+          evidence,
+          `分页提案 ${index + 1}`,
+          String(3 - index),
+        ],
+      );
+    }
+
+    const first = await owner.get(`${path}/${created.id}/proposals?limit=2`).expect(200);
+    expect(first.body.data.map((proposal: { id: string }) => proposal.id)).toEqual(
+      proposalIds.slice(0, 2),
+    );
+    expect(first.body.meta.nextCursor).toBe(proposalIds[1]);
+    const second = await owner
+      .get(`${path}/${created.id}/proposals?limit=2&cursor=${first.body.meta.nextCursor}`)
+      .expect(200);
+    expect(second.body.data.map((proposal: { id: string }) => proposal.id)).toEqual([
+      proposalIds[2],
+    ]);
+    expect(second.body.meta.nextCursor).toBeNull();
+
+    const otherWork = await createWork(other);
+    const otherToken = await csrf(other);
+    const otherPath = `/api/v1/works/${otherWork.id}/branches/${otherWork.mainBranch.id}/entities`;
+    const otherEntity = await createWorldRule(other, otherPath, otherToken, "其他租户提案", 0);
+    const otherProposalId = uuidv7();
+    await databasePool.query(
+      `INSERT INTO setting_proposals
+        (id, entity_id, work_id, branch_id, user_id, entity_version, status, conflict_type,
+         evidence, reason, proposed_by)
+       VALUES ($1, $2, $3, $4, (SELECT id FROM users WHERE email = $5), 1, 'pending', 'none',
+               $6::jsonb, '其他租户提案', (SELECT id FROM users WHERE email = $5))`,
+      [
+        otherProposalId,
+        otherEntity.id,
+        otherWork.id,
+        otherWork.mainBranch.id,
+        "settings-proposal-page-other@example.com",
+        evidence,
+      ],
+    );
+    const denied = await owner
+      .get(`${path}/${created.id}/proposals?limit=1&cursor=${otherProposalId}`)
+      .expect(400);
+    expect(denied.body.error.code).toBe("VALIDATION_INVALID");
+  });
+
+  it("paginates setting change requests with tenant-scoped cursors", async () => {
+    const owner = await createAuthenticatedAgent("settings-change-page-owner@example.com");
+    const other = await createAuthenticatedAgent("settings-change-page-other@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const created = await createWorldRule(owner, path, token, "分页修改规则", 0);
+    const locked = await owner
+      .post(`${path}/${created.id}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: created.version })
+      .expect(200);
+
+    const createChange = async (title: string) =>
+      (
+        await owner
+          .post(`${path}/${created.id}/change-requests`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({
+            version: locked.body.data.version,
+            title,
+            reason: `${title}原因`,
+            after: { summary: `${title}摘要` },
+            conflictType: "none",
+            evidence: [
+              {
+                kind: "author_note",
+                sourceId: null,
+                label: "作者说明",
+                quote: title,
+                locator: "",
+                confidence: null,
+              },
+            ],
+          })
+          .expect(201)
+      ).body.data.id as string;
+    const requestIds = [
+      await createChange("修改请求一"),
+      await createChange("修改请求二"),
+      await createChange("修改请求三"),
+    ];
+
+    const first = await owner.get(`${path}/${created.id}/change-requests?limit=2`).expect(200);
+    expect(first.body.data.map((request: { id: string }) => request.id)).toEqual(
+      requestIds.slice(0, 2),
+    );
+    expect(first.body.meta.nextCursor).toBe(requestIds[1]);
+    const second = await owner
+      .get(`${path}/${created.id}/change-requests?limit=2&cursor=${first.body.meta.nextCursor}`)
+      .expect(200);
+    expect(second.body.data.map((request: { id: string }) => request.id)).toEqual([requestIds[2]]);
+    expect(second.body.meta.nextCursor).toBeNull();
+
+    const otherWork = await createWork(other);
+    const otherToken = await csrf(other);
+    const otherPath = `/api/v1/works/${otherWork.id}/branches/${otherWork.mainBranch.id}/entities`;
+    const otherEntity = await createWorldRule(other, otherPath, otherToken, "其他租户修改", 0);
+    const otherLocked = await other
+      .post(`${otherPath}/${otherEntity.id}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({ version: otherEntity.version })
+      .expect(200);
+    const otherRequest = await other
+      .post(`${otherPath}/${otherEntity.id}/change-requests`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({
+        version: otherLocked.body.data.version,
+        title: "其他租户修改请求",
+        reason: "用于验证跨租户游标失败。",
+        after: { summary: "其他租户摘要" },
+        conflictType: "none",
+        evidence: [
+          {
+            kind: "author_note",
+            sourceId: null,
+            label: "作者说明",
+            quote: "其他租户",
+            locator: "",
+            confidence: null,
+          },
+        ],
+      })
+      .expect(201);
+    const denied = await owner
+      .get(`${path}/${created.id}/change-requests?limit=1&cursor=${otherRequest.body.data.id}`)
+      .expect(400);
+    expect(denied.body.error.code).toBe("VALIDATION_INVALID");
+  });
+
   it("restores an old setting version through a new rollback node without rewriting history", async () => {
     const owner = await createAuthenticatedAgent("settings-restore-version@example.com");
     const work = await createWork(owner);
@@ -1706,6 +1957,181 @@ describe("settings center HTTP integration", () => {
       voice_guide: "",
       disguise: "",
     });
+  });
+
+  it("restores the power-system projection while preserving its lifespan policy", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-power-system@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const created = await owner
+      .post(`${base}/world/power-systems`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "北域双路径",
+        aliases: [],
+        summary: "剑修与体修并行。",
+        description: "",
+        tags: ["修行"],
+        overview: "第一版力量体系总览。",
+        lifespanPolicy: {
+          mode: "fixed",
+          unit: "年",
+          basis: "",
+          description: "固定寿元。",
+          pathId: null,
+          fixedAmount: 120,
+        },
+        paths: [],
+      })
+      .expect(201);
+    const updated = await owner
+      .patch(`${base}/world/power-systems/${created.body.data.powerSystem.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: created.body.data.version,
+        overview: "第二版力量体系总览。",
+      })
+      .expect(200);
+
+    const restored = await owner
+      .post(`${base}/entities/${created.body.data.powerSystem.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: updated.body.data.version,
+        targetVersion: 1,
+        reason: "恢复第一版力量体系总览。",
+      });
+    if (restored.status !== 200) {
+      throw new Error(`Failed to restore power system: ${JSON.stringify(restored.body)}`);
+    }
+
+    const detail = await owner
+      .get(`${base}/world/power-systems/${created.body.data.powerSystem.id}`)
+      .expect(200);
+    expect(detail.body.data.overview).toBe("第一版力量体系总览。");
+    expect(detail.body.data.lifespanPolicy).toMatchObject({
+      mode: "fixed",
+      fixedAmount: 120,
+    });
+    expect(detail.body.data.version).toBe(3);
+  });
+
+  it("restores faction and timeline projections from historical snapshots", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-domain-projections@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const faction = await owner
+      .post(`${base}/world/factions`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "太玄门",
+        aliases: [],
+        summary: "北域第一剑宗。",
+        description: "",
+        tags: [],
+        profile: {
+          overview: "第一版势力总览。",
+          goals: "",
+          resources: "",
+          doctrine: "",
+        },
+      })
+      .expect(201);
+    const updatedFaction = await owner
+      .patch(`${base}/world/factions/${faction.body.data.faction.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: faction.body.data.version,
+        profile: { overview: "第二版势力总览。" },
+      })
+      .expect(200);
+    await owner
+      .post(`${base}/entities/${faction.body.data.faction.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: updatedFaction.body.data.version,
+        targetVersion: 1,
+        reason: "恢复势力初版总览。",
+      })
+      .expect(200);
+    const factionDetail = await owner
+      .get(`${base}/world/factions/${faction.body.data.faction.id}`)
+      .expect(200);
+    expect(factionDetail.body.data.profile.overview).toBe("第一版势力总览。");
+
+    await owner
+      .post(`${base}/world/timeline/eras`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "大玄历",
+        orderIndex: 1,
+        startSortKey: 0,
+        endSortKey: null,
+        description: "大玄王朝纪年。",
+      })
+      .expect(201);
+    const timelineEvent = await owner
+      .post(`${base}/world/timeline/events`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "忘川村灭门",
+        aliases: [],
+        summary: "改变沈砚命运的事件。",
+        description: "",
+        tags: [],
+        era: "大玄历",
+        storyTime: { era: "大玄历", label: "十六年前", sortKey: 16 },
+        durationMinutes: 0,
+        durationLabel: "一夜",
+        event: "第一版事件描述。",
+        validity: {
+          fromChapter: 1,
+          toChapter: null,
+          fromStoryTime: null,
+          toStoryTime: null,
+        },
+      });
+    if (timelineEvent.status !== 201) {
+      throw new Error(`Failed to create timeline event: ${JSON.stringify(timelineEvent.body)}`);
+    }
+    const timelineEntity = await owner
+      .get(`${base}/entities/${timelineEvent.body.data.event.id}`)
+      .expect(200);
+    const updatedTimeline = await owner
+      .patch(`${base}/entities/${timelineEvent.body.data.event.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: timelineEntity.body.data.version,
+        data: { event: "第二版事件描述。" },
+      })
+      .expect(200);
+    await owner
+      .post(`${base}/entities/${timelineEvent.body.data.event.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: updatedTimeline.body.data.version,
+        targetVersion: 1,
+        reason: "恢复时间线初版事件。",
+      })
+      .expect(200);
+    const timeline = await owner.get(`${base}/world/timeline`).expect(200);
+    expect(
+      timeline.body.data.events.find(
+        (event: { event: { id: string } }) => event.event.id === timelineEvent.body.data.event.id,
+      )?.eventText,
+    ).toBe("第一版事件描述。");
   });
 
   it("allows only one concurrent restore for the same current version", async () => {
@@ -1993,8 +2419,10 @@ describe("settings center HTTP integration", () => {
         description: "",
         tags: [],
         data: { rule: `第${index + 1}版天门规则正文。` },
-      })
-      .expect(201);
+      });
+    if (response.status !== 201) {
+      throw new Error(`Failed to create world rule: ${JSON.stringify(response.body)}`);
+    }
     return response.body.data as { id: string; version: number };
   }
 });

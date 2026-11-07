@@ -12,6 +12,7 @@ import {
   entities,
   entityVersions,
   factionProfiles,
+  powerSystems,
   settingChangeRequests,
   settingProposals,
   timelineEvents,
@@ -35,15 +36,18 @@ import {
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
   type SettingChangeRequestCreateRequest,
+  type SettingChangeRequestListQuery,
   type SettingChangeImpact,
   type SettingProposalCreateRequest,
   type SettingProposalDecisionRequest,
+  type SettingProposalListQuery,
   type SettingEntityCreateRequest,
   type SettingEntityListQuery,
   type SettingEntityPatchRequest,
   type SettingEntityRestoreRequest,
+  type SettingEntityVersionListQuery,
 } from "@novel-brain/contracts";
-import { and, asc, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -168,6 +172,95 @@ export class SettingsRepository implements OnModuleDestroy {
       return {
         records,
         nextCursor: rows.length > input.limit ? (records.at(-1)?.id ?? null) : null,
+      };
+    });
+  }
+
+  async listVersions(
+    userId: string,
+    context: SettingsWorkContext,
+    entityId: string,
+    input: SettingEntityVersionListQuery,
+  ): Promise<
+    | "not_found"
+    | "invalid_cursor"
+    | {
+        versions: Array<{
+          version: number;
+          node: string;
+          createdAt: Date;
+          actor: string;
+          reason: string;
+          snapshot: Record<string, unknown>;
+        }>;
+        nextCursor: string | null;
+      }
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      const [entity] = await transaction
+        .select({ id: entities.id })
+        .from(entities)
+        .where(
+          and(
+            eq(entities.id, entityId),
+            eq(entities.userId, userId),
+            eq(entities.workId, context.workId),
+            eq(entities.branchId, context.branchId),
+            sql`${entities.deletedAt} is null`,
+          ),
+        )
+        .limit(1);
+      if (!entity) {
+        return "not_found";
+      }
+
+      const scope = and(
+        eq(entityVersions.entityId, entityId),
+        eq(entityVersions.userId, userId),
+        eq(entityVersions.workId, context.workId),
+        eq(entityVersions.branchId, context.branchId),
+      );
+      const cursor = input.cursor
+        ? (
+            await transaction
+              .select({ id: entityVersions.id, version: entityVersions.version })
+              .from(entityVersions)
+              .where(and(scope, eq(entityVersions.id, input.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (input.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+
+      const rows = await transaction
+        .select({
+          cursor: entityVersions.id,
+          version: entityVersions.version,
+          node: entityVersions.versionNodeId,
+          createdAt: entityVersions.createdAt,
+          actor: entityVersions.createdBy,
+          reason: versionNodes.message,
+          snapshot: entityVersions.snapshot,
+        })
+        .from(entityVersions)
+        .innerJoin(
+          versionNodes,
+          and(
+            eq(versionNodes.id, entityVersions.versionNodeId),
+            eq(versionNodes.userId, userId),
+            eq(versionNodes.workId, context.workId),
+            eq(versionNodes.branchId, context.branchId),
+            eq(versionNodes.objectId, entityId),
+          ),
+        )
+        .where(and(scope, cursor ? lt(entityVersions.version, cursor.version) : undefined))
+        .orderBy(desc(entityVersions.version))
+        .limit(input.limit + 1);
+      const versions = rows.slice(0, input.limit);
+      return {
+        versions,
+        nextCursor: rows.length > input.limit ? (versions.at(-1)?.cursor ?? null) : null,
       };
     });
   }
@@ -460,21 +553,46 @@ export class SettingsRepository implements OnModuleDestroy {
     userId: string,
     context: SettingsWorkContext,
     entityId: string,
-  ): Promise<SettingProposalRecord[]> {
-    return this.withTenant(userId, async (transaction) =>
-      transaction
+    input: SettingProposalListQuery,
+  ): Promise<
+    | "not_found"
+    | "invalid_cursor"
+    | { proposals: SettingProposalRecord[]; nextCursor: string | null }
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      if (!(await settingEntityExists(transaction, userId, context, entityId))) {
+        return "not_found";
+      }
+      const scope = and(
+        eq(settingProposals.userId, userId),
+        eq(settingProposals.workId, context.workId),
+        eq(settingProposals.branchId, context.branchId),
+        eq(settingProposals.entityId, entityId),
+      );
+      const cursor = input.cursor
+        ? (
+            await transaction
+              .select({ id: settingProposals.id })
+              .from(settingProposals)
+              .where(and(scope, eq(settingProposals.id, input.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (input.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
         .select()
         .from(settingProposals)
-        .where(
-          and(
-            eq(settingProposals.userId, userId),
-            eq(settingProposals.workId, context.workId),
-            eq(settingProposals.branchId, context.branchId),
-            eq(settingProposals.entityId, entityId),
-          ),
-        )
-        .orderBy(asc(settingProposals.createdAt)),
-    );
+        .where(and(scope, cursor ? gt(settingProposals.id, cursor.id) : undefined))
+        .orderBy(asc(settingProposals.id))
+        .limit(input.limit + 1);
+      const proposals = rows.slice(0, input.limit);
+      return {
+        proposals,
+        nextCursor: rows.length > input.limit ? (proposals.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async createProposal(
@@ -699,21 +817,46 @@ export class SettingsRepository implements OnModuleDestroy {
     userId: string,
     context: SettingsWorkContext,
     entityId: string,
-  ): Promise<SettingChangeRequestRecord[]> {
-    return this.withTenant(userId, async (transaction) =>
-      transaction
+    input: SettingChangeRequestListQuery,
+  ): Promise<
+    | "not_found"
+    | "invalid_cursor"
+    | { requests: SettingChangeRequestRecord[]; nextCursor: string | null }
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      if (!(await settingEntityExists(transaction, userId, context, entityId))) {
+        return "not_found";
+      }
+      const scope = and(
+        eq(settingChangeRequests.userId, userId),
+        eq(settingChangeRequests.workId, context.workId),
+        eq(settingChangeRequests.branchId, context.branchId),
+        eq(settingChangeRequests.entityId, entityId),
+      );
+      const cursor = input.cursor
+        ? (
+            await transaction
+              .select({ id: settingChangeRequests.id })
+              .from(settingChangeRequests)
+              .where(and(scope, eq(settingChangeRequests.id, input.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (input.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
         .select()
         .from(settingChangeRequests)
-        .where(
-          and(
-            eq(settingChangeRequests.userId, userId),
-            eq(settingChangeRequests.workId, context.workId),
-            eq(settingChangeRequests.branchId, context.branchId),
-            eq(settingChangeRequests.entityId, entityId),
-          ),
-        )
-        .orderBy(asc(settingChangeRequests.createdAt)),
-    );
+        .where(and(scope, cursor ? gt(settingChangeRequests.id, cursor.id) : undefined))
+        .orderBy(asc(settingChangeRequests.id))
+        .limit(input.limit + 1);
+      const requests = rows.slice(0, input.limit);
+      return {
+        requests,
+        nextCursor: rows.length > input.limit ? (requests.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async createChangeRequest(
@@ -1225,7 +1368,6 @@ export class SettingsRepository implements OnModuleDestroy {
             eq(versionNodes.userId, userId),
             eq(versionNodes.workId, context.workId),
             eq(versionNodes.branchId, context.branchId),
-            eq(versionNodes.objectType, "setting"),
             eq(versionNodes.objectId, current.id),
             inArray(versionNodes.nodeType, ["entity_version", "rollback"]),
           ),
@@ -1513,6 +1655,28 @@ export class SettingsRepository implements OnModuleDestroy {
 
 async function lockBranch(transaction: DatabaseTransaction, branchId: string): Promise<void> {
   await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
+}
+
+async function settingEntityExists(
+  transaction: DatabaseTransaction,
+  userId: string,
+  context: SettingsWorkContext,
+  entityId: string,
+): Promise<boolean> {
+  const [entity] = await transaction
+    .select({ id: entities.id })
+    .from(entities)
+    .where(
+      and(
+        eq(entities.id, entityId),
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        sql`${entities.deletedAt} is null`,
+      ),
+    )
+    .limit(1);
+  return Boolean(entity);
 }
 
 async function requireBranchHead(
@@ -1924,6 +2088,25 @@ async function syncWorldProjection(
       })
       .onConflictDoUpdate({
         target: factionProfiles.entityId,
+        set: { overview, updatedAt: now },
+      });
+    return;
+  }
+  if (entity.type === "power_system") {
+    const overview = settingAttributeString(entity.attributes.details) ?? "";
+    await transaction
+      .insert(powerSystems)
+      .values({
+        entityId: entity.id,
+        workId: entity.workId,
+        branchId: entity.branchId,
+        userId,
+        overview,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: powerSystems.entityId,
         set: { overview, updatedAt: now },
       });
     return;

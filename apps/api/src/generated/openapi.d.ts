@@ -1508,6 +1508,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}/versions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SettingsController_versions"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/entities/{entityId}": {
     parameters: {
       query?: never;
@@ -18915,6 +18931,63 @@ export interface operations {
       };
     };
   };
+  SettingsController_versions: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        entityId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Append-only setting version history */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              version: number;
+              node: string;
+              /** Format: date-time */
+              createdAt: string;
+              actor: string;
+              reason: string;
+              snapshot: {
+                /** @enum {string} */
+                type:
+                  | "world_rule"
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event";
+                name: string;
+                summary: string;
+                /** @enum {string} */
+                status: "draft" | "proposed" | "locked" | "discarded";
+              };
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
   SettingsController_get: {
     parameters: {
       query?: never;
@@ -19595,7 +19668,10 @@ export interface operations {
   };
   SettingsController_proposals: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -19675,9 +19751,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -19926,7 +20001,10 @@ export interface operations {
   };
   SettingsController_changeRequests: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -20001,9 +20079,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
