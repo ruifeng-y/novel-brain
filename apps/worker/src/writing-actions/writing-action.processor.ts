@@ -26,13 +26,13 @@ import {
   TargetedRevisionError,
   WRITING_ACTION_SPECS,
 } from "@novel-brain/core";
-import { CostSettlementExceedsReservationError } from "@novel-brain/db";
 
 import { AI_GATEWAY } from "../generation/generation.tokens";
 import type { ByokAiGatewayFactory } from "../generation/model-provider.factory";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
+  CostBudgetOverrunRecordedError,
   WorkerGenerationRepository,
   WritingActionNotEditableError,
   WritingActionSourceInvalidError,
@@ -156,6 +156,13 @@ export class WritingActionProcessor {
           });
           break;
         } catch (error) {
+          if (
+            error instanceof CostBudgetOverrunRecordedError ||
+            (error instanceof Error && error.name === "CostBudgetOverrunRecordedError")
+          ) {
+            await this.repository.markRevisionRoundFailed(durable, "JOB_BUDGET_EXCEEDED");
+            return;
+          }
           const failure = toFailure(error);
           const decision = decideStepRecovery({
             failureClass: failure.failureClass,
@@ -434,31 +441,7 @@ export class WritingActionProcessor {
         maxTokens: providerBudget.maxOutputTokens,
         operation: input.operation,
       });
-      await this.repository.completeModelCall({
-        payload: input.payload,
-        step: input.step,
-        call,
-        result,
-      });
-      return result;
     } catch (error) {
-      if (error instanceof CostSettlementExceedsReservationError && result) {
-        await this.repository.failModelCall({
-          payload: input.payload,
-          step: input.step,
-          call,
-          failureClass: "budget",
-          errorCode: "JOB_BUDGET_EXCEEDED",
-          message: "写作动作实际用量超过预算预留，原稿和检查点已保留",
-          escalationReason: "模型实际用量与预算预留不符，请检查预算后从断点重试",
-          actualUsage: {
-            inputTokens: result.usage.inputTokens,
-            outputTokens: result.usage.outputTokens,
-            costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
-          },
-        });
-        throw new WritingActionBudgetExceededError();
-      }
       const failure = toProviderFailure(error);
       await this.repository.failModelCall({
         payload: input.payload,
@@ -471,6 +454,19 @@ export class WritingActionProcessor {
       });
       throw error;
     }
+    if (!result) {
+      throw new Error("Provider returned no generation result");
+    }
+    const budgetOverrun = await this.repository.completeModelCall({
+      payload: input.payload,
+      step: input.step,
+      call,
+      result,
+    });
+    if (budgetOverrun) {
+      throw new CostBudgetOverrunRecordedError();
+    }
+    return result;
   }
 
   private async requireSource(payload: WriteActionJob): Promise<LoadedWritingActionSource> {

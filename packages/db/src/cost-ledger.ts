@@ -57,23 +57,6 @@ export class CostSettlementConflictError extends Error {
   }
 }
 
-export class CostSettlementExceedsReservationError extends Error {
-  readonly failureClass = "budget" as const;
-
-  constructor(
-    readonly details: {
-      reservationId: string;
-      reservedTokens: number;
-      reservedCostCny: number;
-      actualTokens: number;
-      actualCostCny: number;
-    },
-  ) {
-    super("Cost settlement exceeds the reserved budget");
-    this.name = "CostSettlementExceedsReservationError";
-  }
-}
-
 export async function reserveBudgetInTransaction(
   transaction: Transaction,
   input: {
@@ -169,6 +152,8 @@ export async function settleBudgetInTransaction(
     idempotencyKey: string;
     actualTokens: number;
     actualCostCny: number;
+    actualInputTokens?: number;
+    actualOutputTokens?: number;
     now?: Date;
   },
 ): Promise<CostReservationRecord> {
@@ -208,18 +193,9 @@ export async function settleBudgetInTransaction(
     }
     return toReservationRecord(existing);
   }
-  if (
+  const budgetOverrun =
     input.actualTokens > existing.reservedTokens ||
-    roundCost(input.actualCostCny) > roundCost(existing.reservedCostCny)
-  ) {
-    throw new CostSettlementExceedsReservationError({
-      reservationId: existing.id,
-      reservedTokens: existing.reservedTokens,
-      reservedCostCny: existing.reservedCostCny,
-      actualTokens: input.actualTokens,
-      actualCostCny: input.actualCostCny,
-    });
-  }
+    roundCost(input.actualCostCny) > roundCost(existing.reservedCostCny);
 
   const [settled] = await transaction
     .update(costReservations)
@@ -228,6 +204,7 @@ export async function settleBudgetInTransaction(
       settledTokens: input.actualTokens,
       settledCostCny: roundCost(input.actualCostCny),
       settledAt: now,
+      failureClass: budgetOverrun ? "budget" : existing.failureClass,
     })
     .where(eq(costReservations.id, existing.id))
     .returning();
@@ -240,8 +217,10 @@ export async function settleBudgetInTransaction(
     totalTokens?: unknown;
     costCny?: unknown;
   };
-  const inputTokens = finiteNumber(current.inputTokens, 0);
-  const outputTokens = finiteNumber(current.outputTokens, 0);
+  const inputTokens =
+    finiteNumber(current.inputTokens, 0) + finiteNumber(input.actualInputTokens, 0);
+  const outputTokens =
+    finiteNumber(current.outputTokens, 0) + finiteNumber(input.actualOutputTokens, 0);
   const totalTokens = finiteNumber(current.totalTokens, inputTokens + outputTokens);
   await transaction
     .update(jobs)

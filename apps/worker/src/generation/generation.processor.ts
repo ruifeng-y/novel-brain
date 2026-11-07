@@ -27,13 +27,12 @@ import {
   PROVIDER_CALL_MAX_OUTPUT_TOKENS,
   resolveModelContextWindow,
 } from "@novel-brain/core";
-import { CostSettlementExceedsReservationError } from "@novel-brain/db";
-
 import { AI_GATEWAY } from "./generation.tokens";
 import type { ByokAiGatewayFactory } from "./model-provider.factory";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
+  CostBudgetOverrunRecordedError,
   JobStoppedError,
   WorkerGenerationRepository,
   type LoadedGenerationJob,
@@ -191,6 +190,12 @@ export class GenerationJobProcessor {
           break;
         } catch (error) {
           if (error instanceof JobStoppedError) {
+            return;
+          }
+          if (
+            error instanceof CostBudgetOverrunRecordedError ||
+            (error instanceof Error && error.name === "CostBudgetOverrunRecordedError")
+          ) {
             return;
           }
           const failure = toFailure(error);
@@ -520,40 +525,7 @@ export class GenerationJobProcessor {
         maxTokens: providerBudget.maxOutputTokens,
         operation: input.operation,
       });
-      await this.repository.completeModelCall({
-        payload: input.payload,
-        step: input.step,
-        call,
-        result,
-      });
     } catch (error) {
-      if (error instanceof CostSettlementExceedsReservationError && result) {
-        await this.repository.failModelCall({
-          payload: input.payload,
-          step: input.step,
-          call,
-          failureClass: "budget",
-          errorCode: "JOB_BUDGET_EXCEEDED",
-          message: "模型实际用量超过预算预留，草稿和检查点已保留",
-          escalationReason: "模型实际用量与预算预留不符，请检查预算后从断点重试",
-          actualUsage: {
-            inputTokens: result.usage.inputTokens,
-            outputTokens: result.usage.outputTokens,
-            costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
-          },
-        });
-        this.traceLogger?.warn({
-          event: "worker.model_call.budget_overrun",
-          jobId: input.payload.jobId,
-          runId: call.runId,
-          modelCallId: call.modelCallId,
-          reservationId: call.reservationId,
-          step: input.step,
-          actualTokens: result.usage.inputTokens + result.usage.outputTokens,
-          failureClass: "budget",
-        });
-        throw new JobBudgetExceededError();
-      }
       const failure = toProviderFailure(error);
       await this.repository.failModelCall({
         payload: input.payload,
@@ -578,6 +550,25 @@ export class GenerationJobProcessor {
     }
     if (!result) {
       throw new Error("Provider returned no generation result");
+    }
+    const budgetOverrun = await this.repository.completeModelCall({
+      payload: input.payload,
+      step: input.step,
+      call,
+      result,
+    });
+    if (budgetOverrun) {
+      this.traceLogger?.warn({
+        event: "worker.model_call.budget_overrun",
+        jobId: input.payload.jobId,
+        runId: call.runId,
+        modelCallId: call.modelCallId,
+        reservationId: call.reservationId,
+        step: input.step,
+        actualTokens: result.usage.inputTokens + result.usage.outputTokens,
+        failureClass: "budget",
+      });
+      throw new CostBudgetOverrunRecordedError();
     }
     this.traceLogger?.info({
       event: "worker.model_call.succeeded",

@@ -408,7 +408,7 @@ describe("writing action HTTP and worker integration", () => {
     expect(await versionCount(fixture.chapterId)).toBe(beforeFailure + 1);
   });
 
-  it("fails closed when provider usage exceeds the cost reservation", async () => {
+  it("settles overruns atomically and stops duplicate retries from charging again", async () => {
     const owner = await createAuthenticatedAgent("writing-action-overrun@example.com");
     const fixture = await createWritingFixture(owner);
     const before = await versionCount(fixture.chapterId);
@@ -428,13 +428,15 @@ describe("writing action HTTP and worker integration", () => {
       },
       "writing-action-overrun",
     );
+    let providerCalls = 0;
     const provider: AiGateway = {
       async generateText(input) {
+        providerCalls += 1;
         return {
           text: "超量返回的修订稿",
           model: input.model ?? "fake-overrun",
           finishReason: "stop",
-          usage: { inputTokens: 0, outputTokens: 50_000 },
+          usage: { inputTokens: 0, outputTokens: 500_000 },
         };
       },
       async *streamText() {
@@ -442,7 +444,15 @@ describe("writing action HTTP and worker integration", () => {
       },
     };
 
-    await runWorker(job.id, provider);
+    const payload = await readWorkerPayload(job.id);
+    const repository = new WorkerGenerationRepository();
+    try {
+      const processor = new WritingActionProcessor(repository, provider);
+      await processor.process(payload);
+      await processor.process(payload);
+    } finally {
+      await repository.onModuleDestroy();
+    }
 
     const failed = writingActionJobResponseSchema.parse(
       (await owner.get(`${fixture.branchPath}/write-actions/${job.id}`).expect(200)).body,
@@ -452,8 +462,14 @@ describe("writing action HTTP and worker integration", () => {
       output: null,
       checkpoint: { step: "generate" },
       error: { code: "JOB_BUDGET_EXCEEDED" },
-      cost: { totalTokens: 0 },
+      cost: {
+        inputTokens: 0,
+        outputTokens: 500_000,
+        totalTokens: 500_000,
+        costCny: 1,
+      },
     });
+    expect(providerCalls).toBe(1);
     expect(await versionCount(fixture.chapterId)).toBe(before);
     const modelCall = await databasePool.query<{
       status: string;
@@ -470,8 +486,51 @@ describe("writing action HTTP and worker integration", () => {
       status: "failed",
       failure_class: "budget",
       input_tokens: 0,
-      output_tokens: 50_000,
+      output_tokens: 500_000,
     });
+    const usage = await databasePool.query<{
+      prompt_tokens: number;
+      completion_tokens: number;
+      cost_cny: number;
+    }>(
+      `SELECT prompt_tokens, completion_tokens, cost_cny
+       FROM usage_records
+       WHERE job_id = $1 AND step_key = 'generate'`,
+      [job.id],
+    );
+    expect(usage.rows).toEqual([
+      {
+        prompt_tokens: 0,
+        completion_tokens: 500_000,
+        cost_cny: 1,
+      },
+    ]);
+    const reservation = await databasePool.query<{
+      status: string;
+      settled_tokens: number;
+      settled_cost_cny: number;
+      failure_class: string;
+    }>(
+      `SELECT status, settled_tokens, settled_cost_cny, failure_class
+       FROM cost_reservations
+       WHERE job_id = $1 AND idempotency_key LIKE 'generation:generate:%'`,
+      [job.id],
+    );
+    expect(reservation.rows).toEqual([
+      {
+        status: "settled",
+        settled_tokens: 500_000,
+        settled_cost_cny: 1,
+        failure_class: "budget",
+      },
+    ]);
+    const overrunEvents = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM job_events
+       WHERE job_id = $1 AND event_type = 'job.budget.exceeded'`,
+      [job.id],
+    );
+    expect(overrunEvents.rows[0]?.count).toBe("1");
   });
 
   async function startAction(
