@@ -56,10 +56,28 @@ describe("recovery contracts", () => {
       reason: "作者确认从失败步骤继续",
       idempotencyKey: "recover-job-once",
       expectedCheckpointVersion: 4,
+      budget: {
+        maxTokens: 60_000,
+        maxCostCny: 5,
+      },
     };
     expect(jobRecoveryRequestSchema.parse(request)).toEqual(request);
     expect(() => jobRecoveryRequestSchema.parse({ ...request, reason: " " })).toThrow();
     expect(() => jobRecoveryRequestSchema.parse({ ...request, unexpected: true })).toThrow();
+    expect(() =>
+      jobRecoveryRequestSchema.parse({
+        ...request,
+        budget: {},
+      }),
+    ).toThrow();
+    expect(() =>
+      jobRecoveryRequestSchema.parse({
+        ...request,
+        budget: {
+          maxTokens: 0,
+        },
+      }),
+    ).toThrow();
 
     const record = {
       id: RECOVERY_ID,

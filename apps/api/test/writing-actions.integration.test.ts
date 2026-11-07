@@ -8,6 +8,7 @@ import {
   generationJobListResponseSchema,
   writeActionJobSchema,
   writingActionJobListResponseSchema,
+  writingActionRecoveryResponseSchema,
   writingActionJobResponseSchema,
 } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
@@ -58,7 +59,10 @@ describe("writing action HTTP and worker integration", () => {
     process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1";
 
     await runMigrations(databaseUrl);
-    databasePool = createDatabasePool(databaseUrl);
+    databasePool = createDatabasePool(databaseUrl, {
+      query_timeout: 30_000,
+      statement_timeout: 30_000,
+    });
     redis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -428,6 +432,7 @@ describe("writing action HTTP and worker integration", () => {
       },
       "writing-action-overrun",
     );
+    const recoveryToken = await csrf(owner);
     let providerCalls = 0;
     const provider: AiGateway = {
       async generateText(input) {
@@ -454,11 +459,11 @@ describe("writing action HTTP and worker integration", () => {
       await repository.onModuleDestroy();
     }
 
-    const failed = writingActionJobResponseSchema.parse(
+    const paused = writingActionJobResponseSchema.parse(
       (await owner.get(`${fixture.branchPath}/write-actions/${job.id}`).expect(200)).body,
     ).data;
-    expect(failed).toMatchObject({
-      status: "failed",
+    expect(paused).toMatchObject({
+      status: "paused",
       output: null,
       checkpoint: { step: "generate" },
       error: { code: "JOB_BUDGET_EXCEEDED" },
@@ -531,6 +536,47 @@ describe("writing action HTTP and worker integration", () => {
       [job.id],
     );
     expect(overrunEvents.rows[0]?.count).toBe("1");
+
+    const recoveryRequest = {
+      reason: "作者确认提高写作动作预算并从当前断点继续",
+      idempotencyKey: "writing-action-overrun-recover",
+      expectedCheckpointVersion: paused.checkpoint.revision,
+      budget: {
+        maxCostCny: 101,
+      },
+    };
+    const recovered = await owner
+      .post(`${fixture.branchPath}/write-actions/${job.id}/recover`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", recoveryToken)
+      .send(recoveryRequest)
+      .expect(202);
+    const recoveredData = writingActionRecoveryResponseSchema.parse(recovered.body).data;
+    expect(recoveredData.job).toMatchObject({
+      id: job.id,
+      status: "queued",
+      budget: {
+        maxCostCny: 101,
+      },
+      checkpoint: { step: "generate" },
+    });
+
+    await runWorker(job.id);
+    const completed = writingActionJobResponseSchema.parse(
+      (await owner.get(`${fixture.branchPath}/write-actions/${job.id}`).expect(200)).body,
+    ).data;
+    expect(completed).toMatchObject({
+      status: "waiting_review",
+      error: null,
+      output: { kind: "chapter_text" },
+    });
+    const overrunUsage = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM usage_records
+       WHERE job_id = $1 AND step_key = 'generate' AND completion_tokens = 500_000`,
+      [job.id],
+    );
+    expect(overrunUsage.rows[0]?.count).toBe("1");
   });
 
   async function startAction(

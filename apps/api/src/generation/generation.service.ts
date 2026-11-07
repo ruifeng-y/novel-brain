@@ -36,6 +36,7 @@ import { ReadinessService } from "../readiness/readiness.service";
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
   GenerationRepository,
+  JobRecoveryBudgetInvalidError,
   JobNotRecoverableError,
   JobRecoveryConflictError,
   isTerminal,
@@ -235,6 +236,9 @@ export class GenerationService {
     } catch (error) {
       if (error instanceof JobRecoveryConflictError) {
         throw new ApiError(409, "JOB_RECOVERY_CONFLICT", "生成检查点已更新，请刷新后重试");
+      }
+      if (error instanceof JobRecoveryBudgetInvalidError) {
+        throw new ApiError(409, "JOB_RECOVERY_BUDGET_INVALID", error.message);
       }
       if (error instanceof JobNotRecoverableError) {
         throw new ApiError(409, "JOB_NOT_RECOVERABLE", "当前任务状态不能执行人工恢复");

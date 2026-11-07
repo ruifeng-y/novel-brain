@@ -47,13 +47,18 @@ function chaptersPath(work: { id: string; mainBranch: { id: string } }) {
   return `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters`;
 }
 
-async function createChapter(page: Page, work: { id: string; mainBranch: { id: string } }) {
+async function createChapter(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  number = 1,
+  title = "一只手也能结印",
+) {
   const token = await getCsrf(page.request);
   const response = await page.request.post(chaptersPath(work), {
     headers: { Origin: origin, "X-CSRF-Token": token },
     data: {
-      number: 1,
-      title: "一只手也能结印",
+      number,
+      title,
       brief: {
         goal: "让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。",
         pov: "沈砚",
@@ -568,6 +573,138 @@ test("generates a chapter with progress, references, citations, cost and checkpo
   }
 });
 
+test("keeps chapter checks disabled until generation and writing actions settle", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const actionChapter = await createChapter(page, work, 2, "山雨欲来");
+  const chapterPath = `${chaptersPath(work)}/${chapter.id}`;
+  const actionChapterPath = `${chaptersPath(work)}/${actionChapter.id}`;
+  const token = await getCsrf(page.request);
+  const initialVersion = await page.request.post(`${chapterPath}/versions`, {
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+    },
+    data: {
+      version: chapter.version,
+      content: "沈砚把断臂藏进袖中。\n\n钟声未响。",
+    },
+  });
+  expect(initialVersion.status(), await initialVersion.text()).toBe(201);
+  const actionVersion = await page.request.post(`${actionChapterPath}/versions`, {
+    headers: {
+      Origin: origin,
+      "X-CSRF-Token": token,
+    },
+    data: {
+      version: actionChapter.version,
+      content: "山雨压着荒寺，沈砚听见远处的钟声。",
+    },
+  });
+  expect(actionVersion.status(), await actionVersion.text()).toBe(201);
+
+  let worker: Awaited<ReturnType<typeof startWorker>> | undefined;
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    const quality = page.getByRole("button", { name: "检查本章", exact: true });
+    const style = page.getByRole("button", { name: "检查本章声线" });
+    await expect(quality).toBeEnabled();
+    await expect(style).toBeEnabled();
+
+    const generateRequestHeld = deferred();
+    const releaseGenerateRequest = deferred();
+    const generatePath = `${chapterPath}/generate`;
+    await page.route(`**${generatePath}`, async (route) => {
+      if (route.request().method() === "POST") {
+        generateRequestHeld.resolve();
+        await releaseGenerateRequest.promise;
+      }
+      await route.continue();
+    });
+    await page.getByRole("button", { name: "生成整章" }).click();
+    await generateRequestHeld.promise;
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+
+    releaseGenerateRequest.resolve();
+    worker = await startWorker();
+
+    const chapterRefreshHeld = deferred();
+    const releaseChapterRefresh = deferred();
+    let holdChapterRefresh = true;
+    await page.route(`**${chapterPath}`, async (route) => {
+      if (route.request().method() === "GET" && holdChapterRefresh) {
+        holdChapterRefresh = false;
+        chapterRefreshHeld.resolve();
+        await releaseChapterRefresh.promise;
+      }
+      await route.continue();
+    });
+
+    const versionsPath = `${chapterPath}/versions`;
+    const versionsRefreshHeld = deferred();
+    const releaseVersionsRefresh = deferred();
+    let holdVersionsRefresh = true;
+    await page.route(`**${versionsPath}`, async (route) => {
+      if (route.request().method() === "GET" && holdVersionsRefresh) {
+        holdVersionsRefresh = false;
+        versionsRefreshHeld.resolve();
+        await releaseVersionsRefresh.promise;
+      }
+      await route.continue();
+    });
+
+    await chapterRefreshHeld.promise;
+    await expect(
+      page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
+    ).toBeVisible({ timeout: 15_000 });
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+
+    releaseChapterRefresh.resolve();
+    await versionsRefreshHeld.promise;
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+
+    const chapterResponse = await page.request.get(chapterPath);
+    expect(chapterResponse.ok()).toBe(true);
+    const refreshedVersionId = (await chapterResponse.json()).data.currentVersionId as string;
+    expect(refreshedVersionId).toBeTruthy();
+
+    releaseVersionsRefresh.resolve();
+    await expect(quality).toBeEnabled();
+    await expect(style).toBeEnabled();
+
+    let checkedVersionId: string | undefined;
+    const verifyPath = `${chapterPath}/verify`;
+    await page.route(`**${verifyPath}`, async (route) => {
+      const body = route.request().postDataJSON() as { chapterVersionId?: string };
+      checkedVersionId = body.chapterVersionId;
+      await route.continue();
+    });
+    await quality.click();
+    await expect.poll(() => checkedVersionId).toBe(refreshedVersionId);
+    await expect(quality).toBeEnabled();
+
+    await worker.stop();
+    worker = undefined;
+    await page.goto(`/workspace/${work.id}/write?chapterId=${actionChapter.id}`);
+    await expect(page.getByRole("heading", { name: "山雨欲来" })).toBeVisible();
+    await expect(quality).toBeEnabled();
+    await page.getByRole("button", { name: "续写" }).click();
+    await expect(
+      page.locator(".writing-action-summary").getByText("续写", { exact: true }),
+    ).toBeVisible();
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+  } finally {
+    await worker?.stop();
+  }
+});
+
 test("rewrites only the selected draft and applies a generated title at four viewports", async ({
   page,
   context,
@@ -640,6 +777,147 @@ test("rewrites only the selected draft and applies a generated title at four vie
   } finally {
     await worker.stop();
   }
+});
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+  return { promise, resolve };
+}
+
+test("recovers a paused writing action only after the author raises its budget", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const { work, chapter } = await prepareGenerationWork(page);
+  const actionId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2b3001";
+  const sourceVersionId = "0190f5e2-7e7a-7f4e-8d38-7e4e5b2b3002";
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const pausedJob = {
+    id: actionId,
+    type: "write_action",
+    action: "rewrite",
+    workId: work.id,
+    branchId: work.mainBranch.id,
+    chapterId: chapter.id,
+    sourceVersionId,
+    status: "paused",
+    progress: 70,
+    currentStep: "generate",
+    budget: {
+      maxCostCny: 1.5,
+      maxTokens: 1_000,
+      maxRevisionRounds: 0,
+    },
+    cost: {
+      inputTokens: 100,
+      outputTokens: 900,
+      totalTokens: 1_000,
+      costCny: 1.5,
+    },
+    checkpoint: {
+      schemaVersion: 1,
+      revision: 3,
+      step: "generate",
+      inputHash: null,
+      outputRefs: [],
+      payload: {},
+    },
+    output: null,
+    contextPack: null,
+    error: {
+      code: "JOB_BUDGET_EXCEEDED",
+      message: "本次任务预算已用完，原稿和检查点已保留",
+    },
+    createdAt: "2026-11-08T00:00:00.000Z",
+    startedAt: "2026-11-08T00:00:00.000Z",
+    finishedAt: null,
+  };
+  let recoveryBody: Record<string, unknown> | undefined;
+
+  await page.route(
+    (url) => url.pathname === `${branchPath}/chapters/${chapter.id}/write-actions`,
+    async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: [pausedJob],
+          requestId: "req_writing_recovery_list",
+          meta: { nextCursor: null },
+        }),
+      });
+    },
+  );
+  await page.route(
+    (url) => url.pathname === `${branchPath}/write-actions/${actionId}/recover`,
+    async (route) => {
+      recoveryBody = route.request().postDataJSON() as Record<string, unknown>;
+      await route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({
+          data: {
+            job: {
+              ...pausedJob,
+              status: "queued",
+              error: null,
+              budget: {
+                ...pausedJob.budget,
+                maxCostCny: 3,
+                maxTokens: 2_000,
+              },
+            },
+            recovery: {
+              id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2b3003",
+              jobId: actionId,
+              actorId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2b3004",
+              action: "resume",
+              reason: "作者确认提高预算并从断点恢复",
+              idempotencyKey: "ui-recovery",
+              fromStatus: "paused",
+              fromCheckpointVersion: 3,
+              resumeStep: "generate",
+              checkpointVersion: 4,
+              createdAt: "2026-11-08T00:00:01.000Z",
+            },
+          },
+          requestId: "req_writing_recovery",
+          meta: {},
+        }),
+      });
+    },
+  );
+
+  await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+  await page.getByRole("tab", { name: "生成" }).click();
+  const actionPanel = page.locator(".writing-action-panel");
+  await expect(actionPanel.getByText("预算已用完，任务已暂停在断点。")).toBeVisible();
+  for (const width of [390, 900, 1180, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(actionPanel.getByRole("button", { name: "提高预算并恢复" })).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+  await actionPanel.getByLabel("恢复后的用量上限").fill("2000");
+  await actionPanel.getByLabel("恢复后的费用上限").fill("3");
+  await actionPanel.getByRole("button", { name: "提高预算并恢复" }).click();
+
+  await expect(actionPanel.locator(".writing-action-summary")).toContainText("排队中");
+  expect(recoveryBody).toMatchObject({
+    expectedCheckpointVersion: 3,
+    budget: {
+      maxTokens: 2_000,
+      maxCostCny: 3,
+    },
+  });
+  expect(recoveryBody?.reason).toBeTruthy();
+  expect(recoveryBody?.idempotencyKey).toBeTruthy();
 });
 
 test("confirms two fact proposals without changing confirmed settings", async ({

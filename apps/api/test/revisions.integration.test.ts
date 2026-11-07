@@ -8,6 +8,7 @@ import {
   revisionPlanWorkspaceListResponseSchema,
   revisionPlanWorkspaceResponseSchema,
   writeActionJobSchema,
+  writingActionRecoveryResponseSchema,
 } from "@novel-brain/contracts";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import { FakeAiProvider } from "@novel-brain/ai";
@@ -32,6 +33,13 @@ const sourceContent = [
   "沈砚双手结印，断臂竟毫无妨碍。",
   "远处钟声未响。",
 ].join("\n\n");
+
+class SimulatedWorkerCrash extends Error {
+  constructor() {
+    super("Simulated worker crash after targeted revision settlement");
+    this.name = "SimulatedWorkerCrash";
+  }
+}
 
 class CapturingMailGateway implements MailGateway {
   codes = new Map<string, string>();
@@ -63,7 +71,10 @@ describe("targeted revision HTTP and worker integration", () => {
     process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1";
 
     await runMigrations(databaseUrl);
-    databasePool = createDatabasePool(databaseUrl);
+    databasePool = createDatabasePool(databaseUrl, {
+      query_timeout: 30_000,
+      statement_timeout: 30_000,
+    });
     redis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -252,6 +263,124 @@ describe("targeted revision HTTP and worker integration", () => {
       })
       .expect(409);
     expect(limit.body.error.code).toBe("REVISION_ROUND_LIMIT_REACHED");
+  });
+
+  it("atomically pauses an overrun revision and recovers it without duplicating settlement", async () => {
+    const owner = await createAuthenticatedAgent("revision-overrun@example.com");
+    const fixture = await createRevisionFixture(owner);
+    const style = fixture.styleFinding;
+    const created = await startPlan(owner, fixture, {
+      sourceVersionId: fixture.sourceVersionId,
+      findingIds: [style.id],
+      blocks: [
+        {
+          id: "block-overrun",
+          start: style.evidence[0]!.startOffset,
+          end: style.evidence[0]!.endOffset,
+        },
+      ],
+      constraints: {
+        preserveOutsideSelection: true,
+        protectLockedContent: true,
+      },
+      budget: {
+        maxCostCny: 100,
+        maxTokens: 1_000_000,
+        maxRevisionRounds: 2,
+      },
+    });
+    const jobId = created.rounds[0]!.jobId;
+    if (!jobId) {
+      throw new Error("Revision round was not attached to a job");
+    }
+    const payload = await readWorkerPayload(jobId);
+    let providerCalls = 0;
+    const provider = {
+      async generateText(input: Parameters<FakeAiProvider["generateText"]>[0]) {
+        providerCalls += 1;
+        return {
+          text: "沈砚只用右手结印，风停了。",
+          model: input.model ?? "fake-overrun",
+          finishReason: "stop" as const,
+          usage: { inputTokens: 0, outputTokens: 500_000 },
+        };
+      },
+      async *streamText() {
+        yield { text: "", done: true };
+      },
+    };
+    const repository = new WorkerGenerationRepository();
+    try {
+      const processor = new WritingActionProcessor(repository, provider);
+      processor.setModelCallBoundaryHook(() => {
+        throw new SimulatedWorkerCrash();
+      });
+      await expect(processor.process(payload)).rejects.toBeInstanceOf(SimulatedWorkerCrash);
+    } finally {
+      await repository.onModuleDestroy();
+    }
+
+    expect(providerCalls).toBe(1);
+    const pausedJob = await databasePool.query<{
+      status: string;
+      error_code: string;
+      checkpoint_version: number;
+    }>("SELECT status, error_code, checkpoint_version FROM jobs WHERE id = $1", [jobId]);
+    expect(pausedJob.rows[0]).toMatchObject({
+      status: "paused",
+      error_code: "JOB_BUDGET_EXCEEDED",
+    });
+    const revisionRound = await databasePool.query<{ status: string }>(
+      "SELECT status FROM revision_rounds WHERE job_id = $1",
+      [jobId],
+    );
+    expect(revisionRound.rows[0]?.status).toBe("failed");
+    const initialUsage = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM usage_records
+       WHERE job_id = $1 AND completion_tokens = 500_000`,
+      [jobId],
+    );
+    expect(initialUsage.rows[0]?.count).toBe("1");
+
+    const recovered = await owner
+      .post(`${fixture.branchPath}/write-actions/${jobId}/recover`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", fixture.token)
+      .send({
+        reason: "作者确认提高定向修订预算并从生成步骤继续",
+        idempotencyKey: "revision-overrun-recover",
+        expectedCheckpointVersion: pausedJob.rows[0]!.checkpoint_version,
+        budget: {
+          maxCostCny: 200,
+          maxTokens: 2_000_000,
+        },
+      })
+      .expect(202);
+    expect(writingActionRecoveryResponseSchema.parse(recovered.body).data.job).toMatchObject({
+      id: jobId,
+      status: "queued",
+      budget: {
+        maxCostCny: 200,
+        maxTokens: 2_000_000,
+        maxRevisionRounds: 2,
+      },
+    });
+
+    await runWorker(jobId);
+    const resumed = await getPlan(owner, fixture, created.plan.id);
+    expect(resumed.plan.status).toBe("awaiting_feedback");
+    expect(resumed.rounds[0]).toMatchObject({
+      status: "waiting_review",
+      jobStatus: "waiting_review",
+    });
+    const settledUsage = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+       FROM usage_records
+       WHERE job_id = $1 AND completion_tokens = 500_000`,
+      [jobId],
+    );
+    expect(settledUsage.rows[0]?.count).toBe("1");
   });
 
   it("blocks high-risk and locked content, persists opt-in feedback and never revives rejected findings", async () => {

@@ -103,7 +103,7 @@ export async function reserveBudgetInTransaction(
   const usedTokens = finiteNumber(cost.totalTokens, 0);
   const maxCostCny = finiteNumber(budget.maxCostCny, Number.POSITIVE_INFINITY);
   const maxTokens = finiteNumber(budget.maxTokens, Number.POSITIVE_INFINITY);
-  // ADR 0021 has no supplemental-reservation state; overruns must fail closed.
+  // ADR 0021 requires a hard stop before the provider call when the reservation cannot fit.
   if (
     usedCostCny + active.costCny + input.estimatedCostCny > maxCostCny ||
     usedTokens + active.tokens + input.estimatedTokens > maxTokens
@@ -359,6 +359,10 @@ function toReservationRecord(record: typeof costReservations.$inferSelect): Cost
     createdAt: record.createdAt,
     settledAt: record.settledAt,
   };
+}
+
+export function calculateModelCallCost(tokens: number, costPerTokenCny: number): number {
+  return Number((tokens * costPerTokenCny).toFixed(8));
 }
 
 function finiteNumber(value: unknown, fallback: number): number {
