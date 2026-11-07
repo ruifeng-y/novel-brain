@@ -110,6 +110,7 @@ describe("structured retrieval HTTP integration", () => {
       event: "沈砚在问剑大会夺魁。",
       validity: chapterValidity(1, null),
     });
+    await createChapterWithVersion(owner, token, base, 5, "问剑大会");
 
     const canonical = await search(owner, token, base, { query: "沈砚", chapterNumber: 5 });
     const canonicalHit = findResult(canonical, shen.character.id);
@@ -201,6 +202,8 @@ describe("structured retrieval HTTP integration", () => {
       validity: chapterValidity(1, null),
       sourceChapterId: null,
     });
+    await createChapterWithVersion(owner, token, base, 5, "荒寺夜谈");
+    await createChapterWithVersion(owner, token, base, 11, "断念之后");
 
     const atFive = await search(owner, token, base, {
       query: "沈砚",
@@ -278,27 +281,7 @@ describe("structured retrieval HTTP integration", () => {
       event: "天门在第十年开启。",
       validity: chapterValidity(10, null),
     });
-
-    const chapterFive = await search(owner, token, base, {
-      query: "天门",
-      chapterNumber: 5,
-      storyTime: { era: "大玄历", label: "第五年夏", sortKey: 20 },
-    });
-    expect(chapterFive.every((result) => result.canonicalName !== "天门开启")).toBe(true);
-
-    const chapterTen = await search(owner, token, base, {
-      query: "天门",
-      chapterNumber: 10,
-      storyTime: { era: "大玄历", label: "第十年夏", sortKey: 90 },
-    });
-    expect(chapterTen.some((result) => result.canonicalName === "天门开启")).toBe(true);
-
-    const earlyStoryTime = await search(owner, token, base, {
-      query: "问剑大会",
-      chapterNumber: 5,
-      storyTime: { era: "大玄历", label: "第一年春", sortKey: 5 },
-    });
-    expect(earlyStoryTime.every((result) => result.canonicalName !== "问剑大会")).toBe(true);
+    await createChapterWithVersion(owner, token, base, 10, "天门将开");
 
     const futureFact = await createFact({
       databasePool,
@@ -356,6 +339,7 @@ describe("structured retrieval HTTP integration", () => {
       validity: chapterValidity(1, null),
       sourceChapterId: null,
     });
+    await createChapterWithVersion(owner, token, base, 5, "令符初现");
 
     const withoutPov = await search(owner, token, base, {
       query: "令",
@@ -379,6 +363,27 @@ describe("structured retrieval HTTP integration", () => {
       sourceChapter: { number: 1, title: "第 1 章" },
     });
     expect(findResult(withPov, knownFact.id)?.source.version?.versionNodeId).toBeTruthy();
+
+    const chapterFive = await search(owner, token, base, {
+      query: "天门",
+      chapterNumber: 5,
+      storyTime: { era: "大玄历", label: "第五年夏", sortKey: 20 },
+    });
+    expect(chapterFive.every((result) => result.canonicalName !== "天门开启")).toBe(true);
+
+    const chapterTen = await search(owner, token, base, {
+      query: "天门",
+      chapterNumber: 10,
+      storyTime: { era: "大玄历", label: "第十年夏", sortKey: 90 },
+    });
+    expect(chapterTen.some((result) => result.canonicalName === "天门开启")).toBe(true);
+
+    const earlyStoryTime = await search(owner, token, base, {
+      query: "问剑大会",
+      chapterNumber: 5,
+      storyTime: { era: "大玄历", label: "第一年春", sortKey: 5 },
+    });
+    expect(earlyStoryTime.every((result) => result.canonicalName !== "问剑大会")).toBe(true);
   });
 
   it("uses the target chapter version when versionNodeId is omitted", async () => {
@@ -392,12 +397,13 @@ describe("structured retrieval HTTP integration", () => {
     });
 
     const firstChapter = await createChapterWithVersion(owner, token, base, 1, "断臂藏锋");
-
+    await createChapterWithVersion(owner, token, base, 2, "内门来客");
     const futureCharacter = await createCharacter(owner, token, base, {
       name: "顾青",
       aliases: [],
       summary: "第二章之后才入场的内门弟子。",
     });
+    await createChapterWithVersion(owner, token, base, 3, "顾青入院");
 
     const chapterOne = await search(owner, token, base, {
       query: "顾青",
@@ -405,11 +411,20 @@ describe("structured retrieval HTTP integration", () => {
     });
     expect(findResult(chapterOne, futureCharacter.character.id)).toBeUndefined();
 
-    const current = await search(owner, token, base, {
+    const chapterTwo = await search(owner, token, base, {
       query: "顾青",
       chapterNumber: 2,
     });
-    expect(findResult(current, futureCharacter.character.id)).toBeDefined();
+    expect(findResult(chapterTwo, futureCharacter.character.id)).toBeUndefined();
+
+    const chapterThree = await search(owner, token, base, {
+      query: "顾青",
+      chapterNumber: 3,
+    });
+    expect(findResult(chapterThree, futureCharacter.character.id)).toBeDefined();
+    expect(
+      findResult(chapterThree, futureCharacter.character.id)?.source.version?.versionNodeId,
+    ).toBe(futureCharacter.latestVersionNodeId);
 
     const early = await search(owner, token, base, {
       query: "沈砚",
@@ -451,6 +466,7 @@ describe("structured retrieval HTTP integration", () => {
       validity: chapterValidity(1, null),
       sourceChapterId: null,
     });
+    await createChapterWithVersion(owner, token, base, 2, "同门试探");
 
     const chapterOne = await search(owner, token, base, {
       query: "沈砚",
@@ -465,6 +481,80 @@ describe("structured retrieval HTTP integration", () => {
       relationshipDepth: 1,
     });
     expect(findResult(current, gu.character.id)).toBeDefined();
+  });
+
+  it("fails closed when the target chapter does not exist", async () => {
+    const owner = await createAuthenticatedAgent("retrieval-missing-chapter@example.com");
+    const { work, token } = await createWork(owner, "忘川缺章录");
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const shen = await createCharacter(owner, token, base, {
+      name: "沈砚",
+      aliases: [],
+      summary: "第一章之前已经出场的主角。",
+    });
+    await createChapterWithVersion(owner, token, base, 1, "断臂藏锋");
+    const futureCharacter = await createCharacter(owner, token, base, {
+      name: "顾青",
+      aliases: [],
+      summary: "后续章节才入场的人物。",
+    });
+    await addRelationship(owner, token, base, shen.character.id, {
+      target: ref("character", futureCharacter.character.id, work.mainBranch.id, "顾青"),
+      relationType: "ally",
+      validity: chapterValidity(1, null),
+      sourceChapterId: null,
+    });
+
+    const direct = await search(owner, token, base, {
+      query: "顾青",
+      chapterNumber: 2,
+    });
+    expect(direct).toEqual([]);
+
+    const expanded = await search(owner, token, base, {
+      query: "沈砚",
+      chapterNumber: 2,
+      relationshipDepth: 1,
+    });
+    expect(expanded).toEqual([]);
+  });
+
+  it("fails closed when the target chapter has no current version", async () => {
+    const owner = await createAuthenticatedAgent("retrieval-unversioned-chapter@example.com");
+    const { work, token } = await createWork(owner, "忘川空版本录");
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const shen = await createCharacter(owner, token, base, {
+      name: "沈砚",
+      aliases: [],
+      summary: "第一章之前已经出场的主角。",
+    });
+    const plannedChapter = await createPlannedChapter(owner, token, base, 2, "尚未落笔");
+    const futureCharacter = await createCharacter(owner, token, base, {
+      name: "顾青",
+      aliases: [],
+      summary: "第二章之后才入场的人物。",
+    });
+    await addRelationship(owner, token, base, shen.character.id, {
+      target: ref("character", futureCharacter.character.id, work.mainBranch.id, "顾青"),
+      relationType: "ally",
+      validity: chapterValidity(1, null),
+      sourceChapterId: null,
+    });
+
+    expect(plannedChapter.currentVersionId).toBeNull();
+    expect(
+      await search(owner, token, base, {
+        query: "顾青",
+        chapterNumber: 2,
+      }),
+    ).toEqual([]);
+    expect(
+      await search(owner, token, base, {
+        query: "沈砚",
+        chapterNumber: 2,
+        relationshipDepth: 1,
+      }),
+    ).toEqual([]);
   });
 
   it("disambiguates same-name Chinese entities", async () => {
@@ -485,6 +575,7 @@ describe("structured retrieval HTTP integration", () => {
       name: "沈砚",
       summary: "另一条分支导入的同名人物。",
     });
+    await createChapterWithVersion(owner, token, base, 5, "同名之争");
 
     const results = await search(owner, token, base, { query: "沈砚", chapterNumber: 5 });
     const sameName = results.filter((result) => result.canonicalName === "沈砚");
@@ -524,6 +615,9 @@ describe("structured retrieval HTTP integration", () => {
       summary: "甲作品的平行版本人物。",
     });
     const siblingBase = `/api/v1/works/${first.work.id}/branches/${siblingBranch.branchId}`;
+    await createChapterWithVersion(owner, token, firstBase, 5, "甲录第五章");
+    await createChapterWithVersion(owner, token, secondBase, 5, "乙录第五章");
+    await createChapterWithVersion(owner, token, siblingBase, 5, "平行第五章");
 
     const inFirst = await search(owner, token, firstBase, {
       query: "沈砚",
@@ -572,6 +666,7 @@ describe("structured retrieval HTTP integration", () => {
       versionNodeId: work.mainBranch.headNodeId,
       count: 10_000,
     });
+    await createChapterWithVersion(owner, token, base, 5, "大作品第五章");
 
     const indexes = await databasePool.query<{ indexname: string }>(
       "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'search_documents'",
@@ -705,6 +800,27 @@ describe("structured retrieval HTTP integration", () => {
     number: number,
     title: string,
   ) {
+    const created = await createPlannedChapter(agent, token, base, number, title);
+    const saved = await postJson(agent, token, `${base}/chapters/${created.id}/versions`, {
+      version: created.version,
+      content: `第 ${number} 章正文。`,
+    });
+    if (saved.status !== 201) {
+      throw new Error(`${saved.status}: ${JSON.stringify(saved.body)}`);
+    }
+    return saved.body.data as {
+      chapter: { id: string; number: number; version: number };
+      version: { id: string; versionNodeId: string };
+    };
+  }
+
+  async function createPlannedChapter(
+    agent: SuperAgentTest,
+    token: string,
+    base: string,
+    number: number,
+    title: string,
+  ) {
     const created = await postJson(agent, token, `${base}/chapters`, {
       number,
       title,
@@ -713,21 +829,11 @@ describe("structured retrieval HTTP integration", () => {
     if (created.status !== 201) {
       throw new Error(`${created.status}: ${JSON.stringify(created.body)}`);
     }
-    const saved = await postJson(
-      agent,
-      token,
-      `${base}/chapters/${created.body.data.id}/versions`,
-      {
-        version: created.body.data.version,
-        content: `第 ${number} 章正文。`,
-      },
-    );
-    if (saved.status !== 201) {
-      throw new Error(`${saved.status}: ${JSON.stringify(saved.body)}`);
-    }
-    return saved.body.data as {
-      chapter: { id: string; number: number; version: number };
-      version: { id: string; versionNodeId: string };
+    return created.body.data as {
+      id: string;
+      number: number;
+      version: number;
+      currentVersionId: string | null;
     };
   }
 
@@ -1088,12 +1194,26 @@ async function ensureFactChapter(input: FactFixtureInput) {
   if (cached) {
     return cached;
   }
+  const existing = await input.databasePool.query<{
+    chapter_id: string;
+    chapter_version_id: string;
+  }>(
+    `SELECT chapter.id AS chapter_id, chapter.current_version_id AS chapter_version_id
+     FROM chapters AS chapter
+     INNER JOIN chapter_versions AS version ON version.id = chapter.current_version_id
+     WHERE chapter.work_id = $1
+       AND chapter.branch_id = $2
+       AND chapter.user_id = $3
+       AND chapter.number = $4`,
+    [input.workId, input.branchId, input.userId, input.chapterNumber],
+  );
+  const existingChapter = existing.rows[0];
   const head = await input.databasePool.query<{ head_node_id: string | null }>(
     "SELECT head_node_id FROM work_branches WHERE id = $1",
     [input.branchId],
   );
-  const chapterId = uuidv7();
-  const chapterVersionId = uuidv7();
+  const chapterId = existingChapter?.chapter_id ?? uuidv7();
+  const chapterVersionId = existingChapter?.chapter_version_id ?? uuidv7();
   const commitId = uuidv7();
   const versionNodeId = uuidv7();
   const now = new Date();
@@ -1113,38 +1233,44 @@ async function ensureFactChapter(input: FactFixtureInput) {
       now,
     ],
   );
-  await input.databasePool.query(
-    `INSERT INTO chapters
-      (id, work_id, branch_id, user_id, number, title, status, version, current_version_id,
-       word_count, brief, created_at, updated_at)
-     VALUES ($1, $2, $3, $4, $5, $6, 'locked', 1, NULL, 0, '{}'::jsonb, $7, $7)`,
-    [
-      chapterId,
-      input.workId,
-      input.branchId,
-      input.userId,
-      input.chapterNumber,
-      `第 ${input.chapterNumber} 章`,
-      now,
-    ],
-  );
-  await input.databasePool.query(
-    `INSERT INTO chapter_versions
-      (id, work_id, branch_id, user_id, chapter_id, version, content, content_hash,
-       version_node_id, source, created_at)
-     VALUES ($1, $2, $3, $4, $5, 1, $6, $7, $8, 'manual', $9)`,
-    [
+  if (!existingChapter) {
+    await input.databasePool.query(
+      `INSERT INTO chapters
+        (id, work_id, branch_id, user_id, number, title, status, version, current_version_id,
+         word_count, brief, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, 'locked', 1, NULL, 0, '{}'::jsonb, $7, $7)`,
+      [
+        chapterId,
+        input.workId,
+        input.branchId,
+        input.userId,
+        input.chapterNumber,
+        `第 ${input.chapterNumber} 章`,
+        now,
+      ],
+    );
+    await input.databasePool.query(
+      `INSERT INTO chapter_versions
+        (id, work_id, branch_id, user_id, chapter_id, version, content, content_hash,
+         version_node_id, source, created_at)
+       VALUES ($1, $2, $3, $4, $5, 1, $6, $7, $8, 'manual', $9)`,
+      [
+        chapterVersionId,
+        input.workId,
+        input.branchId,
+        input.userId,
+        chapterId,
+        `${input.subject}${input.predicate}${input.object}。`,
+        `retrieval-fixture-${chapterVersionId}`,
+        versionNodeId,
+        now,
+      ],
+    );
+    await input.databasePool.query("UPDATE chapters SET current_version_id = $1 WHERE id = $2", [
       chapterVersionId,
-      input.workId,
-      input.branchId,
-      input.userId,
       chapterId,
-      `${input.subject}${input.predicate}${input.object}。`,
-      `retrieval-fixture-${chapterVersionId}`,
-      versionNodeId,
-      now,
-    ],
-  );
+    ]);
+  }
   await input.databasePool.query(
     `INSERT INTO canon_commits
       (id, work_id, branch_id, user_id, chapter_id, chapter_version_id, version_node_id,

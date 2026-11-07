@@ -155,6 +155,9 @@ export class RetrievalRepository implements OnModuleDestroy {
         branchId,
         input,
       );
+      if (!scopedInput) {
+        return [];
+      }
       const rows = await this.searchRows(transaction, userId, workId, branchId, scopedInput);
       const direct = rows.map((row) => this.toResult(row));
       if (!scopedInput.expandRelationships || scopedInput.relationshipDepth === 0) {
@@ -197,7 +200,7 @@ export class RetrievalRepository implements OnModuleDestroy {
     workId: string,
     branchId: string,
     input: RetrievalQuery,
-  ): Promise<RetrievalQuery> {
+  ): Promise<RetrievalQuery | null> {
     if (input.versionNodeId !== null) {
       return input;
     }
@@ -222,7 +225,7 @@ export class RetrievalRepository implements OnModuleDestroy {
         ),
       )
       .limit(1);
-    return anchor ? { ...input, versionNodeId: anchor.versionNodeId } : input;
+    return anchor ? { ...input, versionNodeId: anchor.versionNodeId } : null;
   }
 
   private async searchRows(
