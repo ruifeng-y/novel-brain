@@ -78,6 +78,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 import { ReadinessRemediation } from "./readiness-remediation";
 import { StyleDriftFindings } from "./style-drift-findings";
 
@@ -328,9 +329,13 @@ export function WritingWorkspace({
         await chaptersResponse.json(),
       ).data;
       const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
-      const [ledgerResponse, entityResponse, outlineResponse] = await Promise.all([
+      const [ledgerResponse, entityData, outlineResponse] = await Promise.all([
         fetch(`${basePath}/ledger`, { cache: "no-store" }),
-        fetch(`${basePath}/entities`, { cache: "no-store" }),
+        fetchAllCursorPages(
+          `${basePath}/entities`,
+          settingEntityListResponseSchema.parse,
+          "设定加载失败。",
+        ).catch(() => []),
         fetch(`${basePath}/outline`, { cache: "no-store" }),
       ]);
       setLedger(
@@ -338,11 +343,7 @@ export function WritingWorkspace({
           ? storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data
           : null,
       );
-      setEntities(
-        entityResponse.ok
-          ? settingEntityListResponseSchema.parse(await entityResponse.json()).data
-          : [],
-      );
+      setEntities(entityData);
       const outlineData = outlineResponse.ok
         ? outlineWorkspaceResponseSchema.parse(await outlineResponse.json()).data
         : null;

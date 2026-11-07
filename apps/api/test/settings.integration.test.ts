@@ -1322,6 +1322,467 @@ describe("settings center HTTP integration", () => {
     });
   });
 
+  it("paginates setting entities with tenant-scoped stable cursors", async () => {
+    const owner = await createAuthenticatedAgent("settings-entity-pagination@example.com");
+    const other = await createAuthenticatedAgent("settings-entity-pagination-other@example.com");
+    const work = await createWork(owner);
+    const otherWork = await createWork(other, "另一本设定分页作品");
+    const token = await csrf(owner);
+    const otherToken = await csrf(other);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const otherPath = `/api/v1/works/${otherWork.id}/branches/${otherWork.mainBranch.id}/entities`;
+    const createdIds: string[] = [];
+    for (const [index, name] of ["天门一", "天门二", "天门三"].entries()) {
+      const created = await createWorldRule(owner, path, token, name, index);
+      createdIds.push(created.id);
+    }
+    const foreign = await createWorldRule(other, otherPath, otherToken, "他人设定", 0);
+
+    const first = await owner.get(`${path}?limit=2`).expect(200);
+    expect(first.body.data).toHaveLength(2);
+    expect(first.body.meta.nextCursor).toEqual(expect.any(String));
+    expect(first.body.data.map((entity: { id: string }) => entity.id)).toEqual(
+      createdIds.slice(0, 2),
+    );
+
+    const last = await owner
+      .get(`${path}?limit=2&cursor=${first.body.meta.nextCursor}`)
+      .expect(200);
+    expect(last.body.data.map((entity: { id: string }) => entity.id)).toEqual(createdIds.slice(2));
+    expect(last.body.meta.nextCursor).toBeNull();
+
+    expect((await owner.get(`${path}?cursor=not-a-uuid`).expect(400)).body.error.code).toBe(
+      "VALIDATION_INVALID",
+    );
+    expect((await owner.get(`${path}?limit=0`).expect(400)).body.error.code).toBe(
+      "VALIDATION_INVALID",
+    );
+    expect(
+      (await owner.get(`${path}?limit=1&cursor=${foreign.id}`).expect(400)).body.error.code,
+    ).toBe("VALIDATION_INVALID");
+  });
+
+  it("paginates custom field definitions with tenant-scoped stable cursors", async () => {
+    const owner = await createAuthenticatedAgent("settings-field-pagination@example.com");
+    const other = await createAuthenticatedAgent("settings-field-pagination-other@example.com");
+    const work = await createWork(owner);
+    const otherWork = await createWork(other, "另一本字段分页作品");
+    const token = await csrf(owner);
+    const otherToken = await csrf(other);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/custom-fields`;
+    const otherPath = `/api/v1/works/${otherWork.id}/branches/${otherWork.mainBranch.id}/custom-fields`;
+    const createdIds: string[] = [];
+    for (const [index, key] of ["field_a", "field_b", "field_c"].entries()) {
+      const created = await owner
+        .post(path)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({
+          key,
+          label: `字段${index + 1}`,
+          fieldType: "text",
+          appliesTo: "all",
+          required: false,
+          options: [],
+          relationTarget: null,
+          sortOrder: 0,
+        })
+        .expect(201);
+      createdIds.push(created.body.data.id);
+    }
+    const foreign = await other
+      .post(otherPath)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({
+        key: "foreign",
+        label: "他人字段",
+        fieldType: "text",
+        appliesTo: "all",
+        required: false,
+        options: [],
+        relationTarget: null,
+        sortOrder: 0,
+      })
+      .expect(201);
+
+    const first = await owner.get(`${path}?limit=2`).expect(200);
+    expect(first.body.data.map((field: { id: string }) => field.id)).toEqual(
+      createdIds.slice(0, 2),
+    );
+    expect(first.body.meta.nextCursor).toEqual(expect.any(String));
+
+    const last = await owner
+      .get(`${path}?limit=2&cursor=${first.body.meta.nextCursor}`)
+      .expect(200);
+    expect(last.body.data.map((field: { id: string }) => field.id)).toEqual(createdIds.slice(2));
+    expect(last.body.meta.nextCursor).toBeNull();
+
+    expect((await owner.get(`${path}?cursor=not-a-uuid`).expect(400)).body.error.code).toBe(
+      "VALIDATION_INVALID",
+    );
+    expect(
+      (await owner.get(`${path}?limit=1&cursor=${foreign.body.data.id}`).expect(400)).body.error
+        .code,
+    ).toBe("VALIDATION_INVALID");
+  });
+
+  it("restores an old setting version through a new rollback node without rewriting history", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-version@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const created = await createWorldRule(owner, path, token, "天门旧规", 0);
+    const edited = await owner
+      .patch(`${path}/${created.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: created.version,
+        summary: "后来被改坏的天门规则。",
+        aliases: ["错误别名"],
+      })
+      .expect(200);
+
+    const previousSnapshots = await databasePool.query<{
+      version: number;
+      snapshot: Record<string, unknown>;
+      version_node_id: string;
+    }>(
+      `SELECT ev.version, ev.snapshot, ev.version_node_id
+         FROM entity_versions ev
+        WHERE ev.entity_id = $1
+        ORDER BY ev.version`,
+      [created.id],
+    );
+    expect(previousSnapshots.rows.map((row) => row.version)).toEqual([1, 2]);
+
+    const restored = await owner
+      .post(`${path}/${created.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: edited.body.data.version,
+        targetVersion: 1,
+        reason: "恢复第一版天门规则。",
+      })
+      .expect(200);
+    expect(restored.body.data).toMatchObject({
+      id: created.id,
+      name: "天门旧规",
+      summary: "第一版天门规则",
+      aliases: [],
+      status: "draft",
+      version: 3,
+    });
+
+    const history = await databasePool.query<{
+      version: number;
+      snapshot: Record<string, unknown>;
+      version_node_id: string;
+      node_type: string;
+      parent_node_id: string | null;
+    }>(
+      `SELECT ev.version, ev.snapshot, ev.version_node_id, vn.node_type, vn.parent_node_id
+         FROM entity_versions ev
+         JOIN version_nodes vn ON vn.id = ev.version_node_id
+        WHERE ev.entity_id = $1
+        ORDER BY ev.version`,
+      [created.id],
+    );
+    expect(history.rows.map((row) => row.version)).toEqual([1, 2, 3]);
+    expect(history.rows.map((row) => row.node_type)).toEqual([
+      "entity_version",
+      "entity_version",
+      "rollback",
+    ]);
+    expect(history.rows[0]?.snapshot).toEqual(previousSnapshots.rows[0]?.snapshot);
+    expect(history.rows[1]?.snapshot).toEqual(previousSnapshots.rows[1]?.snapshot);
+    expect(history.rows[2]?.snapshot).toMatchObject({
+      name: "天门旧规",
+      summary: "第一版天门规则",
+      version: 3,
+    });
+    expect(history.rows[2]?.parent_node_id).toBe(history.rows[1]?.version_node_id);
+    const branch = await databasePool.query<{ head_node_id: string }>(
+      "SELECT head_node_id FROM work_branches WHERE id = $1",
+      [work.mainBranch.id],
+    );
+    expect(branch.rows[0]?.head_node_id).toBe(history.rows[2]?.version_node_id);
+
+    const locked = await owner
+      .post(`${path}/${created.id}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: restored.body.data.version })
+      .expect(200);
+    const nodesBeforeBlockedRestore = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM version_nodes
+        WHERE object_type = 'setting' AND object_id = $1`,
+      [created.id],
+    );
+    const blocked = await owner
+      .post(`${path}/${created.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: locked.body.data.version,
+        targetVersion: 2,
+        reason: "锁定记录不能绕过修改请求直接恢复。",
+      })
+      .expect(409);
+    expect(blocked.body.error.code).toBe("SETTING_LOCKED");
+    const nodesAfterBlockedRestore = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM version_nodes
+        WHERE object_type = 'setting' AND object_id = $1`,
+      [created.id],
+    );
+    expect(nodesAfterBlockedRestore.rows[0]?.count).toBe(nodesBeforeBlockedRestore.rows[0]?.count);
+  });
+
+  it("restores the exact historical custom-field snapshot without newer values", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-custom-fields@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+    await owner
+      .post(`${base}/custom-fields`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        key: "fate",
+        label: "命格",
+        fieldType: "text",
+        appliesTo: "all",
+        required: false,
+        options: [],
+        relationTarget: null,
+        sortOrder: 0,
+      })
+      .expect(201);
+    const created = await owner
+      .post(`${base}/entities`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "world_rule",
+        name: "天门命格律",
+        aliases: [],
+        summary: "第一版命格规则。",
+        description: "",
+        tags: [],
+        data: { rule: "命格决定天门开启顺序。" },
+        customFields: { fate: "剑骨" },
+      })
+      .expect(201);
+    await owner
+      .post(`${base}/custom-fields`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        key: "curse",
+        label: "反噬",
+        fieldType: "text",
+        appliesTo: "all",
+        required: false,
+        options: [],
+        relationTarget: null,
+        sortOrder: 1,
+      })
+      .expect(201);
+    const edited = await owner
+      .patch(`${base}/entities/${created.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: created.body.data.version,
+        customFields: { fate: "仙骨", curse: "每七日反噬一次" },
+      })
+      .expect(200);
+    expect(edited.body.data.customFields).toEqual({
+      fate: "仙骨",
+      curse: "每七日反噬一次",
+    });
+
+    const restored = await owner
+      .post(`${base}/entities/${created.body.data.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: edited.body.data.version,
+        targetVersion: 1,
+        reason: "恢复第一版命格，同时移除后来增加的反噬字段。",
+      })
+      .expect(200);
+    expect(restored.body.data.customFields).toEqual({ fate: "剑骨" });
+    const stored = await databasePool.query<{ key: string; value: unknown }>(
+      `SELECT cfd.key, cfv.value
+         FROM custom_field_values cfv
+         JOIN custom_field_definitions cfd ON cfd.id = cfv.field_definition_id
+        WHERE cfv.entity_id = $1
+        ORDER BY cfd.key`,
+      [created.body.data.id],
+    );
+    expect(stored.rows).toEqual([{ key: "fate", value: "剑骨" }]);
+  });
+
+  it("restores character profiles from the historical entity snapshot", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-character@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+    const character = await owner
+      .post(`${base}/entities`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "character",
+        name: "沈砚",
+        aliases: [],
+        summary: "外门杂役。",
+        description: "",
+        tags: [],
+        data: {
+          bodyState: "左臂骨折。",
+          knowledgeBoundary: "不知道父母死因。",
+          relationshipSummary: "顾青负责监视他。",
+        },
+      })
+      .expect(201);
+
+    const updated = await owner
+      .patch(`${base}/characters/${character.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: character.body.data.version,
+        profile: {
+          desire: "找回失去的记忆",
+          fear: "再次被宗门抛弃",
+          goal: "进入内门",
+          voiceSample: "我不欠任何人。",
+          voiceGuide: "短句，克制。",
+          disguise: "装作不在意。",
+        },
+      })
+      .expect(200);
+    expect(updated.body.data.profile).toMatchObject({
+      desire: "找回失去的记忆",
+      goal: "进入内门",
+    });
+
+    const restored = await owner
+      .post(`${base}/entities/${character.body.data.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: updated.body.data.version,
+        targetVersion: 1,
+        reason: "恢复人物初版档案。",
+      })
+      .expect(200);
+    expect(restored.body.data.version).toBe(3);
+    const profile = await databasePool.query<{
+      desire: string;
+      fear: string;
+      goal: string;
+      voice_sample: string;
+      voice_guide: string;
+      disguise: string;
+    }>(
+      `SELECT desire, fear, goal, voice_sample, voice_guide, disguise
+         FROM character_profiles
+        WHERE entity_id = $1`,
+      [character.body.data.id],
+    );
+    expect(profile.rows[0]).toEqual({
+      desire: "",
+      fear: "",
+      goal: "",
+      voice_sample: "",
+      voice_guide: "",
+      disguise: "",
+    });
+  });
+
+  it("allows only one concurrent restore for the same current version", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-concurrency@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const created = await createWorldRule(owner, path, token, "并发恢复规则", 0);
+    const edited = await owner
+      .patch(`${path}/${created.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: created.version, summary: "并发恢复前的第二版。" })
+      .expect(200);
+    const payload = {
+      version: edited.body.data.version,
+      targetVersion: 1,
+      reason: "只允许一个并发恢复成功。",
+    };
+    const restore = () =>
+      owner
+        .post(`${path}/${created.id}/restore`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send(payload);
+
+    const responses = await Promise.all([restore(), restore()]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    expect(responses.find((response) => response.status === 409)?.body.error.code).toBe(
+      "VERSION_CONFLICT",
+    );
+    const versions = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM entity_versions
+        WHERE entity_id = $1`,
+      [created.id],
+    );
+    expect(versions.rows[0]?.count).toBe("3");
+  });
+
+  it("fails closed when another tenant attempts to restore a setting version", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-owner@example.com");
+    const other = await createAuthenticatedAgent("settings-restore-other@example.com");
+    const work = await createWork(owner);
+    const ownerToken = await csrf(owner);
+    const otherToken = await csrf(other);
+    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/entities`;
+    const created = await createWorldRule(owner, path, ownerToken, "租户恢复规则", 0);
+    const edited = await owner
+      .patch(`${path}/${created.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", ownerToken)
+      .send({ version: created.version, summary: "租户恢复第二版。" })
+      .expect(200);
+    const before = await databasePool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM entity_versions WHERE entity_id = $1",
+      [created.id],
+    );
+
+    const denied = await other
+      .post(`${path}/${created.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .send({
+        version: edited.body.data.version,
+        targetVersion: 1,
+        reason: "越权恢复。",
+      })
+      .expect(403);
+    expect(denied.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    const after = await databasePool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM entity_versions WHERE entity_id = $1",
+      [created.id],
+    );
+    expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+  });
+
   it("fails closed across tenants for custom fields, proposals and change requests", async () => {
     const owner = await createAuthenticatedAgent("settings-child-owner@example.com");
     const other = await createAuthenticatedAgent("settings-child-other@example.com");
@@ -1511,6 +1972,30 @@ describe("settings center HTTP integration", () => {
       id: string;
       mainBranch: { id: string };
     };
+  }
+
+  async function createWorldRule(
+    agent: SuperAgentTest,
+    path: string,
+    token: string,
+    name: string,
+    index: number,
+  ): Promise<{ id: string; version: number }> {
+    const response = await agent
+      .post(path)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "world_rule",
+        name,
+        aliases: [],
+        summary: index === 0 ? "第一版天门规则" : `第${index + 1}版天门规则`,
+        description: "",
+        tags: [],
+        data: { rule: `第${index + 1}版天门规则正文。` },
+      })
+      .expect(201);
+    return response.body.data as { id: string; version: number };
   }
 });
 

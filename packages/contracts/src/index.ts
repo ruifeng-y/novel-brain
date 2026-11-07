@@ -1068,7 +1068,9 @@ export const customFieldValuesSchema = z.record(z.string().trim().min(1).max(80)
 export type CustomFieldValues = z.infer<typeof customFieldValuesSchema>;
 
 export const customFieldDefinitionResponseSchema = apiEnvelopeSchema(customFieldDefinitionSchema);
-export const customFieldDefinitionListResponseSchema = apiEnvelopeSchema(
+export const customFieldDefinitionListQuerySchema = cursorPageQuerySchema.strict();
+export type CustomFieldDefinitionListQuery = z.infer<typeof customFieldDefinitionListQuerySchema>;
+export const customFieldDefinitionListResponseSchema = cursorListResponseSchema(
   z.array(customFieldDefinitionSchema),
 );
 
@@ -1487,17 +1489,30 @@ export const settingEntitySchema = z.discriminatedUnion("type", [
 ]);
 export type SettingEntity = z.infer<typeof settingEntitySchema>;
 
-export const settingEntityListQuerySchema = z.object({
-  type: settingEntityTypeSchema.optional(),
-  status: settingStatusSchema.optional(),
-});
+export const settingEntityListQuerySchema = cursorPageQuerySchema
+  .extend({
+    type: settingEntityTypeSchema.optional(),
+    status: settingStatusSchema.optional(),
+  })
+  .strict();
 export type SettingEntityListQuery = z.infer<typeof settingEntityListQuerySchema>;
 
 export const settingEntityResponseSchema = apiEnvelopeSchema(settingEntitySchema);
-export const settingEntityListResponseSchema = apiEnvelopeSchema(z.array(settingEntitySchema));
+export const settingEntityListResponseSchema = cursorListResponseSchema(
+  z.array(settingEntitySchema),
+);
 export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
+
+export const settingEntityRestoreRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    targetVersion: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type SettingEntityRestoreRequest = z.infer<typeof settingEntityRestoreRequestSchema>;
 
 export const domainRefTypeSchema = z.enum([
   "character",

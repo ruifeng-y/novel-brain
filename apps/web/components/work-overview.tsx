@@ -45,6 +45,7 @@ import { ReadinessRemediation } from "./readiness-remediation";
 import { StyleDriftFindings } from "./style-drift-findings";
 import { VolumeAuditPanel } from "./volume-audit-panel";
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 
 const statusLabels: Record<Work["status"], string> = {
   draft: "草稿",
@@ -103,12 +104,16 @@ export function WorkOverview({ workId }: { workId: string }) {
       }
       const workData = workResponseSchema.parse(await response.json()).data;
       const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
-      const [readinessResponse, styleResponse, chaptersResponse, entitiesResponse, ledgerResponse] =
+      const [readinessResponse, styleResponse, chaptersResponse, entityData, ledgerResponse] =
         await Promise.all([
           fetch(`${basePath}/readiness`, { cache: "no-store" }),
           fetch(`${basePath}/style`, { cache: "no-store" }),
           fetch(`${basePath}/chapters`, { cache: "no-store" }),
-          fetch(`${basePath}/entities`, { cache: "no-store" }),
+          fetchAllCursorPages(
+            `${basePath}/entities`,
+            settingEntityListResponseSchema.parse,
+            "设定加载失败。",
+          ).catch(() => []),
           fetch(`${basePath}/ledger`, { cache: "no-store" }),
         ]);
       if (!readinessResponse.ok) {
@@ -121,11 +126,7 @@ export function WorkOverview({ workId }: { workId: string }) {
           ? chapterWorkspaceListResponseSchema.parse(await chaptersResponse.json()).data
           : [],
       );
-      setEntities(
-        entitiesResponse.ok
-          ? settingEntityListResponseSchema.parse(await entitiesResponse.json()).data
-          : [],
-      );
+      setEntities(entityData);
       setLedger(
         ledgerResponse.ok
           ? storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data

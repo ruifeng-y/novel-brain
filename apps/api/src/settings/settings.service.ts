@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   characterDataSchema,
+  type CustomFieldDefinitionListQuery,
   type CustomFieldDefinition,
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
@@ -18,6 +19,7 @@ import {
   type SettingEntityListQuery,
   type SettingEntityLockRequest,
   type SettingEntityPatchRequest,
+  type SettingEntityRestoreRequest,
   type SettingChangeRequest,
   type SettingChangeRequestCreateRequest,
   type SettingChangeImpact,
@@ -54,13 +56,19 @@ export class SettingsService {
     workId: string,
     branchId: string,
     query: SettingEntityListQuery,
-  ): Promise<SettingEntity[]> {
+  ): Promise<{ data: SettingEntity[]; nextCursor: string | null }> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const [records, customFields] = await Promise.all([
+    const [page, customFields] = await Promise.all([
       this.repository.list(userId, context, query),
       this.repository.listEntityCustomFieldValues(userId, context),
     ]);
-    return records.map((record) => this.toContract(record, customFields[record.id] ?? {}));
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新列表后重试");
+    }
+    return {
+      data: page.records.map((record) => this.toContract(record, customFields[record.id] ?? {})),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async get(userId: string, workId: string, branchId: string, entityId: string) {
@@ -96,7 +104,7 @@ export class SettingsService {
   async confirmed(userId: string, workId: string, branchId: string): Promise<ConfirmedSetting[]> {
     const context = await this.requireWorkContext(userId, workId, branchId);
     const [records, canonFacts] = await Promise.all([
-      this.repository.list(userId, context, { status: "locked" }),
+      this.repository.listLockedEntities(userId, context),
       this.repository.listCanonFacts(userId, context),
     ]);
     return [
@@ -208,6 +216,43 @@ export class SettingsService {
     return this.toContract(locked, customFields[locked.id] ?? {});
   }
 
+  async restore(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    input: SettingEntityRestoreRequest,
+    audit: SettingsAuditContext,
+  ): Promise<SettingEntity> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const restored = await this.repository.restore(userId, context, entityId, input, audit);
+    if (restored === "not_found" || restored === "version_not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定版本不存在或无权访问");
+    }
+    if (restored === "locked") {
+      throw new ApiError(409, "SETTING_LOCKED", "设定已锁定，恢复旧版本必须通过修改请求");
+    }
+    if (restored === "proposed") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定有待确认提案，请先完成裁决");
+    }
+    if (restored === "discarded") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定已废弃，不能恢复版本");
+    }
+    if (restored === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
+    }
+    if (restored === "invalid_snapshot") {
+      throw new ApiError(400, "VALIDATION_INVALID", "历史版本快照与当前设定类型不兼容");
+    }
+    if (isSettingWriteViolation(restored)) {
+      throw settingConflict(restored);
+    }
+    const customFields = await this.repository.listEntityCustomFieldValues(userId, context, [
+      restored.id,
+    ]);
+    return this.toContract(restored, customFields[restored.id] ?? {});
+  }
+
   async remove(
     userId: string,
     workId: string,
@@ -236,10 +281,17 @@ export class SettingsService {
     userId: string,
     workId: string,
     branchId: string,
-  ): Promise<CustomFieldDefinition[]> {
+    query: CustomFieldDefinitionListQuery,
+  ): Promise<{ data: CustomFieldDefinition[]; nextCursor: string | null }> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const definitions = await this.repository.listCustomFields(userId, context);
-    return definitions.map((definition) => this.toCustomFieldContract(definition));
+    const page = await this.repository.listCustomFields(userId, context, query);
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新列表后重试");
+    }
+    return {
+      data: page.definitions.map((definition) => this.toCustomFieldContract(definition)),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async createCustomField(

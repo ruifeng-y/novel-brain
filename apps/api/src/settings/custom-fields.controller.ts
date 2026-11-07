@@ -6,11 +6,13 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
   customFieldDefinitionCreateRequestSchema,
+  customFieldDefinitionListQuerySchema,
   customFieldDefinitionListResponseSchema,
   customFieldDefinitionPatchRequestSchema,
   customFieldDefinitionResponseSchema,
@@ -30,6 +32,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SettingsService } from "./settings.service";
@@ -50,21 +53,25 @@ export class CustomFieldsController {
   constructor(private readonly service: SettingsService) {}
 
   @Get()
+  @ApiQuerySchema(customFieldDefinitionListQuerySchema)
   @ApiOkResponse({ description: "Custom field definitions", schema: listResponseJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const result = await this.service.listCustomFields(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      customFieldDefinitionListQuerySchema.parse(query ?? {}),
+    );
     return customFieldDefinitionListResponseSchema.parse({
-      data: await this.service.listCustomFields(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-      ),
+      data: result.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 
