@@ -2430,6 +2430,12 @@ export const jobWorkItems = pgTable(
     uniqueIndex("job_work_items_job_key_unique").on(table.jobId, table.workItemKey),
     uniqueIndex("job_work_items_job_idempotency_unique").on(table.jobId, table.idempotencyKey),
     index("job_work_items_job_type_order_idx").on(table.jobId, table.itemType, table.sortOrder),
+    index("job_work_items_job_user_order_idx").on(
+      table.jobId,
+      table.userId,
+      table.sortOrder,
+      table.id,
+    ),
     index("job_work_items_job_status_priority_idx").on(
       table.jobId,
       table.status,
