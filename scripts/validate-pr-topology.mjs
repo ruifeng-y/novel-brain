@@ -1,37 +1,42 @@
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
-export function assertAncestor(base, head) {
+import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
+
+export function topologyError({ base, head, headIsAncestorOfBase }) {
+  if (headIsAncestorOfBase) {
+    return `PR head must not be an ancestor of its base: ${head} is an ancestor of ${base}`;
+  }
+  return null;
+}
+
+function isAncestor(ancestor, descendant) {
   try {
-    execFileSync("git", ["merge-base", "--is-ancestor", base, head], {
+    execFileSync("git", ["merge-base", "--is-ancestor", ancestor, descendant], {
       stdio: "ignore",
     });
-  } catch {
-    throw new Error(`${base} is not an ancestor of ${head}`);
+    return true;
+  } catch (error) {
+    if (error?.status === 1) {
+      return false;
+    }
+    throw error;
   }
 }
 
 function main() {
-  const { base, head } = parseArguments(process.argv.slice(2));
-  assertAncestor(base, head);
-}
-
-function parseArguments(args) {
-  const values = new Map();
-  for (let index = 0; index < args.length; index += 2) {
-    const flag = args[index];
-    const value = args[index + 1];
-    if ((flag !== "--base" && flag !== "--head") || !value) {
-      throw new Error("Usage: validate-pr-topology.mjs --base <ref> --head <ref>");
-    }
-    values.set(flag.slice(2), value);
+  const { base, head } = parseReviewRangeArguments(
+    process.argv.slice(2),
+    "validate-pr-topology.mjs",
+  );
+  const error = topologyError({
+    base,
+    head,
+    headIsAncestorOfBase: isAncestor(head, base),
+  });
+  if (error) {
+    throw new Error(error);
   }
-  const base = values.get("base");
-  const head = values.get("head");
-  if (!base || !head) {
-    throw new Error("Usage: validate-pr-topology.mjs --base <ref> --head <ref>");
-  }
-  return { base, head };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

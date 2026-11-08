@@ -31,6 +31,15 @@ If two sources conflict, stop the affected work and report the conflict. Do not 
 ## Local execution
 - Run local repository commands through native PowerShell and start mutating work with `git rev-parse --show-toplevel`.
 - Before code review, record the full base and head SHAs; restart the review if either ref moves.
+- Run the executable guardrails from the repository root:
+
+```powershell
+node scripts/validate-pr-topology.mjs --base origin/main --head HEAD
+node scripts/validate-commits.mjs --base origin/main --head HEAD
+node scripts/validate-migrations.mjs
+pnpm test:guardrails
+pnpm check:migrations
+```
 
 ## Architecture guardrails
 - Web calls the NestJS HTTP API only. Web must not access the database or model providers directly.

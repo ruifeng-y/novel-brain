@@ -10,7 +10,8 @@
   "scripts": {
     "build": "pnpm build:packages && pnpm --filter @novel-brain/api build && pnpm --filter @novel-brain/worker build && pnpm --filter @novel-brain/web build",
     "build:packages": "pnpm --filter \"./packages/*\" -r build",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:guardrails && pnpm test",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:guardrails && pnpm check:migrations && pnpm test",
+    "check:migrations": "node scripts/validate-migrations.mjs && pnpm db:migrations:check",
     "db:migrations:check": "pnpm --filter @novel-brain/db db:generate && git diff --exit-code -- packages/db/migrations",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

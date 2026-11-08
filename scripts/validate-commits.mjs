@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
+import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
+
 const CONVENTIONAL_SUBJECT =
   /^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?: (.+)$/;
 const CHINESE_TEXT = /[\u3400-\u9fff]/;
@@ -13,7 +15,7 @@ export function validateCommitSubjects(subjects) {
     if (!match) {
       errors.push(`Commit subject is not Conventional Commits: ${subject}`);
     }
-    if (!CHINESE_TEXT.test(subject)) {
+    if (!CHINESE_TEXT.test(match?.[1] ?? "")) {
       errors.push(`Commit subject must include 简体中文: ${subject}`);
     }
   }
@@ -21,38 +23,35 @@ export function validateCommitSubjects(subjects) {
   return errors;
 }
 
+export function validateCommitMessages(messages) {
+  const errors = [];
+
+  for (const message of messages) {
+    const [subject, ...bodyLines] = message.split(/\r?\n/);
+    const body = bodyLines.join("\n").trim();
+    errors.push(...validateCommitSubjects([subject]));
+    if (body && !CHINESE_TEXT.test(body)) {
+      errors.push(`Commit body must include 简体中文: ${subject}`);
+    }
+  }
+
+  return errors;
+}
+
 function main() {
-  const { base, head } = parseArguments(process.argv.slice(2));
-  const subjects = execFileSync("git", ["log", "--no-merges", "--format=%s", `${base}..${head}`], {
+  const { base, head } = parseReviewRangeArguments(process.argv.slice(2), "validate-commits.mjs");
+  const messages = execFileSync("git", ["log", "--format=%B%x00", `${base}..${head}`], {
     encoding: "utf8",
   })
-    .split("\n")
-    .map((subject) => subject.trim())
+    .split("\0")
+    .map((message) => message.trim())
     .filter(Boolean);
-  const errors = validateCommitSubjects(subjects);
+  const errors = validateCommitMessages(messages);
 
   if (errors.length > 0) {
     process.stderr.write(`${errors.join("\n")}\n`);
     process.exitCode = 1;
   }
-}
-
-function parseArguments(args) {
-  const values = new Map();
-  for (let index = 0; index < args.length; index += 2) {
-    const flag = args[index];
-    const value = args[index + 1];
-    if ((flag !== "--base" && flag !== "--head") || !value) {
-      throw new Error("Usage: validate-commits.mjs --base <ref> --head <ref>");
-    }
-    values.set(flag.slice(2), value);
-  }
-  const base = values.get("base");
-  const head = values.get("head");
-  if (!base || !head) {
-    throw new Error("Usage: validate-commits.mjs --base <ref> --head <ref>");
-  }
-  return { base, head };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

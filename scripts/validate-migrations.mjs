@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 
 const migrationsDirectory = path.resolve("packages/db/migrations");
 const metadataDirectory = path.join(migrationsDirectory, "meta");
+const ROOT_SNAPSHOT_PREV_ID = "00000000-0000-0000-0000-000000000000";
 
 export function validateMigrationCatalog({ journalEntries, migrationTags, snapshots }) {
   const errors = [];
@@ -11,7 +12,12 @@ export function validateMigrationCatalog({ journalEntries, migrationTags, snapsh
   const journalTags = new Set();
   const availableTags = new Set(migrationTags);
 
-  for (const entry of journalEntries) {
+  for (const [position, entry] of journalEntries.entries()) {
+    if (entry.idx !== position) {
+      errors.push(
+        `journal index gap at position ${position}: expected ${position}, found ${entry.idx}`,
+      );
+    }
     if (indexes.has(entry.idx)) {
       errors.push(`duplicate journal index ${entry.idx}`);
     }
@@ -27,6 +33,27 @@ export function validateMigrationCatalog({ journalEntries, migrationTags, snapsh
     }
   }
 
+  for (const tag of availableTags) {
+    if (!journalTags.has(tag)) {
+      errors.push(`unregistered migration file ${tag}`);
+    }
+  }
+
+  const snapshotsByName = new Map(snapshots.map((snapshot) => [snapshot.name, snapshot]));
+  const expectedSnapshotNames = new Set();
+  for (const entry of journalEntries) {
+    const snapshotName = `${String(entry.idx).padStart(4, "0")}_snapshot.json`;
+    expectedSnapshotNames.add(snapshotName);
+    if (!snapshotsByName.has(snapshotName)) {
+      errors.push(`missing snapshot for ${entry.tag}: ${snapshotName}`);
+    }
+  }
+  for (const snapshot of snapshots) {
+    if (!expectedSnapshotNames.has(snapshot.name)) {
+      errors.push(`unregistered snapshot ${snapshot.name}`);
+    }
+  }
+
   const snapshotIds = new Set();
   for (const [index, snapshot] of snapshots.entries()) {
     if (snapshotIds.has(snapshot.id)) {
@@ -35,6 +62,11 @@ export function validateMigrationCatalog({ journalEntries, migrationTags, snapsh
     snapshotIds.add(snapshot.id);
 
     if (index === 0) {
+      if (snapshot.prevId !== ROOT_SNAPSHOT_PREV_ID) {
+        errors.push(
+          `root snapshot prevId mismatch: ${snapshot.name} expects ${ROOT_SNAPSHOT_PREV_ID}, found ${snapshot.prevId}`,
+        );
+      }
       continue;
     }
     const previous = snapshots[index - 1];

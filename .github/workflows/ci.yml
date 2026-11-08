@@ -65,16 +65,16 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Validate PR topology
         if: github.event_name == 'pull_request'
-        run: node scripts/validate-pr-topology.mjs --base origin/${{ github.base_ref }} --head HEAD
+        run: node scripts/validate-pr-topology.mjs --base ${{ github.event.pull_request.base.sha }} --head HEAD
       - name: Validate commit messages
         if: github.event_name == 'pull_request'
-        run: node scripts/validate-commits.mjs --base origin/${{ github.base_ref }} --head HEAD
-      - run: node scripts/validate-migrations.mjs
-      - run: pnpm db:migrations:check
+        run: node scripts/validate-commits.mjs --base ${{ github.event.pull_request.base.sha }} --head HEAD
+      - run: pnpm check:migrations
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm --filter @novel-brain/api openapi:check
+      - run: pnpm test:guardrails
       - run: pnpm test
       - run: pnpm test:integration
       - run: pnpm build
