@@ -63,4 +63,9 @@ CREATE INDEX "jobs_parent_created_idx" ON "jobs" USING btree ("parent_job_id","c
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_job_type_check" CHECK ("jobs"."job_type" is null or "jobs"."job_type" in ('book', 'volume', 'chapter', 'step'));--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_batch_plan_scope_check" CHECK ("jobs"."type" <> 'batch_plan' or ("jobs"."job_type" = 'book' and "jobs"."work_item_key" = 'book' and "jobs"."chapter_id" is null and "jobs"."model_config_id" is null));--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_type_check" CHECK ("jobs"."type" in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan'));--> statement-breakpoint
-ALTER TABLE "jobs" ADD CONSTRAINT "jobs_required_scope_check" CHECK (("jobs"."type" in ('agent_workflow', 'batch_plan')) or ("jobs"."type" in ('generate_chapter', 'write_action') and "jobs"."chapter_id" is not null and "jobs"."model_config_id" is not null));
+ALTER TABLE "jobs" ADD CONSTRAINT "jobs_required_scope_check" CHECK (("jobs"."type" in ('agent_workflow', 'batch_plan')) or ("jobs"."type" in ('generate_chapter', 'write_action') and "jobs"."chapter_id" is not null and "jobs"."model_config_id" is not null));--> statement-breakpoint
+ALTER TABLE "job_work_items" ENABLE ROW LEVEL SECURITY;--> statement-breakpoint
+ALTER TABLE "job_work_items" FORCE ROW LEVEL SECURITY;--> statement-breakpoint
+CREATE POLICY "job_work_items_tenant_policy" ON "job_work_items"
+	USING ("user_id" = NULLIF(current_setting('app.user_id', true), '')::uuid)
+	WITH CHECK ("user_id" = NULLIF(current_setting('app.user_id', true), '')::uuid);
