@@ -24,15 +24,24 @@ function isAncestor(ancestor, descendant) {
   }
 }
 
+function resolveRef(ref) {
+  return execFileSync("git", ["rev-parse", ref], { encoding: "utf8" }).trim();
+}
+
 function main() {
   const { base, head } = parseReviewRangeArguments(
     process.argv.slice(2),
     "validate-pr-topology.mjs",
   );
+  const baseSha = resolveRef(base);
+  const headSha = resolveRef(head);
+  if (baseSha === headSha) {
+    return;
+  }
   const error = topologyError({
-    base,
-    head,
-    headIsAncestorOfBase: isAncestor(head, base),
+    base: baseSha,
+    head: headSha,
+    headIsAncestorOfBase: isAncestor(headSha, baseSha),
   });
   if (error) {
     throw new Error(error);

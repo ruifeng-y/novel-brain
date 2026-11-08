@@ -38,6 +38,7 @@ node scripts/validate-pr-topology.mjs --base origin/main --head HEAD
 node scripts/validate-commits.mjs --base origin/main --head HEAD
 node scripts/validate-migrations.mjs
 pnpm test:guardrails
+pnpm check:pr
 pnpm check:migrations
 ```
 

@@ -4,8 +4,8 @@ import { pathToFileURL } from "node:url";
 import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
 
 const CONVENTIONAL_SUBJECT =
-  /^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?: (.+)$/;
-const CHINESE_TEXT = /[\u3400-\u9fff]/;
+  /^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?!?: (.+)$/;
+const CHINESE_TEXT = /[\u3400-\u9fff]{2,}/;
 
 export function validateCommitSubjects(subjects) {
   const errors = [];
