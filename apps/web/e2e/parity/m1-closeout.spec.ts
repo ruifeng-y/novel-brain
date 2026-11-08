@@ -275,7 +275,7 @@ test("checks every M1 page at four viewports without claiming unsigned goldens",
       .click();
     const detail = page.locator(".settings-entity-detail");
     await expect(detail.getByRole("heading", { name: "沈砚" })).toBeVisible();
-    await expect(detail.getByText("隐藏忘川书的外门杂役。")).toBeVisible();
+    await expect(detail.getByText("隐藏忘川书的外门杂役。", { exact: true })).toBeVisible();
     await expect(detail.getByRole("heading", { name: "详细说明" })).toBeVisible();
     await expectAuthorFacingLanguage(page);
     const overflow = await page.evaluate(

@@ -4808,6 +4808,11 @@ a:focus-visible {
     font-size: 27px;
   }
 
+  .page-head > div {
+    width: 100%;
+    min-width: 0;
+  }
+
   .head-actions {
     width: 100%;
     justify-content: space-between;
@@ -6551,6 +6556,7 @@ a:focus-visible {
 
 .outline-plan-page {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   min-width: 0;
 }
