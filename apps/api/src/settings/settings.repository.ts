@@ -12,6 +12,9 @@ import {
   entities,
   entityVersions,
   factionProfiles,
+  powerPaths,
+  powerRealms,
+  powerSystems,
   settingChangeRequests,
   settingProposals,
   timelineEvents,
@@ -23,11 +26,14 @@ import {
 import {
   characterProfileSchema,
   characterDataSchema,
+  factionProfileSchema,
   factionDataSchema,
   goldenFingerDataSchema,
   itemDataSchema,
   mapDataSchema,
   powerSystemDataSchema,
+  powerLifespanPolicySchema,
+  powerPathSchema,
   settingEntityCreateRequestSchema,
   timelineEventDataSchema,
   worldRuleDataSchema,
@@ -35,18 +41,22 @@ import {
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
   type SettingChangeRequestCreateRequest,
+  type SettingChangeRequestListQuery,
   type SettingChangeImpact,
   type SettingProposalCreateRequest,
   type SettingProposalDecisionRequest,
+  type SettingProposalListQuery,
   type SettingEntityCreateRequest,
   type SettingEntityListQuery,
   type SettingEntityPatchRequest,
   type SettingEntityRestoreRequest,
+  type SettingEntityVersionListQuery,
 } from "@novel-brain/contracts";
-import { and, asc, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
+import { z } from "zod";
 
 export type SettingEntityRecord = InferSelectModel<typeof entities>;
 export type CanonFactRecord = InferSelectModel<typeof canonicalFacts>;
@@ -81,6 +91,14 @@ export interface SettingWriteValidationError {
 
 export type SettingWriteViolation = SettingWriteConflict | SettingWriteValidationError;
 export type EntityCustomFieldValues = Record<string, Record<string, unknown>>;
+
+const powerSystemDomainSnapshotSchema = z
+  .object({
+    overview: z.string(),
+    lifespanPolicy: powerLifespanPolicySchema,
+    paths: z.array(powerPathSchema),
+  })
+  .strict();
 
 @Injectable()
 export class SettingsRepository implements OnModuleDestroy {
@@ -168,6 +186,96 @@ export class SettingsRepository implements OnModuleDestroy {
       return {
         records,
         nextCursor: rows.length > input.limit ? (records.at(-1)?.id ?? null) : null,
+      };
+    });
+  }
+
+  async listVersions(
+    userId: string,
+    context: SettingsWorkContext,
+    entityId: string,
+    input: SettingEntityVersionListQuery,
+  ): Promise<
+    | "not_found"
+    | "invalid_cursor"
+    | {
+        domain: string;
+        versions: Array<{
+          version: number;
+          node: string;
+          createdAt: Date;
+          actor: string;
+          reason: string;
+          snapshot: Record<string, unknown>;
+        }>;
+        nextCursor: string | null;
+      }
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      const [entity] = await transaction
+        .select({ id: entities.id, type: entities.type })
+        .from(entities)
+        .where(
+          and(
+            eq(entities.id, entityId),
+            eq(entities.userId, userId),
+            eq(entities.workId, context.workId),
+            eq(entities.branchId, context.branchId),
+            sql`${entities.deletedAt} is null`,
+          ),
+        )
+        .limit(1);
+      if (!entity) {
+        return "not_found";
+      }
+
+      const scope = and(
+        eq(entityVersions.entityId, entityId),
+        eq(entityVersions.userId, userId),
+        eq(entityVersions.workId, context.workId),
+        eq(entityVersions.branchId, context.branchId),
+      );
+      const cursor = input.cursor
+        ? (
+            await transaction
+              .select({ id: entityVersions.id, version: entityVersions.version })
+              .from(entityVersions)
+              .where(and(scope, eq(entityVersions.id, input.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (input.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+
+      const rows = await transaction
+        .select({
+          cursor: entityVersions.id,
+          version: entityVersions.version,
+          node: entityVersions.versionNodeId,
+          createdAt: entityVersions.createdAt,
+          actor: entityVersions.createdBy,
+          reason: versionNodes.message,
+          snapshot: entityVersions.snapshot,
+        })
+        .from(entityVersions)
+        .innerJoin(
+          versionNodes,
+          and(
+            eq(versionNodes.id, entityVersions.versionNodeId),
+            eq(versionNodes.userId, userId),
+            eq(versionNodes.workId, context.workId),
+            eq(versionNodes.branchId, context.branchId),
+          ),
+        )
+        .where(and(scope, cursor ? lt(entityVersions.version, cursor.version) : undefined))
+        .orderBy(desc(entityVersions.version))
+        .limit(input.limit + 1);
+      const versions = rows.slice(0, input.limit);
+      return {
+        domain: entity.type,
+        versions,
+        nextCursor: rows.length > input.limit ? (versions.at(-1)?.cursor ?? null) : null,
       };
     });
   }
@@ -460,21 +568,46 @@ export class SettingsRepository implements OnModuleDestroy {
     userId: string,
     context: SettingsWorkContext,
     entityId: string,
-  ): Promise<SettingProposalRecord[]> {
-    return this.withTenant(userId, async (transaction) =>
-      transaction
+    input: SettingProposalListQuery,
+  ): Promise<
+    | "not_found"
+    | "invalid_cursor"
+    | { proposals: SettingProposalRecord[]; nextCursor: string | null }
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      if (!(await settingEntityExists(transaction, userId, context, entityId))) {
+        return "not_found";
+      }
+      const scope = and(
+        eq(settingProposals.userId, userId),
+        eq(settingProposals.workId, context.workId),
+        eq(settingProposals.branchId, context.branchId),
+        eq(settingProposals.entityId, entityId),
+      );
+      const cursor = input.cursor
+        ? (
+            await transaction
+              .select({ id: settingProposals.id })
+              .from(settingProposals)
+              .where(and(scope, eq(settingProposals.id, input.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (input.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
         .select()
         .from(settingProposals)
-        .where(
-          and(
-            eq(settingProposals.userId, userId),
-            eq(settingProposals.workId, context.workId),
-            eq(settingProposals.branchId, context.branchId),
-            eq(settingProposals.entityId, entityId),
-          ),
-        )
-        .orderBy(asc(settingProposals.createdAt)),
-    );
+        .where(and(scope, cursor ? gt(settingProposals.id, cursor.id) : undefined))
+        .orderBy(asc(settingProposals.id))
+        .limit(input.limit + 1);
+      const proposals = rows.slice(0, input.limit);
+      return {
+        proposals,
+        nextCursor: rows.length > input.limit ? (proposals.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async createProposal(
@@ -699,21 +832,46 @@ export class SettingsRepository implements OnModuleDestroy {
     userId: string,
     context: SettingsWorkContext,
     entityId: string,
-  ): Promise<SettingChangeRequestRecord[]> {
-    return this.withTenant(userId, async (transaction) =>
-      transaction
+    input: SettingChangeRequestListQuery,
+  ): Promise<
+    | "not_found"
+    | "invalid_cursor"
+    | { requests: SettingChangeRequestRecord[]; nextCursor: string | null }
+  > {
+    return this.withTenant(userId, async (transaction) => {
+      if (!(await settingEntityExists(transaction, userId, context, entityId))) {
+        return "not_found";
+      }
+      const scope = and(
+        eq(settingChangeRequests.userId, userId),
+        eq(settingChangeRequests.workId, context.workId),
+        eq(settingChangeRequests.branchId, context.branchId),
+        eq(settingChangeRequests.entityId, entityId),
+      );
+      const cursor = input.cursor
+        ? (
+            await transaction
+              .select({ id: settingChangeRequests.id })
+              .from(settingChangeRequests)
+              .where(and(scope, eq(settingChangeRequests.id, input.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (input.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
         .select()
         .from(settingChangeRequests)
-        .where(
-          and(
-            eq(settingChangeRequests.userId, userId),
-            eq(settingChangeRequests.workId, context.workId),
-            eq(settingChangeRequests.branchId, context.branchId),
-            eq(settingChangeRequests.entityId, entityId),
-          ),
-        )
-        .orderBy(asc(settingChangeRequests.createdAt)),
-    );
+        .where(and(scope, cursor ? gt(settingChangeRequests.id, cursor.id) : undefined))
+        .orderBy(asc(settingChangeRequests.id))
+        .limit(input.limit + 1);
+      const requests = rows.slice(0, input.limit);
+      return {
+        requests,
+        nextCursor: rows.length > input.limit ? (requests.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async createChangeRequest(
@@ -1225,8 +1383,6 @@ export class SettingsRepository implements OnModuleDestroy {
             eq(versionNodes.userId, userId),
             eq(versionNodes.workId, context.workId),
             eq(versionNodes.branchId, context.branchId),
-            eq(versionNodes.objectType, "setting"),
-            eq(versionNodes.objectId, current.id),
             inArray(versionNodes.nodeType, ["entity_version", "rollback"]),
           ),
         )
@@ -1235,15 +1391,39 @@ export class SettingsRepository implements OnModuleDestroy {
         return "version_not_found";
       }
 
-      const restoredInput = parseSettingSnapshot(historical.snapshot);
+      const domainSnapshot = readSnapshotDomain(historical.snapshot);
+      const restoredInput = parseSettingSnapshot(historical.snapshot, current);
       if (!restoredInput || restoredInput.type !== current.type) {
         return "invalid_snapshot";
       }
       const historicalCharacterProfile =
         current.type === "character"
-          ? characterProfileSchema.safeParse(historical.snapshot.characterProfile ?? {})
+          ? characterProfileSchema.safeParse(
+              readNestedRecord(domainSnapshot, "profile") ??
+                readNestedRecord(historical.snapshot, "profile") ??
+                historical.snapshot.characterProfile ??
+                {},
+            )
           : undefined;
       if (historicalCharacterProfile && !historicalCharacterProfile.success) {
+        return "invalid_snapshot";
+      }
+      const historicalPowerSystem =
+        current.type === "power_system" && domainSnapshot
+          ? powerSystemDomainSnapshotSchema.safeParse(domainSnapshot)
+          : undefined;
+      if (historicalPowerSystem && !historicalPowerSystem.success) {
+        return "invalid_snapshot";
+      }
+      const factionProfileSnapshot =
+        current.type === "faction" && domainSnapshot
+          ? readNestedRecord(domainSnapshot, "profile")
+          : undefined;
+      const historicalFactionProfile =
+        current.type === "faction" && domainSnapshot
+          ? factionProfileSchema.safeParse(factionProfileSnapshot)
+          : undefined;
+      if (historicalFactionProfile && !historicalFactionProfile.success) {
         return "invalid_snapshot";
       }
       const conflict = await findSettingConflict(
@@ -1258,18 +1438,25 @@ export class SettingsRepository implements OnModuleDestroy {
       if (conflict) {
         return conflict;
       }
-      const customFields = await resolveCustomFieldWrite(
-        transaction,
-        userId,
-        context,
-        current.type,
-        current.id,
-        restoredInput.customFields,
-        "replace",
-      );
-      if ("kind" in customFields) {
-        return customFields;
+      const hasCustomFieldSnapshot = isRecord(historical.snapshot.customFields);
+      const customFieldWrite = hasCustomFieldSnapshot
+        ? await resolveCustomFieldWrite(
+            transaction,
+            userId,
+            context,
+            current.type,
+            current.id,
+            restoredInput.customFields,
+            "replace",
+          )
+        : undefined;
+      if (customFieldWrite && "kind" in customFieldWrite) {
+        return customFieldWrite;
       }
+      const restoredCustomFieldValues =
+        customFieldWrite?.values ??
+        (await readCustomFieldValues(transaction, userId, context, [current.id]))[current.id] ??
+        {};
 
       const headNodeId = await requireBranchHead(transaction, userId, context);
       const now = new Date();
@@ -1311,15 +1498,19 @@ export class SettingsRepository implements OnModuleDestroy {
             set: { ...historicalCharacterProfile.data, updatedAt: now },
           });
       }
-      await writeCustomFieldValues(
-        transaction,
-        userId,
-        context,
-        restored.id,
-        customFields.values,
-        customFields.definitions,
-        now,
-      );
+      if (customFieldWrite) {
+        await writeCustomFieldValues(
+          transaction,
+          userId,
+          context,
+          restored.id,
+          customFieldWrite.values,
+          customFieldWrite.definitions,
+          now,
+        );
+      }
+      const rollbackNodeId = uuidv7();
+      const restoredDomainSnapshot = rewriteSnapshotVersionNode(domainSnapshot, rollbackNodeId);
       const versionNodeId = await this.appendVersion(
         transaction,
         userId,
@@ -1328,10 +1519,30 @@ export class SettingsRepository implements OnModuleDestroy {
         "setting.restored",
         `恢复第 ${input.targetVersion} 版：${input.reason}`,
         audit,
-        customFields.values,
+        restoredCustomFieldValues,
         "rollback",
+        restoredDomainSnapshot,
+        rollbackNodeId,
       );
-      await syncWorldProjection(transaction, userId, restored, versionNodeId, now);
+      if (historicalPowerSystem?.success) {
+        await restorePowerSystemProjection(
+          transaction,
+          userId,
+          context,
+          restored,
+          versionNodeId,
+          now,
+          historicalPowerSystem.data,
+        );
+      }
+      await syncWorldProjection(
+        transaction,
+        userId,
+        restored,
+        versionNodeId,
+        now,
+        restoredDomainSnapshot,
+      );
       return restored;
     });
   }
@@ -1411,10 +1622,11 @@ export class SettingsRepository implements OnModuleDestroy {
     audit: SettingsAuditContext,
     customFields: Record<string, unknown>,
     nodeType: "entity_version" | "rollback" = "entity_version",
+    domainSnapshot?: Record<string, unknown>,
+    versionNodeId: string = uuidv7(),
   ): Promise<string> {
     const now = new Date();
     const entityVersionId = uuidv7();
-    const versionNodeId = uuidv7();
     const [characterProfile] =
       entity.type === "character"
         ? await transaction
@@ -1437,6 +1649,7 @@ export class SettingsRepository implements OnModuleDestroy {
       version: entity.version,
       lockedAt: entity.lockedAt?.toISOString() ?? null,
       lockedBy: entity.lockedBy,
+      ...(domainSnapshot ? { domain: domainSnapshot } : {}),
       ...(characterProfile
         ? {
             characterProfile: {
@@ -1513,6 +1726,28 @@ export class SettingsRepository implements OnModuleDestroy {
 
 async function lockBranch(transaction: DatabaseTransaction, branchId: string): Promise<void> {
   await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
+}
+
+async function settingEntityExists(
+  transaction: DatabaseTransaction,
+  userId: string,
+  context: SettingsWorkContext,
+  entityId: string,
+): Promise<boolean> {
+  const [entity] = await transaction
+    .select({ id: entities.id })
+    .from(entities)
+    .where(
+      and(
+        eq(entities.id, entityId),
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        sql`${entities.deletedAt} is null`,
+      ),
+    )
+    .limit(1);
+  return Boolean(entity);
 }
 
 async function requireBranchHead(
@@ -1902,17 +2137,143 @@ function validCustomFieldDefinitionShape(
   return relationTarget === null;
 }
 
+async function restorePowerSystemProjection(
+  transaction: DatabaseTransaction,
+  userId: string,
+  context: SettingsWorkContext,
+  entity: SettingEntityRecord,
+  versionNodeId: string,
+  now: Date,
+  domain: z.infer<typeof powerSystemDomainSnapshotSchema>,
+): Promise<void> {
+  const lifespan = powerLifespanColumns(domain.lifespanPolicy);
+  await transaction
+    .insert(powerSystems)
+    .values({
+      entityId: entity.id,
+      workId: context.workId,
+      branchId: context.branchId,
+      userId,
+      overview: domain.overview,
+      ...lifespan,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: powerSystems.entityId,
+      set: {
+        overview: domain.overview,
+        ...lifespan,
+        updatedAt: now,
+      },
+    });
+
+  await transaction
+    .delete(powerPaths)
+    .where(
+      and(
+        eq(powerPaths.powerSystemId, entity.id),
+        eq(powerPaths.userId, userId),
+        eq(powerPaths.workId, context.workId),
+        eq(powerPaths.branchId, context.branchId),
+      ),
+    );
+  if (domain.paths.length === 0) {
+    return;
+  }
+
+  await transaction.insert(powerPaths).values(
+    domain.paths.map((path) => ({
+      id: path.id,
+      powerSystemId: entity.id,
+      workId: context.workId,
+      branchId: context.branchId,
+      userId,
+      name: path.name,
+      pathType: path.pathType,
+      description: path.description,
+      sortOrder: path.sortOrder,
+      versionNodeId,
+      createdBy: userId,
+      createdAt: new Date(path.createdAt),
+    })),
+  );
+
+  const realms = domain.paths.flatMap((path) =>
+    path.realms.map((realm) => ({
+      id: realm.id,
+      pathId: path.id,
+      workId: context.workId,
+      branchId: context.branchId,
+      userId,
+      name: realm.name,
+      rank: realm.rank,
+      description: realm.description,
+      breakthroughConditions: realm.breakthroughConditions,
+      breakthroughCosts: realm.breakthroughCosts,
+      bottlenecks: realm.bottlenecks,
+      counters: realm.counters,
+      counteredBy: realm.counteredBy,
+      lifespanAmount: realm.lifespanAmount,
+      prerequisiteRealmId: realm.prerequisiteRealmId,
+      versionNodeId,
+      createdBy: userId,
+      createdAt: new Date(realm.createdAt),
+    })),
+  );
+  if (realms.length > 0) {
+    await transaction.insert(powerRealms).values(realms);
+  }
+}
+
+function powerLifespanColumns(policy: z.infer<typeof powerLifespanPolicySchema>) {
+  return {
+    lifespanMode: policy.mode,
+    lifespanUnit: policy.unit,
+    lifespanBasis: policy.basis,
+    lifespanDescription: policy.description,
+    lifespanPathId: policy.pathId,
+    lifespanFixedAmount: policy.fixedAmount,
+  };
+}
+
 async function syncWorldProjection(
   transaction: DatabaseTransaction,
   userId: string,
   entity: SettingEntityRecord,
   versionNodeId: string,
   now: Date,
+  domainSnapshot?: Record<string, unknown>,
 ): Promise<void> {
   if (entity.type === "faction") {
     const overview = settingAttributeString(entity.attributes.details) ?? "";
+    const profile = factionProfileSchema.safeParse(
+      domainSnapshot ? readNestedRecord(domainSnapshot, "profile") : undefined,
+    );
     await transaction
       .insert(factionProfiles)
+      .values({
+        entityId: entity.id,
+        workId: entity.workId,
+        branchId: entity.branchId,
+        userId,
+        ...(profile.success ? profile.data : { overview }),
+        createdAt: now,
+        updatedAt: now,
+      })
+      .onConflictDoUpdate({
+        target: factionProfiles.entityId,
+        set: {
+          ...(profile.success ? profile.data : { overview }),
+          updatedAt: now,
+        },
+      });
+    return;
+  }
+  if (entity.type === "power_system") {
+    const overview = settingAttributeString(entity.attributes.details) ?? "";
+    await transaction
+      .insert(powerSystems)
       .values({
         entityId: entity.id,
         workId: entity.workId,
@@ -1923,7 +2284,7 @@ async function syncWorldProjection(
         updatedAt: now,
       })
       .onConflictDoUpdate({
-        target: factionProfiles.entityId,
+        target: powerSystems.entityId,
         set: { overview, updatedAt: now },
       });
     return;
@@ -2014,7 +2375,7 @@ function normalizeSettingIdentifier(value: string): string {
   return value.normalize("NFKC").trim().replace(/\s+/gu, " ").toLowerCase();
 }
 
-function parseSettingSnapshot(snapshot: Record<string, unknown>) {
+function parseSettingSnapshot(snapshot: Record<string, unknown>, current?: SettingEntityRecord) {
   const parsed = settingEntityCreateRequestSchema.safeParse({
     type: snapshot.type,
     name: snapshot.name,
@@ -2025,7 +2386,64 @@ function parseSettingSnapshot(snapshot: Record<string, unknown>) {
     data: snapshot.attributes,
     customFields: snapshot.customFields,
   });
-  return parsed.success ? parsed.data : undefined;
+  if (parsed.success) {
+    return parsed.data;
+  }
+  if (!current) {
+    return undefined;
+  }
+  const fallback = settingEntityCreateRequestSchema.safeParse({
+    type: current.type,
+    name: current.name,
+    aliases: current.aliases,
+    summary: current.summary,
+    description: current.description,
+    tags: current.tags,
+    data: current.attributes,
+    customFields: {},
+  });
+  return fallback.success ? fallback.data : undefined;
+}
+
+function readSnapshotDomain(
+  snapshot: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  return isRecord(snapshot.domain) ? snapshot.domain : undefined;
+}
+
+function rewriteSnapshotVersionNode(
+  domain: Record<string, unknown> | undefined,
+  versionNodeId: string,
+): Record<string, unknown> | undefined {
+  if (!domain || !Array.isArray(domain.paths)) {
+    return domain;
+  }
+  return {
+    ...domain,
+    paths: domain.paths.map((path) => {
+      if (!isRecord(path)) {
+        return path;
+      }
+      return {
+        ...path,
+        versionNodeId,
+        realms: Array.isArray(path.realms)
+          ? path.realms.map((realm) => (isRecord(realm) ? { ...realm, versionNodeId } : realm))
+          : path.realms,
+      };
+    }),
+  };
+}
+
+function readNestedRecord(
+  value: Record<string, unknown> | undefined,
+  key: string,
+): Record<string, unknown> | undefined {
+  return value && isRecord(value[key]) ? value[key] : undefined;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function computeSettingImpact(

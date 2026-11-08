@@ -38,6 +38,7 @@ import {
   settingEntityDeleteResponseSchema,
   settingEntityListResponseSchema,
   settingEntityResponseSchema,
+  settingEntityVersionListResponseSchema,
   settingChangeRequestListResponseSchema,
   settingChangeRequestResponseSchema,
   settingProposalListResponseSchema,
@@ -58,6 +59,7 @@ import {
   type SettingEntity,
   type SettingEntityCreateRequest,
   type SettingEntityType,
+  type SettingEntityVersion,
   type SettingProposal,
   type SpecialMechanism,
   type WorkOverview,
@@ -413,6 +415,9 @@ export function SettingsCenter({
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
   const [proposals, setProposals] = useState<SettingProposal[]>([]);
   const [changeRequests, setChangeRequests] = useState<SettingChangeRequest[]>([]);
+  const [versions, setVersions] = useState<SettingEntityVersion[]>([]);
+  const [versionHistoryLoading, setVersionHistoryLoading] = useState(false);
+  const [versionHistoryError, setVersionHistoryError] = useState("");
   const [characterDetail, setCharacterDetail] = useState<CharacterDetail | null>(null);
   const [characterDetailLoading, setCharacterDetailLoading] = useState(false);
   const [characterDetailError, setCharacterDetailError] = useState("");
@@ -509,18 +514,39 @@ export function SettingsCenter({
         return;
       }
       const basePath = settingsPath(work);
-      const [proposalResponse, changeResponse] = await Promise.all([
-        fetch(`${basePath}/entities/${entityId}/proposals`, { cache: "no-store" }),
-        fetch(`${basePath}/entities/${entityId}/change-requests`, { cache: "no-store" }),
+      setProposals([]);
+      setChangeRequests([]);
+      setVersions([]);
+      setVersionHistoryLoading(true);
+      setVersionHistoryError("");
+      const [proposalData, changeRequestData, versionData] = await Promise.all([
+        fetchAllCursorPages(
+          `${basePath}/entities/${entityId}/proposals`,
+          settingProposalListResponseSchema.parse,
+          "提案加载失败。",
+        ).catch(() => null),
+        fetchAllCursorPages(
+          `${basePath}/entities/${entityId}/change-requests`,
+          settingChangeRequestListResponseSchema.parse,
+          "修改请求加载失败。",
+        ).catch(() => null),
+        fetchAllCursorPages(
+          `${basePath}/entities/${entityId}/versions`,
+          settingEntityVersionListResponseSchema.parse,
+          "版本历史加载失败。",
+        ).catch((caught) => {
+          setVersionHistoryError(caught instanceof Error ? caught.message : "版本历史加载失败。");
+          return [];
+        }),
       ]);
-      if (proposalResponse.ok) {
-        setProposals(settingProposalListResponseSchema.parse(await proposalResponse.json()).data);
+      if (proposalData) {
+        setProposals(proposalData);
       }
-      if (changeResponse.ok) {
-        setChangeRequests(
-          settingChangeRequestListResponseSchema.parse(await changeResponse.json()).data,
-        );
+      if (changeRequestData) {
+        setChangeRequests(changeRequestData);
       }
+      setVersions(versionData);
+      setVersionHistoryLoading(false);
       setCharacterDetail(null);
       setCharacterDetailError("");
       setCharacterDetailLoading(false);
@@ -625,6 +651,9 @@ export function SettingsCenter({
     if (view !== "columns" || !selectedEntity) {
       setProposals([]);
       setChangeRequests([]);
+      setVersions([]);
+      setVersionHistoryError("");
+      setVersionHistoryLoading(false);
       setCharacterDetail(null);
       setCharacterDetailError("");
       setCharacterDetailLoading(false);
@@ -980,6 +1009,53 @@ export function SettingsCenter({
     }
   }
 
+  async function restoreEntity(
+    entity: SettingEntity,
+    targetVersion: number,
+    reason: string,
+  ): Promise<boolean> {
+    if (!work) {
+      return false;
+    }
+    setBusy(`restore-${entity.id}`);
+    setActionError("");
+    setNotice("");
+    try {
+      const restored = await mutateEntity(
+        `${settingsPath(work)}/entities/${entity.id}/restore`,
+        "POST",
+        {
+          version: entity.version,
+          targetVersion,
+          reason,
+        },
+        "恢复设定版本失败。",
+      );
+      setEntities((current) =>
+        current.map((candidate) => (candidate.id === restored.id ? restored : candidate)),
+      );
+      setNotice(
+        `“${restored.name}”已恢复到第 ${targetVersion} 版，并生成第 ${restored.version} 版。`,
+      );
+      try {
+        await refreshProjection();
+        await refreshDetail(restored.id, restored.type);
+      } catch (caught) {
+        setActionError(
+          caught instanceof Error
+            ? `版本已恢复，但页面刷新失败：${caught.message}`
+            : "版本已恢复，但页面刷新失败，请重新加载。",
+        );
+      }
+      return true;
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "恢复设定版本失败。");
+      return false;
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function deleteEntity(entity: SettingEntity) {
     if (!work) {
       return;
@@ -1126,8 +1202,13 @@ export function SettingsCenter({
           onEditAlias={() => beginEdit(selected, "alias")}
           onLock={() => lockEntity(selected)}
           onRetryCharacterDetail={() => refreshDetail(selected.id, selected.type)}
+          onRetryVersionHistory={() => refreshDetail(selected.id, selected.type)}
+          onRestore={(targetVersion, reason) => restoreEntity(selected, targetVersion, reason)}
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
           proposals={proposals}
+          versionHistoryError={versionHistoryError}
+          versionHistoryLoading={versionHistoryLoading}
+          versions={versions}
           worldDetail={worldDetail}
           worldDetailError={worldDetailError}
           worldDetailLoading={worldDetailLoading}
@@ -2255,8 +2336,13 @@ function EntityDetail({
   onEditAlias,
   onLock,
   onRetryCharacterDetail,
+  onRetryVersionHistory,
+  onRestore,
   onRetryWorldDetail,
   proposals,
+  versionHistoryError,
+  versionHistoryLoading,
+  versions,
   worldDetail,
   worldDetailError,
   worldDetailLoading,
@@ -2281,8 +2367,13 @@ function EntityDetail({
   onEditAlias: () => void;
   onLock: () => void;
   onRetryCharacterDetail: () => void;
+  onRetryVersionHistory: () => void;
+  onRestore: (targetVersion: number, reason: string) => Promise<boolean>;
   onRetryWorldDetail: () => void;
   proposals: SettingProposal[];
+  versionHistoryError: string;
+  versionHistoryLoading: boolean;
+  versions: SettingEntityVersion[];
   worldDetail: WorldDomainDetail | null;
   worldDetailError: string;
   worldDetailLoading: boolean;
@@ -2296,6 +2387,9 @@ function EntityDetail({
   const [evidenceLabel, setEvidenceLabel] = useState("作者说明");
   const [evidenceQuote, setEvidenceQuote] = useState("");
   const [decisionReasons, setDecisionReasons] = useState<Record<string, string>>({});
+  const [selectedVersion, setSelectedVersion] = useState<number | null>(null);
+  const [restoreReason, setRestoreReason] = useState("恢复到作者确认的过去版本");
+  const restorableVersions = versions.filter((version) => version.version < entity.version);
   const applicableFields = customFieldDefinitions.filter(
     (definition) =>
       (definition.enabled || entity.customFields[definition.key] !== undefined) &&
@@ -2318,6 +2412,18 @@ function EntityDetail({
   const detailError = entity.type === "character" ? characterDetailError : worldDetailError;
   const blockerCount = findings.filter((finding) => finding.severity === "blocker").length;
   const warningCount = findings.filter((finding) => finding.severity === "warning").length;
+  const restoring = busy === `restore-${entity.id}`;
+
+  async function submitRestore() {
+    if (selectedVersion === null) {
+      return;
+    }
+    const restored = await onRestore(selectedVersion, restoreReason.trim());
+    if (restored) {
+      setSelectedVersion(null);
+      setRestoreReason("恢复到作者确认的过去版本");
+    }
+  }
 
   function scrollToSection(section: EntityDetailSection) {
     setActiveSection(section);
@@ -2568,6 +2674,102 @@ function EntityDetail({
               worldDetailError={worldDetailError}
               worldDetailLoading={worldDetailLoading}
             />
+            <div className="settings-detail-block settings-version-history">
+              <div className="settings-proposal-head">
+                <h3>版本历史</h3>
+                <span className="badge">当前第 {entity.version} 版</span>
+              </div>
+
+              {versionHistoryLoading ? (
+                <p className="settings-inline-note" role="status">
+                  <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                  正在加载版本历史
+                </p>
+              ) : versionHistoryError ? (
+                <div className="settings-inline-warning" role="alert">
+                  <TriangleAlert size={15} aria-hidden="true" />
+                  <span>{versionHistoryError}</span>
+                  <button className="text-btn small" onClick={onRetryVersionHistory} type="button">
+                    重新加载
+                  </button>
+                </div>
+              ) : versions.length === 0 ? (
+                <p className="settings-inline-note">还没有版本记录。</p>
+              ) : restorableVersions.length === 0 ? (
+                <p className="settings-inline-note">还没有可恢复的历史版本。</p>
+              ) : (
+                <>
+                  <div className="settings-version-list">
+                    {versions.map((version) => {
+                      const current = version.version === entity.version;
+                      const selected = version.version === selectedVersion;
+                      return (
+                        <button
+                          aria-pressed={selected}
+                          className={`settings-version-card${current ? " is-current" : ""}${
+                            selected ? " is-selected" : ""
+                          }`}
+                          disabled={current || locked || proposed || discarded}
+                          key={version.node}
+                          onClick={() => setSelectedVersion(current ? null : version.version)}
+                          type="button"
+                        >
+                          <span>
+                            <strong>第 {version.version} 版</strong>
+                            <small>{formatDateTime(version.createdAt)}</small>
+                          </span>
+                          <span>{version.reason || "未记录说明"}</span>
+                          <small>
+                            {version.summary.name ?? entity.name} ·{" "}
+                            {version.summary.summary || "无摘要"}
+                          </small>
+                          {current ? <em>当前版本</em> : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <label className="settings-field settings-field-wide">
+                    <span>恢复原因</span>
+                    <input
+                      disabled={selectedVersion === null || restoring}
+                      onChange={(event) => setRestoreReason(event.target.value)}
+                      value={restoreReason}
+                    />
+                  </label>
+                  {locked || proposed || discarded ? (
+                    <p className="settings-inline-warning">
+                      {locked
+                        ? "锁定设定不能直接恢复，请发起修改请求。"
+                        : proposed
+                          ? "请先完成待裁决提案。"
+                          : "废弃设定不能恢复版本。"}
+                    </p>
+                  ) : null}
+                  <div className="settings-detail-actions">
+                    <button
+                      className="btn btn-primary btn-small"
+                      disabled={
+                        selectedVersion === null ||
+                        restoreReason.trim().length === 0 ||
+                        locked ||
+                        proposed ||
+                        discarded ||
+                        restoring
+                      }
+                      onClick={submitRestore}
+                      type="button"
+                    >
+                      {restoring ? (
+                        <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                      ) : (
+                        <History size={14} aria-hidden="true" />
+                      )}
+                      恢复第 {selectedVersion ?? "?"} 版
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </EntityDetailSection>
 
           <EntityDetailSection id="references" index="04" title={tabLabels.references}>

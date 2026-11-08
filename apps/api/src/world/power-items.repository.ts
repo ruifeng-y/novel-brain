@@ -2189,6 +2189,69 @@ async function appendSnapshotAtVersion(
   audit: PowerItemsAuditContext,
 ): Promise<void> {
   const entityVersionId = uuidv7();
+  const snapshot = entitySnapshot(entity);
+  if (entity.type === "power_system") {
+    const [powerSystem] = await transaction
+      .select()
+      .from(powerSystems)
+      .where(
+        and(
+          eq(powerSystems.entityId, entity.id),
+          eq(powerSystems.userId, userId),
+          eq(powerSystems.workId, context.workId),
+          eq(powerSystems.branchId, context.branchId),
+        ),
+      )
+      .limit(1);
+    if (powerSystem) {
+      const pathRows = await transaction
+        .select()
+        .from(powerPaths)
+        .where(
+          and(
+            eq(powerPaths.powerSystemId, entity.id),
+            eq(powerPaths.userId, userId),
+            eq(powerPaths.workId, context.workId),
+            eq(powerPaths.branchId, context.branchId),
+          ),
+        )
+        .orderBy(asc(powerPaths.sortOrder), asc(powerPaths.createdAt));
+      const paths = await Promise.all(
+        pathRows.map(async (path) => {
+          const realmRows = await transaction
+            .select()
+            .from(powerRealms)
+            .where(
+              and(
+                eq(powerRealms.pathId, path.id),
+                eq(powerRealms.userId, userId),
+                eq(powerRealms.workId, context.workId),
+                eq(powerRealms.branchId, context.branchId),
+              ),
+            )
+            .orderBy(asc(powerRealms.rank), asc(powerRealms.createdAt));
+          return {
+            id: path.id,
+            powerSystemId: path.powerSystemId,
+            workId: path.workId,
+            branchId: path.branchId,
+            name: path.name,
+            pathType: path.pathType,
+            description: path.description,
+            sortOrder: path.sortOrder,
+            realms: realmRows.map(toRealmContract),
+            versionNodeId: path.versionNodeId,
+            createdAt: path.createdAt.toISOString(),
+          };
+        }),
+      );
+      snapshot.domain = {
+        overview: powerSystem.overview,
+        lifespanPolicy: lifespanFromRow(powerSystem),
+        paths,
+      };
+    }
+  }
   await transaction
     .update(versionNodes)
     .set({ snapshotId: entityVersionId, objectVersion: entity.version })
@@ -2200,7 +2263,7 @@ async function appendSnapshotAtVersion(
     branchId: context.branchId,
     userId,
     version: entity.version,
-    snapshot: entitySnapshot(entity),
+    snapshot,
     versionNodeId,
     createdBy: userId,
     createdAt: new Date(),

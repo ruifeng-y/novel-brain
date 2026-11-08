@@ -65,6 +65,57 @@ async function lockEntity(
   expect(response.status()).toBe(200);
 }
 
+async function createPowerSystem(page: Page, work: { id: string; mainBranch: { id: string } }) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.post(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/power-systems`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        name: "北域双路径",
+        aliases: [],
+        summary: "剑修与体修并行。",
+        description: "",
+        tags: ["修行"],
+        overview: "第一版力量体系总览。",
+        lifespanPolicy: {
+          mode: "fixed",
+          unit: "年",
+          basis: "",
+          description: "固定寿元。",
+          pathId: null,
+          fixedAmount: 120,
+        },
+        paths: [],
+      },
+    },
+  );
+  expect(response.status()).toBe(201);
+  return (await response.json()).data as {
+    powerSystem: { id: string };
+    version: number;
+    overview: string;
+  };
+}
+
+async function updatePowerSystemOverview(
+  page: Page,
+  work: { id: string; mainBranch: { id: string } },
+  powerSystem: { powerSystem: { id: string }; version: number },
+  overview: string,
+) {
+  const token = await getCsrf(page.request);
+  const response = await page.request.patch(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/power-systems/${powerSystem.powerSystem.id}`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: { version: powerSystem.version, overview },
+    },
+  );
+  expect(response.status()).toBe(200);
+  return (await response.json()).data as typeof powerSystem;
+}
+
 async function createProposal(
   page: Page,
   work: { id: string; mainBranch: { id: string } },
@@ -240,6 +291,128 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await detail.getByRole("button", { name: "确认提案" }).click();
   await expect(detail.getByText("已锁定").first()).toBeVisible();
   await expect(detail.getByRole("button", { name: "已锁定 · 编辑需修改请求" })).toBeDisabled();
+});
+
+test("opens setting version history and restores the past power-system overview", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const created = await createPowerSystem(page, work);
+  await updatePowerSystemOverview(page, work, created, "第二版力量体系总览。");
+
+  await page.goto(`/workspace/${work.id}/settings?column=power&entityId=${created.powerSystem.id}`);
+  await expect(page.getByRole("heading", { name: "北域双路径" })).toBeVisible();
+  const history = page.locator(".settings-version-history");
+  await history.scrollIntoViewIfNeeded();
+  await expect(history.getByText("第 2 版").first()).toBeVisible();
+  await history.getByRole("button", { name: /第 1 版/ }).click();
+  await page.getByLabel("恢复原因").fill("恢复作者确认的第一版力量体系总览。");
+  await history.getByRole("button", { name: "恢复第 1 版" }).click();
+
+  await expect(page.getByText(/已恢复到第 1 版，并生成第 3 版/)).toBeVisible();
+  await expect(page.locator(".entity-page-meta").getByText("第 3 版")).toBeVisible();
+  await expect(history.getByText("第 3 版").first()).toBeVisible();
+
+  const detail = await page.request.get(
+    `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/power-systems/${created.powerSystem.id}`,
+  );
+  expect(detail.ok()).toBe(true);
+  expect((await detail.json()).data.overview).toBe("第一版力量体系总览。");
+});
+
+test("shows version-history loading, empty, error and restore-conflict states", async ({
+  page,
+  context,
+}, testInfo) => {
+  await authenticatedPage(page, context);
+  const work = await createSettingsWork(page);
+  const editable = await createEntity(page, work, {
+    type: "world_rule",
+    name: "有历史的规则",
+    aliases: [],
+    summary: "第一版规则摘要。",
+    description: "",
+    tags: [],
+    data: { rule: "第一版规则内容。" },
+  });
+  const token = await getCsrf(page.request);
+  const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  const edited = await page.request.patch(`${base}/entities/${editable.id}`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: { version: editable.version, summary: "第二版规则摘要。" },
+  });
+  expect(edited.ok()).toBe(true);
+  const empty = await createEntity(page, work, {
+    type: "world_rule",
+    name: "没有历史的规则",
+    aliases: [],
+    summary: "只有第一版。",
+    description: "",
+    tags: [],
+    data: { rule: "尚未发生后续修改。" },
+  });
+
+  const versionsPath = `**${base}/entities/${editable.id}/versions*`;
+  let releaseVersionRequest: () => void = () => undefined;
+  const versionRequestGate = new Promise<void>((resolve) => {
+    releaseVersionRequest = resolve;
+  });
+  const delayedVersionResponse = page.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname.endsWith(`/entities/${editable.id}/versions`),
+  );
+  await page.route(versionsPath, async (route) => {
+    await versionRequestGate;
+    await route.continue();
+  });
+  await page.goto(`/workspace/${work.id}/settings?column=world&entityId=${editable.id}`);
+  await expect(page.getByText("正在加载版本历史")).toBeVisible();
+  releaseVersionRequest();
+  await delayedVersionResponse;
+  await page.unroute(versionsPath);
+
+  await page.route(versionsPath, async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "版本历史加载失败。",
+          details: {},
+          requestId: "req_settings_versions_error",
+        },
+      }),
+    });
+  });
+  await page.reload();
+  const history = page.locator(".settings-version-history");
+  await expect(history.getByText("版本历史加载失败。")).toBeVisible();
+  await expect(history.getByRole("button", { name: "重新加载" })).toBeVisible();
+  await page.unroute(versionsPath);
+
+  await page.reload();
+  await history.getByRole("button", { name: /第 1 版/ }).click();
+  const advancedToken = await getCsrf(page.request);
+  const advanced = await page.request.patch(`${base}/entities/${editable.id}`, {
+    headers: { Origin: origin, "X-CSRF-Token": advancedToken },
+    data: { version: 2, summary: "页面打开后又被修改。" },
+  });
+  expect(advanced.ok()).toBe(true);
+  await page.getByLabel("恢复原因").fill("页面尚未刷新时恢复旧版本。");
+  await history.getByRole("button", { name: "恢复第 1 版" }).click();
+  await expect(page.getByText("设定已被其他操作更新，请刷新后重试")).toBeVisible();
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`/workspace/${work.id}/settings?column=world&entityId=${empty.id}`);
+    await expect(page.getByText("还没有可恢复的历史版本。")).toBeVisible();
+    await expectNoOverflow(page);
+    await capture(page, testInfo, `settings-version-empty-${width}`);
+  }
 });
 
 test("filters settings by search and status and opens recent updates", async ({

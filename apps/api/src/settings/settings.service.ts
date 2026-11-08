@@ -10,6 +10,9 @@ import {
   goldenFingerDataSchema,
   mapDataSchema,
   powerSystemDataSchema,
+  settingEntityTypeSchema,
+  settingEntityVersionSnapshotSummarySchema,
+  settingStatusSchema,
   type CharacterData,
   type ConfirmedSetting,
   type GoldenFingerData,
@@ -20,12 +23,16 @@ import {
   type SettingEntityLockRequest,
   type SettingEntityPatchRequest,
   type SettingEntityRestoreRequest,
+  type SettingEntityVersion,
+  type SettingEntityVersionListQuery,
   type SettingChangeRequest,
   type SettingChangeRequestCreateRequest,
+  type SettingChangeRequestListQuery,
   type SettingChangeImpact,
   type SettingProposal,
   type SettingProposalCreateRequest,
   type SettingProposalDecisionRequest,
+  type SettingProposalListQuery,
   type TimelineEventData,
   type WorldRuleData,
   itemDataSchema,
@@ -67,6 +74,50 @@ export class SettingsService {
     }
     return {
       data: page.records.map((record) => this.toContract(record, customFields[record.id] ?? {})),
+      nextCursor: page.nextCursor,
+    };
+  }
+
+  async listVersions(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    query: SettingEntityVersionListQuery,
+  ): Promise<{ data: SettingEntityVersion[]; nextCursor: string | null }> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const page = await this.repository.listVersions(userId, context, entityId, query);
+    if (page === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
+    }
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新历史后重试");
+    }
+    const domain = settingEntityTypeSchema.parse(page.domain);
+    return {
+      data: page.versions.map((version) => {
+        const name = typeof version.snapshot.name === "string" ? version.snapshot.name : null;
+        const summary =
+          typeof version.snapshot.summary === "string" ? version.snapshot.summary : null;
+        const parsedStatus = settingStatusSchema.safeParse(version.snapshot.status);
+        const snapshotSummary = settingEntityVersionSnapshotSummarySchema.parse({
+          name,
+          summary,
+          status: parsedStatus.success ? parsedStatus.data : null,
+        });
+        return {
+          version: version.version,
+          node: version.node,
+          createdAt: version.createdAt.toISOString(),
+          actor: version.actor,
+          reason: version.reason,
+          snapshot: {
+            domain,
+            payload: version.snapshot,
+          },
+          summary: snapshotSummary,
+        };
+      }),
       nextCursor: page.nextCursor,
     };
   }
@@ -348,10 +399,20 @@ export class SettingsService {
     workId: string,
     branchId: string,
     entityId: string,
-  ): Promise<SettingProposal[]> {
+    query: SettingProposalListQuery,
+  ): Promise<{ data: SettingProposal[]; nextCursor: string | null }> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const proposals = await this.repository.listProposals(userId, context, entityId);
-    return proposals.map((proposal) => this.toProposalContract(proposal));
+    const page = await this.repository.listProposals(userId, context, entityId, query);
+    if (page === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
+    }
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新提案后重试");
+    }
+    return {
+      data: page.proposals.map((proposal) => this.toProposalContract(proposal)),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async createProposal(
@@ -420,10 +481,20 @@ export class SettingsService {
     workId: string,
     branchId: string,
     entityId: string,
-  ): Promise<SettingChangeRequest[]> {
+    query: SettingChangeRequestListQuery,
+  ): Promise<{ data: SettingChangeRequest[]; nextCursor: string | null }> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const requests = await this.repository.listChangeRequests(userId, context, entityId);
-    return requests.map((request) => this.toChangeRequestContract(request));
+    const page = await this.repository.listChangeRequests(userId, context, entityId, query);
+    if (page === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
+    }
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新修改请求后重试");
+    }
+    return {
+      data: page.requests.map((request) => this.toChangeRequestContract(request)),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async createChangeRequest(

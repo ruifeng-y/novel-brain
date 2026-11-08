@@ -1150,7 +1150,11 @@ export const settingProposalSchema = z.object({
 export type SettingProposal = z.infer<typeof settingProposalSchema>;
 
 export const settingProposalResponseSchema = apiEnvelopeSchema(settingProposalSchema);
-export const settingProposalListResponseSchema = apiEnvelopeSchema(z.array(settingProposalSchema));
+export const settingProposalListQuerySchema = cursorPageQuerySchema.strict();
+export type SettingProposalListQuery = z.infer<typeof settingProposalListQuerySchema>;
+export const settingProposalListResponseSchema = cursorListResponseSchema(
+  z.array(settingProposalSchema),
+);
 
 export const worldRuleDataSchema = z
   .object({
@@ -1418,7 +1422,9 @@ export const settingChangeRequestSchema = z.object({
 export type SettingChangeRequest = z.infer<typeof settingChangeRequestSchema>;
 
 export const settingChangeRequestResponseSchema = apiEnvelopeSchema(settingChangeRequestSchema);
-export const settingChangeRequestListResponseSchema = apiEnvelopeSchema(
+export const settingChangeRequestListQuerySchema = cursorPageQuerySchema.strict();
+export type SettingChangeRequestListQuery = z.infer<typeof settingChangeRequestListQuerySchema>;
+export const settingChangeRequestListResponseSchema = cursorListResponseSchema(
   z.array(settingChangeRequestSchema),
 );
 
@@ -1504,6 +1510,44 @@ export const settingEntityListResponseSchema = cursorListResponseSchema(
 );
 export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
+);
+
+export const settingEntityVersionSnapshotSummarySchema = z
+  .object({
+    name: z.string().nullable(),
+    summary: z.string().nullable(),
+    status: settingStatusSchema.nullable(),
+  })
+  .strict();
+export type SettingEntityVersionSnapshotSummary = z.infer<
+  typeof settingEntityVersionSnapshotSummarySchema
+>;
+
+export const settingEntityVersionSnapshotSchema = z
+  .object({
+    domain: settingEntityTypeSchema,
+    payload: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+export type SettingEntityVersionSnapshot = z.infer<typeof settingEntityVersionSnapshotSchema>;
+
+export const settingEntityVersionSchema = z
+  .object({
+    version: z.number().int().positive(),
+    node: uuidV7Schema,
+    createdAt: z.string().datetime(),
+    actor: uuidV7Schema,
+    reason: z.string(),
+    snapshot: settingEntityVersionSnapshotSchema,
+    summary: settingEntityVersionSnapshotSummarySchema,
+  })
+  .strict();
+export type SettingEntityVersion = z.infer<typeof settingEntityVersionSchema>;
+
+export const settingEntityVersionListQuerySchema = cursorPageQuerySchema.strict();
+export type SettingEntityVersionListQuery = z.infer<typeof settingEntityVersionListQuerySchema>;
+export const settingEntityVersionListResponseSchema = cursorListResponseSchema(
+  z.array(settingEntityVersionSchema),
 );
 
 export const settingEntityRestoreRequestSchema = z

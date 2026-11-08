@@ -28,11 +28,15 @@ import {
   settingEntityPatchRequestSchema,
   settingEntityRestoreRequestSchema,
   settingEntityResponseSchema,
+  settingEntityVersionListQuerySchema,
+  settingEntityVersionListResponseSchema,
   settingChangeRequestCreateRequestSchema,
+  settingChangeRequestListQuerySchema,
   settingChangeRequestListResponseSchema,
   settingChangeRequestResponseSchema,
   settingProposalCreateRequestSchema,
   settingProposalDecisionRequestSchema,
+  settingProposalListQuerySchema,
   settingProposalListResponseSchema,
   settingProposalResponseSchema,
   uuidV7Schema,
@@ -59,6 +63,7 @@ const lockBodyJsonSchema = schemaOf(settingEntityLockRequestSchema, "input");
 const restoreBodyJsonSchema = schemaOf(settingEntityRestoreRequestSchema, "input");
 const listResponseJsonSchema = schemaOf(settingEntityListResponseSchema, "output");
 const entityResponseJsonSchema = schemaOf(settingEntityResponseSchema, "output");
+const versionListResponseJsonSchema = schemaOf(settingEntityVersionListResponseSchema, "output");
 const proposalResponseJsonSchema = schemaOf(settingProposalResponseSchema, "output");
 const proposalListResponseJsonSchema = schemaOf(settingProposalListResponseSchema, "output");
 const proposalCreateBodyJsonSchema = schemaOf(settingProposalCreateRequestSchema, "input");
@@ -123,6 +128,34 @@ export class SettingsController {
     });
   }
 
+  @Get(":entityId/versions")
+  @ApiQuerySchema(settingEntityVersionListQuerySchema)
+  @ApiOkResponse({
+    description: "Append-only setting version history",
+    schema: versionListResponseJsonSchema,
+  })
+  async versions(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("entityId") entityId: string,
+    @Query() query: unknown,
+  ) {
+    const requestId = createRequestId();
+    const result = await this.service.listVersions(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(entityId),
+      settingEntityVersionListQuerySchema.parse(query ?? {}),
+    );
+    return settingEntityVersionListResponseSchema.parse({
+      data: result.data,
+      requestId,
+      meta: { nextCursor: result.nextCursor },
+    });
+  }
+
   @Get(":entityId")
   @ApiOkResponse({ description: "Setting detail", schema: entityResponseJsonSchema })
   async get(
@@ -170,6 +203,7 @@ export class SettingsController {
   }
 
   @Get(":entityId/proposals")
+  @ApiQuerySchema(settingProposalListQuerySchema)
   @ApiOkResponse({
     description: "Setting proposal history",
     schema: proposalListResponseJsonSchema,
@@ -179,17 +213,20 @@ export class SettingsController {
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("entityId") entityId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const result = await this.service.listProposals(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(entityId),
+      settingProposalListQuerySchema.parse(query ?? {}),
+    );
     return settingProposalListResponseSchema.parse({
-      data: await this.service.listProposals(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        uuidV7Schema.parse(entityId),
-      ),
+      data: result.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 
@@ -254,6 +291,7 @@ export class SettingsController {
   }
 
   @Get(":entityId/change-requests")
+  @ApiQuerySchema(settingChangeRequestListQuerySchema)
   @ApiOkResponse({
     description: "Setting change request history",
     schema: changeRequestListResponseJsonSchema,
@@ -263,17 +301,20 @@ export class SettingsController {
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("entityId") entityId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const result = await this.service.listChangeRequests(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(entityId),
+      settingChangeRequestListQuerySchema.parse(query ?? {}),
+    );
     return settingChangeRequestListResponseSchema.parse({
-      data: await this.service.listChangeRequests(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        uuidV7Schema.parse(entityId),
-      ),
+      data: result.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 
