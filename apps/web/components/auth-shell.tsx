@@ -20,6 +20,7 @@ export function AuthShell({
   children: ReactNode;
 }) {
   const selectedTab = activeTab === "reset" ? "forgot" : activeTab;
+  const visibleTabs = selectedTab === "forgot" ? tabs : tabs.filter((tab) => tab.key !== "forgot");
 
   return (
     <main className="auth-shell">
@@ -65,8 +66,12 @@ export function AuthShell({
             </Link>
           </div>
 
-          <div className="auth-tabs" role="tablist" aria-label="账号入口">
-            {tabs.map((tab) => (
+          <div
+            className={`auth-tabs${visibleTabs.length === 3 ? " auth-tabs-recovery" : ""}`}
+            role="tablist"
+            aria-label="账号入口"
+          >
+            {visibleTabs.map((tab) => (
               <Link
                 className={`auth-tab${selectedTab === tab.key ? " active" : ""}`}
                 href={tab.href}

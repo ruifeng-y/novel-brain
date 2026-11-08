@@ -4483,12 +4483,16 @@ a:focus-visible {
 
 .auth-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 4px;
   margin: 16px 0 18px;
   padding: 3px;
   background: #eef1ec;
   border-radius: 7px;
+}
+
+.auth-tabs-recovery {
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .auth-tab {
@@ -4561,10 +4565,22 @@ a:focus-visible {
   gap: 5px;
 }
 
-.auth-field > span {
+.auth-field > span,
+.auth-field-label > span {
   color: var(--ink-2);
   font-size: 12px;
   font-weight: 600;
+}
+
+.auth-field-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.auth-forgot-link {
+  line-height: 1;
 }
 
 .auth-field input {

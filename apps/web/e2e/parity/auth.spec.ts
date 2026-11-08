@@ -19,14 +19,21 @@ test.beforeEach(async () => {
 
 test("auth pages match the shell at four viewports", async ({ page }, testInfo) => {
   const pages = [
-    { id: "login", path: "/login", heading: "欢迎回来", tab: "登录" },
-    { id: "register", path: "/register", heading: "创建作者账号", tab: "注册" },
-    { id: "forgot", path: "/forgot-password", heading: "找回密码", tab: "找回密码" },
+    { id: "login", path: "/login", heading: "欢迎回来", tab: "登录", tabCount: 2 },
+    { id: "register", path: "/register", heading: "创建作者账号", tab: "注册", tabCount: 2 },
+    {
+      id: "forgot",
+      path: "/forgot-password",
+      heading: "找回密码",
+      tab: "找回密码",
+      tabCount: 3,
+    },
     {
       id: "reset",
       path: `/reset-password?token=${"t".repeat(64)}`,
       heading: "设置新密码",
       tab: "找回密码",
+      tabCount: 3,
     },
   ] as const;
 
@@ -39,6 +46,16 @@ test("auth pages match the shell at four viewports", async ({ page }, testInfo) 
         "aria-selected",
         "true",
       );
+      await expect(page.getByRole("tab")).toHaveCount(pageContract.tabCount);
+      if (pageContract.tabCount === 2) {
+        await expect(page.getByRole("tab", { name: "找回密码" })).toHaveCount(0);
+      }
+      if (pageContract.id === "login") {
+        await expect(page.getByRole("link", { name: "忘记密码？" })).toHaveAttribute(
+          "href",
+          "/forgot-password",
+        );
+      }
       await expectAuthorFacingLanguage(page);
 
       const overflow = await page.evaluate(

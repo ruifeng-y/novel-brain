@@ -212,7 +212,14 @@ export function AuthForm({ mode, sessionExpired, permissionDenied }: AuthFormPro
         ) : null}
 
         <label className="auth-field">
-          <span>密码</span>
+          <span className="auth-field-label">
+            <span>密码</span>
+            {mode === "login" ? (
+              <Link className="text-link auth-forgot-link" href="/forgot-password">
+                忘记密码？
+              </Link>
+            ) : null}
+          </span>
           <input
             autoComplete={mode === "login" ? "current-password" : "new-password"}
             disabled={submitting}
@@ -224,15 +231,6 @@ export function AuthForm({ mode, sessionExpired, permissionDenied }: AuthFormPro
             value={password}
           />
         </label>
-
-        {mode === "login" ? (
-          <div className="auth-form-row">
-            <span />
-            <Link className="text-link" href="/forgot-password">
-              忘记密码？
-            </Link>
-          </div>
-        ) : null}
 
         <button className="btn btn-primary auth-submit" disabled={disabled} type="submit">
           {submitting ? (
