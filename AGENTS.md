@@ -34,9 +34,6 @@ If two sources conflict, stop the affected work and report the conflict. Do not 
 - Run the executable guardrails from the repository root:
 
 ```powershell
-node scripts/validate-pr-topology.mjs --base origin/main --head HEAD
-node scripts/validate-commits.mjs --base origin/main --head HEAD
-node scripts/validate-migrations.mjs
 pnpm test:guardrails
 pnpm check:pr
 pnpm check:migrations

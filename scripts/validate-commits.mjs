@@ -26,7 +26,7 @@ export function validateCommitSubjects(subjects) {
     if (!match) {
       errors.push(`Commit subject is not Conventional Commits: ${subject}`);
     }
-    if (!isSimplifiedChineseProse(match?.[1] ?? "", 0.2)) {
+    if (!isSimplifiedChineseProse(match?.[1] ?? "", 0.3)) {
       errors.push(`Commit subject must include 简体中文: ${subject}`);
     }
   }

@@ -19,6 +19,12 @@ export function validateMigrationCatalog({ journalEntries, migrationTags, snapsh
         `journal index gap at position ${position}: expected ${position}, found ${entry.idx}`,
       );
     }
+    const expectedTagPrefix = `${String(entry.idx).padStart(4, "0")}_`;
+    if (!entry.tag.startsWith(expectedTagPrefix)) {
+      errors.push(
+        `migration tag prefix mismatch at position ${position}: expected ${expectedTagPrefix}, found ${entry.tag}`,
+      );
+    }
     if (indexes.has(entry.idx)) {
       errors.push(`duplicate journal index ${entry.idx}`);
     }

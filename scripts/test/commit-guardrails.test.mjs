@@ -47,6 +47,13 @@ test("rejects an English-majority subject with an embedded Chinese word", () => 
   assert.match(errors[0], /简体中文/);
 });
 
+test("rejects English prose wrapped around a Chinese word", () => {
+  const errors = validateCommitSubjects(["fix: fix修正bug"]);
+
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /简体中文/);
+});
+
 test("rejects Traditional Chinese commit subjects", () => {
   const errors = validateCommitSubjects(["fix: 修正錯誤"]);
 

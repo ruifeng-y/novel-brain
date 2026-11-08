@@ -2,9 +2,29 @@ import assert from "node:assert/strict";
 import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 
+import { headAncestorOfBaseError } from "../validate-pr-topology.mjs";
 import { commitFile, runGit, runNode, withRepository } from "./git-fixtures.mjs";
 
 const topologyScript = fileURLToPath(new URL("../validate-pr-topology.mjs", import.meta.url));
+
+test("describes the head-ancestor topology violation", () => {
+  assert.match(
+    headAncestorOfBaseError({
+      base: "base-sha",
+      head: "head-sha",
+      headIsAncestorOfBase: true,
+    }),
+    /head-sha is an ancestor of base-sha/,
+  );
+  assert.equal(
+    headAncestorOfBaseError({
+      base: "base-sha",
+      head: "head-sha",
+      headIsAncestorOfBase: false,
+    }),
+    null,
+  );
+});
 
 test("rejects a PR whose head is an ancestor of its base", () => {
   withRepository((repository) => {

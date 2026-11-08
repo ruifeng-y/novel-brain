@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { runCli } from "./cli-entry.mjs";
 import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
 
-export function topologyError({ base, head, headIsAncestorOfBase }) {
+export function headAncestorOfBaseError({ base, head, headIsAncestorOfBase }) {
   if (headIsAncestorOfBase) {
     return `PR head must not be an ancestor of its base: ${head} is an ancestor of ${base}`;
   }
@@ -38,7 +38,7 @@ function main() {
   if (baseSha === headSha) {
     return;
   }
-  const error = topologyError({
+  const error = headAncestorOfBaseError({
     base: baseSha,
     head: headSha,
     headIsAncestorOfBase: isAncestor(headSha, baseSha),

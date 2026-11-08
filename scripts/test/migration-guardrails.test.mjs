@@ -3,6 +3,15 @@ import { test } from "vitest";
 
 import { validateMigrationCatalog } from "../validate-migrations.mjs";
 
+function rootSnapshot(overrides = {}) {
+  return {
+    id: "root",
+    name: "0000_snapshot.json",
+    prevId: "00000000-0000-0000-0000-000000000000",
+    ...overrides,
+  };
+}
+
 test("validates migration journal files and snapshot parent chain", () => {
   const valid = validateMigrationCatalog({
     journalEntries: [
@@ -10,10 +19,7 @@ test("validates migration journal files and snapshot parent chain", () => {
       { idx: 1, tag: "0001_followup" },
     ],
     migrationTags: ["0000_initial", "0001_followup"],
-    snapshots: [
-      { id: "root", name: "0000_snapshot.json", prevId: "00000000-0000-0000-0000-000000000000" },
-      { id: "next", name: "0001_snapshot.json", prevId: "root" },
-    ],
+    snapshots: [rootSnapshot(), { id: "next", name: "0001_snapshot.json", prevId: "root" }],
   });
   assert.deepEqual(valid, []);
 
@@ -23,10 +29,7 @@ test("validates migration journal files and snapshot parent chain", () => {
       { idx: 0, tag: "0001_missing" },
     ],
     migrationTags: ["0000_initial"],
-    snapshots: [
-      { id: "root", name: "0000_snapshot.json", prevId: "00000000-0000-0000-0000-000000000000" },
-      { id: "next", name: "0001_snapshot.json", prevId: "missing" },
-    ],
+    snapshots: [rootSnapshot(), { id: "next", name: "0001_snapshot.json", prevId: "missing" }],
   });
 
   assert.match(invalid.join("\n"), /duplicate journal index/);
@@ -41,9 +44,7 @@ test("rejects a journal entry without a matching snapshot", () => {
       { idx: 1, tag: "0001_followup" },
     ],
     migrationTags: ["0000_initial", "0001_followup"],
-    snapshots: [
-      { id: "root", name: "0000_snapshot.json", prevId: "00000000-0000-0000-0000-000000000000" },
-    ],
+    snapshots: [rootSnapshot()],
   });
 
   assert.match(errors.join("\n"), /missing snapshot for 0001_followup/);
@@ -53,9 +54,7 @@ test("rejects a migration file missing from the journal", () => {
   const errors = validateMigrationCatalog({
     journalEntries: [{ idx: 0, tag: "0000_initial" }],
     migrationTags: ["0000_initial", "0001_unregistered"],
-    snapshots: [
-      { id: "root", name: "0000_snapshot.json", prevId: "00000000-0000-0000-0000-000000000000" },
-    ],
+    snapshots: [rootSnapshot()],
   });
 
   assert.match(errors.join("\n"), /unregistered migration file 0001_unregistered/);
@@ -75,10 +74,7 @@ test("rejects a snapshot missing from the journal", () => {
   const errors = validateMigrationCatalog({
     journalEntries: [{ idx: 0, tag: "0000_initial" }],
     migrationTags: ["0000_initial"],
-    snapshots: [
-      { id: "root", name: "0000_snapshot.json", prevId: "00000000-0000-0000-0000-000000000000" },
-      { id: "extra", name: "0001_snapshot.json", prevId: "root" },
-    ],
+    snapshots: [rootSnapshot(), { id: "extra", name: "0001_snapshot.json", prevId: "root" }],
   });
 
   assert.match(errors.join("\n"), /unregistered snapshot 0001_snapshot\.json/);
@@ -91,11 +87,22 @@ test("rejects a gap in journal indexes", () => {
       { idx: 2, tag: "0002_followup" },
     ],
     migrationTags: ["0000_initial", "0002_followup"],
-    snapshots: [
-      { id: "root", name: "0000_snapshot.json", prevId: "00000000-0000-0000-0000-000000000000" },
-      { id: "next", name: "0002_snapshot.json", prevId: "root" },
-    ],
+    snapshots: [rootSnapshot(), { id: "next", name: "0002_snapshot.json", prevId: "root" }],
   });
 
   assert.match(errors.join("\n"), /journal index gap at position 1/);
+});
+
+test("rejects a migration tag number that does not match its index", () => {
+  const errors = validateMigrationCatalog({
+    journalEntries: [
+      { idx: 0, tag: "0045_first" },
+      { idx: 1, tag: "0045_second" },
+    ],
+    migrationTags: ["0045_first", "0045_second"],
+    snapshots: [rootSnapshot(), { id: "next", name: "0001_snapshot.json", prevId: "root" }],
+  });
+
+  assert.match(errors.join("\n"), /migration tag prefix mismatch at position 0/);
+  assert.match(errors.join("\n"), /migration tag prefix mismatch at position 1/);
 });
