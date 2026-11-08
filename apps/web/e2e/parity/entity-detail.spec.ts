@@ -1019,12 +1019,12 @@ test("loads faction, map and timeline domain details at all four viewports", asy
     await capture(page, testInfo, `entity-detail-faction-${width}`);
 
     const mapDetail = await openEntity(page, work, /^地图/, "北域");
-    await expect(mapDetail.getByText("地图图层")).toBeVisible();
+    await expect(mapDetail.getByRole("heading", { name: "地图图层" })).toBeVisible();
     await expect(mapDetail.getByText("外域")).toBeVisible();
     await expect(mapDetail.getByText("忘川村 · 聚落")).toBeVisible();
     await expect(mapDetail.getByText("路线与旅行时间")).toBeVisible();
     await expect(mapDetail.getByText(/忘川村.*太玄门/).first()).toBeVisible();
-    await expect(mapDetail.getByText("地图标记")).toBeVisible();
+    await expect(mapDetail.getByRole("heading", { name: "地图标记" })).toBeVisible();
     await expect(mapDetail.getByText("护山大阵 · 危险")).toBeVisible();
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-map-${width}`);

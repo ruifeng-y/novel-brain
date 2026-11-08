@@ -111,8 +111,16 @@ test("completes the M1 author loop through outline, writing, facts and volume au
   await expectAuthorFacingLanguage(page);
 
   await page.goto(`/workspace/${work.id}/write?chapterId=${chapterTwo.id}`);
+  const chapterTwoCheck = page.waitForResponse(
+    (response) =>
+      response.url().includes(`/chapters/${chapterTwo.id}/verify`) &&
+      response.request().method() === "POST",
+  );
   await page.getByRole("button", { name: "检查本章", exact: true }).click();
-  await expect(page.locator(".writing-quality")).toContainText("质量报告");
+  expect((await chapterTwoCheck).status()).toBe(200);
+  await expect(
+    page.locator('.writing-quality [data-critic-finding="MOTIVATION_BREAK"]'),
+  ).toBeVisible();
 
   await createForeshadowThroughUi(page, work.id, chapterOne.id);
 
