@@ -53,11 +53,11 @@
 
 所有叶子 ticket 均通过各自的功能提交和 merger commit 进入同一 integration branch；没有引入微服务、第二版本图或 Web 直连模型。
 
-## 最终自动化证据
+## 自动化证据
 
-- `pnpm check`: format、lint、typecheck、250 项单元/契约测试通过。
-- `pnpm test:integration`: 25 个文件、142 项真实 PostgreSQL/Redis 集成测试通过。
-- `pnpm exec playwright test --grep-invert "checks every M0 parity page"`: 93 项通过，覆盖全部 M1 页面四档视口、M1 全链路、M0 回归旅程、作者语言和后端故障恢复。
+- `pnpm check`: format、lint、typecheck、42 个文件、257 项单元/契约测试通过。
+- `pnpm test:integration`: 25 个文件、164 项真实 PostgreSQL/Redis 集成测试通过。
+- `pnpm exec playwright test --grep-invert "checks every M0 parity page"`: 完整套件 99 项通过、1 项恢复时序超时；该用例单跑通过。Production CI 仍是最终验收权威。
 - `pnpm --filter @novel-brain/api openapi:check`: 通过。
 - `node scripts/validate-readiness.mjs`: 通过。
 
