@@ -5,7 +5,11 @@ import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
 
 const topologyScript = fileURLToPath(new URL("./validate-pr-topology.mjs", import.meta.url));
 const commitScript = fileURLToPath(new URL("./validate-commits.mjs", import.meta.url));
-const { base, head } = parseReviewRangeArguments(process.argv.slice(2), "check-pr-guardrails.mjs");
+const args = process.argv.slice(2);
+const { base, head } =
+  args.length > 0
+    ? parseReviewRangeArguments(args, "check-pr-guardrails.mjs")
+    : { base: "origin/main", head: "HEAD" };
 const baseSha = resolveRef(base);
 const headSha = resolveRef(head);
 

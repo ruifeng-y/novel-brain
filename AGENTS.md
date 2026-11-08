@@ -39,6 +39,8 @@ pnpm check:pr
 pnpm check:migrations
 ```
 
+For a stacked PR, pass its actual base: `pnpm check:pr -- --base origin/<base> --head HEAD`.
+
 ## Architecture guardrails
 - Web calls the NestJS HTTP API only. Web must not access the database or model providers directly.
 - Worker consumes typed durable jobs; it is not an HTTP API.

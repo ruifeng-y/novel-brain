@@ -54,6 +54,26 @@ test("rejects English prose wrapped around a Chinese word", () => {
   assert.match(errors[0], /简体中文/);
 });
 
+test("rejects an unknown English word beside Chinese text", () => {
+  assert.match(
+    validateCommitSubjects(["feat: 中文 add"]).join("\n"),
+    /subject must include 简体中文/,
+  );
+  assert.match(
+    validateCommitMessages(["feat: 增加校验\n\n中文 abcdefghijk"]).join("\n"),
+    /body must include 简体中文/,
+  );
+});
+
+test("allows recognized technical words in Chinese prose", () => {
+  assert.deepEqual(
+    validateCommitMessages([
+      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围",
+    ]),
+    [],
+  );
+});
+
 test("rejects Traditional Chinese commit subjects", () => {
   const errors = validateCommitSubjects(["fix: 修正錯誤"]);
 
