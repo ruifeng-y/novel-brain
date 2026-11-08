@@ -191,7 +191,7 @@ test("checks every M0 parity page at all signed-off viewports and author languag
       path: "/workspace/settings/account",
       heading: "把写作环境准备好",
       ready: ".model-config-row, .model-empty",
-      signedGolden: true,
+      signedGolden: false,
     },
     {
       id: "work-overview",

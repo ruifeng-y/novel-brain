@@ -4560,13 +4560,15 @@ a:focus-visible {
   line-height: 1.7;
 }
 
-.auth-field {
+.auth-field,
+.creation-field {
   display: grid;
   gap: 5px;
 }
 
 .auth-field > span,
-.auth-field-label > span {
+.auth-field-label > span,
+.creation-field > span {
   color: var(--ink-2);
   font-size: 12px;
   font-weight: 600;
@@ -4822,11 +4824,6 @@ a:focus-visible {
 
   .page-head h1 {
     font-size: 27px;
-  }
-
-  .page-head > div {
-    width: 100%;
-    min-width: 0;
   }
 
   .head-actions {
