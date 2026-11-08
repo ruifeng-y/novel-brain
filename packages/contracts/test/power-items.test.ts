@@ -4,6 +4,7 @@ import {
   itemCreateRequestSchema,
   itemEquipRequestSchema,
   itemRightGrantRequestSchema,
+  itemUnequipRequestSchema,
   powerRealmCreateRequestSchema,
   powerSystemCreateRequestSchema,
   specialMechanismCreateRequestSchema,
@@ -158,6 +159,8 @@ describe("power, mechanism and item contracts", () => {
         reason: "地图节点不能装备物品。",
       }),
     ).toThrow();
+    expect(itemUnequipRequestSchema.parse({ version: 2 })).toEqual({ version: 2 });
+    expect(() => itemUnequipRequestSchema.parse({ version: 0 })).toThrow();
   });
 
   it("requires ownership evidence for mechanism transfers", () => {

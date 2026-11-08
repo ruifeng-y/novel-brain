@@ -274,7 +274,8 @@ export class RetrievalRepository implements OnModuleDestroy {
         SELECT document.*,
           row_number() OVER (
             PARTITION BY document.source_type, document.source_id
-            ORDER BY document.version_depth ASC, document.created_at DESC, document.id DESC
+            ORDER BY document.version_depth ASC, document.created_at DESC,
+              document.version_node_id DESC
           ) AS current_rank
         FROM documents AS document
       ),
@@ -671,7 +672,8 @@ export class RetrievalRepository implements OnModuleDestroy {
         SELECT document.*,
           row_number() OVER (
             PARTITION BY document.source_type, document.source_id
-            ORDER BY document.version_depth ASC, document.created_at DESC, document.id DESC
+            ORDER BY document.version_depth ASC, document.created_at DESC,
+              document.version_node_id DESC
           ) AS current_rank
         FROM documents AS document
       )

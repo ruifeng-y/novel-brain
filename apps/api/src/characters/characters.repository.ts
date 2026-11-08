@@ -14,6 +14,7 @@ import {
   versionNodes,
   workBranches,
   works,
+  withTenantTransaction,
   type DatabaseClient,
 } from "@novel-brain/db";
 import {
@@ -1043,10 +1044,7 @@ export class CharactersRepository implements OnModuleDestroy {
     userId: string,
     operation: (transaction: DatabaseTransaction) => Promise<T>,
   ): Promise<T> {
-    return this.db.transaction(async (transaction) => {
-      await transaction.execute(sql`SELECT set_config('app.user_id', ${userId}, true)`);
-      return operation(transaction);
-    });
+    return withTenantTransaction(this.db, userId, operation);
   }
 }
 

@@ -2382,12 +2382,9 @@ export function WritingWorkspace({
                         <TriangleAlert size={15} aria-hidden="true" />
                         <div>
                           <strong>{generationJob.error.message}</strong>
-                          <small>
-                            {failedTrace?.run.failureClass
-                              ? `${failureClassLabels[failedTrace.run.failureClass]} · `
-                              : ""}
-                            {generationJob.error.code}
-                          </small>
+                          {failedTrace?.run.failureClass ? (
+                            <small>{failureClassLabels[failedTrace.run.failureClass]}</small>
+                          ) : null}
                         </div>
                       </div>
                     ) : null}
@@ -2540,7 +2537,6 @@ export function WritingWorkspace({
                         <TriangleAlert size={16} aria-hidden="true" />
                         <div>
                           <strong>{writingActionJob.error.message}</strong>
-                          <small>{writingActionJob.error.code}</small>
                         </div>
                         <button
                           className="btn btn-ghost btn-small"

@@ -10,6 +10,7 @@ import {
   canonCommitSchema,
   characterChangeRequestCreateRequestSchema,
   characterItineraryCreateRequestSchema,
+  characterKnowledgeProjectionQuerySchema,
   characterKnowledgeStateCreateRequestSchema,
   characterProfileUpdateRequestSchema,
   characterRelationshipCreateRequestSchema,
@@ -1965,6 +1966,14 @@ describe("character domain contracts", () => {
   });
 
   it("types structured retrieval queries and provenance-bearing results", () => {
+    expect(characterKnowledgeProjectionQuerySchema.parse({ chapterNumber: "5" })).toEqual({
+      chapterNumber: 5,
+    });
+    expect(() => characterKnowledgeProjectionQuerySchema.parse({})).toThrow();
+    expect(() =>
+      characterKnowledgeProjectionQuerySchema.parse({ chapterNumber: 5, extra: true }),
+    ).toThrow();
+
     const query = retrievalQuerySchema.parse({
       query: "小砚",
       synonyms: ["师父"],

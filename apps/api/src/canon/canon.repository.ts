@@ -1,12 +1,14 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
-import type { CanonCommitFact } from "@novel-brain/contracts";
+import { chapterBriefSchema, type CanonCommitFact } from "@novel-brain/contracts";
 import {
   auditLogs,
   canonCommits,
+  characterKnowledgeStates,
   chapterVersions,
   chapters,
   createDatabaseClient,
   createDatabasePool,
+  entities,
   factDecisions,
   factProposals,
   facts as canonicalFacts,
@@ -212,6 +214,16 @@ export class CanonRepository implements OnModuleDestroy {
             )
             .returning()
         : [];
+      await projectSubmittedFactsToPov(
+        transaction,
+        userId,
+        workId,
+        branchId,
+        check.chapter,
+        commit.versionNodeId,
+        insertedFacts,
+        now,
+      );
       await transaction
         .update(workBranches)
         .set({ headNodeId: versionNodeId, updatedAt: now })
@@ -540,6 +552,59 @@ function proposalStatus(proposal: FactProposalRecord | undefined): CanonCommitFa
     return "modified_confirmed";
   }
   return "confirmed";
+}
+
+async function projectSubmittedFactsToPov(
+  transaction: DatabaseTransaction,
+  userId: string,
+  workId: string,
+  branchId: string,
+  chapter: ChapterRecord,
+  versionNodeId: string,
+  facts: CanonFactRecord[],
+  createdAt: Date,
+): Promise<void> {
+  const brief = chapterBriefSchema.safeParse(chapter.brief);
+  const povName = brief.success ? brief.data.pov.trim() : undefined;
+  if (!povName || facts.length === 0) {
+    return;
+  }
+  const [povCharacter] = await transaction
+    .select({ id: entities.id })
+    .from(entities)
+    .where(
+      and(
+        eq(entities.userId, userId),
+        eq(entities.workId, workId),
+        eq(entities.branchId, branchId),
+        eq(entities.type, "character"),
+        isNull(entities.deletedAt),
+        sql`(${entities.name} = ${povName} OR ${entities.aliases} @> ${JSON.stringify([povName])}::jsonb)`,
+      ),
+    )
+    .limit(1);
+  if (!povCharacter) {
+    return;
+  }
+  await transaction.insert(characterKnowledgeStates).values(
+    facts.map((fact) => ({
+      id: uuidv7(),
+      workId,
+      branchId,
+      userId,
+      characterId: povCharacter.id,
+      objectiveFactId: fact.id,
+      state: "knowledge",
+      claimedContent: `${fact.subject} ${fact.predicate} ${fact.object}`,
+      sourceKind: "observed",
+      validFromChapter: fact.validFromChapter,
+      validToChapter: fact.validToChapter,
+      sourceChapterId: fact.chapterId,
+      versionNodeId,
+      createdBy: userId,
+      createdAt,
+    })),
+  );
 }
 
 async function findCommit(

@@ -26,6 +26,7 @@ import {
   characterDetailResponseSchema,
   characterHistoryQuerySchema,
   characterHistoryResponseSchema,
+  characterKnowledgeProjectionQuerySchema,
   characterKnowledgeProjectionResponseSchema,
   characterKnowledgeStateCreateRequestSchema,
   characterKnowledgeStateResponseSchema,
@@ -75,10 +76,6 @@ const changeRequestListResponseJsonSchema = schemaOf(
   characterChangeRequestListResponseSchema,
   "output",
 );
-
-const knowledgeQuerySchema = z
-  .object({ chapterNumber: z.coerce.number().int().positive() })
-  .strict();
 
 @ApiTags("characters")
 @Controller("works/:workId/branches/:branchId/characters")
@@ -299,7 +296,7 @@ export class CharactersController {
     @Param("characterId") characterId: string,
     @Query() query: unknown,
   ) {
-    const input = knowledgeQuerySchema.parse(query);
+    const input = characterKnowledgeProjectionQuerySchema.parse(query);
     return characterKnowledgeProjectionResponseSchema.parse({
       data: await this.service.knowledge(
         this.userId(request),

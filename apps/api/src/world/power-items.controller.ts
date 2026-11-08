@@ -26,6 +26,7 @@ import {
   itemResponseSchema,
   itemRightGrantRequestSchema,
   itemRightResponseSchema,
+  itemUnequipRequestSchema,
   powerPathCreateRequestSchema,
   powerPathResponseSchema,
   powerRealmCreateRequestSchema,
@@ -57,8 +58,6 @@ function schemaOf(schema: z.ZodType, io: "input" | "output"): SchemaObject {
   return z.toJSONSchema(schema, { target: "openapi-3.0", io }) as SchemaObject;
 }
 
-const unequipRequestSchema = z.object({ version: z.number().int().positive() }).strict();
-
 const powerSystemCreateBodySchema = schemaOf(powerSystemCreateRequestSchema, "input");
 const powerSystemPatchBodySchema = schemaOf(powerSystemPatchRequestSchema, "input");
 const powerPathCreateBodySchema = schemaOf(powerPathCreateRequestSchema, "input");
@@ -74,7 +73,7 @@ const itemPatchBodySchema = schemaOf(itemPatchRequestSchema, "input");
 const itemRightBodySchema = schemaOf(itemRightGrantRequestSchema, "input");
 const itemConsumeBodySchema = schemaOf(itemConsumeRequestSchema, "input");
 const itemEquipBodySchema = schemaOf(itemEquipRequestSchema, "input");
-const unequipBodySchema = schemaOf(unequipRequestSchema, "input");
+const unequipBodySchema = schemaOf(itemUnequipRequestSchema, "input");
 
 const powerSystemSchema = schemaOf(powerSystemResponseSchema, "output");
 const powerSystemListSchema = schemaOf(powerSystemListResponseSchema, "output");
@@ -535,7 +534,7 @@ export class PowerItemsController {
     @Body() body: unknown,
   ) {
     const requestId = createRequestId();
-    const input = unequipRequestSchema.parse(body);
+    const input = itemUnequipRequestSchema.parse(body);
     return itemResponseSchema.parse({
       data: await this.service.unequipItem(
         this.userId(request),

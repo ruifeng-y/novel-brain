@@ -726,16 +726,26 @@ describe("structured retrieval HTTP integration", () => {
     expect(indexNames).toEqual(
       expect.arrayContaining(["search_documents_trgm_idx", "search_documents_tsv_idx"]),
     );
-    const documentIds = await databasePool.query<{ id: string }>("SELECT id FROM search_documents");
+    const columns = await databasePool.query<{ column_name: string }>(
+      `SELECT column_name
+       FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'search_documents'`,
+    );
+    expect(columns.rows.map((row) => row.column_name)).not.toContain("id");
+    const documentIds = await databasePool.query<{ source_id: string }>(
+      "SELECT source_id FROM search_documents",
+    );
     expect(documentIds.rows.length).toBeGreaterThanOrEqual(10_000);
-    expect(documentIds.rows.every((row) => uuidV7Schema.safeParse(row.id).success)).toBe(true);
+    expect(documentIds.rows.every((row) => uuidV7Schema.safeParse(row.source_id).success)).toBe(
+      true,
+    );
 
     const planClient = await databasePool.connect();
     try {
       await planClient.query("SET enable_seqscan = off");
       const planResult = await planClient.query<{ "QUERY PLAN": unknown }>(
         `EXPLAIN (FORMAT JSON)
-         SELECT document.id
+         SELECT document.version_node_id
          FROM search_documents AS document
          WHERE document.user_id = $1
            AND document.work_id = $2
@@ -757,7 +767,7 @@ describe("structured retrieval HTTP integration", () => {
 
       const textPlanResult = await planClient.query<{ "QUERY PLAN": unknown }>(
         `EXPLAIN (FORMAT JSON)
-         SELECT document.id
+         SELECT document.version_node_id
          FROM search_documents AS document
          WHERE lower(
            document.title || ' ' || coalesce(document.content, '') || ' ' ||
@@ -1460,10 +1470,10 @@ async function seedSearchDocuments(input: {
   const titles = Array.from({ length: input.count }, (_, index) => `测试人物${index + 1}`);
   await input.databasePool.query(
     `INSERT INTO search_documents
-      (id, work_id, branch_id, user_id, source_type, source_id, entity_type, title, content,
+      (work_id, branch_id, user_id, source_type, source_id, entity_type, title, content,
        aliases, version_node_id, object_version, source_chapter_id, from_chapter, to_chapter,
        metadata, created_at, updated_at)
-     SELECT document_id, $1, $2, $3, 'entity', document_id, 'character',
+     SELECT $1, $2, $3, 'entity', document_id, 'character',
        document_title, '大型作品中的江湖人物。',
        '[]'::jsonb, $4, 1, NULL, 1, NULL, '{}'::jsonb, now(), now()
      FROM unnest($5::uuid[], $6::text[]) AS document(document_id, document_title)`,

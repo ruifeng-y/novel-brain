@@ -3456,7 +3456,6 @@ export const sceneCards = pgTable(
 export const searchDocuments = pgTable(
   "search_documents",
   {
-    id: uuid("id").primaryKey(),
     workId: uuid("work_id")
       .notNull()
       .references(() => works.id, { onDelete: "cascade" }),
@@ -3492,12 +3491,10 @@ export const searchDocuments = pgTable(
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("search_documents_source_version_unique").on(
-      table.branchId,
-      table.sourceType,
-      table.sourceId,
-      table.versionNodeId,
-    ),
+    primaryKey({
+      name: "search_documents_pkey",
+      columns: [table.branchId, table.sourceType, table.sourceId, table.versionNodeId],
+    }),
     index("search_documents_user_work_branch_idx").on(
       table.userId,
       table.workId,

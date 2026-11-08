@@ -2062,6 +2062,15 @@ export const characterHistoryQuerySchema = z
   });
 export type CharacterHistoryQuery = z.infer<typeof characterHistoryQuerySchema>;
 
+export const characterKnowledgeProjectionQuerySchema = z
+  .object({
+    chapterNumber: z.coerce.number().int().positive(),
+  })
+  .strict();
+export type CharacterKnowledgeProjectionQuery = z.infer<
+  typeof characterKnowledgeProjectionQuerySchema
+>;
+
 export const characterHistorySchema = z.object({
   character: domainRefSchema,
   at: z.object({
@@ -3160,6 +3169,13 @@ export const itemEquipRequestSchema = z
   })
   .strict();
 export type ItemEquipRequest = z.infer<typeof itemEquipRequestSchema>;
+
+export const itemUnequipRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type ItemUnequipRequest = z.infer<typeof itemUnequipRequestSchema>;
 
 export const itemSchema = z.object({
   item: domainRefSchema,

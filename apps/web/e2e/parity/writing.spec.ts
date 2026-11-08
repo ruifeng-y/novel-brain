@@ -1072,7 +1072,7 @@ test("keeps the draft checkpoint after provider failure and resumes from revise"
       timeout: 15_000,
     });
     await expect(generationPanel.getByText("模型服务暂时不可用，草稿和检查点已保留")).toBeVisible();
-    await expect(generationPanel.getByText("MODEL_PROVIDER_ERROR")).toBeVisible();
+    await expect(generationPanel.getByText("MODEL_PROVIDER_ERROR")).toHaveCount(0);
     await expect(generationPanel.getByText(/模型服务异常/).first()).toBeVisible();
     await expect(generationPanel.getByText("模型服务异常，请稍后从断点重试")).toBeVisible();
     await expect(generationPanel.getByRole("button", { name: "从断点重试" })).toBeVisible();
