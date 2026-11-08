@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
+
+import { runCli } from "./cli-entry.mjs";
 
 const migrationsDirectory = path.resolve("packages/db/migrations");
 const metadataDirectory = path.join(migrationsDirectory, "meta");
@@ -99,11 +100,8 @@ function main() {
   });
 
   if (errors.length > 0) {
-    process.stderr.write(`${errors.join("\n")}\n`);
-    process.exitCode = 1;
+    throw new Error(errors.join("\n"));
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
-}
+runCli(import.meta.url, process.argv[1], main);

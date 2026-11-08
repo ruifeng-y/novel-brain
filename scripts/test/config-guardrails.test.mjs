@@ -40,6 +40,16 @@ test("wires guardrails into the local check command", () => {
   assert.match(packageJson.scripts["check:migrations"], /pnpm db:migrations:check/);
 });
 
+test("runs the runtime guard before dependencies are installed", () => {
+  const packageJson = JSON.parse(readFileSync(path.join(repositoryRoot, "package.json"), "utf8"));
+
+  assert.equal(
+    packageJson.scripts["pnpm:devPreinstall"],
+    "node scripts/validate-local-runtime.mjs",
+  );
+  assert.equal(packageJson.scripts.preinstall, undefined);
+});
+
 test("points local guidance to the executable guardrail commands", () => {
   const guidance = readFileSync(path.join(repositoryRoot, "AGENTS.md"), "utf8");
 

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { pathToFileURL } from "node:url";
+
+import { runCli } from "./cli-entry.mjs";
 
 export function localRuntimeError({ cwd, platform }) {
   if (platform === "linux" && /^\/mnt\/[a-z]\//i.test(cwd)) {
@@ -46,11 +47,8 @@ function main() {
   ].filter(Boolean);
 
   if (errors.length > 0) {
-    process.stderr.write(`${errors.join("\n")}\n`);
-    process.exitCode = 1;
+    throw new Error(errors.join("\n"));
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  main();
-}
+runCli(import.meta.url, process.argv[1], main);

@@ -40,12 +40,35 @@ test("rejects English prose containing a single Chinese character", () => {
   assert.match(errors[0], /简体中文/);
 });
 
+test("rejects an English-majority subject with an embedded Chinese word", () => {
+  const errors = validateCommitSubjects(["feat: add 中文 support"]);
+
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /简体中文/);
+});
+
+test("rejects Traditional Chinese commit subjects", () => {
+  const errors = validateCommitSubjects(["fix: 修正錯誤"]);
+
+  assert.equal(errors.length, 1);
+  assert.match(errors[0], /简体中文/);
+});
+
 test("requires a Chinese commit body when a body is present", () => {
   assert.match(
     validateCommitMessages(["feat: 增加校验\n\n- add release guard"]).join("\n"),
     /body must include 简体中文/,
   );
   assert.deepEqual(validateCommitMessages(["feat: 增加校验\n\n- 增加发布护栏"]), []);
+});
+
+test("rejects an English-majority commit body", () => {
+  assert.match(
+    validateCommitMessages(["feat: 增加校验\n\nThis guard adds 中文 support for releases"]).join(
+      "\n",
+    ),
+    /body must include 简体中文/,
+  );
 });
 
 test("validates merge commit messages in the PR range", () => {

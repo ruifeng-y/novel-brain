@@ -1,11 +1,22 @@
 import { execFileSync } from "node:child_process";
-import { pathToFileURL } from "node:url";
 
+import { Converter } from "opencc-js";
+
+import { runCli } from "./cli-entry.mjs";
 import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
 
 const CONVENTIONAL_SUBJECT =
   /^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?!?: (.+)$/;
-const CHINESE_TEXT = /[\u3400-\u9fff]{2,}/;
+const HAN_TEXT = /[\u3400-\u9fff]/g;
+const toSimplified = Converter({ from: "t", to: "cn" });
+
+function isSimplifiedChineseProse(text, minimumHanRatio) {
+  const hanCount = text.match(HAN_TEXT)?.length ?? 0;
+  const latinCount = text.match(/[a-z]/gi)?.length ?? 0;
+  const hanRatio = hanCount / Math.max(hanCount + latinCount, 1);
+
+  return hanCount >= 2 && hanRatio >= minimumHanRatio && toSimplified(text) === text;
+}
 
 export function validateCommitSubjects(subjects) {
   const errors = [];
@@ -15,7 +26,7 @@ export function validateCommitSubjects(subjects) {
     if (!match) {
       errors.push(`Commit subject is not Conventional Commits: ${subject}`);
     }
-    if (!CHINESE_TEXT.test(match?.[1] ?? "")) {
+    if (!isSimplifiedChineseProse(match?.[1] ?? "", 0.2)) {
       errors.push(`Commit subject must include 简体中文: ${subject}`);
     }
   }
@@ -30,7 +41,7 @@ export function validateCommitMessages(messages) {
     const [subject, ...bodyLines] = message.split(/\r?\n/);
     const body = bodyLines.join("\n").trim();
     errors.push(...validateCommitSubjects([subject]));
-    if (body && !CHINESE_TEXT.test(body)) {
+    if (body && !isSimplifiedChineseProse(body, 0.15)) {
       errors.push(`Commit body must include 简体中文: ${subject}`);
     }
   }
@@ -54,11 +65,4 @@ function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  try {
-    main();
-  } catch (error) {
-    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-    process.exitCode = 2;
-  }
-}
+runCli(import.meta.url, process.argv[1], main, 2);
