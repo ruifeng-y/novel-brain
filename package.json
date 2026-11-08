@@ -15,6 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint . --max-warnings=0",
+    "preinstall": "node scripts/validate-local-runtime.mjs",
     "smoke:deepseek": "pnpm build:packages && pnpm --filter @novel-brain/ai smoke:deepseek",
     "stack:down": "docker compose -f infra/docker/compose.yml down --remove-orphans",
     "stack:smoke": "pnpm build:packages && pnpm --filter @novel-brain/worker exec node scripts/stack-smoke.mjs",
