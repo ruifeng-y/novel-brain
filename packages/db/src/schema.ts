@@ -2311,6 +2311,11 @@ export const jobs = pgTable(
     modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
       onDelete: "restrict",
     }),
+    parentJobId: uuid("parent_job_id").references((): AnyPgColumn => jobs.id, {
+      onDelete: "cascade",
+    }),
+    jobType: text("job_type"),
+    workItemKey: text("work_item_key"),
     type: text("type").notNull(),
     status: text("status").notNull().default("queued"),
     progress: integer("progress").notNull().default(0),
@@ -2341,15 +2346,27 @@ export const jobs = pgTable(
     uniqueIndex("jobs_workflow_idempotency_unique")
       .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
       .where(sql`${table.type} = 'agent_workflow'`),
+    uniqueIndex("jobs_batch_plan_idempotency_unique")
+      .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
+      .where(sql`${table.type} = 'batch_plan'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
+    index("jobs_parent_created_idx").on(table.parentJobId, table.createdAt),
     check(
       "jobs_type_check",
-      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action')`,
+      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan')`,
     ),
     check(
       "jobs_required_scope_check",
-      sql`(${table.type} = 'agent_workflow') or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+      sql`(${table.type} in ('agent_workflow', 'batch_plan')) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+    ),
+    check(
+      "jobs_job_type_check",
+      sql`${table.jobType} is null or ${table.jobType} in ('book', 'volume', 'chapter', 'step')`,
+    ),
+    check(
+      "jobs_batch_plan_scope_check",
+      sql`${table.type} <> 'batch_plan' or (${table.jobType} = 'book' and ${table.workItemKey} = 'book' and ${table.chapterId} is null and ${table.modelConfigId} is null)`,
     ),
     check(
       "jobs_writing_action_scope_check",
@@ -2360,6 +2377,106 @@ export const jobs = pgTable(
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
     ),
     check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
+  ],
+);
+
+export const jobWorkItems = pgTable(
+  "job_work_items",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id").references((): AnyPgColumn => jobWorkItems.id, {
+      onDelete: "cascade",
+    }),
+    itemType: text("item_type").notNull(),
+    workItemKey: text("work_item_key").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
+    outlineNodeId: uuid("outline_node_id").references(() => outlineNodes.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("pending"),
+    attempt: integer("attempt").notNull().default(0),
+    priority: integer("priority").notNull().default(0),
+    priorityClass: text("priority_class").notNull().default("batch"),
+    sortOrder: integer("sort_order").notNull(),
+    inputVersion: jsonb("input_version")
+      .$type<{ outlineVersion: number | null; chapterVersion: number | null }>()
+      .notNull(),
+    dependencies: jsonb("dependencies").$type<string[]>().notNull().default([]),
+    outputRefs: jsonb("output_refs")
+      .$type<Array<{ type: string; id: string }>>()
+      .notNull()
+      .default([]),
+    cost: jsonb("cost").$type<Record<string, unknown>>().notNull().default({}),
+    checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull().default({}),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_work_items_job_key_unique").on(table.jobId, table.workItemKey),
+    uniqueIndex("job_work_items_job_idempotency_unique").on(table.jobId, table.idempotencyKey),
+    index("job_work_items_job_type_order_idx").on(table.jobId, table.itemType, table.sortOrder),
+    index("job_work_items_job_user_order_idx").on(
+      table.jobId,
+      table.userId,
+      table.sortOrder,
+      table.id,
+    ),
+    index("job_work_items_job_status_priority_idx").on(
+      table.jobId,
+      table.status,
+      table.priority,
+      table.sortOrder,
+    ),
+    index("job_work_items_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
+    index("job_work_items_parent_idx").on(table.parentId),
+    check(
+      "job_work_items_type_check",
+      sql`${table.itemType} in ('book', 'volume', 'chapter', 'step')`,
+    ),
+    check(
+      "job_work_items_status_check",
+      sql`${table.status} in ('pending', 'ready', 'running', 'paused', 'waiting_review', 'succeeded', 'failed', 'skipped', 'cancelled')`,
+    ),
+    check(
+      "job_work_items_priority_class_check",
+      sql`${table.priorityClass} in ('interactive', 'batch')`,
+    ),
+    check("job_work_items_key_check", sql`${table.workItemKey} ~ '^[a-z][a-z0-9:._-]{0,119}$'`),
+    check("job_work_items_sort_order_check", sql`${table.sortOrder} >= 0`),
+    check("job_work_items_attempt_check", sql`${table.attempt} >= 0`),
+    check(
+      "job_work_items_priority_check",
+      sql`${table.priority} >= 0 and ${table.priority} <= 1000`,
+    ),
+    check(
+      "job_work_items_parent_check",
+      sql`(${table.itemType} = 'book' and ${table.parentId} is null) or (${table.itemType} <> 'book' and ${table.parentId} is not null)`,
+    ),
+    check(
+      "job_work_items_chapter_check",
+      sql`(${table.itemType} in ('chapter', 'step') and ${table.chapterId} is not null) or (${table.itemType} in ('book', 'volume') and ${table.chapterId} is null)`,
+    ),
+    check(
+      "job_work_items_input_version_check",
+      sql`jsonb_typeof(${table.inputVersion}) = 'object'`,
+    ),
+    check("job_work_items_dependencies_check", sql`jsonb_typeof(${table.dependencies}) = 'array'`),
+    check("job_work_items_output_refs_check", sql`jsonb_typeof(${table.outputRefs}) = 'array'`),
   ],
 );
 

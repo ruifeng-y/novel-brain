@@ -40,8 +40,12 @@ M1 foundations:
 ## 4. M2 leaf sequencing
 
 - #151 consumes #110; #152 consumes #151/#115. #91 is the package/integration parent.
+- 2026-11-07：#151 已完成批量计划层级、`job_work_items`、DAG 校验、并发策略和幂等 API；执行状态机仍由 #152 负责。证据见 `docs/implementation/m2-01a-batch-plan.md`。
+- 2026-11-07：#152 已完成批量执行 tick、暂停/恢复/取消/重试、失败隔离、审计与检查点复用；审核决策仍由 #149 负责。证据见 `docs/implementation/m2-01b-batch-execution.md`。
+- 2026-11-07：#91 的 API/Worker 包验收已由 #151/#152 满足，但 Batch 页面、审核队列和成本报告尚缺，父包保持打开。签收矩阵见 `docs/implementation/m2-01-batch-orchestration-closeout.md`。
 - #92 adds history/urban Genre Packs after the #84/#85 contracts.
 - #149/#150 consume #91 plus the Critic/readiness and runtime provenance/recovery contracts; #93 is their package parent.
+- 2026-11-07：M2-03 依赖按代码完成状态收口，见 `docs/planning/m2-03-dependency-acceptance.md`；#149/#150 可在新上下文实现，但不关闭 #91/#114/#115/#117/#147。
 - #120 → #121 → #122 is the change request/impact/apply path.
 - #123 uses the M0 version graph and #144/#106–#108; #124 consumes branch and impact/diff contracts; #125 consumes selective decisions and high-risk policy.
 - #126/#127 provide large import and optional setting extraction; #128 adds Chinese search/indexing after relevant data/retrieval/import contracts.
