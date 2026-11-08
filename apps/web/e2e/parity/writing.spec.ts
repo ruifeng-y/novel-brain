@@ -650,9 +650,9 @@ test("keeps chapter checks disabled until generation and writing actions settle"
     let holdVersionsRefresh = true;
     await page.route(`**${versionsPath}`, async (route) => {
       if (route.request().method() === "GET" && holdVersionsRefresh) {
-        holdVersionsRefresh = false;
         versionsRefreshHeld.resolve();
         await releaseVersionsRefresh.promise;
+        holdVersionsRefresh = false;
       }
       await route.continue();
     });
@@ -694,12 +694,25 @@ test("keeps chapter checks disabled until generation and writing actions settle"
     await page.goto(`/workspace/${work.id}/write?chapterId=${actionChapter.id}`);
     await expect(page.getByRole("heading", { name: "山雨欲来" })).toBeVisible();
     await expect(quality).toBeEnabled();
+
+    const writingActionRequestHeld = deferred();
+    const releaseWritingActionRequest = deferred();
+    await page.route(`**${actionChapterPath}/write-actions`, async (route) => {
+      if (route.request().method() === "POST") {
+        writingActionRequestHeld.resolve();
+        await releaseWritingActionRequest.promise;
+      }
+      await route.continue();
+    });
+
     await page.getByRole("button", { name: "续写" }).click();
+    await writingActionRequestHeld.promise;
+    await expect(quality).toBeDisabled();
+    await expect(style).toBeDisabled();
+    releaseWritingActionRequest.resolve();
     await expect(
       page.locator(".writing-action-summary").getByText("续写", { exact: true }),
     ).toBeVisible();
-    await expect(quality).toBeDisabled();
-    await expect(style).toBeDisabled();
   } finally {
     await worker?.stop();
   }

@@ -313,6 +313,7 @@ export function WritingWorkspace({
   const [chapterQuery, setChapterQuery] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const generationRefreshJobRef = useRef<string | null>(null);
   const writingActionEventSourceRef = useRef<EventSource | null>(null);
   const submissionKeys = useRef(new Map<string, string>());
 
@@ -516,7 +517,10 @@ export function WritingWorkspace({
     (readiness ? readiness.canProceed : selected.readiness.canStartWriting) &&
     !generationActive &&
     !generationAwaitingRecovery &&
-    !generationBusy,
+    !generationBusy &&
+    !writingActionActive &&
+    !writingActionAwaitingRecovery &&
+    !writingActionBusy,
   );
   const currentFactProposals = factProposals.filter(
     (proposal) =>
@@ -564,7 +568,9 @@ export function WritingWorkspace({
     !generationActive &&
     !generationBusy &&
     !generationRefreshPending &&
-    !writingActionActive,
+    !writingActionActive &&
+    !writingActionAwaitingRecovery &&
+    !writingActionBusy,
   );
   const latestStyleChapterReport = styleWorkspace?.latestChapterReport ?? null;
   const styleReport =
@@ -580,7 +586,9 @@ export function WritingWorkspace({
     !generationActive &&
     !generationBusy &&
     !generationRefreshPending &&
-    !writingActionActive,
+    !writingActionActive &&
+    !writingActionAwaitingRecovery &&
+    !writingActionBusy,
   );
   const revisionCandidates =
     qualityWorkspace?.findings.filter(
@@ -1452,6 +1460,7 @@ export function WritingWorkspace({
   }
 
   function watchGeneration(workData: WorkOverview, jobId: string) {
+    generationRefreshJobRef.current = null;
     closeGenerationStream();
     const source = new EventSource(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs/${jobId}/events`,
@@ -1483,13 +1492,20 @@ export function WritingWorkspace({
       return;
     }
     const job = generationJobResponseSchema.parse(await response.json()).data;
+    const active = isActiveGeneration(job.status);
+    if (!active) {
+      if (generationRefreshJobRef.current === jobId) {
+        return;
+      }
+      generationRefreshJobRef.current = jobId;
+    }
     await loadRunTraces(workData, job.id);
-    if (!isActiveGeneration(job.status)) {
+    if (!active) {
       closeGenerationStream();
       setGenerationRefreshPending(true);
     }
     setGenerationJob(job);
-    if (isActiveGeneration(job.status)) {
+    if (active) {
       return;
     }
     await refreshGenerationWorkspace(workData, job.chapterId);
@@ -1510,7 +1526,6 @@ export function WritingWorkspace({
       setContent(chapter.currentVersion?.content ?? "");
       setSavedContent(chapter.currentVersion?.content ?? "");
       await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
-      setGenerationRefreshPending(false);
       await Promise.all([
         loadFactProposals(workData, chapter.id),
         loadCanonCommit(workData, chapter.id),
@@ -1518,6 +1533,8 @@ export function WritingWorkspace({
       ]);
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "章节刷新失败。");
+    } finally {
+      setGenerationRefreshPending(false);
     }
   }
 
