@@ -35,10 +35,10 @@ import {
   ProviderBudgetExceededError,
   describeProviderFailure,
 } from "./budgeted-provider-call";
+import { JobStoppedError } from "./provider-call-errors";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
-  JobStoppedError,
   WorkerGenerationRepository,
   type LoadedGenerationJob,
   type WorkerContextSources,

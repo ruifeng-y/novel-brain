@@ -69,7 +69,6 @@
 | `BIBLE_` / `SETTING_` | 故事圣经和最小设定 |
 | `JOB_` | 任务状态和检查点 |
 | `GEN_` | 生成和上下文编译 |
-| `BATCH_` | 批量计划、工作项和计划幂等 |
 | `FACT_` | 事实决策和提交门禁 |
 | `CANON_` | 故事事实提交和版本节点 |
 | `IMPORT_` | 设定导入、旧稿导入和冲突 |
@@ -97,10 +96,6 @@ M0 关键错误：
 - `BIBLE_NOT_LOCKED`
 - `JOB_BUDGET_EXCEEDED`
 - `JOB_CANCELLED`
-- `BATCH_PLAN_NOT_FOUND`
-- `BATCH_PLAN_INVALID`
-- `BATCH_PLAN_OUTLINE_INCOMPLETE`
-- `BATCH_PLAN_IDEMPOTENCY_CONFLICT`
 - `FACT_DECISION_REQUIRED`
 - `FACT_SUBMISSION_BLOCKED`
 - `CANON_CHAPTER_NOT_APPROVED`
@@ -187,14 +182,6 @@ M0 关键错误：
 | GET | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId` | 任务状态和检查点 |
 | GET | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId/events` | SSE 事件 |
 | POST | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId/cancel` | 取消任务 |
-| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans` | 幂等创建按章/卷/区间/全本批量计划 |
-| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId` | 批量计划摘要、计数和调度策略 |
-| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/items` | 分页检查工作项，不返回章节正文 |
-| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/start` | 开始或幂等重放批量执行 |
-| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/pause` | 在当前步骤结束后暂停 |
-| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/resume` | 从暂停工作项和子任务检查点恢复 |
-| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/cancel` | 取消剩余工作，保留已完成/待审核章节 |
-| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/retry` | 从失败步骤重试失败章节 |
 
 ### 5.7 审核、事实与故事事实提交
 
@@ -265,18 +252,6 @@ M0 关键错误：
 
 - `id`、`type`、`workId`、`branchId`、`chapterId`、`status`、`progress`、`currentStep`、`checkpoint`、`cost`、`errorCode`、`createdAt`、`startedAt`、`finishedAt`。
 - Job status：`queued`、`preparing`、`running`、`paused`、`waiting_review`、`completed`、`failed`、`cancelled`。
-
-### BatchPlan / WorkItem
-
-- `BatchPlan`：`id`、`jobId`、`workId`、`branchId`、`userId`、`status`、`scope`、`approvalMode`、`priorityClass`、`idempotencyKey`、`counts`、`scheduling`、`createdAt`、`updatedAt`。
-- `scope`：`chapter`（章节 ID 列表）、`volume`（卷节点 ID 列表）、`range`（连续章节号）、`book`。
-- `counts`：按 `book` / `volume` / `chapter` / `step` 和 `pending` / `ready` / `running` / `waiting_review` / `succeeded` / `failed` / `skipped` / `cancelled` 聚合。
-- `scheduling.caps` 固定为 `global=4`、`perWork=2`、`perUser=2`；`effectivePerWork` 是请求并发被策略上限裁剪后的值。
-- `WorkItem`：`id`、`planId`、`workId`、`branchId`、`userId`、`key`、`type`、`parentKey`、`chapterId`、`outlineNodeId`、`status`、`attempt`、`priority`、`priorityClass`、`sortOrder`、`inputVersion`、`dependsOn`、`outputRefs`、`errorCode`、`errorMessage`。
-- `WorkItem.status`：`pending`、`ready`、`running`、`paused`、`waiting_review`、`succeeded`、`failed`、`skipped`、`cancelled`。
-- 工作项 key 稳定：`book`、`volume:<nodeId>`、`chapter:<chapterId>`、`step:<chapterId>:<stepKey>`。
-- 计划创建不向队列投递数千个 job；只创建一条父任务记录和 `job_work_items` 工作项。执行、暂停、恢复、重试和失败隔离由 #152 组合 #110/#115 的原语实现。
-- 执行通过小载荷 `batch_tick` 每次领取一个章节并投递单章生成子任务；子任务完成后再触发下一次 tick。暂停/取消在步骤边界生效，审核状态保持 `waiting_review`，不自动批准。
 
 ### ContextPack
 

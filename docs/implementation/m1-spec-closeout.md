@@ -20,12 +20,13 @@
 - 检索索引移除数据库生成的业务 `id`，改用来源、版本和分支组成的复合主键；触发器和检索排序同步迁移。
 - 角色知识查询与物品卸下请求的 DTO 收回 `packages/contracts`；角色与世界仓储复用统一 tenant transaction helper。
 - 写作台错误状态不再向作者展示内部错误码，保留可读失败原因和断点重试入口。
+- M2 batch plan、执行队列、`job_work_items` 迁移和验收文档已从 M1 树中移除，并保留在独立 stacked M2 分支；拆分清单见 `m1-m2-scope-split.md`。
 
 当前自动化证据：
 
-- `pnpm check`：45 个测试文件、270 项测试通过。
-- `pnpm test:integration`：26 个测试文件、170 项测试通过。
-- `pnpm exec playwright test --grep-invert "checks every M0 parity page"`：100 项通过，覆盖 M0 回归旅程、M1 全链路、M1 页面四档视口、作者语言与真实动作。
+- `pnpm check`：42 个测试文件、257 项测试通过；M2 batch 单元/契约测试已移出 M1。
+- `pnpm test:integration`：25 个测试文件、164 项测试通过；M2 batch integration 已移出 M1。
+- `pnpm exec playwright test --grep-invert "checks every M0 parity page"`：99 项通过，1 项已知恢复时序用例超时；该用例单跑通过，最终以 PR CI retry 结果为准。
 - `pnpm --filter @novel-brain/api openapi:check`：通过。
 - `node scripts/validate-readiness.mjs`：通过；119 个能力、119 个主 issue 映射、85 节点/318 blocker edges 无环。
 
@@ -37,7 +38,7 @@
 - 黄金三章当前仍使用 deterministic 模板生成和自动评审，真实作者模型与 ContextPack provenance 由 `#165` 跟踪。
 - 通用设定 PATCH 的一等领域双真源由 `#166` 跟踪。
 - `#80` 原文要求的“所有 list endpoint 使用 cursor pagination”在设定中心之外仍有缺口，由 `#163` 跟踪，不能据此关闭 spec。
-- M2 batch 工作与 M1 集成范围混在一起，拆分工作由 `#164` 跟踪。
+- M2 batch 工作已从 M1 树中移出，独立验证和签收由 `#164` 继续跟踪。
 
 ## 已集成范围
 

@@ -65,7 +65,11 @@ import {
   type ChapterContextInput,
   type RecoveryStepStatus,
 } from "@novel-brain/core";
-import { BUDGET_EXHAUSTED_ESCALATION, BUDGET_EXHAUSTED_MESSAGE } from "./provider-call-errors";
+import {
+  BUDGET_EXHAUSTED_ESCALATION,
+  BUDGET_EXHAUSTED_MESSAGE,
+  JobStoppedError,
+} from "./provider-call-errors";
 import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -196,13 +200,6 @@ export class WritingActionSourceInvalidError extends Error {
   constructor() {
     super("Writing action source version is invalid");
     this.name = "WritingActionSourceInvalidError";
-  }
-}
-
-export class JobStoppedError extends Error {
-  constructor(readonly status: "paused" | "cancelled") {
-    super(`Generation job is ${status}`);
-    this.name = "JobStoppedError";
   }
 }
 

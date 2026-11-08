@@ -1,3 +1,0 @@
-ALTER TABLE "job_work_items" DROP CONSTRAINT "job_work_items_status_check";--> statement-breakpoint
-CREATE INDEX "jobs_parent_created_idx" ON "jobs" USING btree ("parent_job_id","created_at");--> statement-breakpoint
-ALTER TABLE "job_work_items" ADD CONSTRAINT "job_work_items_status_check" CHECK ("job_work_items"."status" in ('pending', 'ready', 'running', 'paused', 'waiting_review', 'succeeded', 'failed', 'skipped', 'cancelled'));

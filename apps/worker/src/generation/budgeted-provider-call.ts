@@ -12,7 +12,6 @@ import { planProviderCallBudget, PROVIDER_CALL_MAX_OUTPUT_TOKENS } from "@novel-
 import { calculateModelCallCost as calculateCost } from "@novel-brain/db";
 
 import {
-  JobStoppedError,
   type StartedModelCall,
   type WorkerGenerationRepository,
   type WorkerJobBase,
@@ -21,6 +20,7 @@ import {
   BUDGET_EXHAUSTED_ESCALATION,
   BUDGET_EXHAUSTED_MESSAGE,
   CostBudgetOverrunRecordedError,
+  JobStoppedError,
   ProviderBudgetExceededError,
 } from "./provider-call-errors";
 
