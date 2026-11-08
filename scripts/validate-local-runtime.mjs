@@ -1,9 +1,10 @@
 import { readFileSync } from "node:fs";
+import { release } from "node:os";
 
 import { runCli } from "./cli-entry.mjs";
 
-export function localRuntimeError({ cwd, platform }) {
-  if (platform === "linux" && /^\/mnt\/[a-z]\//i.test(cwd)) {
+export function localRuntimeError({ cwd, platform, release: osRelease = "" }) {
+  if (platform === "linux" && (/^\/mnt\/[a-z]\//i.test(cwd) || /microsoft/i.test(osRelease))) {
     return "This Windows workspace must run through native PowerShell, not WSL.";
   }
   return null;
@@ -42,6 +43,7 @@ function main() {
     localRuntimeError({
       cwd: process.cwd(),
       platform: process.platform,
+      release,
     }),
     ...validatePnpmLockfile(readFileSync("pnpm-lock.yaml", "utf8")),
   ].filter(Boolean);

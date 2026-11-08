@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 
 import { runCli } from "./cli-entry.mjs";
+import { resolveGitRef } from "./git-refs.mjs";
 import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
 
 export function headAncestorOfBaseError({ base, head, headIsAncestorOfBase }) {
@@ -24,17 +25,13 @@ function isAncestor(ancestor, descendant) {
   }
 }
 
-function resolveRef(ref) {
-  return execFileSync("git", ["rev-parse", ref], { encoding: "utf8" }).trim();
-}
-
 function main() {
   const { base, head } = parseReviewRangeArguments(
     process.argv.slice(2),
     "validate-pr-topology.mjs",
   );
-  const baseSha = resolveRef(base);
-  const headSha = resolveRef(head);
+  const baseSha = resolveGitRef(base);
+  const headSha = resolveGitRef(head);
   if (baseSha === headSha) {
     return;
   }

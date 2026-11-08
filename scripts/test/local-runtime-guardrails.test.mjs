@@ -15,6 +15,17 @@ test("rejects WSL execution against a mounted Windows workspace", () => {
   );
 });
 
+test("rejects any WSL process even with a custom automount root", () => {
+  assert.match(
+    localRuntimeError({
+      cwd: "/custom/windows/novel-brain",
+      platform: "linux",
+      release: "5.15.153.1-microsoft-standard-WSL2",
+    }),
+    /native PowerShell/,
+  );
+});
+
 test("rejects pnpm self-management pollution in the lockfile", () => {
   const polluted = [
     "    packageManagerDependencies:",

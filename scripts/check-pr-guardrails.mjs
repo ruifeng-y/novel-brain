@@ -1,6 +1,7 @@
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
+import { resolveGitRef } from "./git-refs.mjs";
 import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
 
 const topologyScript = fileURLToPath(new URL("./validate-pr-topology.mjs", import.meta.url));
@@ -10,8 +11,8 @@ const { base, head } =
   args.length > 0
     ? parseReviewRangeArguments(args, "check-pr-guardrails.mjs")
     : { base: "origin/main", head: "HEAD" };
-const baseSha = resolveRef(base);
-const headSha = resolveRef(head);
+const baseSha = resolveGitRef(base);
+const headSha = resolveGitRef(head);
 
 process.stdout.write(`Guardrail range: ${baseSha}..${headSha}\n`);
 for (const script of [topologyScript, commitScript]) {
@@ -22,8 +23,4 @@ for (const script of [topologyScript, commitScript]) {
     process.exitCode = result.status ?? 1;
     break;
   }
-}
-
-function resolveRef(ref) {
-  return execFileSync("git", ["rev-parse", ref], { encoding: "utf8" }).trim();
 }

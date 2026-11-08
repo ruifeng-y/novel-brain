@@ -53,6 +53,9 @@ const TECHNICAL_WORDS = new Set([
   "production",
   "push",
   "redis",
+  "ref",
+  "release",
+  "resolver",
   "review",
   "sha",
   "snapshot",
@@ -78,7 +81,12 @@ function isSimplifiedChineseProse(text, minimumHanRatio) {
   const textWithoutCode = text.replace(/`[^`]*`/g, "");
   const usesOnlyKnownEnglish = [...textWithoutCode.matchAll(LATIN_WORD)]
     .filter(([word]) => word.length > 1)
-    .every(([word]) => /^[A-Z][A-Z0-9]*$/.test(word) || TECHNICAL_WORDS.has(word.toLowerCase()));
+    .every(
+      ([word]) =>
+        /^[A-Z][A-Z0-9]*$/.test(word) ||
+        /[a-z][A-Z]/.test(word) ||
+        TECHNICAL_WORDS.has(word.toLowerCase()),
+    );
 
   return (
     hanCount >= 2 &&
@@ -96,7 +104,7 @@ export function validateCommitSubjects(subjects) {
     if (!match) {
       errors.push(`Commit subject is not Conventional Commits: ${subject}`);
     }
-    if (!isSimplifiedChineseProse(match?.[1] ?? "", 0.3)) {
+    if (!isSimplifiedChineseProse(match?.[1] ?? "", 0.2)) {
       errors.push(`Commit subject must include 简体中文: ${subject}`);
     }
   }

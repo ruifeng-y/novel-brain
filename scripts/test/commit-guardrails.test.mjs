@@ -68,7 +68,18 @@ test("rejects an unknown English word beside Chinese text", () => {
 test("allows recognized technical words in Chinese prose", () => {
   assert.deepEqual(
     validateCommitMessages([
-      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围",
+      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围\n- 使用 release 与 Git ref resolver",
+    ]),
+    [],
+  );
+});
+
+test("allows PascalCase and camelCase project identifiers", () => {
+  assert.deepEqual(
+    validateCommitSubjects([
+      "feat: 更新 NovelBrain 配置",
+      "refactor: 更新 StoryFact 投影",
+      "fix: 修复 TypeScript 类型",
     ]),
     [],
   );
