@@ -2,7 +2,7 @@
 
 > Spec: #80 完整仙侠创作闭环
 > Integration branch: `codex/m1-full-loop`
-> Verified code HEAD: `69fada1`
+> Verified code HEAD: `f37a3a9`
 > 日期: 2026-11-08
 
 ## 2026-11-08 集成加固与当前证据
