@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 
 import { validateCommitMessages, validateCommitSubjects } from "../validate-commits.mjs";
+import { resolveGuardrailBase } from "../check-pr-guardrails.mjs";
 import { commitFile, runGit, runNode, withRepository } from "./git-fixtures.mjs";
 
 const commitScript = fileURLToPath(new URL("../validate-commits.mjs", import.meta.url));
@@ -167,5 +168,44 @@ test("accepts a PR range with multiple Chinese commits", () => {
 
     const result = runNode(repository, commitScript, ["--base", base, "--head", "HEAD"]);
     assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+test("uses the committed baseline to skip historical non-compliant commits", () => {
+  withRepository((repository) => {
+    const base = commitFile(repository, {
+      name: "root.txt",
+      content: "root\n",
+      message: "feat: 根提交",
+    });
+    const baseline = commitFile(repository, {
+      name: "legacy.txt",
+      content: "legacy\n",
+      message: "legacy english commit",
+    });
+    const head = commitFile(repository, {
+      name: "head.txt",
+      content: "head\n",
+      message: "fix: 新提交",
+    });
+
+    assert.equal(
+      resolveGuardrailBase({
+        baseSha: base,
+        headSha: head,
+        baselineSha: baseline,
+        cwd: repository,
+      }),
+      baseline,
+    );
+    assert.equal(
+      resolveGuardrailBase({
+        baseSha: base,
+        headSha: head,
+        baselineSha: undefined,
+        cwd: repository,
+      }),
+      base,
+    );
   });
 });

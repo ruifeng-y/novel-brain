@@ -38,6 +38,15 @@ test("wires guardrails into the local check command", () => {
   assert.match(packageJson.scripts["check:migrations"], /pnpm db:migrations:check/);
 });
 
+test("commits a guardrail baseline for historical branch commits", () => {
+  const baseline = readFileSync(
+    path.join(repositoryRoot, "scripts/commit-guardrail-baseline.txt"),
+    "utf8",
+  ).trim();
+
+  assert.match(baseline, /^[a-f0-9]{40}$/);
+});
+
 test("runs the runtime guard before dependencies are installed", () => {
   const packageJson = JSON.parse(readFileSync(path.join(repositoryRoot, "package.json"), "utf8"));
 
