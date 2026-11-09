@@ -48,6 +48,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -60,6 +63,13 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - name: Validate PR guardrails
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-pr-guardrails.mjs --base ${{ github.event.pull_request.base.sha }} --head HEAD
+      - name: Validate push commit messages
+        if: github.event_name == 'push'
+        run: node scripts/validate-commits.mjs --base ${{ github.event.before }} --head HEAD
+      - run: pnpm check:migrations
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
