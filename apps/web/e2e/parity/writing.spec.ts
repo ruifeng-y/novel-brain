@@ -241,7 +241,9 @@ test("shows empty and error states and keeps the editor usable at four viewports
   await expect(page.getByRole("link", { name: "先去写章纲" })).toBeVisible();
 
   const chapter = await createChapter(page, work);
-  await page.route(`**${chaptersPath(work)}`, async (route) => {
+  const chapterListPath = chaptersPath(work);
+  const matchesChapterList = (url: URL) => url.pathname === chapterListPath;
+  await page.route(matchesChapterList, async (route) => {
     await route.fulfill({
       status: 500,
       contentType: "application/json",
@@ -257,7 +259,7 @@ test("shows empty and error states and keeps the editor usable at four viewports
   });
   await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
   await expect(page.getByText("写作台加载失败。")).toBeVisible();
-  await page.unroute(`**${chaptersPath(work)}`);
+  await page.unroute(matchesChapterList);
 
   for (const width of [390, 900, 1180, 1440]) {
     await page.setViewportSize({ width, height: 900 });
@@ -282,14 +284,15 @@ test("shows loading and recoverable version conflict states", async ({ page, con
   const work = await createWritingWork(page);
   const chapter = await createChapter(page, work);
   const chapters = chaptersPath(work);
+  const matchesChapters = (url: URL) => url.pathname === chapters;
 
-  await page.route(`**${chapters}`, async (route) => {
+  await page.route(matchesChapters, async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     await route.continue();
   });
   await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
   await expect(page.getByText("正在加载写作台")).toBeVisible();
-  await page.unroute(`**${chapters}`);
+  await page.unroute(matchesChapters);
   await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
   await expect(page.getByRole("heading", { name: "一只手也能结印" })).toBeVisible();
 
@@ -648,14 +651,17 @@ test("keeps chapter checks disabled until generation and writing actions settle"
     const versionsRefreshHeld = deferred();
     const releaseVersionsRefresh = deferred();
     let holdVersionsRefresh = true;
-    await page.route(`**${versionsPath}`, async (route) => {
-      if (route.request().method() === "GET" && holdVersionsRefresh) {
-        versionsRefreshHeld.resolve();
-        await releaseVersionsRefresh.promise;
-        holdVersionsRefresh = false;
-      }
-      await route.continue();
-    });
+    await page.route(
+      (url) => url.pathname === versionsPath,
+      async (route) => {
+        if (route.request().method() === "GET" && holdVersionsRefresh) {
+          versionsRefreshHeld.resolve();
+          await releaseVersionsRefresh.promise;
+          holdVersionsRefresh = false;
+        }
+        await route.continue();
+      },
+    );
 
     await chapterRefreshHeld.promise;
     await expect(

@@ -111,32 +111,35 @@ test("provider failures are visible and recoverable", async ({ page, context, re
 
 test("create retries reuse the idempotency key", async ({ page, context, request }) => {
   const idempotencyKeys: string[] = [];
-  await page.route("**/api/v1/model-configs", async (route) => {
-    if (route.request().method() !== "POST") {
+  await page.route(
+    (url) => url.pathname === "/api/v1/model-configs",
+    async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      const key = route.request().headers()["idempotency-key"];
+      if (key) {
+        idempotencyKeys.push(key);
+      }
+      if (idempotencyKeys.length === 1) {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({
+            error: {
+              code: "INTERNAL_ERROR",
+              message: "模型配置保存失败。",
+              details: {},
+              requestId: "req_e2e_retry",
+            },
+          }),
+        });
+        return;
+      }
       await route.continue();
-      return;
-    }
-    const key = route.request().headers()["idempotency-key"];
-    if (key) {
-      idempotencyKeys.push(key);
-    }
-    if (idempotencyKeys.length === 1) {
-      await route.fulfill({
-        status: 500,
-        contentType: "application/json",
-        body: JSON.stringify({
-          error: {
-            code: "INTERNAL_ERROR",
-            message: "模型配置保存失败。",
-            details: {},
-            requestId: "req_e2e_retry",
-          },
-        }),
-      });
-      return;
-    }
-    await route.continue();
-  });
+    },
+  );
 
   await authenticatedPage(page, context, request);
   await page.getByLabel("配置名称").fill("幂等重试配置");
@@ -154,21 +157,24 @@ test("loading and error states are visible", async ({ page, context, request }) 
   const configsGate = new Promise<void>((resolve) => {
     releaseConfigs = resolve;
   });
-  await page.route("**/api/v1/model-configs", async (route) => {
-    await configsGate;
-    await route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "模型配置加载失败。",
-          details: {},
-          requestId: "req_e2e_error",
-        },
-      }),
-    });
-  });
+  await page.route(
+    (url) => url.pathname === "/api/v1/model-configs",
+    async (route) => {
+      await configsGate;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "模型配置加载失败。",
+            details: {},
+            requestId: "req_e2e_error",
+          },
+        }),
+      });
+    },
+  );
 
   await authenticatedPage(page, context, request);
   await expect(page.getByText("正在加载模型配置")).toBeVisible();
@@ -250,14 +256,20 @@ test("manages profile, multiple pen names and device sessions", async ({
 
 test("account loading states hold at four viewports", async ({ page, context, request }) => {
   await authenticatedPage(page, context, request);
-  await page.route("**/api/v1/users/me/pen-names", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    await route.continue();
-  });
-  await page.route("**/api/v1/auth/sessions", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    await route.continue();
-  });
+  await page.route(
+    (url) => url.pathname === "/api/v1/users/me/pen-names",
+    async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.continue();
+    },
+  );
+  await page.route(
+    (url) => url.pathname === "/api/v1/auth/sessions",
+    async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.continue();
+    },
+  );
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
@@ -271,20 +283,23 @@ test("account loading states hold at four viewports", async ({ page, context, re
 
 test("account error state holds at four viewports", async ({ page, context, request }) => {
   await authenticatedPage(page, context, request);
-  await page.route("**/api/v1/users/me/pen-names", async (route) => {
-    await route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "笔名加载失败。",
-          details: {},
-          requestId: "req_e2e_pen_names",
-        },
-      }),
-    });
-  });
+  await page.route(
+    (url) => url.pathname === "/api/v1/users/me/pen-names",
+    async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "笔名加载失败。",
+            details: {},
+            requestId: "req_e2e_pen_names",
+          },
+        }),
+      });
+    },
+  );
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
