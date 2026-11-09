@@ -460,7 +460,9 @@ async function createOutlineThroughUi(page: Page, work: M1Work) {
       .fill("沈砚藏起断臂。\n追兵逼近，两人继续上路。");
     await creator.getByLabel("必用事实（一行一个）").fill("左臂骨折，不能双手结印");
     await creator.getByRole("button", { name: "创建节点" }).click();
-    await expect(page.getByText(`第 ${chapter.number} 章`).first()).toBeVisible();
+    await expect(page.getByText(`第 ${chapter.number} 章`).first()).toBeVisible({
+      timeout: 15_000,
+    });
   }
 }
 

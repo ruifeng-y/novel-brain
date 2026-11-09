@@ -406,11 +406,13 @@ async function lockGoldenThree(
   chapters: Array<{ id: string; content: string; versionId: string | null }>,
 ): Promise<void> {
   const token = await getCsrf(request);
-  const pins = chapters.map((chapter) => ({
-    chapterId: chapter.id,
-    chapterVersionId: chapter.versionId!,
-    expectedContentHash: createHash("sha256").update(chapter.content).digest("hex"),
-  }));
+  const pins = [
+    {
+      chapterId: chapters[0]!.id,
+      chapterVersionId: chapters[0]!.versionId!,
+      expectedContentHash: createHash("sha256").update(chapters[0]!.content).digest("hex"),
+    },
+  ];
   const candidate = (index: number) => ({
     label: index === 0 ? "候选 A · 钩子优先" : "候选 B · 人物优先",
     strategy: index === 0 ? "hook_focus" : "character_focus",
@@ -467,7 +469,7 @@ async function lockGoldenThree(
             passage: pin.content.slice(0, 200),
             locator: `第 ${index + 1} 章 · 首句`,
           },
-          reviewerOrigin: "model",
+          reviewerOrigin: "critic",
         };
       }),
     },
@@ -481,9 +483,17 @@ async function lockGoldenThree(
     },
   );
   expect(selection.status()).toBe(200);
+  const continuation = await request.post(
+    `${branchPath}/golden-three/candidates/${selected.id}/continuation`,
+    {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: { version: selected.version + 2 },
+    },
+  );
+  expect(continuation.status()).toBe(200);
   const lock = await request.post(`${branchPath}/golden-three/candidates/${selected.id}/lock`, {
     headers: { Origin: origin, "X-CSRF-Token": token },
-    data: { version: selected.version + 2 },
+    data: { version: selected.version + 3 },
   });
   expect(lock.status()).toBe(200);
 }
