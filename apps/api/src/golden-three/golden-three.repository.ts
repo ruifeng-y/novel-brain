@@ -63,6 +63,7 @@ import type { WorksAuditContext } from "../works/works.repository";
 
 const GOLDEN_THREE_TOKEN_BUDGET = 12_000;
 const GOLDEN_THREE_MAX_OUTPUT_TOKENS = 1_600;
+const GOLDEN_THREE_DEFAULT_MAX_COST_CNY = 0.2;
 
 const goldenThreeGenerationStrategies: Array<{
   strategy: GoldenThreeStrategy;
@@ -612,6 +613,20 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     const chapter = payload.chapter;
     const modelConfig = payload.modelConfig;
     const nextVersion = payload.nextVersion;
+    const maxCostCny = Number(
+      process.env.GOLDEN_THREE_MAX_COST_CNY ?? GOLDEN_THREE_DEFAULT_MAX_COST_CNY,
+    );
+    const estimatedCostCny = calculateModelCallCost(
+      GOLDEN_THREE_TOKEN_BUDGET + GOLDEN_THREE_MAX_OUTPUT_TOKENS * strategies.length,
+      M0_COST_PER_TOKEN_CNY,
+    );
+    if (!Number.isFinite(maxCostCny) || estimatedCostCny > maxCostCny) {
+      return {
+        kind: "model_generation_failed",
+        message: "黄金三章生成预算不足",
+        failureClass: "budget",
+      };
+    }
 
     const contextPack = await this.generationService.contextPreview(
       userId,
@@ -633,8 +648,8 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       const prompt = goldenThreeUserPrompt(strategy.strategy, chapter, contextPack);
       const providerName =
         process.env.MODEL_CONNECTION_TESTER === "fake" ? "fake" : modelConfig.provider;
-      const provider = createGoldenThreeProvider(modelConfig);
       try {
+        const provider = createGoldenThreeProvider(modelConfig);
         const result = await provider.generateText({
           model: modelConfig.model,
           system,
@@ -657,6 +672,13 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           failureClass: error instanceof AiProviderError ? error.failureClass : "unknown",
         };
       }
+    }
+    if (generated.some((entry) => entry.result.text.trim().length === 0)) {
+      return {
+        kind: "model_generation_failed",
+        message: "作者模型返回空正文",
+        failureClass: "schema",
+      };
     }
 
     return withTenantTransaction(this.db, userId, async (transaction) => {
@@ -702,7 +724,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         progress: 100,
         currentStep: "completed",
         idempotencyKey,
-        budget: { maxTokens: GOLDEN_THREE_TOKEN_BUDGET, maxCostCny: totalCostCny },
+        budget: { maxTokens: GOLDEN_THREE_TOKEN_BUDGET, maxCostCny },
         checkpoint: { contextPackId },
         checkpointVersion: 1,
         orchestration: { kind: "golden_three_generation", candidateCount: generated.length },
@@ -740,13 +762,6 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       const candidateIds: string[] = [];
       for (const entry of generated) {
         const content = entry.result.text.trim();
-        if (content.length === 0) {
-          return {
-            kind: "model_generation_failed",
-            message: "作者模型返回空正文",
-            failureClass: "schema",
-          };
-        }
         const contentHash = hashValue(content);
         const wordCount = countWords(content);
         const versionId = uuidv7();
@@ -1727,6 +1742,9 @@ async function writeAudit(
 
 function createGoldenThreeProvider(config: InferSelectModel<typeof modelConfigs>) {
   if (process.env.MODEL_CONNECTION_TESTER === "fake") {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("Fake model provider is not allowed in production");
+    }
     return new FakeAiProvider({
       failOperations: process.env.GOLDEN_THREE_FAKE_FAILURE === "1" ? ["draft"] : [],
     });

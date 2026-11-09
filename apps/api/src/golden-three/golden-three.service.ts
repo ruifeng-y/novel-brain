@@ -215,7 +215,7 @@ export class GoldenThreeService {
       case "model_config_missing":
         return new ApiError(409, "GOLDEN_THREE_MODEL_REQUIRED", "请先配置用于写作的作者模型");
       case "model_generation_failed":
-        return new ApiError(502, "GOLDEN_THREE_GENERATION_FAILED", result.message, {
+        return new ApiError(502, "GOLDEN_THREE_GENERATION_FAILED", "作者模型生成失败，请稍后重试", {
           failureClass: result.failureClass,
           retryable: true,
         });

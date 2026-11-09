@@ -21,6 +21,7 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
   const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState("");
   const [overrideRationale, setOverrideRationale] = useState("");
+  const [generationKey, setGenerationKey] = useState<string | null>(null);
   const path = `/api/v1/works/${workId}/branches/${branchId}/golden-three`;
 
   const load = useCallback(async () => {
@@ -102,6 +103,10 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
   }
 
   async function generateCandidates() {
+    const idempotencyKey = generationKey ?? crypto.randomUUID();
+    if (!generationKey) {
+      setGenerationKey(idempotencyKey);
+    }
     setBusy("generate");
     setActionError("");
     try {
@@ -109,7 +114,7 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
         method: "POST",
         headers: {
           "content-type": "application/json",
-          "idempotency-key": crypto.randomUUID(),
+          "idempotency-key": idempotencyKey,
           "x-csrf-token": await getCsrfToken(),
         },
         body: JSON.stringify({ candidateCount: 3 }),
@@ -118,6 +123,7 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
         throw new Error(await readError(response, "候选生成失败。"));
       }
       setWorkspace(goldenThreeWorkspaceResponseSchema.parse(await response.json()).data);
+      setGenerationKey(null);
     } catch (caught) {
       setActionError(caught instanceof Error ? caught.message : "候选生成失败。");
     } finally {

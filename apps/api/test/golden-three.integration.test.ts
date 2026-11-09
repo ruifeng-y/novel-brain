@@ -550,6 +550,35 @@ describe("golden three HTTP integration", () => {
     ).toHaveLength(0);
   });
 
+  it("hard-stops generation when the configured cost budget is too low", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-budget@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    await createGoldenThreeChapters(owner, token, basePath);
+    await createModelConfig(owner, token);
+
+    process.env.GOLDEN_THREE_MAX_COST_CNY = "0";
+    try {
+      const response = await owner
+        .post(`${basePath}/golden-three/candidates/generate`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .set("Idempotency-Key", "golden-three-budget")
+        .send({ candidateCount: 3 })
+        .expect(502);
+      expect(response.body.error).toMatchObject({
+        code: "GOLDEN_THREE_GENERATION_FAILED",
+        details: { failureClass: "budget", retryable: true },
+      });
+    } finally {
+      delete process.env.GOLDEN_THREE_MAX_COST_CNY;
+    }
+    expect(
+      (await owner.get(`${basePath}/golden-three`).expect(200)).body.data.candidates,
+    ).toHaveLength(0);
+  });
+
   it("rejects cross-tenant access, unsupported evidence and locking before selection", async () => {
     const owner = await createAuthenticatedAgent("golden-three-owner@example.com");
     const other = await createAuthenticatedAgent("golden-three-other@example.com");
@@ -581,6 +610,17 @@ describe("golden three HTTP integration", () => {
     expect((await other.get(outlinePath).expect(403)).body.error.code).toBe(
       "FORBIDDEN_TENANT_ACCESS",
     );
+    expect(
+      (
+        await other
+          .post(`${outlinePath}/candidates/generate`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", otherToken)
+          .set("Idempotency-Key", "golden-three-other-generate")
+          .send({ candidateCount: 3 })
+          .expect(403)
+      ).body.error.code,
+    ).toBe("FORBIDDEN_TENANT_ACCESS");
     expect(
       (
         await other
