@@ -106,6 +106,8 @@ test("completes the M1 author loop through outline, writing, facts and volume au
     .getByRole("button", { name: "选定这个方向" })
     .click();
   await expect(page.locator(".golden-three-candidate").first().getByText("已选定")).toBeVisible();
+  await page.getByRole("button", { name: "登记第 2、3 章", exact: true }).click();
+  await expect(page.getByText("续写版本已登记")).toBeVisible();
   await page.getByRole("button", { name: "锁定黄金三章" }).click();
   await expect(page.getByText("黄金三章已锁定")).toBeVisible();
   await expectAuthorFacingLanguage(page);

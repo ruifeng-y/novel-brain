@@ -760,11 +760,13 @@ describe("volume audit HTTP integration", () => {
               parameters: { temperature: 0.7 },
             },
             context: { packVersionId: null, manifestHash: "b".repeat(64) },
-            pins: chapters.map((chapter) => ({
-              chapterId: chapter.id,
-              chapterVersionId: chapter.versionId,
-              expectedContentHash: contentHash(chapter.content),
-            })),
+            pins: [
+              {
+                chapterId: chapters[0]!.id,
+                chapterVersionId: chapters[0]!.versionId,
+                expectedContentHash: contentHash(chapters[0]!.content),
+              },
+            ],
           },
           {
             label: "候选 B · 人物优先",
@@ -776,11 +778,13 @@ describe("volume audit HTTP integration", () => {
               parameters: { temperature: 0.6 },
             },
             context: { packVersionId: null, manifestHash: "d".repeat(64) },
-            pins: chapters.map((chapter) => ({
-              chapterId: chapter.id,
-              chapterVersionId: chapter.versionId,
-              expectedContentHash: contentHash(chapter.content),
-            })),
+            pins: [
+              {
+                chapterId: chapters[0]!.id,
+                chapterVersionId: chapters[0]!.versionId,
+                expectedContentHash: contentHash(chapters[0]!.content),
+              },
+            ],
           },
         ],
       })
@@ -827,10 +831,16 @@ describe("volume audit HTTP integration", () => {
       .send({ version: candidate.version + 1 })
       .expect(200);
     await agent
-      .post(`${branchPath}/golden-three/candidates/${candidate.id}/lock`)
+      .post(`${branchPath}/golden-three/candidates/${candidate.id}/continuation`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({ version: candidate.version + 2 })
+      .expect(200);
+    await agent
+      .post(`${branchPath}/golden-three/candidates/${candidate.id}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: candidate.version + 3 })
       .expect(200);
   }
 
