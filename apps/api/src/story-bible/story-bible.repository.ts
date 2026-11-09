@@ -163,18 +163,28 @@ export class StoryBibleRepository implements OnModuleDestroy {
     userId: string,
     storyBibleId: string,
     query: StoryBibleVersionListQuery,
-  ): Promise<{ versions: StoryBibleVersionRecord[]; nextCursor: string | null }> {
+  ): Promise<
+    { versions: StoryBibleVersionRecord[]; nextCursor: string | null } | "invalid_cursor"
+  > {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(storyBibleVersions.userId, userId),
+        eq(storyBibleVersions.storyBibleId, storyBibleId),
+      );
+      if (query.cursor) {
+        const [cursor] = await transaction
+          .select({ id: storyBibleVersions.id })
+          .from(storyBibleVersions)
+          .where(and(scope, eq(storyBibleVersions.id, query.cursor)))
+          .limit(1);
+        if (!cursor) {
+          return "invalid_cursor";
+        }
+      }
       const rows = await transaction
         .select()
         .from(storyBibleVersions)
-        .where(
-          and(
-            eq(storyBibleVersions.userId, userId),
-            eq(storyBibleVersions.storyBibleId, storyBibleId),
-            query.cursor ? lt(storyBibleVersions.id, query.cursor) : undefined,
-          ),
-        )
+        .where(and(scope, query.cursor ? lt(storyBibleVersions.id, query.cursor) : undefined))
         .orderBy(desc(storyBibleVersions.id))
         .limit(query.limit + 1);
       const versions = rows.slice(0, query.limit);
@@ -189,7 +199,7 @@ export class StoryBibleRepository implements OnModuleDestroy {
     userId: string,
     storyBibleId: string,
     query: StoryBibleWorldRuleListQuery,
-  ): Promise<{ worldRules: StoryBibleWorldRule[]; nextCursor: string | null }> {
+  ): Promise<{ worldRules: StoryBibleWorldRule[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
       const [latestVersion] = await transaction
         .select({ id: storyBibleVersions.id })
@@ -203,18 +213,26 @@ export class StoryBibleRepository implements OnModuleDestroy {
         .orderBy(desc(storyBibleVersions.version))
         .limit(1);
       if (!latestVersion) {
-        return { worldRules: [], nextCursor: null };
+        return query.cursor ? "invalid_cursor" : { worldRules: [], nextCursor: null };
+      }
+      const scope = and(
+        eq(storyBibleWorldRules.userId, userId),
+        eq(storyBibleWorldRules.storyBibleVersionId, latestVersion.id),
+      );
+      if (query.cursor) {
+        const [cursor] = await transaction
+          .select({ id: storyBibleWorldRules.id })
+          .from(storyBibleWorldRules)
+          .where(and(scope, eq(storyBibleWorldRules.id, query.cursor)))
+          .limit(1);
+        if (!cursor) {
+          return "invalid_cursor";
+        }
       }
       const rows = await transaction
         .select()
         .from(storyBibleWorldRules)
-        .where(
-          and(
-            eq(storyBibleWorldRules.userId, userId),
-            eq(storyBibleWorldRules.storyBibleVersionId, latestVersion.id),
-            query.cursor ? lt(storyBibleWorldRules.id, query.cursor) : undefined,
-          ),
-        )
+        .where(and(scope, query.cursor ? lt(storyBibleWorldRules.id, query.cursor) : undefined))
         .orderBy(desc(storyBibleWorldRules.id))
         .limit(query.limit + 1);
       const worldRules = rows.slice(0, query.limit).map((rule) => ({

@@ -3,6 +3,7 @@ import type {
   ImportCandidateType,
   Work,
   WorkBranch,
+  WorkBranchListQuery,
   WorkCreateRequest,
   WorkListQuery,
   WorkOverview,
@@ -11,6 +12,7 @@ import type {
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { ReadinessService } from "../readiness/readiness.service";
@@ -75,6 +77,9 @@ export class WorksService {
     query: WorkListQuery,
   ): Promise<{ works: Work[]; nextCursor: string | null }> {
     const result = await this.repository.list(userId, query);
+    if (result === "invalid_cursor") {
+      throw invalidCursorError();
+    }
     const packs = await this.repository.findGenrePacksByIds(
       result.works.flatMap((work) => (work.templatePackId ? [work.templatePackId] : [])),
     );
@@ -129,13 +134,23 @@ export class WorksService {
     return this.toOverview(userId, work);
   }
 
-  async branches(userId: string, workId: string): Promise<WorkBranch[]> {
+  async branches(
+    userId: string,
+    workId: string,
+    query: WorkBranchListQuery,
+  ): Promise<CursorPageResult<WorkBranch>> {
     const work = await this.repository.find(userId, workId);
     if (!work) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
     }
-    const branches = await this.repository.findBranches(userId, workId);
-    return branches.map((branch) => this.toBranchContract(branch));
+    const page = await this.repository.listBranches(userId, workId, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map((branch) => this.toBranchContract(branch)),
+      nextCursor: page.nextCursor,
+    };
   }
 
   private async toOverview(

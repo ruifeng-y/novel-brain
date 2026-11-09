@@ -2971,7 +2971,10 @@ export interface operations {
   };
   AuthController_sessions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -2999,9 +3002,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -3043,7 +3045,10 @@ export interface operations {
   };
   AgentGrantController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -3109,9 +3114,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -3396,10 +3400,10 @@ export interface operations {
   AgentTraceController_list: {
     parameters: {
       query?: {
+        cursor?: string;
+        limit?: number;
         chapterId?: string;
         jobId?: string;
-        cursor?: string;
-        limit?: string;
       };
       header?: never;
       path: {
@@ -4134,8 +4138,8 @@ export interface operations {
   CanonController_list: {
     parameters: {
       query?: {
-        limit?: unknown;
-        cursor?: unknown;
+        cursor?: string;
+        limit?: number;
       };
       header?: never;
       path: {
@@ -4221,7 +4225,10 @@ export interface operations {
   };
   ChaptersController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -4297,9 +4304,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -4690,7 +4696,10 @@ export interface operations {
   };
   ChaptersController_versions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -4721,9 +4730,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -4952,7 +4960,10 @@ export interface operations {
   };
   CharactersController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -5211,9 +5222,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -7125,7 +7135,10 @@ export interface operations {
   };
   CharactersController_changeRequests: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -7180,9 +7193,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -7568,9 +7580,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -7579,7 +7590,10 @@ export interface operations {
   };
   FactsController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -7630,9 +7644,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -8279,6 +8292,8 @@ export interface operations {
   GenerationController_list: {
     parameters: {
       query: {
+        cursor?: string;
+        limit?: number;
         chapterId: string;
       };
       header?: never;
@@ -8638,9 +8653,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -12206,7 +12220,13 @@ export interface operations {
   };
   WorksController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        q?: string;
+        status?: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+        genre?: "xianxia" | "history" | "urban";
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -12503,7 +12523,10 @@ export interface operations {
   };
   WorksController_branches: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -12529,9 +12552,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -13063,7 +13085,10 @@ export interface operations {
   };
   ModelConfigController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -13106,9 +13131,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -16657,7 +16681,10 @@ export interface operations {
   };
   QualityController_annotations: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -16712,9 +16739,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -20431,7 +20457,10 @@ export interface operations {
   };
   ConfirmedSettingsController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -20480,9 +20509,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -21119,7 +21147,10 @@ export interface operations {
   };
   StoryBibleController_versions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -21186,7 +21217,10 @@ export interface operations {
   };
   StoryBibleController_worldRules: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -27666,7 +27700,10 @@ export interface operations {
   };
   UsersController_listPenNames: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -27695,9 +27732,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -27844,7 +27880,12 @@ export interface operations {
   };
   WorldController_listFactions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -28067,9 +28108,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -29173,7 +29213,12 @@ export interface operations {
   };
   WorldController_listMaps: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -29460,9 +29505,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -33082,7 +33126,12 @@ export interface operations {
   };
   PowerItemsController_listPowerSystems: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -33210,9 +33259,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -33921,7 +33969,12 @@ export interface operations {
   };
   PowerItemsController_listMechanisms: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -34182,9 +34235,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -35504,7 +35556,12 @@ export interface operations {
   };
   PowerItemsController_listItems: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -35704,9 +35761,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -37316,8 +37372,8 @@ export interface operations {
   WritingActionController_list: {
     parameters: {
       query?: {
-        limit?: unknown;
-        cursor?: unknown;
+        cursor?: string;
+        limit?: number;
       };
       header?: never;
       path: {
@@ -40811,8 +40867,8 @@ export interface operations {
   RevisionController_list: {
     parameters: {
       query?: {
-        limit?: unknown;
-        cursor?: unknown;
+        cursor?: string;
+        limit?: number;
       };
       header?: never;
       path: {

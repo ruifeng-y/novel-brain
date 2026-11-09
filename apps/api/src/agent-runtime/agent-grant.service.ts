@@ -2,12 +2,14 @@ import { Injectable } from "@nestjs/common";
 import {
   type AgentGrant,
   type AgentGrantCreateRequest,
+  type AgentGrantListQuery,
   type AgentGrantRevokeRequest,
 } from "@novel-brain/contracts";
 import { getToolRegistryEntry, isToolAllowedForRole } from "@novel-brain/core";
 import { toAgentGrantContract, type AgentGrantAudit, type AgentGrantScope } from "@novel-brain/db";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { AgentRuntimeRepository } from "./agent-runtime.repository";
@@ -56,13 +58,22 @@ export class AgentGrantService {
     return toAgentGrantContract(record);
   }
 
-  async list(userId: string, scope: AgentGrantScope): Promise<AgentGrant[]> {
+  async list(
+    userId: string,
+    scope: AgentGrantScope,
+    query: AgentGrantListQuery,
+  ): Promise<CursorPageResult<AgentGrant>> {
     if (!(await this.repository.scopeExists(userId, scope))) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品或分支不存在，无权访问授权");
     }
-    return (await this.repository.listGrants(userId, scope)).map((record) =>
-      toAgentGrantContract(record),
-    );
+    const page = await this.repository.listGrants(userId, scope, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map((record) => toAgentGrantContract(record)),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async get(userId: string, scope: AgentGrantScope, grantId: string): Promise<AgentGrant> {

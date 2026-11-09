@@ -264,6 +264,7 @@ export class CanonRepository implements OnModuleDestroy {
         nextCursor: string | null;
       }
     | "not_found"
+    | "invalid_cursor"
   > {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       const [context] = await transaction
@@ -284,6 +285,23 @@ export class CanonRepository implements OnModuleDestroy {
         .limit(1);
       if (!context) {
         return "not_found";
+      }
+      if (page.cursor) {
+        const [cursor] = await transaction
+          .select({ id: canonCommits.id })
+          .from(canonCommits)
+          .where(
+            and(
+              eq(canonCommits.userId, userId),
+              eq(canonCommits.workId, workId),
+              eq(canonCommits.branchId, branchId),
+              eq(canonCommits.id, page.cursor),
+            ),
+          )
+          .limit(1);
+        if (!cursor) {
+          return "invalid_cursor";
+        }
       }
       const commits = await transaction
         .select()

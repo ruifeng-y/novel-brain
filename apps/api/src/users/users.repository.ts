@@ -7,10 +7,13 @@ import {
   users,
   type DatabaseClient,
 } from "@novel-brain/db";
-import { and, desc, eq, isNull, ne, sql } from "drizzle-orm";
+import type { CursorPageQuery } from "@novel-brain/contracts";
+import { and, desc, eq, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
+
+import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
 
 export type UserProfileRecord = InferSelectModel<typeof users>;
 export type PenNameRecord = InferSelectModel<typeof penNames>;
@@ -96,12 +99,43 @@ export class UsersRepository implements OnModuleDestroy {
     });
   }
 
-  async listPenNames(userId: string): Promise<PenNameRecord[]> {
-    return this.db
+  async listPenNames(
+    userId: string,
+    query: CursorPageQuery,
+  ): Promise<CursorPageResult<PenNameRecord> | "invalid_cursor"> {
+    const scope = and(eq(penNames.userId, userId), isNull(penNames.deletedAt));
+    const cursor = query.cursor
+      ? (
+          await this.db
+            .select({
+              id: penNames.id,
+              createdAt: penNames.createdAt,
+            })
+            .from(penNames)
+            .where(and(scope, eq(penNames.id, query.cursor)))
+            .limit(1)
+        )[0]
+      : undefined;
+    if (query.cursor && !cursor) {
+      return "invalid_cursor";
+    }
+    const rows = await this.db
       .select()
       .from(penNames)
-      .where(and(eq(penNames.userId, userId), isNull(penNames.deletedAt)))
-      .orderBy(desc(penNames.isDefault), desc(penNames.updatedAt));
+      .where(
+        and(
+          scope,
+          cursor
+            ? or(
+                lt(penNames.createdAt, cursor.createdAt),
+                and(eq(penNames.createdAt, cursor.createdAt), lt(penNames.id, cursor.id)),
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(desc(penNames.createdAt), desc(penNames.id))
+      .limit(query.limit + 1);
+    return toCursorPage(rows, query.limit);
   }
 
   async createPenName(input: CreatePenNameInput): Promise<PenNameRecord> {

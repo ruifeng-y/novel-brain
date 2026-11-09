@@ -15,6 +15,7 @@ import {
 import {
   contextPackPreviewResponseSchema,
   generateChapterRequestSchema,
+  generationJobListQuerySchema,
   generationJobListResponseSchema,
   generationJobResponseSchema,
   jobRecoveryRequestSchema,
@@ -39,6 +40,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GenerationService } from "./generation.service";
@@ -118,21 +120,25 @@ export class GenerationController {
   }
 
   @Get("jobs")
+  @ApiQuerySchema(generationJobListQuerySchema)
   @ApiOkResponse({ description: "Chapter generation jobs", schema: jobListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
-    @Query("chapterId") chapterId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const pageQuery = generationJobListQuerySchema.parse(query ?? {});
+    const page = await this.service.list(
+      this.userId(request),
+      this.context(workId, branchId, pageQuery.chapterId),
+      pageQuery,
+    );
     return generationJobListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        this.context(workId, branchId, chapterId),
-      ),
+      data: page.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: page.nextCursor },
     });
   }
 

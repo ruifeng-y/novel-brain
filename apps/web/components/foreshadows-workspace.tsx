@@ -207,9 +207,13 @@ export function ForeshadowsWorkspace({ workId }: { workId: string }) {
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
       const branchPath = `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}`;
-      const [ledgerResponse, chapterResponse, entityData, timelineResponse] = await Promise.all([
+      const [ledgerResponse, chapterData, entityData, timelineResponse] = await Promise.all([
         fetch(`${branchPath}/ledger`, { cache: "no-store" }),
-        fetch(`${branchPath}/chapters`, { cache: "no-store" }),
+        fetchAllCursorPages(
+          `${branchPath}/chapters`,
+          chapterWorkspaceListResponseSchema.parse,
+          "章节列表加载失败。",
+        ),
         fetchAllCursorPages(
           `${branchPath}/entities`,
           settingEntityListResponseSchema.parse,
@@ -220,15 +224,12 @@ export function ForeshadowsWorkspace({ workId }: { workId: string }) {
       if (!ledgerResponse.ok) {
         throw new Error(await readError(ledgerResponse, "伏笔账本加载失败。"));
       }
-      if (!chapterResponse.ok) {
-        throw new Error(await readError(chapterResponse, "章节列表加载失败。"));
-      }
       if (!timelineResponse.ok) {
         throw new Error(await readError(timelineResponse, "时间线加载失败。"));
       }
       setWork(workData);
       setWorkspace(storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data);
-      setChapters(chapterWorkspaceListResponseSchema.parse(await chapterResponse.json()).data);
+      setChapters(chapterData);
       setEntities(entityData);
       setTimelineEvents(
         worldTimelineResponseSchema.parse(await timelineResponse.json()).data.events,
@@ -1691,9 +1692,16 @@ export function ForeshadowsWorkspace({ workId }: { workId: string }) {
     setNotice("");
     try {
       await refresh();
-      const chapterResponse = await fetch(`${basePath}/chapters`, { cache: "no-store" });
-      if (chapterResponse.ok) {
-        setChapters(chapterWorkspaceListResponseSchema.parse(await chapterResponse.json()).data);
+      try {
+        setChapters(
+          await fetchAllCursorPages(
+            `${basePath}/chapters`,
+            chapterWorkspaceListResponseSchema.parse,
+            "章节列表加载失败。",
+          ),
+        );
+      } catch {
+        // Keep the last successful chapter list when this refresh fails.
       }
       setNotice("检查已刷新。");
     } catch (caught) {

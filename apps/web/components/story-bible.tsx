@@ -29,6 +29,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 
 const statusLabels: Record<StoryBible["status"], string> = {
   draft: "草稿",
@@ -94,15 +95,13 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
       }
       setWork(workData);
       const bibleData = storyBibleResponseSchema.parse(await bibleResponse.json()).data;
-      const versionsResponse = await fetch(
+      const historyData = await fetchAllCursorPages(
         `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/story-bible/versions`,
-        { cache: "no-store" },
+        storyBibleVersionListResponseSchema.parse,
+        "版本历史加载失败。",
       );
-      if (!versionsResponse.ok) {
-        throw new Error(await readError(versionsResponse, "版本历史加载失败。"));
-      }
       setStoryBible(bibleData);
-      setHistory(storyBibleVersionListResponseSchema.parse(await versionsResponse.json()).data);
+      setHistory(historyData);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "故事圣经加载失败。");
     } finally {
@@ -254,12 +253,13 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
   }
 
   async function refreshHistory(targetWork: WorkOverview) {
-    const response = await fetch(
+    const historyData = await fetchAllCursorPages(
       `/api/v1/works/${targetWork.id}/branches/${targetWork.mainBranch.id}/story-bible/versions`,
-      { cache: "no-store" },
-    );
-    if (response.ok) {
-      setHistory(storyBibleVersionListResponseSchema.parse(await response.json()).data);
+      storyBibleVersionListResponseSchema.parse,
+      "版本历史加载失败。",
+    ).catch(() => null);
+    if (historyData) {
+      setHistory(historyData);
     }
   }
 

@@ -1,10 +1,11 @@
 import { Controller, Get, Param, Query, Req, UseGuards } from "@nestjs/common";
 import {
+  agentRunTraceListQuerySchema,
   agentRunTraceListResponseSchema,
   agentRunTraceResponseSchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
-import { ApiOkResponse, ApiQuery, ApiTags, type SchemaObject } from "@nestjs/swagger";
+import { ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
 import { createRequestId } from "@novel-brain/core";
 import { z } from "zod";
 
@@ -12,6 +13,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 import { ApiError } from "../common/api-error";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { AgentTraceService } from "./agent-trace.service";
@@ -30,21 +32,16 @@ export class AgentTraceController {
   constructor(private readonly service: AgentTraceService) {}
 
   @Get()
-  @ApiQuery({ name: "chapterId", required: false })
-  @ApiQuery({ name: "jobId", required: false })
-  @ApiQuery({ name: "cursor", required: false })
-  @ApiQuery({ name: "limit", required: false })
+  @ApiQuerySchema(agentRunTraceListQuerySchema)
   @ApiOkResponse({ description: "Tenant-scoped run traces", schema: traceListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
-    @Query("chapterId") chapterId?: string,
-    @Query("jobId") jobId?: string,
-    @Query("cursor") cursor?: string,
-    @Query("limit") limit?: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = agentRunTraceListQuerySchema.parse(query ?? {});
     const result = await this.service.list(
       this.userId(request),
       {
@@ -52,10 +49,10 @@ export class AgentTraceController {
         branchId: uuidV7Schema.parse(branchId),
       },
       {
-        ...(chapterId ? { chapterId: uuidV7Schema.parse(chapterId) } : {}),
-        ...(jobId ? { jobId: uuidV7Schema.parse(jobId) } : {}),
-        ...(cursor ? { cursor: uuidV7Schema.parse(cursor) } : {}),
-        limit: limit ? z.coerce.number().int().min(1).max(200).parse(limit) : 50,
+        ...(page.chapterId ? { chapterId: page.chapterId } : {}),
+        ...(page.jobId ? { jobId: page.jobId } : {}),
+        ...(page.cursor ? { cursor: page.cursor } : {}),
+        limit: page.limit,
       },
     );
     return agentRunTraceListResponseSchema.parse({

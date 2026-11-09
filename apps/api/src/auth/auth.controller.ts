@@ -6,11 +6,13 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   Res,
   UseGuards,
 } from "@nestjs/common";
 import {
+  authDeviceSessionsQuerySchema,
   authDeviceSessionsResponseSchema,
   authPasswordSchema,
   authSessionResponseSchema,
@@ -33,6 +35,7 @@ import type { Response } from "express";
 import { z } from "zod";
 
 import { ApiError } from "../common/api-error";
+import { ApiQuerySchema } from "../common/zod-openapi";
 import type { AuthenticatedRequest } from "./auth.types";
 import { randomToken } from "./auth-crypto";
 import { getClientIp } from "./client-ip";
@@ -222,16 +225,23 @@ export class AuthController {
 
   @Get("sessions")
   @UseGuards(SessionAuthGuard)
+  @ApiQuerySchema(authDeviceSessionsQuerySchema)
   @ApiOkResponse({ description: "Active sessions", schema: sessionsResponseJsonSchema })
-  async sessions(@Req() request: AuthenticatedRequest) {
+  async sessions(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     if (!request.auth) {
       throw new Error("Authenticated request is missing auth context");
     }
-    return authDeviceSessionsResponseSchema.parse(
-      responseEnvelope(
-        await this.authService.listSessions(request.auth.user.id, request.auth.session.id),
-      ),
+    const requestId = createRequestId();
+    const page = await this.authService.listSessions(
+      request.auth.user.id,
+      request.auth.session.id,
+      authDeviceSessionsQuerySchema.parse(query ?? {}),
     );
+    return authDeviceSessionsResponseSchema.parse({
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
+    });
   }
 
   @Delete("sessions/:sessionId")

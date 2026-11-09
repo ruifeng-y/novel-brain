@@ -458,22 +458,23 @@ export function SettingsCenter({
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
       const basePath = settingsPath(workData);
-      const [entityData, confirmedResponse, fieldData] = await Promise.all([
+      const [entityData, confirmedData, fieldData] = await Promise.all([
         fetchAllCursorPages(
           `${basePath}/entities`,
           settingEntityListResponseSchema.parse,
           "设定加载失败。",
         ),
-        fetch(`${basePath}/facts`, { cache: "no-store" }),
+        fetchAllCursorPages(
+          `${basePath}/facts`,
+          confirmedSettingListResponseSchema.parse,
+          "已确认设定加载失败。",
+        ),
         fetchAllCursorPages(
           `${basePath}/custom-fields`,
           customFieldDefinitionListResponseSchema.parse,
           "自定义字段加载失败。",
         ),
       ]);
-      if (!confirmedResponse.ok) {
-        throw new Error(await readError(confirmedResponse, "已确认设定加载失败。"));
-      }
       setWork(workData);
       setEntities(entityData);
       const requestedEntity = initialEntityId
@@ -489,7 +490,7 @@ export function SettingsCenter({
           setActiveColumn(requestedColumn.key);
         }
       }
-      setConfirmed(confirmedSettingListResponseSchema.parse(await confirmedResponse.json()).data);
+      setConfirmed(confirmedData);
       setCustomFields(fieldData);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "设定中心加载失败。");
@@ -736,13 +737,17 @@ export function SettingsCenter({
       return;
     }
     const basePath = settingsPath(work);
-    const [entityData, confirmedResponse, fieldData] = await Promise.all([
+    const [entityData, confirmedData, fieldData] = await Promise.all([
       fetchAllCursorPages(
         `${basePath}/entities`,
         settingEntityListResponseSchema.parse,
         "设定加载失败。",
       ),
-      fetch(`${basePath}/facts`, { cache: "no-store" }),
+      fetchAllCursorPages(
+        `${basePath}/facts`,
+        confirmedSettingListResponseSchema.parse,
+        "已确认设定加载失败。",
+      ),
       fetchAllCursorPages(
         `${basePath}/custom-fields`,
         customFieldDefinitionListResponseSchema.parse,
@@ -750,9 +755,7 @@ export function SettingsCenter({
       ),
     ]);
     setEntities(entityData);
-    if (confirmedResponse.ok) {
-      setConfirmed(confirmedSettingListResponseSchema.parse(await confirmedResponse.json()).data);
-    }
+    setConfirmed(confirmedData);
     setCustomFields(fieldData);
   }
 

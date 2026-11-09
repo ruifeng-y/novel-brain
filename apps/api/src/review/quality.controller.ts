@@ -7,10 +7,12 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
+  criticAnnotationListQuerySchema,
   criticAnnotationListResponseSchema,
   criticAnnotationPatchRequestSchema,
   criticAnnotationResponseSchema,
@@ -26,6 +28,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { QualityService } from "./quality.service";
@@ -97,23 +100,27 @@ export class QualityController {
   }
 
   @Get("chapters/:chapterId/annotations")
+  @ApiQuerySchema(criticAnnotationListQuerySchema)
   @ApiOkResponse({ description: "Structured critic annotations", schema: annotationsSchema })
   async annotations(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("chapterId") chapterId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = await this.service.annotations(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(chapterId),
+      criticAnnotationListQuerySchema.parse(query ?? {}),
+    );
     return criticAnnotationListResponseSchema.parse({
-      data: await this.service.annotations(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        uuidV7Schema.parse(chapterId),
-      ),
+      data: page.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: page.nextCursor },
     });
   }
 

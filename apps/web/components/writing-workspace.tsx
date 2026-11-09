@@ -326,16 +326,11 @@ export function WritingWorkspace({
         throw new Error(await readError(workResponse, "作品加载失败。"));
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
-      const chaptersResponse = await fetch(
+      const chapterData = await fetchAllCursorPages(
         `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/chapters`,
-        { cache: "no-store" },
+        chapterWorkspaceListResponseSchema.parse,
+        "写作台加载失败。",
       );
-      if (!chaptersResponse.ok) {
-        throw new Error(await readError(chaptersResponse, "写作台加载失败。"));
-      }
-      const chapterData = chapterWorkspaceListResponseSchema.parse(
-        await chaptersResponse.json(),
-      ).data;
       const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
       const [ledgerResponse, entityData, outlineResponse] = await Promise.all([
         fetch(`${basePath}/ledger`, { cache: "no-store" }),
@@ -424,14 +419,11 @@ export function WritingWorkspace({
     const timer = setInterval(() => {
       void (async () => {
         try {
-          const response = await fetch(
+          const plans = await fetchAllCursorPages(
             `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selectedId}/revisions`,
-            { cache: "no-store" },
+            revisionPlanWorkspaceListResponseSchema.parse,
+            "修订记录加载失败。",
           );
-          if (!response.ok) {
-            return;
-          }
-          const plans = revisionPlanWorkspaceListResponseSchema.parse(await response.json()).data;
           setRevisionPlans(plans);
           if (
             plans.some((plan) =>
@@ -454,13 +446,12 @@ export function WritingWorkspace({
             setContent(chapter.currentVersion?.content ?? "");
             setSavedContent(chapter.currentVersion?.content ?? "");
           }
-          const versionsResponse = await fetch(
+          const nextVersions = await fetchAllCursorPages(
             `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selectedId}/versions`,
-            { cache: "no-store" },
+            chapterVersionListResponseSchema.parse,
+            "版本加载失败。",
           );
-          if (versionsResponse.ok) {
-            setVersions(chapterVersionListResponseSchema.parse(await versionsResponse.json()).data);
-          }
+          setVersions(nextVersions);
         } catch {
           // The next poll retries while the revision job is still active.
         }
@@ -636,14 +627,11 @@ export function WritingWorkspace({
     chapterId: string,
     preferredRightVersionId?: string,
   ) {
-    const response = await fetch(
+    const nextVersions = await fetchAllCursorPages(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/versions`,
-      { cache: "no-store" },
+      chapterVersionListResponseSchema.parse,
+      "版本加载失败。",
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "版本加载失败。"));
-    }
-    const nextVersions = chapterVersionListResponseSchema.parse(await response.json()).data;
     setVersions(nextVersions);
     setLeftVersionId((current) =>
       nextVersions.some((version) => version.id === current)
@@ -661,14 +649,11 @@ export function WritingWorkspace({
   }
 
   async function loadGenerationJob(workData: WorkOverview, chapterId: string) {
-    const response = await fetch(
+    const jobs = await fetchAllCursorPages(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs?chapterId=${chapterId}`,
-      { cache: "no-store" },
+      generationJobListResponseSchema.parse,
+      "生成状态加载失败。",
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "生成状态加载失败。"));
-    }
-    const jobs = generationJobListResponseSchema.parse(await response.json()).data;
     const latest = jobs[0] ?? null;
     setGenerationJob(latest);
     if (latest) {
@@ -684,14 +669,11 @@ export function WritingWorkspace({
   }
 
   async function loadWritingActions(workData: WorkOverview, chapterId: string) {
-    const response = await fetch(
+    const jobs = await fetchAllCursorPages(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/write-actions`,
-      { cache: "no-store" },
+      writingActionJobListResponseSchema.parse,
+      "写作动作状态加载失败。",
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "写作动作状态加载失败。"));
-    }
-    const jobs = writingActionJobListResponseSchema.parse(await response.json()).data;
     const latest = jobs[0] ?? null;
     setWritingActionJob(latest);
     if (latest && isActiveGeneration(latest.status)) {
@@ -702,41 +684,40 @@ export function WritingWorkspace({
   }
 
   async function loadRunTraces(workData: WorkOverview, jobId: string) {
-    const response = await fetch(
-      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/agent-runs?jobId=${jobId}`,
-      { cache: "no-store" },
-    );
-    if (!response.ok) {
-      return;
+    try {
+      setRunTraces(
+        await fetchAllCursorPages(
+          `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/agent-runs?jobId=${jobId}`,
+          agentRunTraceListResponseSchema.parse,
+          "生成记录加载失败。",
+        ),
+      );
+    } catch {
+      // Keep the last successful trace while the next poll retries.
     }
-    setRunTraces(agentRunTraceListResponseSchema.parse(await response.json()).data);
   }
 
   async function loadFactProposals(workData: WorkOverview, chapterId: string) {
     setFactsLoading(true);
     try {
-      const response = await fetch(
-        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/fact-proposals`,
-        { cache: "no-store" },
+      setFactProposals(
+        await fetchAllCursorPages(
+          `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/fact-proposals`,
+          factProposalListResponseSchema.parse,
+          "本章事实加载失败。",
+        ),
       );
-      if (!response.ok) {
-        throw new Error(await readError(response, "本章事实加载失败。"));
-      }
-      setFactProposals(factProposalListResponseSchema.parse(await response.json()).data);
     } finally {
       setFactsLoading(false);
     }
   }
 
   async function loadCanonCommit(workData: WorkOverview, chapterId: string) {
-    const response = await fetch(
+    const commits = await fetchAllCursorPages(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/canon/commits`,
-      { cache: "no-store" },
+      canonCommitListResponseSchema.parse,
+      "事实提交记录加载失败。",
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "事实提交记录加载失败。"));
-    }
-    const commits = canonCommitListResponseSchema.parse(await response.json()).data;
     setCanonCommit(commits.find((commit) => commit.chapterId === chapterId) ?? null);
   }
 
@@ -763,14 +744,13 @@ export function WritingWorkspace({
   }
 
   async function loadRevisions(workData: WorkOverview, chapterId: string) {
-    const response = await fetch(
-      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/revisions`,
-      { cache: "no-store" },
+    setRevisionPlans(
+      await fetchAllCursorPages(
+        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/revisions`,
+        revisionPlanWorkspaceListResponseSchema.parse,
+        "修订记录加载失败。",
+      ),
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "修订记录加载失败。"));
-    }
-    setRevisionPlans(revisionPlanWorkspaceListResponseSchema.parse(await response.json()).data);
   }
 
   function upsertRevisionPlan(workspace: RevisionPlanWorkspace) {

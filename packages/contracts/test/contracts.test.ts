@@ -721,7 +721,7 @@ describe("shared contracts", () => {
           },
         ],
         requestId: "req_sessions",
-        meta: {},
+        meta: { nextCursor: null },
       }),
     ).toBeTruthy();
   });

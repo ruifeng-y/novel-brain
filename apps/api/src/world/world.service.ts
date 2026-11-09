@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import type {
   CharacterItinerary,
   CharacterItineraryCreateRequest,
+  FactionListQuery,
   FactionCreateRequest,
   FactionDetail,
   FactionProfileUpdateRequest,
@@ -13,6 +14,7 @@ import type {
   MapEdgeCreateRequest,
   MapLayer,
   MapLayerCreateRequest,
+  MapListQuery,
   MapMarker,
   MapMarkerCreateRequest,
   MapNode,
@@ -32,6 +34,7 @@ import type {
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { PowerItemsRepository } from "./power-items.repository";
@@ -55,14 +58,19 @@ export class WorldService {
     userId: string,
     workId: string,
     branchId: string,
-    query: ReadQuery,
-  ): Promise<FactionDetail[]> {
+    query: FactionListQuery,
+  ): Promise<CursorPageResult<FactionDetail>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return this.repository.listFactions(
+    const page = await this.repository.listFactions(
       userId,
       context,
       await this.readOptions(userId, context, query),
+      query,
     );
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async getFaction(
@@ -140,14 +148,19 @@ export class WorldService {
     userId: string,
     workId: string,
     branchId: string,
-    query: ReadQuery,
-  ): Promise<MapDetail[]> {
+    query: MapListQuery,
+  ): Promise<CursorPageResult<MapDetail>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return this.repository.listMaps(
+    const page = await this.repository.listMaps(
       userId,
       context,
       await this.readOptions(userId, context, query),
+      query,
     );
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async getMap(
@@ -340,11 +353,49 @@ export class WorldService {
     const options = await this.readOptions(userId, context, query);
     const [snapshot, powerSystems, mechanisms, items] = await Promise.all([
       this.repository.getSnapshot(userId, context, options),
-      this.powerItemsRepository.listPowerSystems(userId, context, options),
-      this.powerItemsRepository.listMechanisms(userId, context, options),
-      this.powerItemsRepository.listItems(userId, context, options),
+      this.collectAllPages((cursor) =>
+        this.powerItemsRepository.listPowerSystems(userId, context, options, {
+          limit: 100,
+          ...(cursor ? { cursor } : {}),
+        }),
+      ),
+      this.collectAllPages((cursor) =>
+        this.powerItemsRepository.listMechanisms(userId, context, options, {
+          limit: 100,
+          ...(cursor ? { cursor } : {}),
+        }),
+      ),
+      this.collectAllPages((cursor) =>
+        this.powerItemsRepository.listItems(userId, context, options, {
+          limit: 100,
+          ...(cursor ? { cursor } : {}),
+        }),
+      ),
     ]);
     return { ...snapshot, powerSystems, mechanisms, items };
+  }
+
+  private async collectAllPages<T>(
+    load: (cursor?: string) => Promise<CursorPageResult<T> | "invalid_cursor">,
+  ): Promise<T[]> {
+    const items: T[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+    do {
+      const page = await load(cursor);
+      if (page === "invalid_cursor") {
+        throw invalidCursorError();
+      }
+      items.push(...page.data);
+      cursor = page.nextCursor ?? undefined;
+      if (cursor && seenCursors.has(cursor)) {
+        throw new Error("Pagination cursor repeated while collecting world snapshot");
+      }
+      if (cursor) {
+        seenCursors.add(cursor);
+      }
+    } while (cursor);
+    return items;
   }
 
   private async readOptions(

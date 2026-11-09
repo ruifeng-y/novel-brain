@@ -33,6 +33,7 @@ import {
   type CharacterItinerary,
   type CharacterItineraryCreateRequest,
   type DomainRef,
+  type FactionListQuery,
   type FactionCreateRequest,
   type FactionDetail,
   type FactionProfile,
@@ -45,6 +46,7 @@ import {
   type MapEdgeCreateRequest,
   type MapLayer,
   type MapLayerCreateRequest,
+  type MapListQuery,
   type MapMarker,
   type MapMarkerCreateRequest,
   type MapNode,
@@ -64,7 +66,7 @@ import {
   type WorldTimeline,
 } from "@novel-brain/contracts";
 import { resolveCustomFieldWrite, writeCustomFieldValues } from "../settings/settings.repository";
-import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -175,23 +177,48 @@ export class WorldRepository implements OnModuleDestroy {
     userId: string,
     context: WorldWorkContext,
     options: ReadOptions,
-  ): Promise<FactionDetail[]> {
+    query: FactionListQuery,
+  ): Promise<{ data: FactionDetail[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        eq(entities.type, "faction"),
+        sql`${entities.deletedAt} is null`,
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: entities.id, createdAt: entities.createdAt })
+              .from(entities)
+              .where(and(scope, eq(entities.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const rows = await transaction
         .select({ id: entities.id })
         .from(entities)
         .where(
           and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            eq(entities.type, "faction"),
-            sql`${entities.deletedAt} is null`,
+            scope,
+            cursor
+              ? or(
+                  gt(entities.createdAt, cursor.createdAt),
+                  and(eq(entities.createdAt, cursor.createdAt), gt(entities.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(entities.createdAt));
+        .orderBy(asc(entities.createdAt), asc(entities.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const page = hasMore ? rows.slice(0, query.limit) : rows;
       const details: FactionDetail[] = [];
-      for (const row of rows) {
+      for (const row of page) {
         const detail = await this.readFactionInTransaction(
           transaction,
           userId,
@@ -203,7 +230,10 @@ export class WorldRepository implements OnModuleDestroy {
           details.push(detail);
         }
       }
-      return details;
+      return {
+        data: details,
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 
@@ -630,23 +660,48 @@ export class WorldRepository implements OnModuleDestroy {
     userId: string,
     context: WorldWorkContext,
     options: ReadOptions,
-  ): Promise<MapDetail[]> {
+    query: MapListQuery,
+  ): Promise<{ data: MapDetail[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        eq(entities.type, "map"),
+        sql`${entities.deletedAt} is null`,
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: entities.id, createdAt: entities.createdAt })
+              .from(entities)
+              .where(and(scope, eq(entities.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const rows = await transaction
         .select({ id: entities.id })
         .from(entities)
         .where(
           and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            eq(entities.type, "map"),
-            sql`${entities.deletedAt} is null`,
+            scope,
+            cursor
+              ? or(
+                  gt(entities.createdAt, cursor.createdAt),
+                  and(eq(entities.createdAt, cursor.createdAt), gt(entities.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(entities.createdAt));
+        .orderBy(asc(entities.createdAt), asc(entities.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const page = hasMore ? rows.slice(0, query.limit) : rows;
       const details: MapDetail[] = [];
-      for (const row of rows) {
+      for (const row of page) {
         const detail = await this.readMapInTransaction(
           transaction,
           userId,
@@ -658,7 +713,10 @@ export class WorldRepository implements OnModuleDestroy {
           details.push(detail);
         }
       }
-      return details;
+      return {
+        data: details,
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

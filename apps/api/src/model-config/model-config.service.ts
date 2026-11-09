@@ -3,12 +3,14 @@ import { decryptApiKey, encryptApiKey, maskApiKey } from "@novel-brain/ai";
 import type {
   ModelConfig,
   ModelConfigInput,
+  ModelConfigListQuery,
   ModelConfigUpdate,
   ModelProviderInfo,
 } from "@novel-brain/contracts";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 import {
   MODEL_CONNECTION_TESTER,
   type ConnectionTestResult,
@@ -34,8 +36,15 @@ export class ModelConfigService {
     return listProviders();
   }
 
-  async list(userId: string): Promise<ModelConfig[]> {
-    return (await this.repository.list(userId)).map((config) => this.toContract(config));
+  async list(userId: string, query: ModelConfigListQuery): Promise<CursorPageResult<ModelConfig>> {
+    const page = await this.repository.list(userId, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map((config) => this.toContract(config)),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async create(
@@ -90,8 +99,7 @@ export class ModelConfigService {
       throw new ApiError(409, "VERSION_CONFLICT", "配置已被其他操作更新，请刷新后重试");
     }
     if (input.isDefault === false && existing.isDefault) {
-      const configs = await this.repository.list(userId);
-      if (configs.filter((config) => config.isDefault).length === 1) {
+      if (!(await this.repository.hasOtherDefault(userId, id))) {
         throw new ApiError(400, "VALIDATION_INVALID", "至少保留一个默认配置");
       }
     }

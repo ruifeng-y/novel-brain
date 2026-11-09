@@ -21,12 +21,14 @@ import {
   characterProfileSchema,
   type CharacterChangeRequest,
   type CharacterChangeRequestCreateRequest,
+  type CharacterChangeRequestListQuery,
   type CharacterDetail,
   type CharacterHealthFinding,
   type CharacterHistory,
   type CharacterKnowledgeProjection,
   type CharacterKnowledgeState,
   type CharacterKnowledgeStateCreateRequest,
+  type CharacterListQuery,
   type CharacterProfileUpdateRequest,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
@@ -38,7 +40,7 @@ import {
 } from "@novel-brain/contracts";
 import { resolveCustomFieldWrite, writeCustomFieldValues } from "../settings/settings.repository";
 import { projectCharacterKnowledgeAtChapter } from "@novel-brain/core";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -148,30 +150,61 @@ export class CharactersRepository implements OnModuleDestroy {
     });
   }
 
-  async list(userId: string, context: CharacterWorkContext): Promise<CharacterDetail[]> {
-    const ids = await this.withTenant(userId, async (transaction) =>
-      transaction
+  async list(
+    userId: string,
+    context: CharacterWorkContext,
+    query: CharacterListQuery,
+  ): Promise<{ data: CharacterDetail[]; nextCursor: string | null } | "invalid_cursor"> {
+    return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        eq(entities.type, "character"),
+        sql`${entities.deletedAt} is null`,
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: entities.id, createdAt: entities.createdAt })
+              .from(entities)
+              .where(and(scope, eq(entities.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
         .select({ id: entities.id })
         .from(entities)
         .where(
           and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            eq(entities.type, "character"),
-            sql`${entities.deletedAt} is null`,
+            scope,
+            cursor
+              ? or(
+                  gt(entities.createdAt, cursor.createdAt),
+                  and(eq(entities.createdAt, cursor.createdAt), gt(entities.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(entities.createdAt)),
-    );
-    const details: CharacterDetail[] = [];
-    for (const id of ids) {
-      const detail = await this.getDetail(userId, context, id.id);
-      if (detail) {
-        details.push(detail);
+        .orderBy(asc(entities.createdAt), asc(entities.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const pageRows = hasMore ? rows.slice(0, query.limit) : rows;
+      const details: CharacterDetail[] = [];
+      for (const row of pageRows) {
+        const aggregate = await this.readAggregate(transaction, userId, context, row.id);
+        if (aggregate) {
+          details.push(this.toDetail(aggregate));
+        }
       }
-    }
-    return details;
+      return {
+        data: details,
+        nextCursor: hasMore ? (pageRows.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async getDetail(
@@ -802,25 +835,61 @@ export class CharactersRepository implements OnModuleDestroy {
     userId: string,
     context: CharacterWorkContext,
     characterId: string,
-  ): Promise<CharacterWriteResult<CharacterChangeRequest[]>> {
+    query: CharacterChangeRequestListQuery,
+  ): Promise<
+    { data: CharacterChangeRequest[]; nextCursor: string | null } | "not_found" | "invalid_cursor"
+  > {
     return this.withTenant(userId, async (transaction) => {
       const character = await findCharacter(transaction, userId, context, characterId);
       if (!character) {
-        return { kind: "not_found" };
+        return "not_found";
+      }
+      const scope = and(
+        eq(characterChangeRequests.userId, userId),
+        eq(characterChangeRequests.workId, context.workId),
+        eq(characterChangeRequests.branchId, context.branchId),
+        eq(characterChangeRequests.characterId, characterId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({
+                id: characterChangeRequests.id,
+                createdAt: characterChangeRequests.createdAt,
+              })
+              .from(characterChangeRequests)
+              .where(and(scope, eq(characterChangeRequests.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
       }
       const requests = await transaction
         .select()
         .from(characterChangeRequests)
         .where(
           and(
-            eq(characterChangeRequests.userId, userId),
-            eq(characterChangeRequests.workId, context.workId),
-            eq(characterChangeRequests.branchId, context.branchId),
-            eq(characterChangeRequests.characterId, characterId),
+            scope,
+            cursor
+              ? or(
+                  gt(characterChangeRequests.createdAt, cursor.createdAt),
+                  and(
+                    eq(characterChangeRequests.createdAt, cursor.createdAt),
+                    gt(characterChangeRequests.id, cursor.id),
+                  ),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(characterChangeRequests.createdAt));
-      return { kind: "ok", value: requests.map(toChangeRequestContract) };
+        .orderBy(asc(characterChangeRequests.createdAt), asc(characterChangeRequests.id))
+        .limit(query.limit + 1);
+      const hasMore = requests.length > query.limit;
+      const page = hasMore ? requests.slice(0, query.limit) : requests;
+      return {
+        data: page.map(toChangeRequestContract),
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

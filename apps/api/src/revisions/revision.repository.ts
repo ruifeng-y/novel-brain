@@ -544,8 +544,26 @@ export class RevisionRepository implements OnModuleDestroy {
     userId: string,
     context: RevisionContext,
     page: { cursor?: string | undefined; limit: number },
-  ): Promise<{ plans: RevisionPlanWorkspace[]; nextCursor: string | null }> {
+  ): Promise<{ plans: RevisionPlanWorkspace[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      if (page.cursor) {
+        const [cursor] = await transaction
+          .select({ id: revisionPlans.id })
+          .from(revisionPlans)
+          .where(
+            and(
+              eq(revisionPlans.userId, userId),
+              eq(revisionPlans.workId, context.workId),
+              eq(revisionPlans.branchId, context.branchId),
+              eq(revisionPlans.chapterId, context.chapterId),
+              eq(revisionPlans.id, page.cursor),
+            ),
+          )
+          .limit(1);
+        if (!cursor) {
+          return "invalid_cursor";
+        }
+      }
       const plans = await transaction
         .select()
         .from(revisionPlans)

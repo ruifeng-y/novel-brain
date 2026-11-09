@@ -15,6 +15,7 @@ import {
   type GenerateChapterJob,
   type GenerateChapterRequest,
   type GenerationJob,
+  type GenerationJobListQuery,
   type JobEvent,
   type JobRecoveryRecord,
   type JobRecoveryRequest,
@@ -27,6 +28,8 @@ import {
   resolveModelContextWindow,
 } from "@novel-brain/core";
 import { Observable } from "rxjs";
+
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 
 import { ApiError } from "../common/api-error";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -137,13 +140,22 @@ export class GenerationService {
     return this.toJobContract(record);
   }
 
-  async list(userId: string, context: GenerationWorkContext): Promise<GenerationJob[]> {
+  async list(
+    userId: string,
+    context: GenerationWorkContext,
+    query: GenerationJobListQuery,
+  ): Promise<CursorPageResult<GenerationJob>> {
     if (!(await this.repository.findWorkContext(userId, context))) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "章节不存在或无权访问");
     }
-    return (await this.repository.listJobs(userId, context)).map((record) =>
-      this.toJobContract(record),
-    );
+    const page = await this.repository.listJobs(userId, context, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map((record) => this.toJobContract(record)),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async contextPreview(

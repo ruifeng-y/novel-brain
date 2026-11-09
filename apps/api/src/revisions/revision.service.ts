@@ -7,6 +7,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WritingActionService } from "../writing-actions/writing-action.service";
@@ -99,7 +100,11 @@ export class RevisionService {
     context: RevisionContext,
     page: { cursor?: string | undefined; limit: number },
   ): Promise<{ plans: RevisionPlanWorkspace[]; nextCursor: string | null }> {
-    return this.repository.listPlans(userId, context, page);
+    const result = await this.repository.listPlans(userId, context, page);
+    if (result === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return result;
   }
 
   private async startRound(

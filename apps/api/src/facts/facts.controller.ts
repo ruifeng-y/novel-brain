@@ -1,6 +1,17 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Req, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  Param,
+  Post,
+  Query,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
 import {
   factProposalDecisionRequestSchema,
+  factProposalListQuerySchema,
   factProposalListResponseSchema,
   factProposalResponseSchema,
   uuidV7Schema,
@@ -12,6 +23,7 @@ import { z } from "zod";
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { FactsService } from "./facts.service";
@@ -48,28 +60,32 @@ export class FactsController {
         uuidV7Schema.parse(chapterId),
       ),
       requestId,
-      meta: {},
+      meta: { nextCursor: null },
     });
   }
 
   @Get("chapters/:chapterId/fact-proposals")
+  @ApiQuerySchema(factProposalListQuerySchema)
   @ApiOkResponse({ description: "Chapter fact proposals", schema: proposalListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("chapterId") chapterId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = await this.service.list(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(chapterId),
+      factProposalListQuerySchema.parse(query ?? {}),
+    );
     return factProposalListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        uuidV7Schema.parse(chapterId),
-      ),
+      data: page.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: page.nextCursor },
     });
   }
 
