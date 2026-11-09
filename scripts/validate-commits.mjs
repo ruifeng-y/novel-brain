@@ -7,6 +7,7 @@ import { parseReviewRangeArguments } from "./review-range-arguments.mjs";
 
 const CONVENTIONAL_SUBJECT =
   /^(?:build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(?:\([^)]+\))?!?: (.+)$/;
+const GITHUB_MERGE_SUBJECT = /^Merge pull request #\d+ from .+$/;
 const HAN_TEXT = /[\u3400-\u9fff]/g;
 const LATIN_WORD = /[A-Za-z][A-Za-z0-9]*/g;
 const TECHNICAL_WORDS = new Set([
@@ -37,6 +38,7 @@ const TECHNICAL_WORDS = new Set([
   "json",
   "lockfile",
   "main",
+  "merge",
   "migration",
   "node",
   "npm",
@@ -51,8 +53,10 @@ const TECHNICAL_WORDS = new Set([
   "preflight",
   "prettier",
   "production",
+  "pull",
   "push",
   "redis",
+  "request",
   "ref",
   "release",
   "resolver",
@@ -60,6 +64,7 @@ const TECHNICAL_WORDS = new Set([
   "sha",
   "snapshot",
   "sql",
+  "subject",
   "tag",
   "test",
   "tests",
@@ -117,6 +122,9 @@ export function validateCommitMessages(messages) {
 
   for (const message of messages) {
     const [subject, ...bodyLines] = message.split(/\r?\n/);
+    if (GITHUB_MERGE_SUBJECT.test(subject)) {
+      continue;
+    }
     const body = bodyLines.join("\n").trim();
     errors.push(...validateCommitSubjects([subject]));
     if (body && !isSimplifiedChineseProse(body, 0.15)) {

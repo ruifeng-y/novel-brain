@@ -68,7 +68,7 @@ test("rejects an unknown English word beside Chinese text", () => {
 test("allows recognized technical words in Chinese prose", () => {
   assert.deepEqual(
     validateCommitMessages([
-      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围\n- 使用 release 与 Git ref resolver",
+      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围\n- 使用 release 与 Git ref resolver\n- 校验 Merge pull request subject",
     ]),
     [],
   );
@@ -136,6 +136,15 @@ test("validates merge commit messages in the PR range", () => {
     assert.equal(result.status, 1);
     assert.match(result.stderr, /Merge branch 'side'/);
   });
+});
+
+test("allows GitHub-generated merge commits", () => {
+  assert.deepEqual(
+    validateCommitMessages([
+      "Merge pull request #169 from ruifeng-y/codex/agent-guardrails\n\nGuardrails",
+    ]),
+    [],
+  );
 });
 
 test("accepts a PR range with multiple Chinese commits", () => {
