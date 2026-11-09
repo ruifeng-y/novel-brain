@@ -1,15 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import {
-  characterDataSchema,
   type CustomFieldDefinitionListQuery,
   type CustomFieldDefinition,
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
   type CustomFieldValue,
-  factionDataSchema,
-  goldenFingerDataSchema,
-  mapDataSchema,
-  powerSystemDataSchema,
   settingEntityTypeSchema,
   settingEntityVersionSnapshotSummarySchema,
   settingStatusSchema,
@@ -35,8 +30,6 @@ import {
   type SettingProposalListQuery,
   type TimelineEventData,
   type WorldRuleData,
-  itemDataSchema,
-  timelineEventDataSchema,
   worldRuleDataSchema,
 } from "@novel-brain/contracts";
 
@@ -216,7 +209,7 @@ export class SettingsService {
       throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
     }
     if (input.data !== undefined) {
-      requireMatchingSettingData(current.type as SettingEntity["type"], input.data);
+      requireWorldRuleData(input.data);
     }
     const updated = await this.repository.update(userId, context, entityId, input, audit);
     if (updated === "not_found") {
@@ -809,30 +802,11 @@ function factType(predicate: string): ConfirmedSetting["type"] {
   return "world_rule";
 }
 
-function requireMatchingSettingData(
-  type: SettingEntity["type"],
-  data: SettingEntityPatchRequest["data"],
-): void {
+function requireWorldRuleData(data: SettingEntityPatchRequest["data"]): void {
   if (!data || Object.keys(data).length === 0) {
     throw new ApiError(400, "VALIDATION_INVALID", "至少需要修改一个类型字段");
   }
-  const schema =
-    type === "character"
-      ? characterDataSchema.partial()
-      : type === "golden_finger"
-        ? goldenFingerDataSchema.partial()
-        : type === "faction"
-          ? factionDataSchema.partial()
-          : type === "map"
-            ? mapDataSchema.partial()
-            : type === "power_system"
-              ? powerSystemDataSchema.partial()
-              : type === "item"
-                ? itemDataSchema.partial()
-                : type === "timeline_event"
-                  ? timelineEventDataSchema.partial()
-                  : worldRuleDataSchema.partial();
-  const parsed = schema.safeParse(data);
+  const parsed = worldRuleDataSchema.partial().safeParse(data);
   if (!parsed.success) {
     throw new ApiError(400, "VALIDATION_INVALID", "设定字段与当前类型不匹配");
   }

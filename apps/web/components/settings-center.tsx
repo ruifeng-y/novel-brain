@@ -3293,23 +3293,6 @@ function CharacterDomainView({
         ) : detail ? (
           <>
             <div className="settings-detail-block">
-              <h3>档案摘要</h3>
-              <dl className="settings-character-grid">
-                <div>
-                  <dt>当前身体状态</dt>
-                  <dd>{entity.data.bodyState || "尚未记录"}</dd>
-                </div>
-                <div>
-                  <dt>知识边界</dt>
-                  <dd>{entity.data.knowledgeBoundary || "尚未记录"}</dd>
-                </div>
-                <div>
-                  <dt>关系摘要</dt>
-                  <dd>{entity.data.relationshipSummary || "尚未记录"}</dd>
-                </div>
-              </dl>
-            </div>
-            <div className="settings-detail-block">
               <h3>基本档案</h3>
               <dl className="settings-character-grid">
                 <div>

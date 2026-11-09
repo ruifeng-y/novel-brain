@@ -204,6 +204,8 @@ function unwrap<T>(result: CharacterWriteResult<T>): T {
       throw tenantError();
     case "locked":
       throw new ApiError(409, "SETTING_LOCKED", "人物档案已锁定，请提交修改请求");
+    case "proposal_state":
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "人物档案正在提案或已废弃，不能直接编辑");
     case "version_conflict":
       throw new ApiError(409, "VERSION_CONFLICT", "人物档案已被其他操作更新，请刷新后重试");
     case "name_conflict":

@@ -942,6 +942,17 @@ export class SettingsRepository implements OnModuleDestroy {
       if (conflict) {
         return conflict;
       }
+      if (
+        (input.after.character && current.type !== "character") ||
+        (input.after.faction && current.type !== "faction") ||
+        (input.after.map && current.type !== "map") ||
+        (input.after.timeline && current.type !== "timeline_event") ||
+        (input.after.powerSystem && current.type !== "power_system") ||
+        (input.after.mechanism && current.type !== "golden_finger") ||
+        (input.after.item && current.type !== "item")
+      ) {
+        return "invalid_data";
+      }
       if (input.after.data) {
         const mergedData = { ...current.attributes, ...input.after.data };
         if (!settingDataSchemaForType(current.type).safeParse(mergedData).success) {

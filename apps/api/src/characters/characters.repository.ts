@@ -83,6 +83,7 @@ export type CharacterWriteResult<T> =
   | { kind: "ok"; value: T }
   | { kind: "not_found" }
   | { kind: "locked" }
+  | { kind: "proposal_state" }
   | { kind: "version_conflict" }
   | { kind: "name_conflict"; entityId: string; value: string }
   | { kind: "alias_conflict"; entityId: string; value: string }
@@ -279,6 +280,19 @@ export class CharactersRepository implements OnModuleDestroy {
       );
       if (current.kind !== "ok") {
         return current;
+      }
+      if (input.name !== undefined || input.aliases !== undefined) {
+        const conflict = await findCharacterConflict(
+          transaction,
+          userId,
+          context,
+          input.name ?? current.value.name,
+          input.aliases ?? current.value.aliases,
+          characterId,
+        );
+        if (conflict) {
+          return conflict;
+        }
       }
       const customFields = await resolveCustomFieldWrite(
         transaction,
@@ -1144,6 +1158,9 @@ async function findWritableCharacter(
   if (current.status === "locked") {
     return { kind: "locked" };
   }
+  if (current.status === "proposed" || current.status === "discarded") {
+    return { kind: "proposal_state" };
+  }
   if (expectedVersion !== null && current.version !== expectedVersion) {
     return { kind: "version_conflict" };
   }
@@ -1306,6 +1323,7 @@ async function findCharacterConflict(
   context: CharacterWorkContext,
   name: string,
   aliases: string[],
+  excludeEntityId?: string,
 ): Promise<
   | { kind: "name_conflict"; entityId: string; value: string }
   | { kind: "alias_conflict"; entityId: string; value: string }
@@ -1336,6 +1354,9 @@ async function findCharacterConflict(
       ),
     );
   for (const candidate of candidates) {
+    if (candidate.id === excludeEntityId) {
+      continue;
+    }
     const candidateName = normalizeIdentifier(candidate.name);
     const candidateAliases = candidate.aliases.map(normalizeIdentifier);
     if (candidate.type === "character" && candidateName === normalizedName) {

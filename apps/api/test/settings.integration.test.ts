@@ -2150,6 +2150,111 @@ describe("settings center HTTP integration", () => {
       version: 2,
       data: { event: "第二版事件描述。" },
     });
+
+    const listed = await owner.get(`${base}/entities?limit=50`).expect(200);
+    expect(listed.body.data.map((entity: { id: string }) => entity.id)).toEqual(
+      expect.arrayContaining([
+        character.body.data.id,
+        map.body.data.map.id,
+        timelineEvent.body.data.event.id,
+      ]),
+    );
+    const characterVersion = await owner
+      .get(`${base}/entities/${character.body.data.id}/versions?limit=1`)
+      .expect(200);
+    expect(characterVersion.body.data[0].snapshot.payload.name).toBe("沈砚·改");
+
+    const faction = await owner
+      .post(`${base}/world/factions`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "太玄门",
+        aliases: [],
+        summary: "北域第一剑宗。",
+        description: "",
+        tags: [],
+        profile: { overview: "第一版势力总览。", goals: "", resources: "", doctrine: "" },
+      })
+      .expect(201);
+    const power = await owner
+      .post(`${base}/world/power-systems`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "北域双路径",
+        aliases: [],
+        summary: "剑修与体修并行。",
+        description: "",
+        tags: [],
+        overview: "第一版力量体系。",
+        lifespanPolicy: {
+          mode: "none",
+          unit: "年",
+          basis: "",
+          description: "",
+          pathId: null,
+          fixedAmount: null,
+        },
+        paths: [],
+      })
+      .expect(201);
+    const mechanism = await owner
+      .post(`${base}/world/mechanisms`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "忘川书",
+        aliases: [],
+        summary: "吞噬记忆的古书。",
+        description: "",
+        tags: [],
+        mechanismType: "特殊机制",
+        owner: null,
+        powerSystem: null,
+        rules: "吞噬记忆换取力量。",
+        costs: "",
+        limits: "",
+        growth: "",
+      })
+      .expect(201);
+    const item = await owner
+      .post(`${base}/world/items`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "听潮剑",
+        aliases: [],
+        summary: "会记录持剑者杀意的法器。",
+        description: "",
+        tags: [],
+        kind: "item",
+        category: "信物",
+        grade: "玄阶",
+        effect: "剑身会记录杀意。",
+        cost: "",
+        limits: "",
+        ownershipModel: "shared",
+        consumable: false,
+        quantity: 1,
+        equipmentSlot: null,
+      })
+      .expect(201);
+
+    for (const rejected of [
+      { id: faction.body.data.faction.id, version: faction.body.data.version },
+      { id: power.body.data.powerSystem.id, version: power.body.data.version },
+      { id: mechanism.body.data.mechanism.id, version: 1 },
+      { id: item.body.data.item.id, version: 1 },
+    ]) {
+      const response = await owner
+        .patch(`${base}/entities/${rejected.id}`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({ version: rejected.version, data: { details: "不允许写回领域真源。" } })
+        .expect(400);
+      expect(response.body.error.code).toBe("SETTING_DOMAIN_DATA_FORBIDDEN");
+    }
   });
 
   it("lists and restores a character domain snapshot written by the character API", async () => {

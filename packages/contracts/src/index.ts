@@ -1296,7 +1296,18 @@ export const settingEntityPatchRequestSchema = z
     version: z.number().int().positive(),
     ...settingEntityPatchShape,
     customFields: customFieldValuesSchema.optional(),
-    data: z.record(z.string(), z.unknown()).optional(),
+    data: z
+      .union([
+        worldRuleDataSchema.partial(),
+        characterDataSchema.partial(),
+        factionDataSchema.partial(),
+        mapDataSchema.partial(),
+        powerSystemDataSchema.partial(),
+        goldenFingerDataSchema.partial(),
+        itemDataSchema.partial(),
+        timelineEventDataSchema.partial(),
+      ])
+      .optional(),
   })
   .refine(
     (input) =>

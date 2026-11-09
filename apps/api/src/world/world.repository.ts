@@ -316,6 +316,19 @@ export class WorldRepository implements OnModuleDestroy {
       if (current.kind !== "ok") {
         return current;
       }
+      if (input.name !== undefined || input.aliases !== undefined) {
+        const conflict = await findEntityConflict(
+          transaction,
+          userId,
+          context,
+          input.name ?? current.value.name,
+          input.aliases ?? current.value.aliases,
+          factionId,
+        );
+        if (conflict) {
+          return conflict;
+        }
+      }
       const customFields = await resolveCustomFieldWrite(
         transaction,
         userId,
@@ -742,6 +755,19 @@ export class WorldRepository implements OnModuleDestroy {
       );
       if (current.kind !== "ok") {
         return current;
+      }
+      if (input.name !== undefined || input.aliases !== undefined) {
+        const conflict = await findEntityConflict(
+          transaction,
+          userId,
+          context,
+          input.name ?? current.value.name,
+          input.aliases ?? current.value.aliases,
+          mapId,
+        );
+        if (conflict) {
+          return conflict;
+        }
       }
       const customFields = await resolveCustomFieldWrite(
         transaction,
@@ -1413,6 +1439,19 @@ export class WorldRepository implements OnModuleDestroy {
       if (current.kind !== "ok") {
         return current;
       }
+      if (input.name !== undefined || input.aliases !== undefined) {
+        const conflict = await findEntityConflict(
+          transaction,
+          userId,
+          context,
+          input.name ?? current.value.name,
+          input.aliases ?? current.value.aliases,
+          eventId,
+        );
+        if (conflict) {
+          return conflict;
+        }
+      }
       const [currentEvent] = await transaction
         .select()
         .from(timelineEvents)
@@ -1538,7 +1577,14 @@ export class WorldRepository implements OnModuleDestroy {
             : {}),
           versionNodeId,
         })
-        .where(eq(timelineEvents.id, eventId))
+        .where(
+          and(
+            eq(timelineEvents.id, eventId),
+            eq(timelineEvents.userId, userId),
+            eq(timelineEvents.workId, context.workId),
+            eq(timelineEvents.branchId, context.branchId),
+          ),
+        )
         .returning();
       if (!updatedEvent) {
         throw new Error("Failed to update timeline event");
@@ -2596,6 +2642,7 @@ async function findEntityConflict(
   context: WorldWorkContext,
   name: string,
   aliases: string[],
+  excludeEntityId?: string,
 ): Promise<{ kind: "name_conflict" } | { kind: "alias_conflict" } | undefined> {
   const normalizedName = normalizeIdentifier(name);
   const normalizedAliases = aliases.map(normalizeIdentifier);
@@ -2606,7 +2653,7 @@ async function findEntityConflict(
     return { kind: "alias_conflict" };
   }
   const rows = await transaction
-    .select({ name: entities.name, aliases: entities.aliases })
+    .select({ id: entities.id, name: entities.name, aliases: entities.aliases })
     .from(entities)
     .where(
       and(
@@ -2617,6 +2664,9 @@ async function findEntityConflict(
       ),
     );
   for (const row of rows) {
+    if (row.id === excludeEntityId) {
+      continue;
+    }
     if (normalizeIdentifier(row.name) === normalizedName) {
       return { kind: "name_conflict" };
     }
