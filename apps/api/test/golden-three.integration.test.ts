@@ -44,6 +44,10 @@ describe("golden three HTTP integration", () => {
     process.env.ALLOW_INSECURE_LOCAL_PROXY_IP = "true";
     process.env.APP_ORIGIN = origin;
     process.env.NODE_ENV = "test";
+    process.env.MODEL_CONNECTION_TESTER = "fake";
+    process.env.MODEL_CONFIG_ENCRYPTION_KEY = "0123456789abcdef0123456789abcdef";
+    process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
+    process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1";
 
     await runMigrations(databaseUrl);
     databasePool = createDatabasePool(databaseUrl);
@@ -362,6 +366,8 @@ describe("golden three HTTP integration", () => {
     const basePath = branchPathOf(work);
     const chapters = await createGoldenThreeChapters(owner, token, basePath);
     const outlinePath = `${basePath}/golden-three`;
+    await createModelConfig(owner, token);
+    await createGoldenThreeContext(owner, token, basePath);
 
     const generated = await owner
       .post(`${outlinePath}/candidates/generate`)
@@ -378,12 +384,17 @@ describe("golden three HTTP integration", () => {
     for (const [index, candidate] of workspace.candidates.entries()) {
       expect(candidate.status).toBe("reviewed");
       expect(candidate.reviewSummary).toMatchObject({ completed: 6, requiredFailed: 0 });
-      expect(candidate.prompt).toMatchObject({ key: "golden-three-generate", version: 1 });
+      expect(candidate.prompt).toMatchObject({ key: "golden-three-opening", version: 1 });
       expect(candidate.model).toMatchObject({
-        provider: "deterministic",
-        model: "deterministic-golden-three-v1",
+        provider: "fake",
+        model: "deepseek-chat",
       });
       expect(candidate.context.manifestHash).toMatch(/^[a-f0-9]{64}$/);
+      expect(candidate.trace).toMatchObject({
+        jobId: expect.any(String),
+        agentRunId: expect.any(String),
+        modelCallId: expect.any(String),
+      });
       expect(candidate.pins.map((pin: { chapterNumber: number }) => pin.chapterNumber)).toEqual([
         1,
       ]);
@@ -399,6 +410,36 @@ describe("golden three HTTP integration", () => {
       [chapters.map((chapter) => chapter.id)],
     );
     expect(versionCount.rows[0]?.count).toBe("6");
+
+    const jobId = workspace.candidates[0].trace.jobId as string;
+    const provenance = await databasePool.query<{
+      context_packs: string;
+      prompts: string;
+      agent_runs: string;
+      model_calls: string;
+      usage_records: string;
+      reservations: string;
+      providers: string[];
+    }>(
+      `SELECT
+         (SELECT count(*) FROM context_pack_versions WHERE job_id = $1) AS context_packs,
+         (SELECT count(*) FROM prompt_versions WHERE job_id = $1) AS prompts,
+         (SELECT count(*) FROM agent_runs WHERE job_id = $1) AS agent_runs,
+         (SELECT count(*) FROM model_calls WHERE job_id = $1) AS model_calls,
+         (SELECT count(*) FROM usage_records WHERE job_id = $1) AS usage_records,
+         (SELECT count(*) FROM cost_reservations WHERE job_id = $1) AS reservations,
+         (SELECT array_agg(DISTINCT provider) FROM model_calls WHERE job_id = $1) AS providers`,
+      [jobId],
+    );
+    expect(provenance.rows[0]).toMatchObject({
+      context_packs: "1",
+      prompts: "3",
+      agent_runs: "3",
+      model_calls: "3",
+      usage_records: "3",
+      reservations: "3",
+      providers: ["fake"],
+    });
 
     const repeated = await owner
       .post(`${outlinePath}/candidates/generate`)
@@ -457,6 +498,56 @@ describe("golden three HTTP integration", () => {
       details: { chapterNumbers: [1], retryable: true },
     });
     expect((await owner.get(outlinePath).expect(200)).body.data.candidates).toHaveLength(0);
+  });
+
+  it("blocks generation without an author writing model", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-no-model@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    await createGoldenThreeChapters(owner, token, basePath);
+
+    const response = await owner
+      .post(`${basePath}/golden-three/candidates/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "golden-three-no-model")
+      .send({ candidateCount: 3 })
+      .expect(409);
+    expect(response.body.error.code).toBe("GOLDEN_THREE_MODEL_REQUIRED");
+    expect(
+      (await owner.get(`${basePath}/golden-three`).expect(200)).body.data.candidates,
+    ).toHaveLength(0);
+  });
+
+  it("returns a recoverable model failure without persisting template candidates", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-model-failure@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    await createGoldenThreeChapters(owner, token, basePath);
+    await createModelConfig(owner, token);
+    await createGoldenThreeContext(owner, token, basePath);
+
+    process.env.GOLDEN_THREE_FAKE_FAILURE = "1";
+    try {
+      const response = await owner
+        .post(`${basePath}/golden-three/candidates/generate`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .set("Idempotency-Key", "golden-three-model-failure")
+        .send({ candidateCount: 3 })
+        .expect(502);
+      expect(response.body.error).toMatchObject({
+        code: "GOLDEN_THREE_GENERATION_FAILED",
+        details: { retryable: true },
+      });
+    } finally {
+      delete process.env.GOLDEN_THREE_FAKE_FAILURE;
+    }
+    expect(
+      (await owner.get(`${basePath}/golden-three`).expect(200)).body.data.candidates,
+    ).toHaveLength(0);
   });
 
   it("rejects cross-tenant access, unsupported evidence and locking before selection", async () => {
@@ -648,6 +739,94 @@ async function createGoldenThreeChapters(agent: SuperAgentTest, token: string, b
     });
   }
   return chapters;
+}
+
+async function createModelConfig(agent: SuperAgentTest, token: string): Promise<void> {
+  const response = await agent
+    .post("/api/v1/model-configs")
+    .set("Origin", origin)
+    .set("X-CSRF-Token", token)
+    .send({
+      provider: "openai-compatible",
+      label: "黄金三章正文",
+      baseUrl: "https://8.8.8.8/v1",
+      model: "deepseek-chat",
+      apiKey: "sk-fake-golden-three-1234",
+      purposes: ["writing"],
+      isDefault: true,
+    });
+  expect(response.status).toBe(200);
+}
+
+async function createGoldenThreeContext(
+  agent: SuperAgentTest,
+  token: string,
+  branchPath: string,
+): Promise<void> {
+  const generated = await agent
+    .post(`${branchPath}/story-bible/generate`)
+    .set("Origin", origin)
+    .set("X-CSRF-Token", token)
+    .send({})
+    .expect(200);
+  await agent
+    .post(`${branchPath}/story-bible/lock`)
+    .set("Origin", origin)
+    .set("X-CSRF-Token", token)
+    .send({ version: generated.body.data.version })
+    .expect(200);
+  const entities = [
+    {
+      type: "world_rule",
+      name: "天门只认完整记忆",
+      aliases: [],
+      summary: "失去关键记忆的人无法通过天门。",
+      description: "",
+      tags: [],
+      data: { rule: "主动抹除关键记忆会导致天门通行失败。" },
+    },
+    {
+      type: "character",
+      name: "沈砚",
+      aliases: [],
+      summary: "隐藏忘川书的外门杂役。",
+      description: "",
+      tags: [],
+      data: {
+        bodyState: "左臂骨折，不能双手结印。",
+        knowledgeBoundary: "不知道父母死于仇杀。",
+        relationshipSummary: "与顾青互相试探。",
+      },
+    },
+    {
+      type: "golden_finger",
+      name: "忘川书",
+      aliases: [],
+      summary: "以记忆换取前人经验。",
+      description: "",
+      tags: [],
+      data: {
+        rules: "每次只能借用一位前人的经验。",
+        cost: "永久失去一段重要记忆。",
+        limits: "每次使用消耗一页。",
+        growth: "缺失记忆会拼成完整人格。",
+      },
+    },
+  ] as const;
+  for (const entity of entities) {
+    const created = await agent
+      .post(`${branchPath}/entities`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send(entity)
+      .expect(201);
+    await agent
+      .post(`${branchPath}/entities/${created.body.data.id}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: created.body.data.version })
+      .expect(200);
+  }
 }
 
 function candidateInput(

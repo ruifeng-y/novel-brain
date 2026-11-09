@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { createConfirmedSettings, createModelConfig, lockStoryBible } from "../helpers/m0";
 import { expectAuthorFacingLanguage } from "../helpers/ui";
 
 const origin = "http://localhost:3000";
@@ -41,6 +42,10 @@ async function seedGoldenThree(
   work: { id: string; mainBranch: { id: string } },
 ) {
   const basePath = branchPath(work);
+  await createModelConfig(page.request);
+  await lockStoryBible(page.request, basePath);
+  await createConfirmedSettings(page.request, basePath);
+  const apiToken = await getCsrf(page.request);
   const chapters: Array<{ id: string; versionId: string; contentHash: string; content: string }> =
     [];
   for (let number = 1; number <= 3; number += 1) {
@@ -50,7 +55,7 @@ async function seedGoldenThree(
       "他记得自己赢了，却忘了为什么要赢。",
     ][number - 1]!;
     const created = await page.request.post(`${basePath}/chapters`, {
-      headers: { Origin: origin, "X-CSRF-Token": token },
+      headers: { Origin: origin, "X-CSRF-Token": apiToken },
       data: {
         number,
         title: ["断碑夜雨", "铜牌背面", "忘名之价"][number - 1],
@@ -66,7 +71,7 @@ async function seedGoldenThree(
     expect(created.status()).toBe(201);
     const chapterId = (await created.json()).data.id as string;
     const version = await page.request.post(`${basePath}/chapters/${chapterId}/versions`, {
-      headers: { Origin: origin, "X-CSRF-Token": token },
+      headers: { Origin: origin, "X-CSRF-Token": apiToken },
       data: { version: 1, content },
     });
     expect(version.status()).toBe(201);
@@ -81,7 +86,7 @@ async function seedGoldenThree(
   const batch = await page.request.post(`${basePath}/golden-three/candidates`, {
     headers: {
       Origin: origin,
-      "X-CSRF-Token": token,
+      "X-CSRF-Token": apiToken,
       "Idempotency-Key": "golden-three-e2e",
     },
     data: {
@@ -102,12 +107,12 @@ async function seedGoldenThree(
   const [candidateA, candidateB] = workspace.candidates;
   expect(candidateA && candidateB).toBeTruthy();
 
-  await putReviews(page, token, basePath, candidateA!, 3);
-  await putReviews(page, token, basePath, candidateB!, 4);
+  await putReviews(page, apiToken, basePath, candidateA!, 3);
+  await putReviews(page, apiToken, basePath, candidateB!, 4);
   const selected = await page.request.post(
     `${basePath}/golden-three/candidates/${candidateA!.id}/select`,
     {
-      headers: { Origin: origin, "X-CSRF-Token": token },
+      headers: { Origin: origin, "X-CSRF-Token": apiToken },
       data: { version: candidateA!.version + 1 },
     },
   );

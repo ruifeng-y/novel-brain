@@ -316,6 +316,13 @@
       "when": 1794207684498,
       "tag": "0044_nebulous_omega_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1794210528895,
+      "tag": "0045_amused_vengeance",
+      "breakpoints": true
     }
   ]
 }

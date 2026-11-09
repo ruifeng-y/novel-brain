@@ -3898,6 +3898,11 @@ export const goldenThreeCandidates = pgTable(
     }),
     contextManifestHash: text("context_manifest_hash").notNull(),
     chapterPins: jsonb("chapter_pins").$type<GoldenThreeChapterPinJson[]>().notNull(),
+    generationJobId: uuid("generation_job_id").references(() => jobs.id, {
+      onDelete: "set null",
+    }),
+    agentRunId: uuid("agent_run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    modelCallId: uuid("model_call_id").references(() => modelCalls.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },

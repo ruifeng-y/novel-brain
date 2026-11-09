@@ -168,6 +168,7 @@ describe("golden three contracts", () => {
             pins: [pinnedChapter(1), pinnedChapter(2)],
             createdAt: "2026-11-06T08:02:00.000Z",
           },
+          trace: null,
           reviews: GOLDEN_THREE_REVIEW_DIMENSIONS.map((dimension, index) => ({
             ...reviewInput(dimension),
             id: `0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1f0${index}`,
@@ -200,6 +201,7 @@ describe("golden three contracts", () => {
           context: batch.candidates[1]!.context,
           pins: [pinnedChapter(0)],
           continuation: null,
+          trace: null,
           reviews: [],
           reviewSummary: {
             completed: 0,

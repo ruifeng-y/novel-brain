@@ -212,6 +212,13 @@ export class GoldenThreeService {
           "GOLDEN_THREE_CONTINUATION_REQUIRED",
           "请先生成或登记第 2、3 章续写",
         );
+      case "model_config_missing":
+        return new ApiError(409, "GOLDEN_THREE_MODEL_REQUIRED", "请先配置用于写作的作者模型");
+      case "model_generation_failed":
+        return new ApiError(502, "GOLDEN_THREE_GENERATION_FAILED", result.message, {
+          failureClass: result.failureClass,
+          retryable: true,
+        });
       case "review_incomplete":
         return new ApiError(409, "GOLDEN_THREE_REVIEW_FAILED", "六维评审尚未完成", {
           completed: result.completed,

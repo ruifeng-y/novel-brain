@@ -2601,6 +2601,8 @@
                                     "GOLDEN_THREE_REVIEW_FAILED",
                                     "GOLDEN_THREE_SELECTION_REQUIRED",
                                     "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                    "GOLDEN_THREE_MODEL_REQUIRED",
+                                    "GOLDEN_THREE_GENERATION_FAILED",
                                     "GOLDEN_THREE_ALREADY_LOCKED",
                                     "GOLDEN_THREE_OVERRIDE_INVALID",
                                     "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -3387,6 +3389,8 @@
                                   "GOLDEN_THREE_REVIEW_FAILED",
                                   "GOLDEN_THREE_SELECTION_REQUIRED",
                                   "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                  "GOLDEN_THREE_MODEL_REQUIRED",
+                                  "GOLDEN_THREE_GENERATION_FAILED",
                                   "GOLDEN_THREE_ALREADY_LOCKED",
                                   "GOLDEN_THREE_OVERRIDE_INVALID",
                                   "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -15091,6 +15095,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -16583,6 +16589,8 @@
                                   "GOLDEN_THREE_REVIEW_FAILED",
                                   "GOLDEN_THREE_SELECTION_REQUIRED",
                                   "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                  "GOLDEN_THREE_MODEL_REQUIRED",
+                                  "GOLDEN_THREE_GENERATION_FAILED",
                                   "GOLDEN_THREE_ALREADY_LOCKED",
                                   "GOLDEN_THREE_OVERRIDE_INVALID",
                                   "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -17509,6 +17517,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -18434,6 +18444,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -19359,6 +19371,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -20333,6 +20347,8 @@
                                     "GOLDEN_THREE_REVIEW_FAILED",
                                     "GOLDEN_THREE_SELECTION_REQUIRED",
                                     "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                    "GOLDEN_THREE_MODEL_REQUIRED",
+                                    "GOLDEN_THREE_GENERATION_FAILED",
                                     "GOLDEN_THREE_ALREADY_LOCKED",
                                     "GOLDEN_THREE_OVERRIDE_INVALID",
                                     "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -21393,6 +21409,26 @@
                                 "required": ["versionNodeId", "pins", "createdAt"],
                                 "additionalProperties": false
                               },
+                              "trace": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "jobId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "agentRunId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "modelCallId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  }
+                                },
+                                "required": ["jobId", "agentRunId", "modelCallId"],
+                                "additionalProperties": false
+                              },
                               "reviews": {
                                 "maxItems": 6,
                                 "type": "array",
@@ -21555,6 +21591,7 @@
                               "context",
                               "pins",
                               "continuation",
+                              "trace",
                               "reviews",
                               "reviewSummary",
                               "createdAt",
@@ -22295,6 +22332,26 @@
                                 "required": ["versionNodeId", "pins", "createdAt"],
                                 "additionalProperties": false
                               },
+                              "trace": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "jobId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "agentRunId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "modelCallId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  }
+                                },
+                                "required": ["jobId", "agentRunId", "modelCallId"],
+                                "additionalProperties": false
+                              },
                               "reviews": {
                                 "maxItems": 6,
                                 "type": "array",
@@ -22457,6 +22514,7 @@
                               "context",
                               "pins",
                               "continuation",
+                              "trace",
                               "reviews",
                               "reviewSummary",
                               "createdAt",
@@ -23113,6 +23171,26 @@
                                 "required": ["versionNodeId", "pins", "createdAt"],
                                 "additionalProperties": false
                               },
+                              "trace": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "jobId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "agentRunId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "modelCallId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  }
+                                },
+                                "required": ["jobId", "agentRunId", "modelCallId"],
+                                "additionalProperties": false
+                              },
                               "reviews": {
                                 "maxItems": 6,
                                 "type": "array",
@@ -23275,6 +23353,7 @@
                               "context",
                               "pins",
                               "continuation",
+                              "trace",
                               "reviews",
                               "reviewSummary",
                               "createdAt",
@@ -23982,6 +24061,26 @@
                                 "required": ["versionNodeId", "pins", "createdAt"],
                                 "additionalProperties": false
                               },
+                              "trace": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "jobId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "agentRunId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "modelCallId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  }
+                                },
+                                "required": ["jobId", "agentRunId", "modelCallId"],
+                                "additionalProperties": false
+                              },
                               "reviews": {
                                 "maxItems": 6,
                                 "type": "array",
@@ -24144,6 +24243,7 @@
                               "context",
                               "pins",
                               "continuation",
+                              "trace",
                               "reviews",
                               "reviewSummary",
                               "createdAt",
@@ -24794,6 +24894,26 @@
                                 "required": ["versionNodeId", "pins", "createdAt"],
                                 "additionalProperties": false
                               },
+                              "trace": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "jobId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "agentRunId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "modelCallId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  }
+                                },
+                                "required": ["jobId", "agentRunId", "modelCallId"],
+                                "additionalProperties": false
+                              },
                               "reviews": {
                                 "maxItems": 6,
                                 "type": "array",
@@ -24956,6 +25076,7 @@
                               "context",
                               "pins",
                               "continuation",
+                              "trace",
                               "reviews",
                               "reviewSummary",
                               "createdAt",
@@ -25622,6 +25743,26 @@
                                 "required": ["versionNodeId", "pins", "createdAt"],
                                 "additionalProperties": false
                               },
+                              "trace": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "jobId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "agentRunId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "modelCallId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  }
+                                },
+                                "required": ["jobId", "agentRunId", "modelCallId"],
+                                "additionalProperties": false
+                              },
                               "reviews": {
                                 "maxItems": 6,
                                 "type": "array",
@@ -25784,6 +25925,7 @@
                               "context",
                               "pins",
                               "continuation",
+                              "trace",
                               "reviews",
                               "reviewSummary",
                               "createdAt",
@@ -26458,6 +26600,26 @@
                                 "required": ["versionNodeId", "pins", "createdAt"],
                                 "additionalProperties": false
                               },
+                              "trace": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "jobId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "agentRunId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "modelCallId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  }
+                                },
+                                "required": ["jobId", "agentRunId", "modelCallId"],
+                                "additionalProperties": false
+                              },
                               "reviews": {
                                 "maxItems": 6,
                                 "type": "array",
@@ -26620,6 +26782,7 @@
                               "context",
                               "pins",
                               "continuation",
+                              "trace",
                               "reviews",
                               "reviewSummary",
                               "createdAt",
@@ -78373,6 +78536,8 @@
                                       "GOLDEN_THREE_REVIEW_FAILED",
                                       "GOLDEN_THREE_SELECTION_REQUIRED",
                                       "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                      "GOLDEN_THREE_MODEL_REQUIRED",
+                                      "GOLDEN_THREE_GENERATION_FAILED",
                                       "GOLDEN_THREE_ALREADY_LOCKED",
                                       "GOLDEN_THREE_OVERRIDE_INVALID",
                                       "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -78728,6 +78893,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -79018,6 +79185,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -109656,6 +109825,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -111190,6 +111361,8 @@
                                   "GOLDEN_THREE_REVIEW_FAILED",
                                   "GOLDEN_THREE_SELECTION_REQUIRED",
                                   "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                  "GOLDEN_THREE_MODEL_REQUIRED",
+                                  "GOLDEN_THREE_GENERATION_FAILED",
                                   "GOLDEN_THREE_ALREADY_LOCKED",
                                   "GOLDEN_THREE_OVERRIDE_INVALID",
                                   "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -112720,6 +112893,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -114242,6 +114417,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -115764,6 +115941,8 @@
                                 "GOLDEN_THREE_REVIEW_FAILED",
                                 "GOLDEN_THREE_SELECTION_REQUIRED",
                                 "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                "GOLDEN_THREE_MODEL_REQUIRED",
+                                "GOLDEN_THREE_GENERATION_FAILED",
                                 "GOLDEN_THREE_ALREADY_LOCKED",
                                 "GOLDEN_THREE_OVERRIDE_INVALID",
                                 "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -117345,6 +117524,8 @@
                                     "GOLDEN_THREE_REVIEW_FAILED",
                                     "GOLDEN_THREE_SELECTION_REQUIRED",
                                     "GOLDEN_THREE_CONTINUATION_REQUIRED",
+                                    "GOLDEN_THREE_MODEL_REQUIRED",
+                                    "GOLDEN_THREE_GENERATION_FAILED",
                                     "GOLDEN_THREE_ALREADY_LOCKED",
                                     "GOLDEN_THREE_OVERRIDE_INVALID",
                                     "GOLDEN_THREE_CHAPTERS_EMPTY",

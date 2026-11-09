@@ -79,6 +79,8 @@ export const ERROR_CODES = [
   "GOLDEN_THREE_REVIEW_FAILED",
   "GOLDEN_THREE_SELECTION_REQUIRED",
   "GOLDEN_THREE_CONTINUATION_REQUIRED",
+  "GOLDEN_THREE_MODEL_REQUIRED",
+  "GOLDEN_THREE_GENERATION_FAILED",
   "GOLDEN_THREE_ALREADY_LOCKED",
   "GOLDEN_THREE_OVERRIDE_INVALID",
   "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -6650,6 +6652,14 @@ export const goldenThreeCandidateSchema = z
         versionNodeId: uuidV7Schema,
         pins: z.array(goldenThreePinnedChapterSchema).length(2),
         createdAt: z.string().datetime(),
+      })
+      .strict()
+      .nullable(),
+    trace: z
+      .object({
+        jobId: uuidV7Schema,
+        agentRunId: uuidV7Schema,
+        modelCallId: uuidV7Schema,
       })
       .strict()
       .nullable(),

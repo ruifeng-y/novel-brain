@@ -1,6 +1,14 @@
 import { createHash } from "node:crypto";
 
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
+import {
+  DeepSeekProvider,
+  FakeAiProvider,
+  AiProviderError,
+  decryptApiKey,
+  M0_COST_PER_TOKEN_CNY,
+  type GenerationResult,
+} from "@novel-brain/ai";
 import type {
   GoldenThreeCandidateBatchRequest,
   GoldenThreeChapterPinInput,
@@ -16,31 +24,45 @@ import type {
 } from "@novel-brain/contracts";
 import {
   auditLogs,
+  agentRuns,
   chapterVersions,
   chapters,
+  costReservations,
   contextPackVersions,
   createDatabaseClient,
   createDatabasePool,
   goldenThreeCandidates,
   goldenThreeLocks,
   goldenThreeReviews,
+  jobs,
+  modelCalls,
+  modelConfigs,
   findIdempotentResource,
+  promptVersions,
   rememberIdempotentResource,
   styleBaselines,
   versionNodes,
   withTenantTransaction,
   workBranches,
   works,
+  usageRecords,
+  calculateModelCallCost,
   type DatabaseClient,
   type GoldenThreeChapterPinJson,
 } from "@novel-brain/db";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
 import { countWords } from "../imports/manuscript-import.parser";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { GenerationService } from "../generation/generation.service";
 import type { WorksAuditContext } from "../works/works.repository";
+
+const GOLDEN_THREE_TOKEN_BUDGET = 12_000;
+const GOLDEN_THREE_MAX_OUTPUT_TOKENS = 1_600;
 
 const goldenThreeGenerationStrategies: Array<{
   strategy: GoldenThreeStrategy;
@@ -68,6 +90,8 @@ export type GoldenThreeWriteResult<T> =
   | { kind: "not_found" }
   | { kind: "candidates_exist" }
   | { kind: "chapters_empty"; chapterNumbers: number[] }
+  | { kind: "model_config_missing" }
+  | { kind: "model_generation_failed"; message: string; failureClass: string }
   | { kind: "reference_invalid"; message: string }
   | { kind: "evidence_invalid"; message: string }
   | { kind: "version_conflict" }
@@ -83,7 +107,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
   private readonly pool: Pool;
   private readonly db: DatabaseClient;
 
-  constructor() {
+  constructor(private readonly generationService: GenerationService) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
       throw new Error("DATABASE_URL is required");
@@ -201,6 +225,14 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           },
           pins: candidate.chapterPins,
           continuation: continuationByCandidate.get(candidate.id) ?? null,
+          trace:
+            candidate.generationJobId && candidate.agentRunId && candidate.modelCallId
+              ? {
+                  jobId: candidate.generationJobId,
+                  agentRunId: candidate.agentRunId,
+                  modelCallId: candidate.modelCallId,
+                }
+              : null,
           reviews: reviews.map((review) => ({
             id: review.id,
             candidateId: review.candidateId,
@@ -491,7 +523,8 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     input: GoldenThreeGenerateRequest,
     audit: WorksAuditContext,
   ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
-    return withTenantTransaction(this.db, userId, async (transaction) => {
+    const strategies = goldenThreeGenerationStrategies.slice(0, input.candidateCount);
+    const preflight = await withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const existingKey = await findIdempotentResource(
         transaction,
@@ -500,8 +533,134 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         idempotencyKey,
       );
       if (existingKey) {
-        return { kind: "ok", value: { batchId: existingKey.resourceId } };
+        return {
+          kind: "ok" as const,
+          replay: true,
+          batchId: existingKey.resourceId,
+        };
       }
+      const [existingCandidate] = await transaction
+        .select({ id: goldenThreeCandidates.id })
+        .from(goldenThreeCandidates)
+        .where(
+          and(
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
+          ),
+        )
+        .limit(1);
+      if (existingCandidate) {
+        return { kind: "candidates_exist" as const };
+      }
+      const [chapter] = await transaction
+        .select({ chapter: chapters, version: chapterVersions })
+        .from(chapters)
+        .leftJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
+        .where(
+          and(
+            eq(chapters.userId, userId),
+            eq(chapters.workId, context.workId),
+            eq(chapters.branchId, context.branchId),
+            eq(chapters.number, 1),
+          ),
+        )
+        .limit(1);
+      if (!chapter?.version || chapter.version.content.trim().length === 0) {
+        return { kind: "chapters_empty" as const, chapterNumbers: [1] };
+      }
+      const [modelConfig] = await transaction
+        .select()
+        .from(modelConfigs)
+        .where(
+          and(
+            eq(modelConfigs.userId, userId),
+            isNull(modelConfigs.deletedAt),
+            sql`${modelConfigs.purposes} @> '["writing"]'::jsonb`,
+          ),
+        )
+        .orderBy(desc(modelConfigs.isDefault), desc(modelConfigs.updatedAt))
+        .limit(1);
+      if (!modelConfig) {
+        return { kind: "model_config_missing" as const };
+      }
+      const [versionRow] = await transaction
+        .select({ maxVersion: sql<number>`coalesce(max(${chapterVersions.version}), 0)` })
+        .from(chapterVersions)
+        .where(eq(chapterVersions.chapterId, chapter.chapter.id));
+      return {
+        kind: "ok" as const,
+        replay: false,
+        batchId: uuidv7(),
+        chapter: chapter.chapter,
+        chapterVersion: chapter.version,
+        modelConfig,
+        nextVersion: Number(versionRow?.maxVersion ?? 0) + 1,
+      };
+    });
+    if (preflight.kind !== "ok") {
+      return preflight;
+    }
+    if (preflight.replay) {
+      return { kind: "ok", value: { batchId: preflight.batchId } };
+    }
+    const payload = preflight as {
+      chapter: InferSelectModel<typeof chapters>;
+      modelConfig: InferSelectModel<typeof modelConfigs>;
+      nextVersion: number;
+    };
+    const chapter = payload.chapter;
+    const modelConfig = payload.modelConfig;
+    const nextVersion = payload.nextVersion;
+
+    const contextPack = await this.generationService.contextPreview(
+      userId,
+      { workId: context.workId, branchId: context.branchId, chapterId: chapter.id },
+      GOLDEN_THREE_TOKEN_BUDGET,
+    );
+    const contextManifestHash = contextPack.manifestHash ?? hashValue(JSON.stringify(contextPack));
+
+    const generated: Array<{
+      strategy: GoldenThreeStrategy;
+      system: string;
+      prompt: string;
+      result: GenerationResult;
+      modelProvider: string;
+      model: string;
+    }> = [];
+    for (const strategy of strategies) {
+      const system = goldenThreeSystemPrompt(strategy.strategy);
+      const prompt = goldenThreeUserPrompt(strategy.strategy, chapter, contextPack);
+      const providerName =
+        process.env.MODEL_CONNECTION_TESTER === "fake" ? "fake" : modelConfig.provider;
+      const provider = createGoldenThreeProvider(modelConfig);
+      try {
+        const result = await provider.generateText({
+          model: modelConfig.model,
+          system,
+          prompt,
+          operation: "draft",
+          maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
+        });
+        generated.push({
+          strategy: strategy.strategy,
+          system,
+          prompt,
+          result,
+          modelProvider: providerName,
+          model: result.model,
+        });
+      } catch (error) {
+        return {
+          kind: "model_generation_failed",
+          message: error instanceof Error ? error.message : "作者模型调用失败",
+          failureClass: error instanceof AiProviderError ? error.failureClass : "unknown",
+        };
+      }
+    }
+
+    return withTenantTransaction(this.db, userId, async (transaction) => {
+      await lockBranch(transaction, context.branchId);
       const [existingCandidate] = await transaction
         .select({ id: goldenThreeCandidates.id })
         .from(goldenThreeCandidates)
@@ -516,118 +675,253 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       if (existingCandidate) {
         return { kind: "candidates_exist" };
       }
-      const chapterRows = await transaction
-        .select({ chapter: chapters, version: chapterVersions })
-        .from(chapters)
-        .leftJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
-        .where(
-          and(
-            eq(chapters.userId, userId),
-            eq(chapters.workId, context.workId),
-            eq(chapters.branchId, context.branchId),
-            eq(chapters.number, 1),
-          ),
-        )
-        .orderBy(asc(chapters.number));
-      const chapterByNumber = new Map(chapterRows.map((row) => [row.chapter.number, row]));
-      const emptyChapterNumbers = [1].filter((number) => {
-        const row = chapterByNumber.get(number);
-        return !row?.version || row.version.content.trim().length === 0;
-      });
-      if (emptyChapterNumbers.length > 0) {
-        return { kind: "chapters_empty", chapterNumbers: emptyChapterNumbers };
-      }
-      const chapterIds = chapterRows.map((row) => row.chapter.id);
-      const versionRows = await transaction
-        .select({
-          chapterId: chapterVersions.chapterId,
-          maxVersion: sql<number>`coalesce(max(${chapterVersions.version}), 0)`,
-        })
-        .from(chapterVersions)
-        .where(inArray(chapterVersions.chapterId, chapterIds))
-        .groupBy(chapterVersions.chapterId);
-      const nextVersionByChapter = new Map(
-        versionRows.map((row) => [row.chapterId, Number(row.maxVersion) + 1]),
-      );
-      const strategies = goldenThreeGenerationStrategies.slice(0, input.candidateCount);
+
       const now = new Date();
-      const batchId = uuidv7();
-      const candidateIds: string[] = [];
+      const batchId = preflight.batchId;
+      const jobId = uuidv7();
+      const contextPackId = uuidv7();
+      const totalInputTokens = generated.reduce(
+        (sum, entry) => sum + entry.result.usage.inputTokens,
+        0,
+      );
+      const totalOutputTokens = generated.reduce(
+        (sum, entry) => sum + entry.result.usage.outputTokens,
+        0,
+      );
+      const totalTokens = totalInputTokens + totalOutputTokens;
+      const totalCostCny = calculateModelCallCost(totalTokens, M0_COST_PER_TOKEN_CNY);
+      await transaction.insert(jobs).values({
+        id: jobId,
+        workId: context.workId,
+        branchId: context.branchId,
+        userId,
+        chapterId: chapter.id,
+        modelConfigId: modelConfig.id,
+        type: "agent_workflow",
+        status: "completed",
+        progress: 100,
+        currentStep: "completed",
+        idempotencyKey,
+        budget: { maxTokens: GOLDEN_THREE_TOKEN_BUDGET, maxCostCny: totalCostCny },
+        checkpoint: { contextPackId },
+        checkpointVersion: 1,
+        orchestration: { kind: "golden_three_generation", candidateCount: generated.length },
+        cost: {
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens,
+          totalTokens,
+          costCny: totalCostCny,
+        },
+        startedAt: now,
+        finishedAt: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+      await transaction.insert(contextPackVersions).values({
+        id: contextPackId,
+        jobId,
+        chapterId: chapter.id,
+        workId: context.workId,
+        branchId: context.branchId,
+        userId,
+        version: 1,
+        compilerVersion: contextPack.compilerVersion,
+        tokenBudget: contextPack.tokenBudget,
+        tokenUsed: contextPack.tokenUsed,
+        selected: contextPack.selected,
+        evicted: contextPack.evicted,
+        sourceRefs: contextPack.sourceRefs,
+        snapshot: { ...contextPack, manifestHash: contextManifestHash },
+        createdAt: now,
+      });
+
       let headNodeId = await requireBranchHead(transaction, userId, context);
-      for (const strategy of strategies) {
-        const pins: GoldenThreeChapterPinJson[] = [];
-        for (const number of [1]) {
-          const row = chapterByNumber.get(number)!;
-          const versionNumber = nextVersionByChapter.get(row.chapter.id) ?? 1;
-          nextVersionByChapter.set(row.chapter.id, versionNumber + 1);
-          const content = generateCandidateChapterContent(
-            strategy.strategy,
-            row.chapter.title,
-            row.version!.content,
-          );
-          const contentHash = createHash("sha256").update(content).digest("hex");
-          const wordCount = countWords(content);
-          const versionId = uuidv7();
-          const versionNodeId = uuidv7();
-          await transaction.insert(versionNodes).values({
-            id: versionNodeId,
-            workId: context.workId,
-            branchId: context.branchId,
-            userId,
-            parentNodeId: headNodeId,
-            nodeType: "chapter_version",
-            objectType: "chapter",
-            objectId: row.chapter.id,
-            objectVersion: versionNumber,
-            payload: {
-              contentHash,
-              wordCount,
-              source: "golden_three_generation",
-              strategy: strategy.strategy,
-              candidateBatchId: batchId,
-            },
-            actorId: userId,
-            message: `生成第 ${number} 章黄金三章候选`,
-            createdAt: now,
-          });
-          await transaction.insert(chapterVersions).values({
-            id: versionId,
-            workId: context.workId,
-            branchId: context.branchId,
-            userId,
-            chapterId: row.chapter.id,
-            version: versionNumber,
-            content,
-            contentHash,
-            versionNodeId,
-            source: "golden_three_generation",
-            createdAt: now,
-          });
-          headNodeId = versionNodeId;
-          pins.push({
-            chapterId: row.chapter.id,
-            chapterNumber: row.chapter.number,
-            chapterTitle: row.chapter.title,
-            chapterVersionId: versionId,
-            chapterVersion: versionNumber,
-            versionNodeId,
+      let versionNumber = nextVersion;
+      const candidateIds: string[] = [];
+      for (const entry of generated) {
+        const content = entry.result.text.trim();
+        if (content.length === 0) {
+          return {
+            kind: "model_generation_failed",
+            message: "作者模型返回空正文",
+            failureClass: "schema",
+          };
+        }
+        const contentHash = hashValue(content);
+        const wordCount = countWords(content);
+        const versionId = uuidv7();
+        const versionNodeId = uuidv7();
+        await transaction.insert(versionNodes).values({
+          id: versionNodeId,
+          workId: context.workId,
+          branchId: context.branchId,
+          userId,
+          parentNodeId: headNodeId,
+          nodeType: "chapter_version",
+          objectType: "chapter",
+          objectId: chapter.id,
+          objectVersion: versionNumber,
+          payload: {
             contentHash,
             wordCount,
-            content,
-          });
-        }
+            source: "golden_three_model_generation",
+            strategy: entry.strategy,
+            candidateBatchId: batchId,
+            generationJobId: jobId,
+          },
+          actorId: userId,
+          message: "生成第 1 章黄金三章候选",
+          createdAt: now,
+        });
+        await transaction.insert(chapterVersions).values({
+          id: versionId,
+          workId: context.workId,
+          branchId: context.branchId,
+          userId,
+          chapterId: chapter.id,
+          version: versionNumber,
+          content,
+          contentHash,
+          versionNodeId,
+          source: "golden_three_model_generation",
+          createdAt: now,
+        });
+        headNodeId = versionNodeId;
+        const pin: GoldenThreeChapterPinJson = {
+          chapterId: chapter.id,
+          chapterNumber: chapter.number,
+          chapterTitle: chapter.title,
+          chapterVersionId: versionId,
+          chapterVersion: versionNumber,
+          versionNodeId,
+          contentHash,
+          wordCount,
+          content,
+        };
+        versionNumber += 1;
+
+        const promptHash = hashValue(`${entry.system}\n${entry.prompt}`);
+        const promptVersionId = uuidv7();
+        const stepKey = `golden_three.candidate.${entry.strategy}`;
+        await transaction.insert(promptVersions).values({
+          id: promptVersionId,
+          jobId,
+          workId: context.workId,
+          branchId: context.branchId,
+          userId,
+          stepKey,
+          key: "golden-three-opening",
+          version: 1,
+          role: "writer",
+          promptHash,
+          systemHash: hashValue(entry.system),
+          inputHash: hashValue(entry.prompt),
+          contextPackId,
+          compilerVersion: contextPack.compilerVersion,
+          createdBy: userId,
+          createdAt: now,
+        });
+        const inputTokens = entry.result.usage.inputTokens;
+        const outputTokens = entry.result.usage.outputTokens;
+        const callTokens = inputTokens + outputTokens;
+        const costCny = calculateModelCallCost(callTokens, M0_COST_PER_TOKEN_CNY);
+        const reservationId = uuidv7();
+        await transaction.insert(costReservations).values({
+          id: reservationId,
+          userId,
+          workId: context.workId,
+          branchId: context.branchId,
+          jobId,
+          agentRunId: null,
+          idempotencyKey: stepKey,
+          status: "settled",
+          reservedTokens: callTokens,
+          reservedCostCny: costCny,
+          settledTokens: callTokens,
+          settledCostCny: costCny,
+          createdAt: now,
+          settledAt: now,
+        });
+        const agentRunId = uuidv7();
+        const configHash = hashValue(
+          `${entry.modelProvider}\u0000${entry.model}\u0000${modelConfig.baseUrl}\u0000${modelConfig.version}`,
+        );
+        await transaction.insert(agentRuns).values({
+          id: agentRunId,
+          jobId,
+          workId: context.workId,
+          branchId: context.branchId,
+          userId,
+          chapterId: chapter.id,
+          promptVersionId,
+          modelConfigId: modelConfig.id,
+          stepKey,
+          role: "writer",
+          status: "succeeded",
+          provider: entry.modelProvider,
+          model: entry.model,
+          inputHash: hashValue(entry.prompt),
+          outputHash: contentHash,
+          output: content,
+          inputSummary: {
+            strategy: entry.strategy,
+            promptKey: "golden-three-opening",
+            promptVersion: 1,
+            contextManifestHash,
+          },
+          outputSummary: { contentHash, wordCount },
+          usage: { inputTokens, outputTokens, costCny },
+          startedAt: now,
+          finishedAt: now,
+        });
+        const modelCallId = uuidv7();
+        await transaction.insert(modelCalls).values({
+          id: modelCallId,
+          userId,
+          workId: context.workId,
+          branchId: context.branchId,
+          chapterId: chapter.id,
+          jobId,
+          agentRunId,
+          promptVersionId,
+          costReservationId: reservationId,
+          stepKey,
+          attempt: 1,
+          status: "succeeded",
+          provider: entry.modelProvider,
+          model: entry.model,
+          parameters: { strategy: entry.strategy, maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS },
+          configHash,
+          inputHash: hashValue(entry.prompt),
+          outputHash: contentHash,
+          inputSummary: {
+            promptKey: "golden-three-opening",
+            promptVersion: 1,
+            contextManifestHash,
+          },
+          outputSummary: { contentHash, wordCount },
+          inputTokens,
+          outputTokens,
+          costCny,
+          providerRequestId: entry.result.providerRequestId ?? null,
+          startedAt: now,
+          finishedAt: now,
+          createdAt: now,
+        });
+        await transaction.insert(usageRecords).values({
+          id: uuidv7(),
+          userId,
+          workId: context.workId,
+          jobId,
+          stepKey,
+          model: entry.model,
+          promptTokens: inputTokens,
+          completionTokens: outputTokens,
+          costCny,
+          createdAt: now,
+        });
         const candidateId = uuidv7();
         candidateIds.push(candidateId);
-        const promptHash = createHash("sha256")
-          .update(`golden-three-generate:${strategy.strategy}:v1`)
-          .digest("hex");
-        const manifestHash = createHash("sha256")
-          .update(
-            `${strategy.strategy}:${pins
-              .map((pin) => `${pin.chapterId}:${pin.contentHash}`)
-              .join("|")}`,
-          )
-          .digest("hex");
         await transaction.insert(goldenThreeCandidates).values({
           id: candidateId,
           batchId,
@@ -635,23 +929,27 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           branchId: context.branchId,
           userId,
           idempotencyKey,
-          label: strategy.label,
-          strategy: strategy.strategy,
+          label: goldenThreeGenerationStrategies.find((item) => item.strategy === entry.strategy)!
+            .label,
+          strategy: entry.strategy,
           status: "reviewed",
           version: 1,
-          promptKey: "golden-three-generate",
+          promptKey: "golden-three-opening",
           promptVersion: 1,
           promptHash,
-          modelProvider: "deterministic",
-          model: "deterministic-golden-three-v1",
-          modelParameters: { strategy: strategy.strategy, temperature: 0 },
-          contextPackVersionId: null,
-          contextManifestHash: manifestHash,
-          chapterPins: pins,
+          modelProvider: entry.modelProvider,
+          model: entry.model,
+          modelParameters: { strategy: entry.strategy, maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS },
+          contextPackVersionId: contextPackId,
+          contextManifestHash,
+          chapterPins: [pin],
+          generationJobId: jobId,
+          agentRunId,
+          modelCallId,
           createdAt: now,
           updatedAt: now,
         });
-        for (const review of automaticGoldenThreeReviews(pins)) {
+        for (const review of automaticGoldenThreeReviews([pin])) {
           await transaction.insert(goldenThreeReviews).values({
             id: uuidv7(),
             candidateId,
@@ -663,8 +961,8 @@ export class GoldenThreeRepository implements OnModuleDestroy {
             evidenceChapterId: review.pin.chapterId,
             evidenceChapterVersionId: review.pin.chapterVersionId,
             evidencePassage: review.pin.content.slice(0, 200),
-            evidenceLocator: `第 ${review.pin.chapterNumber} 章 · 生成候选`,
-            reviewerOrigin: "model",
+            evidenceLocator: "第 1 章 · 模型候选",
+            reviewerOrigin: "critic",
             required: true,
             createdAt: now,
             updatedAt: now,
@@ -682,7 +980,13 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         objectType: "golden_three_candidate_batch",
         objectId: batchId,
         objectVersion: 1,
-        payload: { action: "golden_three.candidates_generated", candidateIds },
+        payload: {
+          action: "golden_three.candidates_generated",
+          candidateIds,
+          jobId,
+          contextPackId,
+          modelCallCount: candidateIds.length,
+        },
         actorId: userId,
         message: "生成黄金三章候选",
         createdAt: now,
@@ -699,7 +1003,6 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       return { kind: "ok", value: { batchId } };
     });
   }
-
   async submitReviews(
     userId: string,
     context: GoldenThreeContext,
@@ -1422,24 +1725,42 @@ async function writeAudit(
   });
 }
 
-function generateCandidateChapterContent(
-  strategy: GoldenThreeStrategy,
-  chapterTitle: string,
-  content: string,
-): string {
-  const firstSentence =
-    content
-      .split(/[。！？\n]/u)
-      .find((part) => part.trim())
-      ?.trim() ?? content;
-  switch (strategy) {
-    case "hook_focus":
-      return `【${chapterTitle}】${firstSentence}。\n\n${content}`;
-    case "character_focus":
-      return `沈砚把这一章的代价压在心里。\n\n${content}`;
-    case "world_focus":
-      return `天门只认完整记忆的规则在碑文上浮现。\n\n${content}`;
+function createGoldenThreeProvider(config: InferSelectModel<typeof modelConfigs>) {
+  if (process.env.MODEL_CONNECTION_TESTER === "fake") {
+    return new FakeAiProvider({
+      failOperations: process.env.GOLDEN_THREE_FAKE_FAILURE === "1" ? ["draft"] : [],
+    });
   }
+  return new DeepSeekProvider({
+    apiKey: decryptApiKey(config.encryptedKey),
+    baseUrl: config.baseUrl,
+    model: config.model,
+  });
+}
+
+function goldenThreeSystemPrompt(strategy: GoldenThreeStrategy): string {
+  const focus =
+    strategy === "hook_focus"
+      ? "优先强化开篇钩子与章末追读"
+      : strategy === "character_focus"
+        ? "优先强化主角动机、代价与人物吸引力"
+        : "优先展示世界规则、核心冲突与读者承诺";
+  return `你是中文网络小说开篇写作代理。只输出第一章正文，不解释创作过程。${focus}。`;
+}
+
+function goldenThreeUserPrompt(
+  strategy: GoldenThreeStrategy,
+  chapter: { number: number; title: string },
+  contextPack: { selected: Array<{ label: string; content: string }> },
+): string {
+  const context = contextPack.selected
+    .map((entry) => `【${entry.label}】\n${entry.content}`)
+    .join("\n\n");
+  return `为第 ${chapter.number} 章《${chapter.title}》写开篇候选正文。\n创作方向：${strategy}。\n\n可用上下文：\n${context}\n\n要求：只输出正文，约 2000–3000 字。`;
+}
+
+function hashValue(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
 }
 
 function automaticGoldenThreeReviews(pins: GoldenThreeChapterPinJson[]): Array<{

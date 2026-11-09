@@ -3609,6 +3609,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -3926,6 +3928,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -7906,6 +7910,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -8445,6 +8451,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -8813,6 +8821,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -9181,6 +9191,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -9549,6 +9561,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -9930,6 +9944,8 @@ export interface operations {
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
                     | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                    | "GOLDEN_THREE_MODEL_REQUIRED"
+                    | "GOLDEN_THREE_GENERATION_FAILED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -10258,6 +10274,11 @@ export interface operations {
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -10505,6 +10526,11 @@ export interface operations {
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -10729,6 +10755,11 @@ export interface operations {
                   }[];
                   /** Format: date-time */
                   createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
                 } | null;
                 reviews: {
                   /** @enum {string} */
@@ -10972,6 +11003,11 @@ export interface operations {
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -11194,6 +11230,11 @@ export interface operations {
                   }[];
                   /** Format: date-time */
                   createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
                 } | null;
                 reviews: {
                   /** @enum {string} */
@@ -11423,6 +11464,11 @@ export interface operations {
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -11650,6 +11696,11 @@ export interface operations {
                   }[];
                   /** Format: date-time */
                   createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
                 } | null;
                 reviews: {
                   /** @enum {string} */
@@ -27126,6 +27177,8 @@ export interface operations {
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
                     | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                    | "GOLDEN_THREE_MODEL_REQUIRED"
+                    | "GOLDEN_THREE_GENERATION_FAILED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -27323,6 +27376,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -27496,6 +27551,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -37732,6 +37789,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -38486,6 +38545,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -39017,6 +39078,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -39548,6 +39611,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -40079,6 +40144,8 @@ export interface operations {
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
                   | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -40623,6 +40690,8 @@ export interface operations {
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
                     | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                    | "GOLDEN_THREE_MODEL_REQUIRED"
+                    | "GOLDEN_THREE_GENERATION_FAILED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"
