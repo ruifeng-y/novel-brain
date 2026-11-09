@@ -27,7 +27,6 @@ import {
   type CharacterKnowledgeProjection,
   type CharacterKnowledgeState,
   type CharacterKnowledgeStateCreateRequest,
-  type CharacterProfilePatch,
   type CharacterProfileUpdateRequest,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
