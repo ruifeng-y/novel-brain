@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
+import { BookOpen, Check, LoaderCircle, Lock, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import {
   GOLDEN_THREE_REVIEW_DIMENSIONS,
@@ -125,6 +125,29 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
     }
   }
 
+  async function recordContinuation(candidate: GoldenThreeCandidate) {
+    setBusy("continuation");
+    setActionError("");
+    try {
+      const response = await fetch(`${path}/candidates/${candidate.id}/continuation`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": await getCsrfToken(),
+        },
+        body: JSON.stringify({ version: candidate.version }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response, "第 2、3 章续写登记失败。"));
+      }
+      setWorkspace(goldenThreeWorkspaceResponseSchema.parse(await response.json()).data);
+    } catch (caught) {
+      setActionError(caught instanceof Error ? caught.message : "第 2、3 章续写登记失败。");
+    } finally {
+      setBusy("");
+    }
+  }
+
   if (loading) {
     return (
       <section className="panel works-loading" aria-label="正在加载黄金三章">
@@ -152,13 +175,16 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
   const failedDimensions = selected?.reviewSummary.failedDimensions ?? [];
   const reviewComplete = (selected?.reviewSummary.completed ?? 0) === 6;
   const canOverride = Boolean(selected && reviewComplete && failedDimensions.length > 0);
+  const continuationReady = Boolean(selected?.continuation);
   const lockLabel = workspace.lock
     ? "黄金三章已锁定"
     : selected && failedDimensions.length > 0
       ? "六维评审未达标 · 暂不可锁定"
-      : selected
-        ? "锁定黄金三章"
-        : "选定候选后可锁定";
+      : selected && !continuationReady
+        ? "待登记第 2、3 章"
+        : selected
+          ? "锁定黄金三章"
+          : "选定候选后可锁定";
 
   return (
     <section className="panel golden-three-panel" aria-labelledby="golden-three-title">
@@ -183,7 +209,7 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
       {workspace.candidates.length === 0 ? (
         <div className="golden-three-empty">
           <h3>还没有黄金三章候选</h3>
-          <p>用第 1–3 章的当前版本生成 2–3 个方向，再并排比较章节内容、六维评分和证据。</p>
+          <p>先用第 1 章的当前版本生成 2–3 个方向，作者选定后再登记第 2、3 章续写。</p>
           <button
             className="btn btn-primary"
             disabled={busy === "generate"}
@@ -241,6 +267,14 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
                         <p>{pin.content}</p>
                       </section>
                     ))}
+                    {candidate.continuation?.pins.map((pin) => (
+                      <section key={pin.chapterId}>
+                        <span>
+                          第 {pin.chapterNumber} 章 · {pin.chapterTitle}
+                        </span>
+                        <p>{pin.content}</p>
+                      </section>
+                    ))}
                   </div>
                 </article>
               );
@@ -286,6 +320,48 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
               </div>
             ))}
           </div>
+
+          {selected && !workspace.lock ? (
+            <div className="golden-three-review">
+              <div className="golden-three-section-head">
+                <div>
+                  <span className="panel-kicker">第 2、3 章</span>
+                  <h3>{selected.continuation ? "续写版本已登记" : "沿选定方向继续"}</h3>
+                </div>
+                {selected.continuation ? (
+                  <span className="badge jade-badge">已登记</span>
+                ) : (
+                  <button
+                    className="btn btn-ghost btn-small"
+                    disabled={busy === "continuation"}
+                    onClick={() => void recordContinuation(selected)}
+                    type="button"
+                  >
+                    {busy === "continuation" ? (
+                      <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                    ) : (
+                      <BookOpen size={14} aria-hidden="true" />
+                    )}
+                    登记第 2、3 章
+                  </button>
+                )}
+              </div>
+              {selected.continuation ? (
+                <div className="golden-three-chapters">
+                  {selected.continuation.pins.map((pin) => (
+                    <section key={pin.chapterId}>
+                      <span>
+                        第 {pin.chapterNumber} 章 · {pin.chapterTitle}
+                      </span>
+                      <p>{pin.content}</p>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <p>选定方向后，系统会登记第 2、3 章并引用当前候选的风格基线。</p>
+              )}
+            </div>
+          ) : null}
         </>
       )}
 
@@ -296,9 +372,14 @@ export function GoldenThreePanel({ workId, branchId }: { workId: string; branchI
           {workspace.lock ? (
             <p>后续章节会沿用已选定候选的方向；需要修改时请另开创作线。</p>
           ) : selected ? (
-            <p>已选定「{selected.label}」。必需维度达到 4/5 后才能锁定。</p>
+            <p>
+              已选定「{selected.label}」。
+              {continuationReady
+                ? "必需维度达到 4/5 后才能锁定。"
+                : "登记第 2、3 章续写后才能锁定。"}
+            </p>
           ) : (
-            <p>先选定一个候选方向，再完成六维评审。</p>
+            <p>先选定一个候选方向，完成六维评审并登记第 2、3 章。</p>
           )}
           {failedDimensions.length > 0 ? (
             <ul className="golden-three-failures">

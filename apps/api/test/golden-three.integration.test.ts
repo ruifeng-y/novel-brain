@@ -116,7 +116,7 @@ describe("golden three HTTP integration", () => {
       context: { packVersionId: null, manifestHash: "c".repeat(64) },
       reviewSummary: { completed: 0, total: 6, requiredFailed: 0 },
     });
-    expect(created.body.data.candidates[0].pins).toHaveLength(3);
+    expect(created.body.data.candidates[0].pins).toHaveLength(1);
     expect(created.body.data.candidates[0].pins[0]).toMatchObject({
       chapterNumber: 1,
       chapterVersion: 1,
@@ -241,12 +241,28 @@ describe("golden three HTTP integration", () => {
       details: { failedDimensions: ["world_rules"] },
     });
 
+    const continued = await owner
+      .post(`${outlinePath}/candidates/${candidate.id}/continuation`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: 3 })
+      .expect(200);
+    const continuedCandidate = continued.body.data.candidates.find(
+      (entry: { id: string }) => entry.id === candidate.id,
+    );
+    expect(continuedCandidate).toMatchObject({ status: "selected", version: 4 });
+    expect(
+      continuedCandidate.continuation.pins.map(
+        (pin: { chapterNumber: number }) => pin.chapterNumber,
+      ),
+    ).toEqual([2, 3]);
+
     const locked = await owner
       .post(`${outlinePath}/candidates/${candidate.id}/lock`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        version: 3,
+        version: 4,
         override: {
           policy: "author_override_v1",
           rationale: "作者已复核开篇方向，接受世界规则展示暂低于标准，后续在第二章补足。",
@@ -277,6 +293,7 @@ describe("golden three HTTP integration", () => {
         blockers: [expect.objectContaining({ code: "CANDIDATE_LOCKED" })],
       },
     });
+    expect(lockedWorkspace.lock.chapterPins).toHaveLength(3);
     expect(lockedWorkspace.styleBaseline.profile.excerpts).toHaveLength(3);
     expect(lockedWorkspace.styleBaseline.versionNodeId).toBe(lockedWorkspace.lock.versionNodeId);
 
@@ -311,6 +328,11 @@ describe("golden three HTTP integration", () => {
           action: "golden_three.candidate_selected",
         }),
         expect.objectContaining({
+          node_type: "outline_version",
+          object_type: "golden_three_continuation",
+          action: "golden_three.continuation_recorded",
+        }),
+        expect.objectContaining({
           node_type: "snapshot",
           object_type: "golden_three_lock",
           action: "golden_three.locked",
@@ -327,12 +349,13 @@ describe("golden three HTTP integration", () => {
       expect.arrayContaining([
         "golden_three.reviews_recorded",
         "golden_three.candidate_selected",
+        "golden_three.continuation_recorded",
         "golden_three.locked",
       ]),
     );
   });
 
-  it("generates reviewed candidates from chapters 1-3 without changing current versions", async () => {
+  it("generates reviewed first-chapter candidates without changing current versions", async () => {
     const owner = await createAuthenticatedAgent("golden-three-generate@example.com");
     const work = await createWork(owner);
     const token = await csrf(owner);
@@ -362,7 +385,7 @@ describe("golden three HTTP integration", () => {
       });
       expect(candidate.context.manifestHash).toMatch(/^[a-f0-9]{64}$/);
       expect(candidate.pins.map((pin: { chapterNumber: number }) => pin.chapterNumber)).toEqual([
-        1, 2, 3,
+        1,
       ]);
       expect(candidate.pins[0].chapterVersion).toBe(index + 2);
     }
@@ -375,7 +398,7 @@ describe("golden three HTTP integration", () => {
       `SELECT count(*) FROM chapter_versions WHERE chapter_id = ANY($1::uuid[])`,
       [chapters.map((chapter) => chapter.id)],
     );
-    expect(versionCount.rows[0]?.count).toBe("12");
+    expect(versionCount.rows[0]?.count).toBe("6");
 
     const repeated = await owner
       .post(`${outlinePath}/candidates/generate`)
@@ -431,7 +454,7 @@ describe("golden three HTTP integration", () => {
       .expect(409);
     expect(empty.body.error).toMatchObject({
       code: "GOLDEN_THREE_CHAPTERS_EMPTY",
-      details: { chapterNumbers: [1, 2, 3], retryable: true },
+      details: { chapterNumbers: [1], retryable: true },
     });
     expect((await owner.get(outlinePath).expect(200)).body.data.candidates).toHaveLength(0);
   });
@@ -650,11 +673,13 @@ function candidateInput(
       packVersionId: null,
       manifestHash: "c".repeat(64),
     },
-    pins: chapters.map((chapter) => ({
-      chapterId: chapter.id,
-      chapterVersionId: chapter.versionId,
-      expectedContentHash: chapter.contentHash,
-    })),
+    pins: [
+      {
+        chapterId: chapters[0]!.id,
+        chapterVersionId: chapters[0]!.versionId,
+        expectedContentHash: chapters[0]!.contentHash,
+      },
+    ],
   };
 }
 

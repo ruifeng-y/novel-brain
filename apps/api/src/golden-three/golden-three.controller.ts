@@ -20,6 +20,7 @@ import {
 } from "@nestjs/swagger";
 import {
   goldenThreeCandidateBatchRequestSchema,
+  goldenThreeContinuationRequestSchema,
   goldenThreeGenerateRequestSchema,
   goldenThreeLockRequestSchema,
   goldenThreeReviewBatchRequestSchema,
@@ -47,6 +48,7 @@ const candidateBatchBodyJsonSchema = schemaOf(goldenThreeCandidateBatchRequestSc
 const generateBodyJsonSchema = schemaOf(goldenThreeGenerateRequestSchema, "input");
 const reviewBatchBodyJsonSchema = schemaOf(goldenThreeReviewBatchRequestSchema, "input");
 const selectionBodyJsonSchema = schemaOf(goldenThreeSelectionRequestSchema, "input");
+const continuationBodyJsonSchema = schemaOf(goldenThreeContinuationRequestSchema, "input");
 const lockBodyJsonSchema = schemaOf(goldenThreeLockRequestSchema, "input");
 
 @ApiTags("golden-three")
@@ -206,6 +208,35 @@ export class GoldenThreeController {
         uuidV7Schema.parse(branchId),
         uuidV7Schema.parse(candidateId),
         goldenThreeLockRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("candidates/:candidateId/continuation")
+  @HttpCode(200)
+  @ApiBody({ schema: continuationBodyJsonSchema })
+  @ApiOkResponse({
+    description: "Recorded golden three chapters 2-3 continuation",
+    schema: workspaceJsonSchema,
+  })
+  async recordContinuation(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("candidateId") candidateId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return goldenThreeWorkspaceResponseSchema.parse({
+      data: await this.service.recordContinuation(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(candidateId),
+        goldenThreeContinuationRequestSchema.parse(body),
         this.auditContext(request, requestId),
       ),
       requestId,

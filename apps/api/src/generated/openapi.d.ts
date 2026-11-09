@@ -804,6 +804,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates/{candidateId}/continuation": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GoldenThreeController_recordContinuation"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/health": {
     parameters: {
       query?: never;
@@ -3592,6 +3608,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -3908,6 +3925,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -7887,6 +7905,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -8425,6 +8444,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -8792,6 +8812,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -9159,6 +9180,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -9526,6 +9548,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -9906,6 +9929,7 @@ export interface operations {
                     | "GOLDEN_THREE_CANDIDATE_LOCKED"
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
+                    | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -10218,6 +10242,22 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -10324,6 +10364,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -10448,6 +10489,22 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -10554,6 +10611,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -10656,6 +10714,22 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -10762,6 +10836,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -10881,6 +10956,22 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -10987,6 +11078,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -11087,6 +11179,22 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -11193,6 +11301,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -11298,6 +11407,22 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -11404,6 +11529,235 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
+                    | "CANDIDATE_LOCKED";
+                  message: string;
+                  /** @enum {string|null} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                    | null;
+                }[];
+                failedDimensions: (
+                  | "opening_hook"
+                  | "protagonist_appeal"
+                  | "world_rules"
+                  | "core_conflict"
+                  | "reader_promise"
+                  | "chapter_end_hook"
+                )[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GoldenThreeController_recordContinuation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        candidateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          pins?: {
+            chapterId: string;
+            chapterVersionId: string;
+            expectedContentHash?: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Recorded golden three chapters 2-3 continuation */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              candidates: {
+                id: string;
+                batchId: string;
+                workId: string;
+                branchId: string;
+                label: string;
+                /** @enum {string} */
+                strategy: "hook_focus" | "character_focus" | "world_focus";
+                /** @enum {string} */
+                status: "draft" | "reviewed" | "selected" | "locked";
+                version: number;
+                prompt: {
+                  key: string;
+                  version: number;
+                  hash: string;
+                };
+                model: {
+                  provider: string;
+                  model: string;
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                context: {
+                  packVersionId: string | null;
+                  manifestHash: string;
+                };
+                pins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                reviews: {
+                  /** @enum {string} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook";
+                  score: number;
+                  evidence: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    passage: string;
+                    locator: string;
+                  };
+                  /** @enum {string} */
+                  reviewerOrigin: "model" | "author" | "critic";
+                  id: string;
+                  candidateId: string;
+                  required: boolean;
+                  passed: boolean;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                }[];
+                reviewSummary: {
+                  completed: number;
+                  /** @enum {number} */
+                  total: 6;
+                  requiredFailed: number;
+                  failedDimensions: (
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                  )[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              selectedCandidateId: string | null;
+              lock: {
+                id: string;
+                workId: string;
+                branchId: string;
+                candidateId: string;
+                versionNodeId: string;
+                styleBaselineId: string;
+                chapterPins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                override: {
+                  /** @enum {string} */
+                  policy: "author_override_v1";
+                  rationale: string;
+                } | null;
+                lockedBy: string;
+                /** Format: date-time */
+                lockedAt: string;
+              } | null;
+              styleBaseline: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                sourceType: "golden_three";
+                sourceId: string;
+                version: number;
+                versionNodeId: string;
+                profile: {
+                  /** @enum {string} */
+                  strategy: "hook_focus" | "character_focus" | "world_focus";
+                  candidateLabel: string;
+                  excerpts: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              gate: {
+                candidateId: string | null;
+                canLock: boolean;
+                blockers: {
+                  /** @enum {string} */
+                  code:
+                    | "NO_CANDIDATES"
+                    | "NO_SELECTION"
+                    | "REVIEW_INCOMPLETE"
+                    | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -26771,6 +27125,7 @@ export interface operations {
                     | "GOLDEN_THREE_CANDIDATE_LOCKED"
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
+                    | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -26967,6 +27322,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -27139,6 +27495,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -37374,6 +37731,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -38127,6 +38485,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -38657,6 +39016,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -39187,6 +39547,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -39717,6 +40078,7 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -40260,6 +40622,7 @@ export interface operations {
                     | "GOLDEN_THREE_CANDIDATE_LOCKED"
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
+                    | "GOLDEN_THREE_CONTINUATION_REQUIRED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"

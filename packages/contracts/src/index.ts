@@ -78,6 +78,7 @@ export const ERROR_CODES = [
   "GOLDEN_THREE_CANDIDATE_LOCKED",
   "GOLDEN_THREE_REVIEW_FAILED",
   "GOLDEN_THREE_SELECTION_REQUIRED",
+  "GOLDEN_THREE_CONTINUATION_REQUIRED",
   "GOLDEN_THREE_ALREADY_LOCKED",
   "GOLDEN_THREE_OVERRIDE_INVALID",
   "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -6518,27 +6519,9 @@ export const goldenThreeCandidateInputSchema = z
     prompt: goldenThreePromptProvenanceSchema,
     model: goldenThreeModelProvenanceSchema,
     context: goldenThreeContextProvenanceSchema,
-    pins: z.array(goldenThreeChapterPinInputSchema).length(3),
+    pins: z.array(goldenThreeChapterPinInputSchema).length(1),
   })
-  .strict()
-  .superRefine((candidate, context) => {
-    const chapterIds = candidate.pins.map((pin) => pin.chapterId);
-    if (new Set(chapterIds).size !== chapterIds.length) {
-      context.addIssue({
-        code: "custom",
-        path: ["pins"],
-        message: "A candidate must pin three distinct chapters",
-      });
-    }
-    const versionIds = candidate.pins.map((pin) => pin.chapterVersionId);
-    if (new Set(versionIds).size !== versionIds.length) {
-      context.addIssue({
-        code: "custom",
-        path: ["pins"],
-        message: "A candidate must pin three distinct chapter versions",
-      });
-    }
-  });
+  .strict();
 export type GoldenThreeCandidateInput = z.infer<typeof goldenThreeCandidateInputSchema>;
 
 export const goldenThreeCandidateBatchRequestSchema = z
@@ -6563,17 +6546,12 @@ export const goldenThreeCandidateBatchRequestSchema = z
         message: "Candidate strategies must be unique",
       });
     }
-    const chapterSets = input.candidates.map((candidate) =>
-      candidate.pins
-        .map((pin) => pin.chapterId)
-        .sort()
-        .join(","),
-    );
-    if (new Set(chapterSets).size !== 1) {
+    const chapterIds = input.candidates.map((candidate) => candidate.pins[0]!.chapterId);
+    if (new Set(chapterIds).size !== 1) {
       context.addIssue({
         code: "custom",
         path: ["candidates"],
-        message: "Every candidate must compare the same three chapters",
+        message: "Every candidate must compare the same first chapter",
       });
     }
   });
@@ -6587,6 +6565,14 @@ export const goldenThreeGenerateRequestSchema = z
   })
   .strict();
 export type GoldenThreeGenerateRequest = z.infer<typeof goldenThreeGenerateRequestSchema>;
+
+export const goldenThreeContinuationRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    pins: z.array(goldenThreeChapterPinInputSchema).length(2).optional(),
+  })
+  .strict();
+export type GoldenThreeContinuationRequest = z.infer<typeof goldenThreeContinuationRequestSchema>;
 
 export const goldenThreeReviewInputSchema = z
   .object({
@@ -6658,7 +6644,15 @@ export const goldenThreeCandidateSchema = z
     prompt: goldenThreePromptProvenanceSchema,
     model: goldenThreeModelProvenanceSchema,
     context: goldenThreeContextProvenanceSchema,
-    pins: z.array(goldenThreePinnedChapterSchema).length(3),
+    pins: z.array(goldenThreePinnedChapterSchema).length(1),
+    continuation: z
+      .object({
+        versionNodeId: uuidV7Schema,
+        pins: z.array(goldenThreePinnedChapterSchema).length(2),
+        createdAt: z.string().datetime(),
+      })
+      .strict()
+      .nullable(),
     reviews: z.array(goldenThreeReviewSchema).max(6),
     reviewSummary: goldenThreeReviewSummarySchema,
     createdAt: z.string().datetime(),
@@ -6672,6 +6666,7 @@ export const goldenThreeGateBlockerCodeSchema = z.enum([
   "NO_SELECTION",
   "REVIEW_INCOMPLETE",
   "REQUIRED_DIMENSION_FAILED",
+  "CONTINUATION_REQUIRED",
   "CANDIDATE_LOCKED",
 ]);
 export type GoldenThreeGateBlockerCode = z.infer<typeof goldenThreeGateBlockerCodeSchema>;

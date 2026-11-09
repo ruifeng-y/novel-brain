@@ -89,7 +89,7 @@ describe("golden three contracts", () => {
             packVersionId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1e41",
             manifestHash: "c".repeat(64),
           },
-          pins,
+          pins: [pins[0]!],
         },
         {
           label: "候选 B · 人物优先",
@@ -104,7 +104,7 @@ describe("golden three contracts", () => {
             packVersionId: null,
             manifestHash: "e".repeat(64),
           },
-          pins,
+          pins: [pins[0]!],
         },
       ],
     });
@@ -162,7 +162,12 @@ describe("golden three contracts", () => {
           prompt: batch.candidates[0]!.prompt,
           model: batch.candidates[0]!.model,
           context: batch.candidates[0]!.context,
-          pins: pins.map((_, index) => pinnedChapter(index)),
+          pins: [pinnedChapter(0)],
+          continuation: {
+            versionNodeId: nodeIds[0]!,
+            pins: [pinnedChapter(1), pinnedChapter(2)],
+            createdAt: "2026-11-06T08:02:00.000Z",
+          },
           reviews: GOLDEN_THREE_REVIEW_DIMENSIONS.map((dimension, index) => ({
             ...reviewInput(dimension),
             id: `0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1f0${index}`,
@@ -193,7 +198,8 @@ describe("golden three contracts", () => {
           prompt: batch.candidates[1]!.prompt,
           model: batch.candidates[1]!.model,
           context: batch.candidates[1]!.context,
-          pins: pins.map((_, index) => pinnedChapter(index)),
+          pins: [pinnedChapter(0)],
+          continuation: null,
           reviews: [],
           reviewSummary: {
             completed: 0,

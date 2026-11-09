@@ -309,6 +309,13 @@
       "when": 1794135295902,
       "tag": "0046_gorgeous_epoch",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1794207684498,
+      "tag": "0047_nebulous_omega_sentinel",
+      "breakpoints": true
     }
   ]
 }

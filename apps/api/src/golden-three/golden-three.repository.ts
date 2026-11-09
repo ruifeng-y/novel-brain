@@ -4,6 +4,7 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import type {
   GoldenThreeCandidateBatchRequest,
   GoldenThreeChapterPinInput,
+  GoldenThreeContinuationRequest,
   GoldenThreeGateBlockerCode,
   GoldenThreeGenerateRequest,
   GoldenThreeLockRequest,
@@ -33,7 +34,7 @@ import {
   type DatabaseClient,
   type GoldenThreeChapterPinJson,
 } from "@novel-brain/db";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -72,6 +73,7 @@ export type GoldenThreeWriteResult<T> =
   | { kind: "version_conflict" }
   | { kind: "candidate_locked" }
   | { kind: "selection_required" }
+  | { kind: "continuation_required" }
   | { kind: "review_incomplete"; completed: number }
   | { kind: "review_failed"; failedDimensions: GoldenThreeReviewDimension[] }
   | { kind: "already_locked" };
@@ -162,6 +164,12 @@ export class GoldenThreeRepository implements OnModuleDestroy {
         group.push(review);
         reviewsByCandidate.set(review.candidateId, group);
       }
+      const continuationByCandidate = await readLatestContinuations(
+        transaction,
+        userId,
+        context,
+        candidateRows.map((candidate) => candidate.id),
+      );
 
       const candidates = candidateRows.map((candidate) => {
         const reviews = reviewsByCandidate.get(candidate.id) ?? [];
@@ -192,6 +200,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
             manifestHash: candidate.contextManifestHash,
           },
           pins: candidate.chapterPins,
+          continuation: continuationByCandidate.get(candidate.id) ?? null,
           reviews: reviews.map((review) => ({
             id: review.id,
             candidateId: review.candidateId,
@@ -265,6 +274,13 @@ export class GoldenThreeRepository implements OnModuleDestroy {
             code: "REQUIRED_DIMENSION_FAILED",
             message: "必需评审维度未达到 4/5。",
             dimension,
+          });
+        }
+        if (!selectedCandidate.continuation) {
+          blockers.push({
+            code: "CONTINUATION_REQUIRED",
+            message: "选定方向后还需要生成或登记第 2、3 章续写。",
+            dimension: null,
           });
         }
       }
@@ -404,10 +420,10 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           })
           .filter((pin): pin is GoldenThreeChapterPinJson => pin !== null)
           .sort((left, right) => left.chapterNumber - right.chapterNumber);
-        if (pins.length !== 3 || pins.map((pin) => pin.chapterNumber).join(",") !== "1,2,3") {
+        if (pins.length !== 1 || pins[0]?.chapterNumber !== 1) {
           return {
             kind: "reference_invalid",
-            message: "黄金三章候选必须固定第 1、2、3 章",
+            message: "黄金三章候选只能固定第 1 章；第 2、3 章在作者选定后登记",
           };
         }
         const id = uuidv7();
@@ -509,12 +525,12 @@ export class GoldenThreeRepository implements OnModuleDestroy {
             eq(chapters.userId, userId),
             eq(chapters.workId, context.workId),
             eq(chapters.branchId, context.branchId),
-            inArray(chapters.number, [1, 2, 3]),
+            eq(chapters.number, 1),
           ),
         )
         .orderBy(asc(chapters.number));
       const chapterByNumber = new Map(chapterRows.map((row) => [row.chapter.number, row]));
-      const emptyChapterNumbers = [1, 2, 3].filter((number) => {
+      const emptyChapterNumbers = [1].filter((number) => {
         const row = chapterByNumber.get(number);
         return !row?.version || row.version.content.trim().length === 0;
       });
@@ -540,7 +556,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       let headNodeId = await requireBranchHead(transaction, userId, context);
       for (const strategy of strategies) {
         const pins: GoldenThreeChapterPinJson[] = [];
-        for (const number of [1, 2, 3]) {
+        for (const number of [1]) {
           const row = chapterByNumber.get(number)!;
           const versionNumber = nextVersionByChapter.get(row.chapter.id) ?? 1;
           nextVersionByChapter.set(row.chapter.id, versionNumber + 1);
@@ -906,6 +922,133 @@ export class GoldenThreeRepository implements OnModuleDestroy {
     });
   }
 
+  async recordContinuation(
+    userId: string,
+    context: GoldenThreeContext,
+    candidateId: string,
+    input: GoldenThreeContinuationRequest,
+    audit: WorksAuditContext,
+  ): Promise<GoldenThreeWriteResult<{ candidateId: string; versionNodeId: string }>> {
+    return withTenantTransaction(this.db, userId, async (transaction) => {
+      await lockBranch(transaction, context.branchId);
+      const [candidate] = await transaction
+        .select()
+        .from(goldenThreeCandidates)
+        .where(
+          and(
+            eq(goldenThreeCandidates.id, candidateId),
+            eq(goldenThreeCandidates.userId, userId),
+            eq(goldenThreeCandidates.workId, context.workId),
+            eq(goldenThreeCandidates.branchId, context.branchId),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!candidate) {
+        return { kind: "not_found" };
+      }
+      if (candidate.status === "locked") {
+        return { kind: "candidate_locked" };
+      }
+      if (candidate.version !== input.version) {
+        return { kind: "version_conflict" };
+      }
+      if (candidate.status !== "selected") {
+        return { kind: "selection_required" };
+      }
+
+      let requestedPins = input.pins;
+      if (!requestedPins) {
+        const rows = await transaction
+          .select({ chapter: chapters, version: chapterVersions })
+          .from(chapters)
+          .leftJoin(chapterVersions, eq(chapterVersions.id, chapters.currentVersionId))
+          .where(
+            and(
+              eq(chapters.userId, userId),
+              eq(chapters.workId, context.workId),
+              eq(chapters.branchId, context.branchId),
+              inArray(chapters.number, [2, 3]),
+            ),
+          );
+        const missing = [2, 3].filter((number) => {
+          const row = rows.find((candidateRow) => candidateRow.chapter.number === number);
+          return !row?.version || row.version.content.trim().length === 0;
+        });
+        if (missing.length > 0) {
+          return { kind: "chapters_empty", chapterNumbers: missing };
+        }
+        requestedPins = rows
+          .sort((left, right) => left.chapter.number - right.chapter.number)
+          .map((row) => ({
+            chapterId: row.chapter.id,
+            chapterVersionId: row.version!.id,
+            expectedContentHash: row.version!.contentHash,
+          }));
+      }
+
+      const resolved = await resolvePins(transaction, userId, context, requestedPins);
+      if (!resolved.ok) {
+        return { kind: "reference_invalid", message: resolved.message };
+      }
+      const pins = requestedPins
+        .map((pin) => resolved.byVersionId.get(pin.chapterVersionId))
+        .filter((pin): pin is GoldenThreeChapterPinJson => Boolean(pin))
+        .sort((left, right) => left.chapterNumber - right.chapterNumber);
+      if (pins.length !== 2 || pins.map((pin) => pin.chapterNumber).join(",") !== "2,3") {
+        return {
+          kind: "reference_invalid",
+          message: "黄金三章续写必须登记第 2、3 章",
+        };
+      }
+
+      const now = new Date();
+      const headNodeId = await requireBranchHead(transaction, userId, context);
+      const versionNodeId = uuidv7();
+      await transaction.insert(versionNodes).values({
+        id: versionNodeId,
+        workId: context.workId,
+        branchId: context.branchId,
+        userId,
+        parentNodeId: headNodeId,
+        nodeType: "outline_version",
+        objectType: "golden_three_continuation",
+        objectId: candidate.id,
+        objectVersion: candidate.version + 1,
+        payload: {
+          action: "golden_three.continuation_recorded",
+          candidateId: candidate.id,
+          pins,
+        },
+        actorId: userId,
+        message: "登记黄金三章第 2、3 章续写",
+        createdAt: now,
+      });
+      const [updated] = await transaction
+        .update(goldenThreeCandidates)
+        .set({ version: candidate.version + 1, updatedAt: now })
+        .where(
+          and(
+            eq(goldenThreeCandidates.id, candidate.id),
+            eq(goldenThreeCandidates.version, candidate.version),
+          ),
+        )
+        .returning();
+      if (!updated) {
+        return { kind: "version_conflict" };
+      }
+      await advanceBranchHead(transaction, context, versionNodeId, now);
+      await writeAudit(
+        transaction,
+        userId,
+        audit,
+        "golden_three.continuation_recorded",
+        candidate.id,
+      );
+      return { kind: "ok", value: { candidateId: candidate.id, versionNodeId } };
+    });
+  }
+
   async lockCandidate(
     userId: string,
     context: GoldenThreeContext,
@@ -975,11 +1118,18 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       if (failedDimensions.length > 0 && !input.override) {
         return { kind: "review_failed", failedDimensions };
       }
+      const continuation = (
+        await readLatestContinuations(transaction, userId, context, [candidate.id])
+      ).get(candidate.id);
+      if (!continuation) {
+        return { kind: "continuation_required" };
+      }
+      const chapterPins = [...candidate.chapterPins, ...continuation.pins];
       const resolvedPins = await resolvePins(
         transaction,
         userId,
         context,
-        candidate.chapterPins.map((pin) => ({
+        chapterPins.map((pin) => ({
           chapterId: pin.chapterId,
           chapterVersionId: pin.chapterVersionId,
           expectedContentHash: pin.contentHash,
@@ -988,11 +1138,11 @@ export class GoldenThreeRepository implements OnModuleDestroy {
       if (!resolvedPins.ok) {
         return { kind: "reference_invalid", message: resolvedPins.message };
       }
-      const pins = candidate.chapterPins
+      const pins = chapterPins
         .map((pin) => resolvedPins.byVersionId.get(pin.chapterVersionId))
         .filter((pin): pin is GoldenThreeChapterPinJson => Boolean(pin))
         .sort((left, right) => left.chapterNumber - right.chapterNumber);
-      if (pins.length !== 3) {
+      if (pins.length !== 3 || pins.map((pin) => pin.chapterNumber).join(",") !== "1,2,3") {
         return { kind: "reference_invalid", message: "候选固定的章节版本已失效" };
       }
 
@@ -1159,6 +1309,60 @@ async function resolvePins(
   return { ok: true, byVersionId };
 }
 
+async function readLatestContinuations(
+  transaction: DatabaseTransaction,
+  userId: string,
+  context: GoldenThreeContext,
+  candidateIds: string[],
+): Promise<
+  Map<string, { versionNodeId: string; pins: GoldenThreeChapterPinJson[]; createdAt: string }>
+> {
+  const continuations = new Map<
+    string,
+    { versionNodeId: string; pins: GoldenThreeChapterPinJson[]; createdAt: string }
+  >();
+  if (candidateIds.length === 0) {
+    return continuations;
+  }
+  const rows = await transaction
+    .select({
+      id: versionNodes.id,
+      objectId: versionNodes.objectId,
+      payload: versionNodes.payload,
+      createdAt: versionNodes.createdAt,
+    })
+    .from(versionNodes)
+    .where(
+      and(
+        eq(versionNodes.userId, userId),
+        eq(versionNodes.workId, context.workId),
+        eq(versionNodes.branchId, context.branchId),
+        eq(versionNodes.objectType, "golden_three_continuation"),
+        inArray(versionNodes.objectId, candidateIds),
+      ),
+    )
+    .orderBy(desc(versionNodes.createdAt));
+  for (const row of rows) {
+    if (continuations.has(row.objectId)) {
+      continue;
+    }
+    const payload = row.payload;
+    if (
+      typeof payload !== "object" ||
+      payload === null ||
+      !Array.isArray((payload as { pins?: unknown }).pins)
+    ) {
+      continue;
+    }
+    continuations.set(row.objectId, {
+      versionNodeId: row.id,
+      pins: (payload as { pins: GoldenThreeChapterPinJson[] }).pins,
+      createdAt: row.createdAt.toISOString(),
+    });
+  }
+  return continuations;
+}
+
 async function lockBranch(transaction: DatabaseTransaction, branchId: string): Promise<void> {
   await transaction.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${branchId}))`);
 }
@@ -1254,6 +1458,6 @@ function automaticGoldenThreeReviews(pins: GoldenThreeChapterPinJson[]): Array<{
   return mapping.map(([dimension, index]) => ({
     dimension,
     score: 4,
-    pin: pins[index]!,
+    pin: pins[index % pins.length]!,
   }));
 }

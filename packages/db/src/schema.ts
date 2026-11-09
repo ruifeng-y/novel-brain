@@ -3926,7 +3926,7 @@ export const goldenThreeCandidates = pgTable(
     ),
     check(
       "golden_three_candidates_pins_check",
-      sql`jsonb_typeof(${table.chapterPins}) = 'array' and jsonb_array_length(${table.chapterPins}) = 3`,
+      sql`jsonb_typeof(${table.chapterPins}) = 'array' and jsonb_array_length(${table.chapterPins}) = 1`,
     ),
   ],
 );

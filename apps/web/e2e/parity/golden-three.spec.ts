@@ -175,11 +175,13 @@ function candidateInput(
       packVersionId: null,
       manifestHash: "c".repeat(64),
     },
-    pins: chapters.map((chapter) => ({
-      chapterId: chapter.id,
-      chapterVersionId: chapter.versionId,
-      expectedContentHash: chapter.contentHash,
-    })),
+    pins: [
+      {
+        chapterId: chapters[0]!.id,
+        chapterVersionId: chapters[0]!.versionId,
+        expectedContentHash: chapters[0]!.contentHash,
+      },
+    ],
   };
 }
 
@@ -233,6 +235,8 @@ test("compares candidates, blocks a failed dimension, selects and locks at four 
   const candidateBCard = page.locator(`[data-golden-candidate-id="${fixture.candidateB.id}"]`);
   await candidateBCard.getByRole("button", { name: "选定这个方向" }).click();
   await expect(candidateBCard.getByText("已选定")).toBeVisible();
+  await page.getByRole("button", { name: "登记第 2、3 章", exact: true }).click();
+  await expect(page.getByText("续写版本已登记")).toBeVisible();
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });

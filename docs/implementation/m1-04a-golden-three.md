@@ -4,9 +4,12 @@
 > Capabilities: PLAN-003, GEN-009  
 > Branch: `codex/m1-147`
 
+> 2026-11-09 #162 调整：候选只固定第 1 章；作者选定后登记第 2、3 章续写，续写节点存在后才允许锁定。候选、选择、续写和锁定分别写入不可变版本节点。
+
 ## 实现范围
 
-- 同一创作线可一次登记 2–3 个黄金三章候选；每个候选固定第 1、2、3 章的章节版本、内容指纹、版本节点和正文快照。
+- 同一创作线可一次登记 2–3 个第一章候选；每个候选固定第 1 章的章节版本、内容指纹、版本节点和正文快照。
+- 作者选定方向后登记第 2、3 章续写；锁定合并第 1–3 章，未登记续写时门禁返回 `CONTINUATION_REQUIRED`。
 - 候选固定 prompt、模型、模型参数、上下文快照与 manifest 指纹；不记录明文 provider key、prompt 正文或完整上下文。
 - 候选登记只读取既有章节版本，不更新章节当前版本、状态或正文，避免候选生成覆盖既有章节。
 - 六维固定为开篇钩子、主角吸引力、世界规则展示、核心冲突、读者承诺、章末追读钩子；每维保存 1–5 分、评审来源、证据原文和定位。
@@ -23,6 +26,7 @@
 - `POST /api/v1/works/:workId/branches/:branchId/golden-three/candidates`
 - `PUT /api/v1/works/:workId/branches/:branchId/golden-three/candidates/:candidateId/reviews`
 - `POST /api/v1/works/:workId/branches/:branchId/golden-three/candidates/:candidateId/select`
+- `POST /api/v1/works/:workId/branches/:branchId/golden-three/candidates/:candidateId/continuation`
 - `POST /api/v1/works/:workId/branches/:branchId/golden-three/candidates/:candidateId/lock`
 - 候选批次使用 `Idempotency-Key`；重复请求返回同一批候选，不重复追加版本节点。
 - 共享契约位于 `packages/contracts/src/index.ts`，OpenAPI 已重新生成。

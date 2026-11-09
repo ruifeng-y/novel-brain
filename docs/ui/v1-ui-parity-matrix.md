@@ -66,6 +66,8 @@ In the columns below, the prototype screenshot path and production test/golden p
 
 > #147 在 outline 增加黄金三章候选比较、作者选择、六维失败阻断、例外理由和锁定后风格基线。生产动作与 `apps/web/e2e/parity/golden-three.spec.ts` 四档视口证据已落地；outline 生产 golden 仍需在 #145/#147 布局稳定后重新拍摄并签收。
 >
+> #162 将黄金三章拆为两阶段：候选只固定第 1 章，作者选定后登记第 2、3 章续写，续写节点存在后才允许锁定；`apps/web/e2e/parity/golden-three.spec.ts` 已覆盖该门禁。
+>
 > outline 的“规划张力（0–100）”字段已由作者批准保留：它用于驱动张力曲线、观察章节/场景节奏起伏，不是质量评分。原型节点编辑器和 V1 需求字段清单已同步补入该字段；生产标签与帮助文案同步为“规划张力”。
 >
 > 2026-11-07：outline 结构审计补回左侧卷列表、中央卷章节列表和黄金三章页内区块，移除黄金三章第 5 个 tab；章节/场景编辑表单仍留在中央以保证宽度，右侧保留准备度/新增节点，待作者签收确认。
