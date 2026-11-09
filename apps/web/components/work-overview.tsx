@@ -104,11 +104,15 @@ export function WorkOverview({ workId }: { workId: string }) {
       }
       const workData = workResponseSchema.parse(await response.json()).data;
       const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
-      const [readinessResponse, styleResponse, chaptersResponse, entityData, ledgerResponse] =
+      const [readinessResponse, styleResponse, chapterData, entityData, ledgerResponse] =
         await Promise.all([
           fetch(`${basePath}/readiness`, { cache: "no-store" }),
           fetch(`${basePath}/style`, { cache: "no-store" }),
-          fetch(`${basePath}/chapters`, { cache: "no-store" }),
+          fetchAllCursorPages(
+            `${basePath}/chapters`,
+            chapterWorkspaceListResponseSchema.parse,
+            "章节列表加载失败。",
+          ).catch(() => []),
           fetchAllCursorPages(
             `${basePath}/entities`,
             settingEntityListResponseSchema.parse,
@@ -121,11 +125,7 @@ export function WorkOverview({ workId }: { workId: string }) {
       }
       setWork(workData);
       setReadiness(generationReadinessResponseSchema.parse(await readinessResponse.json()).data);
-      setChapters(
-        chaptersResponse.ok
-          ? chapterWorkspaceListResponseSchema.parse(await chaptersResponse.json()).data
-          : [],
-      );
+      setChapters(chapterData);
       setEntities(entityData);
       setLedger(
         ledgerResponse.ok
@@ -156,14 +156,11 @@ export function WorkOverview({ workId }: { workId: string }) {
     setStyleBusy(true);
     setStyleError("");
     try {
-      const chaptersResponse = await fetch(
+      const chapters = await fetchAllCursorPages(
         `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters`,
-        { cache: "no-store" },
+        chapterWorkspaceListResponseSchema.parse,
+        "章节列表加载失败。",
       );
-      if (!chaptersResponse.ok) {
-        throw new Error(await readError(chaptersResponse));
-      }
-      const chapters = chapterWorkspaceListResponseSchema.parse(await chaptersResponse.json()).data;
       if (chapters.length === 0) {
         throw new Error("还没有可检查的章节。");
       }

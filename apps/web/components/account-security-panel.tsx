@@ -27,6 +27,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 
 export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser }) {
   const router = useRouter();
@@ -66,26 +67,36 @@ export function AccountSecurityPanel({ initialUser }: { initialUser: AuthUser })
   );
 
   const loadPenNames = useCallback(async () => {
-    const response = await fetch("/api/v1/users/me/pen-names", { cache: "no-store" });
-    if (!response.ok) {
-      if (handleAuthFailure(response)) {
-        throw new Error("登录状态已变化。");
-      }
-      throw new Error(await readError(response, "笔名加载失败。"));
-    }
-    const data = authorPenNameListResponseSchema.parse(await response.json()).data;
-    setPenNames(data);
+    const data = await fetchAllCursorPages(
+      "/api/v1/users/me/pen-names",
+      authorPenNameListResponseSchema.parse,
+      "笔名加载失败。",
+      (response) => {
+        if (handleAuthFailure(response)) {
+          throw new Error("登录状态已变化。");
+        }
+      },
+    );
+    setPenNames(
+      [...data].sort(
+        (left, right) =>
+          Number(right.isDefault) - Number(left.isDefault) ||
+          right.createdAt.localeCompare(left.createdAt),
+      ),
+    );
   }, [handleAuthFailure]);
 
   const loadSessions = useCallback(async () => {
-    const response = await fetch("/api/v1/auth/sessions", { cache: "no-store" });
-    if (!response.ok) {
-      if (handleAuthFailure(response)) {
-        throw new Error("登录状态已变化。");
-      }
-      throw new Error(await readError(response, "登录设备加载失败。"));
-    }
-    const data = authDeviceSessionsResponseSchema.parse(await response.json()).data;
+    const data = await fetchAllCursorPages(
+      "/api/v1/auth/sessions",
+      authDeviceSessionsResponseSchema.parse,
+      "登录设备加载失败。",
+      (response) => {
+        if (handleAuthFailure(response)) {
+          throw new Error("登录状态已变化。");
+        }
+      },
+    );
     setSessions(data);
   }, [handleAuthFailure]);
 

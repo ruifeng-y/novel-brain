@@ -6,6 +6,7 @@ import {
   CRITIC_RULE_VERSION,
   QUALITY_RUBRIC_VERSION,
   type CriticAnnotation,
+  type CriticAnnotationListQuery,
   type CriticAnnotationPatchRequest,
   type CriticEvidence,
   type CriticFinding,
@@ -45,7 +46,7 @@ import {
   type DatabaseClient,
   type QualityDimensionJson,
 } from "@novel-brain/db";
-import { and, desc, eq, gte, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lt, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -270,25 +271,61 @@ export class QualityRepository implements OnModuleDestroy {
     workId: string,
     branchId: string,
     chapterId: string,
-  ): Promise<{ kind: "not_found" } | { kind: "ok"; annotations: CriticAnnotation[] }> {
+    query: CriticAnnotationListQuery,
+  ): Promise<
+    | { kind: "not_found" }
+    | { kind: "ok"; data: CriticAnnotation[]; nextCursor: string | null }
+    | { kind: "invalid_cursor" }
+  > {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       const chapter = await loadChapter(transaction, userId, workId, branchId, chapterId, false);
       if (!chapter) {
         return { kind: "not_found" };
+      }
+      const scope = and(
+        eq(qualityFindings.userId, userId),
+        eq(qualityFindings.workId, workId),
+        eq(qualityFindings.branchId, branchId),
+        eq(qualityFindings.chapterId, chapterId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: qualityFindings.id, createdAt: qualityFindings.createdAt })
+              .from(qualityFindings)
+              .where(and(scope, eq(qualityFindings.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return { kind: "invalid_cursor" };
       }
       const rows = await transaction
         .select()
         .from(qualityFindings)
         .where(
           and(
-            eq(qualityFindings.userId, userId),
-            eq(qualityFindings.workId, workId),
-            eq(qualityFindings.branchId, branchId),
-            eq(qualityFindings.chapterId, chapterId),
+            scope,
+            cursor
+              ? or(
+                  lt(qualityFindings.createdAt, cursor.createdAt),
+                  and(
+                    eq(qualityFindings.createdAt, cursor.createdAt),
+                    lt(qualityFindings.id, cursor.id),
+                  ),
+                )
+              : undefined,
           ),
         )
-        .orderBy(desc(qualityFindings.createdAt));
-      return { kind: "ok", annotations: rows.map(toAnnotation) };
+        .orderBy(desc(qualityFindings.createdAt), desc(qualityFindings.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const page = hasMore ? rows.slice(0, query.limit) : rows;
+      return {
+        kind: "ok",
+        data: page.map(toAnnotation),
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

@@ -6,10 +6,13 @@ import {
   modelConfigs,
   type DatabaseClient,
 } from "@novel-brain/db";
-import { and, desc, eq, gt, isNull, ne, sql } from "drizzle-orm";
+import type { CursorPageQuery } from "@novel-brain/contracts";
+import { and, desc, eq, gt, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
+
+import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
 
 export type ModelConfigRecord = InferSelectModel<typeof modelConfigs>;
 const IDEMPOTENCY_TTL_MS = 24 * 60 * 60 * 1_000;
@@ -34,12 +37,43 @@ export class ModelConfigRepository implements OnModuleDestroy {
     this.db = createDatabaseClient(this.pool);
   }
 
-  async list(userId: string): Promise<ModelConfigRecord[]> {
-    return this.db
+  async list(
+    userId: string,
+    query: CursorPageQuery,
+  ): Promise<CursorPageResult<ModelConfigRecord> | "invalid_cursor"> {
+    const scope = and(eq(modelConfigs.userId, userId), isNull(modelConfigs.deletedAt));
+    const cursor = query.cursor
+      ? (
+          await this.db
+            .select({
+              id: modelConfigs.id,
+              createdAt: modelConfigs.createdAt,
+            })
+            .from(modelConfigs)
+            .where(and(scope, eq(modelConfigs.id, query.cursor)))
+            .limit(1)
+        )[0]
+      : undefined;
+    if (query.cursor && !cursor) {
+      return "invalid_cursor";
+    }
+    const rows = await this.db
       .select()
       .from(modelConfigs)
-      .where(and(eq(modelConfigs.userId, userId), isNull(modelConfigs.deletedAt)))
-      .orderBy(desc(modelConfigs.isDefault), desc(modelConfigs.updatedAt));
+      .where(
+        and(
+          scope,
+          cursor
+            ? or(
+                lt(modelConfigs.createdAt, cursor.createdAt),
+                and(eq(modelConfigs.createdAt, cursor.createdAt), lt(modelConfigs.id, cursor.id)),
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(desc(modelConfigs.createdAt), desc(modelConfigs.id))
+      .limit(query.limit + 1);
+    return toCursorPage(rows, query.limit);
   }
 
   async find(userId: string, id: string): Promise<ModelConfigRecord | undefined> {
@@ -55,6 +89,22 @@ export class ModelConfigRepository implements OnModuleDestroy {
       )
       .limit(1);
     return config;
+  }
+
+  async hasOtherDefault(userId: string, id: string): Promise<boolean> {
+    const [config] = await this.db
+      .select({ id: modelConfigs.id })
+      .from(modelConfigs)
+      .where(
+        and(
+          eq(modelConfigs.userId, userId),
+          eq(modelConfigs.isDefault, true),
+          ne(modelConfigs.id, id),
+          isNull(modelConfigs.deletedAt),
+        ),
+      )
+      .limit(1);
+    return Boolean(config);
   }
 
   async findByIdempotencyKey(

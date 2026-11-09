@@ -4,11 +4,12 @@ import type {
   AgentGrant,
   AgentGrantBudgetLimits,
   AgentGrantCreateRequest,
+  AgentGrantListQuery,
   AgentGrantMaxImpact,
   AgentResourceScope,
 } from "@novel-brain/contracts";
 import { agentGrantSchema } from "@novel-brain/contracts";
-import { and, asc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -171,19 +172,51 @@ export class AgentGrantStore {
     });
   }
 
-  async listGrants(userId: string, scope: AgentGrantScope): Promise<AgentGrantRecord[]> {
+  async listGrants(
+    userId: string,
+    scope: AgentGrantScope,
+    query: AgentGrantListQuery,
+  ): Promise<{ data: AgentGrantRecord[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
-      return transaction
+      const conditions = and(
+        eq(agentGrants.userId, userId),
+        eq(agentGrants.workId, scope.workId),
+        eq(agentGrants.branchId, scope.branchId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: agentGrants.id, createdAt: agentGrants.createdAt })
+              .from(agentGrants)
+              .where(and(conditions, eq(agentGrants.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const records = await transaction
         .select()
         .from(agentGrants)
         .where(
           and(
-            eq(agentGrants.userId, userId),
-            eq(agentGrants.workId, scope.workId),
-            eq(agentGrants.branchId, scope.branchId),
+            conditions,
+            cursor
+              ? or(
+                  gt(agentGrants.createdAt, cursor.createdAt),
+                  and(eq(agentGrants.createdAt, cursor.createdAt), gt(agentGrants.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(agentGrants.createdAt));
+        .orderBy(asc(agentGrants.createdAt), asc(agentGrants.id))
+        .limit(query.limit + 1);
+      const hasMore = records.length > query.limit;
+      const page = hasMore ? records.slice(0, query.limit) : records;
+      return {
+        data: page,
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

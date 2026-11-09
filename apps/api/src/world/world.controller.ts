@@ -22,6 +22,7 @@ import {
   characterItineraryResponseSchema,
   factionCreateRequestSchema,
   factionDetailResponseSchema,
+  factionListQuerySchema,
   factionListResponseSchema,
   factionProfileUpdateRequestSchema,
   factionRelationshipCreateRequestSchema,
@@ -33,6 +34,7 @@ import {
   mapEdgeResponseSchema,
   mapLayerCreateRequestSchema,
   mapLayerResponseSchema,
+  mapListQuerySchema,
   mapListResponseSchema,
   mapMarkerCreateRequestSchema,
   mapMarkerResponseSchema,
@@ -59,6 +61,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { WorldService } from "./world.service";
@@ -104,6 +107,7 @@ export class WorldController {
   constructor(private readonly service: WorldService) {}
 
   @Get("factions")
+  @ApiQuerySchema(factionListQuerySchema)
   @ApiOkResponse({ description: "Faction domain details", schema: factionListSchema })
   async listFactions(
     @Req() request: AuthenticatedRequest,
@@ -111,15 +115,17 @@ export class WorldController {
     @Param("branchId") branchId: string,
     @Query() query: unknown,
   ) {
+    const requestId = createRequestId();
+    const page = await this.service.listFactions(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      factionListQuerySchema.parse(query ?? {}),
+    );
     return factionListResponseSchema.parse({
-      data: await this.service.listFactions(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        worldSnapshotQuerySchema.parse(query),
-      ),
-      requestId: createRequestId(),
-      meta: {},
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
     });
   }
 
@@ -250,6 +256,7 @@ export class WorldController {
   }
 
   @Get("maps")
+  @ApiQuerySchema(mapListQuerySchema)
   @ApiOkResponse({ description: "Map domain details", schema: mapListSchema })
   async listMaps(
     @Req() request: AuthenticatedRequest,
@@ -257,15 +264,17 @@ export class WorldController {
     @Param("branchId") branchId: string,
     @Query() query: unknown,
   ) {
+    const requestId = createRequestId();
+    const page = await this.service.listMaps(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      mapListQuerySchema.parse(query ?? {}),
+    );
     return mapListResponseSchema.parse({
-      data: await this.service.listMaps(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        worldSnapshotQuerySchema.parse(query),
-      ),
-      requestId: createRequestId(),
-      meta: {},
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
     });
   }
 

@@ -24,6 +24,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 
 interface FormState {
   provider: "deepseek" | "openai-compatible";
@@ -63,12 +64,18 @@ export function ModelConfigPanel() {
   const createIdempotencyKey = useRef<string | null>(null);
 
   const fetchConfigs = useCallback(async () => {
-    const response = await fetch("/api/v1/model-configs", { cache: "no-store" });
-    if (!response.ok) {
-      throw new Error(await readError(response));
-    }
-    const configData = modelConfigsResponseSchema.parse(await response.json()).data;
-    setConfigs(configData);
+    const configData = await fetchAllCursorPages(
+      "/api/v1/model-configs",
+      modelConfigsResponseSchema.parse,
+      "模型配置加载失败。",
+    );
+    setConfigs(
+      [...configData].sort(
+        (left, right) =>
+          Number(right.isDefault) - Number(left.isDefault) ||
+          right.createdAt.localeCompare(left.createdAt),
+      ),
+    );
     return configData;
   }, []);
 

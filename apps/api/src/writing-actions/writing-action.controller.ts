@@ -13,10 +13,10 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
-  cursorPageQuerySchema,
   jobRecoveryRequestSchema,
   writingActionRecoveryResponseSchema,
   writingActionJobListResponseSchema,
+  writingActionJobListQuerySchema,
   writingActionJobResponseSchema,
   writingActionRequestSchema,
   uuidV7Schema,
@@ -27,12 +27,12 @@ import {
   ApiBody,
   ApiHeader,
   ApiOkResponse,
-  ApiQuery,
   ApiTags,
   type SchemaObject,
 } from "@nestjs/swagger";
 import { createRequestId } from "@novel-brain/core";
 import { map, type Observable } from "rxjs";
+import { ApiQuerySchema } from "../common/zod-openapi";
 import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
@@ -91,8 +91,7 @@ export class WritingActionController {
   }
 
   @Get("chapters/:chapterId/write-actions")
-  @ApiQuery({ name: "cursor", required: false })
-  @ApiQuery({ name: "limit", required: false })
+  @ApiQuerySchema(writingActionJobListQuerySchema)
   @ApiOkResponse({ description: "Writing actions for one chapter", schema: jobListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
@@ -102,7 +101,7 @@ export class WritingActionController {
     @Query() query: unknown,
   ) {
     const requestId = createRequestId();
-    const page = cursorPageQuerySchema.parse(query);
+    const page = writingActionJobListQuerySchema.parse(query ?? {});
     const result = await this.service.list(
       this.userId(request),
       this.context(workId, branchId, chapterId),

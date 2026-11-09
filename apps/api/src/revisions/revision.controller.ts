@@ -11,28 +11,22 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
-  cursorPageQuerySchema,
   revisionFeedbackCreateRequestSchema,
   revisionPlanCreateRequestSchema,
+  revisionPlanListQuerySchema,
   revisionPlanWorkspaceListResponseSchema,
   revisionPlanWorkspaceResponseSchema,
   revisionRoundCreateRequestSchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
-import {
-  ApiAcceptedResponse,
-  ApiBody,
-  ApiHeader,
-  ApiOkResponse,
-  ApiQuery,
-  ApiTags,
-} from "@nestjs/swagger";
+import { ApiAcceptedResponse, ApiBody, ApiHeader, ApiOkResponse, ApiTags } from "@nestjs/swagger";
 import { createRequestId } from "@novel-brain/core";
 import type { SchemaObject } from "@nestjs/swagger";
 import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
+import { ApiQuerySchema } from "../common/zod-openapi";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -90,8 +84,7 @@ export class RevisionController {
   }
 
   @Get("chapters/:chapterId/revisions")
-  @ApiQuery({ name: "cursor", required: false })
-  @ApiQuery({ name: "limit", required: false })
+  @ApiQuerySchema(revisionPlanListQuerySchema)
   @ApiOkResponse({ description: "Revision plans for one chapter", schema: workspaceListSchema })
   async list(
     @Req() request: AuthenticatedRequest,
@@ -101,7 +94,7 @@ export class RevisionController {
     @Query() query: unknown,
   ) {
     const requestId = createRequestId();
-    const page = cursorPageQuerySchema.parse(query);
+    const page = revisionPlanListQuerySchema.parse(query ?? {});
     const result = await this.service.list(
       this.userId(request),
       this.context(workId, branchId, chapterId),

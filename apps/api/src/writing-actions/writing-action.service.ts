@@ -12,6 +12,7 @@ import {
 import { Observable } from "rxjs";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError } from "../common/cursor-page";
 // Nest uses the runtime class references for dependency injection metadata.
 /* eslint-disable @typescript-eslint/consistent-type-imports */
 import {
@@ -113,6 +114,9 @@ export class WritingActionService {
     page: { cursor?: string | undefined; limit: number },
   ): Promise<{ jobs: WritingActionJob[]; nextCursor: string | null }> {
     const result = await this.repository.list(userId, context, page);
+    if (result === "invalid_cursor") {
+      throw invalidCursorError();
+    }
     return {
       jobs: result.jobs.map(toWritingActionJobContract),
       nextCursor: result.nextCursor,

@@ -3,12 +3,14 @@ import type {
   AuthUser,
   AuthorPenName,
   AuthorPenNameCreateRequest,
+  AuthorPenNameListQuery,
   AuthorPenNameUpdateRequest,
   ProfileUpdateRequest,
 } from "@novel-brain/contracts";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 import { maskEmail } from "../auth/auth-crypto";
 import type { PenNameRecord, ProfileAuditContext, UserProfileRecord } from "./users.repository";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -40,8 +42,18 @@ export class UsersService {
     return toProfileContract(user);
   }
 
-  async listPenNames(userId: string): Promise<AuthorPenName[]> {
-    return (await this.repository.listPenNames(userId)).map(toPenNameContract);
+  async listPenNames(
+    userId: string,
+    query: AuthorPenNameListQuery,
+  ): Promise<CursorPageResult<AuthorPenName>> {
+    const page = await this.repository.listPenNames(userId, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map(toPenNameContract),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async createPenName(

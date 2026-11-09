@@ -61,7 +61,7 @@ export class AgentTraceStore {
     userId: string,
     scope: AgentTraceScope,
     filter: AgentTraceFilter = {},
-  ): Promise<{ traces: AgentTraceRecord[]; nextCursor: string | null }> {
+  ): Promise<{ traces: AgentTraceRecord[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
       const conditions = [
         eq(agentRuns.userId, userId),
@@ -75,6 +75,21 @@ export class AgentTraceStore {
         conditions.push(eq(agentRuns.jobId, filter.jobId));
       }
       if (filter.cursor) {
+        const [cursor] = await transaction
+          .select({ id: agentRuns.id })
+          .from(agentRuns)
+          .where(
+            and(
+              eq(agentRuns.id, filter.cursor),
+              eq(agentRuns.userId, userId),
+              eq(agentRuns.workId, scope.workId),
+              eq(agentRuns.branchId, scope.branchId),
+            ),
+          )
+          .limit(1);
+        if (!cursor) {
+          return "invalid_cursor";
+        }
         conditions.push(gt(agentRuns.id, filter.cursor));
       }
       const limit = Math.min(Math.max(filter.limit ?? 50, 1), 200);

@@ -11,20 +11,13 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  canonCommitListQuerySchema,
   canonCommitListResponseSchema,
   canonCommitRequestSchema,
   canonCommitResponseSchema,
-  cursorPageQuerySchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
-import {
-  ApiBody,
-  ApiHeader,
-  ApiOkResponse,
-  ApiQuery,
-  ApiTags,
-  type SchemaObject,
-} from "@nestjs/swagger";
+import { ApiBody, ApiHeader, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
 import { createRequestId } from "@novel-brain/core";
 import { z } from "zod";
 
@@ -33,6 +26,7 @@ import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 import { ApiError } from "../common/api-error";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { CanonService } from "./canon.service";
@@ -94,8 +88,7 @@ export class CanonController {
   }
 
   @Get("canon/commits")
-  @ApiQuery({ name: "cursor", required: false })
-  @ApiQuery({ name: "limit", required: false })
+  @ApiQuerySchema(canonCommitListQuerySchema)
   @ApiOkResponse({ description: "Canon commits", schema: commitListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
@@ -104,7 +97,7 @@ export class CanonController {
     @Query() query: unknown,
   ) {
     const requestId = createRequestId();
-    const page = cursorPageQuerySchema.parse(query);
+    const page = canonCommitListQuerySchema.parse(query ?? {});
     const result = await this.service.list(
       this.userId(request),
       uuidV7Schema.parse(workId),

@@ -778,7 +778,28 @@
     "/api/v1/auth/sessions": {
       "get": {
         "operationId": "AuthController_sessions",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Active sessions",
@@ -839,9 +860,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -1303,6 +1331,26 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -1521,9 +1569,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -2096,27 +2151,12 @@
             }
           },
           {
-            "name": "chapterId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "jobId",
-            "required": false,
-            "in": "query",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
             "name": "cursor",
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           },
           {
@@ -2124,7 +2164,28 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          },
+          {
+            "name": "chapterId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "jobId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           }
         ],
@@ -4020,16 +4081,24 @@
             }
           },
           {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          },
-          {
             "name": "cursor",
             "required": false,
             "in": "query",
-            "schema": {}
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -4337,6 +4406,26 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -4592,9 +4681,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -5834,6 +5930,26 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -5904,9 +6020,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -6627,6 +6750,26 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
             }
           }
         ],
@@ -7402,9 +7545,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -12966,6 +13116,26 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -13120,9 +13290,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -14305,9 +14482,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -14346,6 +14530,26 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
             }
           }
         ],
@@ -14498,9 +14702,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -16310,11 +16521,32 @@
             }
           },
           {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
             "name": "chapterId",
             "required": true,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
             }
           }
         ],
@@ -17204,9 +17436,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -28056,7 +28295,55 @@
     "/api/v1/works": {
       "get": {
         "operationId": "WorksController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["draft", "preparing", "serializing", "paused", "completed", "archived"]
+            }
+          },
+          {
+            "name": "genre",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["xianxia", "history", "urban"]
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Current user works",
@@ -28883,6 +29170,26 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -28928,9 +29235,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -30611,7 +30925,28 @@
     "/api/v1/model-configs": {
       "get": {
         "operationId": "ModelConfigController_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "User model configs",
@@ -30715,9 +31050,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -43005,6 +43347,26 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -43127,9 +43489,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -56372,6 +56741,26 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -56480,9 +56869,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -57983,6 +58379,26 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -58177,6 +58593,26 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 100,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
             }
           }
         ],
@@ -79415,7 +79851,28 @@
     "/api/v1/users/me/pen-names": {
       "get": {
         "operationId": "UsersController_listPenNames",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Author pen names",
@@ -79487,9 +79944,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -79824,6 +80288,46 @@
             "in": "path",
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "versionNodeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "chapterNumber",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991
             }
           }
         ],
@@ -80476,9 +80980,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -83634,6 +84145,46 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "versionNodeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "chapterNumber",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991
+            }
           }
         ],
         "responses": {
@@ -84647,9 +85198,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -96138,6 +96696,46 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "versionNodeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "chapterNumber",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991
+            }
           }
         ],
         "responses": {
@@ -96519,9 +97117,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -98665,6 +99270,46 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "versionNodeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "chapterNumber",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991
+            }
           }
         ],
         "responses": {
@@ -99329,9 +99974,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -102750,6 +103402,46 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "versionNodeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "chapterNumber",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "exclusiveMinimum": true,
+              "maximum": 9007199254740991
+            }
           }
         ],
         "responses": {
@@ -103303,9 +103995,16 @@
                       "pattern": "^req_.*"
                     },
                     "meta": {
-                      "default": {},
                       "type": "object",
-                      "additionalProperties": {}
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        }
+                      },
+                      "required": ["nextCursor"],
+                      "additionalProperties": false
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -109964,16 +110663,24 @@
             }
           },
           {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          },
-          {
             "name": "cursor",
             "required": false,
             "in": "query",
-            "schema": {}
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {
@@ -118646,16 +119353,24 @@
             }
           },
           {
-            "name": "limit",
-            "required": false,
-            "in": "query",
-            "schema": {}
-          },
-          {
             "name": "cursor",
             "required": false,
             "in": "query",
-            "schema": {}
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
           }
         ],
         "responses": {

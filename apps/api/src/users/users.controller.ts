@@ -7,12 +7,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
   authorPenNameCreateRequestSchema,
   authorPenNameDeleteResponseSchema,
+  authorPenNameListQuerySchema,
   authorPenNameListResponseSchema,
   authorPenNameResponseSchema,
   authorPenNameUpdateRequestSchema,
@@ -24,6 +26,7 @@ import { createRequestId } from "@novel-brain/core";
 import { ApiBody, ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
 import { z } from "zod";
 
+import { ApiQuerySchema } from "../common/zod-openapi";
 import { getClientIp } from "../auth/client-ip";
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { CsrfGuard } from "../auth/csrf.guard";
@@ -71,11 +74,19 @@ export class UsersController {
   }
 
   @Get("me/pen-names")
+  @ApiQuerySchema(authorPenNameListQuerySchema)
   @ApiOkResponse({ description: "Author pen names", schema: penNameListResponseJsonSchema })
-  async listPenNames(@Req() request: AuthenticatedRequest) {
-    return authorPenNameListResponseSchema.parse(
-      envelope(await this.service.listPenNames(this.userId(request))),
+  async listPenNames(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const requestId = createRequestId();
+    const page = await this.service.listPenNames(
+      this.userId(request),
+      authorPenNameListQuerySchema.parse(query ?? {}),
     );
+    return authorPenNameListResponseSchema.parse({
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
+    });
   }
 
   @Post("me/pen-names")

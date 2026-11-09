@@ -33,6 +33,7 @@ import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
+import { ApiQuerySchema } from "../common/zod-openapi";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -97,6 +98,7 @@ export class StoryBibleController {
   }
 
   @Get("versions")
+  @ApiQuerySchema(storyBibleVersionListQuerySchema)
   @ApiOkResponse({
     description: "Immutable story bible version history",
     schema: storyBibleVersionListResponseJsonSchema,
@@ -122,6 +124,7 @@ export class StoryBibleController {
   }
 
   @Get("world-rules")
+  @ApiQuerySchema(storyBibleWorldRuleListQuerySchema)
   @ApiOkResponse({
     description: "Structured world rule constraints",
     schema: storyBibleWorldRuleListResponseJsonSchema,

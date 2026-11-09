@@ -7,12 +7,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
   type ErrorCode,
   modelConfigInputSchema,
+  modelConfigListQuerySchema,
   modelConfigDeleteResponseSchema,
   modelConfigResponseSchema,
   modelConfigUpdateSchema,
@@ -30,6 +32,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 import { ApiError } from "../common/api-error";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { ModelConfigService } from "./model-config.service";
@@ -62,11 +65,19 @@ export class ModelConfigController {
   }
 
   @Get()
+  @ApiQuerySchema(modelConfigListQuerySchema)
   @ApiOkResponse({ description: "User model configs", schema: configsResponseSchema })
-  async list(@Req() request: AuthenticatedRequest) {
-    return modelConfigsResponseSchema.parse(
-      envelope(await this.service.list(this.userId(request))),
+  async list(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
+    const requestId = createRequestId();
+    const page = await this.service.list(
+      this.userId(request),
+      modelConfigListQuerySchema.parse(query ?? {}),
     );
+    return modelConfigsResponseSchema.parse({
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
+    });
   }
 
   @Post()

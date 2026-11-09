@@ -32,6 +32,7 @@ import {
   type ItemCreateRequest,
   type ItemDomain,
   type ItemEquipRequest,
+  type ItemListQuery,
   type ItemPatchRequest,
   type ItemRight,
   type ItemRightGrantRequest,
@@ -41,18 +42,20 @@ import {
   type PowerRealm,
   type PowerRealmCreateRequest,
   type PowerSystem,
+  type PowerSystemListQuery,
   type PowerSystemCreateRequest,
   type PowerSystemPatchRequest,
   type SettingEvidence,
   type SpecialMechanism,
   type SpecialMechanismCreateRequest,
+  type SpecialMechanismListQuery,
   type SpecialMechanismOwnershipRecord,
   type SpecialMechanismOwnershipTransferRequest,
   type SpecialMechanismPatchRequest,
   type StoryTimePoint,
   type ValidityInterval,
 } from "@novel-brain/contracts";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -167,23 +170,48 @@ export class PowerItemsRepository implements OnModuleDestroy {
     userId: string,
     context: PowerItemsWorkContext,
     options: ReadOptions,
-  ): Promise<PowerSystem[]> {
+    query: PowerSystemListQuery,
+  ): Promise<{ data: PowerSystem[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        eq(entities.type, "power_system"),
+        sql`${entities.deletedAt} is null`,
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: entities.id, createdAt: entities.createdAt })
+              .from(entities)
+              .where(and(scope, eq(entities.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const rows = await transaction
         .select({ id: entities.id })
         .from(entities)
         .where(
           and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            eq(entities.type, "power_system"),
-            sql`${entities.deletedAt} is null`,
+            scope,
+            cursor
+              ? or(
+                  gt(entities.createdAt, cursor.createdAt),
+                  and(eq(entities.createdAt, cursor.createdAt), gt(entities.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(entities.createdAt));
+        .orderBy(asc(entities.createdAt), asc(entities.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const page = hasMore ? rows.slice(0, query.limit) : rows;
       const details: PowerSystem[] = [];
-      for (const row of rows) {
+      for (const row of page) {
         const detail = await this.readPowerSystemInTransaction(
           transaction,
           userId,
@@ -195,7 +223,10 @@ export class PowerItemsRepository implements OnModuleDestroy {
           details.push(detail);
         }
       }
-      return details;
+      return {
+        data: details,
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 
@@ -673,23 +704,48 @@ export class PowerItemsRepository implements OnModuleDestroy {
     userId: string,
     context: PowerItemsWorkContext,
     options: ReadOptions,
-  ): Promise<SpecialMechanism[]> {
+    query: SpecialMechanismListQuery,
+  ): Promise<{ data: SpecialMechanism[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        eq(entities.type, "golden_finger"),
+        sql`${entities.deletedAt} is null`,
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: entities.id, createdAt: entities.createdAt })
+              .from(entities)
+              .where(and(scope, eq(entities.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const rows = await transaction
         .select({ id: entities.id })
         .from(entities)
         .where(
           and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            eq(entities.type, "golden_finger"),
-            sql`${entities.deletedAt} is null`,
+            scope,
+            cursor
+              ? or(
+                  gt(entities.createdAt, cursor.createdAt),
+                  and(eq(entities.createdAt, cursor.createdAt), gt(entities.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(entities.createdAt));
+        .orderBy(asc(entities.createdAt), asc(entities.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const page = hasMore ? rows.slice(0, query.limit) : rows;
       const details: SpecialMechanism[] = [];
-      for (const row of rows) {
+      for (const row of page) {
         const detail = await this.readMechanismInTransaction(
           transaction,
           userId,
@@ -701,7 +757,10 @@ export class PowerItemsRepository implements OnModuleDestroy {
           details.push(detail);
         }
       }
-      return details;
+      return {
+        data: details,
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 
@@ -1075,23 +1134,48 @@ export class PowerItemsRepository implements OnModuleDestroy {
     userId: string,
     context: PowerItemsWorkContext,
     options: ReadOptions,
-  ): Promise<ItemDomain[]> {
+    query: ItemListQuery,
+  ): Promise<{ data: ItemDomain[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        eq(entities.type, "item"),
+        sql`${entities.deletedAt} is null`,
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: entities.id, createdAt: entities.createdAt })
+              .from(entities)
+              .where(and(scope, eq(entities.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const rows = await transaction
         .select({ id: entities.id })
         .from(entities)
         .where(
           and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            eq(entities.type, "item"),
-            sql`${entities.deletedAt} is null`,
+            scope,
+            cursor
+              ? or(
+                  gt(entities.createdAt, cursor.createdAt),
+                  and(eq(entities.createdAt, cursor.createdAt), gt(entities.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(entities.createdAt));
+        .orderBy(asc(entities.createdAt), asc(entities.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const page = hasMore ? rows.slice(0, query.limit) : rows;
       const details: ItemDomain[] = [];
-      for (const row of rows) {
+      for (const row of page) {
         const detail = await this.readItemInTransaction(
           transaction,
           userId,
@@ -1103,7 +1187,10 @@ export class PowerItemsRepository implements OnModuleDestroy {
           details.push(detail);
         }
       }
-      return details;
+      return {
+        data: details,
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

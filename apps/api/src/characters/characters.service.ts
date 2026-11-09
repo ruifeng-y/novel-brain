@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import {
   type CharacterChangeRequest,
   type CharacterChangeRequestCreateRequest,
+  type CharacterChangeRequestListQuery,
   type CharacterCreateRequest,
   type CharacterDetail,
   type CharacterHistory,
@@ -9,6 +10,7 @@ import {
   type CharacterKnowledgeProjection,
   type CharacterKnowledgeState,
   type CharacterKnowledgeStateCreateRequest,
+  type CharacterListQuery,
   type CharacterProfileUpdateRequest,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
@@ -17,6 +19,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { CharactersRepository } from "./characters.repository";
@@ -30,9 +33,18 @@ import type {
 export class CharactersService {
   constructor(private readonly repository: CharactersRepository) {}
 
-  async list(userId: string, workId: string, branchId: string): Promise<CharacterDetail[]> {
+  async list(
+    userId: string,
+    workId: string,
+    branchId: string,
+    query: CharacterListQuery,
+  ): Promise<CursorPageResult<CharacterDetail>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return this.repository.list(userId, context);
+    const page = await this.repository.list(userId, context, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async get(
@@ -155,9 +167,17 @@ export class CharactersService {
     workId: string,
     branchId: string,
     characterId: string,
-  ): Promise<CharacterChangeRequest[]> {
+    query: CharacterChangeRequestListQuery,
+  ): Promise<CursorPageResult<CharacterChangeRequest>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return unwrap(await this.repository.listChangeRequests(userId, context, characterId));
+    const page = await this.repository.listChangeRequests(userId, context, characterId, query);
+    if (page === "not_found") {
+      throw tenantError();
+    }
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async createChangeRequest(

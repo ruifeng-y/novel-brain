@@ -20,6 +20,7 @@ import {
 } from "@nestjs/swagger";
 import {
   characterChangeRequestCreateRequestSchema,
+  characterChangeRequestListQuerySchema,
   characterChangeRequestListResponseSchema,
   characterChangeRequestResponseSchema,
   characterCreateRequestSchema,
@@ -30,6 +31,7 @@ import {
   characterKnowledgeProjectionResponseSchema,
   characterKnowledgeStateCreateRequestSchema,
   characterKnowledgeStateResponseSchema,
+  characterListQuerySchema,
   characterListResponseSchema,
   characterProfileUpdateRequestSchema,
   characterRelationshipCreateRequestSchema,
@@ -46,6 +48,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { CharactersService } from "./characters.service";
@@ -84,20 +87,25 @@ export class CharactersController {
   constructor(private readonly service: CharactersService) {}
 
   @Get()
+  @ApiQuerySchema(characterListQuerySchema)
   @ApiOkResponse({ description: "Character domain details", schema: listResponseJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Query() query: unknown,
   ) {
+    const requestId = createRequestId();
+    const page = await this.service.list(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      characterListQuerySchema.parse(query ?? {}),
+    );
     return characterListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-      ),
-      requestId: createRequestId(),
-      meta: {},
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
     });
   }
 
@@ -333,6 +341,7 @@ export class CharactersController {
   }
 
   @Get(":characterId/change-requests")
+  @ApiQuerySchema(characterChangeRequestListQuerySchema)
   @ApiOkResponse({
     description: "Character change requests",
     schema: changeRequestListResponseJsonSchema,
@@ -342,16 +351,20 @@ export class CharactersController {
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("characterId") characterId: string,
+    @Query() query: unknown,
   ) {
+    const requestId = createRequestId();
+    const page = await this.service.listChangeRequests(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(characterId),
+      characterChangeRequestListQuerySchema.parse(query ?? {}),
+    );
     return characterChangeRequestListResponseSchema.parse({
-      data: await this.service.listChangeRequests(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        uuidV7Schema.parse(characterId),
-      ),
-      requestId: createRequestId(),
-      meta: {},
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
     });
   }
 

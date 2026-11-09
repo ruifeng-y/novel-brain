@@ -14,11 +14,13 @@ import {
   works,
   type DatabaseClient,
 } from "@novel-brain/db";
-import type { ImportCandidateType, WorkListQuery } from "@novel-brain/contracts";
+import type { CursorPageQuery, ImportCandidateType, WorkListQuery } from "@novel-brain/contracts";
 import { and, desc, eq, gt, ilike, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
+
+import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
 
 export type WorkRecord = InferSelectModel<typeof works>;
 export type WorkBranchRecord = InferSelectModel<typeof workBranches>;
@@ -69,7 +71,7 @@ export class WorksRepository implements OnModuleDestroy {
   async list(
     userId: string,
     query: WorkListQuery,
-  ): Promise<{ works: WorkRecord[]; nextCursor: string | null }> {
+  ): Promise<{ works: WorkRecord[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
       const conditions: SQL[] = [eq(works.userId, userId), isNull(works.deletedAt)];
       if (query.status) {
@@ -83,6 +85,14 @@ export class WorksRepository implements OnModuleDestroy {
         conditions.push(or(ilike(works.title, search), ilike(works.penName, search))!);
       }
       if (query.cursor) {
+        const [cursor] = await transaction
+          .select({ id: works.id })
+          .from(works)
+          .where(and(eq(works.userId, userId), eq(works.id, query.cursor), isNull(works.deletedAt)))
+          .limit(1);
+        if (!cursor) {
+          return "invalid_cursor";
+        }
         conditions.push(lt(works.id, query.cursor));
       }
 
@@ -120,6 +130,45 @@ export class WorksRepository implements OnModuleDestroy {
         .where(and(eq(workBranches.userId, userId), eq(workBranches.workId, workId)))
         .orderBy(desc(workBranches.createdAt)),
     );
+  }
+
+  async listBranches(
+    userId: string,
+    workId: string,
+    query: CursorPageQuery,
+  ): Promise<CursorPageResult<WorkBranchRecord> | "invalid_cursor"> {
+    return this.withTenant(userId, async (transaction) => {
+      const scope = and(eq(workBranches.userId, userId), eq(workBranches.workId, workId));
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: workBranches.id, createdAt: workBranches.createdAt })
+              .from(workBranches)
+              .where(and(scope, eq(workBranches.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
+        .select()
+        .from(workBranches)
+        .where(
+          and(
+            scope,
+            cursor
+              ? or(
+                  lt(workBranches.createdAt, cursor.createdAt),
+                  and(eq(workBranches.createdAt, cursor.createdAt), lt(workBranches.id, cursor.id)),
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(desc(workBranches.createdAt), desc(workBranches.id))
+        .limit(query.limit + 1);
+      return toCursorPage(rows, query.limit);
+    });
   }
 
   async findByIdempotencyKey(

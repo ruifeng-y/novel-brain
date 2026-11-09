@@ -6,11 +6,13 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
   agentGrantCreateRequestSchema,
+  agentGrantListQuerySchema,
   agentGrantListResponseSchema,
   agentGrantResponseSchema,
   agentGrantRevokeRequestSchema,
@@ -31,6 +33,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { AgentGrantService } from "./agent-grant.service";
@@ -76,17 +79,24 @@ export class AgentGrantController {
   }
 
   @Get()
+  @ApiQuerySchema(agentGrantListQuerySchema)
   @ApiOkResponse({ description: "Agent grants for the branch", schema: grantListResponseSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = await this.service.list(
+      this.userId(request),
+      this.scope(workId, branchId),
+      agentGrantListQuerySchema.parse(query ?? {}),
+    );
     return agentGrantListResponseSchema.parse({
-      data: await this.service.list(this.userId(request), this.scope(workId, branchId)),
+      data: page.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: page.nextCursor },
     });
   }
 

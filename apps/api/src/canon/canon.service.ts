@@ -9,6 +9,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError } from "../common/cursor-page";
 import type { WorksAuditContext } from "../works/works.repository";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -97,6 +98,9 @@ export class CanonService {
     const results = await this.repository.listCommits(userId, workId, branchId, page);
     if (results === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品或创作线不存在，或无权访问");
+    }
+    if (results === "invalid_cursor") {
+      throw invalidCursorError();
     }
     return {
       commits: results.commits.map((result) =>

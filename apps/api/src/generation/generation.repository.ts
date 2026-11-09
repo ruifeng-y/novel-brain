@@ -31,12 +31,13 @@ import {
   type ContextPackSelected,
   type ContextSourceRef,
   type GenerateChapterRequest,
+  type GenerationJobListQuery,
   type JobRecoveryRecord,
   type JobRecoveryRequest,
 } from "@novel-brain/contracts";
 import { GENERATE_CHAPTER_JOB, WORKER_JOB_STEPS } from "@novel-brain/contracts";
 import { resolveRecoveryStep, type RecoveryStepStatus } from "@novel-brain/core";
-import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Pool } from "pg";
@@ -617,38 +618,69 @@ export class GenerationRepository implements OnModuleDestroy {
     });
   }
 
-  async listJobs(userId: string, context: GenerationWorkContext): Promise<JobWithContextPack[]> {
+  async listJobs(
+    userId: string,
+    context: GenerationWorkContext,
+    query: GenerationJobListQuery,
+  ): Promise<{ data: JobWithContextPack[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(jobs.userId, userId),
+        eq(jobs.workId, context.workId),
+        eq(jobs.branchId, context.branchId),
+        eq(jobs.type, GENERATE_CHAPTER_JOB),
+        eq(jobs.chapterId, context.chapterId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: jobs.id, createdAt: jobs.createdAt })
+              .from(jobs)
+              .where(and(scope, eq(jobs.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const records = await transaction
         .select()
         .from(jobs)
         .where(
           and(
-            eq(jobs.userId, userId),
-            eq(jobs.workId, context.workId),
-            eq(jobs.branchId, context.branchId),
-            eq(jobs.type, GENERATE_CHAPTER_JOB),
-            eq(jobs.chapterId, context.chapterId),
+            scope,
+            cursor
+              ? or(
+                  lt(jobs.createdAt, cursor.createdAt),
+                  and(eq(jobs.createdAt, cursor.createdAt), lt(jobs.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(desc(jobs.createdAt));
+        .orderBy(desc(jobs.createdAt), desc(jobs.id))
+        .limit(query.limit + 1);
       if (records.length === 0) {
-        return [];
+        return { data: [], nextCursor: null };
       }
+      const hasMore = records.length > query.limit;
+      const page = hasMore ? records.slice(0, query.limit) : records;
       const packs = await transaction
         .select()
         .from(contextPackVersions)
         .where(
           inArray(
             contextPackVersions.jobId,
-            records.map((record) => record.id),
+            page.map((record) => record.id),
           ),
         )
         .orderBy(desc(contextPackVersions.version));
-      return records.map((job) => ({
-        job,
-        contextPack: packs.find((pack) => pack.jobId === job.id) ?? null,
-      }));
+      return {
+        data: page.map((job) => ({
+          job,
+          contextPack: packs.find((pack) => pack.jobId === job.id) ?? null,
+        })),
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 

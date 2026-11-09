@@ -2,6 +2,7 @@ import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import type {
   FactDecisionAction,
   FactProposalDecisionRequest,
+  FactProposalListQuery,
   FactRisk,
 } from "@novel-brain/contracts";
 import {
@@ -18,7 +19,7 @@ import {
   type DatabaseClient,
   type FactProposalCandidate,
 } from "@novel-brain/db";
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -96,10 +97,69 @@ export class FactsRepository implements OnModuleDestroy {
     workId: string,
     branchId: string,
     chapterId: string,
-  ): Promise<FactProposalWithDecision[]> {
-    return this.withTenant(userId, async (transaction) =>
-      this.listInTransaction(transaction, userId, workId, branchId, chapterId),
-    );
+    query: FactProposalListQuery,
+  ): Promise<{ data: FactProposalWithDecision[]; nextCursor: string | null } | "invalid_cursor"> {
+    return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(factProposals.userId, userId),
+        eq(factProposals.workId, workId),
+        eq(factProposals.branchId, branchId),
+        eq(factProposals.chapterId, chapterId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: factProposals.id, createdAt: factProposals.createdAt })
+              .from(factProposals)
+              .where(and(scope, eq(factProposals.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const proposals = await transaction
+        .select()
+        .from(factProposals)
+        .where(
+          and(
+            scope,
+            cursor
+              ? or(
+                  gt(factProposals.createdAt, cursor.createdAt),
+                  and(
+                    eq(factProposals.createdAt, cursor.createdAt),
+                    gt(factProposals.id, cursor.id),
+                  ),
+                )
+              : undefined,
+          ),
+        )
+        .orderBy(asc(factProposals.createdAt), asc(factProposals.id))
+        .limit(query.limit + 1);
+      const hasMore = proposals.length > query.limit;
+      const page = hasMore ? proposals.slice(0, query.limit) : proposals;
+      const decisions =
+        page.length > 0
+          ? await transaction
+              .select()
+              .from(factDecisions)
+              .where(
+                inArray(
+                  factDecisions.factProposalId,
+                  page.map((proposal) => proposal.id),
+                ),
+              )
+              .orderBy(desc(factDecisions.decidedAt))
+          : [];
+      return {
+        data: page.map((proposal) => ({
+          proposal,
+          decision: decisions.find((decision) => decision.factProposalId === proposal.id) ?? null,
+        })),
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async extract(
