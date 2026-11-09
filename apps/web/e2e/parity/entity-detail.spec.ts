@@ -1,10 +1,17 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import { expectAuthorFacingLanguage, freezeApiTimestamps } from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
+const screenshotOptions = {
+  animations: "disabled",
+  caret: "hide",
+  fullPage: true,
+  maxDiffPixelRatio: 0.005,
+  scale: "css",
+} as const;
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("entity-detail");
@@ -729,11 +736,16 @@ test("loads the dedicated character profile, relationships, state history and he
     validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
     sourceChapterId: null,
   });
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 1000 });
     const detail = await openCharacter(page, work);
+    await expect(page).toHaveURL(
+      new RegExp(`/workspace/${work.id}/settings\\?column=characters&entityId=`, "u"),
+    );
     await expect(detail.getByRole("heading", { name: "沈砚" })).toBeVisible();
+    await expect(detail.getByRole("button", { name: "锁定设定" })).toBeEnabled();
     await expect(detail.getByText("基本档案")).toBeVisible();
     await expect(detail.getByText("找回被抹去的记忆")).toBeVisible();
     await expect(detail.getByText("成为忘川书的下一个祭品")).toBeVisible();
@@ -747,6 +759,11 @@ test("loads the dedicated character profile, relationships, state history and he
     await expect(detail.getByText("设定体检")).toBeVisible();
     await expectAuthorFacingLanguage(page);
     await expectNoOverflow(page);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["entity-detail", `entity-detail-${width}.png`],
+      screenshotOptions,
+    );
     await capture(page, testInfo, `entity-detail-profile-${width}`);
   }
 });
