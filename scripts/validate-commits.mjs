@@ -52,6 +52,7 @@ const TECHNICAL_WORDS = new Set([
   "pr",
   "preflight",
   "prettier",
+  "provenance",
   "production",
   "pull",
   "push",

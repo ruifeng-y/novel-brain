@@ -69,7 +69,7 @@ test("rejects an unknown English word beside Chinese text", () => {
 test("allows recognized technical words in Chinese prose", () => {
   assert.deepEqual(
     validateCommitMessages([
-      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围\n- 使用 release 与 Git ref resolver\n- 校验 Merge pull request subject",
+      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围\n- 使用 release 与 Git ref resolver\n- 校验 provenance 与 Merge pull request subject",
     ]),
     [],
   );
