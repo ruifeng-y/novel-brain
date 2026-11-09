@@ -44,6 +44,7 @@ import {
   settingProposalListResponseSchema,
   settingProposalResponseSchema,
   specialMechanismResponseSchema,
+  timelineEventResponseSchema,
   worldTimelineResponseSchema,
   workResponseSchema,
   type ConfirmedSetting,
@@ -85,9 +86,12 @@ type EditorState = {
   description: string;
   tags: string;
   rule: string;
-  bodyState: string;
-  knowledgeBoundary: string;
-  relationshipSummary: string;
+  desire: string;
+  fear: string;
+  goal: string;
+  voiceSample: string;
+  voiceGuide: string;
+  disguise: string;
   goldenRules: string;
   cost: string;
   limits: string;
@@ -112,8 +116,16 @@ type EditorState = {
   powerLifespanFixedAmount: string;
   timelineEra: string;
   timelineStoryTime: string;
+  timelineStorySortKey: number;
   timelineDuration: string;
+  timelineDurationMinutes: number;
   timelineEvent: string;
+  timelineValidity: {
+    fromChapter: number;
+    toChapter: number | null;
+    fromStoryTime: { era: string; label: string; sortKey: number } | null;
+    toStoryTime: { era: string; label: string; sortKey: number } | null;
+  };
   customFields: Record<string, CustomFieldValue | null>;
   requestTitle: string;
   requestReason: string;
@@ -200,7 +212,7 @@ const typeLabels: Record<SettingEntityType, string> = {
 
 const typeDescriptions: Record<SettingTypeColumn, string> = {
   world_rule: "硬规则与不可违背的世界边界",
-  character: "身体状态、知识边界与关系摘要",
+  character: "欲望、恐惧、目标、声线与伪装",
   faction: "组织立场、控制范围和人物关系",
   map: "地点层级、路径和场景边界",
   power_system: "层级、路径、突破条件和代价",
@@ -211,7 +223,7 @@ const typeDescriptions: Record<SettingTypeColumn, string> = {
 
 const entityHeroDescriptions: Record<SettingEntityType, string> = {
   world_rule: "不可违背的世界边界",
-  character: "身体状态、知识边界与关系",
+  character: "人物动机、声线与伪装",
   faction: "组织立场、控制范围与关系",
   map: "区域、路径与场景边界",
   power_system: "层级、路径、突破条件与代价",
@@ -752,6 +764,14 @@ export function SettingsCenter({
     setActionError("");
     setNotice("");
     try {
+      if (editor.type === "character") {
+        const created = await createCharacterEntity(work, editor);
+        setEditor(null);
+        openEntityDetail(created.id, "characters");
+        setNotice(`“${created.name}”已创建。`);
+        await refreshProjection();
+        return;
+      }
       if (editor.type === "faction" || editor.type === "map") {
         const created = await createWorldEntity(work, editor);
         setEditor(null);
@@ -823,6 +843,24 @@ export function SettingsCenter({
         editor.type === "item"
       ) {
         const updated = await updatePowerItemEntity(work, editor);
+        setEditor(null);
+        openEntityDetail(updated.id, columnForType(editor.type));
+        setNotice(`“${updated.name}”已保存。`);
+        await refreshProjection();
+        await refreshDetail(updated.id, editor.type);
+        return;
+      }
+      if (editor.type === "character") {
+        const updated = await updateCharacterEntity(work, editor);
+        setEditor(null);
+        openEntityDetail(updated.id, "characters");
+        setNotice(`“${updated.name}”已保存。`);
+        await refreshProjection();
+        await refreshDetail(updated.id, editor.type);
+        return;
+      }
+      if (editor.type === "faction" || editor.type === "map" || editor.type === "timeline_event") {
+        const updated = await updateWorldEntity(work, editor);
         setEditor(null);
         openEntityDetail(updated.id, columnForType(editor.type));
         setNotice(`“${updated.name}”已保存。`);
@@ -1103,6 +1141,14 @@ export function SettingsCenter({
   }
 
   function withDomainDetail(next: EditorState, entity: SettingEntity): EditorState {
+    if (entity.type === "character" && characterDetail) {
+      next.desire = characterDetail.profile.desire;
+      next.fear = characterDetail.profile.fear;
+      next.goal = characterDetail.profile.goal;
+      next.voiceSample = characterDetail.profile.voiceSample;
+      next.voiceGuide = characterDetail.profile.voiceGuide;
+      next.disguise = characterDetail.profile.disguise;
+    }
     if (entity.type === "power_system" && worldDetail?.kind === "power") {
       next.details = worldDetail.value.overview;
       next.powerLifespanMode = worldDetail.value.lifespanPolicy.mode;
@@ -1121,6 +1167,14 @@ export function SettingsCenter({
     }
     if (entity.type === "golden_finger" && worldDetail?.kind === "mechanism") {
       next.mechanismType = worldDetail.value.mechanismType;
+    }
+    if (entity.type === "timeline_event" && worldDetail?.kind === "timeline") {
+      const detail = worldDetail.value.events.find((candidate) => candidate.event.id === entity.id);
+      if (detail) {
+        next.timelineStorySortKey = detail.storyTime.sortKey;
+        next.timelineDurationMinutes = detail.durationMinutes;
+        next.timelineValidity = detail.validity;
+      }
     }
     return next;
   }
@@ -1627,30 +1681,51 @@ function SettingEditor({
         ) : editor.type === "character" ? (
           <div className="settings-form-grid">
             <label className="settings-field settings-field-wide">
-              <span>当前身体状态</span>
+              <span>人物欲望</span>
               <textarea
-                onChange={(event) => update("bodyState", event.target.value)}
-                required
+                onChange={(event) => update("desire", event.target.value)}
                 rows={3}
-                value={editor.bodyState}
+                value={editor.desire}
               />
             </label>
             <label className="settings-field settings-field-wide">
-              <span>知识边界</span>
+              <span>人物恐惧</span>
               <textarea
-                onChange={(event) => update("knowledgeBoundary", event.target.value)}
-                required
+                onChange={(event) => update("fear", event.target.value)}
                 rows={3}
-                value={editor.knowledgeBoundary}
+                value={editor.fear}
               />
             </label>
             <label className="settings-field settings-field-wide">
-              <span>关系摘要</span>
+              <span>人物目标</span>
               <textarea
-                onChange={(event) => update("relationshipSummary", event.target.value)}
-                required
+                onChange={(event) => update("goal", event.target.value)}
                 rows={3}
-                value={editor.relationshipSummary}
+                value={editor.goal}
+              />
+            </label>
+            <label className="settings-field settings-field-wide">
+              <span>声纹样本</span>
+              <textarea
+                onChange={(event) => update("voiceSample", event.target.value)}
+                rows={3}
+                value={editor.voiceSample}
+              />
+            </label>
+            <label className="settings-field settings-field-wide">
+              <span>声线指南</span>
+              <textarea
+                onChange={(event) => update("voiceGuide", event.target.value)}
+                rows={3}
+                value={editor.voiceGuide}
+              />
+            </label>
+            <label className="settings-field settings-field-wide">
+              <span>伪装</span>
+              <textarea
+                onChange={(event) => update("disguise", event.target.value)}
+                rows={3}
+                value={editor.disguise}
               />
             </label>
           </div>
@@ -4280,9 +4355,12 @@ function emptyEditor(type: SettingEntityType): EditorState {
     description: "",
     tags: "",
     rule: "",
-    bodyState: "",
-    knowledgeBoundary: "",
-    relationshipSummary: "",
+    desire: "",
+    fear: "",
+    goal: "",
+    voiceSample: "",
+    voiceGuide: "",
+    disguise: "",
     goldenRules: "",
     cost: "",
     limits: "",
@@ -4307,8 +4385,16 @@ function emptyEditor(type: SettingEntityType): EditorState {
     powerLifespanFixedAmount: "",
     timelineEra: "",
     timelineStoryTime: "",
+    timelineStorySortKey: 0,
     timelineDuration: "",
+    timelineDurationMinutes: 0,
     timelineEvent: "",
+    timelineValidity: {
+      fromChapter: 1,
+      toChapter: null,
+      fromStoryTime: null,
+      toStoryTime: null,
+    },
     customFields: {},
     requestTitle: "",
     requestReason: "",
@@ -4327,9 +4413,12 @@ function editorFromEntity(entity: SettingEntity): EditorState {
     description: entity.description,
     tags: entity.tags.join("，"),
     rule: entity.type === "world_rule" ? entity.data.rule : "",
-    bodyState: entity.type === "character" ? entity.data.bodyState : "",
-    knowledgeBoundary: entity.type === "character" ? entity.data.knowledgeBoundary : "",
-    relationshipSummary: entity.type === "character" ? entity.data.relationshipSummary : "",
+    desire: "",
+    fear: "",
+    goal: "",
+    voiceSample: "",
+    voiceGuide: "",
+    disguise: "",
     goldenRules: entity.type === "golden_finger" ? entity.data.rules : "",
     cost: entity.type === "golden_finger" ? entity.data.cost : "",
     limits: entity.type === "golden_finger" ? entity.data.limits : "",
@@ -4357,8 +4446,16 @@ function editorFromEntity(entity: SettingEntity): EditorState {
     powerLifespanFixedAmount: "",
     timelineEra: entity.type === "timeline_event" ? entity.data.era : "",
     timelineStoryTime: entity.type === "timeline_event" ? entity.data.storyTime : "",
+    timelineStorySortKey: 0,
     timelineDuration: entity.type === "timeline_event" ? entity.data.duration : "",
+    timelineDurationMinutes: 0,
     timelineEvent: entity.type === "timeline_event" ? entity.data.event : "",
+    timelineValidity: {
+      fromChapter: 1,
+      toChapter: null,
+      fromStoryTime: null,
+      toStoryTime: null,
+    },
     customFields: { ...entity.customFields },
     requestTitle: "",
     requestReason: "",
@@ -4378,15 +4475,7 @@ function createPayload(editor: EditorState): SettingEntityCreateRequest {
     return { type: "world_rule", ...common, data: { rule: editor.rule.trim() } };
   }
   if (editor.type === "character") {
-    return {
-      type: "character",
-      ...common,
-      data: {
-        bodyState: editor.bodyState.trim(),
-        knowledgeBoundary: editor.knowledgeBoundary.trim(),
-        relationshipSummary: editor.relationshipSummary.trim(),
-      },
-    };
+    throw new Error("人物必须通过专用接口创建。");
   }
   if (editor.type === "faction" || editor.type === "map" || editor.type === "power_system") {
     return {
@@ -4455,26 +4544,32 @@ function changePayload(editor: EditorState) {
   if (editor.type === "character") {
     return {
       ...common,
-      data: {
-        bodyState: editor.bodyState.trim(),
-        knowledgeBoundary: editor.knowledgeBoundary.trim(),
-        relationshipSummary: editor.relationshipSummary.trim(),
+      character: {
+        desire: editor.desire.trim(),
+        fear: editor.fear.trim(),
+        goal: editor.goal.trim(),
+        voiceSample: editor.voiceSample.trim(),
+        voiceGuide: editor.voiceGuide.trim(),
+        disguise: editor.disguise.trim(),
       },
     };
   }
-  if (editor.type === "faction" || editor.type === "map" || editor.type === "power_system") {
-    if (editor.type === "power_system") {
-      return {
-        ...common,
-        powerSystem: {
-          overview: editor.details.trim(),
-          lifespanPolicy: lifespanPolicyFromEditor(editor),
-        },
-      };
-    }
+  if (editor.type === "faction") {
     return {
       ...common,
-      data: { details: editor.details.trim() },
+      faction: { overview: editor.details.trim() },
+    };
+  }
+  if (editor.type === "map") {
+    return { ...common, map: { details: editor.details.trim() } };
+  }
+  if (editor.type === "power_system") {
+    return {
+      ...common,
+      powerSystem: {
+        overview: editor.details.trim(),
+        lifespanPolicy: lifespanPolicyFromEditor(editor),
+      },
     };
   }
   if (editor.type === "golden_finger") {
@@ -4507,11 +4602,17 @@ function changePayload(editor: EditorState) {
   }
   return {
     ...common,
-    data: {
+    timeline: {
       era: editor.timelineEra.trim(),
-      storyTime: editor.timelineStoryTime.trim(),
-      duration: editor.timelineDuration.trim(),
+      storyTime: {
+        era: editor.timelineEra.trim(),
+        label: editor.timelineStoryTime.trim(),
+        sortKey: editor.timelineStorySortKey,
+      },
+      durationMinutes: editor.timelineDurationMinutes,
+      durationLabel: editor.timelineDuration.trim(),
       event: editor.timelineEvent.trim(),
+      validity: editor.timelineValidity,
     },
   };
 }
@@ -4532,6 +4633,143 @@ async function mutateEntity(
     throw new Error(await readError(response, fallback));
   }
   return settingEntityResponseSchema.parse(await response.json()).data;
+}
+
+function characterProfileFromEditor(editor: EditorState) {
+  return {
+    desire: editor.desire.trim(),
+    fear: editor.fear.trim(),
+    goal: editor.goal.trim(),
+    voiceSample: editor.voiceSample.trim(),
+    voiceGuide: editor.voiceGuide.trim(),
+    disguise: editor.disguise.trim(),
+  };
+}
+
+async function createCharacterEntity(
+  work: WorkOverview,
+  editor: EditorState,
+): Promise<{ id: string; name: string }> {
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(`${settingsPath(work)}/characters`, {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify({
+      name: editor.name.trim(),
+      aliases: splitList(editor.aliases),
+      summary: editor.summary.trim(),
+      description: editor.description.trim(),
+      tags: splitList(editor.tags),
+      profile: characterProfileFromEditor(editor),
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, "人物创建失败。"));
+  }
+  const detail = characterDetailResponseSchema.parse(await response.json()).data;
+  const customFields = compactCustomFields(editor.customFields);
+  if (Object.keys(customFields).length > 0) {
+    const metadataResponse = await fetch(`${settingsPath(work)}/entities/${detail.character.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+      body: JSON.stringify({ version: detail.version, customFields }),
+    });
+    if (!metadataResponse.ok) {
+      throw new Error(await readError(metadataResponse, "人物自定义字段保存失败。"));
+    }
+  }
+  return { id: detail.character.id, name: detail.character.label ?? editor.name };
+}
+
+async function updateCharacterEntity(
+  work: WorkOverview,
+  editor: EditorState,
+): Promise<{ id: string; name: string }> {
+  if (!editor.entityId || !editor.version) {
+    throw new Error("人物版本缺失，请刷新后重试。");
+  }
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(`${settingsPath(work)}/characters/${editor.entityId}`, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify({
+      version: editor.version,
+      name: editor.name.trim(),
+      aliases: splitList(editor.aliases),
+      summary: editor.summary.trim(),
+      description: editor.description.trim(),
+      tags: splitList(editor.tags),
+      customFields: compactCustomFields(editor.customFields),
+      profile: characterProfileFromEditor(editor),
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, "人物保存失败。"));
+  }
+  const detail = characterDetailResponseSchema.parse(await response.json()).data;
+  return { id: detail.character.id, name: detail.character.label ?? editor.name };
+}
+
+async function updateWorldEntity(
+  work: WorkOverview,
+  editor: EditorState,
+): Promise<{ id: string; name: string }> {
+  if (!editor.entityId || !editor.version) {
+    throw new Error("设定版本缺失，请刷新后重试。");
+  }
+  const basePath = settingsPath(work);
+  const common = {
+    version: editor.version,
+    name: editor.name.trim(),
+    aliases: splitList(editor.aliases),
+    summary: editor.summary.trim(),
+    description: editor.description.trim(),
+    tags: splitList(editor.tags),
+    customFields: compactCustomFields(editor.customFields),
+  };
+  const path =
+    editor.type === "faction"
+      ? `${basePath}/world/factions/${editor.entityId}`
+      : editor.type === "map"
+        ? `${basePath}/world/maps/${editor.entityId}`
+        : `${basePath}/world/timeline/events/${editor.entityId}`;
+  const body =
+    editor.type === "faction"
+      ? { ...common, profile: { overview: editor.details.trim() } }
+      : editor.type === "map"
+        ? { ...common, details: editor.details.trim() }
+        : {
+            ...common,
+            era: editor.timelineEra.trim(),
+            storyTime: {
+              era: editor.timelineEra.trim(),
+              label: editor.timelineStoryTime.trim(),
+              sortKey: editor.timelineStorySortKey,
+            },
+            durationMinutes: editor.timelineDurationMinutes,
+            durationLabel: editor.timelineDuration.trim(),
+            event: editor.timelineEvent.trim(),
+            validity: editor.timelineValidity,
+          };
+  const csrfToken = await getCsrfToken();
+  const response = await fetch(path, {
+    method: "PATCH",
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(await readError(response, "设定保存失败。"));
+  }
+  if (editor.type === "faction") {
+    const detail = factionDetailResponseSchema.parse(await response.json()).data;
+    return { id: detail.faction.id, name: detail.faction.label ?? editor.name };
+  }
+  if (editor.type === "map") {
+    const detail = mapDetailResponseSchema.parse(await response.json()).data;
+    return { id: detail.map.id, name: detail.map.label ?? editor.name };
+  }
+  const detail = timelineEventResponseSchema.parse(await response.json()).data;
+  return { id: detail.event.id, name: detail.event.label ?? editor.name };
 }
 
 async function createWorldEntity(
@@ -5012,7 +5250,7 @@ function entitiesForColumn(entities: SettingEntity[], column: ColumnKey): Settin
 function columnDescription(column: ColumnKey): string {
   const descriptions: Record<ColumnKey, string> = {
     world: "记录不可违背的世界规则，以及规则生效的边界。",
-    characters: "记录人物当前身体状态、知识边界和关系摘要。",
+    characters: "记录人物欲望、恐惧、目标、声线与伪装。",
     factions: "势力、控制区和组织关系。",
     map: "地点层级、旅行时间和地图标记。",
     power: "记录力量体系，以及金手指的规则、代价、限制和成长。",

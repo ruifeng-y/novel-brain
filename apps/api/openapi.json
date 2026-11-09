@@ -2549,6 +2549,7 @@
                                     "SETTING_CONFLICT_UNRESOLVED",
                                     "SETTING_PROPOSAL_STATE",
                                     "SETTING_NOT_LOCKED",
+                                    "SETTING_DOMAIN_DATA_FORBIDDEN",
                                     "CUSTOM_FIELD_REQUIRED",
                                     "CUSTOM_FIELD_INVALID",
                                     "CUSTOM_FIELD_IMMUTABLE",
@@ -3333,6 +3334,7 @@
                                   "SETTING_CONFLICT_UNRESOLVED",
                                   "SETTING_PROPOSAL_STATE",
                                   "SETTING_NOT_LOCKED",
+                                  "SETTING_DOMAIN_DATA_FORBIDDEN",
                                   "CUSTOM_FIELD_REQUIRED",
                                   "CUSTOM_FIELD_INVALID",
                                   "CUSTOM_FIELD_IMMUTABLE",
@@ -9146,6 +9148,42 @@
                     "exclusiveMinimum": true,
                     "maximum": 9007199254740991
                   },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "aliases": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "tags": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    }
+                  },
+                  "customFields": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
                   "profile": {
                     "type": "object",
                     "properties": {
@@ -9183,7 +9221,7 @@
                     "additionalProperties": false
                   }
                 },
-                "required": ["version", "profile"],
+                "required": ["version"],
                 "additionalProperties": false
               }
             }
@@ -14999,6 +15037,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -16489,6 +16528,7 @@
                                   "SETTING_CONFLICT_UNRESOLVED",
                                   "SETTING_PROPOSAL_STATE",
                                   "SETTING_NOT_LOCKED",
+                                  "SETTING_DOMAIN_DATA_FORBIDDEN",
                                   "CUSTOM_FIELD_REQUIRED",
                                   "CUSTOM_FIELD_INVALID",
                                   "CUSTOM_FIELD_IMMUTABLE",
@@ -17413,6 +17453,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -18336,6 +18377,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -19259,6 +19301,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -20231,6 +20274,7 @@
                                     "SETTING_CONFLICT_UNRESOLVED",
                                     "SETTING_PROPOSAL_STATE",
                                     "SETTING_NOT_LOCKED",
+                                    "SETTING_DOMAIN_DATA_FORBIDDEN",
                                     "CUSTOM_FIELD_REQUIRED",
                                     "CUSTOM_FIELD_INVALID",
                                     "CUSTOM_FIELD_IMMUTABLE",
@@ -48667,166 +48711,8 @@
                     "additionalProperties": {}
                   },
                   "data": {
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "rule": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          }
-                        },
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "bodyState": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          },
-                          "knowledgeBoundary": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          },
-                          "relationshipSummary": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          }
-                        },
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "details": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          }
-                        },
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "details": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          }
-                        },
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "details": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          }
-                        },
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "rules": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          },
-                          "cost": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          },
-                          "limits": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          },
-                          "growth": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          }
-                        },
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "category": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 200
-                          },
-                          "grade": {
-                            "default": "",
-                            "type": "string",
-                            "maxLength": 200
-                          },
-                          "effect": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          },
-                          "cost": {
-                            "default": "",
-                            "type": "string",
-                            "maxLength": 20000
-                          },
-                          "ownership": {
-                            "default": "",
-                            "type": "string",
-                            "maxLength": 500
-                          },
-                          "limits": {
-                            "default": "",
-                            "type": "string",
-                            "maxLength": 20000
-                          }
-                        },
-                        "additionalProperties": false
-                      },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "era": {
-                            "default": "",
-                            "type": "string",
-                            "maxLength": 200
-                          },
-                          "storyTime": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 500
-                          },
-                          "storySortKey": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "duration": {
-                            "default": "",
-                            "type": "string",
-                            "maxLength": 500
-                          },
-                          "event": {
-                            "type": "string",
-                            "minLength": 1,
-                            "maxLength": 20000
-                          }
-                        },
-                        "additionalProperties": false
-                      }
-                    ]
+                    "type": "object",
+                    "additionalProperties": {}
                   }
                 },
                 "required": ["version"]
@@ -51616,6 +51502,262 @@
                             "additionalProperties": false
                           }
                         ]
+                      },
+                      "character": {
+                        "type": "object",
+                        "properties": {
+                          "desire": {
+                            "default": "",
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "fear": {
+                            "default": "",
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "goal": {
+                            "default": "",
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "voiceSample": {
+                            "default": "",
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "voiceGuide": {
+                            "default": "",
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "disguise": {
+                            "default": "",
+                            "type": "string",
+                            "maxLength": 20000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "faction": {
+                        "type": "object",
+                        "properties": {
+                          "overview": {
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "goals": {
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "resources": {
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "doctrine": {
+                            "type": "string",
+                            "maxLength": 20000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "map": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "aliases": {
+                            "maxItems": 30,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            }
+                          },
+                          "summary": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "tags": {
+                            "maxItems": 30,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 40
+                            }
+                          },
+                          "customFields": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "details": {
+                            "type": "string",
+                            "maxLength": 20000
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "timeline": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "aliases": {
+                            "maxItems": 30,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            }
+                          },
+                          "summary": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 500
+                          },
+                          "description": {
+                            "type": "string",
+                            "maxLength": 20000
+                          },
+                          "tags": {
+                            "maxItems": 30,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 40
+                            }
+                          },
+                          "customFields": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "era": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "storyTime": {
+                            "type": "object",
+                            "properties": {
+                              "era": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "sortKey": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": ["era", "label", "sortKey"],
+                            "additionalProperties": false
+                          },
+                          "durationMinutes": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "durationLabel": {
+                            "type": "string",
+                            "maxLength": 200
+                          },
+                          "event": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 20000
+                          },
+                          "validity": {
+                            "type": "object",
+                            "properties": {
+                              "fromChapter": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "toChapter": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "fromStoryTime": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "era": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "sortKey": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": ["era", "label", "sortKey"],
+                                "additionalProperties": false
+                              },
+                              "toStoryTime": {
+                                "default": null,
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "era": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "sortKey": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": ["era", "label", "sortKey"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "required": ["fromChapter"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "additionalProperties": false
                       },
                       "powerSystem": {
                         "type": "object",
@@ -76685,6 +76827,7 @@
                                       "SETTING_CONFLICT_UNRESOLVED",
                                       "SETTING_PROPOSAL_STATE",
                                       "SETTING_NOT_LOCKED",
+                                      "SETTING_DOMAIN_DATA_FORBIDDEN",
                                       "CUSTOM_FIELD_REQUIRED",
                                       "CUSTOM_FIELD_INVALID",
                                       "CUSTOM_FIELD_IMMUTABLE",
@@ -77038,6 +77181,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -77326,6 +77470,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -80157,6 +80302,42 @@
                     "exclusiveMinimum": true,
                     "maximum": 9007199254740991
                   },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "aliases": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "tags": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    }
+                  },
+                  "customFields": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
                   "profile": {
                     "type": "object",
                     "properties": {
@@ -80180,7 +80361,7 @@
                     "additionalProperties": false
                   }
                 },
-                "required": ["version", "profile"],
+                "required": ["version"],
                 "additionalProperties": false
               }
             }
@@ -84961,6 +85142,1116 @@
           }
         },
         "tags": ["world"]
+      },
+      "patch": {
+        "operationId": "WorldController_updateMap",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mapId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "aliases": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "tags": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    }
+                  },
+                  "customFields": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "details": {
+                    "type": "string",
+                    "maxLength": 20000
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated map",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "map": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "character",
+                                "faction",
+                                "map",
+                                "world_rule",
+                                "map_layer",
+                                "map_node",
+                                "map_edge",
+                                "map_marker",
+                                "territory",
+                                "power_system",
+                                "golden_finger",
+                                "item",
+                                "timeline_event",
+                                "timeline_era",
+                                "itinerary",
+                                "fact",
+                                "chapter",
+                                "character_relationship",
+                                "character_state",
+                                "character_knowledge"
+                              ]
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "label": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "version": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "branchId": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "versionNodeId": {
+                                  "default": null,
+                                  "nullable": true,
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "objectVersion": {
+                                  "default": null,
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["branchId", "versionNodeId", "objectVersion"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": ["type", "id", "branchId", "label", "version"],
+                          "additionalProperties": false
+                        },
+                        "layers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "mapId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "parentLayerId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "sortOrder": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "minScale": {
+                                "type": "number"
+                              },
+                              "maxScale": {
+                                "type": "number"
+                              },
+                              "validity": {
+                                "type": "object",
+                                "properties": {
+                                  "fromChapter": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "toChapter": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fromStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  },
+                                  "toStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "fromChapter",
+                                  "toChapter",
+                                  "fromStoryTime",
+                                  "toStoryTime"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "versionNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mapId",
+                              "workId",
+                              "branchId",
+                              "name",
+                              "parentLayerId",
+                              "sortOrder",
+                              "minScale",
+                              "maxScale",
+                              "validity",
+                              "versionNodeId",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "nodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "mapId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "layerId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "parentNodeId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "nodeType": {
+                                "type": "string",
+                                "enum": [
+                                  "region",
+                                  "settlement",
+                                  "landmark",
+                                  "passage",
+                                  "battlefield",
+                                  "sect",
+                                  "dungeon",
+                                  "other"
+                                ]
+                              },
+                              "summary": {
+                                "type": "string"
+                              },
+                              "x": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "y": {
+                                "nullable": true,
+                                "type": "number"
+                              },
+                              "validity": {
+                                "type": "object",
+                                "properties": {
+                                  "fromChapter": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "toChapter": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fromStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  },
+                                  "toStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "fromChapter",
+                                  "toChapter",
+                                  "fromStoryTime",
+                                  "toStoryTime"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "versionNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mapId",
+                              "workId",
+                              "branchId",
+                              "layerId",
+                              "parentNodeId",
+                              "name",
+                              "nodeType",
+                              "summary",
+                              "x",
+                              "y",
+                              "validity",
+                              "versionNodeId",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "edges": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "mapId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "layerId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "fromNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "toNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "routeType": {
+                                "type": "string",
+                                "enum": ["road", "trail", "water", "air", "teleport", "secret"]
+                              },
+                              "bidirectional": {
+                                "type": "boolean"
+                              },
+                              "travelMinutes": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "validity": {
+                                "type": "object",
+                                "properties": {
+                                  "fromChapter": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "toChapter": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fromStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  },
+                                  "toStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "fromChapter",
+                                  "toChapter",
+                                  "fromStoryTime",
+                                  "toStoryTime"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "versionNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mapId",
+                              "workId",
+                              "branchId",
+                              "layerId",
+                              "fromNodeId",
+                              "toNodeId",
+                              "routeType",
+                              "bidirectional",
+                              "travelMinutes",
+                              "validity",
+                              "versionNodeId",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "markers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "mapId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "layerId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "nodeId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "label": {
+                                "type": "string"
+                              },
+                              "markerType": {
+                                "type": "string",
+                                "enum": ["danger", "event", "resource", "note", "character"]
+                              },
+                              "x": {
+                                "type": "number"
+                              },
+                              "y": {
+                                "type": "number"
+                              },
+                              "validity": {
+                                "type": "object",
+                                "properties": {
+                                  "fromChapter": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "toChapter": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fromStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  },
+                                  "toStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "fromChapter",
+                                  "toChapter",
+                                  "fromStoryTime",
+                                  "toStoryTime"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "versionNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mapId",
+                              "workId",
+                              "branchId",
+                              "layerId",
+                              "nodeId",
+                              "label",
+                              "markerType",
+                              "x",
+                              "y",
+                              "validity",
+                              "versionNodeId",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "controlAreas": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "branchId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "factionId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "node": {
+                                "type": "object",
+                                "properties": {
+                                  "type": {
+                                    "type": "string",
+                                    "enum": [
+                                      "character",
+                                      "faction",
+                                      "map",
+                                      "world_rule",
+                                      "map_layer",
+                                      "map_node",
+                                      "map_edge",
+                                      "map_marker",
+                                      "territory",
+                                      "power_system",
+                                      "golden_finger",
+                                      "item",
+                                      "timeline_event",
+                                      "timeline_era",
+                                      "itinerary",
+                                      "fact",
+                                      "chapter",
+                                      "character_relationship",
+                                      "character_state",
+                                      "character_knowledge"
+                                    ]
+                                  },
+                                  "id": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "branchId": {
+                                    "type": "string",
+                                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                  },
+                                  "label": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "version": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "branchId": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "versionNodeId": {
+                                        "default": null,
+                                        "nullable": true,
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                      },
+                                      "objectVersion": {
+                                        "default": null,
+                                        "nullable": true,
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "exclusiveMinimum": true,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["branchId", "versionNodeId", "objectVersion"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": ["type", "id", "branchId", "label", "version"],
+                                "additionalProperties": false
+                              },
+                              "controlLevel": {
+                                "type": "string",
+                                "enum": ["direct", "military", "influence", "contested"]
+                              },
+                              "validity": {
+                                "type": "object",
+                                "properties": {
+                                  "fromChapter": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "toChapter": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "fromStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  },
+                                  "toStoryTime": {
+                                    "default": null,
+                                    "nullable": true,
+                                    "type": "object",
+                                    "properties": {
+                                      "era": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "sortKey": {
+                                        "type": "integer",
+                                        "minimum": -9007199254740991,
+                                        "maximum": 9007199254740991
+                                      }
+                                    },
+                                    "required": ["era", "label", "sortKey"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "required": [
+                                  "fromChapter",
+                                  "toChapter",
+                                  "fromStoryTime",
+                                  "toStoryTime"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "evidence": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "type": "string",
+                                      "enum": [
+                                        "chapter",
+                                        "entity",
+                                        "import",
+                                        "author_note",
+                                        "ai_suggestion"
+                                      ]
+                                    },
+                                    "sourceId": {
+                                      "default": null,
+                                      "nullable": true,
+                                      "type": "string",
+                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "quote": {
+                                      "default": "",
+                                      "type": "string",
+                                      "maxLength": 5000
+                                    },
+                                    "locator": {
+                                      "default": "",
+                                      "type": "string",
+                                      "maxLength": 500
+                                    },
+                                    "confidence": {
+                                      "default": null,
+                                      "nullable": true,
+                                      "type": "number",
+                                      "minimum": 0,
+                                      "maximum": 1
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "sourceId",
+                                    "label",
+                                    "quote",
+                                    "locator",
+                                    "confidence"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "versionNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "workId",
+                              "branchId",
+                              "factionId",
+                              "node",
+                              "controlLevel",
+                              "validity",
+                              "evidence",
+                              "versionNodeId",
+                              "createdAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "health": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "code": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "severity": {
+                                "type": "string",
+                                "enum": ["info", "warning", "blocker"]
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1
+                              },
+                              "relatedIds": {
+                                "default": [],
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                }
+                              }
+                            },
+                            "required": ["code", "severity", "message", "relatedIds"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "latestVersionNodeId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": ["draft", "proposed", "locked", "discarded"]
+                        },
+                        "lockedAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "map",
+                        "layers",
+                        "nodes",
+                        "edges",
+                        "markers",
+                        "controlAreas",
+                        "health",
+                        "version",
+                        "latestVersionNodeId",
+                        "status",
+                        "lockedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["world"]
       }
     },
     "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}/layers": {
@@ -87501,6 +88792,435 @@
         "responses": {
           "201": {
             "description": "Created timeline event",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "event": {
+                          "type": "object",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": [
+                                "character",
+                                "faction",
+                                "map",
+                                "world_rule",
+                                "map_layer",
+                                "map_node",
+                                "map_edge",
+                                "map_marker",
+                                "territory",
+                                "power_system",
+                                "golden_finger",
+                                "item",
+                                "timeline_event",
+                                "timeline_era",
+                                "itinerary",
+                                "fact",
+                                "chapter",
+                                "character_relationship",
+                                "character_state",
+                                "character_knowledge"
+                              ]
+                            },
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "branchId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "label": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "version": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "branchId": {
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "versionNodeId": {
+                                  "default": null,
+                                  "nullable": true,
+                                  "type": "string",
+                                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                                },
+                                "objectVersion": {
+                                  "default": null,
+                                  "nullable": true,
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["branchId", "versionNodeId", "objectVersion"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": ["type", "id", "branchId", "label", "version"],
+                          "additionalProperties": false
+                        },
+                        "era": {
+                          "type": "string"
+                        },
+                        "storyTime": {
+                          "type": "object",
+                          "properties": {
+                            "era": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "sortKey": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            }
+                          },
+                          "required": ["era", "label", "sortKey"],
+                          "additionalProperties": false
+                        },
+                        "durationMinutes": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "durationLabel": {
+                          "type": "string"
+                        },
+                        "eventText": {
+                          "type": "string"
+                        },
+                        "validity": {
+                          "type": "object",
+                          "properties": {
+                            "fromChapter": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "toChapter": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "fromStoryTime": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "era": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "sortKey": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["era", "label", "sortKey"],
+                              "additionalProperties": false
+                            },
+                            "toStoryTime": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "era": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "sortKey": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": ["era", "label", "sortKey"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": ["fromChapter", "toChapter", "fromStoryTime", "toStoryTime"],
+                          "additionalProperties": false
+                        },
+                        "versionNodeId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "event",
+                        "era",
+                        "storyTime",
+                        "durationMinutes",
+                        "durationLabel",
+                        "eventText",
+                        "validity",
+                        "versionNodeId",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["world"]
+      }
+    },
+    "/api/v1/works/{workId}/branches/{branchId}/world/timeline/events/{eventId}": {
+      "patch": {
+        "operationId": "WorldController_updateTimelineEvent",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "eventId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "aliases": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    }
+                  },
+                  "summary": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "tags": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 40
+                    }
+                  },
+                  "customFields": {
+                    "type": "object",
+                    "additionalProperties": {}
+                  },
+                  "era": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "storyTime": {
+                    "type": "object",
+                    "properties": {
+                      "era": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "sortKey": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": ["era", "label", "sortKey"],
+                    "additionalProperties": false
+                  },
+                  "durationMinutes": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "durationLabel": {
+                    "type": "string",
+                    "maxLength": 200
+                  },
+                  "event": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 20000
+                  },
+                  "validity": {
+                    "type": "object",
+                    "properties": {
+                      "fromChapter": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 9007199254740991
+                      },
+                      "toChapter": {
+                        "default": null,
+                        "nullable": true,
+                        "type": "integer",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 9007199254740991
+                      },
+                      "fromStoryTime": {
+                        "default": null,
+                        "nullable": true,
+                        "type": "object",
+                        "properties": {
+                          "era": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "sortKey": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": ["era", "label", "sortKey"],
+                        "additionalProperties": false
+                      },
+                      "toStoryTime": {
+                        "default": null,
+                        "nullable": true,
+                        "type": "object",
+                        "properties": {
+                          "era": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 120
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "sortKey": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": ["era", "label", "sortKey"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "required": ["fromChapter"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated timeline event",
             "content": {
               "application/json": {
                 "schema": {
@@ -106387,6 +108107,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -107919,6 +109640,7 @@
                                   "SETTING_CONFLICT_UNRESOLVED",
                                   "SETTING_PROPOSAL_STATE",
                                   "SETTING_NOT_LOCKED",
+                                  "SETTING_DOMAIN_DATA_FORBIDDEN",
                                   "CUSTOM_FIELD_REQUIRED",
                                   "CUSTOM_FIELD_INVALID",
                                   "CUSTOM_FIELD_IMMUTABLE",
@@ -109447,6 +111169,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -110967,6 +112690,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -112487,6 +114211,7 @@
                                 "SETTING_CONFLICT_UNRESOLVED",
                                 "SETTING_PROPOSAL_STATE",
                                 "SETTING_NOT_LOCKED",
+                                "SETTING_DOMAIN_DATA_FORBIDDEN",
                                 "CUSTOM_FIELD_REQUIRED",
                                 "CUSTOM_FIELD_INVALID",
                                 "CUSTOM_FIELD_IMMUTABLE",
@@ -114066,6 +115791,7 @@
                                     "SETTING_CONFLICT_UNRESOLVED",
                                     "SETTING_PROPOSAL_STATE",
                                     "SETTING_NOT_LOCKED",
+                                    "SETTING_DOMAIN_DATA_FORBIDDEN",
                                     "CUSTOM_FIELD_REQUIRED",
                                     "CUSTOM_FIELD_INVALID",
                                     "CUSTOM_FIELD_IMMUTABLE",

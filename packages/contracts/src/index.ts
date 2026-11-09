@@ -27,6 +27,7 @@ export const ERROR_CODES = [
   "SETTING_CONFLICT_UNRESOLVED",
   "SETTING_PROPOSAL_STATE",
   "SETTING_NOT_LOCKED",
+  "SETTING_DOMAIN_DATA_FORBIDDEN",
   "CUSTOM_FIELD_REQUIRED",
   "CUSTOM_FIELD_INVALID",
   "CUSTOM_FIELD_IMMUTABLE",
@@ -1295,18 +1296,7 @@ export const settingEntityPatchRequestSchema = z
     version: z.number().int().positive(),
     ...settingEntityPatchShape,
     customFields: customFieldValuesSchema.optional(),
-    data: z
-      .union([
-        worldRuleDataSchema.partial(),
-        characterDataSchema.partial(),
-        factionDataSchema.partial(),
-        mapDataSchema.partial(),
-        powerSystemDataSchema.partial(),
-        goldenFingerDataSchema.partial(),
-        itemDataSchema.partial(),
-        timelineEventDataSchema.partial(),
-      ])
-      .optional(),
+    data: z.record(z.string(), z.unknown()).optional(),
   })
   .refine(
     (input) =>
@@ -1342,6 +1332,10 @@ export const settingChangeRequestCreateRequestSchema = z
             timelineEventDataSchema.partial(),
           ])
           .optional(),
+        character: z.lazy(() => characterProfilePatchSchema).optional(),
+        faction: z.lazy(() => factionProfilePatchSchema).optional(),
+        map: z.lazy(() => mapChangePatchSchema).optional(),
+        timeline: z.lazy(() => timelineEventChangePatchSchema).optional(),
         powerSystem: z.lazy(() => powerSystemChangePatchSchema).optional(),
         mechanism: z.lazy(() => mechanismChangePatchSchema).optional(),
         item: z.lazy(() => itemChangePatchSchema).optional(),
@@ -1355,6 +1349,10 @@ export const settingChangeRequestCreateRequestSchema = z
           input.tags !== undefined ||
           input.customFields !== undefined ||
           input.data !== undefined ||
+          input.character !== undefined ||
+          input.faction !== undefined ||
+          input.map !== undefined ||
+          input.timeline !== undefined ||
           input.powerSystem !== undefined ||
           input.mechanism !== undefined ||
           input.item !== undefined,
@@ -1823,9 +1821,14 @@ export type CharacterProfilePatch = z.infer<typeof characterProfilePatchSchema>;
 export const characterProfileUpdateRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    profile: characterProfilePatchSchema,
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    profile: characterProfilePatchSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one character field is required",
+  });
 export type CharacterProfileUpdateRequest = z.infer<typeof characterProfileUpdateRequestSchema>;
 
 export const characterRelationshipTypeSchema = z.enum([
@@ -2228,9 +2231,14 @@ export type FactionProfilePatch = z.infer<typeof factionProfilePatchSchema>;
 export const factionProfileUpdateRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    profile: factionProfilePatchSchema,
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    profile: factionProfilePatchSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one faction field is required",
+  });
 export type FactionProfileUpdateRequest = z.infer<typeof factionProfileUpdateRequestSchema>;
 
 export const factionCreateRequestSchema = z
@@ -2253,6 +2261,31 @@ export const mapCreateRequestSchema = z
   })
   .strict();
 export type MapCreateRequest = z.infer<typeof mapCreateRequestSchema>;
+
+export const mapPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    details: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one map field is required",
+  });
+export type MapPatchRequest = z.infer<typeof mapPatchRequestSchema>;
+
+export const mapChangePatchSchema = z
+  .object({
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    details: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one map field is required",
+  });
+export type MapChangePatch = z.infer<typeof mapChangePatchSchema>;
 
 export const factionRelationTypeSchema = z.enum([
   "ally",
@@ -2591,6 +2624,59 @@ export const timelineEventCreateRequestSchema = z
     }
   });
 export type TimelineEventCreateRequest = z.infer<typeof timelineEventCreateRequestSchema>;
+
+export const timelineEventPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    era: z.string().trim().min(1).max(120).optional(),
+    storyTime: storyTimePointSchema.optional(),
+    durationMinutes: z.number().int().nonnegative().optional(),
+    durationLabel: z.string().trim().max(200).optional(),
+    event: z.string().trim().min(1).max(20_000).optional(),
+    validity: validityIntervalSchema.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime && input.era && input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  })
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one timeline event field is required",
+  });
+export type TimelineEventPatchRequest = z.infer<typeof timelineEventPatchRequestSchema>;
+
+export const timelineEventChangePatchSchema = z
+  .object({
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    era: z.string().trim().min(1).max(120).optional(),
+    storyTime: storyTimePointSchema.optional(),
+    durationMinutes: z.number().int().nonnegative().optional(),
+    durationLabel: z.string().trim().max(200).optional(),
+    event: z.string().trim().min(1).max(20_000).optional(),
+    validity: validityIntervalSchema.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime && input.era && input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  })
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one timeline event field is required",
+  });
+export type TimelineEventChangePatch = z.infer<typeof timelineEventChangePatchSchema>;
 
 export const timelineEventDetailSchema = z.object({
   event: domainRefSchema,

@@ -205,6 +205,13 @@ export class SettingsService {
     if (current.status === "locked") {
       throw new ApiError(409, "SETTING_LOCKED", "设定已锁定，不能直接编辑或修改别名");
     }
+    if (input.data !== undefined && current.type !== "world_rule") {
+      throw new ApiError(
+        400,
+        "SETTING_DOMAIN_DATA_FORBIDDEN",
+        "该设定类型必须通过专用接口编辑领域数据",
+      );
+    }
     if (current.version !== input.version) {
       throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
     }

@@ -245,9 +245,12 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await page.getByLabel("名称").fill("沈砚");
   await page.getByLabel("别名").fill("小砚");
   await page.getByLabel("一句话摘要").fill("外门杂役，正在隐藏忘川书的存在。");
-  await page.getByLabel("当前身体状态").fill("左臂骨折，不能双手结印。");
-  await page.getByLabel("知识边界").fill("不知道父母死于仇杀。");
-  await page.getByLabel("关系摘要").fill("与顾青表面亲近，实际互相试探。");
+  await page.getByLabel("人物欲望").fill("找回被抹去的记忆。");
+  await page.getByLabel("人物恐惧").fill("再次被宗门抛弃。");
+  await page.getByLabel("人物目标").fill("进入内门。");
+  await page.getByLabel("声纹样本").fill("“我记得，只是还没想起来。”");
+  await page.getByLabel("声线指南").fill("短句，克制。");
+  await page.getByLabel("伪装").fill("藏起左臂伤势。");
   await page.getByLabel(/命格/).selectOption("剑骨");
   await page.getByRole("button", { name: "创建设定" }).click();
 
@@ -255,6 +258,16 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await expect(detail.getByRole("heading", { name: "沈砚" })).toBeVisible();
   await expect(detail.getByText("命格")).toBeVisible();
   await expect(detail.getByText("剑骨")).toBeVisible();
+
+  await detail.getByRole("button", { name: "编辑设定", exact: true }).click();
+  await page.getByLabel("人物欲望").fill("找回被抹去的全部记忆。");
+  const characterPatch = page.waitForRequest(
+    (request) =>
+      request.method() === "PATCH" && /\/characters\/[^/]+$/u.test(new URL(request.url()).pathname),
+  );
+  await page.getByRole("button", { name: "保存修改" }).click();
+  await characterPatch;
+  await expect(detail.getByText("找回被抹去的全部记忆。")).toBeVisible();
 
   await detail.getByRole("button", { name: "锁定设定" }).click();
   await expect(detail.getByRole("button", { name: "已锁定 · 编辑需修改请求" })).toBeDisabled();

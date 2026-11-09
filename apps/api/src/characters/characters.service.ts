@@ -69,16 +69,7 @@ export class CharactersService {
     audit: CharacterAuditContext,
   ): Promise<CharacterDetail> {
     const context = await this.requireContext(userId, workId, branchId);
-    return unwrap(
-      await this.repository.updateProfile(
-        userId,
-        context,
-        characterId,
-        input.version,
-        input.profile,
-        audit,
-      ),
-    );
+    return unwrap(await this.repository.updateProfile(userId, context, characterId, input, audit));
   }
 
   async addRelationship(
@@ -225,6 +216,10 @@ function unwrap<T>(result: CharacterWriteResult<T>): T {
       throw new ApiError(400, "VALIDATION_INVALID", "客观事实不存在或不属于当前分支");
     case "target_not_found":
       throw new ApiError(400, "VALIDATION_INVALID", "关系或位置引用的目标不存在");
+    case "custom_field_required":
+      throw new ApiError(400, "CUSTOM_FIELD_REQUIRED", result.message);
+    case "custom_field_invalid":
+      throw new ApiError(400, "CUSTOM_FIELD_INVALID", result.message);
   }
 }
 

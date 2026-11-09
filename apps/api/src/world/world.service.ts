@@ -17,6 +17,7 @@ import type {
   MapMarkerCreateRequest,
   MapNode,
   MapNodeCreateRequest,
+  MapPatchRequest,
   MapRoute,
   Territory,
   TerritoryCreateRequest,
@@ -24,6 +25,7 @@ import type {
   TimelineEraCreateRequest,
   TimelineEventCreateRequest,
   TimelineEventDetail,
+  TimelineEventPatchRequest,
   WorldSnapshot,
   WorldSnapshotQuery,
   WorldTimeline,
@@ -104,14 +106,7 @@ export class WorldService {
   ): Promise<FactionDetail> {
     const context = await this.requireContext(userId, workId, branchId);
     return unwrap(
-      await this.repository.updateFactionProfile(
-        userId,
-        context,
-        factionId,
-        input.version,
-        input.profile,
-        audit,
-      ),
+      await this.repository.updateFactionProfile(userId, context, factionId, input, audit),
     );
   }
 
@@ -184,6 +179,18 @@ export class WorldService {
   ): Promise<MapDetail> {
     const context = await this.requireContext(userId, workId, branchId);
     return unwrap(await this.repository.createMap(userId, context, input, audit));
+  }
+
+  async updateMap(
+    userId: string,
+    workId: string,
+    branchId: string,
+    mapId: string,
+    input: MapPatchRequest,
+    audit: WorldAuditContext,
+  ): Promise<MapDetail> {
+    const context = await this.requireContext(userId, workId, branchId);
+    return unwrap(await this.repository.updateMap(userId, context, mapId, input, audit));
   }
 
   async addMapLayer(
@@ -298,6 +305,20 @@ export class WorldService {
     return unwrap(await this.repository.createTimelineEvent(userId, context, input, audit));
   }
 
+  async updateTimelineEvent(
+    userId: string,
+    workId: string,
+    branchId: string,
+    eventId: string,
+    input: TimelineEventPatchRequest,
+    audit: WorldAuditContext,
+  ): Promise<TimelineEventDetail> {
+    const context = await this.requireContext(userId, workId, branchId);
+    return unwrap(
+      await this.repository.updateTimelineEvent(userId, context, eventId, input, audit),
+    );
+  }
+
   async createItinerary(
     userId: string,
     workId: string,
@@ -397,6 +418,10 @@ function unwrap<T>(result: WorldWriteResult<T>): T {
       throw new ApiError(409, "ITINERARY_TIME_ORDER", "行程到达时间必须晚于出发时间");
     case "itinerary_overlap":
       throw new ApiError(409, "ITINERARY_OVERLAP", "角色行程在故事时间上发生重叠");
+    case "custom_field_required":
+      throw new ApiError(400, "CUSTOM_FIELD_REQUIRED", result.message);
+    case "custom_field_invalid":
+      throw new ApiError(400, "CUSTOM_FIELD_INVALID", result.message);
   }
 }
 

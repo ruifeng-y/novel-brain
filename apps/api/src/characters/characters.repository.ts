@@ -28,6 +28,7 @@ import {
   type CharacterKnowledgeState,
   type CharacterKnowledgeStateCreateRequest,
   type CharacterProfilePatch,
+  type CharacterProfileUpdateRequest,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
   type CharacterStateTransition,
@@ -36,6 +37,7 @@ import {
   type StoryTimePoint,
   type ValidityInterval,
 } from "@novel-brain/contracts";
+import { resolveCustomFieldWrite, writeCustomFieldValues } from "../settings/settings.repository";
 import { projectCharacterKnowledgeAtChapter } from "@novel-brain/core";
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
@@ -86,7 +88,9 @@ export type CharacterWriteResult<T> =
   | { kind: "alias_conflict"; entityId: string; value: string }
   | { kind: "state_overlap" }
   | { kind: "fact_not_found" }
-  | { kind: "target_not_found" };
+  | { kind: "target_not_found" }
+  | { kind: "custom_field_required"; fieldKey: string; message: string }
+  | { kind: "custom_field_invalid"; fieldKey: string; message: string };
 
 interface CharacterAggregate {
   entity: CharacterEntityRecord;
@@ -261,8 +265,7 @@ export class CharactersRepository implements OnModuleDestroy {
     userId: string,
     context: CharacterWorkContext,
     characterId: string,
-    expectedVersion: number,
-    patch: CharacterProfilePatch,
+    input: CharacterProfileUpdateRequest,
     audit: CharacterAuditContext,
   ): Promise<CharacterWriteResult<CharacterDetail>> {
     return this.withTenant(userId, async (transaction) => {
@@ -272,16 +275,35 @@ export class CharactersRepository implements OnModuleDestroy {
         userId,
         context,
         characterId,
-        expectedVersion,
+        input.version,
       );
       if (current.kind !== "ok") {
         return current;
       }
+      const customFields = await resolveCustomFieldWrite(
+        transaction,
+        userId,
+        context,
+        "character",
+        characterId,
+        input.customFields,
+      );
+      if ("kind" in customFields) {
+        return customFields;
+      }
       const now = new Date();
       const [updated] = await transaction
         .update(entities)
-        .set({ version: current.value.version + 1, updatedAt: now })
-        .where(and(eq(entities.id, characterId), eq(entities.version, expectedVersion)))
+        .set({
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.aliases !== undefined ? { aliases: input.aliases } : {}),
+          ...(input.summary !== undefined ? { summary: input.summary } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.tags !== undefined ? { tags: input.tags } : {}),
+          version: current.value.version + 1,
+          updatedAt: now,
+        })
+        .where(and(eq(entities.id, characterId), eq(entities.version, input.version)))
         .returning();
       if (!updated) {
         return { kind: "version_conflict" };
@@ -293,14 +315,25 @@ export class CharactersRepository implements OnModuleDestroy {
           workId: context.workId,
           branchId: context.branchId,
           userId,
-          ...characterProfileSchema.parse({ ...emptyProfile(), ...patch }),
+          ...(input.profile
+            ? characterProfileSchema.parse({ ...emptyProfile(), ...input.profile })
+            : emptyProfile()),
           createdAt: now,
           updatedAt: now,
         })
         .onConflictDoUpdate({
           target: characterProfiles.entityId,
-          set: { ...patch, updatedAt: now },
+          set: { ...(input.profile ?? {}), updatedAt: now },
         });
+      await writeCustomFieldValues(
+        transaction,
+        userId,
+        context,
+        characterId,
+        customFields.values,
+        customFields.definitions,
+        now,
+      );
       await this.appendVersion(
         transaction,
         userId,
@@ -310,6 +343,7 @@ export class CharactersRepository implements OnModuleDestroy {
         "character.profile.updated",
         "更新人物档案",
         audit,
+        customFields.values,
       );
       const aggregate = await this.readAggregate(transaction, userId, context, characterId);
       if (!aggregate) {
@@ -957,6 +991,7 @@ export class CharactersRepository implements OnModuleDestroy {
     action: string,
     message: string,
     audit: CharacterAuditContext,
+    customFields?: Record<string, unknown>,
   ): Promise<void> {
     const versionNodeId = uuidv7();
     await insertVersionNode(
@@ -969,7 +1004,15 @@ export class CharactersRepository implements OnModuleDestroy {
       message,
       parentNodeId,
     );
-    await this.appendSnapshotAtVersion(transaction, userId, context, entity, versionNodeId, audit);
+    await this.appendSnapshotAtVersion(
+      transaction,
+      userId,
+      context,
+      entity,
+      versionNodeId,
+      audit,
+      customFields,
+    );
     await transaction
       .update(workBranches)
       .set({ headNodeId: versionNodeId, updatedAt: new Date() })
@@ -983,6 +1026,7 @@ export class CharactersRepository implements OnModuleDestroy {
     entity: CharacterEntityRecord,
     versionNodeId: string,
     audit: CharacterAuditContext,
+    customFields?: Record<string, unknown>,
   ): Promise<void> {
     const aggregate = await this.readAggregate(transaction, userId, context, entity.id);
     if (!aggregate) {
@@ -1002,6 +1046,7 @@ export class CharactersRepository implements OnModuleDestroy {
       description: entity.description,
       attributes: entity.attributes,
       tags: entity.tags,
+      ...(customFields ? { customFields } : {}),
       status: entity.status,
       source: entity.source,
       version: entity.version,

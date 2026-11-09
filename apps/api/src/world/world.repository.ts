@@ -36,7 +36,7 @@ import {
   type FactionCreateRequest,
   type FactionDetail,
   type FactionProfile,
-  type FactionProfilePatch,
+  type FactionProfileUpdateRequest,
   type FactionRelationship,
   type FactionRelationshipCreateRequest,
   type MapCreateRequest,
@@ -49,6 +49,7 @@ import {
   type MapMarkerCreateRequest,
   type MapNode,
   type MapNodeCreateRequest,
+  type MapPatchRequest,
   type MapRoute,
   type StoryTimePoint,
   type Territory,
@@ -57,11 +58,13 @@ import {
   type TimelineEraCreateRequest,
   type TimelineEventCreateRequest,
   type TimelineEventDetail,
+  type TimelineEventPatchRequest,
   type ValidityInterval,
   type WorldSnapshot,
   type WorldTimeline,
 } from "@novel-brain/contracts";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { resolveCustomFieldWrite, writeCustomFieldValues } from "../settings/settings.repository";
+import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -108,7 +111,9 @@ export type WorldWriteResult<T> =
   | { kind: "timeline_overlap" }
   | { kind: "timeline_era_not_found" }
   | { kind: "itinerary_time_order" }
-  | { kind: "itinerary_overlap" };
+  | { kind: "itinerary_overlap" }
+  | { kind: "custom_field_required"; fieldKey: string; message: string }
+  | { kind: "custom_field_invalid"; fieldKey: string; message: string };
 
 interface ReadOptions {
   versionNodeIds?: string[];
@@ -295,8 +300,7 @@ export class WorldRepository implements OnModuleDestroy {
     userId: string,
     context: WorldWorkContext,
     factionId: string,
-    expectedVersion: number,
-    patch: FactionProfilePatch,
+    input: FactionProfileUpdateRequest,
     audit: WorldAuditContext,
   ): Promise<WorldWriteResult<FactionDetail>> {
     return this.withTenant(userId, async (transaction) => {
@@ -307,12 +311,38 @@ export class WorldRepository implements OnModuleDestroy {
         context,
         factionId,
         "faction",
-        expectedVersion,
+        input.version,
       );
       if (current.kind !== "ok") {
         return current;
       }
+      const customFields = await resolveCustomFieldWrite(
+        transaction,
+        userId,
+        context,
+        "faction",
+        factionId,
+        input.customFields,
+      );
+      if ("kind" in customFields) {
+        return customFields;
+      }
       const now = new Date();
+      const [patched] = await transaction
+        .update(entities)
+        .set({
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.aliases !== undefined ? { aliases: input.aliases } : {}),
+          ...(input.summary !== undefined ? { summary: input.summary } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.tags !== undefined ? { tags: input.tags } : {}),
+          updatedAt: now,
+        })
+        .where(and(eq(entities.id, factionId), eq(entities.version, input.version)))
+        .returning();
+      if (!patched) {
+        return { kind: "version_conflict" };
+      }
       const versionNodeId = uuidv7();
       const headNodeId = await requireBranchHead(transaction, userId, context);
       await insertVersionNode(
@@ -333,19 +363,24 @@ export class WorldRepository implements OnModuleDestroy {
           workId: context.workId,
           branchId: context.branchId,
           userId,
-          ...factionProfileSchema.parse({ ...emptyFactionProfile(), ...patch }),
+          ...(input.profile
+            ? factionProfileSchema.parse({ ...emptyFactionProfile(), ...input.profile })
+            : emptyFactionProfile()),
           createdAt: now,
           updatedAt: now,
         })
         .onConflictDoUpdate({
           target: factionProfiles.entityId,
-          set: { ...patch, updatedAt: now },
+          set: { ...(input.profile ?? {}), updatedAt: now },
         });
-      const updated = await advanceEntityVersion(
+      const updated = await advanceEntityVersion(transaction, patched, versionNodeId, context, now);
+      await writeCustomFieldValues(
         transaction,
-        current.value,
-        versionNodeId,
+        userId,
         context,
+        factionId,
+        customFields.values,
+        customFields.definitions,
         now,
       );
       await this.appendSnapshotAtVersion(
@@ -355,6 +390,7 @@ export class WorldRepository implements OnModuleDestroy {
         updated,
         versionNodeId,
         audit,
+        customFields.values,
       );
       const detail = await this.readFactionInTransaction(
         transaction,
@@ -682,6 +718,96 @@ export class WorldRepository implements OnModuleDestroy {
       const detail = await this.readMapInTransaction(transaction, userId, context, mapId, {});
       if (!detail) {
         throw new Error("Created map is missing");
+      }
+      return { kind: "ok", value: detail };
+    });
+  }
+
+  async updateMap(
+    userId: string,
+    context: WorldWorkContext,
+    mapId: string,
+    input: MapPatchRequest,
+    audit: WorldAuditContext,
+  ): Promise<WorldWriteResult<MapDetail>> {
+    return this.withTenant(userId, async (transaction) => {
+      await lockBranch(transaction, context.branchId);
+      const current = await findWritableEntity(
+        transaction,
+        userId,
+        context,
+        mapId,
+        "map",
+        input.version,
+      );
+      if (current.kind !== "ok") {
+        return current;
+      }
+      const customFields = await resolveCustomFieldWrite(
+        transaction,
+        userId,
+        context,
+        "map",
+        mapId,
+        input.customFields,
+      );
+      if ("kind" in customFields) {
+        return customFields;
+      }
+      const now = new Date();
+      const [patched] = await transaction
+        .update(entities)
+        .set({
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.aliases !== undefined ? { aliases: input.aliases } : {}),
+          ...(input.summary !== undefined ? { summary: input.summary } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.tags !== undefined ? { tags: input.tags } : {}),
+          ...(input.details !== undefined
+            ? { attributes: { ...current.value.attributes, details: input.details } }
+            : {}),
+          updatedAt: now,
+        })
+        .where(and(eq(entities.id, mapId), eq(entities.version, input.version)))
+        .returning();
+      if (!patched) {
+        return { kind: "version_conflict" };
+      }
+      const versionNodeId = uuidv7();
+      const headNodeId = await requireBranchHead(transaction, userId, context);
+      await insertVersionNode(
+        transaction,
+        userId,
+        context,
+        headNodeId,
+        versionNodeId,
+        "map",
+        mapId,
+        "map.updated",
+        "更新地图",
+      );
+      const updated = await advanceEntityVersion(transaction, patched, versionNodeId, context, now);
+      await writeCustomFieldValues(
+        transaction,
+        userId,
+        context,
+        mapId,
+        customFields.values,
+        customFields.definitions,
+        now,
+      );
+      await this.appendSnapshotAtVersion(
+        transaction,
+        userId,
+        context,
+        updated,
+        versionNodeId,
+        audit,
+        customFields.values,
+      );
+      const detail = await this.readMapInTransaction(transaction, userId, context, mapId, {});
+      if (!detail) {
+        throw new Error("Updated map is missing");
       }
       return { kind: "ok", value: detail };
     });
@@ -1264,6 +1390,179 @@ export class WorldRepository implements OnModuleDestroy {
         throw new Error("Failed to create timeline event");
       }
       return { kind: "ok", value: toTimelineEventContract(event, entity) };
+    });
+  }
+
+  async updateTimelineEvent(
+    userId: string,
+    context: WorldWorkContext,
+    eventId: string,
+    input: TimelineEventPatchRequest,
+    audit: WorldAuditContext,
+  ): Promise<WorldWriteResult<TimelineEventDetail>> {
+    return this.withTenant(userId, async (transaction) => {
+      await lockBranch(transaction, context.branchId);
+      const current = await findWritableEntity(
+        transaction,
+        userId,
+        context,
+        eventId,
+        "timeline_event",
+        input.version,
+      );
+      if (current.kind !== "ok") {
+        return current;
+      }
+      const [currentEvent] = await transaction
+        .select()
+        .from(timelineEvents)
+        .where(
+          and(
+            eq(timelineEvents.id, eventId),
+            eq(timelineEvents.userId, userId),
+            eq(timelineEvents.workId, context.workId),
+            eq(timelineEvents.branchId, context.branchId),
+          ),
+        )
+        .limit(1);
+      if (!currentEvent) {
+        return { kind: "not_found" };
+      }
+      const era = input.era ?? input.storyTime?.era ?? currentEvent.era;
+      const storyTime = input.storyTime ?? {
+        era,
+        label: currentEvent.storyTimeLabel,
+        sortKey: currentEvent.storyTimeSortKey,
+      };
+      if (era !== currentEvent.era || input.storyTime !== undefined) {
+        const [eraRow] = await transaction
+          .select({ id: timelineEras.id })
+          .from(timelineEras)
+          .where(
+            and(
+              eq(timelineEras.userId, userId),
+              eq(timelineEras.workId, context.workId),
+              eq(timelineEras.branchId, context.branchId),
+              eq(timelineEras.name, era),
+            ),
+          )
+          .limit(1);
+        if (!eraRow) {
+          return { kind: "timeline_era_not_found" };
+        }
+        const [overlap] = await transaction
+          .select({ id: timelineEvents.id })
+          .from(timelineEvents)
+          .where(
+            and(
+              eq(timelineEvents.userId, userId),
+              eq(timelineEvents.workId, context.workId),
+              eq(timelineEvents.branchId, context.branchId),
+              eq(timelineEvents.era, era),
+              eq(timelineEvents.storyTimeSortKey, storyTime.sortKey),
+              ne(timelineEvents.id, eventId),
+            ),
+          )
+          .limit(1);
+        if (overlap) {
+          return { kind: "timeline_overlap" };
+        }
+      }
+      const customFields = await resolveCustomFieldWrite(
+        transaction,
+        userId,
+        context,
+        "timeline_event",
+        eventId,
+        input.customFields,
+      );
+      if ("kind" in customFields) {
+        return customFields;
+      }
+      const now = new Date();
+      const [patched] = await transaction
+        .update(entities)
+        .set({
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.aliases !== undefined ? { aliases: input.aliases } : {}),
+          ...(input.summary !== undefined ? { summary: input.summary } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.tags !== undefined ? { tags: input.tags } : {}),
+          attributes: {
+            ...current.value.attributes,
+            ...(era !== currentEvent.era ? { era } : {}),
+            ...(input.storyTime !== undefined || era !== currentEvent.era
+              ? { storyTime: storyTime.label, storySortKey: storyTime.sortKey }
+              : {}),
+            ...(input.durationLabel !== undefined ? { duration: input.durationLabel } : {}),
+            ...(input.event !== undefined ? { event: input.event } : {}),
+          },
+          updatedAt: now,
+        })
+        .where(and(eq(entities.id, eventId), eq(entities.version, input.version)))
+        .returning();
+      if (!patched) {
+        return { kind: "version_conflict" };
+      }
+      const versionNodeId = uuidv7();
+      const headNodeId = await requireBranchHead(transaction, userId, context);
+      await insertVersionNode(
+        transaction,
+        userId,
+        context,
+        headNodeId,
+        versionNodeId,
+        "timeline_event",
+        eventId,
+        "timeline.event.updated",
+        "更新故事事件",
+      );
+      const [updatedEvent] = await transaction
+        .update(timelineEvents)
+        .set({
+          ...(era !== currentEvent.era ? { era } : {}),
+          ...(input.storyTime !== undefined
+            ? { storyTimeLabel: storyTime.label, storyTimeSortKey: storyTime.sortKey }
+            : {}),
+          ...(input.durationMinutes !== undefined
+            ? { durationMinutes: input.durationMinutes }
+            : {}),
+          ...(input.durationLabel !== undefined ? { durationLabel: input.durationLabel } : {}),
+          ...(input.event !== undefined ? { eventText: input.event } : {}),
+          ...(input.validity
+            ? {
+                validFromChapter: input.validity.fromChapter,
+                validToChapter: input.validity.toChapter,
+                ...storyTimeColumns(input.validity),
+              }
+            : {}),
+          versionNodeId,
+        })
+        .where(eq(timelineEvents.id, eventId))
+        .returning();
+      if (!updatedEvent) {
+        throw new Error("Failed to update timeline event");
+      }
+      const updated = await advanceEntityVersion(transaction, patched, versionNodeId, context, now);
+      await writeCustomFieldValues(
+        transaction,
+        userId,
+        context,
+        eventId,
+        customFields.values,
+        customFields.definitions,
+        now,
+      );
+      await this.appendSnapshotAtVersion(
+        transaction,
+        userId,
+        context,
+        updated,
+        versionNodeId,
+        audit,
+        customFields.values,
+      );
+      return { kind: "ok", value: toTimelineEventContract(updatedEvent, updated) };
     });
   }
 
@@ -2097,9 +2396,13 @@ export class WorldRepository implements OnModuleDestroy {
     entity: EntityRecord,
     versionNodeId: string,
     audit: WorldAuditContext,
+    customFields?: Record<string, unknown>,
   ): Promise<void> {
     const entityVersionId = uuidv7();
     const snapshot = entitySnapshot(entity);
+    if (customFields) {
+      snapshot.customFields = customFields;
+    }
     if (entity.type === "faction") {
       const [profile] = await transaction
         .select()

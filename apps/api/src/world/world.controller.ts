@@ -27,6 +27,7 @@ import {
   factionRelationshipCreateRequestSchema,
   factionRelationshipResponseSchema,
   mapCreateRequestSchema,
+  mapPatchRequestSchema,
   mapDetailResponseSchema,
   mapEdgeCreateRequestSchema,
   mapEdgeResponseSchema,
@@ -44,6 +45,7 @@ import {
   timelineEraCreateRequestSchema,
   timelineEraResponseSchema,
   timelineEventCreateRequestSchema,
+  timelineEventPatchRequestSchema,
   timelineEventResponseSchema,
   uuidV7Schema,
   worldSnapshotQuerySchema,
@@ -70,12 +72,14 @@ const factionProfileBodySchema = schemaOf(factionProfileUpdateRequestSchema, "in
 const factionRelationshipBodySchema = schemaOf(factionRelationshipCreateRequestSchema, "input");
 const territoryBodySchema = schemaOf(territoryCreateRequestSchema, "input");
 const mapCreateBodySchema = schemaOf(mapCreateRequestSchema, "input");
+const mapPatchBodySchema = schemaOf(mapPatchRequestSchema, "input");
 const mapLayerBodySchema = schemaOf(mapLayerCreateRequestSchema, "input");
 const mapNodeBodySchema = schemaOf(mapNodeCreateRequestSchema, "input");
 const mapEdgeBodySchema = schemaOf(mapEdgeCreateRequestSchema, "input");
 const mapMarkerBodySchema = schemaOf(mapMarkerCreateRequestSchema, "input");
 const timelineEraBodySchema = schemaOf(timelineEraCreateRequestSchema, "input");
 const timelineEventBodySchema = schemaOf(timelineEventCreateRequestSchema, "input");
+const timelineEventPatchBodySchema = schemaOf(timelineEventPatchRequestSchema, "input");
 const itineraryBodySchema = schemaOf(characterItineraryCreateRequestSchema, "input");
 const factionDetailSchema = schemaOf(factionDetailResponseSchema, "output");
 const factionListSchema = schemaOf(factionListResponseSchema, "output");
@@ -311,6 +315,31 @@ export class WorldController {
     });
   }
 
+  @Patch("maps/:mapId")
+  @ApiBody({ schema: mapPatchBodySchema })
+  @ApiOkResponse({ description: "Updated map", schema: mapDetailSchema })
+  async updateMap(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("mapId") mapId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return mapDetailResponseSchema.parse({
+      data: await this.service.updateMap(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(mapId),
+        mapPatchRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
   @Post("maps/:mapId/layers")
   @HttpCode(201)
   @ApiBody({ schema: mapLayerBodySchema })
@@ -501,6 +530,31 @@ export class WorldController {
         uuidV7Schema.parse(workId),
         uuidV7Schema.parse(branchId),
         timelineEventCreateRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Patch("timeline/events/:eventId")
+  @ApiBody({ schema: timelineEventPatchBodySchema })
+  @ApiOkResponse({ description: "Updated timeline event", schema: timelineEventSchema })
+  async updateTimelineEvent(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("eventId") eventId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return timelineEventResponseSchema.parse({
+      data: await this.service.updateTimelineEvent(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        uuidV7Schema.parse(eventId),
+        timelineEventPatchRequestSchema.parse(body),
         this.auditContext(request, requestId),
       ),
       requestId,

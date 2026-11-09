@@ -1867,7 +1867,7 @@ async function readCustomFieldValues(
   return values;
 }
 
-async function resolveCustomFieldWrite(
+export async function resolveCustomFieldWrite(
   transaction: DatabaseTransaction,
   userId: string,
   context: SettingsWorkContext,
@@ -1957,7 +1957,7 @@ async function resolveCustomFieldWrite(
   return { values, definitions };
 }
 
-async function writeCustomFieldValues(
+export async function writeCustomFieldValues(
   transaction: DatabaseTransaction,
   userId: string,
   context: SettingsWorkContext,

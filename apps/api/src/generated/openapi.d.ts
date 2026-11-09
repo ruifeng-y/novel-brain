@@ -2001,7 +2001,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["WorldController_updateMap"];
     trace?: never;
   };
   "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}/layers": {
@@ -2130,6 +2130,22 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/timeline/events/{eventId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["WorldController_updateTimelineEvent"];
     trace?: never;
   };
   "/api/v1/works/{workId}/branches/{branchId}/world/timeline/itineraries": {
@@ -3525,6 +3541,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -3840,6 +3857,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -5773,7 +5791,15 @@ export interface operations {
       content: {
         "application/json": {
           version: number;
-          profile: {
+          name?: string;
+          aliases?: string[];
+          summary?: string;
+          description?: string;
+          tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
+          profile?: {
             /** @default  */
             desire?: string;
             /** @default  */
@@ -7810,6 +7836,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -8347,6 +8374,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -8713,6 +8741,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -9079,6 +9108,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -9445,6 +9475,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -9824,6 +9855,7 @@ export interface operations {
                     | "SETTING_CONFLICT_UNRESOLVED"
                     | "SETTING_PROPOSAL_STATE"
                     | "SETTING_NOT_LOCKED"
+                    | "SETTING_DOMAIN_DATA_FORBIDDEN"
                     | "CUSTOM_FIELD_REQUIRED"
                     | "CUSTOM_FIELD_INVALID"
                     | "CUSTOM_FIELD_IMMUTABLE"
@@ -18330,51 +18362,9 @@ export interface operations {
           customFields?: {
             [key: string]: unknown;
           };
-          data?:
-            | {
-                rule?: string;
-              }
-            | {
-                bodyState?: string;
-                knowledgeBoundary?: string;
-                relationshipSummary?: string;
-              }
-            | {
-                details?: string;
-              }
-            | {
-                details?: string;
-              }
-            | {
-                details?: string;
-              }
-            | {
-                rules?: string;
-                cost?: string;
-                limits?: string;
-                growth?: string;
-              }
-            | {
-                category?: string;
-                /** @default  */
-                grade?: string;
-                effect?: string;
-                /** @default  */
-                cost?: string;
-                /** @default  */
-                ownership?: string;
-                /** @default  */
-                limits?: string;
-              }
-            | {
-                /** @default  */
-                era?: string;
-                storyTime?: string;
-                storySortKey?: number;
-                /** @default  */
-                duration?: string;
-                event?: string;
-              };
+          data?: {
+            [key: string]: unknown;
+          };
         };
       };
     };
@@ -19152,6 +19142,73 @@ export interface operations {
                   duration?: string;
                   event?: string;
                 };
+            character?: {
+              /** @default  */
+              desire?: string;
+              /** @default  */
+              fear?: string;
+              /** @default  */
+              goal?: string;
+              /** @default  */
+              voiceSample?: string;
+              /** @default  */
+              voiceGuide?: string;
+              /** @default  */
+              disguise?: string;
+            };
+            faction?: {
+              overview?: string;
+              goals?: string;
+              resources?: string;
+              doctrine?: string;
+            };
+            map?: {
+              name?: string;
+              aliases?: string[];
+              summary?: string;
+              description?: string;
+              tags?: string[];
+              customFields?: {
+                [key: string]: unknown;
+              };
+              details?: string;
+            };
+            timeline?: {
+              name?: string;
+              aliases?: string[];
+              summary?: string;
+              description?: string;
+              tags?: string[];
+              customFields?: {
+                [key: string]: unknown;
+              };
+              era?: string;
+              storyTime?: {
+                era: string;
+                label: string;
+                sortKey: number;
+              };
+              durationMinutes?: number;
+              durationLabel?: string;
+              event?: string;
+              validity?: {
+                fromChapter: number;
+                /** @default null */
+                toChapter?: number | null;
+                /** @default null */
+                fromStoryTime?: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime?: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+            };
             powerSystem?: {
               overview?: string;
               lifespanPolicy?: {
@@ -26621,6 +26678,7 @@ export interface operations {
                     | "SETTING_CONFLICT_UNRESOLVED"
                     | "SETTING_PROPOSAL_STATE"
                     | "SETTING_NOT_LOCKED"
+                    | "SETTING_DOMAIN_DATA_FORBIDDEN"
                     | "CUSTOM_FIELD_REQUIRED"
                     | "CUSTOM_FIELD_INVALID"
                     | "CUSTOM_FIELD_IMMUTABLE"
@@ -26816,6 +26874,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -26987,6 +27046,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -28075,7 +28135,15 @@ export interface operations {
       content: {
         "application/json": {
           version: number;
-          profile: {
+          name?: string;
+          aliases?: string[];
+          summary?: string;
+          description?: string;
+          tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
+          profile?: {
             overview?: string;
             goals?: string;
             resources?: string;
@@ -29557,6 +29625,320 @@ export interface operations {
       };
     };
   };
+  WorldController_updateMap: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        mapId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          name?: string;
+          aliases?: string[];
+          summary?: string;
+          description?: string;
+          tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
+          details?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated map */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              map: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "world_rule"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              layers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                name: string;
+                parentLayerId: string | null;
+                sortOrder: number;
+                minScale: number;
+                maxScale: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              nodes: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                parentNodeId: string | null;
+                name: string;
+                /** @enum {string} */
+                nodeType:
+                  | "region"
+                  | "settlement"
+                  | "landmark"
+                  | "passage"
+                  | "battlefield"
+                  | "sect"
+                  | "dungeon"
+                  | "other";
+                summary: string;
+                x: number | null;
+                y: number | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              edges: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                fromNodeId: string;
+                toNodeId: string;
+                /** @enum {string} */
+                routeType: "road" | "trail" | "water" | "air" | "teleport" | "secret";
+                bidirectional: boolean;
+                travelMinutes: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              markers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                nodeId: string | null;
+                label: string;
+                /** @enum {string} */
+                markerType: "danger" | "event" | "resource" | "note" | "character";
+                x: number;
+                y: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              controlAreas: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "world_rule"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   WorldController_addMapLayer: {
     parameters: {
       query?: never;
@@ -30385,6 +30767,144 @@ export interface operations {
     responses: {
       /** @description Created timeline event */
       201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              event: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "world_rule"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              era: string;
+              storyTime: {
+                era: string;
+                label: string;
+                sortKey: number;
+              };
+              durationMinutes: number;
+              durationLabel: string;
+              eventText: string;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_updateTimelineEvent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        eventId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          name?: string;
+          aliases?: string[];
+          summary?: string;
+          description?: string;
+          tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
+          era?: string;
+          storyTime?: {
+            era: string;
+            label: string;
+            sortKey: number;
+          };
+          durationMinutes?: number;
+          durationLabel?: string;
+          event?: string;
+          validity?: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated timeline event */
+      200: {
         headers: {
           [name: string]: unknown;
         };
@@ -36761,6 +37281,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -37513,6 +38034,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -38042,6 +38564,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -38571,6 +39094,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -39100,6 +39624,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -39642,6 +40167,7 @@ export interface operations {
                     | "SETTING_CONFLICT_UNRESOLVED"
                     | "SETTING_PROPOSAL_STATE"
                     | "SETTING_NOT_LOCKED"
+                    | "SETTING_DOMAIN_DATA_FORBIDDEN"
                     | "CUSTOM_FIELD_REQUIRED"
                     | "CUSTOM_FIELD_INVALID"
                     | "CUSTOM_FIELD_IMMUTABLE"
