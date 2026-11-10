@@ -14,7 +14,7 @@ import {
   expectAuthorFacingLanguage,
   expectNoPrototypeOnlyLeakage,
   freezeApiTimestamps,
-  productionScreenshotOptions,
+  productionAttachmentOptions,
 } from "../helpers/ui";
 
 const viewports = [390, 900, 1180, 1440] as const;
@@ -152,6 +152,14 @@ test("invalid and expired model keys stay masked and recoverable", async ({
   await expect(expiredRow.getByText("Key 无效", { exact: true })).toBeVisible();
   await expect(page.getByText("sk-expired-key-5678")).toHaveCount(0);
 
+  await page.getByLabel("配置名称").fill("服务商失败配置");
+  await page.getByLabel("API Key").fill("sk-provider-error-4321");
+  await page.getByRole("button", { name: "新增配置" }).click();
+  const failureRow = page.locator(".model-config-row", { hasText: "服务商失败配置" });
+  await failureRow.getByRole("button", { name: "测试连接" }).click();
+  await expect(failureRow.getByText("服务商异常", { exact: true })).toBeVisible();
+  await expect(page.getByText("sk-provider-error-4321")).toHaveCount(0);
+
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await expect(page).toHaveURL(/\/workspace\/settings\/account$/u);
@@ -159,6 +167,7 @@ test("invalid and expired model keys stay masked and recoverable", async ({
     await expect(expiredRow).toContainText("****5678");
     await expect(invalidRow.getByText("Key 无效", { exact: true })).toBeVisible();
     await expect(expiredRow.getByText("Key 无效", { exact: true })).toBeVisible();
+    await expect(failureRow.getByText("服务商异常", { exact: true })).toBeVisible();
     await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
     await expectNoPrototypeOnlyLeakage(page);
     await expectAuthorFacingLanguage(page);
@@ -168,7 +177,7 @@ test("invalid and expired model keys stay masked and recoverable", async ({
     expect(overflow).toBeLessThanOrEqual(0);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await testInfo.attach(`account-settings-key-error-${width}`, {
-      body: await page.screenshot(productionScreenshotOptions),
+      body: await page.screenshot(productionAttachmentOptions),
       contentType: "image/png",
     });
   }

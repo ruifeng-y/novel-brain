@@ -31,6 +31,13 @@ export const productionScreenshotOptions = {
   scale: "css",
 } as const;
 
+export const productionAttachmentOptions = {
+  animations: "disabled",
+  caret: "hide",
+  fullPage: true,
+  scale: "css",
+} as const;
+
 export async function freezeApiTimestamps(page: Page): Promise<void> {
   await page.route("**/api/v1/**", async (route) => {
     const response = await route.fetch();
