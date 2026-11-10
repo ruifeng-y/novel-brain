@@ -446,7 +446,7 @@ function connectionStatusLabel(status: ModelConnectionTestStatus | null): string
     case "success":
       return "连接正常";
     case "key_invalid":
-      return "Key 无效";
+      return "Key 无效或失效";
     case "rate_limited":
       return "已限流";
     case "timeout":

@@ -14,7 +14,7 @@ import {
   expectAuthorFacingLanguage,
   expectNoPrototypeOnlyLeakage,
   freezeApiTimestamps,
-  productionAttachmentOptions,
+  productionScreenshotOptions,
 } from "../helpers/ui";
 
 const viewports = [390, 900, 1180, 1440] as const;
@@ -118,9 +118,10 @@ test("invalid and expired model keys stay masked and recoverable", async ({
   page,
   context,
   request,
-}, testInfo) => {
+}) => {
   await authenticatedPage(page, context, request);
   await freezeApiTimestamps(page);
+  await page.reload();
 
   await page.getByLabel("配置名称").fill("无效 Key 配置");
   await page.getByLabel("API Key").fill("sk-invalid-key-1234");
@@ -130,8 +131,8 @@ test("invalid and expired model keys stay masked and recoverable", async ({
   await expect(page.getByText("sk-invalid-key-1234")).toHaveCount(0);
 
   await invalidRow.getByRole("button", { name: "测试连接" }).click();
-  await expect(page.getByText("API Key 无效")).toBeVisible();
-  await expect(invalidRow.getByText("Key 无效", { exact: true })).toBeVisible();
+  await expect(page.getByText("API Key 无效或已失效")).toBeVisible();
+  await expect(invalidRow.getByText("Key 无效或失效", { exact: true })).toBeVisible();
   await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
 
   const replaceInvalidKey = invalidRow.getByRole("button", {
@@ -149,7 +150,7 @@ test("invalid and expired model keys stay masked and recoverable", async ({
   await page.getByRole("button", { name: "新增配置" }).click();
   const expiredRow = page.locator(".model-config-row", { hasText: "过期 Key 配置" });
   await expiredRow.getByRole("button", { name: "测试连接" }).click();
-  await expect(expiredRow.getByText("Key 无效", { exact: true })).toBeVisible();
+  await expect(expiredRow.getByText("Key 无效或失效", { exact: true })).toBeVisible();
   await expect(page.getByText("sk-expired-key-5678")).toHaveCount(0);
 
   await page.getByLabel("配置名称").fill("服务商失败配置");
@@ -159,14 +160,17 @@ test("invalid and expired model keys stay masked and recoverable", async ({
   await failureRow.getByRole("button", { name: "测试连接" }).click();
   await expect(failureRow.getByText("服务商异常", { exact: true })).toBeVisible();
   await expect(page.getByText("sk-provider-error-4321")).toHaveCount(0);
+  await expect(page.locator(".model-config-row")).toHaveCount(3);
+  await expect(page.getByText("平台 Key")).toHaveCount(0);
+  await expect(page.getByText("本地模型")).toHaveCount(0);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await expect(page).toHaveURL(/\/workspace\/settings\/account$/u);
     await expect(invalidRow).toContainText("****1234");
     await expect(expiredRow).toContainText("****5678");
-    await expect(invalidRow.getByText("Key 无效", { exact: true })).toBeVisible();
-    await expect(expiredRow.getByText("Key 无效", { exact: true })).toBeVisible();
+    await expect(invalidRow.getByText("Key 无效或失效", { exact: true })).toBeVisible();
+    await expect(expiredRow.getByText("Key 无效或失效", { exact: true })).toBeVisible();
     await expect(failureRow.getByText("服务商异常", { exact: true })).toBeVisible();
     await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
     await expectNoPrototypeOnlyLeakage(page);
@@ -176,10 +180,10 @@ test("invalid and expired model keys stay masked and recoverable", async ({
     );
     expect(overflow).toBeLessThanOrEqual(0);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await testInfo.attach(`account-settings-key-error-${width}`, {
-      body: await page.screenshot(productionAttachmentOptions),
-      contentType: "image/png",
-    });
+    await expect(page).toHaveScreenshot(
+      ["account-settings", `account-settings-key-error-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 
   await page.setViewportSize({ width: 1440, height: 900 });
