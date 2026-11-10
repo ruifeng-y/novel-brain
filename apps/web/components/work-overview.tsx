@@ -299,6 +299,7 @@ export function WorkOverview({ workId }: { workId: string }) {
   const recentChapters = [...chapters]
     .sort((left, right) => right.number - left.number)
     .slice(0, 3);
+  const pendingTasks = readiness?.items.filter((item) => !item.ready).slice(0, 3) ?? [];
   const recentChanges = [
     ...chapters.map((chapter) => ({
       id: `chapter:${chapter.id}`,
@@ -306,6 +307,7 @@ export function WorkOverview({ workId }: { workId: string }) {
       title: `第 ${chapter.number} 章 · ${chapter.title}`,
       detail: chapter.brief?.goal ?? `${chapter.wordCount.toLocaleString("zh-CN")} 字`,
       updatedAt: chapter.updatedAt,
+      sortKey: `1:${String(chapter.number).padStart(6, "0")}`,
     })),
     ...entities.map((entity) => ({
       id: `setting:${entity.id}`,
@@ -313,13 +315,15 @@ export function WorkOverview({ workId }: { workId: string }) {
       title: entity.name,
       detail: entity.summary,
       updatedAt: entity.updatedAt,
+      sortKey: `0:${entity.name}`,
     })),
   ]
     .sort(
       (left, right) =>
-        right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+        right.updatedAt.localeCompare(left.updatedAt) || left.sortKey.localeCompare(right.sortKey),
     )
     .slice(0, 5);
+  const isReadonly = work.status === "archived" || work.status === "completed";
 
   return (
     <>
@@ -342,10 +346,10 @@ export function WorkOverview({ workId }: { workId: string }) {
             <ArrowLeft size={15} aria-hidden="true" />
             返回工作台
           </Link>
-          {work.status === "archived" ? (
+          {isReadonly ? (
             <button className="btn btn-primary" disabled type="button">
               <PenLine size={15} aria-hidden="true" />
-              继续写作
+              {work.status === "completed" ? "作品已完本" : "继续写作"}
             </button>
           ) : (
             <Link className="btn btn-primary" href={nextChapterHref}>
@@ -358,6 +362,10 @@ export function WorkOverview({ workId }: { workId: string }) {
 
       {work.status === "archived" ? (
         <div className="model-notice warning">作品已归档，当前为只读状态。</div>
+      ) : work.status === "completed" ? (
+        <div className="model-notice warning">
+          作品已完本，当前为只读状态。可返回工作台查看版本。
+        </div>
       ) : null}
 
       <article className="overview-hero">
@@ -390,8 +398,11 @@ export function WorkOverview({ workId }: { workId: string }) {
           <div className="overview-meta">
             <span>作品状态 {statusLabels[work.status]}</span>
             <span>当前创作线：{branchLabel(work.mainBranch.name)}</span>
-            <span>创作线状态 {work.mainBranch.status === "active" ? "可写作" : "已归档"}</span>
-            <span>当前版本 {work.mainBranch.headNodeId.slice(0, 8)}</span>
+            <span>
+              创作线状态{" "}
+              {isReadonly ? "只读" : work.mainBranch.status === "active" ? "可写作" : "已归档"}
+            </span>
+            <span>创作线版本 已记录</span>
           </div>
         </div>
         <div className="overview-next">
@@ -518,39 +529,49 @@ export function WorkOverview({ workId }: { workId: string }) {
           ) : null}
         </article>
 
-        <aside className="panel compact-panel">
-          <div className="panel-head">
-            <h2>下一步</h2>
-          </div>
-          <ul className="overview-next-list">
-            <li>
-              <Link className="overview-next-link" href={`/workspace/${workId}/bible`}>
-                <BookMarked size={16} aria-hidden="true" />
-                <div>
-                  <strong>完善故事圣经</strong>
-                  <small>生成、编辑并锁定九卡故事方向</small>
-                </div>
-              </Link>
-            </li>
-            <li>
-              <Link className="overview-next-link" href={`/workspace/${workId}/settings`}>
-                <BookMarked size={16} aria-hidden="true" />
-                <div>
-                  <strong>整理最小设定</strong>
-                  <small>世界规则、人物状态和金手指</small>
-                </div>
-              </Link>
-            </li>
-            <li>
-              <Link className="overview-next-link" href={`/workspace/${workId}/outline`}>
-                <PenLine size={16} aria-hidden="true" />
-                <div>
-                  <strong>准备第一章</strong>
-                  <small>先写章纲，再进入写作台</small>
-                </div>
-              </Link>
-            </li>
-          </ul>
+        <aside className="overview-side-stack">
+          <section className="panel compact-panel" aria-labelledby="overview-tasks-title">
+            <div className="panel-head">
+              <h2 id="overview-tasks-title">待处理</h2>
+              <span className="badge">{pendingTasks.length}</span>
+            </div>
+            {pendingTasks.length === 0 ? (
+              <p className="style-drift-empty">当前没有待处理事项。</p>
+            ) : (
+              <ul className="overview-task-list">
+                {pendingTasks.map((task) => (
+                  <li className="overview-task-item" key={task.key}>
+                    <span className="task-check" aria-hidden="true" />
+                    <Link href={task.remediation?.href ?? `/workspace/${workId}/overview`}>
+                      <span>{task.label}</span>
+                      <small>{task.severity === "blocker" ? "阻断" : "提醒"}</small>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="panel compact-panel" aria-labelledby="overview-changes-title">
+            <div className="panel-head">
+              <h2 id="overview-changes-title">最近修改</h2>
+            </div>
+            {recentChanges.length === 0 ? (
+              <p className="style-drift-empty">还没有章节或设定修改。</p>
+            ) : (
+              <div className="overview-change-list">
+                {recentChanges.map((change) => (
+                  <article className="overview-change-item" key={change.id}>
+                    <span className="badge">{change.kind}</span>
+                    <div className="overview-change-copy">
+                      <strong>{change.title}</strong>
+                      <small>{change.detail}</small>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
         </aside>
       </section>
 
@@ -617,30 +638,6 @@ export function WorkOverview({ workId }: { workId: string }) {
             </Link>
           </div>
         </section>
-      </section>
-
-      <section className="panel overview-changes" aria-labelledby="overview-changes-title">
-        <div className="panel-head">
-          <div>
-            <span className="panel-kicker">最近修改</span>
-            <h2 id="overview-changes-title">最近修改</h2>
-          </div>
-        </div>
-        {recentChanges.length === 0 ? (
-          <p className="style-drift-empty">还没有章节或设定修改。</p>
-        ) : (
-          <div className="overview-change-list">
-            {recentChanges.map((change) => (
-              <article className="overview-change-item" key={change.id}>
-                <span className="badge">{change.kind}</span>
-                <div className="overview-change-copy">
-                  <strong>{change.title}</strong>
-                  <small>{change.detail}</small>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
       </section>
 
       <section className="panel overview-style" aria-labelledby="overview-style-title">

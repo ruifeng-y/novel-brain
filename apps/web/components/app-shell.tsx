@@ -13,7 +13,7 @@ import {
   PenLine,
   Settings,
 } from "lucide-react";
-import { workResponseSchema, type AuthUser } from "@novel-brain/contracts";
+import { workResponseSchema, type AuthUser, type Work } from "@novel-brain/contracts";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -38,6 +38,7 @@ interface ActiveWorkContext {
   title: string;
   branchName: string;
   branchStatus: "active" | "archived";
+  workStatus: Work["status"];
 }
 
 export function AppShell({
@@ -94,6 +95,7 @@ export function AppShell({
           title: work.title,
           branchName: branchLabel(work.mainBranch.name),
           branchStatus: work.mainBranch.status,
+          workStatus: work.status,
         });
       })
       .catch(() => {
@@ -144,7 +146,7 @@ export function AppShell({
             <strong title={activeWork?.title}>{activeWork?.title ?? "个人工作区"}</strong>
             <small>
               {activeWork
-                ? `创作线 ${activeWork.branchName} · ${activeWork.branchStatus === "active" ? "可写作" : "已归档"}`
+                ? `创作线 ${activeWork.branchName} · ${activeWorkStateLabel(activeWork)}`
                 : "长篇创作"}
             </small>
           </span>
@@ -247,4 +249,14 @@ export function AppShell({
 
 function branchLabel(name: string): string {
   return name === "main" ? "主线" : name;
+}
+
+function activeWorkStateLabel(activeWork: ActiveWorkContext): string {
+  if (activeWork.workStatus === "archived") {
+    return "作品已归档 · 只读";
+  }
+  if (activeWork.workStatus === "completed") {
+    return "作品已完本 · 只读";
+  }
+  return activeWork.branchStatus === "active" ? "可写作" : "创作线已归档";
 }

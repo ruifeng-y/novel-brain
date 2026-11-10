@@ -1750,10 +1750,62 @@ a:focus-visible {
   padding: 20px;
 }
 
-.overview-changes {
-  margin-top: 16px;
-  padding: 20px;
-  box-shadow: none;
+.overview-side-stack {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.overview-task-list {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  margin: 10px 0 0;
+  list-style: none;
+}
+
+.overview-task-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview-task-item:last-child {
+  border-bottom: 0;
+}
+
+.overview-task-item .task-check {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+}
+
+.overview-task-item a {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: space-between;
+  min-width: 0;
+  color: var(--ink-2);
+}
+
+.overview-task-item a span {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.overview-task-item a small {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
 }
 
 .overview-change-list {

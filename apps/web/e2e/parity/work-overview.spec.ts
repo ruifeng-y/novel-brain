@@ -96,6 +96,8 @@ test("overview handles error and four viewports", async ({ page, context }) => {
   await page.goto(`/workspace/${work.id}/overview`);
   await expect(page.getByText("作品总览加载失败。")).toBeVisible();
   await page.unroute(`**/api/v1/works/${work.id}`);
+  await page.getByRole("button", { name: "重试" }).click();
+  await expect(page.getByRole("heading", { name: "仙途模板" })).toBeVisible();
   await freezeApiTimestamps(page);
 
   for (const width of [390, 900, 1180, 1440]) {
@@ -148,6 +150,40 @@ test("shows loading and archived read-only states", async ({ page, context }) =>
   await expect(page.getByText("作品已归档，当前为只读状态。")).toBeVisible();
   await expect(page.getByText("已归档", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "继续写作" })).toBeDisabled();
+  await expect(page.getByRole("link", { name: "返回工作台" })).toHaveAttribute(
+    "href",
+    "/workspace",
+  );
+  await expect(page.getByText("还没有章节。可以先从大纲创建第一章。")).toBeVisible();
+  await expect(page.getByLabel("当前作品与创作线")).toContainText("作品已归档 · 只读");
+});
+
+test("shows completed work as read-only with a return path", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "完本作品",
+  });
+  const pool = new Pool({
+    connectionString:
+      process.env.E2E_DATABASE_URL ??
+      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e",
+  });
+  try {
+    await pool.query("UPDATE works SET status = 'completed' WHERE id = $1", [work.id]);
+  } finally {
+    await pool.end();
+  }
+
+  await page.goto(`/workspace/${work.id}/overview`);
+  await expect(page.getByText("作品已完本，当前为只读状态。可返回工作台查看版本。")).toBeVisible();
+  await expect(page.getByRole("button", { name: "作品已完本" })).toBeDisabled();
+  await expect(page.getByText("创作线状态 只读")).toBeVisible();
+  await expect(page.getByRole("link", { name: "返回工作台" })).toHaveAttribute(
+    "href",
+    "/workspace",
+  );
+  await expect(page.getByLabel("当前作品与创作线")).toContainText("作品已完本 · 只读");
 });
 
 test("shows current branch, recent changes and long content at four viewports", async ({
@@ -207,6 +243,8 @@ test("shows current branch, recent changes and long content at four viewports", 
   await expect(page.getByLabel("当前作品与创作线")).toContainText(longTitle);
   await expect(page.getByLabel("当前作品与创作线")).toContainText("主线");
   await expect(page.getByText("当前创作线：主线")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "待处理" })).toBeVisible();
+  await expect(page.locator(".overview-task-item")).not.toHaveCount(0);
   await expect(page.getByRole("heading", { name: "最近修改" })).toBeVisible();
   await expect(page.locator(".overview-change-item")).toHaveCount(5);
   await expect(page.locator(".overview-change-list")).toContainText("长世界规则");
