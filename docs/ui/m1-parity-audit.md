@@ -47,7 +47,7 @@
 
 ## 4. 签收后的自动化剩余事项
 
-2026-11-10：作者已完成 8 个 M1 验收页面的视觉方向签收，接受当前生产结构及其已批准适配，没有新增未批准项。`entity-detail` 与 `foreshadows` 已有当前正式 Golden；其余 24 张与完整状态证据由 #174 跟踪。签收记录见 `docs/ui/v1-prototype-signoff.md`。
+2026-11-10：作者已完成 8 个 M1 验收页面的视觉方向签收，接受当前生产结构及其已批准适配，没有新增未批准项。`entity-detail`、`foreshadows` 与 `work-overview` 已有当前正式 Golden；其余 20 张与完整状态证据由 #174 跟踪。签收记录见 `docs/ui/v1-prototype-signoff.md`。
 
 1. account-settings 的模型配置、设备会话和账号安全属于 M1 已批准范围，当前生产布局已纳入视觉签收；自动化 Golden 比较由 #174 跟踪。
 2. writing 的题材规则条属于原型演示内容；生产保留页头，不复制题材演示控件。当前生产布局已纳入视觉签收。

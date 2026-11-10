@@ -1820,7 +1820,8 @@ a:focus-visible {
   border-radius: 99px;
 }
 
-.overview-task-item a {
+.overview-task-item a,
+.overview-task-item .overview-task-copy {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
@@ -1829,14 +1830,16 @@ a:focus-visible {
   color: var(--ink-2);
 }
 
-.overview-task-item a span {
+.overview-task-item a span,
+.overview-task-item .overview-task-copy span {
   min-width: 0;
   font-size: 12px;
   line-height: 1.55;
   overflow-wrap: anywhere;
 }
 
-.overview-task-item a small {
+.overview-task-item a small,
+.overview-task-item .overview-task-copy small {
   color: var(--muted);
   font-size: 10px;
   white-space: nowrap;

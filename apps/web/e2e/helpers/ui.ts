@@ -82,7 +82,7 @@ export async function expectAuthorFacingLanguage(page: Page): Promise<void> {
   expect(text).not.toMatch(/\bmain\b/i);
 }
 
-export async function expectNoPrototypeOnlyLeakage(page: Page) {
+export async function expectNoPrototypeOnlyLeakage(page: Page): Promise<void> {
   const text = await page.locator("body").innerText();
   const textHits = prototypeOnlyLabels.filter((label) => text.includes(label));
   const stateGalleryLinks = await page.locator('a[href*="/states"]').count();
@@ -91,14 +91,6 @@ export async function expectNoPrototypeOnlyLeakage(page: Page) {
   expect(textHits, "prototype_only text leaked into production").toEqual([]);
   expect(stateGalleryLinks, "prototype-only state gallery is linked from production").toBe(0);
   expect(selectorHits, "prototype-only controls rendered in production").toBe(0);
-
-  return {
-    inventory: prototypeOnlyLabels,
-    selectors: prototypeOnlySelectors,
-    textHits,
-    stateGalleryLinks,
-    selectorHits,
-  };
 }
 
 function freezeTimestamps(value: unknown): unknown {

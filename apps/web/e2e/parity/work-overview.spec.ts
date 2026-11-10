@@ -32,6 +32,17 @@ async function authenticatedPage(page: Page, context: BrowserContext) {
   ]);
 }
 
+async function expectReadOnlyWorkNavigation(page: Page) {
+  for (const label of ["故事圣经", "设定中心", "大纲工作台", "伏笔账本", "写作台"]) {
+    await expect(
+      page.locator(".main-nav").getByRole("link", { name: label, exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('.main-nav .nav-item[aria-disabled="true"]').filter({ hasText: label }),
+    ).toBeVisible();
+  }
+}
+
 test.beforeEach(async () => {
   await resetRateLimits();
 });
@@ -103,6 +114,7 @@ test("overview handles error and four viewports", async ({ page, context }) => {
   await page.unroute(`**/api/v1/works/${work.id}`);
   await page.getByRole("button", { name: "重试" }).click();
   await expect(page.getByRole("heading", { name: "仙途模板" })).toBeVisible();
+  await expect(page.getByLabel("当前作品与创作线")).toContainText("仙途模板");
   await freezeApiTimestamps(page);
 
   for (const width of [390, 900, 1180, 1440]) {
@@ -173,6 +185,8 @@ test("shows loading and archived read-only states", async ({ page, context }) =>
   await expect(
     page.locator('.main-nav .nav-item[aria-disabled="true"]').filter({ hasText: "写作台" }),
   ).toBeVisible();
+  await expectReadOnlyWorkNavigation(page);
+  await expect(page.locator(".overview-remediation")).toHaveCount(0);
   await expect(page.locator(".overview-links .quick-link-grid")).toHaveCount(0);
   await expect(page.locator(".overview-style")).toHaveCount(0);
   await expect(page.locator(".overview-volume-audit")).toHaveCount(0);
@@ -224,6 +238,8 @@ test("treats an archived branch as read-only without write links", async ({ page
   await expect(
     page.locator(".main-nav").getByRole("link", { name: "写作台", exact: true }),
   ).toHaveCount(0);
+  await expectReadOnlyWorkNavigation(page);
+  await expect(page.locator(".overview-remediation")).toHaveCount(0);
   await expect(page.locator(".overview-style")).toHaveCount(0);
   await expect(page.locator(".overview-volume-audit")).toHaveCount(0);
   await expect(page.getByLabel("当前作品与创作线")).toContainText("创作线已归档");
@@ -263,6 +279,8 @@ test("shows completed work as read-only with a return path", async ({ page, cont
   await expect(
     page.locator(".main-nav").getByRole("link", { name: "写作台", exact: true }),
   ).toHaveCount(0);
+  await expectReadOnlyWorkNavigation(page);
+  await expect(page.locator(".overview-remediation")).toHaveCount(0);
   await expect(page.locator(".overview-links .quick-link-grid")).toHaveCount(0);
   await expect(page.locator(".overview-style")).toHaveCount(0);
   await expect(page.locator(".overview-volume-audit")).toHaveCount(0);

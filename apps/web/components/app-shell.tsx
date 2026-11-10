@@ -19,6 +19,8 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
+import { subscribeWorkContextRefresh } from "../lib/work-context-events";
+import { branchLabel, isWorkReadonly } from "../lib/work-presentation";
 
 const navigation = [
   { href: "/workspace", label: "工作台", icon: LayoutDashboard },
@@ -80,31 +82,36 @@ export function AppShell({
     }
     let cancelled = false;
     setActiveWork(null);
-    void fetch(`/api/v1/works/${workId}`, { cache: "no-store" })
-      .then(async (response) => {
-        if (!response.ok) {
-          return null;
-        }
-        return workResponseSchema.parse(await response.json()).data;
-      })
-      .then((work) => {
-        if (cancelled || !work) {
-          return;
-        }
-        setActiveWork({
-          title: work.title,
-          branchName: branchLabel(work.mainBranch.name),
-          branchStatus: work.mainBranch.status,
-          workStatus: work.status,
+    const loadActiveWork = () => {
+      void fetch(`/api/v1/works/${workId}`, { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) {
+            return null;
+          }
+          return workResponseSchema.parse(await response.json()).data;
+        })
+        .then((work) => {
+          if (cancelled || !work) {
+            return;
+          }
+          setActiveWork({
+            title: work.title,
+            branchName: branchLabel(work.mainBranch.name),
+            branchStatus: work.mainBranch.status,
+            workStatus: work.status,
+          });
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setActiveWork(null);
+          }
         });
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setActiveWork(null);
-        }
-      });
+    };
+    loadActiveWork();
+    const unsubscribe = subscribeWorkContextRefresh(loadActiveWork);
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [showWorkContext, workId]);
 
@@ -177,7 +184,7 @@ export function AppShell({
               {workNavigation.map((item) => {
                 const Icon = item.icon;
                 const active = workSection === item.suffix;
-                if (item.suffix === "write" && activeWork && activeWorkIsReadonly(activeWork)) {
+                if (item.suffix !== "overview" && activeWork && activeWorkIsReadonly(activeWork)) {
                   return (
                     <div
                       aria-disabled="true"
@@ -266,10 +273,6 @@ export function AppShell({
   );
 }
 
-function branchLabel(name: string): string {
-  return name === "main" ? "主线" : name;
-}
-
 function activeWorkStateLabel(activeWork: ActiveWorkContext): string {
   if (activeWork.workStatus === "archived") {
     return "作品已归档 · 只读";
@@ -281,9 +284,5 @@ function activeWorkStateLabel(activeWork: ActiveWorkContext): string {
 }
 
 function activeWorkIsReadonly(activeWork: ActiveWorkContext): boolean {
-  return (
-    activeWork.workStatus === "archived" ||
-    activeWork.workStatus === "completed" ||
-    activeWork.branchStatus === "archived"
-  );
+  return isWorkReadonly(activeWork.workStatus, activeWork.branchStatus);
 }

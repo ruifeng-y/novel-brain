@@ -47,6 +47,8 @@ import { VolumeAuditPanel } from "./volume-audit-panel";
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
 import { settingTypeLabels } from "../lib/setting-labels";
+import { requestWorkContextRefresh } from "../lib/work-context-events";
+import { branchLabel, isWorkReadonly } from "../lib/work-presentation";
 
 const statusLabels: Record<Work["status"], string> = {
   draft: "草稿",
@@ -95,56 +97,64 @@ export function WorkOverview({ workId }: { workId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(await readError(response));
+  const load = useCallback(
+    async (refreshShell = false) => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(await readError(response));
+        }
+        const workData = workResponseSchema.parse(await response.json()).data;
+        const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
+        const [readinessResponse, styleResponse, chapterData, entityData, ledgerResponse] =
+          await Promise.all([
+            fetch(`${basePath}/readiness`, { cache: "no-store" }),
+            fetch(`${basePath}/style`, { cache: "no-store" }),
+            fetchAllCursorPages(
+              `${basePath}/chapters`,
+              chapterWorkspaceListResponseSchema.parse,
+              "章节列表加载失败。",
+            ).catch(() => []),
+            fetchAllCursorPages(
+              `${basePath}/entities`,
+              settingEntityListResponseSchema.parse,
+              "设定加载失败。",
+            ).catch(() => []),
+            fetch(`${basePath}/ledger`, { cache: "no-store" }),
+          ]);
+        if (!readinessResponse.ok) {
+          throw new Error(await readError(readinessResponse));
+        }
+        setWork(workData);
+        setReadiness(generationReadinessResponseSchema.parse(await readinessResponse.json()).data);
+        setChapters(chapterData);
+        setEntities(entityData);
+        setLedger(
+          ledgerResponse.ok
+            ? storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data
+            : null,
+        );
+        if (styleResponse.ok) {
+          setStyleWorkspace(
+            styleDriftWorkspaceResponseSchema.parse(await styleResponse.json()).data,
+          );
+          setStyleError("");
+        } else {
+          setStyleError(await readError(styleResponse));
+        }
+        if (refreshShell) {
+          requestWorkContextRefresh();
+        }
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "作品总览加载失败。");
+      } finally {
+        setLoading(false);
       }
-      const workData = workResponseSchema.parse(await response.json()).data;
-      const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
-      const [readinessResponse, styleResponse, chapterData, entityData, ledgerResponse] =
-        await Promise.all([
-          fetch(`${basePath}/readiness`, { cache: "no-store" }),
-          fetch(`${basePath}/style`, { cache: "no-store" }),
-          fetchAllCursorPages(
-            `${basePath}/chapters`,
-            chapterWorkspaceListResponseSchema.parse,
-            "章节列表加载失败。",
-          ).catch(() => []),
-          fetchAllCursorPages(
-            `${basePath}/entities`,
-            settingEntityListResponseSchema.parse,
-            "设定加载失败。",
-          ).catch(() => []),
-          fetch(`${basePath}/ledger`, { cache: "no-store" }),
-        ]);
-      if (!readinessResponse.ok) {
-        throw new Error(await readError(readinessResponse));
-      }
-      setWork(workData);
-      setReadiness(generationReadinessResponseSchema.parse(await readinessResponse.json()).data);
-      setChapters(chapterData);
-      setEntities(entityData);
-      setLedger(
-        ledgerResponse.ok
-          ? storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data
-          : null,
-      );
-      if (styleResponse.ok) {
-        setStyleWorkspace(styleDriftWorkspaceResponseSchema.parse(await styleResponse.json()).data);
-        setStyleError("");
-      } else {
-        setStyleError(await readError(styleResponse));
-      }
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "作品总览加载失败。");
-    } finally {
-      setLoading(false);
-    }
-  }, [workId]);
+    },
+    [workId],
+  );
 
   useEffect(() => {
     void load();
@@ -263,7 +273,7 @@ export function WorkOverview({ workId }: { workId: string }) {
       <section className="works-error" role="alert">
         <TriangleAlert size={18} aria-hidden="true" />
         <span>{error || "作品总览加载失败。"}</span>
-        <button className="text-btn small" onClick={load} type="button">
+        <button className="text-btn small" onClick={() => void load(true)} type="button">
           重试
         </button>
       </section>
@@ -314,10 +324,7 @@ export function WorkOverview({ workId }: { workId: string }) {
         right.updatedAt.localeCompare(left.updatedAt) || left.sortKey.localeCompare(right.sortKey),
     )
     .slice(0, 5);
-  const isReadonly =
-    work.status === "archived" ||
-    work.status === "completed" ||
-    work.mainBranch.status === "archived";
+  const isReadonly = isWorkReadonly(work.status, work.mainBranch.status);
   const readonlyLabel =
     work.status === "archived" || work.status === "completed" ? "当前作品只读" : "当前创作线只读";
 
@@ -515,7 +522,7 @@ export function WorkOverview({ workId }: { workId: string }) {
               </div>
             ))}
           </div>
-          {readiness ? (
+          {readiness && !isReadonly ? (
             <div className="overview-remediation">
               <div className="panel-head">
                 <div>
@@ -544,10 +551,17 @@ export function WorkOverview({ workId }: { workId: string }) {
                 {pendingTasks.map((task) => (
                   <li className="overview-task-item" key={task.key}>
                     <span className="task-check" aria-hidden="true" />
-                    <Link href={task.remediation?.href ?? `/workspace/${workId}/overview`}>
-                      <span>{task.label}</span>
-                      <small>{task.severity === "blocker" ? "阻断" : "提醒"}</small>
-                    </Link>
+                    {isReadonly ? (
+                      <span className="overview-task-copy">
+                        <span>{task.label}</span>
+                        <small>{task.severity === "blocker" ? "阻断" : "提醒"}</small>
+                      </span>
+                    ) : (
+                      <Link href={task.remediation?.href ?? `/workspace/${workId}/overview`}>
+                        <span>{task.label}</span>
+                        <small>{task.severity === "blocker" ? "阻断" : "提醒"}</small>
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -814,8 +828,4 @@ export function WorkOverview({ workId }: { workId: string }) {
 async function readError(response: Response): Promise<string> {
   const parsed = apiErrorSchema.safeParse(await response.json().catch(() => null));
   return parsed.success ? parsed.data.error.message : "作品总览加载失败。";
-}
-
-function branchLabel(name: string): string {
-  return name === "main" ? "主线" : name;
 }
