@@ -81,7 +81,7 @@ Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者�
 
 ## 2026-11-10 Account Settings Key 错误态证据
 
-签收人：ruifeng-y。#177 补齐 `account-settings` 的 Key 无效、失效、连接测试失败、掩码保持、失败后替换 Key 与重试恢复证据。正常态生产 Golden 不变；错误态在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 4 张错误态 Linux/CI Golden 作为当前状态基线，生成证据为 [Production CI #42780689501](https://github.com/ruifeng-y/novel-brain/actions/runs/42780689501)。账号导出、注销恢复期与永久删除仍由 #134 独立跟踪，本记录不提升整页状态。
+签收人：ruifeng-y。#177 补齐 `account-settings` 的 Key 无效、失效、连接测试失败、掩码保持、失败后替换 Key 与重试恢复证据。正常态生产 Golden 不变；错误态在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 4 张错误态 Linux/CI Golden 作为当前状态基线，生成证据为 [Production CI #42780689501](https://github.com/ruifeng-y/novel-brain/actions/runs/42780689501)，正常 Linux 回归证据为 [PR #178 Production CI #42784702753](https://github.com/ruifeng-y/novel-brain/actions/runs/42784702753)（102 项执行，101 passed、1 个既有 `m1-closeout` flaky 由 #175 跟踪）。账号导出、注销恢复期与永久删除仍由 #134 独立跟踪，本记录不提升整页状态。
 
 ## 变更规则
 
