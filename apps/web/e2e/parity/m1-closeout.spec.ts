@@ -129,7 +129,7 @@ test("completes the M1 author loop through outline, writing, facts and volume au
   const worker = await startWorker();
   try {
     await page.goto(`/workspace/${work.id}/write?chapterId=${chapterFour.id}`);
-    await page.getByRole("button", { name: "生成整章" }).click();
+    await startGenerationThroughUi(page, chapterFour.id);
     await expect(
       page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
     ).toBeVisible({ timeout: 30_000 });
@@ -308,7 +308,7 @@ test("keeps generation status observable when live events are unavailable", asyn
   const worker = await startWorker();
   try {
     await page.goto(`/workspace/${work.id}/write?chapterId=${fixture.generationChapterId}`);
-    await page.getByRole("button", { name: "生成整章" }).click();
+    await startGenerationThroughUi(page, fixture.generationChapterId);
 
     await expect(
       page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
@@ -482,10 +482,22 @@ async function createOutlineThroughUi(page: Page, work: M1Work) {
       .getByLabel("场景节拍（一行一个）")
       .fill("沈砚藏起断臂。\n追兵逼近，两人继续上路。");
     await creator.getByLabel("必用事实（一行一个）").fill("左臂骨折，不能双手结印");
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname.endsWith("/outline/nodes"),
+      { timeout: 60_000 },
+    );
     await creator.getByRole("button", { name: "创建节点" }).click();
-    await expect(page.getByText(`第 ${chapter.number} 章`).first()).toBeVisible({
-      timeout: 15_000,
-    });
+    const response = await createResponse;
+    expect(response.status()).toBe(201);
+    const created = (await response.json()).data as {
+      node: { id: string; chapter: { number: number } | null };
+    };
+    expect(created.node.chapter?.number).toBe(chapter.number);
+    const createdNode = page.locator(`[data-outline-node-id="${created.node.id}"]`);
+    await expect(createdNode).toBeVisible();
+    await expect(createdNode).toContainText(`第 ${chapter.number} 章`);
   }
 }
 
@@ -494,6 +506,18 @@ async function ensureCreatorOpen(creator: Locator) {
   if (!open) {
     await creator.locator("summary").click();
   }
+}
+
+async function startGenerationThroughUi(page: Page, chapterId: string): Promise<void> {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname.endsWith(`/chapters/${chapterId}/generate`),
+    { timeout: 60_000 },
+  );
+  await page.getByRole("button", { name: "生成整章" }).click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(202);
 }
 
 async function writeChapterVersionThroughUi(
