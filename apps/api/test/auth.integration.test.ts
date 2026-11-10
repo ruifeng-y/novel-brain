@@ -910,6 +910,41 @@ describe("auth HTTP integration", () => {
     expect(providerErrorTest.body.error.details.status).toBe("provider_error");
     expect(JSON.stringify(providerErrorTest.body)).not.toContain("sk-provider-error-1234");
 
+    const invalidApiKey = "sk-invalid-key-4321";
+    const invalidKeyConfig = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "model-create-invalid-key")
+      .send({
+        provider: "deepseek",
+        label: "无效 Key",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: invalidApiKey,
+        purposes: ["writing"],
+        isDefault: false,
+      })
+      .expect(200);
+    const invalidKeyTest = await owner
+      .post(`/api/v1/model-configs/${invalidKeyConfig.body.data.id}/test`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .expect(400);
+    expect(invalidKeyTest.body.error.code).toBe("MODEL_KEY_INVALID");
+    expect(invalidKeyTest.body.error.details.status).toBe("key_invalid");
+    expect(JSON.stringify(invalidKeyTest.body)).not.toContain(invalidApiKey);
+
+    const afterInvalidKeyTest = await owner.get("/api/v1/model-configs").expect(200);
+    const invalidKeyRecord = afterInvalidKeyTest.body.data.find(
+      (config: { id: string }) => config.id === invalidKeyConfig.body.data.id,
+    );
+    expect(invalidKeyRecord).toMatchObject({
+      keyMasked: "****4321",
+      lastTestStatus: "key_invalid",
+    });
+    expect(JSON.stringify(afterInvalidKeyTest.body)).not.toContain(invalidApiKey);
+
     const expiredIdempotencyKey = "model-create-expired";
     const expiringConfig = await owner
       .post("/api/v1/model-configs")

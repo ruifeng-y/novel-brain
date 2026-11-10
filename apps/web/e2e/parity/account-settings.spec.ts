@@ -10,7 +10,12 @@ import {
 import { Pool } from "pg";
 
 import { registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const viewports = [390, 900, 1180, 1440] as const;
 
@@ -107,6 +112,76 @@ test("provider failures are visible and recoverable", async ({ page, context, re
   await expect(page.getByText("服务商返回错误")).toBeVisible();
   await expect(page.getByText("服务商异常", { exact: true })).toBeVisible();
   await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
+});
+
+test("invalid and expired model keys stay masked and recoverable", async ({
+  page,
+  context,
+  request,
+}, testInfo) => {
+  await authenticatedPage(page, context, request);
+  await freezeApiTimestamps(page);
+
+  await page.getByLabel("配置名称").fill("无效 Key 配置");
+  await page.getByLabel("API Key").fill("sk-invalid-key-1234");
+  await page.getByRole("button", { name: "新增配置" }).click();
+  const invalidRow = page.locator(".model-config-row", { hasText: "无效 Key 配置" });
+  await expect(invalidRow).toContainText("****1234");
+  await expect(page.getByText("sk-invalid-key-1234")).toHaveCount(0);
+
+  await invalidRow.getByRole("button", { name: "测试连接" }).click();
+  await expect(page.getByText("API Key 无效")).toBeVisible();
+  await expect(invalidRow.getByText("Key 无效", { exact: true })).toBeVisible();
+  await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
+
+  const replaceInvalidKey = invalidRow.getByRole("button", {
+    name: "替换 无效 Key 配置 的 Key",
+  });
+  await expect(replaceInvalidKey).toBeVisible();
+  await replaceInvalidKey.click();
+  await expect(page.getByLabel("API Key")).toHaveValue("");
+  await expect(page.getByLabel("API Key")).toHaveAttribute("placeholder", "留空则保留原 Key");
+  await page.getByRole("button", { name: "取消" }).click();
+  await expect(invalidRow).toContainText("****1234");
+
+  await page.getByLabel("配置名称").fill("过期 Key 配置");
+  await page.getByLabel("API Key").fill("sk-expired-key-5678");
+  await page.getByRole("button", { name: "新增配置" }).click();
+  const expiredRow = page.locator(".model-config-row", { hasText: "过期 Key 配置" });
+  await expiredRow.getByRole("button", { name: "测试连接" }).click();
+  await expect(expiredRow.getByText("Key 无效", { exact: true })).toBeVisible();
+  await expect(page.getByText("sk-expired-key-5678")).toHaveCount(0);
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page).toHaveURL(/\/workspace\/settings\/account$/u);
+    await expect(invalidRow).toContainText("****1234");
+    await expect(expiredRow).toContainText("****5678");
+    await expect(invalidRow.getByText("Key 无效", { exact: true })).toBeVisible();
+    await expect(expiredRow.getByText("Key 无效", { exact: true })).toBeVisible();
+    await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
+    await expectNoPrototypeOnlyLeakage(page);
+    await expectAuthorFacingLanguage(page);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await testInfo.attach(`account-settings-key-error-${width}`, {
+      body: await page.screenshot(productionScreenshotOptions),
+      contentType: "image/png",
+    });
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await replaceInvalidKey.click();
+  await page.getByLabel("API Key").fill("sk-recovered-key-9012");
+  await page.getByRole("button", { name: "保存修改" }).click();
+  await expect(invalidRow).toContainText("****9012");
+  await invalidRow.getByRole("button", { name: "测试连接" }).click();
+  await expect(page.getByText("连接正常。")).toBeVisible();
+  await expect(invalidRow.getByText("连接正常", { exact: true })).toBeVisible();
+  await expect(page.getByText("sk-recovered-key-9012")).toHaveCount(0);
 });
 
 test("create retries reuse the idempotency key", async ({ page, context, request }) => {

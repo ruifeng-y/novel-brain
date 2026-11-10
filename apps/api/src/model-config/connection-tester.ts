@@ -119,7 +119,7 @@ function requestPinned(
 @Injectable()
 export class FakeModelConnectionTester implements ModelConnectionTester {
   async test({ apiKey }: ConnectionTestInput): Promise<ConnectionTestResult> {
-    if (apiKey.includes("invalid")) {
+    if (apiKey.includes("invalid") || apiKey.includes("expired")) {
       return { status: "key_invalid", latencyMs: 1, message: "API Key 无效" };
     }
     if (apiKey.includes("rate")) {
