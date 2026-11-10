@@ -232,6 +232,16 @@ a:focus-visible {
   color: var(--cinnabar);
 }
 
+.nav-item[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.nav-item[aria-disabled="true"]:hover {
+  color: inherit;
+  background: transparent;
+}
+
 .nav-item.quiet {
   min-height: 36px;
   color: #8e9a93;
@@ -336,6 +346,30 @@ a:focus-visible {
   color: var(--muted);
   font-size: 12px;
   white-space: nowrap;
+}
+
+.work-context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: baseline;
+  padding: 10px 28px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+  background: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid var(--line);
+}
+
+.work-context-bar strong,
+.work-context-bar span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.work-context-bar strong {
+  color: var(--ink-2);
+  font-size: 12px;
 }
 
 .page-container {
@@ -1748,6 +1782,112 @@ a:focus-visible {
 .overview-chapters,
 .overview-links {
   padding: 20px;
+}
+
+.overview-side-stack {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+  min-width: 0;
+}
+
+.overview-task-list {
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  margin: 10px 0 0;
+  list-style: none;
+}
+
+.overview-task-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.overview-task-item:last-child {
+  border-bottom: 0;
+}
+
+.overview-task-item .task-check {
+  width: 9px;
+  height: 9px;
+  margin-top: 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 99px;
+}
+
+.overview-task-item a,
+.overview-task-item .overview-task-copy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  justify-content: space-between;
+  min-width: 0;
+  color: var(--ink-2);
+}
+
+.overview-task-item a span,
+.overview-task-item .overview-task-copy span {
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.overview-task-item a small,
+.overview-task-item .overview-task-copy small {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.overview-change-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.overview-change-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.overview-change-item > .badge {
+  white-space: nowrap;
+}
+
+.overview-change-copy {
+  min-width: 0;
+}
+
+.overview-change-copy strong,
+.overview-change-copy small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.overview-change-copy strong {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.overview-change-copy small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
 }
 
 .overview-chapters h3,
@@ -4721,6 +4861,10 @@ a:focus-visible {
 
   .topbar {
     padding: 0 18px;
+  }
+
+  .work-context-bar {
+    padding: 9px 18px;
   }
 
   .page-container {

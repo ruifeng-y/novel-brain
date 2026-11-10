@@ -69,11 +69,15 @@ Issue #147 在 outline 页加入黄金三章候选比较、六维评分与证据
 - writing
 - account-settings
 
-Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者本次对 8 个页面的视觉方向作出签收；其中 #172 只为 `entity-detail` 与 `foreshadows` 新生成并提交了 8 张正式 Linux/CI Golden。其余 24 张同名页面文件属于早期基线，不作为当前 M1 的正式比较证据，需在 #174 中重新生成。生成证据为 [Production CI #42670999022](https://github.com/ruifeng-y/novel-brain/actions/runs/42670999022)，正常 Playwright 截图比较见 [Production CI #42682407291](https://github.com/ruifeng-y/novel-brain/actions/runs/42682407291)。
+Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者本次对 8 个页面的视觉方向作出签收；其中 #172 为 `entity-detail` 与 `foreshadows` 新生成并提交了 8 张正式 Linux/CI Golden，#176 为 `work-overview` 新生成并提交了正常态与长内容态共 8 张正式 Linux/CI Golden。其余 20 张同名页面文件属于早期基线，不作为当前 M1 的正式比较证据，需在 #174 中重新生成。生成证据为 [Production CI #42670999022](https://github.com/ruifeng-y/novel-brain/actions/runs/42670999022)，正常 Playwright 截图比较见 [Production CI #42682407291](https://github.com/ruifeng-y/novel-brain/actions/runs/42682407291)。
 
 本次视觉判断没有未批准项，也没有新增产品偏差。它取代前文 2026-11-05 至 2026-11-07 对 M1 页面视觉方向的待签收状态，但不替代其余页面尚未生成的正式 Golden 证据。
 
-#172 当前只有 `entity-detail` 与 `foreshadows` 具备真实生产路由的四档 `toHaveScreenshot` 断言，但 `entity-detail` 仍缺 `prototype_only` 泄漏扫描证据，`foreshadows` 仍缺 `loading` 状态断言；其余 6 页仍使用 attach 截图或未参与比较的历史 Golden 文件。完整 page checklist、其余 24 张正式 Golden 和状态证据由 #174 跟踪。完成前，8 个页面都不得标记为 `parity-verified`，#161 的完整自动化视觉回归条件也尚未满足。
+#172 当前只有 `entity-detail` 与 `foreshadows` 具备真实生产路由的四档 `toHaveScreenshot` 断言，但 `entity-detail` 仍缺 `prototype_only` 泄漏扫描证据，`foreshadows` 仍缺 `loading` 状态断言；#176 补齐 `work-overview` 正常态和长内容态的自动 Golden 比较，其余 5 页仍使用 attach 截图或未参与比较的历史 Golden 文件。完整 page checklist、其余 20 张正式 Golden 和状态证据由 #174 跟踪。完成前，8 个页面都不得标记为 `parity-verified`，#161 的完整自动化视觉回归条件也尚未满足。
+
+## 2026-11-10 Work Overview 分支与长内容证据
+
+签收人：ruifeng-y。#176 补齐 `work-overview` 的当前作品/主线壳层上下文、待处理与最近修改列表，以及真实长作品名、长摘要、长章节和长设定证据。正常态与长内容态均在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 8 张 Linux/CI Golden 作为当前视觉基线，生成证据为 [Production CI #42810925879](https://github.com/ruifeng-y/novel-brain/actions/runs/42810925879)。本次证据只覆盖 `work-overview` 生产路由；全站当前作品与平行版本切换一致性仍由 #95、#123 跟踪，不声称 WORK-009 全站完成。本记录补齐 #174 中 `work-overview` 的状态缺口，不把整页提升为 `parity-verified`。
 
 ## 变更规则
 

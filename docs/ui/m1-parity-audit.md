@@ -47,7 +47,7 @@
 
 ## 4. 签收后的自动化剩余事项
 
-2026-11-10：作者已完成 8 个 M1 验收页面的视觉方向签收，接受当前生产结构及其已批准适配，没有新增未批准项。`entity-detail` 与 `foreshadows` 已有当前正式 Golden；其余 24 张与完整状态证据由 #174 跟踪。签收记录见 `docs/ui/v1-prototype-signoff.md`。
+2026-11-10：作者已完成 8 个 M1 验收页面的视觉方向签收，接受当前生产结构及其已批准适配，没有新增未批准项。`entity-detail`、`foreshadows` 与 `work-overview` 已有当前正式 Golden；其余 20 张与完整状态证据由 #174 跟踪。签收记录见 `docs/ui/v1-prototype-signoff.md`。
 
 1. account-settings 的模型配置、设备会话和账号安全属于 M1 已批准范围，当前生产布局已纳入视觉签收；自动化 Golden 比较由 #174 跟踪。
 2. writing 的题材规则条属于原型演示内容；生产保留页头，不复制题材演示控件。当前生产布局已纳入视觉签收。
@@ -55,7 +55,7 @@
 4. outline 的章节/场景编辑表单放在中央章节列表下方，右侧保留准备度和新增节点；该生产适配已纳入视觉签收。
 5. outline 的账本视图生产为三列总览，原型为“剧情线账本 / 伏笔账本 / 人物弧光”三个子 tab；当前生产实现已纳入视觉签收，不再作为待决项。
 6. writing 的“编辑建议”tab 复用真实质量/修订面板；当前生产布局已纳入视觉签收，题材切换按钮属于原型演示内容，不进入生产。
-7. `entity-detail` 与 `foreshadows` 的四档 `toHaveScreenshot` 比较已由 #172 补齐；#174 继续补 `foreshadows` 的 `loading` 状态、`entity-detail` 的 `prototype_only` 泄漏证据，以及 work-overview、bible、settings、outline、writing 和 account-settings 的当前 Golden 比较。完成前，8 个页面均保持 `production-built`。
+7. `entity-detail` 与 `foreshadows` 的四档 `toHaveScreenshot` 比较已由 #172 补齐，`work-overview` 由 #176 补齐；#174 继续补 `foreshadows` 的 `loading` 状态、`entity-detail` 的 `prototype_only` 泄漏证据，以及 bible、settings、outline、writing 和 account-settings 的当前 Golden 比较。完成前，8 个页面均保持 `production-built`。
 
 ## 5. 后端逻辑核对
 

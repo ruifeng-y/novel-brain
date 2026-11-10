@@ -46,6 +46,9 @@ import { StyleDriftFindings } from "./style-drift-findings";
 import { VolumeAuditPanel } from "./volume-audit-panel";
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { settingTypeLabels } from "../lib/setting-labels";
+import { requestWorkContextRefresh } from "../lib/work-context-events";
+import { branchLabel, isWorkReadonly, readonlyScopeLabel } from "../lib/work-presentation";
 
 const statusLabels: Record<Work["status"], string> = {
   draft: "草稿",
@@ -94,56 +97,64 @@ export function WorkOverview({ workId }: { workId: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(await readError(response));
+  const load = useCallback(
+    async (refreshShell = false) => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(await readError(response));
+        }
+        const workData = workResponseSchema.parse(await response.json()).data;
+        const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
+        const [readinessResponse, styleResponse, chapterData, entityData, ledgerResponse] =
+          await Promise.all([
+            fetch(`${basePath}/readiness`, { cache: "no-store" }),
+            fetch(`${basePath}/style`, { cache: "no-store" }),
+            fetchAllCursorPages(
+              `${basePath}/chapters`,
+              chapterWorkspaceListResponseSchema.parse,
+              "章节列表加载失败。",
+            ).catch(() => []),
+            fetchAllCursorPages(
+              `${basePath}/entities`,
+              settingEntityListResponseSchema.parse,
+              "设定加载失败。",
+            ).catch(() => []),
+            fetch(`${basePath}/ledger`, { cache: "no-store" }),
+          ]);
+        if (!readinessResponse.ok) {
+          throw new Error(await readError(readinessResponse));
+        }
+        setWork(workData);
+        setReadiness(generationReadinessResponseSchema.parse(await readinessResponse.json()).data);
+        setChapters(chapterData);
+        setEntities(entityData);
+        setLedger(
+          ledgerResponse.ok
+            ? storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data
+            : null,
+        );
+        if (styleResponse.ok) {
+          setStyleWorkspace(
+            styleDriftWorkspaceResponseSchema.parse(await styleResponse.json()).data,
+          );
+          setStyleError("");
+        } else {
+          setStyleError(await readError(styleResponse));
+        }
+        if (refreshShell) {
+          requestWorkContextRefresh();
+        }
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "作品总览加载失败。");
+      } finally {
+        setLoading(false);
       }
-      const workData = workResponseSchema.parse(await response.json()).data;
-      const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
-      const [readinessResponse, styleResponse, chapterData, entityData, ledgerResponse] =
-        await Promise.all([
-          fetch(`${basePath}/readiness`, { cache: "no-store" }),
-          fetch(`${basePath}/style`, { cache: "no-store" }),
-          fetchAllCursorPages(
-            `${basePath}/chapters`,
-            chapterWorkspaceListResponseSchema.parse,
-            "章节列表加载失败。",
-          ).catch(() => []),
-          fetchAllCursorPages(
-            `${basePath}/entities`,
-            settingEntityListResponseSchema.parse,
-            "设定加载失败。",
-          ).catch(() => []),
-          fetch(`${basePath}/ledger`, { cache: "no-store" }),
-        ]);
-      if (!readinessResponse.ok) {
-        throw new Error(await readError(readinessResponse));
-      }
-      setWork(workData);
-      setReadiness(generationReadinessResponseSchema.parse(await readinessResponse.json()).data);
-      setChapters(chapterData);
-      setEntities(entityData);
-      setLedger(
-        ledgerResponse.ok
-          ? storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data
-          : null,
-      );
-      if (styleResponse.ok) {
-        setStyleWorkspace(styleDriftWorkspaceResponseSchema.parse(await styleResponse.json()).data);
-        setStyleError("");
-      } else {
-        setStyleError(await readError(styleResponse));
-      }
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "作品总览加载失败。");
-    } finally {
-      setLoading(false);
-    }
-  }, [workId]);
+    },
+    [workId],
+  );
 
   useEffect(() => {
     void load();
@@ -262,7 +273,7 @@ export function WorkOverview({ workId }: { workId: string }) {
       <section className="works-error" role="alert">
         <TriangleAlert size={18} aria-hidden="true" />
         <span>{error || "作品总览加载失败。"}</span>
-        <button className="text-btn small" onClick={load} type="button">
+        <button className="text-btn small" onClick={() => void load(true)} type="button">
           重试
         </button>
       </section>
@@ -288,6 +299,33 @@ export function WorkOverview({ workId }: { workId: string }) {
   const recentChapters = [...chapters]
     .sort((left, right) => right.number - left.number)
     .slice(0, 3);
+  const allPendingTasks = readiness?.items.filter((item) => !item.ready) ?? [];
+  const pendingTasks = allPendingTasks.slice(0, 3);
+  const recentChanges = [
+    ...chapters.map((chapter) => ({
+      id: `chapter:${chapter.id}`,
+      kind: "章节",
+      title: `第 ${chapter.number} 章 · ${chapter.title}`,
+      detail: chapter.brief?.goal ?? `${chapter.wordCount.toLocaleString("zh-CN")} 字`,
+      updatedAt: chapter.updatedAt,
+      sortKey: `1:${String(chapter.number).padStart(6, "0")}`,
+    })),
+    ...entities.map((entity) => ({
+      id: `setting:${entity.id}`,
+      kind: settingTypeLabels[entity.type],
+      title: entity.name,
+      detail: entity.summary,
+      updatedAt: entity.updatedAt,
+      sortKey: `0:${entity.name}`,
+    })),
+  ]
+    .sort(
+      (left, right) =>
+        right.updatedAt.localeCompare(left.updatedAt) || left.sortKey.localeCompare(right.sortKey),
+    )
+    .slice(0, 5);
+  const isReadonly = isWorkReadonly(work.status, work.mainBranch.status);
+  const readonlyLabel = readonlyScopeLabel(work.status, work.mainBranch.status);
 
   return (
     <>
@@ -310,10 +348,10 @@ export function WorkOverview({ workId }: { workId: string }) {
             <ArrowLeft size={15} aria-hidden="true" />
             返回工作台
           </Link>
-          {work.status === "archived" ? (
+          {isReadonly ? (
             <button className="btn btn-primary" disabled type="button">
               <PenLine size={15} aria-hidden="true" />
-              继续写作
+              {work.status === "completed" ? "作品已完本" : "继续写作"}
             </button>
           ) : (
             <Link className="btn btn-primary" href={nextChapterHref}>
@@ -326,6 +364,12 @@ export function WorkOverview({ workId }: { workId: string }) {
 
       {work.status === "archived" ? (
         <div className="model-notice warning">作品已归档，当前为只读状态。</div>
+      ) : work.status === "completed" ? (
+        <div className="model-notice warning">
+          作品已完本，当前为只读状态。可返回工作台查看版本。
+        </div>
+      ) : work.mainBranch.status === "archived" ? (
+        <div className="model-notice warning">当前创作线已归档，当前为只读状态。</div>
       ) : null}
 
       <article className="overview-hero">
@@ -357,17 +401,25 @@ export function WorkOverview({ workId }: { workId: string }) {
           </div>
           <div className="overview-meta">
             <span>作品状态 {statusLabels[work.status]}</span>
-            <span>创作线状态 {work.mainBranch.status === "active" ? "可写作" : "已归档"}</span>
-            <span>当前版本 {work.mainBranch.headNodeId.slice(0, 8)}</span>
+            <span>当前创作线：{branchLabel(work.mainBranch.name)}</span>
+            <span>
+              创作线状态{" "}
+              {isReadonly ? "只读" : work.mainBranch.status === "active" ? "可写作" : "已归档"}
+            </span>
+            <span>创作线版本 已记录</span>
           </div>
         </div>
         <div className="overview-next">
           <span>下一章</span>
           <strong>第 {nextChapterNumber} 章</strong>
           <p>{nextChapter?.title || "待创建章节"}</p>
-          <Link className="text-btn small" href={nextChapterHref}>
-            进入写作台 <ArrowUpRight size={14} aria-hidden="true" />
-          </Link>
+          {isReadonly ? (
+            <small>{readonlyLabel}，请返回工作台查看版本。</small>
+          ) : (
+            <Link className="text-btn small" href={nextChapterHref}>
+              进入写作台 <ArrowUpRight size={14} aria-hidden="true" />
+            </Link>
+          )}
           <small>
             {pendingReminders > 0 ? `已准备 ${pendingReminders} 条提醒` : "暂无待处理提醒"}
           </small>
@@ -469,7 +521,7 @@ export function WorkOverview({ workId }: { workId: string }) {
               </div>
             ))}
           </div>
-          {readiness ? (
+          {readiness && !isReadonly ? (
             <div className="overview-remediation">
               <div className="panel-head">
                 <div>
@@ -485,39 +537,56 @@ export function WorkOverview({ workId }: { workId: string }) {
           ) : null}
         </article>
 
-        <aside className="panel compact-panel">
-          <div className="panel-head">
-            <h2>下一步</h2>
-          </div>
-          <ul className="overview-next-list">
-            <li>
-              <Link className="overview-next-link" href={`/workspace/${workId}/bible`}>
-                <BookMarked size={16} aria-hidden="true" />
-                <div>
-                  <strong>完善故事圣经</strong>
-                  <small>生成、编辑并锁定九卡故事方向</small>
-                </div>
-              </Link>
-            </li>
-            <li>
-              <Link className="overview-next-link" href={`/workspace/${workId}/settings`}>
-                <BookMarked size={16} aria-hidden="true" />
-                <div>
-                  <strong>整理最小设定</strong>
-                  <small>世界规则、人物状态和金手指</small>
-                </div>
-              </Link>
-            </li>
-            <li>
-              <Link className="overview-next-link" href={`/workspace/${workId}/outline`}>
-                <PenLine size={16} aria-hidden="true" />
-                <div>
-                  <strong>准备第一章</strong>
-                  <small>先写章纲，再进入写作台</small>
-                </div>
-              </Link>
-            </li>
-          </ul>
+        <aside className="overview-side-stack">
+          <section className="panel compact-panel" aria-labelledby="overview-tasks-title">
+            <div className="panel-head">
+              <h2 id="overview-tasks-title">待处理</h2>
+              <span className="badge">{allPendingTasks.length}</span>
+            </div>
+            {pendingTasks.length === 0 ? (
+              <p className="style-drift-empty">当前没有待处理事项。</p>
+            ) : (
+              <ul className="overview-task-list">
+                {pendingTasks.map((task) => (
+                  <li className="overview-task-item" key={task.key}>
+                    <span className="task-check" aria-hidden="true" />
+                    {isReadonly ? (
+                      <span className="overview-task-copy">
+                        <span>{task.label}</span>
+                        <small>{task.severity === "blocker" ? "阻断" : "提醒"}</small>
+                      </span>
+                    ) : (
+                      <Link href={task.remediation?.href ?? `/workspace/${workId}/overview`}>
+                        <span>{task.label}</span>
+                        <small>{task.severity === "blocker" ? "阻断" : "提醒"}</small>
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <section className="panel compact-panel" aria-labelledby="overview-changes-title">
+            <div className="panel-head">
+              <h2 id="overview-changes-title">最近修改</h2>
+            </div>
+            {recentChanges.length === 0 ? (
+              <p className="style-drift-empty">还没有章节或设定修改。</p>
+            ) : (
+              <div className="overview-change-list">
+                {recentChanges.map((change) => (
+                  <article className="overview-change-item" key={change.id}>
+                    <span className="badge">{change.kind}</span>
+                    <div className="overview-change-copy">
+                      <strong>{change.title}</strong>
+                      <small>{change.detail}</small>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
         </aside>
       </section>
 
@@ -528,28 +597,52 @@ export function WorkOverview({ workId }: { workId: string }) {
               <span className="panel-kicker">最近章节</span>
               <h3 id="overview-chapters-title">写到哪儿了</h3>
             </div>
-            <Link className="text-btn small" href={`/workspace/${workId}/write`}>
-              打开写作台 <ArrowUpRight size={14} aria-hidden="true" />
-            </Link>
+            {isReadonly ? (
+              <Link className="text-btn small" href="/workspace">
+                返回工作台 <ArrowUpRight size={14} aria-hidden="true" />
+              </Link>
+            ) : (
+              <Link className="text-btn small" href={`/workspace/${workId}/write`}>
+                打开写作台 <ArrowUpRight size={14} aria-hidden="true" />
+              </Link>
+            )}
           </div>
           {recentChapters.length === 0 ? (
-            <p className="style-drift-empty">还没有章节。可以先从大纲创建第一章。</p>
+            <div className="style-drift-empty">
+              <p>还没有章节。可以先从大纲创建第一章。</p>
+              {isReadonly ? null : (
+                <Link className="text-btn small" href={`/workspace/${workId}/outline`}>
+                  去大纲创建第一章
+                </Link>
+              )}
+            </div>
           ) : (
             <div className="overview-chapter-list">
-              {recentChapters.map((chapter) => (
-                <Link
-                  className="overview-chapter"
-                  href={`/workspace/${workId}/write?chapterId=${chapter.id}`}
-                  key={chapter.id}
-                >
-                  <span className="chapter-no">{chapter.number}</span>
-                  <span>
-                    <strong>{chapter.title}</strong>
-                    <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
-                  </span>
-                  <span className="badge">{chapterStatusLabels[chapter.status]}</span>
-                </Link>
-              ))}
+              {recentChapters.map((chapter) =>
+                isReadonly ? (
+                  <div className="overview-chapter" key={chapter.id}>
+                    <span className="chapter-no">{chapter.number}</span>
+                    <span>
+                      <strong>{chapter.title}</strong>
+                      <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
+                    </span>
+                    <span className="badge">{chapterStatusLabels[chapter.status]}</span>
+                  </div>
+                ) : (
+                  <Link
+                    className="overview-chapter"
+                    href={`/workspace/${workId}/write?chapterId=${chapter.id}`}
+                    key={chapter.id}
+                  >
+                    <span className="chapter-no">{chapter.number}</span>
+                    <span>
+                      <strong>{chapter.title}</strong>
+                      <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
+                    </span>
+                    <span className="badge">{chapterStatusLabels[chapter.status]}</span>
+                  </Link>
+                ),
+              )}
             </div>
           )}
         </section>
@@ -561,159 +654,172 @@ export function WorkOverview({ workId }: { workId: string }) {
               <h3 id="overview-links-title">下一步去哪里</h3>
             </div>
           </div>
-          <div className="quick-link-grid">
-            <Link href={`/workspace/${workId}/bible`}>
-              <BookMarked size={17} aria-hidden="true" />
-              <span>故事圣经</span>
-              <small>九卡与完成度</small>
-            </Link>
-            <Link href={`/workspace/${workId}/settings`}>
-              <GitBranch size={17} aria-hidden="true" />
-              <span>设定中心</span>
-              <small>人物、势力、地图</small>
-            </Link>
-            <Link href={`/workspace/${workId}/outline`}>
-              <PenLine size={17} aria-hidden="true" />
-              <span>大纲工作台</span>
-              <small>卷纲、幕纲与章纲</small>
-            </Link>
-            <Link href={`/workspace/${workId}/foreshadows`}>
-              <GitCommitHorizontal size={17} aria-hidden="true" />
-              <span>伏笔账本</span>
-              <small>埋设、推进与回收</small>
-            </Link>
-          </div>
+          {isReadonly ? (
+            <div className="style-drift-empty">
+              <span>{readonlyLabel}，编辑入口已关闭。</span>
+              <Link className="text-btn small" href="/workspace">
+                返回工作台
+              </Link>
+            </div>
+          ) : (
+            <div className="quick-link-grid">
+              <Link href={`/workspace/${workId}/bible`}>
+                <BookMarked size={17} aria-hidden="true" />
+                <span>故事圣经</span>
+                <small>九卡与完成度</small>
+              </Link>
+              <Link href={`/workspace/${workId}/settings`}>
+                <GitBranch size={17} aria-hidden="true" />
+                <span>设定中心</span>
+                <small>人物、势力、地图</small>
+              </Link>
+              <Link href={`/workspace/${workId}/outline`}>
+                <PenLine size={17} aria-hidden="true" />
+                <span>大纲工作台</span>
+                <small>卷纲、幕纲与章纲</small>
+              </Link>
+              <Link href={`/workspace/${workId}/foreshadows`}>
+                <GitCommitHorizontal size={17} aria-hidden="true" />
+                <span>伏笔账本</span>
+                <small>埋设、推进与回收</small>
+              </Link>
+            </div>
+          )}
         </section>
       </section>
 
-      <section className="panel overview-style" aria-labelledby="overview-style-title">
-        <div className="panel-head">
-          <div>
-            <span className="panel-kicker">声线与风格</span>
-            <h2 id="overview-style-title">跨卷一致性</h2>
-          </div>
-          <button
-            className="btn btn-ghost btn-small"
-            disabled={
-              styleBusy ||
-              !styleWorkspace ||
-              styleWorkspace.profiles.every((profile) => profile.approvalStatus !== "approved")
-            }
-            onClick={() => void checkCrossVolumeStyle()}
-            type="button"
-          >
-            {styleBusy ? (
-              <LoaderCircle className="spin" size={14} aria-hidden="true" />
-            ) : (
-              <ScanSearch size={14} aria-hidden="true" />
-            )}
-            检查跨卷趋势
-          </button>
-        </div>
-        {styleError ? (
-          <div className="story-bible-notice danger" role="alert">
-            <TriangleAlert size={15} aria-hidden="true" />
-            <span>{styleError}</span>
-          </div>
-        ) : null}
-        {styleWorkspace ? (
-          <>
-            <div className="overview-style-baselines">
-              {styleWorkspace.profiles.length === 0 ? (
-                <div className="style-drift-empty">
-                  <Mic2 size={18} aria-hidden="true" />
-                  还没有声线或风格样本。可从已签收正文建立基线。
-                </div>
-              ) : (
-                styleWorkspace.profiles.map((profile) => (
-                  <article
-                    className={`overview-style-baseline status-${profile.approvalStatus}`}
-                    data-style-profile={profile.approvalStatus}
-                    key={profile.id}
-                  >
-                    <div>
-                      <strong>{profile.name}</strong>
-                      <span>
-                        {profile.scope === "character" ? "人物声线" : "作品文风"} · 版本{" "}
-                        {profile.version}
-                      </span>
-                      <small>来源：{profile.source.label}</small>
+      {!isReadonly ? (
+        <>
+          <section className="panel overview-style" aria-labelledby="overview-style-title">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">声线与风格</span>
+                <h2 id="overview-style-title">跨卷一致性</h2>
+              </div>
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={
+                  styleBusy ||
+                  !styleWorkspace ||
+                  styleWorkspace.profiles.every((profile) => profile.approvalStatus !== "approved")
+                }
+                onClick={() => void checkCrossVolumeStyle()}
+                type="button"
+              >
+                {styleBusy ? (
+                  <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                ) : (
+                  <ScanSearch size={14} aria-hidden="true" />
+                )}
+                检查跨卷趋势
+              </button>
+            </div>
+            {styleError ? (
+              <div className="story-bible-notice danger" role="alert">
+                <TriangleAlert size={15} aria-hidden="true" />
+                <span>{styleError}</span>
+              </div>
+            ) : null}
+            {styleWorkspace ? (
+              <>
+                <div className="overview-style-baselines">
+                  {styleWorkspace.profiles.length === 0 ? (
+                    <div className="style-drift-empty">
+                      <Mic2 size={18} aria-hidden="true" />
+                      还没有声线或风格样本。可从已签收正文建立基线。
                     </div>
-                    {profile.approvalStatus === "approved" ? (
-                      <span className="badge style-approved">
-                        <CheckCircle2 size={12} aria-hidden="true" />
-                        作者已批准
-                      </span>
-                    ) : profile.approvalStatus === "pending" ? (
-                      approvingProfileId === profile.id ? (
-                        <form
-                          className="overview-style-approval"
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            void approveStyleProfile(profile.id, profile.version);
-                          }}
-                        >
-                          <textarea
-                            aria-label="批准理由"
-                            onChange={(event) => setApprovalReason(event.target.value)}
-                            placeholder="说明为什么这份样本代表稳定声线或文风"
-                            value={approvalReason}
-                          />
-                          <div>
-                            <button
-                              className="btn btn-primary btn-small"
-                              disabled={!approvalReason.trim() || styleBusy}
-                              type="submit"
+                  ) : (
+                    styleWorkspace.profiles.map((profile) => (
+                      <article
+                        className={`overview-style-baseline status-${profile.approvalStatus}`}
+                        data-style-profile={profile.approvalStatus}
+                        key={profile.id}
+                      >
+                        <div>
+                          <strong>{profile.name}</strong>
+                          <span>
+                            {profile.scope === "character" ? "人物声线" : "作品文风"} · 版本{" "}
+                            {profile.version}
+                          </span>
+                          <small>来源：{profile.source.label}</small>
+                        </div>
+                        {profile.approvalStatus === "approved" ? (
+                          <span className="badge style-approved">
+                            <CheckCircle2 size={12} aria-hidden="true" />
+                            作者已批准
+                          </span>
+                        ) : profile.approvalStatus === "pending" ? (
+                          approvingProfileId === profile.id ? (
+                            <form
+                              className="overview-style-approval"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void approveStyleProfile(profile.id, profile.version);
+                              }}
                             >
-                              确认批准
-                            </button>
+                              <textarea
+                                aria-label="批准理由"
+                                onChange={(event) => setApprovalReason(event.target.value)}
+                                placeholder="说明为什么这份样本代表稳定声线或文风"
+                                value={approvalReason}
+                              />
+                              <div>
+                                <button
+                                  className="btn btn-primary btn-small"
+                                  disabled={!approvalReason.trim() || styleBusy}
+                                  type="submit"
+                                >
+                                  确认批准
+                                </button>
+                                <button
+                                  className="btn btn-ghost btn-small"
+                                  onClick={() => {
+                                    setApprovingProfileId(null);
+                                    setApprovalReason("");
+                                  }}
+                                  type="button"
+                                >
+                                  取消
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
                             <button
                               className="btn btn-ghost btn-small"
                               onClick={() => {
-                                setApprovingProfileId(null);
+                                setApprovingProfileId(profile.id);
                                 setApprovalReason("");
                               }}
                               type="button"
                             >
-                              取消
+                              批准为基线
                             </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <button
-                          className="btn btn-ghost btn-small"
-                          onClick={() => {
-                            setApprovingProfileId(profile.id);
-                            setApprovalReason("");
-                          }}
-                          type="button"
-                        >
-                          批准为基线
-                        </button>
-                      )
-                    ) : (
-                      <span className="badge">
-                        {profile.approvalStatus === "superseded" ? "已替换" : "未采用"}
-                      </span>
-                    )}
-                  </article>
-                ))
-              )}
-            </div>
-            {styleWorkspace.latestCrossVolumeReport ? (
-              <StyleDriftFindings report={styleWorkspace.latestCrossVolumeReport} />
+                          )
+                        ) : (
+                          <span className="badge">
+                            {profile.approvalStatus === "superseded" ? "已替换" : "未采用"}
+                          </span>
+                        )}
+                      </article>
+                    ))
+                  )}
+                </div>
+                {styleWorkspace.latestCrossVolumeReport ? (
+                  <StyleDriftFindings report={styleWorkspace.latestCrossVolumeReport} />
+                ) : (
+                  <p className="style-drift-empty">
+                    批准至少一条基线后，可检查全书区间的人物声线与文风趋势。
+                  </p>
+                )}
+              </>
             ) : (
-              <p className="style-drift-empty">
-                批准至少一条基线后，可检查全书区间的人物声线与文风趋势。
-              </p>
+              <p className="style-drift-empty">正在读取声线与风格样本。</p>
             )}
-          </>
-        ) : (
-          <p className="style-drift-empty">正在读取声线与风格样本。</p>
-        )}
-      </section>
+          </section>
 
-      <VolumeAuditPanel branchId={work.mainBranch.id} workId={work.id} />
+          <VolumeAuditPanel branchId={work.mainBranch.id} workId={work.id} />
+        </>
+      ) : null}
     </>
   );
 }

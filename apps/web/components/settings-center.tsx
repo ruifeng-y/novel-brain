@@ -69,6 +69,7 @@ import {
 
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { settingTypeLabels } from "../lib/setting-labels";
 
 type ColumnKey = "world" | "characters" | "factions" | "map" | "power" | "items" | "timeline";
 
@@ -198,17 +199,6 @@ const COLUMNS: Array<{
   { key: "items", label: "物品功法", contentLabel: "物品功法", icon: Swords, supported: true },
   { key: "timeline", label: "时间线", contentLabel: "时间线", icon: History, supported: true },
 ];
-
-const typeLabels: Record<SettingEntityType, string> = {
-  world_rule: "世界规则",
-  character: "人物档案",
-  faction: "势力",
-  map: "地图",
-  power_system: "力量体系",
-  golden_finger: "金手指",
-  item: "物品功法",
-  timeline_event: "时间线事件",
-};
 
 const typeDescriptions: Record<SettingTypeColumn, string> = {
   world_rule: "硬规则与不可违背的世界边界",
@@ -1397,7 +1387,7 @@ export function SettingsCenter({
                     onClick={() => openEntityDetail(entity.id)}
                     type="button"
                   >
-                    <span>{typeLabels[entity.type]}</span>
+                    <span>{settingTypeLabels[entity.type]}</span>
                     <strong>{entity.name}</strong>
                     <small>
                       {statusLabels[entity.status]} · 第 {entity.version} 版
@@ -1669,7 +1659,7 @@ function SettingEditor({
       </div>
 
       <div className="settings-type-fields">
-        <h3>{typeLabels[editor.type]}</h3>
+        <h3>{settingTypeLabels[editor.type]}</h3>
         <p>{typeDescriptions[editor.type]}</p>
         {editor.type === "world_rule" ? (
           <label className="settings-field">
@@ -1734,7 +1724,7 @@ function SettingEditor({
           </div>
         ) : editor.type === "faction" || editor.type === "map" ? (
           <label className="settings-field">
-            <span>{typeLabels[editor.type]}</span>
+            <span>{settingTypeLabels[editor.type]}</span>
             <textarea
               onChange={(event) => update("details", event.target.value)}
               required
@@ -2152,7 +2142,7 @@ function EntityCard({ entity, onOpen }: { entity: SettingEntity; onOpen: (id: st
     <article className="panel settings-entity-card">
       <div className="settings-entity-card-head">
         <div>
-          <span className="panel-kicker">{typeLabels[entity.type]}</span>
+          <span className="panel-kicker">{settingTypeLabels[entity.type]}</span>
           <h3>{entity.name}</h3>
         </div>
         <span className={`badge settings-status-${entity.status}`}>
@@ -2597,7 +2587,7 @@ function EntityDetail({
             {entity.name.slice(0, 1) || "设"}
           </span>
           <div className="entity-page-title">
-            <span className="panel-kicker">{typeLabels[entity.type]}</span>
+            <span className="panel-kicker">{settingTypeLabels[entity.type]}</span>
             <div className="entity-page-title-row">
               <h1>{entity.name}</h1>
               <span className={`badge settings-status-${entity.status}`}>
@@ -2612,7 +2602,7 @@ function EntityDetail({
               </span>
               <span>
                 <small>类型</small>
-                {typeLabels[entity.type]}
+                {settingTypeLabels[entity.type]}
               </span>
               <span>
                 <small>作用域</small>全书
@@ -2667,7 +2657,7 @@ function EntityDetail({
 
         <div className="entity-page-main">
           <EntityDetailSection
-            badge={typeLabels[entity.type]}
+            badge={settingTypeLabels[entity.type]}
             id="overview"
             index="01"
             title="基本信息"
@@ -4312,7 +4302,7 @@ function ConfirmedSettings({ items }: { items: ConfirmedSetting[] }) {
             <article key={item.id}>
               <div>
                 <span className="tag">
-                  {item.kind === "fact" ? "章节事实" : typeLabels[item.type]}
+                  {item.kind === "fact" ? "章节事实" : settingTypeLabels[item.type]}
                 </span>
                 <strong>{item.name}</strong>
               </div>
