@@ -75,6 +75,10 @@ Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者�
 
 #172 当前只有 `entity-detail` 与 `foreshadows` 具备真实生产路由的四档 `toHaveScreenshot` 断言，但 `entity-detail` 仍缺 `prototype_only` 泄漏扫描证据，`foreshadows` 仍缺 `loading` 状态断言；其余 6 页仍使用 attach 截图或未参与比较的历史 Golden 文件。完整 page checklist、其余 24 张正式 Golden 和状态证据由 #174 跟踪。完成前，8 个页面都不得标记为 `parity-verified`，#161 的完整自动化视觉回归条件也尚未满足。
 
+## 2026-11-10 Work Overview 分支与长内容证据
+
+签收人：ruifeng-y。#176 补齐 `work-overview` 的当前作品/主线壳层上下文、最近修改列表与真实长作品名、长摘要、长章节和长设定证据。正常态与长内容态均在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 8 张 Linux/CI Golden 作为当前视觉基线，生成证据为 [Production CI #42791119846](https://github.com/ruifeng-y/novel-brain/actions/runs/42791119846)。本记录补齐 #174 中 `work-overview` 的状态缺口，不把整页提升为 `parity-verified`。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
