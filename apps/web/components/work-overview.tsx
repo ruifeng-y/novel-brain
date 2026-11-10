@@ -80,6 +80,17 @@ const chapterStatusLabels: Record<ChapterWorkspace["status"], string> = {
   rejected: "已驳回",
 };
 
+const settingTypeLabels: Record<SettingEntity["type"], string> = {
+  world_rule: "世界设定",
+  character: "人物设定",
+  faction: "势力设定",
+  map: "地图设定",
+  power_system: "力量体系",
+  golden_finger: "金手指",
+  item: "物品功法",
+  timeline_event: "故事时间线",
+};
+
 export function WorkOverview({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverviewData | null>(null);
   const [readiness, setReadiness] = useState<GenerationReadiness | null>(null);
@@ -288,6 +299,27 @@ export function WorkOverview({ workId }: { workId: string }) {
   const recentChapters = [...chapters]
     .sort((left, right) => right.number - left.number)
     .slice(0, 3);
+  const recentChanges = [
+    ...chapters.map((chapter) => ({
+      id: `chapter:${chapter.id}`,
+      kind: "章节",
+      title: `第 ${chapter.number} 章 · ${chapter.title}`,
+      detail: chapter.brief?.goal ?? `${chapter.wordCount.toLocaleString("zh-CN")} 字`,
+      updatedAt: chapter.updatedAt,
+    })),
+    ...entities.map((entity) => ({
+      id: `setting:${entity.id}`,
+      kind: settingTypeLabels[entity.type],
+      title: entity.name,
+      detail: entity.summary,
+      updatedAt: entity.updatedAt,
+    })),
+  ]
+    .sort(
+      (left, right) =>
+        right.updatedAt.localeCompare(left.updatedAt) || right.id.localeCompare(left.id),
+    )
+    .slice(0, 5);
 
   return (
     <>
@@ -357,6 +389,7 @@ export function WorkOverview({ workId }: { workId: string }) {
           </div>
           <div className="overview-meta">
             <span>作品状态 {statusLabels[work.status]}</span>
+            <span>当前创作线：{branchLabel(work.mainBranch.name)}</span>
             <span>创作线状态 {work.mainBranch.status === "active" ? "可写作" : "已归档"}</span>
             <span>当前版本 {work.mainBranch.headNodeId.slice(0, 8)}</span>
           </div>
@@ -586,6 +619,30 @@ export function WorkOverview({ workId }: { workId: string }) {
         </section>
       </section>
 
+      <section className="panel overview-changes" aria-labelledby="overview-changes-title">
+        <div className="panel-head">
+          <div>
+            <span className="panel-kicker">最近修改</span>
+            <h2 id="overview-changes-title">最近修改</h2>
+          </div>
+        </div>
+        {recentChanges.length === 0 ? (
+          <p className="style-drift-empty">还没有章节或设定修改。</p>
+        ) : (
+          <div className="overview-change-list">
+            {recentChanges.map((change) => (
+              <article className="overview-change-item" key={change.id}>
+                <span className="badge">{change.kind}</span>
+                <div className="overview-change-copy">
+                  <strong>{change.title}</strong>
+                  <small>{change.detail}</small>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="panel overview-style" aria-labelledby="overview-style-title">
         <div className="panel-head">
           <div>
@@ -721,4 +778,8 @@ export function WorkOverview({ workId }: { workId: string }) {
 async function readError(response: Response): Promise<string> {
   const parsed = apiErrorSchema.safeParse(await response.json().catch(() => null));
   return parsed.success ? parsed.data.error.message : "作品总览加载失败。";
+}
+
+function branchLabel(name: string): string {
+  return name === "main" ? "主线" : name;
 }

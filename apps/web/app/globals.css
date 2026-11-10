@@ -1750,6 +1750,57 @@ a:focus-visible {
   padding: 20px;
 }
 
+.overview-changes {
+  margin-top: 16px;
+  padding: 20px;
+  box-shadow: none;
+}
+
+.overview-change-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.overview-change-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.overview-change-item > .badge {
+  white-space: nowrap;
+}
+
+.overview-change-copy {
+  min-width: 0;
+}
+
+.overview-change-copy strong,
+.overview-change-copy small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.overview-change-copy strong {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.overview-change-copy small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
 .overview-chapters h3,
 .overview-links h3 {
   margin: 4px 0 0;

@@ -13,10 +13,10 @@ import {
   PenLine,
   Settings,
 } from "lucide-react";
-import type { AuthUser } from "@novel-brain/contracts";
+import { workResponseSchema, type AuthUser } from "@novel-brain/contracts";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
 
@@ -34,6 +34,12 @@ const workNavigation = [
   { suffix: "write", label: "写作台", icon: PenLine },
 ];
 
+interface ActiveWorkContext {
+  title: string;
+  branchName: string;
+  branchStatus: "active" | "archived";
+}
+
 export function AppShell({
   children,
   user,
@@ -41,9 +47,11 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [activeWork, setActiveWork] = useState<ActiveWorkContext | null>(null);
   const workPathMatch = pathname.match(/^\/workspace\/([^/]+)\/([^/]+)/u);
   const workId = workPathMatch?.[1];
   const workSection = workPathMatch?.[2];
+  const showWorkContext = workSection === "overview";
   const current = pathname.endsWith("/overview")
     ? "作品总览"
     : pathname.endsWith("/bible")
@@ -63,6 +71,40 @@ export function AppShell({
                   : pathname.startsWith("/workspace")
                     ? "工作台"
                     : "服务状态";
+
+  useEffect(() => {
+    if (!workId || !showWorkContext) {
+      setActiveWork(null);
+      return;
+    }
+    let cancelled = false;
+    setActiveWork(null);
+    void fetch(`/api/v1/works/${workId}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) {
+          return null;
+        }
+        return workResponseSchema.parse(await response.json()).data;
+      })
+      .then((work) => {
+        if (cancelled || !work) {
+          return;
+        }
+        setActiveWork({
+          title: work.title,
+          branchName: branchLabel(work.mainBranch.name),
+          branchStatus: work.mainBranch.status,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setActiveWork(null);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showWorkContext, workId]);
 
   async function logout() {
     setLoggingOut(true);
@@ -93,11 +135,18 @@ export function AppShell({
           <span className="beta-badge">BETA</span>
         </div>
 
-        <div className="workspace-switch" aria-label="当前工作区">
+        <div
+          className="workspace-switch"
+          aria-label={showWorkContext ? "当前作品与创作线" : "当前工作区"}
+        >
           <span className="workspace-avatar">墨</span>
           <span className="workspace-copy">
-            <strong>个人工作区</strong>
-            <small>长篇创作</small>
+            <strong title={activeWork?.title}>{activeWork?.title ?? "个人工作区"}</strong>
+            <small>
+              {activeWork
+                ? `创作线 ${activeWork.branchName} · ${activeWork.branchStatus === "active" ? "可写作" : "已归档"}`
+                : "长篇创作"}
+            </small>
           </span>
           <ChevronDown className="workspace-chevron" size={15} aria-hidden="true" />
         </div>
@@ -194,4 +243,8 @@ export function AppShell({
       </div>
     </div>
   );
+}
+
+function branchLabel(name: string): string {
+  return name === "main" ? "主线" : name;
 }
