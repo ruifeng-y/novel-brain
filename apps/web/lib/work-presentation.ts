@@ -10,3 +10,14 @@ export function isWorkReadonly(
 ): boolean {
   return workStatus === "archived" || workStatus === "completed" || branchStatus === "archived";
 }
+
+export function readonlyScopeLabel(
+  workStatus: Work["status"],
+  branchStatus: "active" | "archived",
+): string {
+  return workStatus === "archived" || workStatus === "completed"
+    ? "当前作品只读"
+    : branchStatus === "archived"
+      ? "当前创作线只读"
+      : "";
+}

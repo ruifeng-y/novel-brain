@@ -62,7 +62,7 @@ In the columns below, the prototype screenshot path and production test/golden p
 >
 > entity-detail 按原型保持独立整页，而不是设定中心右侧详情栏：页面结构为返回按钮、档案 Hero、左侧五段目录和右侧分区内容，URL 使用 `?column=<column>&entityId=<entityId>` 保留可回退的详情状态。
 >
-> 2026-11-07 M1 结构审计修复了 work-overview（补回三列 Hero、统计卡、最近章节、快捷入口）和 settings（补回搜索、状态筛选、最近更新）的未授权结构漂移；详细对照见 `docs/ui/m1-parity-audit.md`。两页当前布局已完成作者视觉签收，自动化 Golden 比较仍由 #174 跟踪。
+> 2026-11-07 M1 结构审计修复了 work-overview（补回三列 Hero、统计卡、最近章节、快捷入口）和 settings（补回搜索、状态筛选、最近更新）的未授权结构漂移；详细对照见 `docs/ui/m1-parity-audit.md`。两页当前布局已完成作者视觉签收；work-overview 的自动 Golden 比较由 #176 补齐，settings 仍由 #174 跟踪。
 >
 > #146 为 outline 增加剧情账本视图，并新建 foreshadows 生产页；两页均已完成作者视觉签收。foreshadows 已有四档 Golden 比较，但 `loading` 状态仍由 #174 跟踪。
 
@@ -133,8 +133,8 @@ The nine M0 pages received their initial author approval on 2026-11-05 and their
 
 ## 9. M1 closeout evidence
 
-`apps/web/e2e/parity/m1-closeout.spec.ts` covers the integrated M1 author loop and the eight M1 acceptance pages at 390, 900, 1180 and 1440. `entity-detail.spec.ts` and `foreshadows.spec.ts` add normal `toHaveScreenshot` comparisons including the production routes, page titles, primary actions, representative states, author language and no-horizontal-overflow checks.
+`apps/web/e2e/parity/m1-closeout.spec.ts` covers the integrated M1 author loop and the eight M1 acceptance pages at 390, 900, 1180 and 1440. `entity-detail.spec.ts`, `foreshadows.spec.ts` and `work-overview.spec.ts` add normal `toHaveScreenshot` comparisons including the production routes, page titles, primary actions, representative states, author language and no-horizontal-overflow checks.
 
-#172 adds eight current formal M1 Golden files under `artifacts/ui/golden/entity-detail/` and `artifacts/ui/golden/foreshadows/`. The Linux/Chromium baseline update evidence is [Production CI #42670999022](https://github.com/ruifeng-y/novel-brain/actions/runs/42670999022), and the normal PR screenshot comparison evidence is [Production CI #42682407291](https://github.com/ruifeng-y/novel-brain/actions/runs/42682407291). The other 24 page-named files predate the current M1 layouts and are not treated as active baselines.
+#172 adds eight current formal M1 Golden files under `artifacts/ui/golden/entity-detail/` and `artifacts/ui/golden/foreshadows/`; #176 adds eight normal/long `work-overview` baselines. The Linux/Chromium baseline update evidence is [Production CI #42670999022](https://github.com/ruifeng-y/novel-brain/actions/runs/42670999022), and the normal PR screenshot comparison evidence is [Production CI #42682407291](https://github.com/ruifeng-y/novel-brain/actions/runs/42682407291). The other 20 page-named files predate the current M1 layouts and are not treated as active baselines.
 
-The author approved the visual direction of the eight M1 acceptance pages on 2026-11-10. All eight remain `production-built`: #174 must add active `toHaveScreenshot` comparisons for six pages, regenerate their 24 formal files, add the `foreshadows` loading state and complete `prototype_only` leakage evidence for `entity-detail`. Automation alone does not approve future baseline changes.
+The author approved the visual direction of the eight M1 acceptance pages on 2026-11-10. All eight remain `production-built`: #174 must add active `toHaveScreenshot` comparisons for five pages, regenerate their 20 formal files, add the `foreshadows` loading state and complete `prototype_only` leakage evidence for `entity-detail`. Automation alone does not approve future baseline changes.

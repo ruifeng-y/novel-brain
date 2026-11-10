@@ -48,7 +48,7 @@ import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
 import { settingTypeLabels } from "../lib/setting-labels";
 import { requestWorkContextRefresh } from "../lib/work-context-events";
-import { branchLabel, isWorkReadonly } from "../lib/work-presentation";
+import { branchLabel, isWorkReadonly, readonlyScopeLabel } from "../lib/work-presentation";
 
 const statusLabels: Record<Work["status"], string> = {
   draft: "草稿",
@@ -325,8 +325,7 @@ export function WorkOverview({ workId }: { workId: string }) {
     )
     .slice(0, 5);
   const isReadonly = isWorkReadonly(work.status, work.mainBranch.status);
-  const readonlyLabel =
-    work.status === "archived" || work.status === "completed" ? "当前作品只读" : "当前创作线只读";
+  const readonlyLabel = readonlyScopeLabel(work.status, work.mainBranch.status);
 
   return (
     <>

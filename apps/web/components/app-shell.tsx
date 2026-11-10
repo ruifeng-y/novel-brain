@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
 import { subscribeWorkContextRefresh } from "../lib/work-context-events";
-import { branchLabel, isWorkReadonly } from "../lib/work-presentation";
+import { branchLabel, isWorkReadonly, readonlyScopeLabel } from "../lib/work-presentation";
 
 const navigation = [
   { href: "/workspace", label: "工作台", icon: LayoutDashboard },
@@ -190,7 +190,7 @@ export function AppShell({
                       aria-disabled="true"
                       className="nav-item"
                       key={item.suffix}
-                      title="当前作品只读"
+                      title={readonlyScopeLabel(activeWork.workStatus, activeWork.branchStatus)}
                     >
                       <Icon size={18} aria-hidden="true" />
                       <span>{item.label}</span>

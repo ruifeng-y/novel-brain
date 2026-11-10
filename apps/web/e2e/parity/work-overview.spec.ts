@@ -185,6 +185,9 @@ test("shows loading and archived read-only states", async ({ page, context }) =>
   await expect(
     page.locator('.main-nav .nav-item[aria-disabled="true"]').filter({ hasText: "写作台" }),
   ).toBeVisible();
+  await expect(
+    page.locator('.main-nav .nav-item[aria-disabled="true"]').filter({ hasText: "故事圣经" }),
+  ).toHaveAttribute("title", "当前作品只读");
   await expectReadOnlyWorkNavigation(page);
   await expect(page.locator(".overview-remediation")).toHaveCount(0);
   await expect(page.locator(".overview-links .quick-link-grid")).toHaveCount(0);
@@ -238,6 +241,9 @@ test("treats an archived branch as read-only without write links", async ({ page
   await expect(
     page.locator(".main-nav").getByRole("link", { name: "写作台", exact: true }),
   ).toHaveCount(0);
+  await expect(
+    page.locator('.main-nav .nav-item[aria-disabled="true"]').filter({ hasText: "故事圣经" }),
+  ).toHaveAttribute("title", "当前创作线只读");
   await expectReadOnlyWorkNavigation(page);
   await expect(page.locator(".overview-remediation")).toHaveCount(0);
   await expect(page.locator(".overview-style")).toHaveCount(0);
