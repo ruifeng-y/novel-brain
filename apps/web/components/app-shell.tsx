@@ -137,10 +137,7 @@ export function AppShell({
           <span className="beta-badge">BETA</span>
         </div>
 
-        <div
-          className="workspace-switch"
-          aria-label={showWorkContext ? "当前作品与创作线" : "当前工作区"}
-        >
+        <div className="workspace-switch" aria-label="当前工作区">
           <span className="workspace-avatar">墨</span>
           <span className="workspace-copy">
             <strong title={activeWork?.title}>{activeWork?.title ?? "个人工作区"}</strong>
@@ -240,6 +237,15 @@ export function AppShell({
           </div>
           <div className="topbar-note">NovelBrain</div>
         </header>
+
+        {showWorkContext && activeWork ? (
+          <div className="work-context-bar" aria-label="当前作品与创作线">
+            <strong>{activeWork.title}</strong>
+            <span>
+              创作线 {activeWork.branchName} · {activeWorkStateLabel(activeWork)}
+            </span>
+          </div>
+        ) : null}
 
         <main className="page-container">{children}</main>
       </div>

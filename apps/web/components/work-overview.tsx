@@ -299,7 +299,8 @@ export function WorkOverview({ workId }: { workId: string }) {
   const recentChapters = [...chapters]
     .sort((left, right) => right.number - left.number)
     .slice(0, 3);
-  const pendingTasks = readiness?.items.filter((item) => !item.ready).slice(0, 3) ?? [];
+  const allPendingTasks = readiness?.items.filter((item) => !item.ready) ?? [];
+  const pendingTasks = allPendingTasks.slice(0, 3);
   const recentChanges = [
     ...chapters.map((chapter) => ({
       id: `chapter:${chapter.id}`,
@@ -409,9 +410,13 @@ export function WorkOverview({ workId }: { workId: string }) {
           <span>下一章</span>
           <strong>第 {nextChapterNumber} 章</strong>
           <p>{nextChapter?.title || "待创建章节"}</p>
-          <Link className="text-btn small" href={nextChapterHref}>
-            进入写作台 <ArrowUpRight size={14} aria-hidden="true" />
-          </Link>
+          {isReadonly ? (
+            <small>当前作品只读，请返回工作台查看版本。</small>
+          ) : (
+            <Link className="text-btn small" href={nextChapterHref}>
+              进入写作台 <ArrowUpRight size={14} aria-hidden="true" />
+            </Link>
+          )}
           <small>
             {pendingReminders > 0 ? `已准备 ${pendingReminders} 条提醒` : "暂无待处理提醒"}
           </small>
@@ -533,7 +538,7 @@ export function WorkOverview({ workId }: { workId: string }) {
           <section className="panel compact-panel" aria-labelledby="overview-tasks-title">
             <div className="panel-head">
               <h2 id="overview-tasks-title">待处理</h2>
-              <span className="badge">{pendingTasks.length}</span>
+              <span className="badge">{allPendingTasks.length}</span>
             </div>
             {pendingTasks.length === 0 ? (
               <p className="style-drift-empty">当前没有待处理事项。</p>
@@ -590,20 +595,31 @@ export function WorkOverview({ workId }: { workId: string }) {
             <p className="style-drift-empty">还没有章节。可以先从大纲创建第一章。</p>
           ) : (
             <div className="overview-chapter-list">
-              {recentChapters.map((chapter) => (
-                <Link
-                  className="overview-chapter"
-                  href={`/workspace/${workId}/write?chapterId=${chapter.id}`}
-                  key={chapter.id}
-                >
-                  <span className="chapter-no">{chapter.number}</span>
-                  <span>
-                    <strong>{chapter.title}</strong>
-                    <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
-                  </span>
-                  <span className="badge">{chapterStatusLabels[chapter.status]}</span>
-                </Link>
-              ))}
+              {recentChapters.map((chapter) =>
+                isReadonly ? (
+                  <div className="overview-chapter" key={chapter.id}>
+                    <span className="chapter-no">{chapter.number}</span>
+                    <span>
+                      <strong>{chapter.title}</strong>
+                      <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
+                    </span>
+                    <span className="badge">{chapterStatusLabels[chapter.status]}</span>
+                  </div>
+                ) : (
+                  <Link
+                    className="overview-chapter"
+                    href={`/workspace/${workId}/write?chapterId=${chapter.id}`}
+                    key={chapter.id}
+                  >
+                    <span className="chapter-no">{chapter.number}</span>
+                    <span>
+                      <strong>{chapter.title}</strong>
+                      <small>{chapter.wordCount.toLocaleString("zh-CN")} 字</small>
+                    </span>
+                    <span className="badge">{chapterStatusLabels[chapter.status]}</span>
+                  </Link>
+                ),
+              )}
             </div>
           )}
         </section>
@@ -615,28 +631,37 @@ export function WorkOverview({ workId }: { workId: string }) {
               <h3 id="overview-links-title">下一步去哪里</h3>
             </div>
           </div>
-          <div className="quick-link-grid">
-            <Link href={`/workspace/${workId}/bible`}>
-              <BookMarked size={17} aria-hidden="true" />
-              <span>故事圣经</span>
-              <small>九卡与完成度</small>
-            </Link>
-            <Link href={`/workspace/${workId}/settings`}>
-              <GitBranch size={17} aria-hidden="true" />
-              <span>设定中心</span>
-              <small>人物、势力、地图</small>
-            </Link>
-            <Link href={`/workspace/${workId}/outline`}>
-              <PenLine size={17} aria-hidden="true" />
-              <span>大纲工作台</span>
-              <small>卷纲、幕纲与章纲</small>
-            </Link>
-            <Link href={`/workspace/${workId}/foreshadows`}>
-              <GitCommitHorizontal size={17} aria-hidden="true" />
-              <span>伏笔账本</span>
-              <small>埋设、推进与回收</small>
-            </Link>
-          </div>
+          {isReadonly ? (
+            <div className="style-drift-empty">
+              <span>当前作品只读，编辑入口已关闭。</span>
+              <Link className="text-btn small" href="/workspace">
+                返回工作台
+              </Link>
+            </div>
+          ) : (
+            <div className="quick-link-grid">
+              <Link href={`/workspace/${workId}/bible`}>
+                <BookMarked size={17} aria-hidden="true" />
+                <span>故事圣经</span>
+                <small>九卡与完成度</small>
+              </Link>
+              <Link href={`/workspace/${workId}/settings`}>
+                <GitBranch size={17} aria-hidden="true" />
+                <span>设定中心</span>
+                <small>人物、势力、地图</small>
+              </Link>
+              <Link href={`/workspace/${workId}/outline`}>
+                <PenLine size={17} aria-hidden="true" />
+                <span>大纲工作台</span>
+                <small>卷纲、幕纲与章纲</small>
+              </Link>
+              <Link href={`/workspace/${workId}/foreshadows`}>
+                <GitCommitHorizontal size={17} aria-hidden="true" />
+                <span>伏笔账本</span>
+                <small>埋设、推进与回收</small>
+              </Link>
+            </div>
+          )}
         </section>
       </section>
 

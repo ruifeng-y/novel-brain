@@ -338,6 +338,30 @@ a:focus-visible {
   white-space: nowrap;
 }
 
+.work-context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  align-items: baseline;
+  padding: 10px 28px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.55;
+  background: rgba(255, 255, 255, 0.72);
+  border-bottom: 1px solid var(--line);
+}
+
+.work-context-bar strong,
+.work-context-bar span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.work-context-bar strong {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
 .page-container {
   width: 100%;
   max-width: 1600px;
@@ -4824,6 +4848,10 @@ a:focus-visible {
 
   .topbar {
     padding: 0 18px;
+  }
+
+  .work-context-bar {
+    padding: 9px 18px;
   }
 
   .page-container {

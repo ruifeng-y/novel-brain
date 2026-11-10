@@ -54,6 +54,11 @@ test("shows title, status, main branch, scale target and readiness", async ({ pa
   const workContext = page.getByLabel("当前作品与创作线");
   await expect(workContext).toContainText("一部标题很长但仍然需要保持清晰可读的作品");
   await expect(workContext).toContainText("主线");
+  await page.reload();
+  await expect(page.getByLabel("当前作品与创作线")).toContainText(
+    "一部标题很长但仍然需要保持清晰可读的作品",
+  );
+  await expect(page.getByLabel("当前作品与创作线")).toContainText("主线");
   await expectAuthorFacingLanguage(page);
   await expect(page.getByText("草稿", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "主创作线" })).toBeVisible();
@@ -150,12 +155,15 @@ test("shows loading and archived read-only states", async ({ page, context }) =>
   await expect(page.getByText("作品已归档，当前为只读状态。")).toBeVisible();
   await expect(page.getByText("已归档", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "继续写作" })).toBeDisabled();
-  await expect(page.getByRole("link", { name: "返回工作台" })).toHaveAttribute(
-    "href",
-    "/workspace",
-  );
+  await expect(
+    page.locator(".page-head").getByRole("link", { name: "返回工作台" }),
+  ).toHaveAttribute("href", "/workspace");
   await expect(page.getByText("还没有章节。可以先从大纲创建第一章。")).toBeVisible();
   await expect(page.getByLabel("当前作品与创作线")).toContainText("作品已归档 · 只读");
+  await expect(
+    page.locator(".overview-next").getByRole("link", { name: "进入写作台" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".overview-links .quick-link-grid")).toHaveCount(0);
 });
 
 test("shows completed work as read-only with a return path", async ({ page, context }) => {
@@ -179,11 +187,14 @@ test("shows completed work as read-only with a return path", async ({ page, cont
   await expect(page.getByText("作品已完本，当前为只读状态。可返回工作台查看版本。")).toBeVisible();
   await expect(page.getByRole("button", { name: "作品已完本" })).toBeDisabled();
   await expect(page.getByText("创作线状态 只读")).toBeVisible();
-  await expect(page.getByRole("link", { name: "返回工作台" })).toHaveAttribute(
-    "href",
-    "/workspace",
-  );
+  await expect(
+    page.locator(".page-head").getByRole("link", { name: "返回工作台" }),
+  ).toHaveAttribute("href", "/workspace");
   await expect(page.getByLabel("当前作品与创作线")).toContainText("作品已完本 · 只读");
+  await expect(
+    page.locator(".overview-next").getByRole("link", { name: "进入写作台" }),
+  ).toHaveCount(0);
+  await expect(page.locator(".overview-links .quick-link-grid")).toHaveCount(0);
 });
 
 test("shows current branch, recent changes and long content at four viewports", async ({
@@ -253,6 +264,7 @@ test("shows current branch, recent changes and long content at four viewports", 
   for (const width of [390, 900, 1180, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(page).toHaveURL(new RegExp(`/workspace/${work.id}/overview$`, "u"));
+    await expect(page.getByLabel("当前作品与创作线")).toBeVisible();
     await expectNoPrototypeOnlyLeakage(page);
     await expectAuthorFacingLanguage(page);
     const overflow = await page.evaluate(
