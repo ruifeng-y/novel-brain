@@ -77,7 +77,7 @@ Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者�
 
 ## 2026-11-10 Work Overview 分支与长内容证据
 
-签收人：ruifeng-y。#176 补齐 `work-overview` 的当前作品/主线壳层上下文、最近修改列表与真实长作品名、长摘要、长章节和长设定证据。正常态与长内容态均在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 8 张 Linux/CI Golden 作为当前视觉基线，生成证据为 [Production CI #42791119846](https://github.com/ruifeng-y/novel-brain/actions/runs/42791119846)。本记录补齐 #174 中 `work-overview` 的状态缺口，不把整页提升为 `parity-verified`。
+签收人：ruifeng-y。#176 补齐 `work-overview` 的当前作品/主线壳层上下文、待处理与最近修改列表，以及真实长作品名、长摘要、长章节和长设定证据。正常态与长内容态均在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 8 张 Linux/CI Golden 作为当前视觉基线，生成证据为 [Production CI #42794835094](https://github.com/ruifeng-y/novel-brain/actions/runs/42794835094)。本记录补齐 #174 中 `work-overview` 的状态缺口，不把整页提升为 `parity-verified`。
 
 ## 变更规则
 
