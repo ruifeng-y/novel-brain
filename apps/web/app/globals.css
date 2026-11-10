@@ -232,6 +232,16 @@ a:focus-visible {
   color: var(--cinnabar);
 }
 
+.nav-item[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.nav-item[aria-disabled="true"]:hover {
+  color: inherit;
+  background: transparent;
+}
+
 .nav-item.quiet {
   min-height: 36px;
   color: #8e9a93;

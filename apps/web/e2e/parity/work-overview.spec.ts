@@ -110,6 +110,7 @@ test("overview handles error and four viewports", async ({ page, context }) => {
     await page.goto(`/workspace/${work.id}/overview`);
     await expect(page).toHaveURL(new RegExp(`/workspace/${work.id}/overview$`, "u"));
     await expect(page.getByRole("heading", { name: "仙途模板" })).toBeVisible();
+    await expect(page.getByLabel("当前作品与创作线")).toBeVisible();
     await expectNoPrototypeOnlyLeakage(page);
     await expectAuthorFacingLanguage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
@@ -163,7 +164,69 @@ test("shows loading and archived read-only states", async ({ page, context }) =>
   await expect(
     page.locator(".overview-next").getByRole("link", { name: "进入写作台" }),
   ).toHaveCount(0);
+  await expect(
+    page.locator(".overview-chapters").getByRole("link", { name: "打开写作台" }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".main-nav").getByRole("link", { name: "写作台", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator('.main-nav .nav-item[aria-disabled="true"]').filter({ hasText: "写作台" }),
+  ).toBeVisible();
   await expect(page.locator(".overview-links .quick-link-grid")).toHaveCount(0);
+  await expect(page.locator(".overview-style")).toHaveCount(0);
+  await expect(page.locator(".overview-volume-audit")).toHaveCount(0);
+  await expect(
+    page.locator(".overview-chapters").getByRole("link", { name: "返回工作台" }),
+  ).toHaveAttribute("href", "/workspace");
+});
+
+test("offers an outline recovery path for an empty work", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "空作品",
+  });
+
+  await page.goto(`/workspace/${work.id}/overview`);
+  await expect(page.getByText("还没有章节。可以先从大纲创建第一章。")).toBeVisible();
+  await expect(
+    page.locator(".overview-chapters").getByRole("link", { name: "去大纲创建第一章" }),
+  ).toHaveAttribute("href", `/workspace/${work.id}/outline`);
+});
+
+test("treats an archived branch as read-only without write links", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "归档创作线",
+  });
+  const pool = new Pool({
+    connectionString:
+      process.env.E2E_DATABASE_URL ??
+      "postgresql://novelbrain:novelbrain@localhost:5432/novelbrain_e2e",
+  });
+  try {
+    await pool.query("UPDATE work_branches SET status = 'archived' WHERE work_id = $1", [work.id]);
+  } finally {
+    await pool.end();
+  }
+
+  await page.goto(`/workspace/${work.id}/overview`);
+  await expect(page.getByText("创作线状态 只读")).toBeVisible();
+  await expect(page.getByRole("button", { name: "继续写作" })).toBeDisabled();
+  await expect(
+    page.locator(".overview-next").getByRole("link", { name: "进入写作台" }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".overview-chapters").getByRole("link", { name: "打开写作台" }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".main-nav").getByRole("link", { name: "写作台", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator(".overview-style")).toHaveCount(0);
+  await expect(page.locator(".overview-volume-audit")).toHaveCount(0);
+  await expect(page.getByLabel("当前作品与创作线")).toContainText("创作线已归档");
 });
 
 test("shows completed work as read-only with a return path", async ({ page, context }) => {
@@ -194,7 +257,15 @@ test("shows completed work as read-only with a return path", async ({ page, cont
   await expect(
     page.locator(".overview-next").getByRole("link", { name: "进入写作台" }),
   ).toHaveCount(0);
+  await expect(
+    page.locator(".overview-chapters").getByRole("link", { name: "打开写作台" }),
+  ).toHaveCount(0);
+  await expect(
+    page.locator(".main-nav").getByRole("link", { name: "写作台", exact: true }),
+  ).toHaveCount(0);
   await expect(page.locator(".overview-links .quick-link-grid")).toHaveCount(0);
+  await expect(page.locator(".overview-style")).toHaveCount(0);
+  await expect(page.locator(".overview-volume-audit")).toHaveCount(0);
 });
 
 test("shows current branch, recent changes and long content at four viewports", async ({
@@ -259,6 +330,9 @@ test("shows current branch, recent changes and long content at four viewports", 
   await expect(page.getByRole("heading", { name: "最近修改" })).toBeVisible();
   await expect(page.locator(".overview-change-item")).toHaveCount(5);
   await expect(page.locator(".overview-change-list")).toContainText("长世界规则");
+  await expect(
+    page.locator(".overview-change-list").getByText("世界规则", { exact: true }).first(),
+  ).toBeVisible();
   await expectAuthorFacingLanguage(page);
 
   for (const width of [390, 900, 1180, 1440]) {

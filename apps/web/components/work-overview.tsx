@@ -46,6 +46,7 @@ import { StyleDriftFindings } from "./style-drift-findings";
 import { VolumeAuditPanel } from "./volume-audit-panel";
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { settingTypeLabels } from "../lib/setting-labels";
 
 const statusLabels: Record<Work["status"], string> = {
   draft: "草稿",
@@ -78,17 +79,6 @@ const chapterStatusLabels: Record<ChapterWorkspace["status"], string> = {
   locked: "已锁定",
   published: "已发布",
   rejected: "已驳回",
-};
-
-const settingTypeLabels: Record<SettingEntity["type"], string> = {
-  world_rule: "世界设定",
-  character: "人物设定",
-  faction: "势力设定",
-  map: "地图设定",
-  power_system: "力量体系",
-  golden_finger: "金手指",
-  item: "物品功法",
-  timeline_event: "故事时间线",
 };
 
 export function WorkOverview({ workId }: { workId: string }) {
@@ -324,7 +314,12 @@ export function WorkOverview({ workId }: { workId: string }) {
         right.updatedAt.localeCompare(left.updatedAt) || left.sortKey.localeCompare(right.sortKey),
     )
     .slice(0, 5);
-  const isReadonly = work.status === "archived" || work.status === "completed";
+  const isReadonly =
+    work.status === "archived" ||
+    work.status === "completed" ||
+    work.mainBranch.status === "archived";
+  const readonlyLabel =
+    work.status === "archived" || work.status === "completed" ? "当前作品只读" : "当前创作线只读";
 
   return (
     <>
@@ -367,6 +362,8 @@ export function WorkOverview({ workId }: { workId: string }) {
         <div className="model-notice warning">
           作品已完本，当前为只读状态。可返回工作台查看版本。
         </div>
+      ) : work.mainBranch.status === "archived" ? (
+        <div className="model-notice warning">当前创作线已归档，当前为只读状态。</div>
       ) : null}
 
       <article className="overview-hero">
@@ -411,7 +408,7 @@ export function WorkOverview({ workId }: { workId: string }) {
           <strong>第 {nextChapterNumber} 章</strong>
           <p>{nextChapter?.title || "待创建章节"}</p>
           {isReadonly ? (
-            <small>当前作品只读，请返回工作台查看版本。</small>
+            <small>{readonlyLabel}，请返回工作台查看版本。</small>
           ) : (
             <Link className="text-btn small" href={nextChapterHref}>
               进入写作台 <ArrowUpRight size={14} aria-hidden="true" />
@@ -587,12 +584,25 @@ export function WorkOverview({ workId }: { workId: string }) {
               <span className="panel-kicker">最近章节</span>
               <h3 id="overview-chapters-title">写到哪儿了</h3>
             </div>
-            <Link className="text-btn small" href={`/workspace/${workId}/write`}>
-              打开写作台 <ArrowUpRight size={14} aria-hidden="true" />
-            </Link>
+            {isReadonly ? (
+              <Link className="text-btn small" href="/workspace">
+                返回工作台 <ArrowUpRight size={14} aria-hidden="true" />
+              </Link>
+            ) : (
+              <Link className="text-btn small" href={`/workspace/${workId}/write`}>
+                打开写作台 <ArrowUpRight size={14} aria-hidden="true" />
+              </Link>
+            )}
           </div>
           {recentChapters.length === 0 ? (
-            <p className="style-drift-empty">还没有章节。可以先从大纲创建第一章。</p>
+            <div className="style-drift-empty">
+              <p>还没有章节。可以先从大纲创建第一章。</p>
+              {isReadonly ? null : (
+                <Link className="text-btn small" href={`/workspace/${workId}/outline`}>
+                  去大纲创建第一章
+                </Link>
+              )}
+            </div>
           ) : (
             <div className="overview-chapter-list">
               {recentChapters.map((chapter) =>
@@ -633,7 +643,7 @@ export function WorkOverview({ workId }: { workId: string }) {
           </div>
           {isReadonly ? (
             <div className="style-drift-empty">
-              <span>当前作品只读，编辑入口已关闭。</span>
+              <span>{readonlyLabel}，编辑入口已关闭。</span>
               <Link className="text-btn small" href="/workspace">
                 返回工作台
               </Link>
@@ -665,134 +675,138 @@ export function WorkOverview({ workId }: { workId: string }) {
         </section>
       </section>
 
-      <section className="panel overview-style" aria-labelledby="overview-style-title">
-        <div className="panel-head">
-          <div>
-            <span className="panel-kicker">声线与风格</span>
-            <h2 id="overview-style-title">跨卷一致性</h2>
-          </div>
-          <button
-            className="btn btn-ghost btn-small"
-            disabled={
-              styleBusy ||
-              !styleWorkspace ||
-              styleWorkspace.profiles.every((profile) => profile.approvalStatus !== "approved")
-            }
-            onClick={() => void checkCrossVolumeStyle()}
-            type="button"
-          >
-            {styleBusy ? (
-              <LoaderCircle className="spin" size={14} aria-hidden="true" />
-            ) : (
-              <ScanSearch size={14} aria-hidden="true" />
-            )}
-            检查跨卷趋势
-          </button>
-        </div>
-        {styleError ? (
-          <div className="story-bible-notice danger" role="alert">
-            <TriangleAlert size={15} aria-hidden="true" />
-            <span>{styleError}</span>
-          </div>
-        ) : null}
-        {styleWorkspace ? (
-          <>
-            <div className="overview-style-baselines">
-              {styleWorkspace.profiles.length === 0 ? (
-                <div className="style-drift-empty">
-                  <Mic2 size={18} aria-hidden="true" />
-                  还没有声线或风格样本。可从已签收正文建立基线。
-                </div>
-              ) : (
-                styleWorkspace.profiles.map((profile) => (
-                  <article
-                    className={`overview-style-baseline status-${profile.approvalStatus}`}
-                    data-style-profile={profile.approvalStatus}
-                    key={profile.id}
-                  >
-                    <div>
-                      <strong>{profile.name}</strong>
-                      <span>
-                        {profile.scope === "character" ? "人物声线" : "作品文风"} · 版本{" "}
-                        {profile.version}
-                      </span>
-                      <small>来源：{profile.source.label}</small>
+      {!isReadonly ? (
+        <>
+          <section className="panel overview-style" aria-labelledby="overview-style-title">
+            <div className="panel-head">
+              <div>
+                <span className="panel-kicker">声线与风格</span>
+                <h2 id="overview-style-title">跨卷一致性</h2>
+              </div>
+              <button
+                className="btn btn-ghost btn-small"
+                disabled={
+                  styleBusy ||
+                  !styleWorkspace ||
+                  styleWorkspace.profiles.every((profile) => profile.approvalStatus !== "approved")
+                }
+                onClick={() => void checkCrossVolumeStyle()}
+                type="button"
+              >
+                {styleBusy ? (
+                  <LoaderCircle className="spin" size={14} aria-hidden="true" />
+                ) : (
+                  <ScanSearch size={14} aria-hidden="true" />
+                )}
+                检查跨卷趋势
+              </button>
+            </div>
+            {styleError ? (
+              <div className="story-bible-notice danger" role="alert">
+                <TriangleAlert size={15} aria-hidden="true" />
+                <span>{styleError}</span>
+              </div>
+            ) : null}
+            {styleWorkspace ? (
+              <>
+                <div className="overview-style-baselines">
+                  {styleWorkspace.profiles.length === 0 ? (
+                    <div className="style-drift-empty">
+                      <Mic2 size={18} aria-hidden="true" />
+                      还没有声线或风格样本。可从已签收正文建立基线。
                     </div>
-                    {profile.approvalStatus === "approved" ? (
-                      <span className="badge style-approved">
-                        <CheckCircle2 size={12} aria-hidden="true" />
-                        作者已批准
-                      </span>
-                    ) : profile.approvalStatus === "pending" ? (
-                      approvingProfileId === profile.id ? (
-                        <form
-                          className="overview-style-approval"
-                          onSubmit={(event) => {
-                            event.preventDefault();
-                            void approveStyleProfile(profile.id, profile.version);
-                          }}
-                        >
-                          <textarea
-                            aria-label="批准理由"
-                            onChange={(event) => setApprovalReason(event.target.value)}
-                            placeholder="说明为什么这份样本代表稳定声线或文风"
-                            value={approvalReason}
-                          />
-                          <div>
-                            <button
-                              className="btn btn-primary btn-small"
-                              disabled={!approvalReason.trim() || styleBusy}
-                              type="submit"
+                  ) : (
+                    styleWorkspace.profiles.map((profile) => (
+                      <article
+                        className={`overview-style-baseline status-${profile.approvalStatus}`}
+                        data-style-profile={profile.approvalStatus}
+                        key={profile.id}
+                      >
+                        <div>
+                          <strong>{profile.name}</strong>
+                          <span>
+                            {profile.scope === "character" ? "人物声线" : "作品文风"} · 版本{" "}
+                            {profile.version}
+                          </span>
+                          <small>来源：{profile.source.label}</small>
+                        </div>
+                        {profile.approvalStatus === "approved" ? (
+                          <span className="badge style-approved">
+                            <CheckCircle2 size={12} aria-hidden="true" />
+                            作者已批准
+                          </span>
+                        ) : profile.approvalStatus === "pending" ? (
+                          approvingProfileId === profile.id ? (
+                            <form
+                              className="overview-style-approval"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void approveStyleProfile(profile.id, profile.version);
+                              }}
                             >
-                              确认批准
-                            </button>
+                              <textarea
+                                aria-label="批准理由"
+                                onChange={(event) => setApprovalReason(event.target.value)}
+                                placeholder="说明为什么这份样本代表稳定声线或文风"
+                                value={approvalReason}
+                              />
+                              <div>
+                                <button
+                                  className="btn btn-primary btn-small"
+                                  disabled={!approvalReason.trim() || styleBusy}
+                                  type="submit"
+                                >
+                                  确认批准
+                                </button>
+                                <button
+                                  className="btn btn-ghost btn-small"
+                                  onClick={() => {
+                                    setApprovingProfileId(null);
+                                    setApprovalReason("");
+                                  }}
+                                  type="button"
+                                >
+                                  取消
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
                             <button
                               className="btn btn-ghost btn-small"
                               onClick={() => {
-                                setApprovingProfileId(null);
+                                setApprovingProfileId(profile.id);
                                 setApprovalReason("");
                               }}
                               type="button"
                             >
-                              取消
+                              批准为基线
                             </button>
-                          </div>
-                        </form>
-                      ) : (
-                        <button
-                          className="btn btn-ghost btn-small"
-                          onClick={() => {
-                            setApprovingProfileId(profile.id);
-                            setApprovalReason("");
-                          }}
-                          type="button"
-                        >
-                          批准为基线
-                        </button>
-                      )
-                    ) : (
-                      <span className="badge">
-                        {profile.approvalStatus === "superseded" ? "已替换" : "未采用"}
-                      </span>
-                    )}
-                  </article>
-                ))
-              )}
-            </div>
-            {styleWorkspace.latestCrossVolumeReport ? (
-              <StyleDriftFindings report={styleWorkspace.latestCrossVolumeReport} />
+                          )
+                        ) : (
+                          <span className="badge">
+                            {profile.approvalStatus === "superseded" ? "已替换" : "未采用"}
+                          </span>
+                        )}
+                      </article>
+                    ))
+                  )}
+                </div>
+                {styleWorkspace.latestCrossVolumeReport ? (
+                  <StyleDriftFindings report={styleWorkspace.latestCrossVolumeReport} />
+                ) : (
+                  <p className="style-drift-empty">
+                    批准至少一条基线后，可检查全书区间的人物声线与文风趋势。
+                  </p>
+                )}
+              </>
             ) : (
-              <p className="style-drift-empty">
-                批准至少一条基线后，可检查全书区间的人物声线与文风趋势。
-              </p>
+              <p className="style-drift-empty">正在读取声线与风格样本。</p>
             )}
-          </>
-        ) : (
-          <p className="style-drift-empty">正在读取声线与风格样本。</p>
-        )}
-      </section>
+          </section>
 
-      <VolumeAuditPanel branchId={work.mainBranch.id} workId={work.id} />
+          <VolumeAuditPanel branchId={work.mainBranch.id} workId={work.id} />
+        </>
+      ) : null}
     </>
   );
 }

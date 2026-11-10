@@ -177,6 +177,19 @@ export function AppShell({
               {workNavigation.map((item) => {
                 const Icon = item.icon;
                 const active = workSection === item.suffix;
+                if (item.suffix === "write" && activeWork && activeWorkIsReadonly(activeWork)) {
+                  return (
+                    <div
+                      aria-disabled="true"
+                      className="nav-item"
+                      key={item.suffix}
+                      title="当前作品只读"
+                    >
+                      <Icon size={18} aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </div>
+                  );
+                }
                 return (
                   <Link
                     className={`nav-item${active ? " active" : ""}`}
@@ -265,4 +278,12 @@ function activeWorkStateLabel(activeWork: ActiveWorkContext): string {
     return "作品已完本 · 只读";
   }
   return activeWork.branchStatus === "active" ? "可写作" : "创作线已归档";
+}
+
+function activeWorkIsReadonly(activeWork: ActiveWorkContext): boolean {
+  return (
+    activeWork.workStatus === "archived" ||
+    activeWork.workStatus === "completed" ||
+    activeWork.branchStatus === "archived"
+  );
 }
