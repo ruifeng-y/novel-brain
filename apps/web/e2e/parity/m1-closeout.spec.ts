@@ -295,6 +295,29 @@ test("checks every M1 page at four viewports without claiming unsigned goldens",
   expect(origin).toBe("http://localhost:3000");
 });
 
+test("keeps generation status observable when live events are unavailable", async ({
+  page,
+  context,
+  request,
+}) => {
+  await authenticatedPage(page, context, request);
+  const work = await createM1Work(request);
+  const fixture = await seedM1Structure(request, work);
+  await page.route("**/jobs/*/events", (route) => route.abort("failed"));
+
+  const worker = await startWorker();
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${fixture.generationChapterId}`);
+    await page.getByRole("button", { name: "生成整章" }).click();
+
+    await expect(
+      page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
+    ).toBeVisible({ timeout: 30_000 });
+  } finally {
+    await worker.stop();
+  }
+});
+
 async function createSettingsThroughUi(page: Page) {
   const settings = [
     {
