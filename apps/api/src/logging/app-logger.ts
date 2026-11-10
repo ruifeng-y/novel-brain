@@ -20,7 +20,7 @@ export class AppLogger implements LoggerService {
     this.logger.error(
       {
         ...this.context(context),
-        ...(stack ? { stack } : {}),
+        ...(stack ? { stack: this.message(stack) } : {}),
       },
       this.message(message),
     );

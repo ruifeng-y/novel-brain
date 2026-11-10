@@ -14,15 +14,19 @@ describe("API logger", () => {
       return true;
     });
 
-    new AppLogger().error({
-      event: "model-config.connection.failed",
-      apiKey: "sk-invalid-key-4321",
-      authorization: "Bearer sk-invalid-key-4321",
-      message: "API Key sk-invalid-key-4321 was rejected",
-    });
+    new AppLogger().error(
+      {
+        event: "model-config.connection.failed",
+        apiKey: "sk-invalid-key-4321",
+        authorization: "Bearer sk-invalid-key-4321",
+        message: "API Key sk-invalid-key-4321 was rejected",
+      },
+      "Error: failed with sk-stack-secret-9876",
+    );
 
     const output = writes.join("");
     expect(output).toContain("model-config.connection.failed");
     expect(output).not.toContain("sk-invalid-key-4321");
+    expect(output).not.toContain("sk-stack-secret-9876");
   });
 });
