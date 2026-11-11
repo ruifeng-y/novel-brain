@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   batchPlanActionRequestSchema,
   batchPlanCreateRequestSchema,
+  batchPlanListQuerySchema,
   batchTickJobSchema,
   batchWorkItemStatusSchema,
   WORKER_JOB_STEPS,
@@ -60,5 +61,12 @@ describe("batch plan contracts", () => {
         },
       }),
     ).toMatchObject({ jobType: "batch_tick" });
+  });
+
+  it("parses paused plan discovery with cursor pagination", () => {
+    expect(batchPlanListQuerySchema.parse({ status: "paused", limit: "50" })).toEqual({
+      status: "paused",
+      limit: 50,
+    });
   });
 });

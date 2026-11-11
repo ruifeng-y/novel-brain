@@ -15,6 +15,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   apiErrorSchema,
   batchCostReportResponseSchema,
+  batchPlanListResponseSchema,
   batchPlanResponseSchema,
   batchReviewClaimResponseSchema,
   batchReviewDecisionResponseSchema,
@@ -30,6 +31,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 
 const riskLabels: Record<BatchReviewRisk, string> = {
   low: "低风险",
@@ -68,11 +70,13 @@ export function BatchWorkspace({ workId }: { workId: string }) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<"claim" | "approve" | "reject" | null>(null);
   const [error, setError] = useState("");
+  const [planStateError, setPlanStateError] = useState("");
   const [notice, setNotice] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    setPlanStateError("");
     try {
       const workResponse = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
       if (!workResponse.ok) {
@@ -94,7 +98,23 @@ export function BatchWorkspace({ workId }: { workId: string }) {
         throw new Error(await readError(queueResponse));
       }
       const queue = batchReviewQueueListResponseSchema.parse(await queueResponse.json());
-      const planIds = [...new Set(queue.data.map((item) => item.planId))].slice(0, 20);
+      let planStateLoadFailed = false;
+      let pausedPlans: Array<{ id: string }> = [];
+      try {
+        pausedPlans = await fetchAllCursorPages(
+          `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans?status=paused`,
+          batchPlanListResponseSchema.parse,
+          "暂停计划加载失败。",
+        );
+      } catch {
+        planStateLoadFailed = true;
+      }
+      const planIds = [
+        ...new Set([
+          ...pausedPlans.map((plan) => plan.id),
+          ...queue.data.map((item) => item.planId),
+        ]),
+      ].slice(0, 100);
       const plans = await Promise.all(
         planIds.map(async (planId) => {
           const response = await fetch(
@@ -102,6 +122,7 @@ export function BatchWorkspace({ workId }: { workId: string }) {
             { cache: "no-store" },
           );
           if (!response.ok) {
+            planStateLoadFailed = true;
             return null;
           }
           const plan = batchPlanResponseSchema.parse(await response.json()).data;
@@ -109,6 +130,9 @@ export function BatchWorkspace({ workId }: { workId: string }) {
             `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans/${planId}/cost-report?groupBy=volume`,
             { cache: "no-store" },
           );
+          if (!reportResponse.ok) {
+            planStateLoadFailed = true;
+          }
           const report = reportResponse.ok
             ? batchCostReportResponseSchema.parse(await reportResponse.json()).data
             : null;
@@ -129,6 +153,9 @@ export function BatchWorkspace({ workId }: { workId: string }) {
           } => plan !== null,
         ),
       );
+      if (planStateLoadFailed) {
+        setPlanStateError("部分批量任务状态加载失败，请刷新重试。");
+      }
       setSelected((current) => {
         const available = new Set(queue.data.map((item) => item.id));
         return new Set([...current].filter((id) => available.has(id)));
@@ -332,6 +359,12 @@ export function BatchWorkspace({ workId }: { workId: string }) {
             )),
           )}
         </section>
+      ) : null}
+
+      {planStateError ? (
+        <div className="page-inline-note" role="status">
+          {planStateError}
+        </div>
       ) : null}
 
       <section className="batch-review-toolbar" aria-label="审核筛选">

@@ -191,6 +191,7 @@ M0 关键错误：
 | GET | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId/events` | SSE 事件 |
 | POST | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId/cancel` | 取消任务 |
 | POST | `/api/v1/works/:workId/branches/:branchId/batch-plans` | 幂等创建按章/卷/区间/全本批量计划 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans` | 按状态分页发现批量计划 |
 | GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId` | 批量计划摘要、计数和调度策略 |
 | GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/items` | 分页检查工作项，不返回章节正文 |
 | POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/start` | 开始或幂等重放批量执行 |

@@ -5883,6 +5883,13 @@ export const batchPlanValidationIssueSchema = z
 export type BatchPlanValidationIssue = z.infer<typeof batchPlanValidationIssueSchema>;
 
 export const batchPlanResponseSchema = apiEnvelopeSchema(batchPlanSummarySchema);
+export const batchPlanListQuerySchema = cursorPageQuerySchema
+  .extend({ status: generationJobStatusSchema.optional() })
+  .strict();
+export type BatchPlanListQuery = z.infer<typeof batchPlanListQuerySchema>;
+export const batchPlanListResponseSchema = cursorListResponseSchema(
+  z.array(batchPlanSummarySchema),
+);
 export const batchPlanItemListResponseSchema = cursorListResponseSchema(
   z.array(batchWorkItemSchema),
 );

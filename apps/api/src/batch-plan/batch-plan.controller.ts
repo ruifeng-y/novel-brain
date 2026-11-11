@@ -24,6 +24,8 @@ import {
   batchPlanActionRequestSchema,
   batchPlanCreateRequestSchema,
   batchPlanItemListResponseSchema,
+  batchPlanListQuerySchema,
+  batchPlanListResponseSchema,
   batchPlanResponseSchema,
   batchCostReportQuerySchema,
   batchCostReportResponseSchema,
@@ -38,6 +40,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { BatchPlanService } from "./batch-plan.service";
@@ -48,6 +51,7 @@ function schemaOf(schema: z.ZodType, io: "input" | "output" = "output"): SchemaO
 
 const createBodyJsonSchema = schemaOf(batchPlanCreateRequestSchema, "input");
 const planJsonSchema = schemaOf(batchPlanResponseSchema);
+const planListJsonSchema = schemaOf(batchPlanListResponseSchema);
 const itemListJsonSchema = schemaOf(batchPlanItemListResponseSchema);
 const costReportJsonSchema = schemaOf(batchCostReportResponseSchema);
 
@@ -56,6 +60,34 @@ const costReportJsonSchema = schemaOf(batchCostReportResponseSchema);
 @UseGuards(SessionAuthGuard, CsrfGuard)
 export class BatchPlanController {
   constructor(private readonly service: BatchPlanService) {}
+
+  @Get()
+  @ApiQuerySchema(batchPlanListQuerySchema)
+  @ApiOkResponse({ description: "Paginated batch plans", schema: planListJsonSchema })
+  async list(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Query("status") status?: string,
+    @Query("cursor") cursor?: string,
+    @Query("limit") limit?: string,
+  ) {
+    const requestId = createRequestId();
+    const query = batchPlanListQuerySchema.parse({ status, cursor, limit });
+    const page = await this.service.list(
+      this.userId(request),
+      {
+        workId: uuidV7Schema.parse(workId),
+        branchId: uuidV7Schema.parse(branchId),
+      },
+      query,
+    );
+    return batchPlanListResponseSchema.parse({
+      data: page.plans,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
+    });
+  }
 
   @Post()
   @HttpCode(202)

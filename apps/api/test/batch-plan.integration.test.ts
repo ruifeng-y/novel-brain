@@ -5,6 +5,7 @@ import { Test } from "@nestjs/testing";
 import {
   batchReviewDecisionResponseSchema,
   batchReviewQueueListResponseSchema,
+  batchPlanListResponseSchema,
   batchPlanResponseSchema,
   batchCostReportResponseSchema,
   chapterVersionSaveResponseSchema,
@@ -160,6 +161,22 @@ describe("batch plan integration", () => {
     expect(plan.jobId).toBe(plan.id);
     expect(plan.scheduling.initialRunnableKeys).toHaveLength(2);
 
+    const paused = await postPlanAction(
+      owner,
+      branchPath,
+      token,
+      plan.id,
+      "pause",
+      "batch-plan-list-pause",
+      { reason: "验证暂停计划发现入口" },
+    );
+    expect(paused.status).toBe(200);
+    const pausedPage = batchPlanListResponseSchema.parse(
+      (await owner.get(`${branchPath}/batch-plans?status=paused&limit=1`).expect(200)).body,
+    );
+    expect(pausedPage.data).toHaveLength(1);
+    expect(pausedPage.data[0]?.id).toBe(plan.id);
+
     const volumePlan = await postPlan(owner, branchPath, token, "batch-plan-volume-ok", {
       type: "volume",
       volumeNodeIds: [volumes[0]!.id],
@@ -259,6 +276,7 @@ describe("batch plan integration", () => {
 
     const other = await createAuthenticatedAgent("batch-plan-other@example.com");
     await other.get(`${branchPath}/batch-plans/${plan.id}`).expect(404);
+    await other.get(`${branchPath}/batch-plans?status=paused&limit=1`).expect(404);
     const otherToken = await csrf(other);
     const crossWrite = await postPlan(other, branchPath, otherToken, "batch-plan-cross-tenant", {
       type: "book",

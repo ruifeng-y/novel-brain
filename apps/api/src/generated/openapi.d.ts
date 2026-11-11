@@ -267,7 +267,7 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    get: operations["BatchPlanController_list"];
     put?: never;
     post: operations["BatchPlanController_create"];
     delete?: never;
@@ -4242,6 +4242,130 @@ export interface operations {
             /** @default {} */
             meta: {
               [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_list: {
+    parameters: {
+      query?: {
+        status?:
+          | "queued"
+          | "preparing"
+          | "running"
+          | "paused"
+          | "waiting_review"
+          | "completed"
+          | "failed"
+          | "cancelled";
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Paginated batch plans */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
             };
           };
         };

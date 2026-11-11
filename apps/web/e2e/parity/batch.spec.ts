@@ -8,6 +8,7 @@ const chapterId = "019c1e8c-8e1c-7000-8000-000000000002";
 const planId = "019c1e8c-8e1c-7000-8000-000000000003";
 const workItemId = "019c1e8c-8e1c-7000-8000-000000000004";
 const userId = "019c1e8c-8e1c-7000-8000-000000000005";
+const pausedCursor = "019c1e8c-8e1c-7000-8000-000000000012";
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("batch-review");
@@ -70,6 +71,115 @@ function queueResponse(status: "pending" | "claimed" | "rejected", version: numb
         stale: 0,
       },
     },
+  };
+}
+
+function pausedPlanResponse() {
+  return {
+    data: {
+      id: planId,
+      jobId: planId,
+      workId: "019c1e8c-8e1c-7000-8000-000000000010",
+      branchId: "019c1e8c-8e1c-7000-8000-000000000011",
+      userId,
+      status: "paused",
+      scope: { type: "chapter", chapterIds: [chapterId] },
+      approvalMode: "auto",
+      costBudgetPolicy: {
+        chapterMaxCostCny: 2.5,
+        volumeMaxCostCny: 80,
+        taskMaxCostCny: 200,
+        perTenThousandCharsMaxCostCny: 12,
+      },
+      priorityClass: "batch",
+      idempotencyKey: "batch-e2e-paused",
+      counts: {
+        total: 1,
+        book: 0,
+        volume: 0,
+        chapter: 1,
+        step: 0,
+        pending: 0,
+        ready: 0,
+        running: 0,
+        paused: 1,
+        waiting_review: 0,
+        succeeded: 0,
+        failed: 0,
+        skipped: 0,
+        cancelled: 0,
+      },
+      scheduling: {
+        caps: { global: 4, perWork: 2, perUser: 2 },
+        effectivePerWork: 2,
+        priority: 1_000,
+        initialRunnableKeys: [],
+      },
+      createdAt: "2026-11-11T05:00:00.000Z",
+      updatedAt: "2026-11-11T05:00:00.000Z",
+    },
+    requestId: "req_batch_paused_plan",
+    meta: {},
+  };
+}
+
+function pausedCostReportResponse(workId: string) {
+  return {
+    data: {
+      planId,
+      workId,
+      currency: "CNY",
+      generatedAt: "2026-11-11T06:00:00.000Z",
+      totals: {
+        chapters: 1,
+        completedChapters: 0,
+        statusCounts: {
+          queued: 0,
+          preparing: 0,
+          running: 0,
+          paused: 1,
+          waitingReview: 0,
+          completed: 0,
+          failed: 0,
+          cancelled: 0,
+          skipped: 0,
+          budgetExceeded: 1,
+        },
+        calls: 3,
+        failedCalls: 1,
+        inputTokens: 4_000,
+        outputTokens: 2_000,
+        reservedCostCny: 1.2,
+        settledCostCny: 0.84,
+        durationMs: 18_000,
+        chaptersPerHour: null,
+      },
+      budget: {
+        policy: {
+          chapterMaxCostCny: 2.5,
+          volumeMaxCostCny: 80,
+          taskMaxCostCny: 200,
+          perTenThousandCharsMaxCostCny: 12,
+        },
+        projectedCharacters: 3_000,
+        perTenThousandCharactersLimitCny: 3.6,
+        remainingCostCny: 0,
+        status: "exhausted",
+      },
+      groups: [],
+      hardStops: [
+        {
+          jobId: "019c1e8c-8e1c-7000-8000-000000000008",
+          chapterId,
+          code: "JOB_BUDGET_EXCEEDED",
+          message: "第一卷已达到成本上限，草稿和检查点已保留",
+          scope: "volume",
+          occurredAt: "2026-11-11T05:59:00.000Z",
+        },
+      ],
+    },
+    requestId: "req_batch_paused_cost",
+    meta: {},
   };
 }
 
@@ -206,6 +316,116 @@ test("claims a review item and shows partial decision feedback", async ({ page, 
   await page.getByRole("textbox", { name: "驳回原因" }).fill("本章主线偏离锁定大纲。");
   await page.getByRole("button", { name: "驳回", exact: true }).click();
   await expect(page.getByText("已处理 1 项，1 项需要刷新后重试。")).toBeVisible();
+});
+
+test("discovers a paused budget plan when the review queue is empty", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "暂停计划发现",
+  });
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+  await page.route(`**${branchPath}/review-queue?**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [],
+        requestId: "req_batch_review_empty_for_paused_plan",
+        meta: {
+          nextCursor: null,
+          counts: { total: 0, pending: 0, claimed: 0, highRisk: 0, stale: 0 },
+        },
+      }),
+    });
+  });
+  await page.route(`**${branchPath}/batch-plans?status=paused&limit=20**`, async (route) => {
+    const hasCursor = new URL(route.request().url()).searchParams.has("cursor");
+    const response = pausedPlanResponse();
+    response.data.workId = work.id;
+    response.data.branchId = work.mainBranch.id;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: hasCursor ? [response.data] : [],
+        requestId: response.requestId,
+        meta: { nextCursor: hasCursor ? null : pausedCursor },
+      }),
+    });
+  });
+  await page.route(`**${branchPath}/batch-plans/${planId}`, async (route) => {
+    const response = pausedPlanResponse();
+    response.data.workId = work.id;
+    response.data.branchId = work.mainBranch.id;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(response),
+    });
+  });
+  await page.route(`**${branchPath}/batch-plans/${planId}/cost-report?**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(pausedCostReportResponse(work.id)),
+    });
+  });
+
+  await page.goto(`/workspace/${work.id}/batch`);
+  await expect(page.getByText("已暂停")).toBeVisible();
+  await expect(page.getByText("¥0.84 · 剩余 ¥0.00")).toBeVisible();
+  await expect(page.getByText("单卷预算已耗尽")).toBeVisible();
+  await expect(page.getByText("第一卷已达到成本上限，草稿和检查点已保留")).toBeVisible();
+  await expect(page.getByText("当前没有待处理的审核项")).toBeVisible();
+  await expectAuthorFacingLanguage(page);
+  await expectNoPrototypeOnlyLeakage(page);
+});
+
+test("keeps the review queue usable when paused plan discovery fails", async ({
+  page,
+  context,
+}) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "暂停计划部分失败",
+  });
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+  await page.route(`**${branchPath}/review-queue?**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [],
+        requestId: "req_batch_review_empty_for_plan_failure",
+        meta: {
+          nextCursor: null,
+          counts: { total: 0, pending: 0, claimed: 0, highRisk: 0, stale: 0 },
+        },
+      }),
+    });
+  });
+  await page.route(`**${branchPath}/batch-plans?status=paused&limit=20**`, async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "INTERNAL_ERROR",
+          message: "暂停计划加载失败。",
+          details: {},
+          requestId: "req_batch_plan_discovery_error",
+        },
+      }),
+    });
+  });
+
+  await page.goto(`/workspace/${work.id}/batch`);
+  await expect(page.getByText("部分批量任务状态加载失败，请刷新重试。")).toBeVisible();
+  await expect(page.getByText("当前没有待处理的审核项")).toBeVisible();
 });
 
 test("keeps the batch review workspace within four viewports", async ({

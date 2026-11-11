@@ -94,6 +94,15 @@ export interface BatchPlanItemPage {
   nextCursor: string | null;
 }
 
+export interface BatchPlanDiscoveryFilters {
+  status?: GenerationJobStatus;
+}
+
+export interface BatchPlanPage {
+  plans: BatchPlanSummary[];
+  nextCursor: string | null;
+}
+
 export interface BatchPlanAuditContext {
   requestId: string;
   ip: string;
@@ -362,6 +371,70 @@ export class BatchPlanRepository implements OnModuleDestroy {
       const page = hasMore ? result.rows.slice(0, limit) : result.rows;
       return {
         items: page.map(toWorkItem),
+        nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+      };
+    });
+  }
+
+  async listPlans(
+    userId: string,
+    context: BatchPlanContext,
+    filters: BatchPlanDiscoveryFilters,
+    cursor: string | undefined,
+    limit: number,
+  ): Promise<BatchPlanPage> {
+    return this.withTenant(userId, async (transaction) => {
+      let cursorCreatedAt: Date | null = null;
+      let cursorId: string | null = null;
+      if (cursor) {
+        const cursorPlan = await findPlan(transaction, userId, context, cursor);
+        if (!cursorPlan) {
+          throw new BatchPlanRepositoryError("BATCH_PLAN_INVALID", "批量计划游标无效");
+        }
+        cursorCreatedAt = cursorPlan.createdAt;
+        cursorId = cursorPlan.id;
+      }
+      const result = await transaction.query<JobRow>(
+        `SELECT j.id, j.work_id, j.branch_id, j.user_id, j.status, j.idempotency_key,
+                j.orchestration, j.created_at, j.updated_at
+         FROM jobs j
+         INNER JOIN works w ON w.id = j.work_id AND w.user_id = j.user_id
+         WHERE j.user_id = $1
+           AND j.work_id = $2
+           AND j.branch_id = $3
+           AND j.type = 'batch_plan'
+           AND w.deleted_at IS NULL
+           AND ($4::text IS NULL OR j.status = $4)
+           AND (
+             $5::timestamptz IS NULL
+             OR (j.created_at, j.id) < ($5::timestamptz, $6::uuid)
+           )
+         ORDER BY j.created_at DESC, j.id DESC
+         LIMIT $7`,
+        [
+          userId,
+          context.workId,
+          context.branchId,
+          filters.status ?? null,
+          cursorCreatedAt,
+          cursorId,
+          limit + 1,
+        ],
+      );
+      const hasMore = result.rows.length > limit;
+      const page = hasMore ? result.rows.slice(0, limit) : result.rows;
+      const countsByPlan = await aggregateCountsForPlans(
+        transaction,
+        userId,
+        page.map((row) => row.id),
+      );
+      const plans: BatchPlanSummary[] = [];
+      for (const row of page) {
+        const record = toJobRecord(row);
+        plans.push(summaryFrom(record, countsByPlan.get(record.id) ?? emptyCounts()));
+      }
+      return {
+        plans,
         nextCursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
       };
     });
@@ -760,16 +833,58 @@ async function aggregateCounts(
   );
   const counts = emptyCounts();
   for (const row of result.rows) {
-    const count = Number(row.count);
-    counts.total += count;
-    if (row.item_type in counts) {
-      counts[row.item_type as BatchWorkItem["type"]] += count;
-    }
-    if (row.status in counts) {
-      counts[row.status as BatchWorkItem["status"]] += count;
-    }
+    addCountRow(counts, row.item_type, row.status, Number(row.count));
   }
   return counts;
+}
+
+async function aggregateCountsForPlans(
+  transaction: BatchPlanTransaction,
+  userId: string,
+  planIds: string[],
+): Promise<Map<string, BatchPlanCounts>> {
+  const countsByPlan = new Map<string, BatchPlanCounts>();
+  if (planIds.length === 0) {
+    return countsByPlan;
+  }
+  for (const planId of planIds) {
+    countsByPlan.set(planId, emptyCounts());
+  }
+  const result = await transaction.query<{
+    job_id: string;
+    item_type: string;
+    status: string;
+    count: string;
+  }>(
+    `SELECT job_id, item_type, status, count(*)::text AS count
+     FROM job_work_items
+     WHERE user_id = $1 AND job_id = ANY($2::uuid[])
+     GROUP BY job_id, item_type, status`,
+    [userId, planIds],
+  );
+  for (const row of result.rows) {
+    const counts = countsByPlan.get(row.job_id);
+    if (!counts) {
+      continue;
+    }
+    addCountRow(counts, row.item_type, row.status, Number(row.count));
+  }
+  return countsByPlan;
+}
+
+function addCountRow(
+  counts: BatchPlanCounts,
+  itemType: string,
+  status: string,
+  count: number,
+): void {
+  counts.total += count;
+  if (itemType in counts) {
+    counts[itemType as BatchWorkItem["type"]] += count;
+  }
+  if (status in counts) {
+    counts[status as BatchWorkItem["status"]] += count;
+  }
 }
 
 function emptyCounts(): BatchPlanCounts {

@@ -5,6 +5,7 @@ import {
   batchPlanActionRequestSchema,
   batchPlanCreateRequestSchema,
   type BatchPlanCreateRequest,
+  type BatchPlanListQuery,
   type BatchPlanScope,
   type BatchPlanSummary,
   type BatchCostReport,
@@ -30,6 +31,7 @@ import {
   type BatchPlanControlAction,
   type BatchPlanItemFilters,
   type BatchPlanItemPage,
+  type BatchPlanPage,
   type BatchPlanSources,
   type ChapterSource,
   type OutlineNodeSource,
@@ -38,7 +40,7 @@ import {
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { BatchPlanQueue } from "./batch-plan.queue";
 
-export interface BatchPlanListQuery {
+export interface BatchPlanItemListQuery {
   type?: BatchWorkItem["type"];
   status?: BatchWorkItem["status"];
   cursor?: string;
@@ -149,11 +151,33 @@ export class BatchPlanService {
     return plan;
   }
 
+  async list(
+    userId: string,
+    context: BatchPlanContext,
+    query: BatchPlanListQuery,
+  ): Promise<BatchPlanPage> {
+    const workContext = await this.repository.findWorkContext(
+      userId,
+      context.workId,
+      context.branchId,
+    );
+    if (!workContext) {
+      throw new ApiError(404, "BATCH_PLAN_NOT_FOUND", "作品或分支不存在或无权访问");
+    }
+    return this.repository.listPlans(
+      userId,
+      context,
+      { ...(query.status ? { status: query.status } : {}) },
+      query.cursor,
+      query.limit,
+    );
+  }
+
   async listItems(
     userId: string,
     context: BatchPlanContext,
     planId: string,
-    query: BatchPlanListQuery,
+    query: BatchPlanItemListQuery,
   ): Promise<BatchPlanItemPage> {
     const filters: BatchPlanItemFilters = {
       ...(query.type ? { type: query.type } : {}),
