@@ -144,7 +144,7 @@ describe("works HTTP integration", () => {
     });
   });
 
-  it("creates blank and xianxia template works without inventing story facts", async () => {
+  it("creates blank and template works with the latest genre pack without inventing story facts", async () => {
     const owner = await createAuthenticatedAgent("modes@example.com");
     const token = await csrf(owner);
 
@@ -163,8 +163,13 @@ describe("works HTTP integration", () => {
     expect(blank.body.data).toMatchObject({
       sourceMode: "blank",
       idea: null,
-      templatePack: null,
-      settings: {},
+      templatePack: {
+        key: "urban",
+        version: 2,
+        label: "都市模板",
+        uiHints: { powerLevelLabel: "资源等级" },
+      },
+      settings: { genrePack: { key: "urban", version: 2 } },
       mainBranch: { name: "main" },
     });
 
@@ -183,10 +188,10 @@ describe("works HTTP integration", () => {
     expect(template.body.data).toMatchObject({
       sourceMode: "template",
       idea: null,
-      settings: {},
+      settings: { genrePack: { key: "xianxia", version: 2 } },
       templatePack: {
         key: "xianxia",
-        version: 1,
+        version: 2,
         label: "仙侠模板",
         fields: {
           genre: "仙侠",
@@ -200,6 +205,149 @@ describe("works HTTP integration", () => {
     });
     expect(JSON.stringify(template.body.data.templatePack)).not.toContain("角色");
     expect(JSON.stringify(template.body.data.templatePack)).not.toContain("世界事实");
+
+    const history = await owner
+      .post("/api/v1/works")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        mode: "template",
+        templateKey: "history",
+        genre: "history",
+        title: "边关粮道",
+      })
+      .expect(200);
+    expect(history.body.data.templatePack).toMatchObject({
+      key: "history",
+      version: 2,
+      label: "架空历史模板",
+      uiHints: { powerLevelLabel: "军职层级" },
+    });
+  });
+
+  it("upgrades and rolls back a genre pack version with an immutable version node", async () => {
+    const owner = await createAuthenticatedAgent("genre-pack-version@example.com");
+    const token = await csrf(owner);
+    const packs = await owner.get("/api/v1/genre-packs?key=history").expect(200);
+    expect(packs.body.data.map((pack: { version: number }) => pack.version)).toEqual([2, 1]);
+    const work = await owner
+      .post("/api/v1/works")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        mode: "blank",
+        genre: "history",
+        title: "旧朝军功簿",
+      })
+      .expect(200);
+    const workId = work.body.data.id as string;
+
+    const rolledBack = await owner
+      .post(`/api/v1/works/${workId}/genre-pack/version`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "history-pack-v1")
+      .send({ targetVersion: 1, reason: "验证旧版字段兼容" })
+      .expect(200);
+    expect(rolledBack.body.data).toMatchObject({
+      templatePack: { version: 1 },
+      settings: {
+        genrePack: {
+          version: 1,
+          migrationReport: { removedFields: ["militaryMerit"] },
+        },
+      },
+    });
+
+    const upgraded = await owner
+      .post(`/api/v1/works/${workId}/genre-pack/version`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "history-pack-v2")
+      .send({ targetVersion: 2, reason: "升级到最新军制字段" })
+      .expect(200);
+    expect(upgraded.body.data).toMatchObject({
+      templatePack: { version: 2 },
+      settings: {
+        genrePack: {
+          version: 2,
+          migrationReport: { missingFields: ["militaryMerit"] },
+        },
+      },
+    });
+
+    const replayed = await owner
+      .post(`/api/v1/works/${workId}/genre-pack/version`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "history-pack-v2")
+      .send({ targetVersion: 2, reason: "升级到最新军制字段" })
+      .expect(200);
+    expect(replayed.body.data.templatePack).toMatchObject({ version: 2 });
+    const conflict = await owner
+      .post(`/api/v1/works/${workId}/genre-pack/version`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "history-pack-v2")
+      .send({ targetVersion: 1, reason: "复用同一个幂等键" })
+      .expect(409);
+    expect(conflict.body.error.code).toBe("GENRE_PACK_IDEMPOTENCY_CONFLICT");
+
+    const nodes = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM version_nodes
+       WHERE work_id = $1 AND object_type = 'genre_pack'`,
+      [workId],
+    );
+    expect(nodes.rows[0]?.count).toBe("2");
+    const audit = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM audit_logs
+       WHERE target_id = $1 AND action = 'work.genre_pack.changed'`,
+      [workId],
+    );
+    expect(audit.rows[0]?.count).toBe("2");
+    const missing = await owner
+      .post(`/api/v1/works/${workId}/genre-pack/version`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "history-pack-missing")
+      .send({ targetVersion: 99, reason: "验证不存在的版本" })
+      .expect(400);
+    expect(missing.body.error.code).toBe("GENRE_PACK_VERSION_NOT_FOUND");
+    const legacyPack = await databasePool.query<{
+      label: string;
+      rules: unknown[];
+    }>(
+      `SELECT label, rules FROM genre_packs
+       WHERE key = 'xianxia' AND version = 1`,
+    );
+    expect(legacyPack.rows[0]).toEqual({ label: "仙侠模板", rules: [] });
+  });
+
+  it("rejects cross-tenant genre pack version changes without side effects", async () => {
+    const owner = await createAuthenticatedAgent("genre-pack-owner@example.com");
+    const token = await csrf(owner);
+    const work = await owner
+      .post("/api/v1/works")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ mode: "blank", genre: "urban", title: "越权测试" })
+      .expect(200);
+    const other = await createAuthenticatedAgent("genre-pack-foreign@example.com");
+    const otherToken = await csrf(other);
+    const response = await other
+      .post(`/api/v1/works/${work.body.data.id}/genre-pack/version`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherToken)
+      .set("Idempotency-Key", "foreign-pack-version")
+      .send({ targetVersion: 1, reason: "越权" })
+      .expect(403);
+    expect(response.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+    const nodes = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count FROM version_nodes
+       WHERE work_id = $1 AND object_type = 'genre_pack'`,
+      [work.body.data.id],
+    );
+    expect(nodes.rows[0]?.count).toBe("0");
   });
 
   it("replays the same create request without creating a second work", async () => {

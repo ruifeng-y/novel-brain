@@ -932,6 +932,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/genre-pack/version": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["WorksController_changeGenrePackVersion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches": {
     parameters: {
       query?: never;
@@ -940,6 +956,22 @@ export interface paths {
       cookie?: never;
     };
     get: operations["WorksController_branches"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/genre-packs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenrePackController_list"];
     put?: never;
     post?: never;
     delete?: never;
@@ -3651,6 +3683,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -3970,6 +4004,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -7961,6 +7997,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8504,6 +8542,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8873,6 +8913,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9243,6 +9285,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9613,6 +9657,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9996,6 +10042,8 @@ export interface operations {
                     | "REVISION_FINDING_REJECTED"
                     | "REVISION_ROUND_LIMIT_REACHED"
                     | "REVISION_INVALID_STATE"
+                    | "GENRE_PACK_VERSION_NOT_FOUND"
+                    | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -12138,6 +12186,37 @@ export interface operations {
                   fields: {
                     [key: string]: unknown;
                   };
+                  fieldSchema: {
+                    key: string;
+                    label: string;
+                    /** @enum {string} */
+                    type: "text" | "number" | "boolean" | "list";
+                    required: boolean;
+                    options: string[];
+                  }[];
+                  rules: {
+                    key: string;
+                    label: string;
+                    description: string;
+                  }[];
+                  uiHints: {
+                    worldLabel: string;
+                    powerSystemLabel: string;
+                    powerLevelLabel: string;
+                    factionLabel: string;
+                    itemLabel: string;
+                  };
+                  generationGuidance: {
+                    protagonistArchetypes: string[];
+                    conflictSeeds: string[];
+                    worldRuleSeeds: string[];
+                    forbiddenElements: string[];
+                  };
+                  migration: {
+                    fromVersion: number;
+                    toVersion: number;
+                    notes: string[];
+                  } | null;
                 } | null;
                 settings: {
                   [key: string]: unknown;
@@ -12263,6 +12342,37 @@ export interface operations {
                 fields: {
                   [key: string]: unknown;
                 };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
               } | null;
               settings: {
                 [key: string]: unknown;
@@ -12335,7 +12445,7 @@ export interface operations {
               /** @enum {string} */
               mode: "template";
               /** @enum {string} */
-              templateKey: "xianxia";
+              templateKey: "xianxia" | "history" | "urban";
               title: string;
               penName?: string;
               /**
@@ -12384,6 +12494,37 @@ export interface operations {
                 fields: {
                   [key: string]: unknown;
                 };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
               } | null;
               settings: {
                 [key: string]: unknown;
@@ -12473,6 +12614,166 @@ export interface operations {
                 fields: {
                   [key: string]: unknown;
                 };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_changeGenrePackVersion: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          targetVersion: number;
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Work with changed genre pack version */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              title: string;
+              penName: string;
+              /** @enum {string} */
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
               } | null;
               settings: {
                 [key: string]: unknown;
@@ -12554,6 +12855,76 @@ export interface operations {
             requestId: string;
             meta: {
               nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenrePackController_list: {
+    parameters: {
+      query?: {
+        key?: "xianxia" | "history" | "urban";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Available genre packs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              key: "xianxia" | "history" | "urban";
+              version: number;
+              label: string;
+              fields: {
+                [key: string]: unknown;
+              };
+              fieldSchema: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                type: "text" | "number" | "boolean" | "list";
+                required: boolean;
+                options: string[];
+              }[];
+              rules: {
+                key: string;
+                label: string;
+                description: string;
+              }[];
+              uiHints: {
+                worldLabel: string;
+                powerSystemLabel: string;
+                powerLevelLabel: string;
+                factionLabel: string;
+                itemLabel: string;
+              };
+              generationGuidance: {
+                protagonistArchetypes: string[];
+                conflictSeeds: string[];
+                worldRuleSeeds: string[];
+                forbiddenElements: string[];
+              };
+              migration: {
+                fromVersion: number;
+                toVersion: number;
+                notes: string[];
+              } | null;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
             };
           };
         };
@@ -13000,6 +13371,37 @@ export interface operations {
                 fields: {
                   [key: string]: unknown;
                 };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
               } | null;
               settings: {
                 [key: string]: unknown;
@@ -27249,6 +27651,8 @@ export interface operations {
                     | "REVISION_FINDING_REJECTED"
                     | "REVISION_ROUND_LIMIT_REACHED"
                     | "REVISION_INVALID_STATE"
+                    | "GENRE_PACK_VERSION_NOT_FOUND"
+                    | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -27448,6 +27852,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -27623,6 +28029,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -37883,6 +38291,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -38639,6 +39049,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -39172,6 +39584,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -39705,6 +40119,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40238,6 +40654,8 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40784,6 +41202,8 @@ export interface operations {
                     | "REVISION_FINDING_REJECTED"
                     | "REVISION_ROUND_LIMIT_REACHED"
                     | "REVISION_INVALID_STATE"
+                    | "GENRE_PACK_VERSION_NOT_FOUND"
+                    | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;

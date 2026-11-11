@@ -385,7 +385,7 @@ export function WorkOverview({ workId }: { workId: string }) {
           </span>
           <h2>主创作线</h2>
           <p>
-            {work.templatePack
+            {work.sourceMode === "template" && work.templatePack
               ? `${work.templatePack.label} · ${String(work.templatePack.fields.world ?? "")}`
               : work.idea
                 ? work.idea

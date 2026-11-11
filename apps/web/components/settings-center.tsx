@@ -32,6 +32,7 @@ import {
   customFieldDefinitionListResponseSchema,
   customFieldDefinitionResponseSchema,
   factionDetailResponseSchema,
+  genrePackListResponseSchema,
   itemResponseSchema,
   mapDetailResponseSchema,
   powerSystemResponseSchema,
@@ -52,6 +53,7 @@ import {
   type CustomFieldDefinition,
   type CustomFieldValue,
   type FactionDetail,
+  type GenrePackDefinition,
   type ItemDomain,
   type MapDetail,
   type PowerSystem,
@@ -167,7 +169,7 @@ const ENTITY_DETAIL_TAB_LABELS: Partial<
   world_rule: { relations: "规则关联", history: "规则变化" },
   faction: { relations: "势力关系", history: "兴衰时间线" },
   map: { relations: "地点关系", history: "控制变化" },
-  power_system: { relations: "体系关联", history: "境界变化" },
+  power_system: { relations: "体系关联", history: "层级变化" },
   golden_finger: { relations: "机制关联", history: "所有权变化" },
   item: { relations: "关联", history: "流转历史" },
   timeline_event: { relations: "时间关联", history: "关键节点" },
@@ -262,7 +264,7 @@ const impactResourceTypeLabels: Record<
 
 const powerLifespanModeLabels: Record<PowerSystem["lifespanPolicy"]["mode"], string> = {
   none: "不绑定寿命",
-  realm: "按境界绑定",
+  realm: "按层级绑定",
   fixed: "固定寿命",
   custom: "自定义规则",
 };
@@ -412,6 +414,10 @@ export function SettingsCenter({
   workId: string;
 }) {
   const [work, setWork] = useState<WorkOverview | null>(null);
+  const [genrePacks, setGenrePacks] = useState<GenrePackDefinition[]>([]);
+  const [packTargetVersion, setPackTargetVersion] = useState(1);
+  const [packBusy, setPackBusy] = useState(false);
+  const [packError, setPackError] = useState("");
   const [entities, setEntities] = useState<SettingEntity[]>([]);
   const [confirmed, setConfirmed] = useState<ConfirmedSetting[]>([]);
   const [customFields, setCustomFields] = useState<CustomFieldDefinition[]>([]);
@@ -448,7 +454,7 @@ export function SettingsCenter({
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
       const basePath = settingsPath(workData);
-      const [entityData, confirmedData, fieldData] = await Promise.all([
+      const [entityData, confirmedData, fieldData, packData] = await Promise.all([
         fetchAllCursorPages(
           `${basePath}/entities`,
           settingEntityListResponseSchema.parse,
@@ -464,8 +470,18 @@ export function SettingsCenter({
           customFieldDefinitionListResponseSchema.parse,
           "自定义字段加载失败。",
         ),
+        fetch(`/api/v1/genre-packs?key=${workData.genre}`, { cache: "no-store" }).then(
+          async (response) => {
+            if (!response.ok) {
+              throw new Error(await readError(response, "题材包加载失败。"));
+            }
+            return genrePackListResponseSchema.parse(await response.json()).data;
+          },
+        ),
       ]);
       setWork(workData);
+      setGenrePacks(packData);
+      setPackTargetVersion(workData.templatePack?.version ?? packData[0]?.version ?? 1);
       setEntities(entityData);
       const requestedEntity = initialEntityId
         ? entityData.find((entity) => entity.id === initialEntityId)
@@ -488,6 +504,40 @@ export function SettingsCenter({
       setLoading(false);
     }
   }, [initialColumn, initialEntityId, workId]);
+
+  async function changeGenrePackVersion() {
+    if (!work) {
+      return;
+    }
+    setPackBusy(true);
+    setPackError("");
+    try {
+      const csrfToken = await getCsrfToken();
+      const response = await fetch(`/api/v1/works/${work.id}/genre-pack/version`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken,
+          "idempotency-key": crypto.randomUUID(),
+        },
+        body: JSON.stringify({
+          targetVersion: packTargetVersion,
+          reason: "作者在设定中心调整题材包版本",
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response, "题材包版本调整失败。"));
+      }
+      const updated = workResponseSchema.parse(await response.json()).data;
+      setWork(updated);
+      setPackTargetVersion(updated.templatePack?.version ?? packTargetVersion);
+      setNotice(`题材包已切换到第 ${updated.templatePack?.version ?? packTargetVersion} 版。`);
+    } catch (caught) {
+      setPackError(caught instanceof Error ? caught.message : "题材包版本调整失败。");
+    } finally {
+      setPackBusy(false);
+    }
+  }
 
   useEffect(() => {
     void load();
@@ -1252,6 +1302,7 @@ export function SettingsCenter({
           onRetryVersionHistory={() => refreshDetail(selected.id, selected.type)}
           onRestore={(targetVersion, reason) => restoreEntity(selected, targetVersion, reason)}
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
+          powerLevelLabel={work.templatePack?.uiHints.powerLevelLabel ?? "层级"}
           proposals={proposals}
           versionHistoryError={versionHistoryError}
           versionHistoryLoading={versionHistoryLoading}
@@ -1326,6 +1377,42 @@ export function SettingsCenter({
           </button>
         </div>
       </section>
+
+      {work.templatePack ? (
+        <section className="settings-pack-bar" aria-label="题材包版本">
+          <div>
+            <span>题材包</span>
+            <strong>{work.templatePack.label}</strong>
+            <small>当前第 {work.templatePack.version} 版</small>
+          </div>
+          <label>
+            <span>切换版本</span>
+            <select
+              aria-label="题材包版本"
+              onChange={(event) => setPackTargetVersion(Number(event.target.value))}
+              value={packTargetVersion}
+            >
+              {[...genrePacks]
+                .sort((left, right) => right.version - left.version)
+                .map((pack) => (
+                  <option key={pack.id} value={pack.version}>
+                    第 {pack.version} 版 · {pack.label}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <button
+            className="btn btn-ghost btn-small"
+            disabled={packBusy || packTargetVersion === work.templatePack.version}
+            onClick={() => void changeGenrePackVersion()}
+            type="button"
+          >
+            {packBusy ? <LoaderCircle className="spin" size={14} aria-hidden="true" /> : null}
+            切换题材包版本
+          </button>
+          {packError ? <span role="alert">{packError}</span> : null}
+        </section>
+      ) : null}
 
       {actionError ? (
         <div className="settings-center-notice danger" role="alert">
@@ -1755,7 +1842,7 @@ function SettingEditor({
                 value={editor.powerLifespanMode}
               >
                 <option value="none">不绑定寿命</option>
-                <option value="realm">按境界绑定</option>
+                <option value="realm">按层级绑定</option>
                 <option value="fixed">固定寿命</option>
                 <option value="custom">自定义规则</option>
               </select>
@@ -2407,6 +2494,7 @@ function EntityDetail({
   onRetryVersionHistory,
   onRestore,
   onRetryWorldDetail,
+  powerLevelLabel,
   proposals,
   versionHistoryError,
   versionHistoryLoading,
@@ -2438,6 +2526,7 @@ function EntityDetail({
   onRetryVersionHistory: () => void;
   onRestore: (targetVersion: number, reason: string) => Promise<boolean>;
   onRetryWorldDetail: () => void;
+  powerLevelLabel: string;
   proposals: SettingProposal[];
   versionHistoryError: string;
   versionHistoryLoading: boolean;
@@ -2707,6 +2796,7 @@ function EntityDetail({
               entity={entity}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
+              powerLevelLabel={powerLevelLabel}
               section="overview"
               worldDetail={worldDetail}
               worldDetailError={worldDetailError}
@@ -2722,6 +2812,7 @@ function EntityDetail({
               entity={entity}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
+              powerLevelLabel={powerLevelLabel}
               section="relations"
               worldDetail={worldDetail}
               worldDetailError={worldDetailError}
@@ -2737,6 +2828,7 @@ function EntityDetail({
               entity={entity}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
+              powerLevelLabel={powerLevelLabel}
               section="history"
               worldDetail={worldDetail}
               worldDetailError={worldDetailError}
@@ -2848,6 +2940,7 @@ function EntityDetail({
               entity={entity}
               onRetryCharacterDetail={onRetryCharacterDetail}
               onRetryWorldDetail={onRetryWorldDetail}
+              powerLevelLabel={powerLevelLabel}
               section="references"
               worldDetail={worldDetail}
               worldDetailError={worldDetailError}
@@ -3129,6 +3222,7 @@ function DomainDetailSections({
   entity,
   onRetryCharacterDetail,
   onRetryWorldDetail,
+  powerLevelLabel,
   section,
   worldDetail,
   worldDetailError,
@@ -3140,6 +3234,7 @@ function DomainDetailSections({
   entity: SettingEntity;
   onRetryCharacterDetail: () => void;
   onRetryWorldDetail: () => void;
+  powerLevelLabel: string;
   section: EntityDetailSection;
   worldDetail: WorldDomainDetail | null;
   worldDetailError: string;
@@ -3207,6 +3302,7 @@ function DomainDetailSections({
         error={worldDetailError}
         loading={worldDetailLoading}
         onRetry={onRetryWorldDetail}
+        powerLevelLabel={powerLevelLabel}
         section={section}
       />
     );
@@ -3724,12 +3820,14 @@ function PowerDomainView({
   error,
   loading,
   onRetry,
+  powerLevelLabel,
   section,
 }: {
   detail: PowerSystem | null;
   error: string;
   loading: boolean;
   onRetry: () => void;
+  powerLevelLabel: string;
   section: EntityDetailSection;
 }) {
   if (section === "references" || section === "health") {
@@ -3809,7 +3907,7 @@ function PowerDomainView({
   return (
     <div className="settings-character-domain">
       <div className="settings-detail-block">
-        <h3>路径与境界</h3>
+        <h3>路径与{powerLevelLabel}</h3>
         {detail.paths.length === 0 ? (
           <p>还没有记录力量路径。</p>
         ) : (
@@ -3820,17 +3918,19 @@ function PowerDomainView({
                   <strong>
                     {path.name} · {path.pathType}
                   </strong>
-                  <span>{path.realms.length} 个境界</span>
+                  <span>
+                    {path.realms.length} 个{powerLevelLabel}
+                  </span>
                 </div>
                 {path.description ? <p>{path.description}</p> : null}
                 {path.realms.length === 0 ? (
-                  <small>这条路径还没有境界。</small>
+                  <small>这条路径还没有{powerLevelLabel}。</small>
                 ) : (
                   <ul className="settings-evidence-list">
                     {path.realms.map((realm) => (
                       <li key={realm.id}>
                         <strong>
-                          第 {realm.rank} 层 · {realm.name}
+                          {powerLevelLabel} {realm.rank} · {realm.name}
                         </strong>
                         <span>突破条件：{realm.breakthroughConditions}</span>
                         {realm.breakthroughCosts ? (

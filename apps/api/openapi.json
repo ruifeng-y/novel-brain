@@ -2700,6 +2700,8 @@
                                     "REVISION_FINDING_REJECTED",
                                     "REVISION_ROUND_LIMIT_REACHED",
                                     "REVISION_INVALID_STATE",
+                                    "GENRE_PACK_VERSION_NOT_FOUND",
+                                    "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -3488,6 +3490,8 @@
                                   "REVISION_FINDING_REJECTED",
                                   "REVISION_ROUND_LIMIT_REACHED",
                                   "REVISION_INVALID_STATE",
+                                  "GENRE_PACK_VERSION_NOT_FOUND",
+                                  "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -15344,6 +15348,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -16859,6 +16865,8 @@
                                   "REVISION_FINDING_REJECTED",
                                   "REVISION_ROUND_LIMIT_REACHED",
                                   "REVISION_INVALID_STATE",
+                                  "GENRE_PACK_VERSION_NOT_FOUND",
+                                  "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -17794,6 +17802,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -18721,6 +18731,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -19648,6 +19660,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -20624,6 +20638,8 @@
                                     "REVISION_FINDING_REJECTED",
                                     "REVISION_ROUND_LIMIT_REACHED",
                                     "REVISION_INVALID_STATE",
+                                    "GENRE_PACK_VERSION_NOT_FOUND",
+                                    "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -27997,14 +28013,205 @@
                                   "maximum": 9007199254740991
                                 },
                                 "label": {
-                                  "type": "string"
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
                                 },
                                 "fields": {
                                   "type": "object",
                                   "additionalProperties": {}
+                                },
+                                "fieldSchema": {
+                                  "maxItems": 100,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "key": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                      },
+                                      "type": {
+                                        "type": "string",
+                                        "enum": ["text", "number", "boolean", "list"]
+                                      },
+                                      "required": {
+                                        "type": "boolean"
+                                      },
+                                      "options": {
+                                        "maxItems": 100,
+                                        "type": "array",
+                                        "items": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 200
+                                        }
+                                      }
+                                    },
+                                    "required": ["key", "label", "type", "required", "options"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "rules": {
+                                  "maxItems": 50,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "key": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "description": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 1000
+                                      }
+                                    },
+                                    "required": ["key", "label", "description"],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "uiHints": {
+                                  "type": "object",
+                                  "properties": {
+                                    "worldLabel": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "powerSystemLabel": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "powerLevelLabel": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "factionLabel": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "itemLabel": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    }
+                                  },
+                                  "required": [
+                                    "worldLabel",
+                                    "powerSystemLabel",
+                                    "powerLevelLabel",
+                                    "factionLabel",
+                                    "itemLabel"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "generationGuidance": {
+                                  "type": "object",
+                                  "properties": {
+                                    "protagonistArchetypes": {
+                                      "maxItems": 20,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "conflictSeeds": {
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    },
+                                    "worldRuleSeeds": {
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 300
+                                      }
+                                    },
+                                    "forbiddenElements": {
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "protagonistArchetypes",
+                                    "conflictSeeds",
+                                    "worldRuleSeeds",
+                                    "forbiddenElements"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "migration": {
+                                  "nullable": true,
+                                  "type": "object",
+                                  "properties": {
+                                    "fromVersion": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "toVersion": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "exclusiveMinimum": true,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "notes": {
+                                      "maxItems": 20,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 500
+                                      }
+                                    }
+                                  },
+                                  "required": ["fromVersion", "toVersion", "notes"],
+                                  "additionalProperties": false
                                 }
                               },
-                              "required": ["id", "key", "version", "label", "fields"],
+                              "required": [
+                                "id",
+                                "key",
+                                "version",
+                                "label",
+                                "fields",
+                                "fieldSchema",
+                                "rules",
+                                "uiHints",
+                                "generationGuidance",
+                                "migration"
+                              ],
                               "additionalProperties": false
                             },
                             "settings": {
@@ -28425,14 +28632,205 @@
                                 "maximum": 9007199254740991
                               },
                               "label": {
-                                "type": "string"
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
                               },
                               "fields": {
                                 "type": "object",
                                 "additionalProperties": {}
+                              },
+                              "fieldSchema": {
+                                "maxItems": 100,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "key": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "type": {
+                                      "type": "string",
+                                      "enum": ["text", "number", "boolean", "list"]
+                                    },
+                                    "required": {
+                                      "type": "boolean"
+                                    },
+                                    "options": {
+                                      "maxItems": 100,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    }
+                                  },
+                                  "required": ["key", "label", "type", "required", "options"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "rules": {
+                                "maxItems": 50,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "key": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    },
+                                    "label": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    "description": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 1000
+                                    }
+                                  },
+                                  "required": ["key", "label", "description"],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "uiHints": {
+                                "type": "object",
+                                "properties": {
+                                  "worldLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "powerSystemLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "powerLevelLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "factionLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "itemLabel": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  }
+                                },
+                                "required": [
+                                  "worldLabel",
+                                  "powerSystemLabel",
+                                  "powerLevelLabel",
+                                  "factionLabel",
+                                  "itemLabel"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "generationGuidance": {
+                                "type": "object",
+                                "properties": {
+                                  "protagonistArchetypes": {
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "conflictSeeds": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  },
+                                  "worldRuleSeeds": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 300
+                                    }
+                                  },
+                                  "forbiddenElements": {
+                                    "maxItems": 30,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 100
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "protagonistArchetypes",
+                                  "conflictSeeds",
+                                  "worldRuleSeeds",
+                                  "forbiddenElements"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "migration": {
+                                "nullable": true,
+                                "type": "object",
+                                "properties": {
+                                  "fromVersion": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "toVersion": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "exclusiveMinimum": true,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "notes": {
+                                    "maxItems": 20,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  }
+                                },
+                                "required": ["fromVersion", "toVersion", "notes"],
+                                "additionalProperties": false
                               }
                             },
-                            "required": ["id", "key", "version", "label", "fields"],
+                            "required": [
+                              "id",
+                              "key",
+                              "version",
+                              "label",
+                              "fields",
+                              "fieldSchema",
+                              "rules",
+                              "uiHints",
+                              "generationGuidance",
+                              "migration"
+                            ],
                             "additionalProperties": false
                           },
                           "settings": {
@@ -28608,7 +29006,7 @@
                       },
                       "templateKey": {
                         "type": "string",
-                        "enum": ["xianxia"]
+                        "enum": ["xianxia", "history", "urban"]
                       },
                       "title": {
                         "type": "string",
@@ -28731,14 +29129,205 @@
                               "maximum": 9007199254740991
                             },
                             "label": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
                             },
                             "fields": {
                               "type": "object",
                               "additionalProperties": {}
+                            },
+                            "fieldSchema": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["text", "number", "boolean", "list"]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  },
+                                  "options": {
+                                    "maxItems": 100,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  }
+                                },
+                                "required": ["key", "label", "type", "required", "options"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "rules": {
+                              "maxItems": 50,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "description": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  }
+                                },
+                                "required": ["key", "label", "description"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "uiHints": {
+                              "type": "object",
+                              "properties": {
+                                "worldLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "powerSystemLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "powerLevelLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "factionLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "itemLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                }
+                              },
+                              "required": [
+                                "worldLabel",
+                                "powerSystemLabel",
+                                "powerLevelLabel",
+                                "factionLabel",
+                                "itemLabel"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "generationGuidance": {
+                              "type": "object",
+                              "properties": {
+                                "protagonistArchetypes": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "conflictSeeds": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "worldRuleSeeds": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  }
+                                },
+                                "forbiddenElements": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  }
+                                }
+                              },
+                              "required": [
+                                "protagonistArchetypes",
+                                "conflictSeeds",
+                                "worldRuleSeeds",
+                                "forbiddenElements"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "migration": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "fromVersion": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "toVersion": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "notes": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": ["fromVersion", "toVersion", "notes"],
+                              "additionalProperties": false
                             }
                           },
-                          "required": ["id", "key", "version", "label", "fields"],
+                          "required": [
+                            "id",
+                            "key",
+                            "version",
+                            "label",
+                            "fields",
+                            "fieldSchema",
+                            "rules",
+                            "uiHints",
+                            "generationGuidance",
+                            "migration"
+                          ],
                           "additionalProperties": false
                         },
                         "settings": {
@@ -28991,14 +29580,689 @@
                               "maximum": 9007199254740991
                             },
                             "label": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
                             },
                             "fields": {
                               "type": "object",
                               "additionalProperties": {}
+                            },
+                            "fieldSchema": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["text", "number", "boolean", "list"]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  },
+                                  "options": {
+                                    "maxItems": 100,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  }
+                                },
+                                "required": ["key", "label", "type", "required", "options"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "rules": {
+                              "maxItems": 50,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "description": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  }
+                                },
+                                "required": ["key", "label", "description"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "uiHints": {
+                              "type": "object",
+                              "properties": {
+                                "worldLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "powerSystemLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "powerLevelLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "factionLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "itemLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                }
+                              },
+                              "required": [
+                                "worldLabel",
+                                "powerSystemLabel",
+                                "powerLevelLabel",
+                                "factionLabel",
+                                "itemLabel"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "generationGuidance": {
+                              "type": "object",
+                              "properties": {
+                                "protagonistArchetypes": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "conflictSeeds": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "worldRuleSeeds": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  }
+                                },
+                                "forbiddenElements": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  }
+                                }
+                              },
+                              "required": [
+                                "protagonistArchetypes",
+                                "conflictSeeds",
+                                "worldRuleSeeds",
+                                "forbiddenElements"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "migration": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "fromVersion": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "toVersion": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "notes": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": ["fromVersion", "toVersion", "notes"],
+                              "additionalProperties": false
                             }
                           },
-                          "required": ["id", "key", "version", "label", "fields"],
+                          "required": [
+                            "id",
+                            "key",
+                            "version",
+                            "label",
+                            "fields",
+                            "fieldSchema",
+                            "rules",
+                            "uiHints",
+                            "generationGuidance",
+                            "migration"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "settings": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "mainBranch": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "workId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "headNodeId": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": ["active", "archived"]
+                            }
+                          },
+                          "required": ["id", "workId", "name", "headNodeId", "status"],
+                          "additionalProperties": false
+                        },
+                        "branches": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "workId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "headNodeId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": ["active", "archived"]
+                              }
+                            },
+                            "required": ["id", "workId", "name", "headNodeId", "status"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "readiness": {
+                          "type": "object",
+                          "properties": {
+                            "status": {
+                              "type": "string",
+                              "enum": ["not_ready", "partial", "ready"]
+                            },
+                            "completed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "total": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "items": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "enum": [
+                                      "main_branch",
+                                      "model_config",
+                                      "story_bible",
+                                      "outline"
+                                    ]
+                                  },
+                                  "label": {
+                                    "type": "string"
+                                  },
+                                  "ready": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": ["key", "label", "ready"],
+                                "additionalProperties": false
+                              }
+                            }
+                          },
+                          "required": ["status", "completed", "total", "items"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "title",
+                        "penName",
+                        "genre",
+                        "status",
+                        "scaleTarget",
+                        "chapterLengthTarget",
+                        "sourceMode",
+                        "idea",
+                        "templatePack",
+                        "settings",
+                        "createdAt",
+                        "updatedAt",
+                        "mainBranch",
+                        "branches",
+                        "readiness"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["works"]
+      }
+    },
+    "/api/v1/works/{workId}/genre-pack/version": {
+      "post": {
+        "operationId": "WorksController_changeGenrePackVersion",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "targetVersion": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "exclusiveMinimum": true,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": ["targetVersion", "reason"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Work with changed genre pack version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "title": {
+                          "type": "string"
+                        },
+                        "penName": {
+                          "type": "string"
+                        },
+                        "genre": {
+                          "type": "string",
+                          "enum": ["xianxia", "history", "urban"]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "draft",
+                            "preparing",
+                            "serializing",
+                            "paused",
+                            "completed",
+                            "archived"
+                          ]
+                        },
+                        "scaleTarget": {
+                          "type": "string",
+                          "enum": ["short", "medium", "long", "epic"]
+                        },
+                        "chapterLengthTarget": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "exclusiveMinimum": true,
+                          "maximum": 9007199254740991
+                        },
+                        "sourceMode": {
+                          "type": "string",
+                          "enum": [
+                            "idea",
+                            "blank",
+                            "template",
+                            "settings_import",
+                            "manuscript_import"
+                          ]
+                        },
+                        "idea": {
+                          "nullable": true,
+                          "type": "string"
+                        },
+                        "templatePack": {
+                          "nullable": true,
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                            },
+                            "key": {
+                              "type": "string",
+                              "enum": ["xianxia", "history", "urban"]
+                            },
+                            "version": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 9007199254740991
+                            },
+                            "label": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "fields": {
+                              "type": "object",
+                              "additionalProperties": {}
+                            },
+                            "fieldSchema": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["text", "number", "boolean", "list"]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  },
+                                  "options": {
+                                    "maxItems": 100,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  }
+                                },
+                                "required": ["key", "label", "type", "required", "options"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "rules": {
+                              "maxItems": 50,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "description": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  }
+                                },
+                                "required": ["key", "label", "description"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "uiHints": {
+                              "type": "object",
+                              "properties": {
+                                "worldLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "powerSystemLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "powerLevelLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "factionLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "itemLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                }
+                              },
+                              "required": [
+                                "worldLabel",
+                                "powerSystemLabel",
+                                "powerLevelLabel",
+                                "factionLabel",
+                                "itemLabel"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "generationGuidance": {
+                              "type": "object",
+                              "properties": {
+                                "protagonistArchetypes": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "conflictSeeds": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "worldRuleSeeds": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  }
+                                },
+                                "forbiddenElements": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  }
+                                }
+                              },
+                              "required": [
+                                "protagonistArchetypes",
+                                "conflictSeeds",
+                                "worldRuleSeeds",
+                                "forbiddenElements"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "migration": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "fromVersion": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "toVersion": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "notes": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": ["fromVersion", "toVersion", "notes"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "key",
+                            "version",
+                            "label",
+                            "fields",
+                            "fieldSchema",
+                            "rules",
+                            "uiHints",
+                            "generationGuidance",
+                            "migration"
+                          ],
                           "additionalProperties": false
                         },
                         "settings": {
@@ -29245,6 +30509,271 @@
                       },
                       "required": ["nextCursor"],
                       "additionalProperties": false
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["works"]
+      }
+    },
+    "/api/v1/genre-packs": {
+      "get": {
+        "operationId": "GenrePackController_list",
+        "parameters": [
+          {
+            "name": "key",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["xianxia", "history", "urban"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available genre packs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "key": {
+                            "type": "string",
+                            "enum": ["xianxia", "history", "urban"]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "exclusiveMinimum": true,
+                            "maximum": 9007199254740991
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "fields": {
+                            "type": "object",
+                            "additionalProperties": {}
+                          },
+                          "fieldSchema": {
+                            "maxItems": 100,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "enum": ["text", "number", "boolean", "list"]
+                                },
+                                "required": {
+                                  "type": "boolean"
+                                },
+                                "options": {
+                                  "maxItems": 100,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                }
+                              },
+                              "required": ["key", "label", "type", "required", "options"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "rules": {
+                            "maxItems": 50,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "key": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "description": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 1000
+                                }
+                              },
+                              "required": ["key", "label", "description"],
+                              "additionalProperties": false
+                            }
+                          },
+                          "uiHints": {
+                            "type": "object",
+                            "properties": {
+                              "worldLabel": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "powerSystemLabel": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "powerLevelLabel": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "factionLabel": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "itemLabel": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              }
+                            },
+                            "required": [
+                              "worldLabel",
+                              "powerSystemLabel",
+                              "powerLevelLabel",
+                              "factionLabel",
+                              "itemLabel"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "generationGuidance": {
+                            "type": "object",
+                            "properties": {
+                              "protagonistArchetypes": {
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "conflictSeeds": {
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                }
+                              },
+                              "worldRuleSeeds": {
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 300
+                                }
+                              },
+                              "forbiddenElements": {
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                }
+                              }
+                            },
+                            "required": [
+                              "protagonistArchetypes",
+                              "conflictSeeds",
+                              "worldRuleSeeds",
+                              "forbiddenElements"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "migration": {
+                            "nullable": true,
+                            "type": "object",
+                            "properties": {
+                              "fromVersion": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "toVersion": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "exclusiveMinimum": true,
+                                "maximum": 9007199254740991
+                              },
+                              "notes": {
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 500
+                                }
+                              }
+                            },
+                            "required": ["fromVersion", "toVersion", "notes"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "key",
+                          "version",
+                          "label",
+                          "fields",
+                          "fieldSchema",
+                          "rules",
+                          "uiHints",
+                          "generationGuidance",
+                          "migration"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
                     }
                   },
                   "required": ["data", "requestId", "meta"],
@@ -30689,14 +32218,205 @@
                               "maximum": 9007199254740991
                             },
                             "label": {
-                              "type": "string"
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
                             },
                             "fields": {
                               "type": "object",
                               "additionalProperties": {}
+                            },
+                            "fieldSchema": {
+                              "maxItems": 100,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "enum": ["text", "number", "boolean", "list"]
+                                  },
+                                  "required": {
+                                    "type": "boolean"
+                                  },
+                                  "options": {
+                                    "maxItems": 100,
+                                    "type": "array",
+                                    "items": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    }
+                                  }
+                                },
+                                "required": ["key", "label", "type", "required", "options"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "rules": {
+                              "maxItems": 50,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "key": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "description": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  }
+                                },
+                                "required": ["key", "label", "description"],
+                                "additionalProperties": false
+                              }
+                            },
+                            "uiHints": {
+                              "type": "object",
+                              "properties": {
+                                "worldLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "powerSystemLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "powerLevelLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "factionLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "itemLabel": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                }
+                              },
+                              "required": [
+                                "worldLabel",
+                                "powerSystemLabel",
+                                "powerLevelLabel",
+                                "factionLabel",
+                                "itemLabel"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "generationGuidance": {
+                              "type": "object",
+                              "properties": {
+                                "protagonistArchetypes": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "conflictSeeds": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  }
+                                },
+                                "worldRuleSeeds": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  }
+                                },
+                                "forbiddenElements": {
+                                  "maxItems": 30,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 100
+                                  }
+                                }
+                              },
+                              "required": [
+                                "protagonistArchetypes",
+                                "conflictSeeds",
+                                "worldRuleSeeds",
+                                "forbiddenElements"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "migration": {
+                              "nullable": true,
+                              "type": "object",
+                              "properties": {
+                                "fromVersion": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "toVersion": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 9007199254740991
+                                },
+                                "notes": {
+                                  "maxItems": 20,
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 500
+                                  }
+                                }
+                              },
+                              "required": ["fromVersion", "toVersion", "notes"],
+                              "additionalProperties": false
                             }
                           },
-                          "required": ["id", "key", "version", "label", "fields"],
+                          "required": [
+                            "id",
+                            "key",
+                            "version",
+                            "label",
+                            "fields",
+                            "fieldSchema",
+                            "rules",
+                            "uiHints",
+                            "generationGuidance",
+                            "migration"
+                          ],
                           "additionalProperties": false
                         },
                         "settings": {
@@ -79010,6 +80730,8 @@
                                       "REVISION_FINDING_REJECTED",
                                       "REVISION_ROUND_LIMIT_REACHED",
                                       "REVISION_INVALID_STATE",
+                                      "GENRE_PACK_VERSION_NOT_FOUND",
+                                      "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -79367,6 +81089,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -79659,6 +81383,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -110562,6 +112288,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -112106,6 +113834,8 @@
                                   "REVISION_FINDING_REJECTED",
                                   "REVISION_ROUND_LIMIT_REACHED",
                                   "REVISION_INVALID_STATE",
+                                  "GENRE_PACK_VERSION_NOT_FOUND",
+                                  "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -113638,6 +115368,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -115162,6 +116894,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -116686,6 +118420,8 @@
                                 "REVISION_FINDING_REJECTED",
                                 "REVISION_ROUND_LIMIT_REACHED",
                                 "REVISION_INVALID_STATE",
+                                "GENRE_PACK_VERSION_NOT_FOUND",
+                                "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -118269,6 +120005,8 @@
                                     "REVISION_FINDING_REJECTED",
                                     "REVISION_ROUND_LIMIT_REACHED",
                                     "REVISION_INVALID_STATE",
+                                    "GENRE_PACK_VERSION_NOT_FOUND",
+                                    "GENRE_PACK_IDEMPOTENCY_CONFLICT",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]

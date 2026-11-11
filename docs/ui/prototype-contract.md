@@ -10,10 +10,10 @@
 | --- | --- | --- | --- | --- | --- |
 | auth | `/login`、`/register`、`/forgot-password`、`/reset-password` | 登录、注册、验证码、找回 | loading/error/disabled/rate-limit/session-expired | 无 | 部分，缺会话过期和网络错误 |
 | dashboard | `/workspace` | 搜索、筛选、新建、归档、恢复、删除 | loading/empty/error/disabled/long | 无 | 部分，缺长列表和页级错误 |
-| new-project | `/workspace/new-project` | 想法/空白/模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long | 导入报告 | 已含设定导入、旧稿双模式、冲突裁决和断点续跑 |
+| new-project | `/workspace/new-project` | 想法/空白/三题材模板/设定导入/旧稿导入、蓝图、创建 | loading/error/partial/disabled/long | 导入报告 | 已含三题材模板、设定导入、旧稿双模式、冲突裁决和断点续跑 |
 | work-overview | `/workspace/[workId]/overview` | 继续写作、任务、最近修改、跨卷风格检查、卷末审计与签收 | loading/empty/error/readonly/archived/long | 生成摘要/风格证据/卷审计证据 | 分支上下文、最近修改与长内容证据已由 #176 补齐；作者视觉签收通过 |
-| bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | M1 生产实现，作者视觉签收通过；自动化 Golden 比较由 #174 跟踪 |
-| settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | M1 生产实现，作者视觉签收通过；自动化 Golden 比较由 #174 跟踪 |
+| bible | `/workspace/[workId]/bible` | 编辑、AI 检查、补全、世界铁律、锁定、版本历史、锁定修改请求、解锁 | loading/empty/error/locked/proposal/partial/conflict/long | AI 提案/证据 | 三题材生成已生产实现；新布局待作者视觉签收 |
+| settings | `/workspace/[workId]/settings` | 7 栏 CRUD、关系、地图、力量、时间线、题材包版本切换 | loading/empty/error/disabled/locked/proposal/long | 设定提案 | 题材包版本切换已生产实现；新布局待作者视觉签收 |
 | outline | `/workspace/[workId]/outline` | 树/看板/张力曲线/账本、黄金三章；章节/场景规划张力（0–100） | loading/empty/error/locked/partial | 黄金三章候选 | 五层大纲、卷契约、场景卡、剧情账本与黄金三章候选比较/选择/失败阻断/锁定已实现；作者视觉签收通过；自动化 Golden 比较由 #174 跟踪 |
 | foreshadows | `/workspace/[workId]/foreshadows` | 新增/编辑/埋设/推进/回收/失败回收/放弃/延期/检查 | loading/empty/error/disabled/long | 逾期提醒 | M1 生产实现，作者视觉签收通过；四档 Golden 比较已由 #172 补齐；loading 状态与完整 checklist 由 #174 跟踪 |
 | writing | `/workspace/[workId]/write` | 生成/续写/改写/检查/批准章节/确认事实/提交本章事实/版本 | loading/empty/error/disabled/partial/conflict/long | 本章参考/来源/淘汰/修订 diff/成本/检查点 | 已含三段状态机和页面状态 |
@@ -21,7 +21,7 @@
 | changes | `/workspace/[workId]/changes` | 新建/分析/应用/撤销/分支/比较/合并 | loading/error/conflict/partial/disabled | 逐对象比较/摘取 | 部分，对象比较已加，合并门禁待补 |
 | export-publish | `/workspace/[workId]/export` | 导出/下载/发布检查/预览/文案 | loading/empty/error/partial/expired/long | 任务报告 | 部分，缺失败/过期/长目录 |
 | work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/readonly | 无 | 已含删除强制导出和权限/只读状态 |
-| entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | M1 生产实现，作者视觉签收通过；四档 Golden 比较由 #172 补齐；prototype-only 扫描由 #174 跟踪 |
+| entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | M1 生产实现；力量层级文案随题材包变化，新布局待作者视觉签收 |
 | account-settings | `/workspace/settings`、`/workspace/settings/account` | 资料/笔名/会话/模型/导出/注销 | loading/error/invalid-key/disabled/partial/rate-limit | 无 | Key 错误态证据已由 #177 补齐；注销全流程仍由 #134 跟踪 |
 | help | `/help` | 快捷键/术语/FAQ | static/empty/error | 无 | 静态 |
 | legal | `/legal/*` | 协议/隐私/AI 标识 | static | 无 | 静态 |

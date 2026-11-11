@@ -11,6 +11,7 @@ import {
   auditLogs,
   createDatabaseClient,
   createDatabasePool,
+  genrePacks,
   storyBibleChangeRequests,
   storyBibles,
   storyBibleVersions,
@@ -36,6 +37,7 @@ export interface StoryBibleWorkContext {
   title: string;
   idea: string | null;
   genre: string;
+  generationGuidance: Record<string, unknown> | null;
   branchHeadNodeId: string | null;
 }
 
@@ -101,6 +103,7 @@ export class StoryBibleRepository implements OnModuleDestroy {
           title: works.title,
           idea: works.idea,
           genre: works.genre,
+          generationGuidance: genrePacks.generationGuidance,
           branchHeadNodeId: workBranches.headNodeId,
         })
         .from(works)
@@ -108,6 +111,7 @@ export class StoryBibleRepository implements OnModuleDestroy {
           workBranches,
           and(eq(workBranches.workId, works.id), eq(workBranches.userId, works.userId)),
         )
+        .leftJoin(genrePacks, eq(genrePacks.id, works.templatePackId))
         .where(
           and(
             eq(works.id, workId),

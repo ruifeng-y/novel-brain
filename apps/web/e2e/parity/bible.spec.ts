@@ -289,19 +289,14 @@ test("renders loading, error, partial and long states across four viewports", as
   }
 });
 
-test("shows non-xianxia works as an explicit disabled scope", async ({ page, context }) => {
+test("generates a history story bible without cultivation realms", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const work = await createBibleWork(page, "旧朝档案", "history");
 
   await page.goto(`/workspace/${work.id}/bible`);
-  await expect(
-    page.getByText("M0 故事圣经仅支持仙侠题材，当前作品暂时只能查看空九卡。"),
-  ).toBeVisible();
-  await expect(
-    page.locator(".story-bible-empty").getByRole("button", { name: "当前仅支持仙侠" }),
-  ).toBeDisabled();
-  await expect(
-    page.locator(".head-actions").getByRole("button", { name: "生成九卡提案" }),
-  ).toBeDisabled();
+  await page.locator(".story-bible-empty").getByRole("button", { name: "生成九卡提案" }).click();
+  await expect(page.getByRole("heading", { name: "AI 已生成九卡提案" })).toBeVisible();
+  await expect(page.getByText("粮道约束", { exact: true })).toBeVisible();
+  await expect(page.getByText("境界差距", { exact: true })).toHaveCount(0);
   await expect(page.locator(".story-bible-nav-item")).toHaveCount(9);
 });

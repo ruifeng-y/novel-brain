@@ -117,6 +117,8 @@ export const ERROR_CODES = [
   "REVISION_FINDING_REJECTED",
   "REVISION_ROUND_LIMIT_REACHED",
   "REVISION_INVALID_STATE",
+  "GENRE_PACK_VERSION_NOT_FOUND",
+  "GENRE_PACK_IDEMPOTENCY_CONFLICT",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -476,19 +478,95 @@ export const workCreateRequestSchema = z.discriminatedUnion("mode", [
   }),
   z.object({
     mode: z.literal("template"),
-    templateKey: z.literal("xianxia"),
+    templateKey: workGenreSchema,
     ...workBaseInputShape,
   }),
 ]);
 export type WorkCreateRequest = z.infer<typeof workCreateRequestSchema>;
 
-export const workTemplatePackSchema = z.object({
-  id: uuidV7Schema,
-  key: workGenreSchema,
-  version: z.number().int().positive(),
-  label: z.string(),
-  fields: z.record(z.string(), z.unknown()),
-});
+export const genrePackRuleSchema = z
+  .object({
+    key: z.string().min(1).max(100),
+    label: z.string().min(1).max(200),
+    description: z.string().min(1).max(1_000),
+  })
+  .strict();
+export type GenrePackRule = z.infer<typeof genrePackRuleSchema>;
+
+export const genrePackUiHintsSchema = z
+  .object({
+    worldLabel: z.string().min(1).max(100),
+    powerSystemLabel: z.string().min(1).max(100),
+    powerLevelLabel: z.string().min(1).max(100),
+    factionLabel: z.string().min(1).max(100),
+    itemLabel: z.string().min(1).max(100),
+  })
+  .strict();
+export type GenrePackUiHints = z.infer<typeof genrePackUiHintsSchema>;
+
+export const genrePackGenerationGuidanceSchema = z
+  .object({
+    protagonistArchetypes: z.array(z.string().min(1).max(200)).max(20),
+    conflictSeeds: z.array(z.string().min(1).max(200)).max(30),
+    worldRuleSeeds: z.array(z.string().min(1).max(300)).max(30),
+    forbiddenElements: z.array(z.string().min(1).max(100)).max(30),
+  })
+  .strict();
+export type GenrePackGenerationGuidance = z.infer<typeof genrePackGenerationGuidanceSchema>;
+
+export const genrePackMigrationSchema = z
+  .object({
+    fromVersion: z.number().int().positive(),
+    toVersion: z.number().int().positive(),
+    notes: z.array(z.string().min(1).max(500)).max(20),
+  })
+  .strict();
+export type GenrePackMigration = z.infer<typeof genrePackMigrationSchema>;
+
+export const genrePackFieldDefinitionSchema = z
+  .object({
+    key: z.string().min(1).max(100),
+    label: z.string().min(1).max(100),
+    type: z.enum(["text", "number", "boolean", "list"]),
+    required: z.boolean(),
+    options: z.array(z.string().min(1).max(200)).max(100),
+  })
+  .strict();
+export type GenrePackFieldDefinition = z.infer<typeof genrePackFieldDefinitionSchema>;
+
+export const genrePackDefinitionSchema = z
+  .object({
+    id: uuidV7Schema,
+    key: workGenreSchema,
+    version: z.number().int().positive(),
+    label: z.string().min(1).max(100),
+    fields: z.record(z.string(), z.unknown()),
+    fieldSchema: z.array(genrePackFieldDefinitionSchema).max(100),
+    rules: z.array(genrePackRuleSchema).max(50),
+    uiHints: genrePackUiHintsSchema,
+    generationGuidance: genrePackGenerationGuidanceSchema,
+    migration: genrePackMigrationSchema.nullable(),
+  })
+  .strict();
+export type GenrePackDefinition = z.infer<typeof genrePackDefinitionSchema>;
+
+export const genrePackListQuerySchema = z
+  .object({
+    key: workGenreSchema.optional(),
+  })
+  .strict();
+export type GenrePackListQuery = z.infer<typeof genrePackListQuerySchema>;
+export const genrePackListResponseSchema = apiEnvelopeSchema(z.array(genrePackDefinitionSchema));
+
+export const genrePackVersionChangeRequestSchema = z
+  .object({
+    targetVersion: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type GenrePackVersionChangeRequest = z.infer<typeof genrePackVersionChangeRequestSchema>;
+
+export const workTemplatePackSchema = genrePackDefinitionSchema;
 export type WorkTemplatePack = z.infer<typeof workTemplatePackSchema>;
 
 export const workSchema = z.object({

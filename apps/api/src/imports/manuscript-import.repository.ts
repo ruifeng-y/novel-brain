@@ -7,13 +7,14 @@ import {
   chapters,
   createDatabaseClient,
   createDatabasePool,
+  genrePacks,
   importJobs,
   versionNodes,
   workBranches,
   works,
   type DatabaseClient,
 } from "@novel-brain/db";
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -137,6 +138,15 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
       const workId = uuidv7();
       const branchId = uuidv7();
       const rootNodeId = uuidv7();
+      const [genrePack] = await transaction
+        .select()
+        .from(genrePacks)
+        .where(eq(genrePacks.key, input.genre))
+        .orderBy(desc(genrePacks.version))
+        .limit(1);
+      if (!genrePack) {
+        throw new Error("Genre pack is unavailable");
+      }
       const [work] = await transaction
         .insert(works)
         .values({
@@ -149,7 +159,15 @@ export class ManuscriptImportRepository implements OnModuleDestroy {
           scaleTarget: input.scaleTarget,
           chapterLengthTarget: input.chapterLengthTarget,
           sourceMode: "manuscript_import",
-          settings: { importId: input.importId },
+          templatePackId: genrePack.id,
+          settings: {
+            importId: input.importId,
+            genrePack: {
+              key: genrePack.key,
+              version: genrePack.version,
+              fields: genrePack.fields,
+            },
+          },
           idempotencyKey: input.idempotencyKey,
         })
         .returning();

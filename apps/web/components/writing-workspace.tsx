@@ -2170,7 +2170,10 @@ export function WritingWorkspace({
         <div>
           <span className="panel-kicker">当前题材规则</span>
           <strong>
-            {genreLabels[work.genre]} · {work.templatePack?.label ?? scaleLabels[work.scaleTarget]}
+            {genreLabels[work.genre]} ·{" "}
+            {work.sourceMode === "template" && work.templatePack
+              ? work.templatePack.label
+              : scaleLabels[work.scaleTarget]}
           </strong>
         </div>
         <div className="writing-genre-rules">

@@ -72,12 +72,15 @@
 | `FACT_` | 事实决策和提交门禁 |
 | `CANON_` | 故事事实提交和版本节点 |
 | `IMPORT_` | 设定导入、旧稿导入和冲突 |
+| `GENRE_` | 题材包版本、幂等和跨题材冲突 |
 | `RATE_LIMIT_` | 接口限流 |
 | `INTERNAL_` | 未分类服务端错误 |
 
 M0 关键错误：
 
 - `VALIDATION_INVALID`
+- `GENRE_PACK_VERSION_NOT_FOUND`
+- `GENRE_PACK_IDEMPOTENCY_CONFLICT`
 - `AUTH_CODE_INVALID`
 - `AUTH_RATE_LIMITED`
 - `AUTH_EMAIL_TAKEN`
@@ -164,6 +167,8 @@ M0 关键错误：
 | GET/POST | `/api/v1/works/:workId/branches/:branchId/entities` | 最小世界/人物/金手指实体 |
 | GET/PATCH | `/api/v1/works/:workId/branches/:branchId/entities/:entityId` | 实体详情 |
 | GET | `/api/v1/works/:workId/branches/:branchId/facts` | 已确认设定投影 |
+| GET | `/api/v1/genre-packs` | 可用题材包及版本化规则/UI hints |
+| POST | `/api/v1/works/:workId/genre-pack/version` | 幂等升级/回滚作品题材包版本 |
 
 ### 5.5 章节与生成
 
@@ -227,7 +232,7 @@ M0 关键错误：
 - 锁定后的直接写操作返回 `BIBLE_LOCKED`；修改请求先记录旧值、新值、标题、原因和中等风险，等待后续影响分析。
 - `versions` 与 `world-rules` 使用 `cursor`/`limit` 列表分页并返回 `meta.nextCursor`；修改请求创建支持 `Idempotency-Key`。
 - `lockedBy` 为锁定操作者的用户 ID；锁定时间同时写入故事圣经、版本快照和版本节点。
-- M0 故事圣经仅对仙侠作品开放生成、编辑和锁定；其他题材读取空九卡，写操作返回 `VALIDATION_INVALID`。
+- 仙侠、历史、都市作品均可生成、编辑和锁定故事圣经；题材包规则禁止的术语在作者编辑或修改请求中返回 `VALIDATION_INVALID`。
 
 ### Chapter
 

@@ -169,6 +169,26 @@ test.beforeEach(async () => {
   await resetRateLimits();
 });
 
+test("switches a history work to an older genre pack version", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "旧朝军功簿",
+    genre: "history",
+    scaleTarget: "long",
+    chapterLengthTarget: 3000,
+  });
+
+  await page.goto(`/workspace/${work.id}/settings`);
+  const packBar = page.getByLabel("题材包版本");
+  await expect(packBar.getByText("架空历史模板", { exact: true })).toBeVisible();
+  await expect(packBar.getByText("当前第 2 版")).toBeVisible();
+  await packBar.getByLabel("题材包版本").selectOption("1");
+  await packBar.getByRole("button", { name: "切换题材包版本" }).click();
+  await expect(page.getByText("题材包已切换到第 1 版。")).toBeVisible();
+  await expect(packBar.getByText("当前第 1 版")).toBeVisible();
+});
+
 test("creates typed settings in all seven columns with custom fields, proposals and change requests", async ({
   page,
   context,

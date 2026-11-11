@@ -188,6 +188,7 @@ export const idempotencyRecords = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     scope: text("scope").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash"),
     resourceType: text("resource_type").notNull(),
     resourceId: uuid("resource_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -211,6 +212,13 @@ export const genrePacks = pgTable(
     version: integer("version").notNull(),
     label: text("label").notNull(),
     fields: jsonb("fields").$type<Record<string, unknown>>().notNull(),
+    rules: jsonb("rules").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    uiHints: jsonb("ui_hints").$type<Record<string, unknown>>().notNull().default({}),
+    generationGuidance: jsonb("generation_guidance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    migration: jsonb("migration").$type<Record<string, unknown> | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

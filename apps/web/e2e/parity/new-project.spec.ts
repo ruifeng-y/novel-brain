@@ -63,6 +63,21 @@ test("creates a xianxia template work", async ({ page, context }) => {
   await expect(page.getByText("仙侠模板 · 修真文明", { exact: true })).toBeVisible();
 });
 
+test("creates a history template work with military pack hints", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  await page.getByRole("button", { name: "题材模板", exact: true }).click();
+  await page.getByLabel("书名").fill("边关粮道");
+  await page.getByLabel("题材模板").selectOption("history");
+  await expect(
+    page.locator(".creation-preview").getByText("架空历史模板 · 架空古代", { exact: false }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "创建作品并进入总览" }).click();
+
+  await expect(page).toHaveURL(/\/workspace\/[0-9a-f-]+\/overview$/);
+  await expect(page.getByRole("heading", { name: "边关粮道" })).toBeVisible();
+  await expect(page.getByText("架空历史模板 · 架空古代", { exact: true })).toBeVisible();
+});
+
 test("shows loading, disabled, error and long-content states", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const longTitle = "一部标题很长很长但仍然需要在创建预览里完整换行且不能撑破页面的仙侠作品";
