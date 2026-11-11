@@ -69,19 +69,23 @@ Issue #147 在 outline 页加入黄金三章候选比较、六维评分与证据
 - writing
 - account-settings
 
-Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者本次对 8 个页面的视觉方向作出签收；其中 #172 为 `entity-detail` 与 `foreshadows` 新生成并提交了 8 张正式 Linux/CI Golden，#176 为 `work-overview` 新生成并提交了正常态与长内容态共 8 张正式 Linux/CI Golden。其余 20 张同名页面文件属于早期基线，不作为当前 M1 的正式比较证据，需在 #174 中重新生成。生成证据为 [Production CI #42670999022](https://github.com/ruifeng-y/novel-brain/actions/runs/42670999022)，正常 Playwright 截图比较见 [Production CI #42682407291](https://github.com/ruifeng-y/novel-brain/actions/runs/42682407291)。
+Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者本次对 8 个页面的视觉方向作出签收；其中 #172 为 `entity-detail` 与 `foreshadows` 生成 8 张正式 Linux/CI Golden，#174 为 `bible`、`settings`、`outline`、`writing` 与 `account-settings` 生成 20 张正常态正式 Linux/CI Golden，#176 为 `work-overview` 生成正常态与长内容态共 8 张正式 Linux/CI Golden，#177 为 `account-settings` 生成 4 张 Key 错误态 Golden。8 个 M1 验收页面现在都有当前正式视觉基线。全量生成证据见 [Production CI #42945281978](https://github.com/ruifeng-y/novel-brain/actions/runs/42945281978)。
 
 本次视觉判断没有未批准项，也没有新增产品偏差。它取代前文 2026-11-05 至 2026-11-07 对 M1 页面视觉方向的待签收状态，但不替代其余页面尚未生成的正式 Golden 证据。
 
-#172 当前只有 `entity-detail` 与 `foreshadows` 具备真实生产路由的四档 `toHaveScreenshot` 断言，但 `entity-detail` 仍缺 `prototype_only` 泄漏扫描证据，`foreshadows` 仍缺 `loading` 状态断言；#176 补齐 `work-overview` 正常态和长内容态的自动 Golden 比较，其余 5 页仍使用 attach 截图或未参与比较的历史 Golden 文件。完整 page checklist、其余 20 张正式 Golden 和状态证据由 #174 跟踪。完成前，8 个页面都不得标记为 `parity-verified`，#161 的完整自动化视觉回归条件也尚未满足。
+#172、#174、#176 与 #177 合计补齐 8 个 M1 验收页面的真实生产路由四档 `toHaveScreenshot`、当前正式 Golden、`prototype_only` 泄漏扫描与必需状态证据。#174 额外补齐 `foreshadows` 的 `loading` 状态与 `entity-detail` 的结构化扫描附件。正常 Linux 截图比较以本 PR 最终绿色 Production CI 为准；合并前不得把未通过正常回归的页面标记为完成。
 
 ## 2026-11-10 Work Overview 分支与长内容证据
 
-签收人：ruifeng-y。#176 补齐 `work-overview` 的当前作品/主线壳层上下文、待处理与最近修改列表，以及真实长作品名、长摘要、长章节和长设定证据。正常态与长内容态均在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 8 张 Linux/CI Golden 作为当前视觉基线，生成证据为 [Production CI #42810925879](https://github.com/ruifeng-y/novel-brain/actions/runs/42810925879)。本次证据只覆盖 `work-overview` 生产路由；全站当前作品与平行版本切换一致性仍由 #95、#123 跟踪，不声称 WORK-009 全站完成。本记录补齐 #174 中 `work-overview` 的状态缺口，不把整页提升为 `parity-verified`。
+签收人：ruifeng-y。#176 补齐 `work-overview` 的当前作品/主线壳层上下文、待处理与最近修改列表，以及真实长作品名、长摘要、长章节和长设定证据。正常态与长内容态均在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 8 张 Linux/CI Golden 作为当前视觉基线，生成证据为 [Production CI #42810925879](https://github.com/ruifeng-y/novel-brain/actions/runs/42810925879)。本次证据只覆盖 `work-overview` 生产路由；全站当前作品与平行版本切换一致性仍由 #95、#123 跟踪，不声称 WORK-009 全站完成。单票记录不提升整页；#174 完成其余页面和状态证据后统一进入 `parity-verified`。
 
 ## 2026-11-10 Account Settings Key 错误态证据
 
 签收人：ruifeng-y。#177 补齐 `account-settings` 的 Key 无效、失效、连接测试失败、掩码保持、失败后替换 Key 与重试恢复证据；原型账号页同步登记掩码错误行与“替换 Key”动作。正常态生产 Golden 不变；错误态在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 4 张错误态 Linux/CI Golden 作为当前状态基线，生成证据为 [Production CI #42780689501](https://github.com/ruifeng-y/novel-brain/actions/runs/42780689501)，正常 Linux 回归以 PR #178 的最终绿色 Production CI 为准。账号导出、注销恢复期与永久删除仍由 #134 独立跟踪，本记录不提升整页状态。
+
+## 2026-11-11 Remaining M1 Golden 与状态证据
+
+签收人：ruifeng-y。#174 为 `bible`、`settings`、`outline`、`writing` 与 `account-settings` 补齐四档真实生产路由 `toHaveScreenshot`，生成 20 张正常态 Linux/CI Golden；同时补齐 `foreshadows` 的 `loading` 状态和 `entity-detail` 的 `prototype_only` 泄漏扫描附件。生成证据为 [Production CI #42945281978](https://github.com/ruifeng-y/novel-brain/actions/runs/42945281978)。8 个 M1 验收页面在正常 Linux 回归通过后进入 `parity-verified`；本记录不扩张到 work-settings、M2 或 M3 页面。
 
 ## 变更规则
 
