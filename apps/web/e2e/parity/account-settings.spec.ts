@@ -505,28 +505,26 @@ test("disabled accounts redirect to the permission state at four viewports", asy
   }
 });
 
-test("account settings holds at all four viewports", async ({
-  page,
-  context,
-  request,
-}, testInfo) => {
+test("account settings holds at all four viewports", async ({ page, context, request }) => {
   await authenticatedPage(page, context, request);
+  await freezeApiTimestamps(page);
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/workspace/settings/account");
+    await expect(page).toHaveURL(/\/workspace\/settings\/account$/u);
     await expect(page.getByRole("heading", { name: "把写作环境准备好" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "模型设置作者" })).toBeVisible();
     await expectAuthorFacingLanguage(page);
+    await expectNoPrototypeOnlyLeakage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    const screenshot = await page.screenshot({ animations: "disabled", caret: "hide" });
-    await testInfo.attach(`account-settings-${width}`, {
-      body: screenshot,
-      contentType: "image/png",
-    });
+    await expect(page).toHaveScreenshot(
+      ["account-settings", `account-settings-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });
 

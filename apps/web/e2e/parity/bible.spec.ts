@@ -7,7 +7,12 @@ import {
 } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
@@ -201,7 +206,7 @@ test("generates, edits, checks readiness, locks and rejects locked edits", async
 test("renders loading, error, partial and long states across four viewports", async ({
   page,
   context,
-}, testInfo) => {
+}) => {
   await authenticatedPage(page, context);
   const work = await createBibleWork(page, "长夜仙途");
   const initial = await getStoryBible(page.request, work);
@@ -260,24 +265,27 @@ test("renders loading, error, partial and long states across four viewports", as
     },
   });
   expect(longUpdate.ok()).toBe(true);
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/bible`);
+    await expect(page).toHaveURL(new RegExp(`/workspace/${work.id}/bible$`, "u"));
     await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
     await expect(page.locator(".story-bible-nav-item")).toHaveCount(9);
     await expect(page.locator("#bible-oneSentence .story-bible-card-copy")).toContainText(
       "长内容：",
     );
+    await expectNoPrototypeOnlyLeakage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await testInfo.attach(`bible-${width}`, {
-      body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
-      contentType: "image/png",
-    });
+    await expect(page).toHaveScreenshot(
+      ["bible", `bible-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });
 

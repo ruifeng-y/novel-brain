@@ -8,7 +8,12 @@ import {
   findCharacterId,
   styleBranchPath,
 } from "../helpers/styles";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 import { startWorker } from "../helpers/worker";
 
 const origin = "http://localhost:3000";
@@ -232,7 +237,7 @@ test("opens a planned chapter, saves twice and compares two versions", async ({
 test("shows empty and error states and keeps the editor usable at four viewports", async ({
   page,
   context,
-}, testInfo) => {
+}) => {
   await authenticatedPage(page, context);
   const work = await createWritingWork(page);
 
@@ -260,10 +265,14 @@ test("shows empty and error states and keeps the editor usable at four viewports
   await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
   await expect(page.getByText("写作台加载失败。")).toBeVisible();
   await page.unroute(matchesChapterList);
+  await freezeApiTimestamps(page);
 
   for (const width of [390, 900, 1180, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/write?chapterId=${chapter.id}`);
+    await expect(page).toHaveURL(
+      new RegExp(`/workspace/${work.id}/write\\?chapterId=${chapter.id}$`, "u"),
+    );
     await expect(page.getByRole("heading", { name: "一只手也能结印" })).toBeVisible();
     await expect(page.getByRole("textbox", { name: "章节正文" })).toBeVisible();
     await page.getByRole("tab", { name: "本章参考" }).click();
@@ -272,10 +281,12 @@ test("shows empty and error states and keeps the editor usable at four viewports
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await testInfo.attach(`writing-${width}`, {
-      body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
-      contentType: "image/png",
-    });
+    await expectNoPrototypeOnlyLeakage(page);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["writing", `writing-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });
 

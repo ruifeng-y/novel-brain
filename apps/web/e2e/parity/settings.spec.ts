@@ -1,7 +1,12 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
@@ -476,21 +481,25 @@ test("filters settings by search and status and opens recent updates", async ({
   await expect(page.getByRole("heading", { name: "已锁定的规则" })).toBeVisible();
 });
 
-test("holds the empty settings state at all four viewports", async ({
-  page,
-  context,
-}, testInfo) => {
+test("holds the empty settings state at all four viewports", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const work = await createSettingsWork(page);
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/settings`);
+    await expect(page).toHaveURL(new RegExp(`/workspace/${work.id}/settings$`, "u"));
     await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
     await expect(page.locator(".settings-column-nav button")).toHaveCount(7);
     await expect(page.getByText("还没有世界规则")).toBeVisible();
+    await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
-    await capture(page, testInfo, `settings-empty-${width}`);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["settings", `settings-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });
 
