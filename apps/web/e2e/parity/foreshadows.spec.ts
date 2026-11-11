@@ -2,7 +2,12 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { Pool } from "pg";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
@@ -212,7 +217,7 @@ test("creates, plants and pays off a foreshadow through the production page", as
 test("renders a long ledger at four viewports and opens the outline ledger", async ({
   page,
   context,
-}, testInfo) => {
+}) => {
   test.setTimeout(120_000);
   await authenticatedPage(page, context);
   const work = await createLedgerWork(page);
@@ -226,16 +231,24 @@ test("renders a long ledger at four viewports and opens the outline ledger", asy
       importance: index % 2 === 0 ? "must" : "optional",
     });
   }
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/foreshadows`);
+    await expect(page).toHaveURL(new RegExp(`/workspace/${work.id}/foreshadows$`, "u"));
+    await expect(page.getByRole("heading", { name: "埋下的，都要有回收计划" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "新增伏笔" })).toBeEnabled();
     await expect(page.locator("article.foreshadow-row")).toHaveCount(14);
+    await expect(page.locator("article.foreshadow-row").first()).toContainText("第 1 条长线伏笔");
+    await expectAuthorFacingLanguage(page);
+    await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
-    await testInfo.attach(`foreshadows-long-${width}`, {
-      body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
-      contentType: "image/png",
-    });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["foreshadows", `foreshadows-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 
   await page.setViewportSize({ width: 1440, height: 900 });
@@ -252,6 +265,20 @@ test("renders a recoverable error state at four viewports", async ({ page, conte
   test.setTimeout(60_000);
   await authenticatedPage(page, context);
   const work = await createLedgerWork(page);
+  let releaseLedger: () => void = () => undefined;
+  const ledgerGate = new Promise<void>((resolve) => {
+    releaseLedger = resolve;
+  });
+  await page.route(`**${branchPath(work)}/ledger`, async (route) => {
+    await ledgerGate;
+    await route.continue();
+  });
+  await page.goto(`/workspace/${work.id}/foreshadows`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("正在加载伏笔账本")).toBeVisible();
+  releaseLedger();
+  await expect(page.getByRole("heading", { name: "埋下的，都要有回收计划" })).toBeVisible();
+  await page.unroute(`**${branchPath(work)}/ledger`);
+
   await page.route(`**${branchPath(work)}/ledger`, async (route) => {
     await route.fulfill({
       status: 500,

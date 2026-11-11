@@ -1124,7 +1124,7 @@ describe("settings center HTTP integration", () => {
         data: { rule: "人物档案不应接受世界规则字段。" },
       })
       .expect(400);
-    expect(response.body.error.code).toBe("VALIDATION_INVALID");
+    expect(response.body.error.code).toBe("SETTING_DOMAIN_DATA_FORBIDDEN");
   });
 
   it("cannot read or mutate another author's settings", async () => {
@@ -1967,6 +1967,296 @@ describe("settings center HTTP integration", () => {
     });
   });
 
+  it("rejects generic domain data patches and updates dedicated projections in one truth source", async () => {
+    const owner = await createAuthenticatedAgent("settings-domain-single-source@example.com");
+    const work = await createWork(owner, "单一真源作品");
+    const token = await csrf(owner);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+    const character = await owner
+      .post(`${base}/entities`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        type: "character",
+        name: "沈砚",
+        aliases: [],
+        summary: "外门杂役。",
+        description: "",
+        tags: [],
+        data: {
+          bodyState: "左臂骨折。",
+          knowledgeBoundary: "不知道父母死因。",
+          relationshipSummary: "顾青负责监视他。",
+        },
+      })
+      .expect(201);
+
+    const characterRejected = await owner
+      .patch(`${base}/entities/${character.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: character.body.data.version,
+        data: { bodyState: "左臂已愈。" },
+      })
+      .expect(400);
+    expect(characterRejected.body.error.code).toBe("SETTING_DOMAIN_DATA_FORBIDDEN");
+
+    const characterUpdated = await owner
+      .patch(`${base}/characters/${character.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: character.body.data.version,
+        name: "沈砚·改",
+        summary: "内门弟子。",
+        profile: {
+          desire: "找回失去的记忆",
+          fear: "再次被宗门抛弃",
+          goal: "进入内门",
+          voiceSample: "我不欠任何人。",
+          voiceGuide: "短句，克制。",
+          disguise: "装作不在意。",
+        },
+      })
+      .expect(200);
+    expect(characterUpdated.body.data.character.label).toBe("沈砚·改");
+    const characterProjection = await owner
+      .get(`${base}/entities/${character.body.data.id}`)
+      .expect(200);
+    expect(characterProjection.body.data).toMatchObject({
+      name: "沈砚·改",
+      summary: "内门弟子。",
+      version: 2,
+    });
+
+    const map = await owner
+      .post(`${base}/world/maps`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "北域",
+        aliases: [],
+        summary: "北域地图。",
+        description: "",
+        tags: [],
+        details: "第一版地图说明。",
+      })
+      .expect(201);
+    const mapRejected = await owner
+      .patch(`${base}/entities/${map.body.data.map.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: map.body.data.version,
+        data: { details: "第二版地图说明。" },
+      })
+      .expect(400);
+    expect(mapRejected.body.error.code).toBe("SETTING_DOMAIN_DATA_FORBIDDEN");
+    const mapUpdated = await owner
+      .patch(`${base}/world/maps/${map.body.data.map.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: map.body.data.version,
+        name: "北域·改",
+        summary: "更新后的北域地图。",
+        details: "第二版地图说明。",
+      })
+      .expect(200);
+    expect(mapUpdated.body.data.map.label).toBe("北域·改");
+    const mapProjection = await owner.get(`${base}/entities/${map.body.data.map.id}`).expect(200);
+    expect(mapProjection.body.data).toMatchObject({
+      name: "北域·改",
+      summary: "更新后的北域地图。",
+      version: 2,
+      data: { details: "第二版地图说明。" },
+    });
+
+    await owner
+      .post(`${base}/world/timeline/eras`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "大玄历",
+        orderIndex: 1,
+        startSortKey: 0,
+        endSortKey: null,
+        description: "大玄王朝纪年。",
+      })
+      .expect(201);
+    const timelineEvent = await owner
+      .post(`${base}/world/timeline/events`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "忘川村灭门",
+        aliases: [],
+        summary: "改变沈砚命运的事件。",
+        description: "",
+        tags: [],
+        era: "大玄历",
+        storyTime: { era: "大玄历", label: "十六年前", sortKey: 16 },
+        durationMinutes: 0,
+        durationLabel: "一夜",
+        event: "第一版事件描述。",
+        validity: {
+          fromChapter: 1,
+          toChapter: null,
+          fromStoryTime: null,
+          toStoryTime: null,
+        },
+      })
+      .expect(201);
+    const timelineRejected = await owner
+      .patch(`${base}/entities/${timelineEvent.body.data.event.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: 1,
+        data: { event: "第二版事件描述。" },
+      })
+      .expect(400);
+    expect(timelineRejected.body.error.code).toBe("SETTING_DOMAIN_DATA_FORBIDDEN");
+    const timelineUpdated = await owner
+      .patch(`${base}/world/timeline/events/${timelineEvent.body.data.event.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: 1,
+        name: "忘川村灭门·改",
+        summary: "更新后的关键事件。",
+        era: "大玄历",
+        storyTime: { era: "大玄历", label: "十六年前", sortKey: 16 },
+        durationMinutes: 0,
+        durationLabel: "一夜",
+        event: "第二版事件描述。",
+        validity: {
+          fromChapter: 1,
+          toChapter: null,
+          fromStoryTime: null,
+          toStoryTime: null,
+        },
+      })
+      .expect(200);
+    expect(timelineUpdated.body.data.event.label).toBe("忘川村灭门·改");
+    const timelineProjection = await owner
+      .get(`${base}/entities/${timelineEvent.body.data.event.id}`)
+      .expect(200);
+    expect(timelineProjection.body.data).toMatchObject({
+      name: "忘川村灭门·改",
+      summary: "更新后的关键事件。",
+      version: 2,
+      data: { event: "第二版事件描述。" },
+    });
+
+    const listed = await owner.get(`${base}/entities?limit=50`).expect(200);
+    expect(listed.body.data.map((entity: { id: string }) => entity.id)).toEqual(
+      expect.arrayContaining([
+        character.body.data.id,
+        map.body.data.map.id,
+        timelineEvent.body.data.event.id,
+      ]),
+    );
+    const characterVersion = await owner
+      .get(`${base}/entities/${character.body.data.id}/versions?limit=1`)
+      .expect(200);
+    expect(characterVersion.body.data[0].snapshot.payload.name).toBe("沈砚·改");
+
+    const faction = await owner
+      .post(`${base}/world/factions`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "太玄门",
+        aliases: [],
+        summary: "北域第一剑宗。",
+        description: "",
+        tags: [],
+        profile: { overview: "第一版势力总览。", goals: "", resources: "", doctrine: "" },
+      })
+      .expect(201);
+    const power = await owner
+      .post(`${base}/world/power-systems`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "北域双路径",
+        aliases: [],
+        summary: "剑修与体修并行。",
+        description: "",
+        tags: [],
+        overview: "第一版力量体系。",
+        lifespanPolicy: {
+          mode: "none",
+          unit: "年",
+          basis: "",
+          description: "",
+          pathId: null,
+          fixedAmount: null,
+        },
+        paths: [],
+      })
+      .expect(201);
+    const mechanism = await owner
+      .post(`${base}/world/mechanisms`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "忘川书",
+        aliases: [],
+        summary: "吞噬记忆的古书。",
+        description: "",
+        tags: [],
+        mechanismType: "特殊机制",
+        owner: null,
+        powerSystem: null,
+        rules: "吞噬记忆换取力量。",
+        costs: "",
+        limits: "",
+        growth: "",
+      })
+      .expect(201);
+    const item = await owner
+      .post(`${base}/world/items`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "听潮剑",
+        aliases: [],
+        summary: "会记录持剑者杀意的法器。",
+        description: "",
+        tags: [],
+        kind: "item",
+        category: "信物",
+        grade: "玄阶",
+        effect: "剑身会记录杀意。",
+        cost: "",
+        limits: "",
+        ownershipModel: "shared",
+        consumable: false,
+        quantity: 1,
+        equipmentSlot: null,
+      })
+      .expect(201);
+
+    for (const rejected of [
+      { id: faction.body.data.faction.id, version: faction.body.data.version },
+      { id: power.body.data.powerSystem.id, version: power.body.data.version },
+      { id: mechanism.body.data.mechanism.id, version: 1 },
+      { id: item.body.data.item.id, version: 1 },
+    ]) {
+      const response = await owner
+        .patch(`${base}/entities/${rejected.id}`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({ version: rejected.version, data: { details: "不允许写回领域真源。" } })
+        .expect(400);
+      expect(response.body.error.code).toBe("SETTING_DOMAIN_DATA_FORBIDDEN");
+    }
+  });
+
   it("lists and restores a character domain snapshot written by the character API", async () => {
     const owner = await createAuthenticatedAgent("settings-character-domain-history@example.com");
     const work = await createWork(owner);
@@ -2408,20 +2698,26 @@ describe("settings center HTTP integration", () => {
       .get(`${base}/entities/${timelineEvent.body.data.event.id}`)
       .expect(200);
     const updatedTimeline = await owner
-      .patch(`${base}/entities/${timelineEvent.body.data.event.id}`)
+      .patch(`${base}/world/timeline/events/${timelineEvent.body.data.event.id}`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
         version: timelineEntity.body.data.version,
-        data: { event: "第二版事件描述。" },
+        era: "大玄历",
+        storyTime: { era: "大玄历", label: "十六年前", sortKey: 16 },
+        event: "第二版事件描述。",
       })
+      .expect(200);
+    expect(updatedTimeline.body.data.eventText).toBe("第二版事件描述。");
+    const updatedTimelineEntity = await owner
+      .get(`${base}/entities/${timelineEvent.body.data.event.id}`)
       .expect(200);
     await owner
       .post(`${base}/entities/${timelineEvent.body.data.event.id}/restore`)
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({
-        version: updatedTimeline.body.data.version,
+        version: updatedTimelineEntity.body.data.version,
         targetVersion: 1,
         reason: "恢复时间线初版事件。",
       })

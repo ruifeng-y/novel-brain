@@ -46,6 +46,12 @@ describe("batch plan contracts", () => {
         workId: "01a1b4ed-6396-73e2-9c10-01530a818ed8",
         branchId: "01a1b4ed-6396-73e2-9c10-01530a818ed9",
         actorId: "01a1b4ed-6396-73e2-9c10-01530a818eda",
+        idempotencyKey: "batch-tick:01a1b4ed-6396-73e2-9c10-01530a818ed7",
+        checkpoint: {
+          schemaVersion: 1,
+          revision: 0,
+          planId: "01a1b4ed-6396-73e2-9c10-01530a818ed7",
+        },
       }),
     ).toMatchObject({ jobType: "batch_tick" });
   });

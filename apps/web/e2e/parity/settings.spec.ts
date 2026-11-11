@@ -1,7 +1,12 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
@@ -245,9 +250,12 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await page.getByLabel("名称").fill("沈砚");
   await page.getByLabel("别名").fill("小砚");
   await page.getByLabel("一句话摘要").fill("外门杂役，正在隐藏忘川书的存在。");
-  await page.getByLabel("当前身体状态").fill("左臂骨折，不能双手结印。");
-  await page.getByLabel("知识边界").fill("不知道父母死于仇杀。");
-  await page.getByLabel("关系摘要").fill("与顾青表面亲近，实际互相试探。");
+  await page.getByLabel("人物欲望").fill("找回被抹去的记忆。");
+  await page.getByLabel("人物恐惧").fill("再次被宗门抛弃。");
+  await page.getByLabel("人物目标").fill("进入内门。");
+  await page.getByLabel("声纹样本").fill("“我记得，只是还没想起来。”");
+  await page.getByLabel("声线指南").fill("短句，克制。");
+  await page.getByLabel("伪装").fill("藏起左臂伤势。");
   await page.getByLabel(/命格/).selectOption("剑骨");
   await page.getByRole("button", { name: "创建设定" }).click();
 
@@ -255,6 +263,16 @@ test("creates typed settings in all seven columns with custom fields, proposals 
   await expect(detail.getByRole("heading", { name: "沈砚" })).toBeVisible();
   await expect(detail.getByText("命格")).toBeVisible();
   await expect(detail.getByText("剑骨")).toBeVisible();
+
+  await detail.getByRole("button", { name: "编辑设定", exact: true }).click();
+  await page.getByLabel("人物欲望").fill("找回被抹去的全部记忆。");
+  const characterPatch = page.waitForRequest(
+    (request) =>
+      request.method() === "PATCH" && /\/characters\/[^/]+$/u.test(new URL(request.url()).pathname),
+  );
+  await page.getByRole("button", { name: "保存修改" }).click();
+  await characterPatch;
+  await expect(detail.getByText("找回被抹去的全部记忆。")).toBeVisible();
 
   await detail.getByRole("button", { name: "锁定设定" }).click();
   await expect(detail.getByRole("button", { name: "已锁定 · 编辑需修改请求" })).toBeDisabled();
@@ -469,14 +487,18 @@ test("holds the empty settings state at all four viewports", async ({
 }, testInfo) => {
   await authenticatedPage(page, context);
   const work = await createSettingsWork(page);
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/settings`);
+    await expect(page).toHaveURL(new RegExp(`/workspace/${work.id}/settings$`, "u"));
     await expect(page.getByRole("heading", { name: "设定中心" })).toBeVisible();
     await expect(page.locator(".settings-column-nav button")).toHaveCount(7);
     await expect(page.getByText("还没有世界规则")).toBeVisible();
+    await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await capture(page, testInfo, `settings-empty-${width}`);
   }
 });
@@ -535,7 +557,7 @@ test("holds the proposal state at all four viewports", async ({ page, context },
   }
 });
 
-test("holds a long settings list at all four viewports", async ({ page, context }, testInfo) => {
+test("holds a long settings list at all four viewports", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const work = await createSettingsWork(page);
   for (let index = 1; index <= 10; index += 1) {
@@ -549,13 +571,19 @@ test("holds a long settings list at all four viewports", async ({ page, context 
       data: { rule: "所有角色都必须遵守这条规则。" },
     });
   }
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/settings`);
     await expect(page.locator(".settings-entity-card")).toHaveCount(10);
+    await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
-    await capture(page, testInfo, `settings-long-${width}`);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["settings", `settings-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });
 

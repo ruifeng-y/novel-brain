@@ -8,9 +8,12 @@ import {
   users,
   type DatabaseClient,
 } from "@novel-brain/db";
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import type { CursorPageQuery } from "@novel-brain/contracts";
+import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
+
+import { toCursorPage, type CursorPageResult } from "../common/cursor-page";
 
 export type UserRecord = InferSelectModel<typeof users>;
 export type SessionRecord = InferSelectModel<typeof sessions>;
@@ -203,18 +206,44 @@ export class AuthRepository implements OnModuleDestroy {
       .where(and(eq(sessions.id, id), isNull(sessions.revokedAt)));
   }
 
-  async listActiveSessions(userId: string): Promise<SessionRecord[]> {
-    return this.db
+  async listActiveSessions(
+    userId: string,
+    query: CursorPageQuery,
+  ): Promise<CursorPageResult<SessionRecord> | "invalid_cursor"> {
+    const scope = and(
+      eq(sessions.userId, userId),
+      isNull(sessions.revokedAt),
+      gt(sessions.expiresAt, new Date()),
+    );
+    const cursor = query.cursor
+      ? (
+          await this.db
+            .select({ id: sessions.id, createdAt: sessions.createdAt })
+            .from(sessions)
+            .where(and(scope, eq(sessions.id, query.cursor)))
+            .limit(1)
+        )[0]
+      : undefined;
+    if (query.cursor && !cursor) {
+      return "invalid_cursor";
+    }
+    const rows = await this.db
       .select()
       .from(sessions)
       .where(
         and(
-          eq(sessions.userId, userId),
-          isNull(sessions.revokedAt),
-          gt(sessions.expiresAt, new Date()),
+          scope,
+          cursor
+            ? or(
+                lt(sessions.createdAt, cursor.createdAt),
+                and(eq(sessions.createdAt, cursor.createdAt), lt(sessions.id, cursor.id)),
+              )
+            : undefined,
         ),
       )
-      .orderBy(desc(sessions.createdAt));
+      .orderBy(desc(sessions.createdAt), desc(sessions.id))
+      .limit(query.limit + 1);
+    return toCursorPage(rows, query.limit);
   }
 
   async revokeUserSession(userId: string, sessionId: string): Promise<boolean> {

@@ -40,6 +40,7 @@ import {
   type CustomFieldDefinitionListQuery,
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
+  type ConfirmedSettingListQuery,
   type SettingChangeRequestCreateRequest,
   type SettingChangeRequestListQuery,
   type SettingChangeImpact,
@@ -60,6 +61,8 @@ import { z } from "zod";
 
 export type SettingEntityRecord = InferSelectModel<typeof entities>;
 export type CanonFactRecord = InferSelectModel<typeof canonicalFacts>;
+export type ConfirmedSettingRow =
+  { kind: "entity"; record: SettingEntityRecord } | { kind: "fact"; record: CanonFactRecord };
 export type CustomFieldDefinitionRecord = InferSelectModel<typeof customFieldDefinitions>;
 export type SettingProposalRecord = InferSelectModel<typeof settingProposals>;
 export type SettingChangeRequestRecord = InferSelectModel<typeof settingChangeRequests>;
@@ -280,42 +283,67 @@ export class SettingsRepository implements OnModuleDestroy {
     });
   }
 
-  async listCanonFacts(userId: string, context: SettingsWorkContext): Promise<CanonFactRecord[]> {
-    return this.withTenant(userId, async (transaction) =>
-      transaction
-        .select()
-        .from(canonicalFacts)
-        .where(
-          and(
-            eq(canonicalFacts.userId, userId),
-            eq(canonicalFacts.workId, context.workId),
-            eq(canonicalFacts.branchId, context.branchId),
-            eq(canonicalFacts.status, "active"),
-          ),
-        )
-        .orderBy(asc(canonicalFacts.createdAt)),
-    );
-  }
-
-  async listLockedEntities(
+  async listConfirmedPage(
     userId: string,
     context: SettingsWorkContext,
-  ): Promise<SettingEntityRecord[]> {
-    return this.withTenant(userId, async (transaction) =>
-      transaction
-        .select()
-        .from(entities)
-        .where(
-          and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            eq(entities.status, "locked"),
-            sql`${entities.deletedAt} is null`,
-          ),
-        )
-        .orderBy(asc(entities.createdAt), asc(entities.id)),
-    );
+    query: ConfirmedSettingListQuery,
+  ): Promise<{ data: ConfirmedSettingRow[]; nextCursor: string | null } | "invalid_cursor"> {
+    return this.withTenant(userId, async (transaction) => {
+      const entityScope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        eq(entities.status, "locked"),
+        sql`${entities.deletedAt} is null`,
+      );
+      const factScope = and(
+        eq(canonicalFacts.userId, userId),
+        eq(canonicalFacts.workId, context.workId),
+        eq(canonicalFacts.branchId, context.branchId),
+        eq(canonicalFacts.status, "active"),
+      );
+      if (query.cursor) {
+        const [entityCursor, factCursor] = await Promise.all([
+          transaction
+            .select({ id: entities.id })
+            .from(entities)
+            .where(and(entityScope, eq(entities.id, query.cursor)))
+            .limit(1),
+          transaction
+            .select({ id: canonicalFacts.id })
+            .from(canonicalFacts)
+            .where(and(factScope, eq(canonicalFacts.id, query.cursor)))
+            .limit(1),
+        ]);
+        if (entityCursor.length === 0 && factCursor.length === 0) {
+          return "invalid_cursor";
+        }
+      }
+      const [entityRows, factRows] = await Promise.all([
+        transaction
+          .select()
+          .from(entities)
+          .where(and(entityScope, query.cursor ? gt(entities.id, query.cursor) : undefined))
+          .orderBy(asc(entities.id))
+          .limit(query.limit + 1),
+        transaction
+          .select()
+          .from(canonicalFacts)
+          .where(and(factScope, query.cursor ? gt(canonicalFacts.id, query.cursor) : undefined))
+          .orderBy(asc(canonicalFacts.id))
+          .limit(query.limit + 1),
+      ]);
+      const merged: ConfirmedSettingRow[] = [
+        ...entityRows.map((record) => ({ kind: "entity" as const, record })),
+        ...factRows.map((record) => ({ kind: "fact" as const, record })),
+      ].sort((left, right) => left.record.id.localeCompare(right.record.id));
+      const hasMore = merged.length > query.limit;
+      const page = hasMore ? merged.slice(0, query.limit) : merged;
+      return {
+        data: page,
+        nextCursor: hasMore ? (page.at(-1)?.record.id ?? null) : null,
+      };
+    });
   }
 
   async listCustomFields(
@@ -941,6 +969,17 @@ export class SettingsRepository implements OnModuleDestroy {
       );
       if (conflict) {
         return conflict;
+      }
+      if (
+        (input.after.character && current.type !== "character") ||
+        (input.after.faction && current.type !== "faction") ||
+        (input.after.map && current.type !== "map") ||
+        (input.after.timeline && current.type !== "timeline_event") ||
+        (input.after.powerSystem && current.type !== "power_system") ||
+        (input.after.mechanism && current.type !== "golden_finger") ||
+        (input.after.item && current.type !== "item")
+      ) {
+        return "invalid_data";
       }
       if (input.after.data) {
         const mergedData = { ...current.attributes, ...input.after.data };
@@ -1867,7 +1906,7 @@ async function readCustomFieldValues(
   return values;
 }
 
-async function resolveCustomFieldWrite(
+export async function resolveCustomFieldWrite(
   transaction: DatabaseTransaction,
   userId: string,
   context: SettingsWorkContext,
@@ -1957,7 +1996,7 @@ async function resolveCustomFieldWrite(
   return { values, definitions };
 }
 
-async function writeCustomFieldValues(
+export async function writeCustomFieldValues(
   transaction: DatabaseTransaction,
   userId: string,
   context: SettingsWorkContext,

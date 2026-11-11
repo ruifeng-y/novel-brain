@@ -13,6 +13,28 @@ import {
 } from "../src";
 
 describe("batch execution state machine", () => {
+  it("reports a rejected per-volume review as a failed plan", () => {
+    expect(
+      derivePlanExecutionStatus({
+        current: "running",
+        chapterStatuses: ["succeeded", "succeeded"],
+        volumeStatuses: ["failed"],
+        approvalMode: "per_volume",
+      }),
+    ).toEqual({ status: "failed", progress: 100 });
+  });
+
+  it("waits at a completed volume boundary instead of reporting the plan complete", () => {
+    expect(
+      derivePlanExecutionStatus({
+        current: "running",
+        chapterStatuses: ["succeeded", "succeeded"],
+        volumeStatuses: ["waiting_review"],
+        approvalMode: "per_volume",
+      }),
+    ).toEqual({ status: "waiting_review", progress: 100 });
+  });
+
   it("maps child job states into chapter work-item states", () => {
     expect(deriveChapterWorkItemStatus("queued")).toBe("running");
     expect(deriveChapterWorkItemStatus("running")).toBe("running");

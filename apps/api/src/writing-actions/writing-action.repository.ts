@@ -335,8 +335,27 @@ export class WritingActionRepository implements OnModuleDestroy {
     userId: string,
     context: WritingActionWorkContext,
     page: { cursor?: string | undefined; limit: number },
-  ): Promise<{ jobs: WritingActionWithOutput[]; nextCursor: string | null }> {
+  ): Promise<{ jobs: WritingActionWithOutput[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      if (page.cursor) {
+        const [cursor] = await transaction
+          .select({ id: jobs.id })
+          .from(jobs)
+          .where(
+            and(
+              eq(jobs.userId, userId),
+              eq(jobs.workId, context.workId),
+              eq(jobs.branchId, context.branchId),
+              eq(jobs.chapterId, context.chapterId),
+              eq(jobs.type, WRITE_ACTION_JOB),
+              eq(jobs.id, page.cursor),
+            ),
+          )
+          .limit(1);
+        if (!cursor) {
+          return "invalid_cursor";
+        }
+      }
       const rows = await transaction
         .select()
         .from(jobs)

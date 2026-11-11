@@ -28,6 +28,19 @@ If two sources conflict, stop the affected work and report the conflict. Do not 
 - Never claim a ticket is complete without concrete test, UI parity, security, or benchmark evidence required by its acceptance criteria.
 - Keep changes within the ticket. If a missing requirement or cross-ticket contract is found, stop and raise a scoped issue.
 
+## Local execution
+- Run local repository commands through native PowerShell and start mutating work with `git rev-parse --show-toplevel`.
+- Before code review, record the full base and head SHAs; restart the review if either ref moves.
+- Run the executable guardrails from the repository root:
+
+```powershell
+pnpm test:guardrails
+pnpm check:pr
+pnpm check:migrations
+```
+
+For a stacked PR, pass its actual base: `pnpm check:pr -- --base origin/<base> --head HEAD`.
+
 ## Architecture guardrails
 - Web calls the NestJS HTTP API only. Web must not access the database or model providers directly.
 - Worker consumes typed durable jobs; it is not an HTTP API.

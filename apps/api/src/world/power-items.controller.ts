@@ -21,6 +21,7 @@ import {
   itemConsumeRequestSchema,
   itemCreateRequestSchema,
   itemEquipRequestSchema,
+  itemListQuerySchema,
   itemListResponseSchema,
   itemPatchRequestSchema,
   itemResponseSchema,
@@ -32,10 +33,12 @@ import {
   powerRealmCreateRequestSchema,
   powerRealmResponseSchema,
   powerSystemCreateRequestSchema,
+  powerSystemListQuerySchema,
   powerSystemListResponseSchema,
   powerSystemPatchRequestSchema,
   powerSystemResponseSchema,
   specialMechanismCreateRequestSchema,
+  specialMechanismListQuerySchema,
   specialMechanismListResponseSchema,
   specialMechanismOwnershipTransferRequestSchema,
   specialMechanismPatchRequestSchema,
@@ -50,6 +53,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { PowerItemsService } from "./power-items.service";
@@ -92,6 +96,7 @@ export class PowerItemsController {
   constructor(private readonly service: PowerItemsService) {}
 
   @Get("power-systems")
+  @ApiQuerySchema(powerSystemListQuerySchema)
   @ApiOkResponse({ description: "Power systems", schema: powerSystemListSchema })
   async listPowerSystems(
     @Req() request: AuthenticatedRequest,
@@ -99,15 +104,17 @@ export class PowerItemsController {
     @Param("branchId") branchId: string,
     @Query() query: unknown,
   ) {
+    const requestId = createRequestId();
+    const page = await this.service.listPowerSystems(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      powerSystemListQuerySchema.parse(query ?? {}),
+    );
     return powerSystemListResponseSchema.parse({
-      data: await this.service.listPowerSystems(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        worldSnapshotQuerySchema.parse(query),
-      ),
-      requestId: createRequestId(),
-      meta: {},
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
     });
   }
 
@@ -237,6 +244,7 @@ export class PowerItemsController {
   }
 
   @Get("mechanisms")
+  @ApiQuerySchema(specialMechanismListQuerySchema)
   @ApiOkResponse({ description: "Special mechanisms", schema: mechanismListSchema })
   async listMechanisms(
     @Req() request: AuthenticatedRequest,
@@ -244,15 +252,17 @@ export class PowerItemsController {
     @Param("branchId") branchId: string,
     @Query() query: unknown,
   ) {
+    const requestId = createRequestId();
+    const page = await this.service.listMechanisms(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      specialMechanismListQuerySchema.parse(query ?? {}),
+    );
     return specialMechanismListResponseSchema.parse({
-      data: await this.service.listMechanisms(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        worldSnapshotQuerySchema.parse(query),
-      ),
-      requestId: createRequestId(),
-      meta: {},
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
     });
   }
 
@@ -354,6 +364,7 @@ export class PowerItemsController {
   }
 
   @Get("items")
+  @ApiQuerySchema(itemListQuerySchema)
   @ApiOkResponse({ description: "Items and resources", schema: itemListSchema })
   async listItems(
     @Req() request: AuthenticatedRequest,
@@ -361,15 +372,17 @@ export class PowerItemsController {
     @Param("branchId") branchId: string,
     @Query() query: unknown,
   ) {
+    const requestId = createRequestId();
+    const page = await this.service.listItems(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      itemListQuerySchema.parse(query ?? {}),
+    );
     return itemListResponseSchema.parse({
-      data: await this.service.listItems(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        worldSnapshotQuerySchema.parse(query),
-      ),
-      requestId: createRequestId(),
-      meta: {},
+      data: page.data,
+      requestId,
+      meta: { nextCursor: page.nextCursor },
     });
   }
 

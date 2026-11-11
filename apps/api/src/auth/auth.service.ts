@@ -4,6 +4,7 @@ import {
   authPasswordSchema,
   type AuthSessionData,
   type AuthDeviceSession,
+  type CursorPageQuery,
   type LoginRequest,
   type RegisterRequest,
   type ResetPasswordRequest,
@@ -14,6 +15,7 @@ import { hash, verify, Algorithm } from "@node-rs/argon2";
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 import { hashVerificationCode, maskEmail, randomToken, safeEqual, sha256 } from "./auth-crypto";
 // Nest uses runtime class references for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -207,16 +209,27 @@ export class AuthService {
     await this.repository.revokeSession(sessionId);
   }
 
-  async listSessions(userId: string, currentSessionId: string): Promise<AuthDeviceSession[]> {
-    return (await this.repository.listActiveSessions(userId)).map((session) => ({
-      id: session.id,
-      expiresAt: session.expiresAt.toISOString(),
-      current: session.id === currentSessionId,
-      userAgent: session.userAgent,
-      ip: session.ip,
-      lastSeenAt: session.lastSeenAt.toISOString(),
-      createdAt: session.createdAt.toISOString(),
-    }));
+  async listSessions(
+    userId: string,
+    currentSessionId: string,
+    query: CursorPageQuery,
+  ): Promise<CursorPageResult<AuthDeviceSession>> {
+    const page = await this.repository.listActiveSessions(userId, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map((session) => ({
+        id: session.id,
+        expiresAt: session.expiresAt.toISOString(),
+        current: session.id === currentSessionId,
+        userAgent: session.userAgent,
+        ip: session.ip,
+        lastSeenAt: session.lastSeenAt.toISOString(),
+        createdAt: session.createdAt.toISOString(),
+      })),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async revokeUserSession(userId: string, sessionId: string): Promise<void> {

@@ -1,12 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import type {
   CriticAnnotation,
+  CriticAnnotationListQuery,
   CriticAnnotationPatchRequest,
   CriticVerifyRequest,
   QualityWorkspace,
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 import type { WorksAuditContext } from "../works/works.repository";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -68,12 +70,16 @@ export class QualityService {
     workId: string,
     branchId: string,
     chapterId: string,
-  ): Promise<CriticAnnotation[]> {
-    const result = await this.repository.annotations(userId, workId, branchId, chapterId);
+    query: CriticAnnotationListQuery,
+  ): Promise<CursorPageResult<CriticAnnotation>> {
+    const result = await this.repository.annotations(userId, workId, branchId, chapterId, query);
     if (result.kind === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "章节不存在或无权访问");
     }
-    return result.annotations;
+    if (result.kind === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return { data: result.data, nextCursor: result.nextCursor };
   }
 
   async updateAnnotation(

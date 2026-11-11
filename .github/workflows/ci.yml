@@ -8,6 +8,11 @@ on:
         required: false
         default: false
         type: boolean
+      repeat_m1_closeout:
+        description: "Run the M1 closeout author loop five times without retries"
+        required: false
+        default: false
+        type: boolean
   pull_request:
   push:
     branches:
@@ -48,6 +53,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - uses: pnpm/action-setup@v4
         with:
@@ -60,6 +68,13 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+      - name: Validate PR guardrails
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-pr-guardrails.mjs --base ${{ github.event.pull_request.base.sha }} --head HEAD
+      - name: Validate push commit messages
+        if: github.event_name == 'push'
+        run: node scripts/validate-commits.mjs --base ${{ github.event.before }} --head HEAD
+      - run: pnpm check:migrations
       - run: pnpm format:check
       - run: pnpm lint
       - run: pnpm typecheck
@@ -123,8 +138,12 @@ jobs:
         run: pnpm test:e2e:update
 
       - name: Run Playwright
-        if: github.event_name != 'workflow_dispatch' || inputs.update_golden != true
+        if: github.event_name != 'workflow_dispatch' || (inputs.update_golden != true && inputs.repeat_m1_closeout != true)
         run: pnpm test:e2e
+
+      - name: Repeat M1 closeout stability
+        if: github.event_name == 'workflow_dispatch' && inputs.repeat_m1_closeout == true && inputs.update_golden != true
+        run: pnpm test:e2e:m1-closeout-stability
 
       - uses: actions/upload-artifact@v4
         if: always()

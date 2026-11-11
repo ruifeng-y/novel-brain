@@ -4,6 +4,7 @@ import type {
   ItemCreateRequest,
   ItemDomain,
   ItemEquipRequest,
+  ItemListQuery,
   ItemPatchRequest,
   ItemRight,
   ItemRightGrantRequest,
@@ -13,14 +14,17 @@ import type {
   PowerRealmCreateRequest,
   PowerSystem,
   PowerSystemCreateRequest,
+  PowerSystemListQuery,
   PowerSystemPatchRequest,
   SpecialMechanism,
   SpecialMechanismCreateRequest,
+  SpecialMechanismListQuery,
   SpecialMechanismOwnershipTransferRequest,
   SpecialMechanismPatchRequest,
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { PowerItemsRepository } from "./power-items.repository";
@@ -42,10 +46,14 @@ export class PowerItemsService {
     userId: string,
     workId: string,
     branchId: string,
-    query: ReadQuery,
-  ): Promise<PowerSystem[]> {
+    query: PowerSystemListQuery,
+  ): Promise<CursorPageResult<PowerSystem>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return this.repository.listPowerSystems(userId, context, query);
+    const page = await this.repository.listPowerSystems(userId, context, query, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async getPowerSystem(
@@ -119,10 +127,14 @@ export class PowerItemsService {
     userId: string,
     workId: string,
     branchId: string,
-    query: ReadQuery,
-  ): Promise<SpecialMechanism[]> {
+    query: SpecialMechanismListQuery,
+  ): Promise<CursorPageResult<SpecialMechanism>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return this.repository.listMechanisms(userId, context, query);
+    const page = await this.repository.listMechanisms(userId, context, query, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async getMechanism(
@@ -183,10 +195,14 @@ export class PowerItemsService {
     userId: string,
     workId: string,
     branchId: string,
-    query: ReadQuery,
-  ): Promise<ItemDomain[]> {
+    query: ItemListQuery,
+  ): Promise<CursorPageResult<ItemDomain>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return this.repository.listItems(userId, context, query);
+    const page = await this.repository.listItems(userId, context, query, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async getItem(

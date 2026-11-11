@@ -1,5 +1,6 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
+  BATCH_REVIEW_PREDICATE_VERSION,
   batchPlanMetadataSchema,
   generateChapterJobSchema,
   generationCheckpointSchema,
@@ -13,6 +14,8 @@ import {
   deriveChapterWorkItemStatus,
   derivePlanExecutionStatus,
   deriveVolumeWorkItemStatus,
+  detectForcedHumanReviewEvents,
+  evaluateBatchReviewEligibility,
   isBatchPlanTerminal,
 } from "@novel-brain/core";
 import { createDatabasePool } from "@novel-brain/db";
@@ -338,6 +341,22 @@ export class WorkerBatchPlanRepository implements OnModuleDestroy {
          WHERE id = $1 AND user_id = $3`,
         [chapter.id, nextChapterStatus, userId],
       );
+      let volumeReviewQueued = false;
+      if (nextChapterStatus === "waiting_review") {
+        const review = await reconcileChapterReview(transaction, plan, chapterId, chapter.id);
+        if (
+          review === "auto_approved" ||
+          review === "volume_deferred" ||
+          review === "volume_review_queued"
+        ) {
+          await transaction.query(
+            `UPDATE job_work_items SET status = 'succeeded', updated_at = now()
+             WHERE id = $1 AND user_id = $2`,
+            [chapter.id, userId],
+          );
+        }
+        volumeReviewQueued = review === "volume_review_queued";
+      }
 
       if (chapter.parent_id) {
         const siblings = await transaction.query<{ status: BatchWorkItemStatus }>(
@@ -356,9 +375,9 @@ export class WorkerBatchPlanRepository implements OnModuleDestroy {
         );
         const volumeRow = volume.rows[0];
         if (volumeRow) {
-          const nextVolumeStatus = deriveVolumeWorkItemStatus(
-            siblings.rows.map((row) => row.status),
-          );
+          const nextVolumeStatus = volumeReviewQueued
+            ? "waiting_review"
+            : deriveVolumeWorkItemStatus(siblings.rows.map((row) => row.status));
           const volumeStatus = applyBatchWorkItemStatus(volumeRow.status, nextVolumeStatus);
           if (volumeStatus !== volumeRow.status) {
             await transaction.query(
@@ -589,6 +608,543 @@ function eventForStatus(status: GenerationJobStatus): string {
       return "job.paused";
     default:
       return "job.progress";
+  }
+}
+
+async function reconcileChapterReview(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  chapterId: string,
+  workItemId: string,
+): Promise<"queued" | "auto_approved" | "volume_deferred" | "volume_review_queued" | "none"> {
+  const result = await transaction.query<{
+    id: string;
+    number: number;
+    title: string;
+    version: number;
+    current_version_id: string | null;
+  }>(
+    `SELECT id, number, title, version, current_version_id
+     FROM chapters
+     WHERE id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4`,
+    [chapterId, plan.userId, plan.workId, plan.branchId],
+  );
+  const chapter = result.rows[0];
+  if (!chapter) {
+    return "none";
+  }
+  const quality = await reviewQualityFacts(
+    transaction,
+    plan.userId,
+    plan.workId,
+    plan.branchId,
+    chapterId,
+    chapter.current_version_id,
+  );
+  const outlineReady = await outlineReviewReady(transaction, plan, chapterId);
+  const riskApprovalReady = await riskApprovalReviewReady(transaction, plan, chapterId);
+  const safety = await reviewSafetyFacts(transaction, plan, chapterId, chapter.current_version_id);
+  const hasGoldenThreeLock = await goldenThreeLocked(transaction, plan, chapter.number);
+  const volumeLastChapterNumber = await volumeLastChapterNumberFor(transaction, plan, chapterId);
+  if (
+    volumeLastChapterNumber !== null &&
+    chapter.number === volumeLastChapterNumber &&
+    plan.metadata.approvalMode !== "per_chapter"
+  ) {
+    await queueVolumeReview(transaction, plan, chapterId, workItemId, chapter.number);
+    return "volume_review_queued";
+  }
+  if (
+    plan.metadata.approvalMode === "per_volume" &&
+    volumeLastChapterNumber !== null &&
+    chapter.number < volumeLastChapterNumber
+  ) {
+    return "volume_deferred";
+  }
+  const eligibility = evaluateBatchReviewEligibility({
+    approvalMode: plan.metadata.approvalMode,
+    targetType: "chapter",
+    chapterNumber: chapter.number,
+    volumeLastChapterNumber,
+    readiness: {
+      canProceed: outlineReady && riskApprovalReady,
+      status: outlineReady && riskApprovalReady ? "ready" : "not_ready",
+      outlineReady,
+      riskApprovalReady,
+    },
+    quality: {
+      reportState: quality.reportState,
+      canApprove: quality.canApprove,
+      scores: quality.scores,
+      severities: quality.severities,
+      structuralFindingCount: quality.structuralFindingCount,
+    },
+    hasGoldenThreeLock,
+    forcedHumanReviewEvents: detectForcedHumanReviewEvents({
+      chapterContent: safety.content,
+      highRiskFacts: safety.highRiskFacts,
+    }),
+  });
+  if (eligibility.eligible) {
+    const approved = await transaction.query(
+      `UPDATE chapters
+       SET status = 'approved', version = version + 1, updated_at = now()
+       WHERE id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4
+         AND version = $5 AND status = 'waiting_review'
+       RETURNING id`,
+      [chapterId, plan.userId, plan.workId, plan.branchId, chapter.version],
+    );
+    if (approved.rows.length === 0) {
+      await insertChapterReviewItem(transaction, plan, workItemId, chapter, {
+        risk: "high",
+        reasons: [
+          {
+            code: "READINESS_BLOCKED",
+            message: "章节在自动审批前发生变化，请人工确认最新版本。",
+          },
+        ],
+        quality,
+      });
+      return "queued";
+    }
+    await transaction.query(
+      `INSERT INTO review_decisions (
+         id, work_id, branch_id, user_id, chapter_id, chapter_version_id,
+         action, actor_id, actor_name, reason, decided_at
+       ) VALUES ($1, $2, $3, $4, $5, $6, 'approve', $4, $7, $8, now())`,
+      [
+        uuidv7(),
+        plan.workId,
+        plan.branchId,
+        plan.userId,
+        chapterId,
+        chapter.current_version_id,
+        "NovelBrain 自动审核",
+        `低风险章节按 ${BATCH_REVIEW_PREDICATE_VERSION} 自动通过`,
+      ],
+    );
+    await transaction.query(
+      `INSERT INTO audit_logs (
+         id, actor_id, action, target_type, target_id, decision,
+         correlation_id, ip, user_agent, created_at
+       ) VALUES ($1, $2, 'batch_review.auto_approved', 'chapter', $3, 'allowed', $4, $5, $6, now())`,
+      [
+        uuidv7(),
+        plan.userId,
+        chapterId,
+        `batch-auto:${plan.id}:${chapterId}`,
+        "worker",
+        "batch-review-predicate",
+      ],
+    );
+    return "auto_approved";
+  }
+
+  const reasons = eligibility.reasons.map((code) => ({
+    code,
+    message: reviewReasonMessage(code),
+  }));
+  await insertChapterReviewItem(transaction, plan, workItemId, chapter, {
+    risk: eligibility.risk,
+    reasons,
+    quality,
+  });
+  return "queued";
+}
+
+interface ReviewChapterRow {
+  id: string;
+  number: number;
+  title: string;
+  version: number;
+  current_version_id: string | null;
+}
+
+async function insertChapterReviewItem(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  workItemId: string,
+  chapter: ReviewChapterRow,
+  input: {
+    risk: "low" | "medium" | "high";
+    reasons: Array<{ code: string; message: string }>;
+    quality: Awaited<ReturnType<typeof reviewQualityFacts>>;
+  },
+): Promise<void> {
+  const scoreAverage =
+    input.quality.scores.length > 0
+      ? input.quality.scores.reduce((total, score) => total + score, 0) /
+        input.quality.scores.length
+      : null;
+  await transaction.query(
+    `INSERT INTO batch_review_items (
+       id, plan_id, work_item_id, work_id, branch_id, user_id,
+       target_type, target_id, chapter_id, chapter_version_id, target_version,
+       chapter_number, chapter_title, volume_title, status, risk, risk_reasons,
+       quality, claimed_by, claimed_at, version, created_at, updated_at
+     ) VALUES (
+       $1, $2, $3, $4, $5, $6,
+       'chapter', $7, $7, $8, $9,
+       $10, $11, NULL, 'pending', $12, $13::jsonb,
+       $14::jsonb, NULL, NULL, 1, now(), now()
+     )
+     ON CONFLICT (plan_id, work_item_id) DO NOTHING`,
+    [
+      uuidv7(),
+      plan.id,
+      workItemId,
+      plan.workId,
+      plan.branchId,
+      plan.userId,
+      chapter.id,
+      chapter.current_version_id,
+      chapter.version,
+      chapter.number,
+      chapter.title,
+      input.risk,
+      JSON.stringify(input.reasons),
+      JSON.stringify({
+        reportState: input.quality.reportState,
+        canApprove: input.quality.canApprove,
+        scoreAverage,
+        blockerCount: input.quality.severities.filter(
+          (severity) => severity === "P0" || severity === "P1",
+        ).length,
+      }),
+    ],
+  );
+}
+
+async function queueVolumeReview(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  chapterId: string,
+  chapterWorkItemId: string,
+  chapterNumber: number,
+): Promise<void> {
+  const volume = await transaction.query<{
+    volume_node_id: string;
+    volume_title: string;
+    volume_work_item_id: string;
+    target_version: number;
+  }>(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, parent_id, level, title
+       FROM outline_nodes
+       WHERE chapter_id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4
+       UNION ALL
+       SELECT parent.id, parent.parent_id, parent.level, parent.title
+       FROM outline_nodes parent
+       INNER JOIN ancestors child ON child.parent_id = parent.id
+       WHERE parent.user_id = $2 AND parent.work_id = $3 AND parent.branch_id = $4
+     )
+     SELECT ancestors.id AS volume_node_id,
+            ancestors.title AS volume_title,
+            item.id AS volume_work_item_id,
+            COALESCE((item.input_version ->> 'outlineVersion')::integer, 1) AS target_version
+     FROM ancestors
+     INNER JOIN job_work_items item
+       ON item.id = (SELECT parent_id FROM job_work_items WHERE id = $5 AND user_id = $2)
+     WHERE ancestors.level = 'volume'
+     LIMIT 1`,
+    [chapterId, plan.userId, plan.workId, plan.branchId, chapterWorkItemId],
+  );
+  const row = volume.rows[0];
+  if (!row) {
+    return;
+  }
+  await transaction.query(
+    `UPDATE job_work_items
+     SET status = 'waiting_review', updated_at = now()
+     WHERE id = $1 AND user_id = $2`,
+    [row.volume_work_item_id, plan.userId],
+  );
+  await transaction.query(
+    `INSERT INTO batch_review_items (
+       id, plan_id, work_item_id, work_id, branch_id, user_id,
+       target_type, target_id, chapter_id, chapter_version_id, target_version,
+       chapter_number, chapter_title, volume_title, status, risk, risk_reasons,
+       quality, claimed_by, claimed_at, version, created_at, updated_at
+     ) VALUES (
+       $1, $2, $3, $4, $5, $6,
+       'volume', $7, NULL, NULL, $8,
+       $9, NULL, $10, 'pending', 'high', $11::jsonb,
+       $12::jsonb, NULL, NULL, 1, now(), now()
+     )
+     ON CONFLICT (plan_id, work_item_id) DO NOTHING`,
+    [
+      uuidv7(),
+      plan.id,
+      row.volume_work_item_id,
+      plan.workId,
+      plan.branchId,
+      plan.userId,
+      row.volume_node_id,
+      row.target_version,
+      chapterNumber,
+      row.volume_title,
+      JSON.stringify([
+        {
+          code: "VOLUME_BOUNDARY",
+          message: "卷末必须由作者人工确认。",
+        },
+        ...(plan.metadata.approvalMode === "per_volume"
+          ? [
+              {
+                code: "MANUAL_APPROVAL_MODE",
+                message: "当前批量计划采用逐卷审批。",
+              },
+            ]
+          : []),
+      ]),
+      JSON.stringify({
+        reportState: "missing",
+        canApprove: false,
+        scoreAverage: null,
+        blockerCount: 0,
+      }),
+    ],
+  );
+}
+
+async function reviewQualityFacts(
+  transaction: BatchTransaction,
+  userId: string,
+  workId: string,
+  branchId: string,
+  chapterId: string,
+  chapterVersionId: string | null,
+): Promise<{
+  reportState: "fresh" | "missing" | "stale";
+  canApprove: boolean;
+  scores: number[];
+  severities: Array<"P0" | "P1" | "P2" | "P3">;
+  structuralFindingCount: number;
+}> {
+  if (!chapterVersionId) {
+    return {
+      reportState: "missing",
+      canApprove: false,
+      scores: [],
+      severities: [],
+      structuralFindingCount: 0,
+    };
+  }
+  const report = await transaction.query<{
+    rubric_version: string;
+    rule_version: string;
+    dimensions: Array<{ score?: number }>;
+  }>(
+    `SELECT rubric_version, rule_version, dimensions
+     FROM quality_reports
+     WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+       AND chapter_id = $4 AND chapter_version_id = $5
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [userId, workId, branchId, chapterId, chapterVersionId],
+  );
+  const latest = report.rows[0];
+  const findings = await transaction.query<{ severity: string; structural: boolean }>(
+    `SELECT severity, structural
+     FROM quality_findings
+     WHERE user_id = $1 AND chapter_id = $2 AND chapter_version_id = $3 AND status = 'open'`,
+    [userId, chapterId, chapterVersionId],
+  );
+  const severities = findings.rows.map((row) => row.severity as "P0" | "P1" | "P2" | "P3");
+  const reportState = !latest
+    ? "missing"
+    : latest.rubric_version !== "m1-quality-rubric-v1" ||
+        latest.rule_version !== "m1-critic-rules-v1"
+      ? "stale"
+      : "fresh";
+  const scores = (latest?.dimensions ?? [])
+    .map((dimension) => dimension.score)
+    .filter((score): score is number => typeof score === "number");
+  return {
+    reportState,
+    canApprove:
+      reportState === "fresh" &&
+      !severities.some((severity) => severity === "P0" || severity === "P1"),
+    scores,
+    severities,
+    structuralFindingCount: findings.rows.filter((finding) => finding.structural).length,
+  };
+}
+
+async function reviewSafetyFacts(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  chapterId: string,
+  chapterVersionId: string | null,
+): Promise<{
+  content: string;
+  highRiskFacts: Array<{ subject: string; predicate: string; object: string }>;
+}> {
+  const content = chapterVersionId
+    ? await transaction.query<{ content: string }>(
+        `SELECT content FROM chapter_versions
+         WHERE id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4`,
+        [chapterVersionId, plan.userId, plan.workId, plan.branchId],
+      )
+    : { rows: [] };
+  const facts = await transaction.query<{
+    subject: string;
+    predicate: string;
+    object: string;
+  }>(
+    `SELECT subject, predicate, object
+     FROM fact_proposals
+     WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+       AND chapter_id = $4 AND status = 'proposed' AND risk = 'high'
+     ORDER BY created_at
+     LIMIT 20`,
+    [plan.userId, plan.workId, plan.branchId, chapterId],
+  );
+  return {
+    content: content.rows[0]?.content ?? "",
+    highRiskFacts: facts.rows,
+  };
+}
+
+async function outlineReviewReady(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  chapterId: string,
+): Promise<boolean> {
+  const result = await transaction.query<{ ready: boolean }>(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, parent_id, locked
+       FROM outline_nodes
+       WHERE chapter_id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4
+       UNION ALL
+       SELECT parent.id, parent.parent_id, parent.locked
+       FROM outline_nodes parent
+       INNER JOIN ancestors child ON child.parent_id = parent.id
+       WHERE parent.user_id = $2 AND parent.work_id = $3 AND parent.branch_id = $4
+     )
+     SELECT count(*) > 0 AND bool_and(locked) AS ready FROM ancestors`,
+    [chapterId, plan.userId, plan.workId, plan.branchId],
+  );
+  return result.rows[0]?.ready === true;
+}
+
+async function riskApprovalReviewReady(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  chapterId: string,
+): Promise<boolean> {
+  const result = await transaction.query<{ pending: boolean }>(
+    `SELECT (
+       EXISTS (
+         SELECT 1 FROM fact_proposals
+         WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+           AND chapter_id = $4 AND status = 'proposed' AND risk = 'high'
+       ) OR EXISTS (
+         SELECT 1 FROM setting_change_requests
+         WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+           AND status = 'pending'
+       ) OR EXISTS (
+         SELECT 1 FROM story_bible_change_requests
+         WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+           AND status IN ('pending', 'analyzing') AND risk = 'high'
+       )
+     ) AS pending`,
+    [plan.userId, plan.workId, plan.branchId, chapterId],
+  );
+  return result.rows[0]?.pending === false;
+}
+
+async function goldenThreeLocked(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  chapterNumber: number,
+): Promise<boolean> {
+  if (chapterNumber > 3) {
+    return true;
+  }
+  const result = await transaction.query<{ locked: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM golden_three_locks
+       WHERE user_id = $1 AND work_id = $2 AND branch_id = $3
+     ) AS locked`,
+    [plan.userId, plan.workId, plan.branchId],
+  );
+  return result.rows[0]?.locked === true;
+}
+
+async function volumeLastChapterNumberFor(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  chapterId: string,
+): Promise<number | null> {
+  const result = await transaction.query<{ last_chapter_number: number | null }>(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, parent_id, level
+       FROM outline_nodes
+       WHERE chapter_id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4
+       UNION ALL
+       SELECT parent.id, parent.parent_id, parent.level
+       FROM outline_nodes parent
+       INNER JOIN ancestors child ON child.parent_id = parent.id
+       WHERE parent.user_id = $2 AND parent.work_id = $3 AND parent.branch_id = $4
+     ), volume AS (
+       SELECT id FROM ancestors WHERE level = 'volume' LIMIT 1
+     ), descendants AS (
+       SELECT id FROM volume
+       UNION ALL
+       SELECT child.id
+       FROM outline_nodes child
+       INNER JOIN descendants parent ON child.parent_id = parent.id
+       WHERE child.user_id = $2 AND child.work_id = $3 AND child.branch_id = $4
+     )
+     SELECT max(c.number) AS last_chapter_number
+     FROM chapters c
+     INNER JOIN outline_nodes node ON node.chapter_id = c.id
+     WHERE node.id IN (SELECT id FROM descendants)
+       AND c.user_id = $2 AND c.work_id = $3 AND c.branch_id = $4`,
+    [chapterId, plan.userId, plan.workId, plan.branchId],
+  );
+  return result.rows[0]?.last_chapter_number ?? null;
+}
+
+function reviewReasonMessage(code: string): string {
+  switch (code) {
+    case "MANUAL_APPROVAL_MODE":
+      return "当前批量计划要求作者人工确认。";
+    case "VOLUME_BOUNDARY":
+      return "卷末章节必须由作者人工确认。";
+    case "OUTLINE_NOT_LOCKED":
+      return "章节大纲或上级大纲尚未锁定。";
+    case "PENDING_HIGH_RISK_APPROVAL":
+      return "仍有高风险事实或设定修改等待确认。";
+    case "READINESS_BLOCKED":
+      return "本章生成准备度尚未达到自动通过条件。";
+    case "GOLDEN_THREE_UNLOCKED":
+      return "黄金三章尚未锁定。";
+    case "QUALITY_REPORT_MISSING":
+      return "尚未生成当前章节版本的质量报告。";
+    case "QUALITY_REPORT_STALE":
+      return "当前质量报告已过期，需要重新检查。";
+    case "UNRESOLVED_P0":
+      return "本章还有未解决的阻断问题。";
+    case "UNRESOLVED_P1":
+      return "本章还有未解决的高风险问题。";
+    case "STRUCTURAL_FINDING":
+      return "本章存在结构性问题，必须人工确认。";
+    case "QUALITY_BELOW_THRESHOLD":
+      return "六维质量评分未全部达到自动通过门槛。";
+    case "QUALITY_WARNING":
+      return "本章仍有质量提醒，按低风险自动通过规则转人工。";
+    case "CHARACTER_DEATH":
+      return "本章涉及人物死亡或生死状态变化，必须人工确认。";
+    case "GOLDEN_FINGER_UPGRADE":
+      return "本章涉及金手指升级或核心能力变化，必须人工确认。";
+    case "LOCKED_CANON_CHANGE":
+      return "本章包含已锁定事实或高风险正史变化，必须人工确认。";
+    case "BRANCH_MERGE":
+      return "本章涉及分支合并，必须人工确认。";
+    default:
+      return "本章不满足低风险自动通过条件。";
   }
 }
 

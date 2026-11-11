@@ -3,12 +3,14 @@ import {
   factProposalSchema,
   type FactProposal,
   type FactProposalDecisionRequest,
+  type FactProposalListQuery,
   type FactProposalStatus,
   type FactRisk,
 } from "@novel-brain/contracts";
 import { extractFactCandidates } from "@novel-brain/core";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { FactsRepository, type FactProposalWithDecision } from "./facts.repository";
@@ -41,11 +43,17 @@ export class FactsService {
     workId: string,
     branchId: string,
     chapterId: string,
-  ): Promise<FactProposal[]> {
+    query: FactProposalListQuery,
+  ): Promise<CursorPageResult<FactProposal>> {
     await this.requireContext(userId, workId, branchId, chapterId);
-    return (await this.repository.list(userId, workId, branchId, chapterId)).map((record) =>
-      this.toContract(record),
-    );
+    const page = await this.repository.list(userId, workId, branchId, chapterId, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map((record) => this.toContract(record)),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async decide(

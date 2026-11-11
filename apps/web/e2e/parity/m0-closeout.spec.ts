@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { getCsrf, mailCode, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import {
@@ -7,11 +7,10 @@ import {
   seedM0Work,
   type M0WorkFixture,
 } from "../helpers/m0";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import { expectAuthorFacingLanguage, freezeApiTimestamps } from "../helpers/ui";
 import { startWorker } from "../helpers/worker";
 
 const viewports = [390, 900, 1180, 1440] as const;
-const frozenTimestamp = "2026-11-05T08:50:00.000Z";
 const screenshotOptions = {
   animations: "disabled",
   caret: "hide",
@@ -259,48 +258,3 @@ test("checks every M0 parity page at all signed-off viewports and author languag
   const csrf = await getCsrf(request);
   expect(csrf.length).toBeGreaterThan(20);
 });
-
-async function freezeApiTimestamps(page: Page) {
-  await page.route("**/api/v1/**", async (route) => {
-    const response = await route.fetch();
-    const contentType = response.headers()["content-type"] ?? "";
-    if (!contentType.includes("application/json")) {
-      await route.fulfill({ response });
-      return;
-    }
-
-    const text = await response.text();
-    if (!text) {
-      await route.fulfill({ response });
-      return;
-    }
-
-    let payload: unknown;
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      await route.fulfill({ response, body: text });
-      return;
-    }
-
-    await route.fulfill({ response, json: freezeTimestamps(payload) });
-  });
-}
-
-function freezeTimestamps(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(freezeTimestamps);
-  }
-  if (!value || typeof value !== "object") {
-    return value;
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).map(([key, entry]) => [
-      key,
-      /(At|timestamp)$/u.test(key) && typeof entry === "string"
-        ? frozenTimestamp
-        : freezeTimestamps(entry),
-    ]),
-  );
-}

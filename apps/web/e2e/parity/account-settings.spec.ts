@@ -10,7 +10,12 @@ import {
 import { Pool } from "pg";
 
 import { registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const viewports = [390, 900, 1180, 1440] as const;
 
@@ -109,34 +114,120 @@ test("provider failures are visible and recoverable", async ({ page, context, re
   await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
 });
 
+test("invalid and expired model keys stay masked and recoverable", async ({
+  page,
+  context,
+  request,
+}) => {
+  await authenticatedPage(page, context, request);
+  await freezeApiTimestamps(page);
+  await page.reload();
+
+  await page.getByLabel("配置名称").fill("无效 Key 配置");
+  await page.getByLabel("API Key").fill("sk-invalid-key-1234");
+  await page.getByRole("button", { name: "新增配置" }).click();
+  const invalidRow = page.locator(".model-config-row", { hasText: "无效 Key 配置" });
+  await expect(invalidRow).toContainText("****1234");
+  await expect(page.getByText("sk-invalid-key-1234")).toHaveCount(0);
+
+  await invalidRow.getByRole("button", { name: "测试连接" }).click();
+  await expect(page.getByText("API Key 无效或已失效")).toBeVisible();
+  await expect(invalidRow.getByText("Key 无效或失效", { exact: true })).toBeVisible();
+  await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
+
+  const replaceInvalidKey = invalidRow.getByRole("button", {
+    name: "替换 无效 Key 配置 的 Key",
+  });
+  await expect(replaceInvalidKey).toBeVisible();
+  await replaceInvalidKey.click();
+  await expect(page.getByLabel("API Key")).toHaveValue("");
+  await expect(page.getByLabel("API Key")).toHaveAttribute("placeholder", "留空则保留原 Key");
+  await page.getByRole("button", { name: "取消" }).click();
+  await expect(invalidRow).toContainText("****1234");
+
+  await page.getByLabel("配置名称").fill("过期 Key 配置");
+  await page.getByLabel("API Key").fill("sk-expired-key-5678");
+  await page.getByRole("button", { name: "新增配置" }).click();
+  const expiredRow = page.locator(".model-config-row", { hasText: "过期 Key 配置" });
+  await expiredRow.getByRole("button", { name: "测试连接" }).click();
+  await expect(expiredRow.getByText("Key 无效或失效", { exact: true })).toBeVisible();
+  await expect(page.getByText("sk-expired-key-5678")).toHaveCount(0);
+
+  await page.getByLabel("配置名称").fill("服务商失败配置");
+  await page.getByLabel("API Key").fill("sk-provider-error-4321");
+  await page.getByRole("button", { name: "新增配置" }).click();
+  const failureRow = page.locator(".model-config-row", { hasText: "服务商失败配置" });
+  await failureRow.getByRole("button", { name: "测试连接" }).click();
+  await expect(failureRow.getByText("服务商异常", { exact: true })).toBeVisible();
+  await expect(page.getByText("sk-provider-error-4321")).toHaveCount(0);
+  await expect(page.locator(".model-config-row")).toHaveCount(3);
+  await expect(page.getByText("平台 Key")).toHaveCount(0);
+  await expect(page.getByText("本地模型")).toHaveCount(0);
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page).toHaveURL(/\/workspace\/settings\/account$/u);
+    await expect(invalidRow).toContainText("****1234");
+    await expect(expiredRow).toContainText("****5678");
+    await expect(invalidRow.getByText("Key 无效或失效", { exact: true })).toBeVisible();
+    await expect(expiredRow.getByText("Key 无效或失效", { exact: true })).toBeVisible();
+    await expect(failureRow.getByText("服务商异常", { exact: true })).toBeVisible();
+    await expect(page.getByText("部分配置连接异常，请检查后重试。")).toBeVisible();
+    await expectNoPrototypeOnlyLeakage(page);
+    await expectAuthorFacingLanguage(page);
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["account-settings", `account-settings-key-error-${width}.png`],
+      productionScreenshotOptions,
+    );
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await replaceInvalidKey.click();
+  await page.getByLabel("API Key").fill("sk-recovered-key-9012");
+  await page.getByRole("button", { name: "保存修改" }).click();
+  await expect(invalidRow).toContainText("****9012");
+  await invalidRow.getByRole("button", { name: "测试连接" }).click();
+  await expect(page.getByText("连接正常。")).toBeVisible();
+  await expect(invalidRow.getByText("连接正常", { exact: true })).toBeVisible();
+  await expect(page.getByText("sk-recovered-key-9012")).toHaveCount(0);
+});
+
 test("create retries reuse the idempotency key", async ({ page, context, request }) => {
   const idempotencyKeys: string[] = [];
-  await page.route("**/api/v1/model-configs", async (route) => {
-    if (route.request().method() !== "POST") {
+  await page.route(
+    (url) => url.pathname === "/api/v1/model-configs",
+    async (route) => {
+      if (route.request().method() !== "POST") {
+        await route.continue();
+        return;
+      }
+      const key = route.request().headers()["idempotency-key"];
+      if (key) {
+        idempotencyKeys.push(key);
+      }
+      if (idempotencyKeys.length === 1) {
+        await route.fulfill({
+          status: 500,
+          contentType: "application/json",
+          body: JSON.stringify({
+            error: {
+              code: "INTERNAL_ERROR",
+              message: "模型配置保存失败。",
+              details: {},
+              requestId: "req_e2e_retry",
+            },
+          }),
+        });
+        return;
+      }
       await route.continue();
-      return;
-    }
-    const key = route.request().headers()["idempotency-key"];
-    if (key) {
-      idempotencyKeys.push(key);
-    }
-    if (idempotencyKeys.length === 1) {
-      await route.fulfill({
-        status: 500,
-        contentType: "application/json",
-        body: JSON.stringify({
-          error: {
-            code: "INTERNAL_ERROR",
-            message: "模型配置保存失败。",
-            details: {},
-            requestId: "req_e2e_retry",
-          },
-        }),
-      });
-      return;
-    }
-    await route.continue();
-  });
+    },
+  );
 
   await authenticatedPage(page, context, request);
   await page.getByLabel("配置名称").fill("幂等重试配置");
@@ -154,21 +245,24 @@ test("loading and error states are visible", async ({ page, context, request }) 
   const configsGate = new Promise<void>((resolve) => {
     releaseConfigs = resolve;
   });
-  await page.route("**/api/v1/model-configs", async (route) => {
-    await configsGate;
-    await route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "模型配置加载失败。",
-          details: {},
-          requestId: "req_e2e_error",
-        },
-      }),
-    });
-  });
+  await page.route(
+    (url) => url.pathname === "/api/v1/model-configs",
+    async (route) => {
+      await configsGate;
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "模型配置加载失败。",
+            details: {},
+            requestId: "req_e2e_error",
+          },
+        }),
+      });
+    },
+  );
 
   await authenticatedPage(page, context, request);
   await expect(page.getByText("正在加载模型配置")).toBeVisible();
@@ -250,14 +344,20 @@ test("manages profile, multiple pen names and device sessions", async ({
 
 test("account loading states hold at four viewports", async ({ page, context, request }) => {
   await authenticatedPage(page, context, request);
-  await page.route("**/api/v1/users/me/pen-names", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    await route.continue();
-  });
-  await page.route("**/api/v1/auth/sessions", async (route) => {
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    await route.continue();
-  });
+  await page.route(
+    (url) => url.pathname === "/api/v1/users/me/pen-names",
+    async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.continue();
+    },
+  );
+  await page.route(
+    (url) => url.pathname === "/api/v1/auth/sessions",
+    async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      await route.continue();
+    },
+  );
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
@@ -271,20 +371,23 @@ test("account loading states hold at four viewports", async ({ page, context, re
 
 test("account error state holds at four viewports", async ({ page, context, request }) => {
   await authenticatedPage(page, context, request);
-  await page.route("**/api/v1/users/me/pen-names", async (route) => {
-    await route.fulfill({
-      status: 500,
-      contentType: "application/json",
-      body: JSON.stringify({
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "笔名加载失败。",
-          details: {},
-          requestId: "req_e2e_pen_names",
-        },
-      }),
-    });
-  });
+  await page.route(
+    (url) => url.pathname === "/api/v1/users/me/pen-names",
+    async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({
+          error: {
+            code: "INTERNAL_ERROR",
+            message: "笔名加载失败。",
+            details: {},
+            requestId: "req_e2e_pen_names",
+          },
+        }),
+      });
+    },
+  );
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
@@ -402,28 +505,26 @@ test("disabled accounts redirect to the permission state at four viewports", asy
   }
 });
 
-test("account settings holds at all four viewports", async ({
-  page,
-  context,
-  request,
-}, testInfo) => {
+test("account settings holds at all four viewports", async ({ page, context, request }) => {
   await authenticatedPage(page, context, request);
+  await freezeApiTimestamps(page);
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/workspace/settings/account");
+    await expect(page).toHaveURL(/\/workspace\/settings\/account$/u);
     await expect(page.getByRole("heading", { name: "把写作环境准备好" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "模型设置作者" })).toBeVisible();
     await expectAuthorFacingLanguage(page);
+    await expectNoPrototypeOnlyLeakage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    const screenshot = await page.screenshot({ animations: "disabled", caret: "hide" });
-    await testInfo.attach(`account-settings-${width}`, {
-      body: screenshot,
-      contentType: "image/png",
-    });
+    await expect(page).toHaveScreenshot(
+      ["account-settings", `account-settings-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });
 

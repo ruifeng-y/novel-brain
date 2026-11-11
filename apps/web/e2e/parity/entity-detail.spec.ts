@@ -1,7 +1,12 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
@@ -729,11 +734,16 @@ test("loads the dedicated character profile, relationships, state history and he
     validity: { fromChapter: 1, toChapter: null, fromStoryTime: null, toStoryTime: null },
     sourceChapterId: null,
   });
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 1000 });
     const detail = await openCharacter(page, work);
+    await expect(page).toHaveURL(
+      new RegExp(`/workspace/${work.id}/settings\\?column=characters&entityId=`, "u"),
+    );
     await expect(detail.getByRole("heading", { name: "沈砚" })).toBeVisible();
+    await expect(detail.getByRole("button", { name: "锁定设定" })).toBeEnabled();
     await expect(detail.getByText("基本档案")).toBeVisible();
     await expect(detail.getByText("找回被抹去的记忆")).toBeVisible();
     await expect(detail.getByText("成为忘川书的下一个祭品")).toBeVisible();
@@ -746,7 +756,17 @@ test("loads the dedicated character profile, relationships, state history and he
     await expect(detail.getByText("还没有角色认知记录。")).toBeVisible();
     await expect(detail.getByText("设定体检")).toBeVisible();
     await expectAuthorFacingLanguage(page);
+    const prototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
+    await testInfo.attach(`entity-detail-prototype-only-scan-${width}`, {
+      body: JSON.stringify(prototypeOnlyScan, null, 2),
+      contentType: "application/json",
+    });
     await expectNoOverflow(page);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["entity-detail", `entity-detail-${width}.png`],
+      productionScreenshotOptions,
+    );
     await capture(page, testInfo, `entity-detail-profile-${width}`);
   }
 });

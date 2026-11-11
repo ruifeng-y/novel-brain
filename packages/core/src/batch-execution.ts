@@ -117,6 +117,15 @@ export function derivePlanExecutionStatus(input: {
     if (input.chapterStatuses.some((status) => status === "cancelled")) {
       return { status: "cancelled", progress: 100 };
     }
+    if (input.volumeStatuses?.some((status) => status === "cancelled")) {
+      return { status: "cancelled", progress: 100 };
+    }
+    if (input.volumeStatuses?.some((status) => status === "failed")) {
+      return { status: "failed", progress: 100 };
+    }
+    if (input.volumeStatuses?.some((status) => status === "waiting_review")) {
+      return { status: "waiting_review", progress: 100 };
+    }
     if (input.chapterStatuses.some((status) => status === "waiting_review")) {
       return { status: "waiting_review", progress: 100 };
     }

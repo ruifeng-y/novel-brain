@@ -1,20 +1,16 @@
 import { Injectable } from "@nestjs/common";
 import {
-  characterDataSchema,
   type CustomFieldDefinitionListQuery,
   type CustomFieldDefinition,
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
   type CustomFieldValue,
-  factionDataSchema,
-  goldenFingerDataSchema,
-  mapDataSchema,
-  powerSystemDataSchema,
   settingEntityTypeSchema,
   settingEntityVersionSnapshotSummarySchema,
   settingStatusSchema,
   type CharacterData,
   type ConfirmedSetting,
+  type ConfirmedSettingListQuery,
   type GoldenFingerData,
   type ItemData,
   type SettingEntity,
@@ -35,12 +31,11 @@ import {
   type SettingProposalListQuery,
   type TimelineEventData,
   type WorldRuleData,
-  itemDataSchema,
-  timelineEventDataSchema,
   worldRuleDataSchema,
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SettingsRepository } from "./settings.repository";
@@ -152,41 +147,50 @@ export class SettingsService {
     return this.toContract(created, customFields[created.id] ?? {});
   }
 
-  async confirmed(userId: string, workId: string, branchId: string): Promise<ConfirmedSetting[]> {
+  async confirmed(
+    userId: string,
+    workId: string,
+    branchId: string,
+    query: ConfirmedSettingListQuery,
+  ): Promise<CursorPageResult<ConfirmedSetting>> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const [records, canonFacts] = await Promise.all([
-      this.repository.listLockedEntities(userId, context),
-      this.repository.listCanonFacts(userId, context),
-    ]);
-    return [
-      ...records.map((record) => ({
-        id: record.id,
-        type: record.type as ConfirmedSetting["type"],
-        name: record.name,
-        summary: record.summary,
-        source: record.source as ConfirmedSetting["source"],
-        status: "locked" as const,
-        version: record.version,
-        lockedAt: record.lockedAt?.toISOString() ?? new Date(0).toISOString(),
-      })),
-      ...canonFacts.map((fact) => ({
-        kind: "fact" as const,
-        id: fact.id,
-        type: factType(fact.predicate),
-        name: fact.subject,
-        summary: `${fact.predicate}：${fact.object}`,
-        source: "canon" as const,
-        status: "locked" as const,
-        version: 1,
-        lockedAt: fact.createdAt.toISOString(),
-        sourceChapterId: fact.chapterId,
-        sourceFactId: fact.id,
-        validFromChapter: fact.validFromChapter,
-        validToChapter: fact.validToChapter,
-        predicate: fact.predicate,
-        object: fact.object,
-      })),
-    ];
+    const page = await this.repository.listConfirmedPage(userId, context, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map((row) =>
+        row.kind === "entity"
+          ? {
+              id: row.record.id,
+              type: row.record.type as ConfirmedSetting["type"],
+              name: row.record.name,
+              summary: row.record.summary,
+              source: row.record.source as ConfirmedSetting["source"],
+              status: "locked" as const,
+              version: row.record.version,
+              lockedAt: row.record.lockedAt?.toISOString() ?? new Date(0).toISOString(),
+            }
+          : {
+              kind: "fact" as const,
+              id: row.record.id,
+              type: factType(row.record.predicate),
+              name: row.record.subject,
+              summary: `${row.record.predicate}：${row.record.object}`,
+              source: "canon" as const,
+              status: "locked" as const,
+              version: 1,
+              lockedAt: row.record.createdAt.toISOString(),
+              sourceChapterId: row.record.chapterId,
+              sourceFactId: row.record.id,
+              validFromChapter: row.record.validFromChapter,
+              validToChapter: row.record.validToChapter,
+              predicate: row.record.predicate,
+              object: row.record.object,
+            },
+      ),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async patch(
@@ -205,11 +209,18 @@ export class SettingsService {
     if (current.status === "locked") {
       throw new ApiError(409, "SETTING_LOCKED", "设定已锁定，不能直接编辑或修改别名");
     }
+    if (input.data !== undefined && current.type !== "world_rule") {
+      throw new ApiError(
+        400,
+        "SETTING_DOMAIN_DATA_FORBIDDEN",
+        "该设定类型必须通过专用接口编辑领域数据",
+      );
+    }
     if (current.version !== input.version) {
       throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
     }
     if (input.data !== undefined) {
-      requireMatchingSettingData(current.type as SettingEntity["type"], input.data);
+      requireWorldRuleData(input.data);
     }
     const updated = await this.repository.update(userId, context, entityId, input, audit);
     if (updated === "not_found") {
@@ -802,30 +813,11 @@ function factType(predicate: string): ConfirmedSetting["type"] {
   return "world_rule";
 }
 
-function requireMatchingSettingData(
-  type: SettingEntity["type"],
-  data: SettingEntityPatchRequest["data"],
-): void {
+function requireWorldRuleData(data: SettingEntityPatchRequest["data"]): void {
   if (!data || Object.keys(data).length === 0) {
     throw new ApiError(400, "VALIDATION_INVALID", "至少需要修改一个类型字段");
   }
-  const schema =
-    type === "character"
-      ? characterDataSchema.partial()
-      : type === "golden_finger"
-        ? goldenFingerDataSchema.partial()
-        : type === "faction"
-          ? factionDataSchema.partial()
-          : type === "map"
-            ? mapDataSchema.partial()
-            : type === "power_system"
-              ? powerSystemDataSchema.partial()
-              : type === "item"
-                ? itemDataSchema.partial()
-                : type === "timeline_event"
-                  ? timelineEventDataSchema.partial()
-                  : worldRuleDataSchema.partial();
-  const parsed = schema.safeParse(data);
+  const parsed = worldRuleDataSchema.partial().safeParse(data);
   if (!parsed.success) {
     throw new ApiError(400, "VALIDATION_INVALID", "设定字段与当前类型不匹配");
   }

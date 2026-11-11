@@ -7,18 +7,21 @@ import {
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
+  Layers3,
   ListTree,
   LogOut,
   Milestone,
   PenLine,
   Settings,
 } from "lucide-react";
-import type { AuthUser } from "@novel-brain/contracts";
+import { workResponseSchema, type AuthUser, type Work } from "@novel-brain/contracts";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
+import { subscribeWorkContextRefresh } from "../lib/work-context-events";
+import { branchLabel, isWorkReadonly, readonlyScopeLabel } from "../lib/work-presentation";
 
 const navigation = [
   { href: "/workspace", label: "工作台", icon: LayoutDashboard },
@@ -32,7 +35,15 @@ const workNavigation = [
   { suffix: "outline", label: "大纲工作台", icon: ListTree },
   { suffix: "foreshadows", label: "伏笔账本", icon: Milestone },
   { suffix: "write", label: "写作台", icon: PenLine },
+  { suffix: "batch", label: "批量生产", icon: Layers3 },
 ];
+
+interface ActiveWorkContext {
+  title: string;
+  branchName: string;
+  branchStatus: "active" | "archived";
+  workStatus: Work["status"];
+}
 
 export function AppShell({
   children,
@@ -41,9 +52,11 @@ export function AppShell({
   const pathname = usePathname();
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [activeWork, setActiveWork] = useState<ActiveWorkContext | null>(null);
   const workPathMatch = pathname.match(/^\/workspace\/([^/]+)\/([^/]+)/u);
   const workId = workPathMatch?.[1];
   const workSection = workPathMatch?.[2];
+  const showWorkContext = workSection === "overview";
   const current = pathname.endsWith("/overview")
     ? "作品总览"
     : pathname.endsWith("/bible")
@@ -56,13 +69,55 @@ export function AppShell({
             ? "伏笔账本"
             : pathname.endsWith("/write")
               ? "写作台"
-              : pathname === "/workspace/new-project"
-                ? "新建作品"
-                : pathname.startsWith("/workspace/settings")
-                  ? "账号与模型"
-                  : pathname.startsWith("/workspace")
-                    ? "工作台"
-                    : "服务状态";
+              : pathname.endsWith("/batch")
+                ? "批量生产"
+                : pathname === "/workspace/new-project"
+                  ? "新建作品"
+                  : pathname.startsWith("/workspace/settings")
+                    ? "账号与模型"
+                    : pathname.startsWith("/workspace")
+                      ? "工作台"
+                      : "服务状态";
+
+  useEffect(() => {
+    if (!workId || !showWorkContext) {
+      setActiveWork(null);
+      return;
+    }
+    let cancelled = false;
+    setActiveWork(null);
+    const loadActiveWork = () => {
+      void fetch(`/api/v1/works/${workId}`, { cache: "no-store" })
+        .then(async (response) => {
+          if (!response.ok) {
+            return null;
+          }
+          return workResponseSchema.parse(await response.json()).data;
+        })
+        .then((work) => {
+          if (cancelled || !work) {
+            return;
+          }
+          setActiveWork({
+            title: work.title,
+            branchName: branchLabel(work.mainBranch.name),
+            branchStatus: work.mainBranch.status,
+            workStatus: work.status,
+          });
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setActiveWork(null);
+          }
+        });
+    };
+    loadActiveWork();
+    const unsubscribe = subscribeWorkContextRefresh(loadActiveWork);
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
+  }, [showWorkContext, workId]);
 
   async function logout() {
     setLoggingOut(true);
@@ -96,8 +151,12 @@ export function AppShell({
         <div className="workspace-switch" aria-label="当前工作区">
           <span className="workspace-avatar">墨</span>
           <span className="workspace-copy">
-            <strong>个人工作区</strong>
-            <small>长篇创作</small>
+            <strong title={activeWork?.title}>{activeWork?.title ?? "个人工作区"}</strong>
+            <small>
+              {activeWork
+                ? `创作线 ${activeWork.branchName} · ${activeWorkStateLabel(activeWork)}`
+                : "长篇创作"}
+            </small>
           </span>
           <ChevronDown className="workspace-chevron" size={15} aria-hidden="true" />
         </div>
@@ -129,6 +188,19 @@ export function AppShell({
               {workNavigation.map((item) => {
                 const Icon = item.icon;
                 const active = workSection === item.suffix;
+                if (item.suffix !== "overview" && activeWork && activeWorkIsReadonly(activeWork)) {
+                  return (
+                    <div
+                      aria-disabled="true"
+                      className="nav-item"
+                      key={item.suffix}
+                      title={readonlyScopeLabel(activeWork.workStatus, activeWork.branchStatus)}
+                    >
+                      <Icon size={18} aria-hidden="true" />
+                      <span>{item.label}</span>
+                    </div>
+                  );
+                }
                 return (
                   <Link
                     className={`nav-item${active ? " active" : ""}`}
@@ -190,8 +262,31 @@ export function AppShell({
           <div className="topbar-note">NovelBrain</div>
         </header>
 
+        {showWorkContext && activeWork ? (
+          <div className="work-context-bar" aria-label="当前作品与创作线">
+            <strong>{activeWork.title}</strong>
+            <span>
+              创作线 {activeWork.branchName} · {activeWorkStateLabel(activeWork)}
+            </span>
+          </div>
+        ) : null}
+
         <main className="page-container">{children}</main>
       </div>
     </div>
   );
+}
+
+function activeWorkStateLabel(activeWork: ActiveWorkContext): string {
+  if (activeWork.workStatus === "archived") {
+    return "作品已归档 · 只读";
+  }
+  if (activeWork.workStatus === "completed") {
+    return "作品已完本 · 只读";
+  }
+  return activeWork.branchStatus === "active" ? "可写作" : "创作线已归档";
+}
+
+function activeWorkIsReadonly(activeWork: ActiveWorkContext): boolean {
+  return isWorkReadonly(activeWork.workStatus, activeWork.branchStatus);
 }

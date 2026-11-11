@@ -69,6 +69,7 @@ import {
   settingEntityCreateRequestSchema,
   settingEntityListQuerySchema,
   settingEntityListResponseSchema,
+  settingEntityPatchRequestSchema,
   settingEntityRestoreRequestSchema,
   settingEntitySchema,
   settingEntityVersionListQuerySchema,
@@ -720,7 +721,7 @@ describe("shared contracts", () => {
           },
         ],
         requestId: "req_sessions",
-        meta: {},
+        meta: { nextCursor: null },
       }),
     ).toBeTruthy();
   });
@@ -1527,6 +1528,31 @@ describe("shared contracts", () => {
       hidden: false,
       marks: ["潮"],
     });
+  });
+
+  it("keeps generic entity patches metadata-only for dedicated domains", () => {
+    expect(
+      settingEntityPatchRequestSchema.parse({
+        version: 2,
+        name: "更新后的设定",
+        summary: "只更新公共元数据。",
+        customFields: { fate: "剑骨" },
+      }),
+    ).toMatchObject({ name: "更新后的设定" });
+
+    expect(
+      settingEntityPatchRequestSchema.parse({
+        version: 2,
+        data: { rule: "世界规则仍可通过通用接口更新。" },
+      }),
+    ).toMatchObject({ data: { rule: "世界规则仍可通过通用接口更新。" } });
+
+    expect(
+      settingEntityPatchRequestSchema.parse({
+        version: 2,
+        data: { bodyState: "左臂已愈。" },
+      }),
+    ).toMatchObject({ data: { bodyState: "左臂已愈。" } });
   });
 
   it("validates append-only setting version restoration requests", () => {

@@ -388,6 +388,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchReviewController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue/claim": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchReviewController_claim"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue/decisions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchReviewController_decide"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
     parameters: {
       query?: never;
@@ -926,6 +974,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["GoldenThreeController_lockCandidate"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/golden-three/candidates/{candidateId}/continuation": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["GoldenThreeController_recordContinuation"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2129,7 +2193,7 @@ export interface paths {
     delete?: never;
     options?: never;
     head?: never;
-    patch?: never;
+    patch: operations["WorldController_updateMap"];
     trace?: never;
   };
   "/api/v1/works/{workId}/branches/{branchId}/world/maps/{mapId}/layers": {
@@ -2258,6 +2322,22 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/world/timeline/events/{eventId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["WorldController_updateTimelineEvent"];
     trace?: never;
   };
   "/api/v1/works/{workId}/branches/{branchId}/world/timeline/itineraries": {
@@ -3067,7 +3147,10 @@ export interface operations {
   };
   AuthController_sessions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -3095,9 +3178,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -3139,7 +3221,10 @@ export interface operations {
   };
   AgentGrantController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -3205,9 +3290,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -3492,10 +3576,10 @@ export interface operations {
   AgentTraceController_list: {
     parameters: {
       query?: {
+        cursor?: string;
+        limit?: number;
         chapterId?: string;
         jobId?: string;
-        cursor?: string;
-        limit?: string;
       };
       header?: never;
       path: {
@@ -3653,6 +3737,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -3703,6 +3788,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -3743,6 +3831,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -3972,6 +4064,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -4022,6 +4115,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -4062,6 +4158,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -5015,6 +5115,96 @@ export interface operations {
       };
     };
   };
+  BatchReviewController_list: {
+    parameters: {
+      query?: {
+        status?: string;
+        risk?: string;
+        targetType?: string;
+        cursor?: string;
+        limit?: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tenant-scoped batch review queue */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BatchReviewController_claim: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          itemIds: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description Claimed batch review items */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BatchReviewController_decide: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same review decision batch */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          items: {
+            itemId: string;
+            expectedVersion: number;
+            /** @enum {string} */
+            action: "approve" | "reject";
+            reason?: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Independent batch review decision results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   CanonController_submit: {
     parameters: {
       query?: never;
@@ -5113,8 +5303,8 @@ export interface operations {
   CanonController_list: {
     parameters: {
       query?: {
-        limit?: unknown;
-        cursor?: unknown;
+        cursor?: string;
+        limit?: number;
       };
       header?: never;
       path: {
@@ -5200,7 +5390,10 @@ export interface operations {
   };
   ChaptersController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -5276,9 +5469,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -5669,7 +5861,10 @@ export interface operations {
   };
   ChaptersController_versions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -5700,9 +5895,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -5931,7 +6125,10 @@ export interface operations {
   };
   CharactersController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -6190,9 +6387,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -6792,7 +6988,15 @@ export interface operations {
       content: {
         "application/json": {
           version: number;
-          profile: {
+          name?: string;
+          aliases?: string[];
+          summary?: string;
+          description?: string;
+          tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
+          profile?: {
             /** @default  */
             desire?: string;
             /** @default  */
@@ -8096,7 +8300,10 @@ export interface operations {
   };
   CharactersController_changeRequests: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -8151,9 +8358,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -8539,9 +8745,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -8550,7 +8755,10 @@ export interface operations {
   };
   FactsController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -8601,9 +8809,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -8829,6 +9036,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -8879,6 +9087,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -8919,6 +9130,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9250,6 +9465,8 @@ export interface operations {
   GenerationController_list: {
     parameters: {
       query: {
+        cursor?: string;
+        limit?: number;
         chapterId: string;
       };
       header?: never;
@@ -9370,6 +9587,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -9420,6 +9638,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -9460,6 +9681,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9609,9 +9834,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -9740,6 +9964,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -9790,6 +10015,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -9830,6 +10058,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -10110,6 +10342,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -10160,6 +10393,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -10200,6 +10436,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -10480,6 +10720,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -10530,6 +10771,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -10570,6 +10814,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -10863,6 +11111,7 @@ export interface operations {
                     | "SETTING_CONFLICT_UNRESOLVED"
                     | "SETTING_PROPOSAL_STATE"
                     | "SETTING_NOT_LOCKED"
+                    | "SETTING_DOMAIN_DATA_FORBIDDEN"
                     | "CUSTOM_FIELD_REQUIRED"
                     | "CUSTOM_FIELD_INVALID"
                     | "CUSTOM_FIELD_IMMUTABLE"
@@ -10913,6 +11162,9 @@ export interface operations {
                     | "GOLDEN_THREE_CANDIDATE_LOCKED"
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
+                    | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                    | "GOLDEN_THREE_MODEL_REQUIRED"
+                    | "GOLDEN_THREE_GENERATION_FAILED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -10953,6 +11205,10 @@ export interface operations {
                     | "BATCH_PLAN_INVALID"
                     | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                     | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -11229,6 +11485,27 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -11335,6 +11612,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -11459,6 +11737,27 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -11565,6 +11864,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -11667,6 +11967,27 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -11773,6 +12094,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -11892,6 +12214,27 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -11998,6 +12341,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -12098,6 +12442,27 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -12204,6 +12569,7 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -12309,6 +12675,27 @@ export interface operations {
                   wordCount: number;
                   content: string;
                 }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
                 reviews: {
                   /** @enum {string} */
                   dimension:
@@ -12415,6 +12802,240 @@ export interface operations {
                     | "NO_SELECTION"
                     | "REVIEW_INCOMPLETE"
                     | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
+                    | "CANDIDATE_LOCKED";
+                  message: string;
+                  /** @enum {string|null} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                    | null;
+                }[];
+                failedDimensions: (
+                  | "opening_hook"
+                  | "protagonist_appeal"
+                  | "world_rules"
+                  | "core_conflict"
+                  | "reader_promise"
+                  | "chapter_end_hook"
+                )[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GoldenThreeController_recordContinuation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        candidateId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          pins?: {
+            chapterId: string;
+            chapterVersionId: string;
+            expectedContentHash?: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Recorded golden three chapters 2-3 continuation */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              workId: string;
+              branchId: string;
+              candidates: {
+                id: string;
+                batchId: string;
+                workId: string;
+                branchId: string;
+                label: string;
+                /** @enum {string} */
+                strategy: "hook_focus" | "character_focus" | "world_focus";
+                /** @enum {string} */
+                status: "draft" | "reviewed" | "selected" | "locked";
+                version: number;
+                prompt: {
+                  key: string;
+                  version: number;
+                  hash: string;
+                };
+                model: {
+                  provider: string;
+                  model: string;
+                  parameters: {
+                    [key: string]: unknown;
+                  };
+                };
+                context: {
+                  packVersionId: string | null;
+                  manifestHash: string;
+                };
+                pins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                continuation: {
+                  versionNodeId: string;
+                  pins: {
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterTitle: string;
+                    chapterVersionId: string;
+                    chapterVersion: number;
+                    versionNodeId: string;
+                    contentHash: string;
+                    wordCount: number;
+                    content: string;
+                  }[];
+                  /** Format: date-time */
+                  createdAt: string;
+                } | null;
+                trace: {
+                  jobId: string;
+                  agentRunId: string;
+                  modelCallId: string;
+                } | null;
+                reviews: {
+                  /** @enum {string} */
+                  dimension:
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook";
+                  score: number;
+                  evidence: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    passage: string;
+                    locator: string;
+                  };
+                  /** @enum {string} */
+                  reviewerOrigin: "model" | "author" | "critic";
+                  id: string;
+                  candidateId: string;
+                  required: boolean;
+                  passed: boolean;
+                  /** Format: date-time */
+                  createdAt: string;
+                  /** Format: date-time */
+                  updatedAt: string;
+                }[];
+                reviewSummary: {
+                  completed: number;
+                  /** @enum {number} */
+                  total: 6;
+                  requiredFailed: number;
+                  failedDimensions: (
+                    | "opening_hook"
+                    | "protagonist_appeal"
+                    | "world_rules"
+                    | "core_conflict"
+                    | "reader_promise"
+                    | "chapter_end_hook"
+                  )[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+              selectedCandidateId: string | null;
+              lock: {
+                id: string;
+                workId: string;
+                branchId: string;
+                candidateId: string;
+                versionNodeId: string;
+                styleBaselineId: string;
+                chapterPins: {
+                  chapterId: string;
+                  chapterNumber: number;
+                  chapterTitle: string;
+                  chapterVersionId: string;
+                  chapterVersion: number;
+                  versionNodeId: string;
+                  contentHash: string;
+                  wordCount: number;
+                  content: string;
+                }[];
+                override: {
+                  /** @enum {string} */
+                  policy: "author_override_v1";
+                  rationale: string;
+                } | null;
+                lockedBy: string;
+                /** Format: date-time */
+                lockedAt: string;
+              } | null;
+              styleBaseline: {
+                id: string;
+                workId: string;
+                branchId: string;
+                /** @enum {string} */
+                sourceType: "golden_three";
+                sourceId: string;
+                version: number;
+                versionNodeId: string;
+                profile: {
+                  /** @enum {string} */
+                  strategy: "hook_focus" | "character_focus" | "world_focus";
+                  candidateLabel: string;
+                  excerpts: {
+                    chapterId: string;
+                    chapterVersionId: string;
+                    excerpt: string;
+                  }[];
+                };
+                /** Format: date-time */
+                createdAt: string;
+              } | null;
+              gate: {
+                candidateId: string | null;
+                canLock: boolean;
+                blockers: {
+                  /** @enum {string} */
+                  code:
+                    | "NO_CANDIDATES"
+                    | "NO_SELECTION"
+                    | "REVIEW_INCOMPLETE"
+                    | "REQUIRED_DIMENSION_FAILED"
+                    | "CONTINUATION_REQUIRED"
                     | "CANDIDATE_LOCKED";
                   message: string;
                   /** @enum {string|null} */
@@ -12812,7 +13433,13 @@ export interface operations {
   };
   WorksController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        q?: string;
+        status?: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+        genre?: "xianxia" | "history" | "urban";
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -13109,7 +13736,10 @@ export interface operations {
   };
   WorksController_branches: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -13135,9 +13765,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -13669,7 +14298,10 @@ export interface operations {
   };
   ModelConfigController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -13712,9 +14344,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -17263,7 +17894,10 @@ export interface operations {
   };
   QualityController_annotations: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -17318,9 +17952,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -20195,6 +20828,73 @@ export interface operations {
                   duration?: string;
                   event?: string;
                 };
+            character?: {
+              /** @default  */
+              desire?: string;
+              /** @default  */
+              fear?: string;
+              /** @default  */
+              goal?: string;
+              /** @default  */
+              voiceSample?: string;
+              /** @default  */
+              voiceGuide?: string;
+              /** @default  */
+              disguise?: string;
+            };
+            faction?: {
+              overview?: string;
+              goals?: string;
+              resources?: string;
+              doctrine?: string;
+            };
+            map?: {
+              name?: string;
+              aliases?: string[];
+              summary?: string;
+              description?: string;
+              tags?: string[];
+              customFields?: {
+                [key: string]: unknown;
+              };
+              details?: string;
+            };
+            timeline?: {
+              name?: string;
+              aliases?: string[];
+              summary?: string;
+              description?: string;
+              tags?: string[];
+              customFields?: {
+                [key: string]: unknown;
+              };
+              era?: string;
+              storyTime?: {
+                era: string;
+                label: string;
+                sortKey: number;
+              };
+              durationMinutes?: number;
+              durationLabel?: string;
+              event?: string;
+              validity?: {
+                fromChapter: number;
+                /** @default null */
+                toChapter?: number | null;
+                /** @default null */
+                fromStoryTime?: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime?: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+            };
             powerSystem?: {
               overview?: string;
               lifespanPolicy?: {
@@ -20970,7 +21670,10 @@ export interface operations {
   };
   ConfirmedSettingsController_list: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -21019,9 +21722,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -21658,7 +22360,10 @@ export interface operations {
   };
   StoryBibleController_versions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -21725,7 +22430,10 @@ export interface operations {
   };
   StoryBibleController_worldRules: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -27664,6 +28372,7 @@ export interface operations {
                     | "SETTING_CONFLICT_UNRESOLVED"
                     | "SETTING_PROPOSAL_STATE"
                     | "SETTING_NOT_LOCKED"
+                    | "SETTING_DOMAIN_DATA_FORBIDDEN"
                     | "CUSTOM_FIELD_REQUIRED"
                     | "CUSTOM_FIELD_INVALID"
                     | "CUSTOM_FIELD_IMMUTABLE"
@@ -27714,6 +28423,9 @@ export interface operations {
                     | "GOLDEN_THREE_CANDIDATE_LOCKED"
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
+                    | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                    | "GOLDEN_THREE_MODEL_REQUIRED"
+                    | "GOLDEN_THREE_GENERATION_FAILED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -27754,6 +28466,10 @@ export interface operations {
                     | "BATCH_PLAN_INVALID"
                     | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                     | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -27863,6 +28579,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -27913,6 +28630,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -27953,6 +28673,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -28038,6 +28762,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -28088,6 +28813,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -28128,6 +28856,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -28205,7 +28937,10 @@ export interface operations {
   };
   UsersController_listPenNames: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -28234,9 +28969,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -28383,7 +29117,12 @@ export interface operations {
   };
   WorldController_listFactions: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -28606,9 +29345,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -29130,7 +29868,15 @@ export interface operations {
       content: {
         "application/json": {
           version: number;
-          profile: {
+          name?: string;
+          aliases?: string[];
+          summary?: string;
+          description?: string;
+          tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
+          profile?: {
             overview?: string;
             goals?: string;
             resources?: string;
@@ -29704,7 +30450,12 @@ export interface operations {
   };
   WorldController_listMaps: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -29991,9 +30742,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -30327,6 +31077,320 @@ export interface operations {
     requestBody?: never;
     responses: {
       /** @description Map detail */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              map: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "world_rule"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              layers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                name: string;
+                parentLayerId: string | null;
+                sortOrder: number;
+                minScale: number;
+                maxScale: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              nodes: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                parentNodeId: string | null;
+                name: string;
+                /** @enum {string} */
+                nodeType:
+                  | "region"
+                  | "settlement"
+                  | "landmark"
+                  | "passage"
+                  | "battlefield"
+                  | "sect"
+                  | "dungeon"
+                  | "other";
+                summary: string;
+                x: number | null;
+                y: number | null;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              edges: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                fromNodeId: string;
+                toNodeId: string;
+                /** @enum {string} */
+                routeType: "road" | "trail" | "water" | "air" | "teleport" | "secret";
+                bidirectional: boolean;
+                travelMinutes: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              markers: {
+                id: string;
+                mapId: string;
+                workId: string;
+                branchId: string;
+                layerId: string | null;
+                nodeId: string | null;
+                label: string;
+                /** @enum {string} */
+                markerType: "danger" | "event" | "resource" | "note" | "character";
+                x: number;
+                y: number;
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              controlAreas: {
+                id: string;
+                workId: string;
+                branchId: string;
+                factionId: string;
+                node: {
+                  /** @enum {string} */
+                  type:
+                    | "character"
+                    | "faction"
+                    | "map"
+                    | "world_rule"
+                    | "map_layer"
+                    | "map_node"
+                    | "map_edge"
+                    | "map_marker"
+                    | "territory"
+                    | "power_system"
+                    | "golden_finger"
+                    | "item"
+                    | "timeline_event"
+                    | "timeline_era"
+                    | "itinerary"
+                    | "fact"
+                    | "chapter"
+                    | "character_relationship"
+                    | "character_state"
+                    | "character_knowledge";
+                  id: string;
+                  branchId: string;
+                  /** @default null */
+                  label: string | null;
+                  /** @default null */
+                  version: {
+                    branchId: string;
+                    /** @default null */
+                    versionNodeId: string | null;
+                    /** @default null */
+                    objectVersion: number | null;
+                  } | null;
+                };
+                /** @enum {string} */
+                controlLevel: "direct" | "military" | "influence" | "contested";
+                validity: {
+                  fromChapter: number;
+                  /** @default null */
+                  toChapter: number | null;
+                  /** @default null */
+                  fromStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                  /** @default null */
+                  toStoryTime: {
+                    era: string;
+                    label: string;
+                    sortKey: number;
+                  } | null;
+                };
+                evidence: {
+                  /** @enum {string} */
+                  kind: "chapter" | "entity" | "import" | "author_note" | "ai_suggestion";
+                  /** @default null */
+                  sourceId: string | null;
+                  label: string;
+                  /** @default  */
+                  quote: string;
+                  /** @default  */
+                  locator: string;
+                  /** @default null */
+                  confidence: number | null;
+                }[];
+                versionNodeId: string;
+                /** Format: date-time */
+                createdAt: string;
+              }[];
+              health: {
+                code: string;
+                /** @enum {string} */
+                severity: "info" | "warning" | "blocker";
+                message: string;
+                /** @default [] */
+                relatedIds: string[];
+              }[];
+              version: number;
+              latestVersionNodeId: string;
+              /** @enum {string} */
+              status: "draft" | "proposed" | "locked" | "discarded";
+              /** Format: date-time */
+              lockedAt: string | null;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_updateMap: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        mapId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          name?: string;
+          aliases?: string[];
+          summary?: string;
+          description?: string;
+          tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
+          details?: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Updated map */
       200: {
         headers: {
           [name: string]: unknown;
@@ -31440,6 +32504,144 @@ export interface operations {
     responses: {
       /** @description Created timeline event */
       201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              event: {
+                /** @enum {string} */
+                type:
+                  | "character"
+                  | "faction"
+                  | "map"
+                  | "world_rule"
+                  | "map_layer"
+                  | "map_node"
+                  | "map_edge"
+                  | "map_marker"
+                  | "territory"
+                  | "power_system"
+                  | "golden_finger"
+                  | "item"
+                  | "timeline_event"
+                  | "timeline_era"
+                  | "itinerary"
+                  | "fact"
+                  | "chapter"
+                  | "character_relationship"
+                  | "character_state"
+                  | "character_knowledge";
+                id: string;
+                branchId: string;
+                /** @default null */
+                label: string | null;
+                /** @default null */
+                version: {
+                  branchId: string;
+                  /** @default null */
+                  versionNodeId: string | null;
+                  /** @default null */
+                  objectVersion: number | null;
+                } | null;
+              };
+              era: string;
+              storyTime: {
+                era: string;
+                label: string;
+                sortKey: number;
+              };
+              durationMinutes: number;
+              durationLabel: string;
+              eventText: string;
+              validity: {
+                fromChapter: number;
+                /** @default null */
+                toChapter: number | null;
+                /** @default null */
+                fromStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+                /** @default null */
+                toStoryTime: {
+                  era: string;
+                  label: string;
+                  sortKey: number;
+                } | null;
+              };
+              versionNodeId: string;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorldController_updateTimelineEvent: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        eventId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          name?: string;
+          aliases?: string[];
+          summary?: string;
+          description?: string;
+          tags?: string[];
+          customFields?: {
+            [key: string]: unknown;
+          };
+          era?: string;
+          storyTime?: {
+            era: string;
+            label: string;
+            sortKey: number;
+          };
+          durationMinutes?: number;
+          durationLabel?: string;
+          event?: string;
+          validity?: {
+            fromChapter: number;
+            /** @default null */
+            toChapter?: number | null;
+            /** @default null */
+            fromStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+            /** @default null */
+            toStoryTime?: {
+              era: string;
+              label: string;
+              sortKey: number;
+            } | null;
+          };
+        };
+      };
+    };
+    responses: {
+      /** @description Updated timeline event */
+      200: {
         headers: {
           [name: string]: unknown;
         };
@@ -33161,7 +34363,12 @@ export interface operations {
   };
   PowerItemsController_listPowerSystems: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -33289,9 +34496,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -34000,7 +35206,12 @@ export interface operations {
   };
   PowerItemsController_listMechanisms: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -34261,9 +35472,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -35583,7 +36793,12 @@ export interface operations {
   };
   PowerItemsController_listItems: {
     parameters: {
-      query?: never;
+      query?: {
+        cursor?: string;
+        limit?: number;
+        versionNodeId?: string;
+        chapterNumber?: number;
+      };
       header?: never;
       path: {
         workId: string;
@@ -35783,9 +36998,8 @@ export interface operations {
             }[];
             /** Format: starts_with */
             requestId: string;
-            /** @default {} */
             meta: {
-              [key: string]: unknown;
+              nextCursor: string | null;
             };
           };
         };
@@ -37395,8 +38609,8 @@ export interface operations {
   WritingActionController_list: {
     parameters: {
       query?: {
-        limit?: unknown;
-        cursor?: unknown;
+        cursor?: string;
+        limit?: number;
       };
       header?: never;
       path: {
@@ -37816,6 +39030,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -37866,6 +39081,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -37906,6 +39124,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -38572,6 +39794,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -38622,6 +39845,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -38662,6 +39888,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -39105,6 +40335,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -39155,6 +40386,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -39195,6 +40429,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -39638,6 +40876,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -39688,6 +40927,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -39728,6 +40970,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40171,6 +41417,7 @@ export interface operations {
                   | "SETTING_CONFLICT_UNRESOLVED"
                   | "SETTING_PROPOSAL_STATE"
                   | "SETTING_NOT_LOCKED"
+                  | "SETTING_DOMAIN_DATA_FORBIDDEN"
                   | "CUSTOM_FIELD_REQUIRED"
                   | "CUSTOM_FIELD_INVALID"
                   | "CUSTOM_FIELD_IMMUTABLE"
@@ -40221,6 +41468,9 @@ export interface operations {
                   | "GOLDEN_THREE_CANDIDATE_LOCKED"
                   | "GOLDEN_THREE_REVIEW_FAILED"
                   | "GOLDEN_THREE_SELECTION_REQUIRED"
+                  | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                  | "GOLDEN_THREE_MODEL_REQUIRED"
+                  | "GOLDEN_THREE_GENERATION_FAILED"
                   | "GOLDEN_THREE_ALREADY_LOCKED"
                   | "GOLDEN_THREE_OVERRIDE_INVALID"
                   | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -40261,6 +41511,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40717,6 +41971,7 @@ export interface operations {
                     | "SETTING_CONFLICT_UNRESOLVED"
                     | "SETTING_PROPOSAL_STATE"
                     | "SETTING_NOT_LOCKED"
+                    | "SETTING_DOMAIN_DATA_FORBIDDEN"
                     | "CUSTOM_FIELD_REQUIRED"
                     | "CUSTOM_FIELD_INVALID"
                     | "CUSTOM_FIELD_IMMUTABLE"
@@ -40767,6 +42022,9 @@ export interface operations {
                     | "GOLDEN_THREE_CANDIDATE_LOCKED"
                     | "GOLDEN_THREE_REVIEW_FAILED"
                     | "GOLDEN_THREE_SELECTION_REQUIRED"
+                    | "GOLDEN_THREE_CONTINUATION_REQUIRED"
+                    | "GOLDEN_THREE_MODEL_REQUIRED"
+                    | "GOLDEN_THREE_GENERATION_FAILED"
                     | "GOLDEN_THREE_ALREADY_LOCKED"
                     | "GOLDEN_THREE_OVERRIDE_INVALID"
                     | "GOLDEN_THREE_CHAPTERS_EMPTY"
@@ -40807,6 +42065,10 @@ export interface operations {
                     | "BATCH_PLAN_INVALID"
                     | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                     | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -40890,8 +42152,8 @@ export interface operations {
   RevisionController_list: {
     parameters: {
       query?: {
-        limit?: unknown;
-        cursor?: unknown;
+        cursor?: string;
+        limit?: number;
       };
       header?: never;
       path: {

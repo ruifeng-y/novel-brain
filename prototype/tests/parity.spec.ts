@@ -109,6 +109,18 @@ test.describe('page-specific states', () => {
 });
 
 test.describe('prototype gates and author language', () => {
+  test('account settings exposes a masked invalid-key recovery path', async ({
+    page,
+  }) => {
+    await page.goto(`${prototypeUrl}#account-settings`);
+    const invalidKey = page.locator('[data-key-state="invalid"]');
+    await expect(invalidKey).toContainText('Key ••••••••');
+    await expect(invalidKey).toContainText('Key 无效或已失效');
+    await expect(
+      invalidKey.getByRole('button', { name: '替换 Key' }),
+    ).toBeVisible();
+  });
+
   test('structural conflicts cannot be applied directly', async ({ page }) => {
     await page.goto(`${prototypeUrl}#changes`);
     await expect(

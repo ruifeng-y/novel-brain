@@ -14,8 +14,13 @@ import {
   works,
   type DatabaseClient,
 } from "@novel-brain/db";
-import type { ChapterCreateRequest, ChapterPatchRequest } from "@novel-brain/contracts";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import type {
+  ChapterCreateRequest,
+  ChapterListQuery,
+  ChapterPatchRequest,
+  ChapterVersionListQuery,
+} from "@novel-brain/contracts";
+import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -90,8 +95,29 @@ export class ChaptersRepository implements OnModuleDestroy {
     });
   }
 
-  async list(userId: string, context: ChapterWorkContext): Promise<ChapterWithVersion[]> {
+  async list(
+    userId: string,
+    context: ChapterWorkContext,
+    query: ChapterListQuery,
+  ): Promise<{ data: ChapterWithVersion[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(chapters.userId, userId),
+        eq(chapters.workId, context.workId),
+        eq(chapters.branchId, context.branchId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: chapters.id, number: chapters.number })
+              .from(chapters)
+              .where(and(scope, eq(chapters.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const rows = await transaction
         .select({
           chapter: chapters,
@@ -103,17 +129,27 @@ export class ChaptersRepository implements OnModuleDestroy {
         .leftJoin(versionNodes, eq(versionNodes.id, chapterVersions.versionNodeId))
         .where(
           and(
-            eq(chapters.userId, userId),
-            eq(chapters.workId, context.workId),
-            eq(chapters.branchId, context.branchId),
+            scope,
+            cursor
+              ? or(
+                  gt(chapters.number, cursor.number),
+                  and(eq(chapters.number, cursor.number), gt(chapters.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(chapters.number));
-      return rows.map(({ chapter, currentVersion, parentNodeId }) => ({
-        chapter,
-        currentVersion: currentVersion ?? null,
-        parentNodeId: parentNodeId ?? null,
-      }));
+        .orderBy(asc(chapters.number), asc(chapters.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const page = hasMore ? rows.slice(0, query.limit) : rows;
+      return {
+        data: page.map(({ chapter, currentVersion, parentNodeId }) => ({
+          chapter,
+          currentVersion: currentVersion ?? null,
+          parentNodeId: parentNodeId ?? null,
+        })),
+        nextCursor: hasMore ? (page.at(-1)?.chapter.id ?? null) : null,
+      };
     });
   }
 
@@ -416,12 +452,33 @@ export class ChaptersRepository implements OnModuleDestroy {
     userId: string,
     context: ChapterWorkContext,
     chapterId: string,
-  ): Promise<ChapterVersionWithParent[] | undefined> {
+    query: ChapterVersionListQuery,
+  ): Promise<
+    { data: ChapterVersionWithParent[]; nextCursor: string | null } | "not_found" | "invalid_cursor"
+  > {
     const chapter = await this.find(userId, context, chapterId);
     if (!chapter) {
-      return undefined;
+      return "not_found";
     }
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(chapterVersions.userId, userId),
+        eq(chapterVersions.workId, context.workId),
+        eq(chapterVersions.branchId, context.branchId),
+        eq(chapterVersions.chapterId, chapterId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: chapterVersions.id, version: chapterVersions.version })
+              .from(chapterVersions)
+              .where(and(scope, eq(chapterVersions.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const rows = await transaction
         .select({
           version: chapterVersions,
@@ -431,17 +488,29 @@ export class ChaptersRepository implements OnModuleDestroy {
         .innerJoin(versionNodes, eq(versionNodes.id, chapterVersions.versionNodeId))
         .where(
           and(
-            eq(chapterVersions.userId, userId),
-            eq(chapterVersions.workId, context.workId),
-            eq(chapterVersions.branchId, context.branchId),
-            eq(chapterVersions.chapterId, chapterId),
+            scope,
+            cursor
+              ? or(
+                  lt(chapterVersions.version, cursor.version),
+                  and(
+                    eq(chapterVersions.version, cursor.version),
+                    lt(chapterVersions.id, cursor.id),
+                  ),
+                )
+              : undefined,
           ),
         )
-        .orderBy(desc(chapterVersions.version));
-      return rows.map(({ version, parentNodeId }) => ({
-        ...version,
-        parentNodeId,
-      }));
+        .orderBy(desc(chapterVersions.version), desc(chapterVersions.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const page = hasMore ? rows.slice(0, query.limit) : rows;
+      return {
+        data: page.map(({ version, parentNodeId }) => ({
+          ...version,
+          parentNodeId,
+        })),
+        nextCursor: hasMore ? (page.at(-1)?.version.id ?? null) : null,
+      };
     });
   }
 

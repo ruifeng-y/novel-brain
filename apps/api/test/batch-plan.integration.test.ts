@@ -3,7 +3,10 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  batchReviewDecisionResponseSchema,
+  batchReviewQueueListResponseSchema,
   batchPlanResponseSchema,
+  chapterVersionSaveResponseSchema,
   type GenerateChapterJob,
   type GenerationJobStatus,
   type BatchPlanSummary,
@@ -64,7 +67,10 @@ describe("batch plan integration", () => {
     process.env.MODEL_PROVIDER_ALLOWLIST = "https://8.8.8.8/v1";
 
     await runMigrations(databaseUrl);
-    databasePool = createDatabasePool(databaseUrl);
+    databasePool = createDatabasePool(databaseUrl, {
+      query_timeout: 30_000,
+      statement_timeout: 30_000,
+    });
     redis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -142,7 +148,7 @@ describe("batch plan integration", () => {
     expect(plan.scheduling).toMatchObject({
       caps: { global: 4, perWork: 2, perUser: 2 },
       effectivePerWork: 2,
-      priority: 100,
+      priority: 1_000,
       initialRunnableKeys: expect.arrayContaining([expect.stringMatching(/^step:/)]),
     });
     expect(plan.jobId).toBe(plan.id);
@@ -590,8 +596,15 @@ describe("batch plan integration", () => {
       );
       expect(finalChapters.rows).toEqual([
         { status: "failed", count: "1" },
-        { status: "waiting_review", count: "1" },
+        { status: "succeeded", count: "1" },
       ]);
+      const volumeReview = await tenantQuery<{ count: string }>(
+        userId,
+        `SELECT count(*)::text AS count FROM batch_review_items
+         WHERE plan_id = $1 AND target_type = 'volume' AND status = 'pending'`,
+        [plan.id],
+      );
+      expect(volumeReview.rows[0]?.count).toBe("1");
       const children = await tenantQuery<{ count: string }>(
         userId,
         "SELECT count(*)::text AS count FROM jobs WHERE parent_job_id = $1 AND type = 'generate_chapter'",
@@ -885,6 +898,608 @@ describe("batch plan integration", () => {
     }
   }, 60_000);
 
+  it("claims and decides review items independently with stale-version partial failures", async () => {
+    const owner = await createAuthenticatedAgent("batch-review-owner@example.com");
+    const work = await createWork(owner, "批量审核书");
+    const token = await csrf(owner);
+    const branchPath = branchPathOf(work);
+    const outlinePath = `${branchPath}/outline`;
+    const userId = await userIdFor(owner);
+    const book = await createNode(owner, token, outlinePath, {
+      level: "book",
+      parentId: null,
+      title: "批量审核书",
+    });
+    const volume = await createNode(owner, token, outlinePath, {
+      level: "volume",
+      parentId: book.id,
+      title: "第一卷",
+    });
+    const act = await createNode(owner, token, outlinePath, {
+      level: "act",
+      parentId: volume.id,
+      title: "第一幕",
+    });
+    const chapterIds: string[] = [];
+    for (const number of [1, 2]) {
+      const chapterNode = await createNode(owner, token, outlinePath, {
+        level: "chapter",
+        parentId: act.id,
+        chapterCreate: {
+          number,
+          title: `第${number}章`,
+          brief: completeBrief(number),
+        },
+      });
+      chapterIds.push(chapterNode.chapter!.id);
+    }
+    await createModelConfig(owner, token);
+
+    const repository = new WorkerBatchPlanRepository();
+    const tickQueue = {
+      enqueueTick: async () => undefined,
+    } as unknown as WorkerBatchPlanQueue;
+    const childQueue = {
+      enqueueChapter: async () => undefined,
+    } as unknown as BatchPlanChildQueue;
+    try {
+      const processor = new BatchPlanTickProcessor(repository, childQueue, tickQueue);
+      for (const [index, chapterId] of chapterIds.entries()) {
+        const plan = batchPlanResponseSchema.parse(
+          (
+            await postPlan(
+              owner,
+              branchPath,
+              token,
+              `batch-review-plan-${index}`,
+              { type: "chapter", chapterIds: [chapterId] },
+              { approvalMode: "per_chapter" },
+            )
+          ).body,
+        ).data;
+        await postPlanAction(
+          owner,
+          branchPath,
+          token,
+          plan.id,
+          "start",
+          `batch-review-start-${index}`,
+        ).expect(202);
+        await processor.process(tickPayload(plan));
+
+        const childRows = await tenantQuery<{ id: string }>(
+          userId,
+          "SELECT id FROM jobs WHERE parent_job_id = $1 AND chapter_id = $2 LIMIT 1",
+          [plan.id, chapterId],
+        );
+        const child = childRows.rows[0]!;
+        await tenantQuery(
+          userId,
+          `UPDATE jobs
+           SET status = 'waiting_review', current_step = 'await_review',
+               finished_at = now(), updated_at = now()
+           WHERE id = $1`,
+          [child.id],
+        );
+        await processor.onChildFinished({
+          jobId: child.id,
+          actorId: userId,
+          chapterId,
+        });
+      }
+    } finally {
+      await repository.onModuleDestroy();
+    }
+
+    const queue = batchReviewQueueListResponseSchema.parse(
+      (await owner.get(`${branchPath}/review-queue?status=pending`).expect(200)).body,
+    );
+    expect(queue.data).toHaveLength(2);
+    expect(queue.data.every((item) => item.risk === "high")).toBe(true);
+    expect(queue.data.every((item) => item.targetType === "chapter")).toBe(true);
+
+    const claim = await owner
+      .post(`${branchPath}/review-queue/claim`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ itemIds: queue.data.map((item) => item.id) })
+      .expect(200);
+    expect(claim.body.data.every((item: { status: string }) => item.status === "claimed")).toBe(
+      true,
+    );
+
+    const [first, second] = claim.body.data as Array<{
+      id: string;
+      version: number;
+    }>;
+    const guarded = batchReviewDecisionResponseSchema.parse(
+      (
+        await owner
+          .post(`${branchPath}/review-queue/decisions`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "batch-review-high-risk-bulk")
+          .send({
+            items: [
+              {
+                itemId: first!.id,
+                expectedVersion: first!.version,
+                action: "approve",
+              },
+              {
+                itemId: second!.id,
+                expectedVersion: second!.version,
+                action: "approve",
+              },
+            ],
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(guarded.failed).toBe(2);
+    expect(guarded.results.map((result) => result.errorCode)).toEqual([
+      "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+      "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+    ]);
+
+    const decision = await owner
+      .post(`${branchPath}/review-queue/decisions`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "batch-review-decisions-1")
+      .send({
+        items: [
+          {
+            itemId: first!.id,
+            expectedVersion: first!.version,
+            action: "reject",
+            reason: "本章主线偏离锁定大纲。",
+          },
+          {
+            itemId: second!.id,
+            expectedVersion: 999,
+            action: "reject",
+            reason: "过期版本应失败。",
+          },
+        ],
+      })
+      .expect(200);
+    const parsed = batchReviewDecisionResponseSchema.parse(decision.body).data;
+    expect(parsed).toMatchObject({ succeeded: 1, failed: 1 });
+    expect(parsed.results.map((result) => result.errorCode)).toEqual(
+      expect.arrayContaining([null, "VERSION_CONFLICT"]),
+    );
+
+    const replay = batchReviewDecisionResponseSchema.parse(
+      (
+        await owner
+          .post(`${branchPath}/review-queue/decisions`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .set("Idempotency-Key", "batch-review-decisions-1")
+          .send({
+            items: [
+              {
+                itemId: first!.id,
+                expectedVersion: first!.version,
+                action: "reject",
+                reason: "本章主线偏离锁定大纲。",
+              },
+              {
+                itemId: second!.id,
+                expectedVersion: 999,
+                action: "reject",
+                reason: "过期版本应失败。",
+              },
+            ],
+          })
+          .expect(200)
+      ).body,
+    ).data;
+    expect(replay).toEqual(parsed);
+
+    const concurrent = await Promise.all([
+      owner
+        .post(`${branchPath}/review-queue/decisions`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .set("Idempotency-Key", "batch-review-concurrent-a")
+        .send({
+          items: [
+            {
+              itemId: second!.id,
+              expectedVersion: second!.version,
+              action: "reject",
+              reason: "并发审核 A。",
+            },
+          ],
+        })
+        .expect(200),
+      owner
+        .post(`${branchPath}/review-queue/decisions`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .set("Idempotency-Key", "batch-review-concurrent-b")
+        .send({
+          items: [
+            {
+              itemId: second!.id,
+              expectedVersion: second!.version,
+              action: "reject",
+              reason: "并发审核 B。",
+            },
+          ],
+        })
+        .expect(200),
+    ]);
+    const concurrentResults = concurrent.map(
+      (response) => batchReviewDecisionResponseSchema.parse(response.body).data,
+    );
+    expect(concurrentResults.map((result) => result.succeeded).sort()).toEqual([0, 1]);
+    expect(
+      concurrentResults.flatMap((result) =>
+        result.results.map((item) => item.errorCode).filter(Boolean),
+      ),
+    ).toContain("VERSION_CONFLICT");
+
+    const other = await createAuthenticatedAgent("batch-review-other@example.com");
+    await other.get(`${branchPath}/review-queue`).expect(404);
+  });
+
+  it("auto-approves a low-risk chapter only when quality, outline and risks all pass", async () => {
+    const owner = await createAuthenticatedAgent("batch-review-auto@example.com");
+    const work = await createWork(owner, "批量自动通过书");
+    const token = await csrf(owner);
+    const branchPath = branchPathOf(work);
+    const outlinePath = `${branchPath}/outline`;
+    const userId = await userIdFor(owner);
+    const book = await createNode(owner, token, outlinePath, {
+      level: "book",
+      parentId: null,
+      title: "批量自动通过书",
+    });
+    const volume = await createNode(owner, token, outlinePath, {
+      level: "volume",
+      parentId: book.id,
+      title: "第一卷",
+    });
+    const act = await createNode(owner, token, outlinePath, {
+      level: "act",
+      parentId: volume.id,
+      title: "第一幕",
+    });
+    const chapterNode = await createNode(owner, token, outlinePath, {
+      level: "chapter",
+      parentId: act.id,
+      chapterCreate: {
+        number: 4,
+        title: "第4章",
+        brief: completeBrief(4),
+      },
+    });
+    await createNode(owner, token, outlinePath, {
+      level: "chapter",
+      parentId: act.id,
+      chapterCreate: {
+        number: 5,
+        title: "第5章",
+        brief: completeBrief(5),
+      },
+    });
+    const chapterId = chapterNode.chapter!.id;
+    await createModelConfig(owner, token);
+    await tenantQuery(
+      userId,
+      `WITH RECURSIVE ancestors AS (
+         SELECT id, parent_id FROM outline_nodes
+         WHERE chapter_id = $1 AND user_id = $2
+         UNION ALL
+         SELECT parent.id, parent.parent_id
+         FROM outline_nodes parent
+         INNER JOIN ancestors child ON child.parent_id = parent.id
+         WHERE parent.user_id = $2
+       )
+       UPDATE outline_nodes SET locked = true
+       WHERE id IN (SELECT id FROM ancestors)`,
+      [chapterId, userId],
+    );
+
+    const plan = batchPlanResponseSchema.parse(
+      (
+        await postPlan(
+          owner,
+          branchPath,
+          token,
+          "batch-review-auto-plan",
+          { type: "chapter", chapterIds: [chapterId] },
+          { approvalMode: "auto" },
+        )
+      ).body,
+    ).data;
+    await postPlanAction(
+      owner,
+      branchPath,
+      token,
+      plan.id,
+      "start",
+      "batch-review-auto-start",
+    ).expect(202);
+    const repository = new WorkerBatchPlanRepository();
+    const tickQueue = {
+      enqueueTick: async () => undefined,
+    } as unknown as WorkerBatchPlanQueue;
+    const childQueue = {
+      enqueueChapter: async () => undefined,
+    } as unknown as BatchPlanChildQueue;
+    try {
+      const processor = new BatchPlanTickProcessor(repository, childQueue, tickQueue);
+      await processor.process(tickPayload(plan));
+      const childRows = await tenantQuery<{ id: string }>(
+        userId,
+        "SELECT id FROM jobs WHERE parent_job_id = $1 AND chapter_id = $2 LIMIT 1",
+        [plan.id, chapterId],
+      );
+      const child = childRows.rows[0]!;
+      const chapterBefore = await tenantQuery<{ version: number }>(
+        userId,
+        "SELECT version FROM chapters WHERE id = $1",
+        [chapterId],
+      );
+      const saved = chapterVersionSaveResponseSchema.parse(
+        (
+          await owner
+            .post(`${branchPath}/chapters/${chapterId}/versions`)
+            .set("Origin", origin)
+            .set("X-CSRF-Token", token)
+            .send({
+              version: chapterBefore.rows[0]!.version,
+              content: "沈砚在雪夜里追到旧桥。\n\n桥下的人抬起头，正是失踪多年的顾青。",
+            })
+            .expect(201)
+        ).body,
+      ).data;
+      await tenantQuery(
+        userId,
+        `INSERT INTO quality_reports (
+           id, work_id, branch_id, user_id, chapter_id, chapter_version_id,
+           rubric_version, rule_version, source_hash, dimensions, summary,
+           created_by, created_at
+         ) VALUES (
+           $1, $2, $3, $4, $5, $6,
+           'm1-quality-rubric-v1', 'm1-critic-rules-v1', $7, $8::jsonb, $9,
+           $4, now()
+         )`,
+        [
+          uuidv7(),
+          work.id,
+          work.mainBranch.id,
+          userId,
+          chapterId,
+          saved.version.id,
+          "a".repeat(64),
+          JSON.stringify(
+            ["hook", "pacing", "information_density", "character_voice", "prose", "continuity"].map(
+              (dimension) => ({
+                dimension,
+                label: dimension,
+                score: 4,
+                rationale: "当前版本达到标准质量。",
+                evidence: [
+                  {
+                    kind: "text",
+                    sourceId: null,
+                    sourceVersionId: null,
+                    chapterId,
+                    chapterVersionId: saved.version.id,
+                    quote: "沈砚在雪夜里追到旧桥。",
+                    startOffset: 0,
+                    endOffset: 10,
+                    locator: "第 4 章 · 第 1 段",
+                    explanation: "当前版本证据。",
+                  },
+                ],
+              }),
+            ),
+          ),
+          "六维质量达到自动通过门槛。",
+        ],
+      );
+      await tenantQuery(userId, "UPDATE chapters SET status = 'waiting_review' WHERE id = $1", [
+        chapterId,
+      ]);
+      await tenantQuery(
+        userId,
+        `UPDATE jobs SET status = 'waiting_review', current_step = 'await_review',
+         finished_at = now(), updated_at = now() WHERE id = $1`,
+        [child.id],
+      );
+      await processor.onChildFinished({
+        jobId: child.id,
+        actorId: userId,
+        chapterId,
+      });
+    } finally {
+      await repository.onModuleDestroy();
+    }
+
+    const chapter = await tenantQuery<{ status: string }>(
+      userId,
+      "SELECT status FROM chapters WHERE id = $1",
+      [chapterId],
+    );
+    expect(chapter.rows[0]?.status).toBe("approved");
+    const queued = await tenantQuery<{ count: string }>(
+      userId,
+      "SELECT count(*)::text AS count FROM batch_review_items WHERE plan_id = $1",
+      [plan.id],
+    );
+    expect(queued.rows[0]?.count).toBe("0");
+    const workItem = await tenantQuery<{ status: string }>(
+      userId,
+      "SELECT status FROM job_work_items WHERE job_id = $1 AND work_item_key = $2",
+      [plan.id, `chapter:${chapterId}`],
+    );
+    expect(workItem.rows[0]?.status).toBe("succeeded");
+  });
+
+  it("coalesces per-volume review into one volume item at the final chapter", async () => {
+    const owner = await createAuthenticatedAgent("batch-review-volume@example.com");
+    const work = await createWork(owner, "批量逐卷审核书");
+    const token = await csrf(owner);
+    const branchPath = branchPathOf(work);
+    const outlinePath = `${branchPath}/outline`;
+    const userId = await userIdFor(owner);
+    const book = await createNode(owner, token, outlinePath, {
+      level: "book",
+      parentId: null,
+      title: "批量逐卷审核书",
+    });
+    const volume = await createNode(owner, token, outlinePath, {
+      level: "volume",
+      parentId: book.id,
+      title: "逐卷审批卷",
+    });
+    const act = await createNode(owner, token, outlinePath, {
+      level: "act",
+      parentId: volume.id,
+      title: "第一幕",
+    });
+    const chapterIds: string[] = [];
+    for (const number of [1, 2]) {
+      const chapterNode = await createNode(owner, token, outlinePath, {
+        level: "chapter",
+        parentId: act.id,
+        chapterCreate: {
+          number,
+          title: `第${number}章`,
+          brief: completeBrief(number),
+        },
+      });
+      chapterIds.push(chapterNode.chapter!.id);
+    }
+    await createModelConfig(owner, token);
+    const plan = batchPlanResponseSchema.parse(
+      (
+        await postPlan(
+          owner,
+          branchPath,
+          token,
+          "batch-review-volume-plan",
+          { type: "chapter", chapterIds },
+          { approvalMode: "per_volume" },
+        )
+      ).body,
+    ).data;
+    await postPlanAction(
+      owner,
+      branchPath,
+      token,
+      plan.id,
+      "start",
+      "batch-review-volume-start",
+    ).expect(202);
+    const repository = new WorkerBatchPlanRepository();
+    const tickQueue = {
+      enqueueTick: async () => undefined,
+    } as unknown as WorkerBatchPlanQueue;
+    const childQueue = {
+      enqueueChapter: async () => undefined,
+    } as unknown as BatchPlanChildQueue;
+    try {
+      const processor = new BatchPlanTickProcessor(repository, childQueue, tickQueue);
+      for (const chapterId of chapterIds) {
+        await processor.process(tickPayload(plan));
+        const childRows = await tenantQuery<{ id: string }>(
+          userId,
+          "SELECT id FROM jobs WHERE parent_job_id = $1 AND chapter_id = $2 LIMIT 1",
+          [plan.id, chapterId],
+        );
+        const child = childRows.rows[0]!;
+        await tenantQuery(
+          userId,
+          `UPDATE jobs SET status = 'waiting_review', current_step = 'await_review',
+           finished_at = now(), updated_at = now() WHERE id = $1`,
+          [child.id],
+        );
+        await tenantQuery(userId, "UPDATE chapters SET status = 'waiting_review' WHERE id = $1", [
+          chapterId,
+        ]);
+        await processor.onChildFinished({
+          jobId: child.id,
+          actorId: userId,
+          chapterId,
+        });
+      }
+    } finally {
+      await repository.onModuleDestroy();
+    }
+
+    const queue = batchReviewQueueListResponseSchema.parse(
+      (await owner.get(`${branchPath}/review-queue?status=pending`).expect(200)).body,
+    );
+    expect(queue.data).toHaveLength(1);
+    expect(queue.data[0]).toMatchObject({
+      targetType: "volume",
+      chapterId: null,
+      risk: "high",
+      version: 1,
+    });
+    expect(
+      batchPlanResponseSchema.parse(
+        (await owner.get(`${branchPath}/batch-plans/${plan.id}`).expect(200)).body,
+      ).data.status,
+    ).toBe("waiting_review");
+    const claim = await owner
+      .post(`${branchPath}/review-queue/claim`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ itemIds: [queue.data[0]!.id] })
+      .expect(200);
+    const volumeItem = claim.body.data[0] as { id: string; version: number };
+    const decision = await owner
+      .post(`${branchPath}/review-queue/decisions`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "batch-review-volume-reject")
+      .send({
+        items: [
+          {
+            itemId: volumeItem.id,
+            expectedVersion: volumeItem.version,
+            action: "reject",
+            reason: "整卷主线冲突，需要重新生成。",
+          },
+        ],
+      })
+      .expect(200);
+    const volumeDecision = batchReviewDecisionResponseSchema.parse(decision.body).data;
+    expect(volumeDecision).toMatchObject({
+      succeeded: 1,
+      failed: 0,
+    });
+    const chapters = await tenantQuery<{ status: string }>(
+      userId,
+      "SELECT status FROM chapters WHERE id = ANY($1::uuid[])",
+      [chapterIds],
+    );
+    expect(chapters.rows.every((chapter) => chapter.status === "rejected")).toBe(true);
+    const finalizeRepository = new WorkerBatchPlanRepository();
+    try {
+      const finalizeProcessor = new BatchPlanTickProcessor(
+        finalizeRepository,
+        { enqueueChapter: async () => undefined } as unknown as BatchPlanChildQueue,
+        { enqueueTick: async () => undefined } as unknown as WorkerBatchPlanQueue,
+      );
+      await finalizeProcessor.process(tickPayload(plan));
+    } finally {
+      await finalizeRepository.onModuleDestroy();
+    }
+    const rejectedPlan = batchPlanResponseSchema.parse(
+      (await owner.get(`${branchPath}/batch-plans/${plan.id}`).expect(200)).body,
+    ).data;
+    expect(rejectedPlan.status).toBe("failed");
+  });
+
   async function createAuthenticatedAgent(email: string): Promise<SuperAgentTest> {
     const agent = request.agent(app.getHttpServer());
     const csrfToken = (await agent.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
@@ -1025,6 +1640,8 @@ describe("batch plan integration", () => {
       workId: plan.workId,
       branchId: plan.branchId,
       actorId: plan.userId,
+      idempotencyKey: `batch-tick:${plan.id}`,
+      checkpoint: { schemaVersion: 1, revision: 0, planId: plan.id },
     };
   }
 

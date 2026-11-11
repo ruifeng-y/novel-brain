@@ -211,6 +211,8 @@ export class BatchPlanService {
         workId: context.workId,
         branchId: context.branchId,
         actorId: userId,
+        idempotencyKey: `batch-tick:${planId}:${action}`,
+        checkpoint: { schemaVersion: 1, revision: 0, planId },
         reason: request.reason ?? defaultReason(action),
       });
     }

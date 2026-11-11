@@ -106,6 +106,8 @@ test("completes the M1 author loop through outline, writing, facts and volume au
     .getByRole("button", { name: "选定这个方向" })
     .click();
   await expect(page.locator(".golden-three-candidate").first().getByText("已选定")).toBeVisible();
+  await page.getByRole("button", { name: "登记第 2、3 章", exact: true }).click();
+  await expect(page.getByText("续写版本已登记")).toBeVisible();
   await page.getByRole("button", { name: "锁定黄金三章" }).click();
   await expect(page.getByText("黄金三章已锁定")).toBeVisible();
   await expectAuthorFacingLanguage(page);
@@ -127,7 +129,7 @@ test("completes the M1 author loop through outline, writing, facts and volume au
   const worker = await startWorker();
   try {
     await page.goto(`/workspace/${work.id}/write?chapterId=${chapterFour.id}`);
-    await page.getByRole("button", { name: "生成整章" }).click();
+    await startGenerationThroughUi(page, chapterFour.id);
     await expect(
       page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
     ).toBeVisible({ timeout: 30_000 });
@@ -293,6 +295,29 @@ test("checks every M1 page at four viewports without claiming unsigned goldens",
   expect(origin).toBe("http://localhost:3000");
 });
 
+test("keeps generation status observable when live events are unavailable", async ({
+  page,
+  context,
+  request,
+}) => {
+  await authenticatedPage(page, context, request);
+  const work = await createM1Work(request);
+  const fixture = await seedM1Structure(request, work);
+  await page.route("**/jobs/*/events", (route) => route.abort("failed"));
+
+  const worker = await startWorker();
+  try {
+    await page.goto(`/workspace/${work.id}/write?chapterId=${fixture.generationChapterId}`);
+    await startGenerationThroughUi(page, fixture.generationChapterId);
+
+    await expect(
+      page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
+    ).toBeVisible({ timeout: 30_000 });
+  } finally {
+    await worker.stop();
+  }
+});
+
 async function createSettingsThroughUi(page: Page) {
   const settings = [
     {
@@ -306,9 +331,12 @@ async function createSettingsThroughUi(page: Page) {
       name: "沈砚",
       summary: "隐藏忘川书的外门杂役。",
       fields: {
-        当前身体状态: "左臂骨折，不能双手结印。",
-        知识边界: "不知道父母死于仇杀。",
-        关系摘要: "与顾青互相试探。",
+        人物欲望: "找回被抹去的记忆。",
+        人物恐惧: "再次被宗门抛弃。",
+        人物目标: "进入内门。",
+        声纹样本: "“我记得，只是还没想起来。”",
+        声线指南: "短句，克制。",
+        伪装: "藏起左臂伤势。",
       },
     },
     {
@@ -454,8 +482,22 @@ async function createOutlineThroughUi(page: Page, work: M1Work) {
       .getByLabel("场景节拍（一行一个）")
       .fill("沈砚藏起断臂。\n追兵逼近，两人继续上路。");
     await creator.getByLabel("必用事实（一行一个）").fill("左臂骨折，不能双手结印");
+    const createResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        new URL(response.url()).pathname.endsWith("/outline/nodes"),
+      { timeout: 60_000 },
+    );
     await creator.getByRole("button", { name: "创建节点" }).click();
-    await expect(page.getByText(`第 ${chapter.number} 章`).first()).toBeVisible();
+    const response = await createResponse;
+    expect(response.status()).toBe(201);
+    const created = (await response.json()).data as {
+      node: { id: string; chapter: { number: number } | null };
+    };
+    expect(created.node.chapter?.number).toBe(chapter.number);
+    const createdNode = page.locator(`[data-outline-node-id="${created.node.id}"]`);
+    await expect(createdNode).toBeVisible();
+    await expect(createdNode).toContainText(`第 ${chapter.number} 章`);
   }
 }
 
@@ -464,6 +506,18 @@ async function ensureCreatorOpen(creator: Locator) {
   if (!open) {
     await creator.locator("summary").click();
   }
+}
+
+async function startGenerationThroughUi(page: Page, chapterId: string): Promise<void> {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname.endsWith(`/chapters/${chapterId}/generate`),
+    { timeout: 60_000 },
+  );
+  await page.getByRole("button", { name: "生成整章" }).click();
+  const response = await responsePromise;
+  expect(response.status()).toBe(202);
 }
 
 async function writeChapterVersionThroughUi(

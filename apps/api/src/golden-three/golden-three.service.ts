@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type {
   GoldenThreeCandidateBatchRequest,
+  GoldenThreeContinuationRequest,
   GoldenThreeGenerateRequest,
   GoldenThreeLockRequest,
   GoldenThreeReviewBatchRequest,
@@ -142,6 +143,28 @@ export class GoldenThreeService {
     return this.repository.workspace(userId, context);
   }
 
+  async recordContinuation(
+    userId: string,
+    workId: string,
+    branchId: string,
+    candidateId: string,
+    input: GoldenThreeContinuationRequest,
+    audit: WorksAuditContext,
+  ): Promise<GoldenThreeWorkspace> {
+    const context = await this.requireContext(userId, workId, branchId);
+    const result = await this.repository.recordContinuation(
+      userId,
+      context,
+      candidateId,
+      input,
+      audit,
+    );
+    if (result.kind !== "ok") {
+      throw this.writeError(result);
+    }
+    return this.repository.workspace(userId, context);
+  }
+
   private async requireContext(
     userId: string,
     workId: string,
@@ -183,6 +206,19 @@ export class GoldenThreeService {
         return new ApiError(409, "GOLDEN_THREE_CANDIDATE_LOCKED", "候选已经锁定，不能继续修改");
       case "selection_required":
         return new ApiError(409, "GOLDEN_THREE_SELECTION_REQUIRED", "请先选定一个候选方向");
+      case "continuation_required":
+        return new ApiError(
+          409,
+          "GOLDEN_THREE_CONTINUATION_REQUIRED",
+          "请先生成或登记第 2、3 章续写",
+        );
+      case "model_config_missing":
+        return new ApiError(409, "GOLDEN_THREE_MODEL_REQUIRED", "请先配置用于写作的作者模型");
+      case "model_generation_failed":
+        return new ApiError(502, "GOLDEN_THREE_GENERATION_FAILED", "作者模型生成失败，请稍后重试", {
+          failureClass: result.failureClass,
+          retryable: true,
+        });
       case "review_incomplete":
         return new ApiError(409, "GOLDEN_THREE_REVIEW_FAILED", "六维评审尚未完成", {
           completed: result.completed,

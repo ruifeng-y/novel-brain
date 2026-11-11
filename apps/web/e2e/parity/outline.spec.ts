@@ -1,7 +1,12 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
@@ -290,6 +295,19 @@ test("renders empty, tree, board and tension states at four viewports", async ({
   test.setTimeout(90_000);
   await authenticatedPage(page, context);
   const work = await createOutlineWork(page);
+  let releaseOutline: () => void = () => undefined;
+  const outlineGate = new Promise<void>((resolve) => {
+    releaseOutline = resolve;
+  });
+  await page.route(`**${branchPath(work)}/outline`, async (route) => {
+    await outlineGate;
+    await route.continue();
+  });
+  await page.goto(`/workspace/${work.id}/outline`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("正在加载大纲工作台")).toBeVisible();
+  releaseOutline();
+  await expect(page.getByRole("heading", { name: "还没有全书大纲" })).toBeVisible();
+  await page.unroute(`**${branchPath(work)}/outline`);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
@@ -317,10 +335,12 @@ test("renders empty, tree, board and tension states at four viewports", async ({
 
   const token = await getCsrf(page.request);
   const fixture = await setupCompleteOutline(page, work, token, { bookId: book.id });
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/outline`);
+    await expect(page).toHaveURL(new RegExp(`/workspace/${work.id}/outline$`, "u"));
     await expect(page.locator(`[data-outline-node-id="${fixture.book.id}"]`)).toBeVisible();
     await expect(page.locator(`[data-outline-node-id="${fixture.volume.id}"]`)).toBeVisible();
     await expect(page.locator(`[data-outline-node-id="${fixture.act.id}"]`)).toBeVisible();
@@ -369,11 +389,13 @@ test("renders empty, tree, board and tension states at four viewports", async ({
     await expect(page.getByText("张力 72")).toBeVisible();
 
     await page.getByRole("tab", { name: "树状大纲" }).click();
+    await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
-    await testInfo.attach(`outline-${width}`, {
-      body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
-      contentType: "image/png",
-    });
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["outline", `outline-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 
   await expectAuthorFacingLanguage(page);

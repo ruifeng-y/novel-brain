@@ -263,6 +263,8 @@ export function WritingWorkspace({
   const [work, setWork] = useState<WorkOverview | null>(null);
   const [chapters, setChapters] = useState<ChapterWorkspace[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(initialChapterId ?? null);
+  const selectedIdRef = useRef<string | null>(initialChapterId ?? null);
+  const selectionRevisionRef = useRef(0);
   const [versions, setVersions] = useState<ChapterVersion[]>([]);
   const [content, setContent] = useState("");
   const [savedContent, setSavedContent] = useState("");
@@ -313,11 +315,20 @@ export function WritingWorkspace({
   const [chapterQuery, setChapterQuery] = useState("");
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const activeGenerationJobRef = useRef<string | null>(null);
   const generationRefreshJobRef = useRef<string | null>(null);
+  const generationRefreshInFlightRef = useRef(new Set<string>());
+  const generationPollTimerRef = useRef<number | null>(null);
+  const generationWatchRevisionRef = useRef(0);
+  const loadRequestRevisionRef = useRef(0);
   const writingActionEventSourceRef = useRef<EventSource | null>(null);
   const submissionKeys = useRef(new Map<string, string>());
 
   const load = useCallback(async () => {
+    const loadRevision = loadRequestRevisionRef.current + 1;
+    loadRequestRevisionRef.current = loadRevision;
+    const selectionRevision = selectionRevisionRef.current;
+    const selectedAtLoadStart = selectedIdRef.current;
     setLoading(true);
     setError("");
     try {
@@ -326,16 +337,11 @@ export function WritingWorkspace({
         throw new Error(await readError(workResponse, "作品加载失败。"));
       }
       const workData = workResponseSchema.parse(await workResponse.json()).data;
-      const chaptersResponse = await fetch(
+      const chapterData = await fetchAllCursorPages(
         `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/chapters`,
-        { cache: "no-store" },
+        chapterWorkspaceListResponseSchema.parse,
+        "写作台加载失败。",
       );
-      if (!chaptersResponse.ok) {
-        throw new Error(await readError(chaptersResponse, "写作台加载失败。"));
-      }
-      const chapterData = chapterWorkspaceListResponseSchema.parse(
-        await chaptersResponse.json(),
-      ).data;
       const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
       const [ledgerResponse, entityData, outlineResponse] = await Promise.all([
         fetch(`${basePath}/ledger`, { cache: "no-store" }),
@@ -346,6 +352,12 @@ export function WritingWorkspace({
         ).catch(() => []),
         fetch(`${basePath}/outline`, { cache: "no-store" }),
       ]);
+      if (
+        loadRequestRevisionRef.current !== loadRevision ||
+        selectionRevisionRef.current !== selectionRevision
+      ) {
+        return;
+      }
       setLedger(
         ledgerResponse.ok
           ? storyLedgerWorkspaceResponseSchema.parse(await ledgerResponse.json()).data
@@ -357,11 +369,22 @@ export function WritingWorkspace({
         : null;
       setOutline(outlineData);
       const nextSelectedId =
-        chapterData.find((chapter) => chapter.id === selectedId)?.id ?? chapterData[0]?.id ?? null;
+        chapterData.find((chapter) => chapter.id === selectedAtLoadStart)?.id ??
+        chapterData[0]?.id ??
+        null;
       const selectedChapter = chapterData.find((chapter) => chapter.id === nextSelectedId);
       setWork(workData);
       setChapters(chapterData);
+      if (nextSelectedId !== selectedAtLoadStart) {
+        selectionRevisionRef.current += 1;
+      }
+      if (selectedIdRef.current !== nextSelectedId) {
+        closeGenerationStream();
+      }
+      selectedIdRef.current = nextSelectedId;
       setSelectedId(nextSelectedId);
+      setGenerationRefreshPending(false);
+      setFactsLoading(false);
       setSelectedVolumeId(
         outlineData && selectedChapter
           ? (findVolumeNodeForChapter(outlineData.nodes, selectedChapter.id)?.id ?? "all")
@@ -371,12 +394,37 @@ export function WritingWorkspace({
       setSavedContent(selectedChapter?.currentVersion?.content ?? "");
       if (nextSelectedId && selectedChapter) {
         await Promise.all([
-          loadVersions(workData, nextSelectedId),
+          loadVersions(
+            workData,
+            nextSelectedId,
+            undefined,
+            () =>
+              selectedIdRef.current === nextSelectedId &&
+              loadRequestRevisionRef.current === loadRevision,
+          ),
           loadGenerationJob(workData, nextSelectedId),
           loadWritingActions(workData, nextSelectedId),
-          loadFactProposals(workData, nextSelectedId),
-          loadCanonCommit(workData, nextSelectedId),
-          loadQuality(workData, nextSelectedId),
+          loadFactProposals(
+            workData,
+            nextSelectedId,
+            () =>
+              selectedIdRef.current === nextSelectedId &&
+              loadRequestRevisionRef.current === loadRevision,
+          ),
+          loadCanonCommit(
+            workData,
+            nextSelectedId,
+            () =>
+              selectedIdRef.current === nextSelectedId &&
+              loadRequestRevisionRef.current === loadRevision,
+          ),
+          loadQuality(
+            workData,
+            nextSelectedId,
+            () =>
+              selectedIdRef.current === nextSelectedId &&
+              loadRequestRevisionRef.current === loadRevision,
+          ),
           loadStyleDrift(workData),
           loadRevisions(workData, nextSelectedId),
           loadReadiness(workData, nextSelectedId),
@@ -393,9 +441,13 @@ export function WritingWorkspace({
         await loadReadiness(workData, null);
       }
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "写作台加载失败。");
+      if (loadRequestRevisionRef.current === loadRevision) {
+        setError(caught instanceof Error ? caught.message : "写作台加载失败。");
+      }
     } finally {
-      setLoading(false);
+      if (loadRequestRevisionRef.current === loadRevision) {
+        setLoading(false);
+      }
     }
   }, [selectedId, workId]);
 
@@ -405,7 +457,13 @@ export function WritingWorkspace({
 
   useEffect(
     () => () => {
+      generationWatchRevisionRef.current += 1;
       eventSourceRef.current?.close();
+      activeGenerationJobRef.current = null;
+      if (generationPollTimerRef.current !== null) {
+        window.clearInterval(generationPollTimerRef.current);
+        generationPollTimerRef.current = null;
+      }
       writingActionEventSourceRef.current?.close();
     },
     [],
@@ -424,14 +482,11 @@ export function WritingWorkspace({
     const timer = setInterval(() => {
       void (async () => {
         try {
-          const response = await fetch(
+          const plans = await fetchAllCursorPages(
             `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selectedId}/revisions`,
-            { cache: "no-store" },
+            revisionPlanWorkspaceListResponseSchema.parse,
+            "修订记录加载失败。",
           );
-          if (!response.ok) {
-            return;
-          }
-          const plans = revisionPlanWorkspaceListResponseSchema.parse(await response.json()).data;
           setRevisionPlans(plans);
           if (
             plans.some((plan) =>
@@ -454,13 +509,12 @@ export function WritingWorkspace({
             setContent(chapter.currentVersion?.content ?? "");
             setSavedContent(chapter.currentVersion?.content ?? "");
           }
-          const versionsResponse = await fetch(
+          const nextVersions = await fetchAllCursorPages(
             `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/chapters/${selectedId}/versions`,
-            { cache: "no-store" },
+            chapterVersionListResponseSchema.parse,
+            "版本加载失败。",
           );
-          if (versionsResponse.ok) {
-            setVersions(chapterVersionListResponseSchema.parse(await versionsResponse.json()).data);
-          }
+          setVersions(nextVersions);
         } catch {
           // The next poll retries while the revision job is still active.
         }
@@ -608,7 +662,14 @@ export function WritingWorkspace({
   );
 
   async function selectChapter(chapter: ChapterWorkspace) {
+    if (selectedIdRef.current !== chapter.id) {
+      closeGenerationStream();
+      selectionRevisionRef.current += 1;
+    }
+    selectedIdRef.current = chapter.id;
     setSelectedId(chapter.id);
+    setGenerationRefreshPending(false);
+    setFactsLoading(false);
     setContent(chapter.currentVersion?.content ?? "");
     setSavedContent(chapter.currentVersion?.content ?? "");
     setActionError("");
@@ -616,12 +677,12 @@ export function WritingWorkspace({
     if (work) {
       try {
         await Promise.all([
-          loadVersions(work, chapter.id),
+          loadVersions(work, chapter.id, undefined, () => selectedIdRef.current === chapter.id),
           loadGenerationJob(work, chapter.id),
           loadWritingActions(work, chapter.id),
-          loadFactProposals(work, chapter.id),
-          loadCanonCommit(work, chapter.id),
-          loadQuality(work, chapter.id),
+          loadFactProposals(work, chapter.id, () => selectedIdRef.current === chapter.id),
+          loadCanonCommit(work, chapter.id, () => selectedIdRef.current === chapter.id),
+          loadQuality(work, chapter.id, () => selectedIdRef.current === chapter.id),
           loadStyleDrift(work),
           loadRevisions(work, chapter.id),
         ]);
@@ -635,15 +696,16 @@ export function WritingWorkspace({
     workData: WorkOverview,
     chapterId: string,
     preferredRightVersionId?: string,
+    shouldApply: () => boolean = () => true,
   ) {
-    const response = await fetch(
+    const nextVersions = await fetchAllCursorPages(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/versions`,
-      { cache: "no-store" },
+      chapterVersionListResponseSchema.parse,
+      "版本加载失败。",
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "版本加载失败。"));
+    if (!shouldApply()) {
+      return;
     }
-    const nextVersions = chapterVersionListResponseSchema.parse(await response.json()).data;
     setVersions(nextVersions);
     setLeftVersionId((current) =>
       nextVersions.some((version) => version.id === current)
@@ -661,20 +723,36 @@ export function WritingWorkspace({
   }
 
   async function loadGenerationJob(workData: WorkOverview, chapterId: string) {
-    const response = await fetch(
+    const watchRevision = generationWatchRevisionRef.current;
+    const jobs = await fetchAllCursorPages(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs?chapterId=${chapterId}`,
-      { cache: "no-store" },
+      generationJobListResponseSchema.parse,
+      "生成状态加载失败。",
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "生成状态加载失败。"));
-    }
-    const jobs = generationJobListResponseSchema.parse(await response.json()).data;
     const latest = jobs[0] ?? null;
+    if (
+      selectedIdRef.current !== chapterId ||
+      generationWatchRevisionRef.current !== watchRevision
+    ) {
+      return;
+    }
     setGenerationJob(latest);
     if (latest) {
-      await loadRunTraces(workData, latest.id);
+      await loadRunTraces(
+        workData,
+        latest.id,
+        () =>
+          selectedIdRef.current === chapterId &&
+          generationWatchRevisionRef.current === watchRevision,
+      );
     } else {
       setRunTraces([]);
+    }
+    if (
+      selectedIdRef.current !== chapterId ||
+      generationWatchRevisionRef.current !== watchRevision
+    ) {
+      return;
     }
     if (latest && isActiveGeneration(latest.status)) {
       watchGeneration(workData, latest.id);
@@ -684,14 +762,11 @@ export function WritingWorkspace({
   }
 
   async function loadWritingActions(workData: WorkOverview, chapterId: string) {
-    const response = await fetch(
+    const jobs = await fetchAllCursorPages(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/write-actions`,
-      { cache: "no-store" },
+      writingActionJobListResponseSchema.parse,
+      "写作动作状态加载失败。",
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "写作动作状态加载失败。"));
-    }
-    const jobs = writingActionJobListResponseSchema.parse(await response.json()).data;
     const latest = jobs[0] ?? null;
     setWritingActionJob(latest);
     if (latest && isActiveGeneration(latest.status)) {
@@ -701,46 +776,68 @@ export function WritingWorkspace({
     }
   }
 
-  async function loadRunTraces(workData: WorkOverview, jobId: string) {
-    const response = await fetch(
-      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/agent-runs?jobId=${jobId}`,
-      { cache: "no-store" },
-    );
-    if (!response.ok) {
-      return;
+  async function loadRunTraces(
+    workData: WorkOverview,
+    jobId: string,
+    shouldApply: () => boolean = () => true,
+  ) {
+    try {
+      const traces = await fetchAllCursorPages(
+        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/agent-runs?jobId=${jobId}`,
+        agentRunTraceListResponseSchema.parse,
+        "生成记录加载失败。",
+      );
+      if (shouldApply()) {
+        setRunTraces(traces);
+      }
+    } catch {
+      // Keep the last successful trace while the next poll retries.
     }
-    setRunTraces(agentRunTraceListResponseSchema.parse(await response.json()).data);
   }
 
-  async function loadFactProposals(workData: WorkOverview, chapterId: string) {
+  async function loadFactProposals(
+    workData: WorkOverview,
+    chapterId: string,
+    shouldApply: () => boolean = () => true,
+  ) {
     setFactsLoading(true);
     try {
-      const response = await fetch(
+      const proposals = await fetchAllCursorPages(
         `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/fact-proposals`,
-        { cache: "no-store" },
+        factProposalListResponseSchema.parse,
+        "本章事实加载失败。",
       );
-      if (!response.ok) {
-        throw new Error(await readError(response, "本章事实加载失败。"));
+      if (shouldApply()) {
+        setFactProposals(proposals);
       }
-      setFactProposals(factProposalListResponseSchema.parse(await response.json()).data);
     } finally {
-      setFactsLoading(false);
+      if (shouldApply()) {
+        setFactsLoading(false);
+      }
     }
   }
 
-  async function loadCanonCommit(workData: WorkOverview, chapterId: string) {
-    const response = await fetch(
+  async function loadCanonCommit(
+    workData: WorkOverview,
+    chapterId: string,
+    shouldApply: () => boolean = () => true,
+  ) {
+    const commits = await fetchAllCursorPages(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/canon/commits`,
-      { cache: "no-store" },
+      canonCommitListResponseSchema.parse,
+      "事实提交记录加载失败。",
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "事实提交记录加载失败。"));
+    if (!shouldApply()) {
+      return;
     }
-    const commits = canonCommitListResponseSchema.parse(await response.json()).data;
     setCanonCommit(commits.find((commit) => commit.chapterId === chapterId) ?? null);
   }
 
-  async function loadQuality(workData: WorkOverview, chapterId: string) {
+  async function loadQuality(
+    workData: WorkOverview,
+    chapterId: string,
+    shouldApply: () => boolean = () => true,
+  ) {
     const response = await fetch(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/quality`,
       { cache: "no-store" },
@@ -748,7 +845,10 @@ export function WritingWorkspace({
     if (!response.ok) {
       throw new Error(await readError(response, "质量报告加载失败。"));
     }
-    setQualityWorkspace(qualityWorkspaceResponseSchema.parse(await response.json()).data);
+    const workspace = qualityWorkspaceResponseSchema.parse(await response.json()).data;
+    if (shouldApply()) {
+      setQualityWorkspace(workspace);
+    }
   }
 
   async function loadStyleDrift(workData: WorkOverview) {
@@ -763,14 +863,13 @@ export function WritingWorkspace({
   }
 
   async function loadRevisions(workData: WorkOverview, chapterId: string) {
-    const response = await fetch(
-      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/revisions`,
-      { cache: "no-store" },
+    setRevisionPlans(
+      await fetchAllCursorPages(
+        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/chapters/${chapterId}/revisions`,
+        revisionPlanWorkspaceListResponseSchema.parse,
+        "修订记录加载失败。",
+      ),
     );
-    if (!response.ok) {
-      throw new Error(await readError(response, "修订记录加载失败。"));
-    }
-    setRevisionPlans(revisionPlanWorkspaceListResponseSchema.parse(await response.json()).data);
   }
 
   function upsertRevisionPlan(workspace: RevisionPlanWorkspace) {
@@ -1462,6 +1561,7 @@ export function WritingWorkspace({
   function watchGeneration(workData: WorkOverview, jobId: string) {
     generationRefreshJobRef.current = null;
     closeGenerationStream();
+    activeGenerationJobRef.current = jobId;
     const source = new EventSource(
       `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs/${jobId}/events`,
     );
@@ -1478,40 +1578,91 @@ export function WritingWorkspace({
     }
     source.onerror = () => {
       if (source.readyState === EventSource.CLOSED) {
-        closeGenerationStream();
+        source.close();
+        if (eventSourceRef.current === source) {
+          eventSourceRef.current = null;
+        }
       }
     };
+    // Keep status convergence working when SSE cannot connect or drops its terminal event.
+    generationPollTimerRef.current = window.setInterval(() => {
+      void refreshGenerationJob(workData, jobId);
+    }, 1_000);
   }
 
   async function refreshGenerationJob(workData: WorkOverview, jobId: string) {
-    const response = await fetch(
-      `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs/${jobId}`,
-      { cache: "no-store" },
-    );
-    if (!response.ok) {
+    if (generationRefreshInFlightRef.current.has(jobId)) {
       return;
     }
-    const job = generationJobResponseSchema.parse(await response.json()).data;
-    const active = isActiveGeneration(job.status);
-    if (!active) {
-      if (generationRefreshJobRef.current === jobId) {
+    generationRefreshInFlightRef.current.add(jobId);
+    const watchRevision = generationWatchRevisionRef.current;
+    try {
+      const response = await fetch(
+        `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}/jobs/${jobId}`,
+        { cache: "no-store" },
+      );
+      if (!response.ok) {
         return;
       }
-      generationRefreshJobRef.current = jobId;
+      const job = generationJobResponseSchema.parse(await response.json()).data;
+      if (
+        activeGenerationJobRef.current !== jobId ||
+        generationWatchRevisionRef.current !== watchRevision
+      ) {
+        return;
+      }
+      const active = isActiveGeneration(job.status);
+      if (!active) {
+        if (generationRefreshJobRef.current === jobId) {
+          return;
+        }
+        generationRefreshJobRef.current = jobId;
+      }
+      await loadRunTraces(
+        workData,
+        job.id,
+        () =>
+          activeGenerationJobRef.current === jobId &&
+          generationWatchRevisionRef.current === watchRevision,
+      );
+      if (
+        activeGenerationJobRef.current !== jobId ||
+        generationWatchRevisionRef.current !== watchRevision
+      ) {
+        return;
+      }
+      let refreshRevision = watchRevision;
+      if (!active) {
+        closeGenerationStream();
+        refreshRevision = generationWatchRevisionRef.current;
+        setGenerationRefreshPending(true);
+      }
+      setGenerationJob(job);
+      if (active) {
+        return;
+      }
+      await refreshGenerationWorkspace(
+        workData,
+        job.chapterId,
+        () =>
+          selectedIdRef.current === job.chapterId &&
+          generationWatchRevisionRef.current === refreshRevision,
+      );
+    } catch {
+      // SSE or the next polling tick retries transient status failures.
+    } finally {
+      generationRefreshInFlightRef.current.delete(jobId);
     }
-    await loadRunTraces(workData, job.id);
-    if (!active) {
-      closeGenerationStream();
-      setGenerationRefreshPending(true);
-    }
-    setGenerationJob(job);
-    if (active) {
-      return;
-    }
-    await refreshGenerationWorkspace(workData, job.chapterId);
   }
 
-  async function refreshGenerationWorkspace(workData: WorkOverview, chapterId: string) {
+  async function refreshGenerationWorkspace(
+    workData: WorkOverview,
+    chapterId: string,
+    shouldApply: () => boolean = () => selectedIdRef.current === chapterId,
+  ) {
+    if (!shouldApply()) {
+      return;
+    }
     setGenerationRefreshPending(true);
     try {
       const chapterResponse = await fetch(
@@ -1522,19 +1673,29 @@ export function WritingWorkspace({
         throw new Error(await readError(chapterResponse, "章节刷新失败。"));
       }
       const chapter = chapterWorkspaceResponseSchema.parse(await chapterResponse.json()).data;
+      if (!shouldApply()) {
+        return;
+      }
       setChapters((current) => current.map((item) => (item.id === chapter.id ? chapter : item)));
       setContent(chapter.currentVersion?.content ?? "");
       setSavedContent(chapter.currentVersion?.content ?? "");
-      await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined);
+      await loadVersions(workData, chapter.id, chapter.currentVersionId ?? undefined, shouldApply);
+      if (!shouldApply()) {
+        return;
+      }
       await Promise.all([
-        loadFactProposals(workData, chapter.id),
-        loadCanonCommit(workData, chapter.id),
-        loadQuality(workData, chapter.id),
+        loadFactProposals(workData, chapter.id, shouldApply),
+        loadCanonCommit(workData, chapter.id, shouldApply),
+        loadQuality(workData, chapter.id, shouldApply),
       ]);
     } catch (caught) {
-      setActionError(caught instanceof Error ? caught.message : "章节刷新失败。");
+      if (shouldApply()) {
+        setActionError(caught instanceof Error ? caught.message : "章节刷新失败。");
+      }
     } finally {
-      setGenerationRefreshPending(false);
+      if (shouldApply()) {
+        setGenerationRefreshPending(false);
+      }
     }
   }
 
@@ -1777,8 +1938,14 @@ export function WritingWorkspace({
   }
 
   function closeGenerationStream() {
+    generationWatchRevisionRef.current += 1;
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
+    activeGenerationJobRef.current = null;
+    if (generationPollTimerRef.current !== null) {
+      window.clearInterval(generationPollTimerRef.current);
+      generationPollTimerRef.current = null;
+    }
   }
 
   async function saveVersion() {

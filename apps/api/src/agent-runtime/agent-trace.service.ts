@@ -20,6 +20,7 @@ import type {
 import type { AgentTraceFilter, AgentTraceScope } from "@novel-brain/db";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { AgentTraceRepository } from "./agent-trace.repository";
@@ -37,6 +38,9 @@ export class AgentTraceService {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品或分支不存在，无权访问生成记录");
     }
     const result = await this.repository.listTraces(userId, scope, filter);
+    if (result === "invalid_cursor") {
+      throw invalidCursorError();
+    }
     return {
       traces: result.traces.map((trace) => this.toContract(trace)),
       nextCursor: result.nextCursor,

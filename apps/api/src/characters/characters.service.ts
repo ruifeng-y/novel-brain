@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import {
   type CharacterChangeRequest,
   type CharacterChangeRequestCreateRequest,
+  type CharacterChangeRequestListQuery,
   type CharacterCreateRequest,
   type CharacterDetail,
   type CharacterHistory,
@@ -9,6 +10,7 @@ import {
   type CharacterKnowledgeProjection,
   type CharacterKnowledgeState,
   type CharacterKnowledgeStateCreateRequest,
+  type CharacterListQuery,
   type CharacterProfileUpdateRequest,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
@@ -17,6 +19,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { CharactersRepository } from "./characters.repository";
@@ -30,9 +33,18 @@ import type {
 export class CharactersService {
   constructor(private readonly repository: CharactersRepository) {}
 
-  async list(userId: string, workId: string, branchId: string): Promise<CharacterDetail[]> {
+  async list(
+    userId: string,
+    workId: string,
+    branchId: string,
+    query: CharacterListQuery,
+  ): Promise<CursorPageResult<CharacterDetail>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return this.repository.list(userId, context);
+    const page = await this.repository.list(userId, context, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async get(
@@ -69,16 +81,7 @@ export class CharactersService {
     audit: CharacterAuditContext,
   ): Promise<CharacterDetail> {
     const context = await this.requireContext(userId, workId, branchId);
-    return unwrap(
-      await this.repository.updateProfile(
-        userId,
-        context,
-        characterId,
-        input.version,
-        input.profile,
-        audit,
-      ),
-    );
+    return unwrap(await this.repository.updateProfile(userId, context, characterId, input, audit));
   }
 
   async addRelationship(
@@ -164,9 +167,17 @@ export class CharactersService {
     workId: string,
     branchId: string,
     characterId: string,
-  ): Promise<CharacterChangeRequest[]> {
+    query: CharacterChangeRequestListQuery,
+  ): Promise<CursorPageResult<CharacterChangeRequest>> {
     const context = await this.requireContext(userId, workId, branchId);
-    return unwrap(await this.repository.listChangeRequests(userId, context, characterId));
+    const page = await this.repository.listChangeRequests(userId, context, characterId, query);
+    if (page === "not_found") {
+      throw tenantError();
+    }
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return page;
   }
 
   async createChangeRequest(
@@ -213,6 +224,8 @@ function unwrap<T>(result: CharacterWriteResult<T>): T {
       throw tenantError();
     case "locked":
       throw new ApiError(409, "SETTING_LOCKED", "人物档案已锁定，请提交修改请求");
+    case "proposal_state":
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "人物档案正在提案或已废弃，不能直接编辑");
     case "version_conflict":
       throw new ApiError(409, "VERSION_CONFLICT", "人物档案已被其他操作更新，请刷新后重试");
     case "name_conflict":
@@ -225,6 +238,10 @@ function unwrap<T>(result: CharacterWriteResult<T>): T {
       throw new ApiError(400, "VALIDATION_INVALID", "客观事实不存在或不属于当前分支");
     case "target_not_found":
       throw new ApiError(400, "VALIDATION_INVALID", "关系或位置引用的目标不存在");
+    case "custom_field_required":
+      throw new ApiError(400, "CUSTOM_FIELD_REQUIRED", result.message);
+    case "custom_field_invalid":
+      throw new ApiError(400, "CUSTOM_FIELD_INVALID", result.message);
   }
 }
 

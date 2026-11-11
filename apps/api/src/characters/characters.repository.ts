@@ -21,13 +21,15 @@ import {
   characterProfileSchema,
   type CharacterChangeRequest,
   type CharacterChangeRequestCreateRequest,
+  type CharacterChangeRequestListQuery,
   type CharacterDetail,
   type CharacterHealthFinding,
   type CharacterHistory,
   type CharacterKnowledgeProjection,
   type CharacterKnowledgeState,
   type CharacterKnowledgeStateCreateRequest,
-  type CharacterProfilePatch,
+  type CharacterListQuery,
+  type CharacterProfileUpdateRequest,
   type CharacterRelationship,
   type CharacterRelationshipCreateRequest,
   type CharacterStateTransition,
@@ -36,8 +38,9 @@ import {
   type StoryTimePoint,
   type ValidityInterval,
 } from "@novel-brain/contracts";
+import { resolveCustomFieldWrite, writeCustomFieldValues } from "../settings/settings.repository";
 import { projectCharacterKnowledgeAtChapter } from "@novel-brain/core";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -81,12 +84,15 @@ export type CharacterWriteResult<T> =
   | { kind: "ok"; value: T }
   | { kind: "not_found" }
   | { kind: "locked" }
+  | { kind: "proposal_state" }
   | { kind: "version_conflict" }
   | { kind: "name_conflict"; entityId: string; value: string }
   | { kind: "alias_conflict"; entityId: string; value: string }
   | { kind: "state_overlap" }
   | { kind: "fact_not_found" }
-  | { kind: "target_not_found" };
+  | { kind: "target_not_found" }
+  | { kind: "custom_field_required"; fieldKey: string; message: string }
+  | { kind: "custom_field_invalid"; fieldKey: string; message: string };
 
 interface CharacterAggregate {
   entity: CharacterEntityRecord;
@@ -144,30 +150,61 @@ export class CharactersRepository implements OnModuleDestroy {
     });
   }
 
-  async list(userId: string, context: CharacterWorkContext): Promise<CharacterDetail[]> {
-    const ids = await this.withTenant(userId, async (transaction) =>
-      transaction
+  async list(
+    userId: string,
+    context: CharacterWorkContext,
+    query: CharacterListQuery,
+  ): Promise<{ data: CharacterDetail[]; nextCursor: string | null } | "invalid_cursor"> {
+    return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(entities.userId, userId),
+        eq(entities.workId, context.workId),
+        eq(entities.branchId, context.branchId),
+        eq(entities.type, "character"),
+        sql`${entities.deletedAt} is null`,
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: entities.id, createdAt: entities.createdAt })
+              .from(entities)
+              .where(and(scope, eq(entities.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
+      const rows = await transaction
         .select({ id: entities.id })
         .from(entities)
         .where(
           and(
-            eq(entities.userId, userId),
-            eq(entities.workId, context.workId),
-            eq(entities.branchId, context.branchId),
-            eq(entities.type, "character"),
-            sql`${entities.deletedAt} is null`,
+            scope,
+            cursor
+              ? or(
+                  gt(entities.createdAt, cursor.createdAt),
+                  and(eq(entities.createdAt, cursor.createdAt), gt(entities.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(entities.createdAt)),
-    );
-    const details: CharacterDetail[] = [];
-    for (const id of ids) {
-      const detail = await this.getDetail(userId, context, id.id);
-      if (detail) {
-        details.push(detail);
+        .orderBy(asc(entities.createdAt), asc(entities.id))
+        .limit(query.limit + 1);
+      const hasMore = rows.length > query.limit;
+      const pageRows = hasMore ? rows.slice(0, query.limit) : rows;
+      const details: CharacterDetail[] = [];
+      for (const row of pageRows) {
+        const aggregate = await this.readAggregate(transaction, userId, context, row.id);
+        if (aggregate) {
+          details.push(this.toDetail(aggregate));
+        }
       }
-    }
-    return details;
+      return {
+        data: details,
+        nextCursor: hasMore ? (pageRows.at(-1)?.id ?? null) : null,
+      };
+    });
   }
 
   async getDetail(
@@ -261,8 +298,7 @@ export class CharactersRepository implements OnModuleDestroy {
     userId: string,
     context: CharacterWorkContext,
     characterId: string,
-    expectedVersion: number,
-    patch: CharacterProfilePatch,
+    input: CharacterProfileUpdateRequest,
     audit: CharacterAuditContext,
   ): Promise<CharacterWriteResult<CharacterDetail>> {
     return this.withTenant(userId, async (transaction) => {
@@ -272,16 +308,48 @@ export class CharactersRepository implements OnModuleDestroy {
         userId,
         context,
         characterId,
-        expectedVersion,
+        input.version,
       );
       if (current.kind !== "ok") {
         return current;
       }
+      if (input.name !== undefined || input.aliases !== undefined) {
+        const conflict = await findCharacterConflict(
+          transaction,
+          userId,
+          context,
+          input.name ?? current.value.name,
+          input.aliases ?? current.value.aliases,
+          characterId,
+        );
+        if (conflict) {
+          return conflict;
+        }
+      }
+      const customFields = await resolveCustomFieldWrite(
+        transaction,
+        userId,
+        context,
+        "character",
+        characterId,
+        input.customFields,
+      );
+      if ("kind" in customFields) {
+        return customFields;
+      }
       const now = new Date();
       const [updated] = await transaction
         .update(entities)
-        .set({ version: current.value.version + 1, updatedAt: now })
-        .where(and(eq(entities.id, characterId), eq(entities.version, expectedVersion)))
+        .set({
+          ...(input.name !== undefined ? { name: input.name } : {}),
+          ...(input.aliases !== undefined ? { aliases: input.aliases } : {}),
+          ...(input.summary !== undefined ? { summary: input.summary } : {}),
+          ...(input.description !== undefined ? { description: input.description } : {}),
+          ...(input.tags !== undefined ? { tags: input.tags } : {}),
+          version: current.value.version + 1,
+          updatedAt: now,
+        })
+        .where(and(eq(entities.id, characterId), eq(entities.version, input.version)))
         .returning();
       if (!updated) {
         return { kind: "version_conflict" };
@@ -293,14 +361,25 @@ export class CharactersRepository implements OnModuleDestroy {
           workId: context.workId,
           branchId: context.branchId,
           userId,
-          ...characterProfileSchema.parse({ ...emptyProfile(), ...patch }),
+          ...(input.profile
+            ? characterProfileSchema.parse({ ...emptyProfile(), ...input.profile })
+            : emptyProfile()),
           createdAt: now,
           updatedAt: now,
         })
         .onConflictDoUpdate({
           target: characterProfiles.entityId,
-          set: { ...patch, updatedAt: now },
+          set: { ...(input.profile ?? {}), updatedAt: now },
         });
+      await writeCustomFieldValues(
+        transaction,
+        userId,
+        context,
+        characterId,
+        customFields.values,
+        customFields.definitions,
+        now,
+      );
       await this.appendVersion(
         transaction,
         userId,
@@ -310,6 +389,7 @@ export class CharactersRepository implements OnModuleDestroy {
         "character.profile.updated",
         "更新人物档案",
         audit,
+        customFields.values,
       );
       const aggregate = await this.readAggregate(transaction, userId, context, characterId);
       if (!aggregate) {
@@ -755,25 +835,61 @@ export class CharactersRepository implements OnModuleDestroy {
     userId: string,
     context: CharacterWorkContext,
     characterId: string,
-  ): Promise<CharacterWriteResult<CharacterChangeRequest[]>> {
+    query: CharacterChangeRequestListQuery,
+  ): Promise<
+    { data: CharacterChangeRequest[]; nextCursor: string | null } | "not_found" | "invalid_cursor"
+  > {
     return this.withTenant(userId, async (transaction) => {
       const character = await findCharacter(transaction, userId, context, characterId);
       if (!character) {
-        return { kind: "not_found" };
+        return "not_found";
+      }
+      const scope = and(
+        eq(characterChangeRequests.userId, userId),
+        eq(characterChangeRequests.workId, context.workId),
+        eq(characterChangeRequests.branchId, context.branchId),
+        eq(characterChangeRequests.characterId, characterId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({
+                id: characterChangeRequests.id,
+                createdAt: characterChangeRequests.createdAt,
+              })
+              .from(characterChangeRequests)
+              .where(and(scope, eq(characterChangeRequests.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
       }
       const requests = await transaction
         .select()
         .from(characterChangeRequests)
         .where(
           and(
-            eq(characterChangeRequests.userId, userId),
-            eq(characterChangeRequests.workId, context.workId),
-            eq(characterChangeRequests.branchId, context.branchId),
-            eq(characterChangeRequests.characterId, characterId),
+            scope,
+            cursor
+              ? or(
+                  gt(characterChangeRequests.createdAt, cursor.createdAt),
+                  and(
+                    eq(characterChangeRequests.createdAt, cursor.createdAt),
+                    gt(characterChangeRequests.id, cursor.id),
+                  ),
+                )
+              : undefined,
           ),
         )
-        .orderBy(asc(characterChangeRequests.createdAt));
-      return { kind: "ok", value: requests.map(toChangeRequestContract) };
+        .orderBy(asc(characterChangeRequests.createdAt), asc(characterChangeRequests.id))
+        .limit(query.limit + 1);
+      const hasMore = requests.length > query.limit;
+      const page = hasMore ? requests.slice(0, query.limit) : requests;
+      return {
+        data: page.map(toChangeRequestContract),
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 
@@ -957,6 +1073,7 @@ export class CharactersRepository implements OnModuleDestroy {
     action: string,
     message: string,
     audit: CharacterAuditContext,
+    customFields?: Record<string, unknown>,
   ): Promise<void> {
     const versionNodeId = uuidv7();
     await insertVersionNode(
@@ -969,7 +1086,15 @@ export class CharactersRepository implements OnModuleDestroy {
       message,
       parentNodeId,
     );
-    await this.appendSnapshotAtVersion(transaction, userId, context, entity, versionNodeId, audit);
+    await this.appendSnapshotAtVersion(
+      transaction,
+      userId,
+      context,
+      entity,
+      versionNodeId,
+      audit,
+      customFields,
+    );
     await transaction
       .update(workBranches)
       .set({ headNodeId: versionNodeId, updatedAt: new Date() })
@@ -983,6 +1108,7 @@ export class CharactersRepository implements OnModuleDestroy {
     entity: CharacterEntityRecord,
     versionNodeId: string,
     audit: CharacterAuditContext,
+    customFields?: Record<string, unknown>,
   ): Promise<void> {
     const aggregate = await this.readAggregate(transaction, userId, context, entity.id);
     if (!aggregate) {
@@ -1002,6 +1128,7 @@ export class CharactersRepository implements OnModuleDestroy {
       description: entity.description,
       attributes: entity.attributes,
       tags: entity.tags,
+      ...(customFields ? { customFields } : {}),
       status: entity.status,
       source: entity.source,
       version: entity.version,
@@ -1098,6 +1225,9 @@ async function findWritableCharacter(
   }
   if (current.status === "locked") {
     return { kind: "locked" };
+  }
+  if (current.status === "proposed" || current.status === "discarded") {
+    return { kind: "proposal_state" };
   }
   if (expectedVersion !== null && current.version !== expectedVersion) {
     return { kind: "version_conflict" };
@@ -1261,6 +1391,7 @@ async function findCharacterConflict(
   context: CharacterWorkContext,
   name: string,
   aliases: string[],
+  excludeEntityId?: string,
 ): Promise<
   | { kind: "name_conflict"; entityId: string; value: string }
   | { kind: "alias_conflict"; entityId: string; value: string }
@@ -1291,6 +1422,9 @@ async function findCharacterConflict(
       ),
     );
   for (const candidate of candidates) {
+    if (candidate.id === excludeEntityId) {
+      continue;
+    }
     const candidateName = normalizeIdentifier(candidate.name);
     const candidateAliases = candidate.aliases.map(normalizeIdentifier);
     if (candidate.type === "character" && candidateName === normalizedName) {

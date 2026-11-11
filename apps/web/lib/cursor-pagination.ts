@@ -9,6 +9,7 @@ export async function fetchAllCursorPages<T>(
   url: string,
   parsePage: (input: unknown) => CursorPage<T>,
   errorMessage: string,
+  onResponse?: (response: Response) => void,
 ): Promise<T[]> {
   const items: T[] = [];
   const seenCursors = new Set<string>();
@@ -23,6 +24,7 @@ export async function fetchAllCursorPages<T>(
     const response = await fetch(`${pageUrl.pathname}${pageUrl.search}`, {
       cache: "no-store",
     });
+    onResponse?.(response);
     if (!response.ok) {
       throw new Error(errorMessage);
     }

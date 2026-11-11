@@ -20,6 +20,7 @@ import {
 import { uuidv7 } from "uuidv7";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { StoryBibleGenerator } from "./story-bible.generator";
@@ -64,6 +65,9 @@ export class StoryBibleService {
   ): Promise<{ versions: StoryBibleVersion[]; nextCursor: string | null }> {
     const storyBible = await this.get(userId, workId, branchId);
     const result = await this.repository.listVersions(userId, storyBible.id, query);
+    if (result === "invalid_cursor") {
+      throw invalidCursorError();
+    }
     return {
       versions: result.versions.map((version) => this.toVersionContract(version)),
       nextCursor: result.nextCursor,
@@ -78,6 +82,9 @@ export class StoryBibleService {
   ): Promise<{ worldRules: StoryBibleWorldRule[]; nextCursor: string | null }> {
     const storyBible = await this.get(userId, workId, branchId);
     const result = await this.repository.listWorldRules(userId, storyBible.id, query);
+    if (result === "invalid_cursor") {
+      throw invalidCursorError();
+    }
     return {
       worldRules: result.worldRules,
       nextCursor: result.nextCursor,

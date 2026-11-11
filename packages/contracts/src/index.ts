@@ -27,6 +27,7 @@ export const ERROR_CODES = [
   "SETTING_CONFLICT_UNRESOLVED",
   "SETTING_PROPOSAL_STATE",
   "SETTING_NOT_LOCKED",
+  "SETTING_DOMAIN_DATA_FORBIDDEN",
   "CUSTOM_FIELD_REQUIRED",
   "CUSTOM_FIELD_INVALID",
   "CUSTOM_FIELD_IMMUTABLE",
@@ -77,6 +78,9 @@ export const ERROR_CODES = [
   "GOLDEN_THREE_CANDIDATE_LOCKED",
   "GOLDEN_THREE_REVIEW_FAILED",
   "GOLDEN_THREE_SELECTION_REQUIRED",
+  "GOLDEN_THREE_CONTINUATION_REQUIRED",
+  "GOLDEN_THREE_MODEL_REQUIRED",
+  "GOLDEN_THREE_GENERATION_FAILED",
   "GOLDEN_THREE_ALREADY_LOCKED",
   "GOLDEN_THREE_OVERRIDE_INVALID",
   "GOLDEN_THREE_CHAPTERS_EMPTY",
@@ -117,6 +121,10 @@ export const ERROR_CODES = [
   "BATCH_PLAN_INVALID",
   "BATCH_PLAN_OUTLINE_INCOMPLETE",
   "BATCH_PLAN_IDEMPOTENCY_CONFLICT",
+  "BATCH_REVIEW_CONTEXT_NOT_FOUND",
+  "BATCH_REVIEW_CLAIM_CONFLICT",
+  "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
+  "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -154,10 +162,12 @@ export type ApiEnvelope<T> = {
   meta: Record<string, unknown>;
 };
 
-export const cursorPageQuerySchema = z.object({
-  cursor: uuidV7Schema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-});
+export const cursorPageQuerySchema = z
+  .object({
+    cursor: uuidV7Schema.optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
 export type CursorPageQuery = z.infer<typeof cursorPageQuerySchema>;
 
 export const cursorPageMetaSchema = z.object({
@@ -294,7 +304,11 @@ export const sendRegistrationCodeResponseSchema = apiEnvelopeSchema(sendRegistra
 export const sendPasswordResetResponseSchema = apiEnvelopeSchema(sendPasswordResetDataSchema);
 export const resetPasswordResponseSchema = apiEnvelopeSchema(resetPasswordDataSchema);
 export const authSessionResponseSchema = apiEnvelopeSchema(authSessionDataSchema);
-export const authDeviceSessionsResponseSchema = apiEnvelopeSchema(z.array(authDeviceSessionSchema));
+export const authDeviceSessionsQuerySchema = cursorPageQuerySchema;
+export type AuthDeviceSessionsQuery = z.infer<typeof authDeviceSessionsQuerySchema>;
+export const authDeviceSessionsResponseSchema = cursorListResponseSchema(
+  z.array(authDeviceSessionSchema),
+);
 export const revokeSessionResponseSchema = apiEnvelopeSchema(revokeSessionDataSchema);
 export const profileResponseSchema = apiEnvelopeSchema(authUserSchema);
 export const logoutResponseSchema = apiEnvelopeSchema(logoutDataSchema);
@@ -338,7 +352,11 @@ export const authorPenNameUpdateRequestSchema = z
 export type AuthorPenNameUpdateRequest = z.infer<typeof authorPenNameUpdateRequestSchema>;
 
 export const authorPenNameResponseSchema = apiEnvelopeSchema(authorPenNameSchema);
-export const authorPenNameListResponseSchema = apiEnvelopeSchema(z.array(authorPenNameSchema));
+export const authorPenNameListQuerySchema = cursorPageQuerySchema;
+export type AuthorPenNameListQuery = z.infer<typeof authorPenNameListQuerySchema>;
+export const authorPenNameListResponseSchema = cursorListResponseSchema(
+  z.array(authorPenNameSchema),
+);
 export const authorPenNameDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
@@ -405,7 +423,9 @@ export const modelProviderInfoSchema = z.object({
 });
 export type ModelProviderInfo = z.infer<typeof modelProviderInfoSchema>;
 
-export const modelConfigsResponseSchema = apiEnvelopeSchema(z.array(modelConfigSchema));
+export const modelConfigListQuerySchema = cursorPageQuerySchema;
+export type ModelConfigListQuery = z.infer<typeof modelConfigListQuerySchema>;
+export const modelConfigsResponseSchema = cursorListResponseSchema(z.array(modelConfigSchema));
 export const modelProvidersResponseSchema = apiEnvelopeSchema(z.array(modelProviderInfoSchema));
 export const modelConfigResponseSchema = apiEnvelopeSchema(modelConfigSchema);
 export const modelConnectionTestResponseSchema = apiEnvelopeSchema(
@@ -526,22 +546,20 @@ export const workOverviewSchema = workSchema.extend({
 });
 export type WorkOverview = z.infer<typeof workOverviewSchema>;
 
-export const workListQuerySchema = z.object({
-  q: z.string().trim().max(120).optional(),
-  status: workStatusSchema.optional(),
-  genre: workGenreSchema.optional(),
-  cursor: uuidV7Schema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-});
+export const workListQuerySchema = cursorPageQuerySchema
+  .extend({
+    q: z.string().trim().max(120).optional(),
+    status: workStatusSchema.optional(),
+    genre: workGenreSchema.optional(),
+  })
+  .strict();
 export type WorkListQuery = z.infer<typeof workListQuerySchema>;
 
 export const workResponseSchema = apiEnvelopeSchema(workOverviewSchema);
-export const workListResponseSchema = z.object({
-  data: z.array(workSchema),
-  requestId: z.string().startsWith("req_"),
-  meta: z.object({ nextCursor: uuidV7Schema.nullable() }),
-});
-export const workBranchesResponseSchema = apiEnvelopeSchema(z.array(workBranchSchema));
+export const workListResponseSchema = cursorListResponseSchema(z.array(workSchema));
+export const workBranchListQuerySchema = cursorPageQuerySchema;
+export type WorkBranchListQuery = z.infer<typeof workBranchListQuerySchema>;
+export const workBranchesResponseSchema = cursorListResponseSchema(z.array(workBranchSchema));
 
 export const importCandidateTypeSchema = z.enum([
   "character",
@@ -919,28 +937,22 @@ export type StoryBibleChangeRequest = z.infer<typeof storyBibleChangeRequestSche
 
 export const storyBibleResponseSchema = apiEnvelopeSchema(storyBibleSchema);
 export const storyBibleReadinessResponseSchema = apiEnvelopeSchema(storyBibleReadinessSchema);
-export const storyBibleVersionListQuerySchema = z.object({
-  cursor: uuidV7Schema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-});
+export const storyBibleVersionListQuerySchema = cursorPageQuerySchema;
 export type StoryBibleVersionListQuery = z.infer<typeof storyBibleVersionListQuerySchema>;
 
-export const storyBibleWorldRuleListQuerySchema = z.object({
-  cursor: uuidV7Schema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(100),
-});
+export const storyBibleWorldRuleListQuerySchema = cursorPageQuerySchema
+  .extend({
+    limit: z.coerce.number().int().min(1).max(100).default(100),
+  })
+  .strict();
 export type StoryBibleWorldRuleListQuery = z.infer<typeof storyBibleWorldRuleListQuerySchema>;
 
-export const storyBibleVersionListResponseSchema = z.object({
-  data: z.array(storyBibleVersionSchema),
-  requestId: z.string().startsWith("req_"),
-  meta: z.object({ nextCursor: uuidV7Schema.nullable() }),
-});
-export const storyBibleWorldRuleListResponseSchema = z.object({
-  data: z.array(storyBibleWorldRuleSchema),
-  requestId: z.string().startsWith("req_"),
-  meta: z.object({ nextCursor: uuidV7Schema.nullable() }),
-});
+export const storyBibleVersionListResponseSchema = cursorListResponseSchema(
+  z.array(storyBibleVersionSchema),
+);
+export const storyBibleWorldRuleListResponseSchema = cursorListResponseSchema(
+  z.array(storyBibleWorldRuleSchema),
+);
 export const storyBibleChangeRequestResponseSchema = apiEnvelopeSchema(
   storyBibleChangeRequestSchema,
 );
@@ -1346,6 +1358,10 @@ export const settingChangeRequestCreateRequestSchema = z
             timelineEventDataSchema.partial(),
           ])
           .optional(),
+        character: z.lazy(() => characterProfilePatchSchema).optional(),
+        faction: z.lazy(() => factionProfilePatchSchema).optional(),
+        map: z.lazy(() => mapChangePatchSchema).optional(),
+        timeline: z.lazy(() => timelineEventChangePatchSchema).optional(),
         powerSystem: z.lazy(() => powerSystemChangePatchSchema).optional(),
         mechanism: z.lazy(() => mechanismChangePatchSchema).optional(),
         item: z.lazy(() => itemChangePatchSchema).optional(),
@@ -1359,6 +1375,10 @@ export const settingChangeRequestCreateRequestSchema = z
           input.tags !== undefined ||
           input.customFields !== undefined ||
           input.data !== undefined ||
+          input.character !== undefined ||
+          input.faction !== undefined ||
+          input.map !== undefined ||
+          input.timeline !== undefined ||
           input.powerSystem !== undefined ||
           input.mechanism !== undefined ||
           input.item !== undefined,
@@ -1827,9 +1847,14 @@ export type CharacterProfilePatch = z.infer<typeof characterProfilePatchSchema>;
 export const characterProfileUpdateRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    profile: characterProfilePatchSchema,
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    profile: characterProfilePatchSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one character field is required",
+  });
 export type CharacterProfileUpdateRequest = z.infer<typeof characterProfileUpdateRequestSchema>;
 
 export const characterRelationshipTypeSchema = z.enum([
@@ -2049,7 +2074,9 @@ export const characterDetailSchema = z.object({
 export type CharacterDetail = z.infer<typeof characterDetailSchema>;
 
 export const characterDetailResponseSchema = apiEnvelopeSchema(characterDetailSchema);
-export const characterListResponseSchema = apiEnvelopeSchema(z.array(characterDetailSchema));
+export const characterListQuerySchema = cursorPageQuerySchema;
+export type CharacterListQuery = z.infer<typeof characterListQuerySchema>;
+export const characterListResponseSchema = cursorListResponseSchema(z.array(characterDetailSchema));
 
 export const characterHistoryQuerySchema = z
   .object({
@@ -2186,7 +2213,9 @@ export const characterChangeRequestSchema = z.object({
 export type CharacterChangeRequest = z.infer<typeof characterChangeRequestSchema>;
 
 export const characterChangeRequestResponseSchema = apiEnvelopeSchema(characterChangeRequestSchema);
-export const characterChangeRequestListResponseSchema = apiEnvelopeSchema(
+export const characterChangeRequestListQuerySchema = cursorPageQuerySchema;
+export type CharacterChangeRequestListQuery = z.infer<typeof characterChangeRequestListQuerySchema>;
+export const characterChangeRequestListResponseSchema = cursorListResponseSchema(
   z.array(characterChangeRequestSchema),
 );
 
@@ -2232,9 +2261,14 @@ export type FactionProfilePatch = z.infer<typeof factionProfilePatchSchema>;
 export const factionProfileUpdateRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    profile: factionProfilePatchSchema,
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    profile: factionProfilePatchSchema.optional(),
   })
-  .strict();
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one faction field is required",
+  });
 export type FactionProfileUpdateRequest = z.infer<typeof factionProfileUpdateRequestSchema>;
 
 export const factionCreateRequestSchema = z
@@ -2257,6 +2291,31 @@ export const mapCreateRequestSchema = z
   })
   .strict();
 export type MapCreateRequest = z.infer<typeof mapCreateRequestSchema>;
+
+export const mapPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    details: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one map field is required",
+  });
+export type MapPatchRequest = z.infer<typeof mapPatchRequestSchema>;
+
+export const mapChangePatchSchema = z
+  .object({
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    details: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one map field is required",
+  });
+export type MapChangePatch = z.infer<typeof mapChangePatchSchema>;
 
 export const factionRelationTypeSchema = z.enum([
   "ally",
@@ -2596,6 +2655,59 @@ export const timelineEventCreateRequestSchema = z
   });
 export type TimelineEventCreateRequest = z.infer<typeof timelineEventCreateRequestSchema>;
 
+export const timelineEventPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    era: z.string().trim().min(1).max(120).optional(),
+    storyTime: storyTimePointSchema.optional(),
+    durationMinutes: z.number().int().nonnegative().optional(),
+    durationLabel: z.string().trim().max(200).optional(),
+    event: z.string().trim().min(1).max(20_000).optional(),
+    validity: validityIntervalSchema.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime && input.era && input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  })
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one timeline event field is required",
+  });
+export type TimelineEventPatchRequest = z.infer<typeof timelineEventPatchRequestSchema>;
+
+export const timelineEventChangePatchSchema = z
+  .object({
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    era: z.string().trim().min(1).max(120).optional(),
+    storyTime: storyTimePointSchema.optional(),
+    durationMinutes: z.number().int().nonnegative().optional(),
+    durationLabel: z.string().trim().max(200).optional(),
+    event: z.string().trim().min(1).max(20_000).optional(),
+    validity: validityIntervalSchema.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime && input.era && input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  })
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one timeline event field is required",
+  });
+export type TimelineEventChangePatch = z.infer<typeof timelineEventChangePatchSchema>;
+
 export const timelineEventDetailSchema = z.object({
   event: domainRefSchema,
   era: z.string(),
@@ -2684,7 +2796,7 @@ export const factionDetailSchema = z.object({
 });
 export type FactionDetail = z.infer<typeof factionDetailSchema>;
 export const factionDetailResponseSchema = apiEnvelopeSchema(factionDetailSchema);
-export const factionListResponseSchema = apiEnvelopeSchema(z.array(factionDetailSchema));
+export const factionListResponseSchema = cursorListResponseSchema(z.array(factionDetailSchema));
 
 export const mapDetailSchema = z.object({
   map: domainRefSchema,
@@ -2701,7 +2813,7 @@ export const mapDetailSchema = z.object({
 });
 export type MapDetail = z.infer<typeof mapDetailSchema>;
 export const mapDetailResponseSchema = apiEnvelopeSchema(mapDetailSchema);
-export const mapListResponseSchema = apiEnvelopeSchema(z.array(mapDetailSchema));
+export const mapListResponseSchema = cursorListResponseSchema(z.array(mapDetailSchema));
 
 export const worldTimelineSchema = z.object({
   eras: z.array(timelineEraSchema),
@@ -2881,7 +2993,7 @@ export const powerSystemSchema = z.object({
 });
 export type PowerSystem = z.infer<typeof powerSystemSchema>;
 export const powerSystemResponseSchema = apiEnvelopeSchema(powerSystemSchema);
-export const powerSystemListResponseSchema = apiEnvelopeSchema(z.array(powerSystemSchema));
+export const powerSystemListResponseSchema = cursorListResponseSchema(z.array(powerSystemSchema));
 
 export const mechanismOwnerRefSchema = domainRefSchema.refine(
   (owner) => owner.type === "character" || owner.type === "faction" || owner.type === "item",
@@ -2977,7 +3089,7 @@ export const specialMechanismSchema = z.object({
 });
 export type SpecialMechanism = z.infer<typeof specialMechanismSchema>;
 export const specialMechanismResponseSchema = apiEnvelopeSchema(specialMechanismSchema);
-export const specialMechanismListResponseSchema = apiEnvelopeSchema(
+export const specialMechanismListResponseSchema = cursorListResponseSchema(
   z.array(specialMechanismSchema),
 );
 
@@ -3199,7 +3311,7 @@ export const itemSchema = z.object({
 });
 export type ItemDomain = z.infer<typeof itemSchema>;
 export const itemResponseSchema = apiEnvelopeSchema(itemSchema);
-export const itemListResponseSchema = apiEnvelopeSchema(z.array(itemSchema));
+export const itemListResponseSchema = cursorListResponseSchema(z.array(itemSchema));
 
 export const powerSystemChangePatchSchema = z
   .object({
@@ -3252,6 +3364,27 @@ export const worldSnapshotQuerySchema = z
   })
   .strict();
 export type WorldSnapshotQuery = z.infer<typeof worldSnapshotQuerySchema>;
+
+export const factionListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type FactionListQuery = z.infer<typeof factionListQuerySchema>;
+export const mapListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type MapListQuery = z.infer<typeof mapListQuerySchema>;
+export const powerSystemListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type PowerSystemListQuery = z.infer<typeof powerSystemListQuerySchema>;
+export const specialMechanismListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type SpecialMechanismListQuery = z.infer<typeof specialMechanismListQuerySchema>;
+export const itemListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type ItemListQuery = z.infer<typeof itemListQuerySchema>;
 
 export const worldSnapshotSchema = z.object({
   at: z.object({
@@ -3351,7 +3484,9 @@ export const confirmedSettingSchema = z
   });
 export type ConfirmedSetting = z.infer<typeof confirmedSettingSchema>;
 
-export const confirmedSettingListResponseSchema = apiEnvelopeSchema(
+export const confirmedSettingListQuerySchema = cursorPageQuerySchema;
+export type ConfirmedSettingListQuery = z.infer<typeof confirmedSettingListQuerySchema>;
+export const confirmedSettingListResponseSchema = cursorListResponseSchema(
   z.array(confirmedSettingSchema),
 );
 
@@ -3463,12 +3598,18 @@ export const chapterVersionCreateRequestSchema = z
   .strict();
 export type ChapterVersionCreateRequest = z.infer<typeof chapterVersionCreateRequestSchema>;
 
-export const chapterWorkspaceListResponseSchema = apiEnvelopeSchema(
+export const chapterListQuerySchema = cursorPageQuerySchema;
+export type ChapterListQuery = z.infer<typeof chapterListQuerySchema>;
+export const chapterWorkspaceListResponseSchema = cursorListResponseSchema(
   z.array(chapterWorkspaceSchema),
 );
 export const chapterWorkspaceResponseSchema = apiEnvelopeSchema(chapterWorkspaceSchema);
 export const chapterReadinessResponseSchema = apiEnvelopeSchema(chapterReadinessSchema);
-export const chapterVersionListResponseSchema = apiEnvelopeSchema(z.array(chapterVersionSchema));
+export const chapterVersionListQuerySchema = cursorPageQuerySchema;
+export type ChapterVersionListQuery = z.infer<typeof chapterVersionListQuerySchema>;
+export const chapterVersionListResponseSchema = cursorListResponseSchema(
+  z.array(chapterVersionSchema),
+);
 export const chapterVersionSaveDataSchema = z.object({
   chapter: chapterWorkspaceSchema,
   version: chapterVersionSchema,
@@ -4368,7 +4509,9 @@ export const factProposalDecisionRequestSchema = z
   });
 export type FactProposalDecisionRequest = z.infer<typeof factProposalDecisionRequestSchema>;
 
-export const factProposalListResponseSchema = apiEnvelopeSchema(z.array(factProposalSchema));
+export const factProposalListQuerySchema = cursorPageQuerySchema;
+export type FactProposalListQuery = z.infer<typeof factProposalListQuerySchema>;
+export const factProposalListResponseSchema = cursorListResponseSchema(z.array(factProposalSchema));
 export const factProposalResponseSchema = apiEnvelopeSchema(factProposalSchema);
 
 export const canonCommitFactSchema = z.object({
@@ -4431,6 +4574,8 @@ export const canonCommitSchema = z.object({
 export type CanonCommit = z.infer<typeof canonCommitSchema>;
 
 export const canonCommitResponseSchema = apiEnvelopeSchema(canonCommitSchema);
+export const canonCommitListQuerySchema = cursorPageQuerySchema;
+export type CanonCommitListQuery = z.infer<typeof canonCommitListQuerySchema>;
 export const canonCommitListResponseSchema = cursorListResponseSchema(z.array(canonCommitSchema));
 
 export const manuscriptImportConfirmRequestSchema = z.object({
@@ -5305,6 +5450,14 @@ export const summaryRebuildJobSchema = z.object({
 export type SummaryRebuildJob = z.infer<typeof summaryRebuildJobSchema>;
 
 export const BATCH_TICK_JOB = "batch_tick" as const;
+export const batchTickCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    revision: z.number().int().nonnegative(),
+    planId: uuidV7Schema,
+  })
+  .strict();
+export type BatchTickCheckpoint = z.infer<typeof batchTickCheckpointSchema>;
 export const batchTickJobSchema = z
   .object({
     jobType: z.literal(BATCH_TICK_JOB),
@@ -5312,6 +5465,8 @@ export const batchTickJobSchema = z
     workId: uuidV7Schema,
     branchId: uuidV7Schema,
     actorId: uuidV7Schema,
+    idempotencyKey: z.string().min(1).max(200),
+    checkpoint: batchTickCheckpointSchema,
     reason: z.string().trim().min(1).max(500).optional(),
   })
   .strict();
@@ -5462,8 +5617,16 @@ export const jobEventSchema = z.object({
 export type JobEvent = z.infer<typeof jobEventSchema>;
 
 export const generationJobResponseSchema = apiEnvelopeSchema(generationJobSchema);
-export const generationJobListResponseSchema = apiEnvelopeSchema(z.array(generationJobSchema));
+export const generationJobListQuerySchema = cursorPageQuerySchema
+  .extend({ chapterId: uuidV7Schema })
+  .strict();
+export type GenerationJobListQuery = z.infer<typeof generationJobListQuerySchema>;
+export const generationJobListResponseSchema = cursorListResponseSchema(
+  z.array(generationJobSchema),
+);
 export const writingActionJobResponseSchema = apiEnvelopeSchema(writingActionJobSchema);
+export const writingActionJobListQuerySchema = cursorPageQuerySchema;
+export type WritingActionJobListQuery = z.infer<typeof writingActionJobListQuerySchema>;
 export const writingActionJobListResponseSchema = cursorListResponseSchema(
   z.array(writingActionJobSchema),
 );
@@ -5471,8 +5634,9 @@ export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSch
 export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);
 
 export const BATCH_PLAN_JOB_TYPE = "batch_plan" as const;
-export const BATCH_PLAN_PRIORITY = 100;
-export const INTERACTIVE_PRIORITY = 1_000;
+export const BATCH_PLAN_PRIORITY = 1_000;
+export const INTERACTIVE_PRIORITY = 100;
+export const BATCH_REVIEW_PREDICATE_VERSION = "batch-review-v1" as const;
 
 export const batchJobItemTypeSchema = z.enum(["book", "volume", "chapter", "step"]);
 export type BatchJobItemType = z.infer<typeof batchJobItemTypeSchema>;
@@ -5698,6 +5862,218 @@ export const batchPlanResponseSchema = apiEnvelopeSchema(batchPlanSummarySchema)
 export const batchPlanItemListResponseSchema = cursorListResponseSchema(
   z.array(batchWorkItemSchema),
 );
+
+export const batchReviewTargetTypeSchema = z.enum(["chapter", "volume"]);
+export type BatchReviewTargetType = z.infer<typeof batchReviewTargetTypeSchema>;
+
+export const batchReviewStatusSchema = z.enum([
+  "pending",
+  "claimed",
+  "approved",
+  "rejected",
+  "stale",
+]);
+export type BatchReviewStatus = z.infer<typeof batchReviewStatusSchema>;
+
+export const batchReviewRiskSchema = z.enum(["low", "medium", "high"]);
+export type BatchReviewRisk = z.infer<typeof batchReviewRiskSchema>;
+
+export const batchReviewRiskReasonCodeSchema = z.enum([
+  "MANUAL_APPROVAL_MODE",
+  "VOLUME_BOUNDARY",
+  "OUTLINE_NOT_LOCKED",
+  "PENDING_HIGH_RISK_APPROVAL",
+  "READINESS_BLOCKED",
+  "GOLDEN_THREE_UNLOCKED",
+  "QUALITY_REPORT_MISSING",
+  "QUALITY_REPORT_STALE",
+  "UNRESOLVED_P0",
+  "UNRESOLVED_P1",
+  "STRUCTURAL_FINDING",
+  "QUALITY_BELOW_THRESHOLD",
+  "QUALITY_WARNING",
+  "CHARACTER_DEATH",
+  "GOLDEN_FINGER_UPGRADE",
+  "LOCKED_CANON_CHANGE",
+  "BRANCH_MERGE",
+]);
+export type BatchReviewRiskReasonCode = z.infer<typeof batchReviewRiskReasonCodeSchema>;
+
+export const batchReviewRiskReasonSchema = z
+  .object({
+    code: batchReviewRiskReasonCodeSchema,
+    message: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type BatchReviewRiskReason = z.infer<typeof batchReviewRiskReasonSchema>;
+
+export const batchReviewQualitySummarySchema = z
+  .object({
+    reportState: z.enum(["fresh", "missing", "stale"]),
+    canApprove: z.boolean(),
+    scoreAverage: z.number().min(1).max(5).nullable(),
+    blockerCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewQualitySummary = z.infer<typeof batchReviewQualitySummarySchema>;
+
+export const batchReviewFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    severity: z.enum(["P0", "P1", "P2", "P3"]),
+    code: z.enum([
+      "FACT_CONTRADICTION",
+      "TIMELINE_CONFLICT",
+      "UNDISCLOSED_KNOWLEDGE",
+      "MOTIVATION_BREAK",
+      "LOCATION_CONFLICT",
+      "STYLE_DRIFT",
+      "WEAK_CHAPTER_END_HOOK",
+    ]),
+    qualityDimension: z.enum([
+      "hook",
+      "pacing",
+      "information_density",
+      "character_voice",
+      "prose",
+      "continuity",
+    ]),
+    recommendation: z.string().trim().min(1).max(2_000),
+    quote: z.string().trim().min(1).max(2_000).nullable(),
+  })
+  .strict();
+export type BatchReviewFinding = z.infer<typeof batchReviewFindingSchema>;
+
+export const batchReviewQueueItemSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    workItemId: uuidV7Schema,
+    targetType: batchReviewTargetTypeSchema,
+    targetId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    chapterNumber: z.number().int().positive().nullable(),
+    chapterTitle: z.string().trim().min(1).max(200).nullable(),
+    volumeTitle: z.string().trim().min(1).max(200).nullable(),
+    status: batchReviewStatusSchema,
+    risk: batchReviewRiskSchema,
+    riskReasons: z.array(batchReviewRiskReasonSchema).max(20),
+    quality: batchReviewQualitySummarySchema,
+    findings: z.array(batchReviewFindingSchema).max(20),
+    claimedBy: uuidV7Schema.nullable(),
+    claimedAt: z.string().datetime().nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchReviewQueueItem = z.infer<typeof batchReviewQueueItemSchema>;
+
+export const batchReviewQueueCountsSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(),
+    claimed: z.number().int().nonnegative(),
+    highRisk: z.number().int().nonnegative(),
+    stale: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewQueueCounts = z.infer<typeof batchReviewQueueCountsSchema>;
+
+export const batchReviewQueueQuerySchema = z
+  .object({
+    status: batchReviewStatusSchema.optional(),
+    risk: batchReviewRiskSchema.optional(),
+    targetType: batchReviewTargetTypeSchema.optional(),
+    cursor: z.string().min(1).max(500).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+export type BatchReviewQueueQuery = z.infer<typeof batchReviewQueueQuerySchema>;
+
+export const batchReviewQueueListResponseSchema = z.object({
+  data: z.array(batchReviewQueueItemSchema),
+  requestId: z.string().startsWith("req_"),
+  meta: cursorPageMetaSchema.extend({ counts: batchReviewQueueCountsSchema }),
+});
+
+export const batchReviewClaimRequestSchema = z
+  .object({
+    itemIds: z.array(uuidV7Schema).min(1).max(50),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.itemIds).size !== input.itemIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["itemIds"],
+        message: "Review queue item ids must be unique",
+      });
+    }
+  });
+export type BatchReviewClaimRequest = z.infer<typeof batchReviewClaimRequestSchema>;
+export const batchReviewClaimResponseSchema = apiEnvelopeSchema(
+  z.array(batchReviewQueueItemSchema),
+);
+
+export const batchReviewActionSchema = z.enum(["approve", "reject"]);
+export type BatchReviewAction = z.infer<typeof batchReviewActionSchema>;
+
+export const batchReviewDecisionSchema = z
+  .object({
+    itemId: uuidV7Schema,
+    expectedVersion: z.number().int().positive(),
+    action: batchReviewActionSchema,
+    reason: z.string().trim().min(1).max(1_000).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.action === "reject" && !input.reason) {
+      context.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "Rejecting a batch review item requires a reason",
+      });
+    }
+  });
+export type BatchReviewDecision = z.infer<typeof batchReviewDecisionSchema>;
+
+export const batchReviewDecisionRequestSchema = z
+  .object({
+    items: z.array(batchReviewDecisionSchema).min(1).max(50),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.items.map((item) => item.itemId)).size !== input.items.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["items"],
+        message: "Each review queue item may appear only once",
+      });
+    }
+  });
+export type BatchReviewDecisionRequest = z.infer<typeof batchReviewDecisionRequestSchema>;
+
+export const batchReviewDecisionResultSchema = z
+  .object({
+    itemId: uuidV7Schema,
+    status: z.enum(["approved", "rejected", "failed"]),
+    errorCode: z.string().min(1).max(100).nullable(),
+    message: z.string().trim().min(1).max(1_000),
+    item: batchReviewQueueItemSchema.nullable(),
+  })
+  .strict();
+export type BatchReviewDecisionResult = z.infer<typeof batchReviewDecisionResultSchema>;
+
+export const batchReviewDecisionDataSchema = z
+  .object({
+    results: z.array(batchReviewDecisionResultSchema).min(1).max(50),
+    succeeded: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewDecisionData = z.infer<typeof batchReviewDecisionDataSchema>;
+export const batchReviewDecisionResponseSchema = apiEnvelopeSchema(batchReviewDecisionDataSchema);
 
 export const agentRoleSchema = z.enum([
   "planner",
@@ -5975,7 +6351,9 @@ export const agentToolCallRequestSchema = z
 export type AgentToolCallRequest = z.infer<typeof agentToolCallRequestSchema>;
 
 export const agentGrantResponseSchema = apiEnvelopeSchema(agentGrantSchema);
-export const agentGrantListResponseSchema = apiEnvelopeSchema(z.array(agentGrantSchema));
+export const agentGrantListQuerySchema = cursorPageQuerySchema;
+export type AgentGrantListQuery = z.infer<typeof agentGrantListQuerySchema>;
+export const agentGrantListResponseSchema = cursorListResponseSchema(z.array(agentGrantSchema));
 export const agentGrantRevokeResponseSchema = agentGrantResponseSchema;
 
 export const agentFailureClassSchema = z.enum([
@@ -6186,6 +6564,14 @@ export const agentRunTraceSchema = z
   .strict();
 export type AgentRunTrace = z.infer<typeof agentRunTraceSchema>;
 
+export const agentRunTraceListQuerySchema = cursorPageQuerySchema
+  .extend({
+    limit: z.coerce.number().int().min(1).max(200).default(50),
+    chapterId: uuidV7Schema.optional(),
+    jobId: uuidV7Schema.optional(),
+  })
+  .strict();
+export type AgentRunTraceListQuery = z.infer<typeof agentRunTraceListQuerySchema>;
 export const agentRunTraceListResponseSchema = cursorListResponseSchema(
   z.array(agentRunTraceSchema),
 );
@@ -6668,27 +7054,9 @@ export const goldenThreeCandidateInputSchema = z
     prompt: goldenThreePromptProvenanceSchema,
     model: goldenThreeModelProvenanceSchema,
     context: goldenThreeContextProvenanceSchema,
-    pins: z.array(goldenThreeChapterPinInputSchema).length(3),
+    pins: z.array(goldenThreeChapterPinInputSchema).length(1),
   })
-  .strict()
-  .superRefine((candidate, context) => {
-    const chapterIds = candidate.pins.map((pin) => pin.chapterId);
-    if (new Set(chapterIds).size !== chapterIds.length) {
-      context.addIssue({
-        code: "custom",
-        path: ["pins"],
-        message: "A candidate must pin three distinct chapters",
-      });
-    }
-    const versionIds = candidate.pins.map((pin) => pin.chapterVersionId);
-    if (new Set(versionIds).size !== versionIds.length) {
-      context.addIssue({
-        code: "custom",
-        path: ["pins"],
-        message: "A candidate must pin three distinct chapter versions",
-      });
-    }
-  });
+  .strict();
 export type GoldenThreeCandidateInput = z.infer<typeof goldenThreeCandidateInputSchema>;
 
 export const goldenThreeCandidateBatchRequestSchema = z
@@ -6713,17 +7081,12 @@ export const goldenThreeCandidateBatchRequestSchema = z
         message: "Candidate strategies must be unique",
       });
     }
-    const chapterSets = input.candidates.map((candidate) =>
-      candidate.pins
-        .map((pin) => pin.chapterId)
-        .sort()
-        .join(","),
-    );
-    if (new Set(chapterSets).size !== 1) {
+    const chapterIds = input.candidates.map((candidate) => candidate.pins[0]!.chapterId);
+    if (new Set(chapterIds).size !== 1) {
       context.addIssue({
         code: "custom",
         path: ["candidates"],
-        message: "Every candidate must compare the same three chapters",
+        message: "Every candidate must compare the same first chapter",
       });
     }
   });
@@ -6737,6 +7100,14 @@ export const goldenThreeGenerateRequestSchema = z
   })
   .strict();
 export type GoldenThreeGenerateRequest = z.infer<typeof goldenThreeGenerateRequestSchema>;
+
+export const goldenThreeContinuationRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    pins: z.array(goldenThreeChapterPinInputSchema).length(2).optional(),
+  })
+  .strict();
+export type GoldenThreeContinuationRequest = z.infer<typeof goldenThreeContinuationRequestSchema>;
 
 export const goldenThreeReviewInputSchema = z
   .object({
@@ -6808,7 +7179,23 @@ export const goldenThreeCandidateSchema = z
     prompt: goldenThreePromptProvenanceSchema,
     model: goldenThreeModelProvenanceSchema,
     context: goldenThreeContextProvenanceSchema,
-    pins: z.array(goldenThreePinnedChapterSchema).length(3),
+    pins: z.array(goldenThreePinnedChapterSchema).length(1),
+    continuation: z
+      .object({
+        versionNodeId: uuidV7Schema,
+        pins: z.array(goldenThreePinnedChapterSchema).length(2),
+        createdAt: z.string().datetime(),
+      })
+      .strict()
+      .nullable(),
+    trace: z
+      .object({
+        jobId: uuidV7Schema,
+        agentRunId: uuidV7Schema,
+        modelCallId: uuidV7Schema,
+      })
+      .strict()
+      .nullable(),
     reviews: z.array(goldenThreeReviewSchema).max(6),
     reviewSummary: goldenThreeReviewSummarySchema,
     createdAt: z.string().datetime(),
@@ -6822,6 +7209,7 @@ export const goldenThreeGateBlockerCodeSchema = z.enum([
   "NO_SELECTION",
   "REVIEW_INCOMPLETE",
   "REQUIRED_DIMENSION_FAILED",
+  "CONTINUATION_REQUIRED",
   "CANDIDATE_LOCKED",
 ]);
 export type GoldenThreeGateBlockerCode = z.infer<typeof goldenThreeGateBlockerCodeSchema>;
@@ -7249,7 +7637,9 @@ export const criticAnnotationPatchRequestSchema = z
 export type CriticAnnotationPatchRequest = z.infer<typeof criticAnnotationPatchRequestSchema>;
 
 export const qualityWorkspaceResponseSchema = apiEnvelopeSchema(qualityWorkspaceSchema);
-export const criticAnnotationListResponseSchema = apiEnvelopeSchema(
+export const criticAnnotationListQuerySchema = cursorPageQuerySchema;
+export type CriticAnnotationListQuery = z.infer<typeof criticAnnotationListQuerySchema>;
+export const criticAnnotationListResponseSchema = cursorListResponseSchema(
   z.array(criticAnnotationSchema),
 );
 export const criticAnnotationResponseSchema = apiEnvelopeSchema(criticAnnotationSchema);
@@ -7914,6 +8304,8 @@ export const revisionPlanWorkspaceSchema = z
 export type RevisionPlanWorkspace = z.infer<typeof revisionPlanWorkspaceSchema>;
 
 export const revisionPlanWorkspaceResponseSchema = apiEnvelopeSchema(revisionPlanWorkspaceSchema);
+export const revisionPlanListQuerySchema = cursorPageQuerySchema;
+export type RevisionPlanListQuery = z.infer<typeof revisionPlanListQuerySchema>;
 export const revisionPlanWorkspaceListResponseSchema = cursorListResponseSchema(
   z.array(revisionPlanWorkspaceSchema),
 );

@@ -54,6 +54,39 @@ Issue #90 已完成卷末审计、固定仙侠样片、M1 全链路 E2E 和 M1 �
 
 Issue #147 在 outline 页加入黄金三章候选比较、六维评分与证据、作者选择、失败阻断、例外锁定和风格基线。`apps/web/e2e/parity/golden-three.spec.ts` 已覆盖四档视口与真实 API 动作；现有 outline 生产 golden 已不代表新布局，需在 M1 布局稳定后重新拍摄并完成作者视觉签收。
 
+## 2026-11-10 M1 页面视觉方向签收与 Golden 证据
+
+签收人：ruifeng-y。
+
+作者已确认以下 8 个 M1 验收页面在 390 / 900 / 1180 / 1440 四档视口下的视觉方向，并同意当前生产布局。当前正式 Linux/CI Golden 的生成范围见下文：
+
+- work-overview
+- bible
+- settings
+- entity-detail
+- outline
+- foreshadows
+- writing
+- account-settings
+
+Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者本次对 8 个页面的视觉方向作出签收；其中 #172 为 `entity-detail` 与 `foreshadows` 生成 8 张正式 Linux/CI Golden，#174 为 `bible`、`settings`、`outline`、`writing` 与 `account-settings` 生成 20 张代表性生产状态 Golden，#176 为 `work-overview` 生成正常态与长内容态共 8 张正式 Linux/CI Golden，#177 为 `account-settings` 生成 4 张 Key 错误态 Golden。8 个 M1 验收页面现在都有当前正式视觉基线。全量生成证据见 [Production CI #42948984698](https://github.com/ruifeng-y/novel-brain/actions/runs/42948984698)。
+
+本次视觉判断没有未批准项，也没有新增产品偏差。它取代前文 2026-11-05 至 2026-11-07 对 M1 页面视觉方向的待签收状态，但不替代其余页面尚未生成的正式 Golden 证据。
+
+#172、#174、#176 与 #177 合计补齐 8 个 M1 验收页面的真实生产路由四档 `toHaveScreenshot`、当前正式 Golden、`prototype_only` 泄漏扫描与必需状态证据。#174 额外补齐 `foreshadows` 的 `loading` 状态与 `entity-detail` 的结构化扫描附件。正常 Linux 截图比较以本 PR 最终绿色 Production CI 为准；合并前不得把未通过正常回归的页面标记为完成。
+
+## 2026-11-10 Work Overview 分支与长内容证据
+
+签收人：ruifeng-y。#176 补齐 `work-overview` 的当前作品/主线壳层上下文、待处理与最近修改列表，以及真实长作品名、长摘要、长章节和长设定证据。正常态与长内容态均在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 8 张 Linux/CI Golden 作为当前视觉基线，生成证据为 [Production CI #42810925879](https://github.com/ruifeng-y/novel-brain/actions/runs/42810925879)。本次证据只覆盖 `work-overview` 生产路由；全站当前作品与平行版本切换一致性仍由 #95、#123 跟踪，不声称 WORK-009 全站完成。单票记录不提升整页；#174 完成其余页面和状态证据后统一进入 `parity-verified`。
+
+## 2026-11-10 Account Settings Key 错误态证据
+
+签收人：ruifeng-y。#177 补齐 `account-settings` 的 Key 无效、失效、连接测试失败、掩码保持、失败后替换 Key 与重试恢复证据；原型账号页同步登记掩码错误行与“替换 Key”动作。正常态生产 Golden 不变；错误态在 390 / 900 / 1180 / 1440 四档视口下执行 `toHaveScreenshot`，并覆盖作者语言、prototype_only 扫描和无横向溢出断言。作者确认 4 张错误态 Linux/CI Golden 作为当前状态基线，生成证据为 [Production CI #42780689501](https://github.com/ruifeng-y/novel-brain/actions/runs/42780689501)，正常 Linux 回归以 PR #178 的最终绿色 Production CI 为准。账号导出、注销恢复期与永久删除仍由 #134 独立跟踪，本记录不提升整页状态。
+
+## 2026-11-11 Remaining M1 Golden 与状态证据
+
+签收人：ruifeng-y。#174 为 `bible`、`settings`、`outline`、`writing` 与 `account-settings` 补齐四档真实生产路由 `toHaveScreenshot`，生成 20 张代表性生产状态 Linux/CI Golden；同时补齐 `foreshadows` 的 `loading` 状态和 `entity-detail` 的 `prototype_only` 泄漏扫描附件。生成证据为 [Production CI #42948984698](https://github.com/ruifeng-y/novel-brain/actions/runs/42948984698)。8 个 M1 验收页面在正常 Linux 回归通过后进入 `parity-verified`；本记录不扩张到 work-settings、M2 或 M3 页面。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
