@@ -24,6 +24,7 @@
     "stack:up": "docker compose -f infra/docker/compose.yml up --build",
     "test": "pnpm build:packages && vitest run",
     "test:e2e": "pnpm build:packages && pnpm --filter @novel-brain/api build && pnpm --filter @novel-brain/worker build && node scripts/prepare-e2e.mjs && playwright test",
+    "test:e2e:m1-closeout-stability": "pnpm build:packages && pnpm --filter @novel-brain/api build && pnpm --filter @novel-brain/worker build && node scripts/prepare-e2e.mjs && pnpm exec playwright test apps/web/e2e/parity/m1-closeout.spec.ts -g \"completes the M1 author loop\" --repeat-each=5 --retries=0",
     "test:e2e:update": "pnpm build:packages && pnpm --filter @novel-brain/api build && pnpm --filter @novel-brain/worker build && node scripts/prepare-e2e.mjs && playwright test --update-snapshots",
     "test:guardrails": "vitest run scripts/test",
     "test:integration": "pnpm build:packages && pnpm --filter @novel-brain/api build && vitest run --config vitest.integration.config.mts",
