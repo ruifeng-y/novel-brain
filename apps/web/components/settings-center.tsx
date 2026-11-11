@@ -262,12 +262,21 @@ const impactResourceTypeLabels: Record<
   version_node: "版本节点",
 };
 
-const powerLifespanModeLabels: Record<PowerSystem["lifespanPolicy"]["mode"], string> = {
+const powerLifespanModeLabels: Record<
+  Exclude<PowerSystem["lifespanPolicy"]["mode"], "realm">,
+  string
+> = {
   none: "不绑定寿命",
-  realm: "按层级绑定",
   fixed: "固定寿命",
   custom: "自定义规则",
 };
+
+function powerLifespanModeLabel(
+  mode: PowerSystem["lifespanPolicy"]["mode"],
+  powerLevelLabel: string,
+) {
+  return mode === "realm" ? `按${powerLevelLabel}绑定` : powerLifespanModeLabels[mode];
+}
 
 const itemKindLabels: Record<ItemDomain["kind"], string> = {
   item: "物品",
@@ -1264,6 +1273,8 @@ export function SettingsCenter({
     );
   }
 
+  const powerLevelLabel = work.templatePack?.uiHints.powerLevelLabel ?? "层级";
+
   if (selected && !editor) {
     return (
       <>
@@ -1302,7 +1313,7 @@ export function SettingsCenter({
           onRetryVersionHistory={() => refreshDetail(selected.id, selected.type)}
           onRestore={(targetVersion, reason) => restoreEntity(selected, targetVersion, reason)}
           onRetryWorldDetail={() => refreshDetail(selected.id, selected.type)}
-          powerLevelLabel={work.templatePack?.uiHints.powerLevelLabel ?? "层级"}
+          powerLevelLabel={powerLevelLabel}
           proposals={proposals}
           versionHistoryError={versionHistoryError}
           versionHistoryLoading={versionHistoryLoading}
@@ -1536,6 +1547,7 @@ export function SettingsCenter({
               onCancel={() => setEditor(null)}
               onChange={setEditor}
               onSave={() => (editor.mode === "create" ? createEntity() : saveEntity())}
+              powerLevelLabel={powerLevelLabel}
             />
           ) : (
             <section aria-labelledby="settings-column-title">
@@ -1607,6 +1619,7 @@ function SettingEditor({
   onCancel,
   onChange,
   onSave,
+  powerLevelLabel,
 }: {
   busy: boolean;
   customFieldDefinitions: CustomFieldDefinition[];
@@ -1615,6 +1628,7 @@ function SettingEditor({
   onCancel: () => void;
   onChange: (editor: EditorState) => void;
   onSave: () => void;
+  powerLevelLabel: string;
 }) {
   const update = <Key extends keyof EditorState>(field: Key, value: EditorState[Key]) => {
     onChange({ ...editor, [field]: value });
@@ -1842,7 +1856,7 @@ function SettingEditor({
                 value={editor.powerLifespanMode}
               >
                 <option value="none">不绑定寿命</option>
-                <option value="realm">按层级绑定</option>
+                <option value="realm">{powerLifespanModeLabel("realm", powerLevelLabel)}</option>
                 <option value="fixed">固定寿命</option>
                 <option value="custom">自定义规则</option>
               </select>
@@ -2560,6 +2574,7 @@ function EntityDetail({
     references: "引用",
     health: "体检",
     ...ENTITY_DETAIL_TAB_LABELS[entity.type],
+    ...(entity.type === "power_system" ? { history: `${powerLevelLabel}变化` } : {}),
   };
   const findings =
     entity.type === "character"
@@ -3862,7 +3877,7 @@ function PowerDomainView({
               <dl className="settings-character-grid">
                 <div>
                   <dt>绑定方式</dt>
-                  <dd>{powerLifespanModeLabels[detail.lifespanPolicy.mode]}</dd>
+                  <dd>{powerLifespanModeLabel(detail.lifespanPolicy.mode, powerLevelLabel)}</dd>
                 </div>
                 <div>
                   <dt>单位</dt>

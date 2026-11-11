@@ -43,6 +43,7 @@
 
 - `apps/web/components/new-project-wizard.tsx`：三题材模板来自真实 pack API。
 - `apps/web/components/settings-center.tsx`：展示 pack label/version，支持真实版本切换。
+- `entity-detail` 的力量层级、寿命绑定和层级历史文案由 pack `uiHints.powerLevelLabel` 驱动。
 - `apps/web/components/story-bible.tsx`：三题材均可生成、编辑和锁定。
 
 ## 5. 验证
@@ -54,6 +55,7 @@
 - `apps/api/test/settings-import.integration.test.ts`
 - `apps/web/e2e/parity/new-project.spec.ts`
 - `apps/web/e2e/parity/settings.spec.ts`
+- `apps/web/e2e/parity/entity-detail.spec.ts`：仙侠、历史、都市四档视口力量层级文案。
 - `apps/web/e2e/parity/bible.spec.ts`
 
 ## 6. 视觉与边界
