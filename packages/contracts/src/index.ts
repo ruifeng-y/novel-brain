@@ -117,6 +117,10 @@ export const ERROR_CODES = [
   "REVISION_FINDING_REJECTED",
   "REVISION_ROUND_LIMIT_REACHED",
   "REVISION_INVALID_STATE",
+  "BATCH_PLAN_NOT_FOUND",
+  "BATCH_PLAN_INVALID",
+  "BATCH_PLAN_OUTLINE_INCOMPLETE",
+  "BATCH_PLAN_IDEMPOTENCY_CONFLICT",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -5441,10 +5445,24 @@ export const summaryRebuildJobSchema = z.object({
 });
 export type SummaryRebuildJob = z.infer<typeof summaryRebuildJobSchema>;
 
+export const BATCH_TICK_JOB = "batch_tick" as const;
+export const batchTickJobSchema = z
+  .object({
+    jobType: z.literal(BATCH_TICK_JOB),
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
+export type BatchTickJob = z.infer<typeof batchTickJobSchema>;
+
 export const workerJobSchema = z.discriminatedUnion("jobType", [
   generateChapterJobSchema,
   summaryRebuildJobSchema,
   writeActionJobSchema,
+  batchTickJobSchema,
 ]);
 export type WorkerJob = z.infer<typeof workerJobSchema>;
 
@@ -5600,6 +5618,235 @@ export const writingActionJobListResponseSchema = cursorListResponseSchema(
 );
 export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
 export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);
+
+export const BATCH_PLAN_JOB_TYPE = "batch_plan" as const;
+export const BATCH_PLAN_PRIORITY = 100;
+export const INTERACTIVE_PRIORITY = 1_000;
+
+export const batchJobItemTypeSchema = z.enum(["book", "volume", "chapter", "step"]);
+export type BatchJobItemType = z.infer<typeof batchJobItemTypeSchema>;
+
+export const batchWorkItemStatusSchema = z.enum([
+  "pending",
+  "ready",
+  "running",
+  "paused",
+  "waiting_review",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export type BatchWorkItemStatus = z.infer<typeof batchWorkItemStatusSchema>;
+
+export const batchPriorityClassSchema = z.enum(["interactive", "batch"]);
+export type BatchPriorityClass = z.infer<typeof batchPriorityClassSchema>;
+
+export const batchApprovalModeSchema = z.enum(["per_chapter", "per_volume", "auto"]);
+export type BatchApprovalMode = z.infer<typeof batchApprovalModeSchema>;
+
+const batchPlanScopeBaseSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("chapter"),
+      chapterIds: z.array(uuidV7Schema).min(1).max(100),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("volume"),
+      volumeNodeIds: z.array(uuidV7Schema).min(1).max(100),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("range"),
+      fromChapterNumber: z.number().int().positive().max(10_000),
+      toChapterNumber: z.number().int().positive().max(10_000),
+    })
+    .strict(),
+  z.object({ type: z.literal("book") }).strict(),
+]);
+
+export const batchPlanScopeSchema = batchPlanScopeBaseSchema.superRefine((scope, context) => {
+  if (scope.type === "range" && scope.fromChapterNumber > scope.toChapterNumber) {
+    context.addIssue({
+      code: "custom",
+      path: ["toChapterNumber"],
+      message: "Chapter range end must not precede its start",
+    });
+  }
+});
+export type BatchPlanScope = z.infer<typeof batchPlanScopeSchema>;
+
+export const batchPlanCreateRequestSchema = z
+  .object({
+    scope: batchPlanScopeSchema,
+    approvalMode: batchApprovalModeSchema.default("per_volume"),
+    priorityClass: batchPriorityClassSchema.default("batch"),
+    maxConcurrency: z.number().int().min(1).max(4).default(2),
+    stepKeys: z
+      .array(workerJobStepSchema)
+      .min(1)
+      .max(16)
+      .default([...WORKER_JOB_STEPS]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.stepKeys).size !== input.stepKeys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["stepKeys"],
+        message: "Step keys must be unique",
+      });
+    }
+  });
+export type BatchPlanCreateRequest = z.infer<typeof batchPlanCreateRequestSchema>;
+
+export const batchPlanActionRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
+export type BatchPlanActionRequest = z.infer<typeof batchPlanActionRequestSchema>;
+
+export const batchWorkItemKeySchema = z
+  .string()
+  .min(1)
+  .max(120)
+  .regex(/^[a-z][a-z0-9:._-]*$/, "Expected a stable work-item key");
+export type BatchWorkItemKey = z.infer<typeof batchWorkItemKeySchema>;
+
+export const batchWorkItemInputVersionSchema = z
+  .object({
+    outlineVersion: z.number().int().positive().nullable(),
+    chapterVersion: z.number().int().positive().nullable(),
+  })
+  .strict();
+export type BatchWorkItemInputVersion = z.infer<typeof batchWorkItemInputVersionSchema>;
+
+export const batchWorkItemSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    userId: uuidV7Schema,
+    key: batchWorkItemKeySchema,
+    type: batchJobItemTypeSchema,
+    parentKey: batchWorkItemKeySchema.nullable(),
+    chapterId: uuidV7Schema.nullable(),
+    outlineNodeId: uuidV7Schema.nullable(),
+    status: batchWorkItemStatusSchema,
+    attempt: z.number().int().nonnegative(),
+    priority: z.number().int().min(0).max(1_000),
+    priorityClass: batchPriorityClassSchema,
+    sortOrder: z.number().int().nonnegative(),
+    inputVersion: batchWorkItemInputVersionSchema,
+    dependsOn: z.array(batchWorkItemKeySchema).max(500),
+    outputRefs: z.array(checkpointOutputRefSchema).max(100),
+    errorCode: z.string().min(1).max(100).nullable(),
+    errorMessage: z.string().min(1).max(2_000).nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchWorkItem = z.infer<typeof batchWorkItemSchema>;
+
+export const batchPlanCountsSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    book: z.number().int().nonnegative(),
+    volume: z.number().int().nonnegative(),
+    chapter: z.number().int().nonnegative(),
+    step: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(),
+    ready: z.number().int().nonnegative(),
+    running: z.number().int().nonnegative(),
+    paused: z.number().int().nonnegative(),
+    waiting_review: z.number().int().nonnegative(),
+    succeeded: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    cancelled: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchPlanCounts = z.infer<typeof batchPlanCountsSchema>;
+
+export const batchSchedulingCapsSchema = z
+  .object({
+    global: z.number().int().positive(),
+    perWork: z.number().int().positive(),
+    perUser: z.number().int().positive(),
+  })
+  .strict();
+export type BatchSchedulingCaps = z.infer<typeof batchSchedulingCapsSchema>;
+
+export const batchPlanSchedulingSchema = z
+  .object({
+    caps: batchSchedulingCapsSchema,
+    effectivePerWork: z.number().int().positive(),
+    priority: z.number().int().min(0).max(1_000),
+    initialRunnableKeys: z.array(batchWorkItemKeySchema).max(8),
+  })
+  .strict();
+export type BatchPlanScheduling = z.infer<typeof batchPlanSchedulingSchema>;
+
+export const batchPlanSummarySchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    userId: uuidV7Schema,
+    status: generationJobStatusSchema,
+    scope: batchPlanScopeSchema,
+    approvalMode: batchApprovalModeSchema,
+    priorityClass: batchPriorityClassSchema,
+    idempotencyKey: z.string().min(1).max(200),
+    counts: batchPlanCountsSchema,
+    scheduling: batchPlanSchedulingSchema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchPlanSummary = z.infer<typeof batchPlanSummarySchema>;
+
+export const batchPlanMetadataSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    requestHash: z.string().regex(/^[a-f0-9]{64}$/),
+    scope: batchPlanScopeSchema,
+    approvalMode: batchApprovalModeSchema,
+    priorityClass: batchPriorityClassSchema,
+    stepKeys: z.array(workerJobStepSchema).min(1).max(16),
+    scheduling: batchPlanSchedulingSchema,
+    counts: batchPlanCountsSchema,
+  })
+  .strict();
+export type BatchPlanMetadata = z.infer<typeof batchPlanMetadataSchema>;
+
+export const batchPlanValidationIssueSchema = z
+  .object({
+    code: z.enum([
+      "duplicate_key",
+      "unknown_dependency",
+      "cycle",
+      "cross_work_reference",
+      "missing_parent",
+      "invalid_parent_type",
+      "invalid_root",
+    ]),
+    message: z.string().min(1),
+    itemKey: batchWorkItemKeySchema.nullable(),
+  })
+  .strict();
+export type BatchPlanValidationIssue = z.infer<typeof batchPlanValidationIssueSchema>;
+
+export const batchPlanResponseSchema = apiEnvelopeSchema(batchPlanSummarySchema);
+export const batchPlanItemListResponseSchema = cursorListResponseSchema(
+  z.array(batchWorkItemSchema),
+);
 
 export const agentRoleSchema = z.enum([
   "planner",

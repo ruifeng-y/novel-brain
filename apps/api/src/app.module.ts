@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 
 import { AuthModule } from "./auth/auth.module";
 import { AgentRuntimeModule } from "./agent-runtime/agent-runtime.module";
+import { BatchPlanModule } from "./batch-plan/batch-plan.module";
 import { CanonModule } from "./canon/canon.module";
 import { ChaptersModule } from "./chapters/chapters.module";
 import { CharactersModule } from "./characters/characters.module";
@@ -31,6 +32,7 @@ import { WritingActionModule } from "./writing-actions/writing-action.module";
   imports: [
     AuthModule,
     AgentRuntimeModule,
+    BatchPlanModule,
     CanonModule,
     ChaptersModule,
     CharactersModule,
