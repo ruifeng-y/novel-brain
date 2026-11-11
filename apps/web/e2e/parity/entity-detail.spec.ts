@@ -1332,6 +1332,7 @@ test("uses genre pack level labels for power systems in history and urban works"
     }
 
     const editablePower = await openEntity(page, work, /^力量体系/, item.systemName);
+    await expect(editablePower.getByText(`按${item.powerLevelLabel}绑定`)).toBeVisible();
     await editablePower.getByRole("button", { name: "编辑设定" }).click();
     const lifespanMode = page.locator(".settings-editor").getByLabel("寿命绑定");
     await expect(lifespanMode).toHaveValue("realm");
