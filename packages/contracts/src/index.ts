@@ -121,6 +121,10 @@ export const ERROR_CODES = [
   "BATCH_PLAN_INVALID",
   "BATCH_PLAN_OUTLINE_INCOMPLETE",
   "BATCH_PLAN_IDEMPOTENCY_CONFLICT",
+  "BATCH_REVIEW_CONTEXT_NOT_FOUND",
+  "BATCH_REVIEW_CLAIM_CONFLICT",
+  "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
+  "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -5446,6 +5450,14 @@ export const summaryRebuildJobSchema = z.object({
 export type SummaryRebuildJob = z.infer<typeof summaryRebuildJobSchema>;
 
 export const BATCH_TICK_JOB = "batch_tick" as const;
+export const batchTickCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    revision: z.number().int().nonnegative(),
+    planId: uuidV7Schema,
+  })
+  .strict();
+export type BatchTickCheckpoint = z.infer<typeof batchTickCheckpointSchema>;
 export const batchTickJobSchema = z
   .object({
     jobType: z.literal(BATCH_TICK_JOB),
@@ -5453,6 +5465,8 @@ export const batchTickJobSchema = z
     workId: uuidV7Schema,
     branchId: uuidV7Schema,
     actorId: uuidV7Schema,
+    idempotencyKey: z.string().min(1).max(200),
+    checkpoint: batchTickCheckpointSchema,
     reason: z.string().trim().min(1).max(500).optional(),
   })
   .strict();
@@ -5620,8 +5634,9 @@ export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSch
 export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);
 
 export const BATCH_PLAN_JOB_TYPE = "batch_plan" as const;
-export const BATCH_PLAN_PRIORITY = 100;
-export const INTERACTIVE_PRIORITY = 1_000;
+export const BATCH_PLAN_PRIORITY = 1_000;
+export const INTERACTIVE_PRIORITY = 100;
+export const BATCH_REVIEW_PREDICATE_VERSION = "batch-review-v1" as const;
 
 export const batchJobItemTypeSchema = z.enum(["book", "volume", "chapter", "step"]);
 export type BatchJobItemType = z.infer<typeof batchJobItemTypeSchema>;
@@ -5847,6 +5862,218 @@ export const batchPlanResponseSchema = apiEnvelopeSchema(batchPlanSummarySchema)
 export const batchPlanItemListResponseSchema = cursorListResponseSchema(
   z.array(batchWorkItemSchema),
 );
+
+export const batchReviewTargetTypeSchema = z.enum(["chapter", "volume"]);
+export type BatchReviewTargetType = z.infer<typeof batchReviewTargetTypeSchema>;
+
+export const batchReviewStatusSchema = z.enum([
+  "pending",
+  "claimed",
+  "approved",
+  "rejected",
+  "stale",
+]);
+export type BatchReviewStatus = z.infer<typeof batchReviewStatusSchema>;
+
+export const batchReviewRiskSchema = z.enum(["low", "medium", "high"]);
+export type BatchReviewRisk = z.infer<typeof batchReviewRiskSchema>;
+
+export const batchReviewRiskReasonCodeSchema = z.enum([
+  "MANUAL_APPROVAL_MODE",
+  "VOLUME_BOUNDARY",
+  "OUTLINE_NOT_LOCKED",
+  "PENDING_HIGH_RISK_APPROVAL",
+  "READINESS_BLOCKED",
+  "GOLDEN_THREE_UNLOCKED",
+  "QUALITY_REPORT_MISSING",
+  "QUALITY_REPORT_STALE",
+  "UNRESOLVED_P0",
+  "UNRESOLVED_P1",
+  "STRUCTURAL_FINDING",
+  "QUALITY_BELOW_THRESHOLD",
+  "QUALITY_WARNING",
+  "CHARACTER_DEATH",
+  "GOLDEN_FINGER_UPGRADE",
+  "LOCKED_CANON_CHANGE",
+  "BRANCH_MERGE",
+]);
+export type BatchReviewRiskReasonCode = z.infer<typeof batchReviewRiskReasonCodeSchema>;
+
+export const batchReviewRiskReasonSchema = z
+  .object({
+    code: batchReviewRiskReasonCodeSchema,
+    message: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type BatchReviewRiskReason = z.infer<typeof batchReviewRiskReasonSchema>;
+
+export const batchReviewQualitySummarySchema = z
+  .object({
+    reportState: z.enum(["fresh", "missing", "stale"]),
+    canApprove: z.boolean(),
+    scoreAverage: z.number().min(1).max(5).nullable(),
+    blockerCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewQualitySummary = z.infer<typeof batchReviewQualitySummarySchema>;
+
+export const batchReviewFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    severity: z.enum(["P0", "P1", "P2", "P3"]),
+    code: z.enum([
+      "FACT_CONTRADICTION",
+      "TIMELINE_CONFLICT",
+      "UNDISCLOSED_KNOWLEDGE",
+      "MOTIVATION_BREAK",
+      "LOCATION_CONFLICT",
+      "STYLE_DRIFT",
+      "WEAK_CHAPTER_END_HOOK",
+    ]),
+    qualityDimension: z.enum([
+      "hook",
+      "pacing",
+      "information_density",
+      "character_voice",
+      "prose",
+      "continuity",
+    ]),
+    recommendation: z.string().trim().min(1).max(2_000),
+    quote: z.string().trim().min(1).max(2_000).nullable(),
+  })
+  .strict();
+export type BatchReviewFinding = z.infer<typeof batchReviewFindingSchema>;
+
+export const batchReviewQueueItemSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    workItemId: uuidV7Schema,
+    targetType: batchReviewTargetTypeSchema,
+    targetId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    chapterNumber: z.number().int().positive().nullable(),
+    chapterTitle: z.string().trim().min(1).max(200).nullable(),
+    volumeTitle: z.string().trim().min(1).max(200).nullable(),
+    status: batchReviewStatusSchema,
+    risk: batchReviewRiskSchema,
+    riskReasons: z.array(batchReviewRiskReasonSchema).max(20),
+    quality: batchReviewQualitySummarySchema,
+    findings: z.array(batchReviewFindingSchema).max(20),
+    claimedBy: uuidV7Schema.nullable(),
+    claimedAt: z.string().datetime().nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchReviewQueueItem = z.infer<typeof batchReviewQueueItemSchema>;
+
+export const batchReviewQueueCountsSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(),
+    claimed: z.number().int().nonnegative(),
+    highRisk: z.number().int().nonnegative(),
+    stale: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewQueueCounts = z.infer<typeof batchReviewQueueCountsSchema>;
+
+export const batchReviewQueueQuerySchema = z
+  .object({
+    status: batchReviewStatusSchema.optional(),
+    risk: batchReviewRiskSchema.optional(),
+    targetType: batchReviewTargetTypeSchema.optional(),
+    cursor: z.string().min(1).max(500).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+export type BatchReviewQueueQuery = z.infer<typeof batchReviewQueueQuerySchema>;
+
+export const batchReviewQueueListResponseSchema = z.object({
+  data: z.array(batchReviewQueueItemSchema),
+  requestId: z.string().startsWith("req_"),
+  meta: cursorPageMetaSchema.extend({ counts: batchReviewQueueCountsSchema }),
+});
+
+export const batchReviewClaimRequestSchema = z
+  .object({
+    itemIds: z.array(uuidV7Schema).min(1).max(50),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.itemIds).size !== input.itemIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["itemIds"],
+        message: "Review queue item ids must be unique",
+      });
+    }
+  });
+export type BatchReviewClaimRequest = z.infer<typeof batchReviewClaimRequestSchema>;
+export const batchReviewClaimResponseSchema = apiEnvelopeSchema(
+  z.array(batchReviewQueueItemSchema),
+);
+
+export const batchReviewActionSchema = z.enum(["approve", "reject"]);
+export type BatchReviewAction = z.infer<typeof batchReviewActionSchema>;
+
+export const batchReviewDecisionSchema = z
+  .object({
+    itemId: uuidV7Schema,
+    expectedVersion: z.number().int().positive(),
+    action: batchReviewActionSchema,
+    reason: z.string().trim().min(1).max(1_000).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.action === "reject" && !input.reason) {
+      context.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "Rejecting a batch review item requires a reason",
+      });
+    }
+  });
+export type BatchReviewDecision = z.infer<typeof batchReviewDecisionSchema>;
+
+export const batchReviewDecisionRequestSchema = z
+  .object({
+    items: z.array(batchReviewDecisionSchema).min(1).max(50),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.items.map((item) => item.itemId)).size !== input.items.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["items"],
+        message: "Each review queue item may appear only once",
+      });
+    }
+  });
+export type BatchReviewDecisionRequest = z.infer<typeof batchReviewDecisionRequestSchema>;
+
+export const batchReviewDecisionResultSchema = z
+  .object({
+    itemId: uuidV7Schema,
+    status: z.enum(["approved", "rejected", "failed"]),
+    errorCode: z.string().min(1).max(100).nullable(),
+    message: z.string().trim().min(1).max(1_000),
+    item: batchReviewQueueItemSchema.nullable(),
+  })
+  .strict();
+export type BatchReviewDecisionResult = z.infer<typeof batchReviewDecisionResultSchema>;
+
+export const batchReviewDecisionDataSchema = z
+  .object({
+    results: z.array(batchReviewDecisionResultSchema).min(1).max(50),
+    succeeded: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewDecisionData = z.infer<typeof batchReviewDecisionDataSchema>;
+export const batchReviewDecisionResponseSchema = apiEnvelopeSchema(batchReviewDecisionDataSchema);
 
 export const agentRoleSchema = z.enum([
   "planner",

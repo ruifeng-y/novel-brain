@@ -83,6 +83,8 @@ export class BatchPlanTickProcessor {
         workId: plan.workId,
         branchId: plan.branchId,
         actorId: plan.userId,
+        idempotencyKey: `batch-review:${plan.id}`,
+        checkpoint: { schemaVersion: 1, revision: 0, planId: plan.id },
       });
     }
   }
@@ -98,6 +100,8 @@ function nextTick(
     workId: plan.workId,
     branchId: plan.branchId,
     actorId: plan.userId,
+    idempotencyKey: `batch-tick:${plan.id}`,
+    checkpoint: { schemaVersion: 1, revision: 0, planId: plan.id },
     ...(payload.reason ? { reason: payload.reason } : {}),
   };
 }

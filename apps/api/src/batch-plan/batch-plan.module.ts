@@ -10,5 +10,6 @@ import { BatchPlanService } from "./batch-plan.service";
   imports: [AuthModule],
   controllers: [BatchPlanController],
   providers: [BatchPlanRepository, BatchPlanQueue, BatchPlanService],
+  exports: [BatchPlanQueue],
 })
 export class BatchPlanModule {}

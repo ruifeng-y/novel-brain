@@ -101,6 +101,9 @@ M0 关键错误：
 - `BATCH_PLAN_INVALID`
 - `BATCH_PLAN_OUTLINE_INCOMPLETE`
 - `BATCH_PLAN_IDEMPOTENCY_CONFLICT`
+- `BATCH_REVIEW_CONTEXT_NOT_FOUND`
+- `BATCH_REVIEW_CLAIM_CONFLICT`
+- `BATCH_REVIEW_IDEMPOTENCY_CONFLICT`
 - `FACT_DECISION_REQUIRED`
 - `FACT_SUBMISSION_BLOCKED`
 - `CANON_CHAPTER_NOT_APPROVED`
@@ -195,6 +198,9 @@ M0 关键错误：
 | POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/resume` | 从暂停工作项和子任务检查点恢复 |
 | POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/cancel` | 取消剩余工作，保留已完成/待审核章节 |
 | POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/retry` | 从失败步骤重试失败章节 |
+| GET | `/api/v1/works/:workId/branches/:branchId/review-queue` | 分页读取章节/卷审核队列 |
+| POST | `/api/v1/works/:workId/branches/:branchId/review-queue/claim` | 领取一个或一批审核项 |
+| POST | `/api/v1/works/:workId/branches/:branchId/review-queue/decisions` | 幂等提交逐项批准/驳回并返回部分失败 |
 
 ### 5.7 审核、事实与故事事实提交
 

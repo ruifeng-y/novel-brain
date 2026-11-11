@@ -2480,6 +2480,172 @@ export const jobWorkItems = pgTable(
   ],
 );
 
+export type BatchReviewRiskReasonJson = {
+  code: string;
+  message: string;
+};
+
+export type BatchReviewQualityJson = {
+  reportState: "fresh" | "missing" | "stale";
+  canApprove: boolean;
+  scoreAverage: number | null;
+  blockerCount: number;
+};
+
+export const batchReviewItems = pgTable(
+  "batch_review_items",
+  {
+    id: uuid("id").primaryKey(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workItemId: uuid("work_item_id")
+      .notNull()
+      .references(() => jobWorkItems.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
+      onDelete: "set null",
+    }),
+    targetVersion: integer("target_version").notNull(),
+    chapterNumber: integer("chapter_number"),
+    chapterTitle: text("chapter_title"),
+    volumeTitle: text("volume_title"),
+    status: text("status").notNull().default("pending"),
+    risk: text("risk").notNull(),
+    riskReasons: jsonb("risk_reasons").$type<BatchReviewRiskReasonJson[]>().notNull().default([]),
+    quality: jsonb("quality").$type<BatchReviewQualityJson>().notNull(),
+    claimedBy: uuid("claimed_by").references(() => users.id, { onDelete: "set null" }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("batch_review_items_plan_work_item_unique").on(table.planId, table.workItemId),
+    index("batch_review_items_queue_idx").on(
+      table.userId,
+      table.branchId,
+      table.status,
+      table.risk,
+    ),
+    index("batch_review_items_plan_idx").on(table.planId),
+    index("batch_review_items_target_idx").on(table.targetType, table.targetId),
+    check(
+      "batch_review_items_target_type_check",
+      sql`${table.targetType} in ('chapter', 'volume')`,
+    ),
+    check(
+      "batch_review_items_status_check",
+      sql`${table.status} in ('pending', 'claimed', 'approved', 'rejected', 'stale')`,
+    ),
+    check("batch_review_items_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
+    check("batch_review_items_target_version_check", sql`${table.targetVersion} > 0`),
+    check("batch_review_items_version_check", sql`${table.version} > 0`),
+    check(
+      "batch_review_items_risk_reasons_check",
+      sql`jsonb_typeof(${table.riskReasons}) = 'array'`,
+    ),
+    check(
+      "batch_review_items_target_check",
+      sql`(${table.targetType} = 'chapter' and ${table.chapterId} is not null) or (${table.targetType} = 'volume' and ${table.chapterId} is null)`,
+    ),
+    check(
+      "batch_review_items_claim_check",
+      sql`(${table.status} = 'claimed' and ${table.claimedBy} is not null and ${table.claimedAt} is not null) or (${table.status} <> 'claimed' and (${table.claimedBy} is null or ${table.status} in ('approved', 'rejected')))`,
+    ),
+  ],
+);
+
+export const batchReviewDecisionBatches = pgTable(
+  "batch_review_decision_batches",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    response: jsonb("response").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("batch_review_decision_batches_idempotency_unique").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.idempotencyKey,
+    ),
+    index("batch_review_decision_batches_user_created_idx").on(table.userId, table.createdAt),
+    check(
+      "batch_review_decision_batches_request_hash_check",
+      sql`${table.requestHash} ~ '^[a-f0-9]{64}$'`,
+    ),
+  ],
+);
+
+export const batchReviewDecisions = pgTable(
+  "batch_review_decisions",
+  {
+    id: uuid("id").primaryKey(),
+    batchId: uuid("batch_id")
+      .notNull()
+      .references(() => batchReviewDecisionBatches.id, { onDelete: "cascade" }),
+    queueItemId: uuid("queue_item_id")
+      .notNull()
+      .references(() => batchReviewItems.id, { onDelete: "restrict" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    risk: text("risk").notNull(),
+    reason: text("reason").notNull(),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    actorName: text("actor_name").notNull(),
+    expectedVersion: integer("expected_version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("batch_review_decisions_batch_item_unique").on(table.batchId, table.queueItemId),
+    index("batch_review_decisions_user_created_idx").on(table.userId, table.createdAt),
+    index("batch_review_decisions_target_idx").on(table.targetType, table.targetId),
+    check(
+      "batch_review_decisions_target_type_check",
+      sql`${table.targetType} in ('chapter', 'volume')`,
+    ),
+    check("batch_review_decisions_action_check", sql`${table.action} in ('approve', 'reject')`),
+    check("batch_review_decisions_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
+    check("batch_review_decisions_expected_version_check", sql`${table.expectedVersion} > 0`),
+  ],
+);
+
 export const writingActions = pgTable(
   "writing_actions",
   {

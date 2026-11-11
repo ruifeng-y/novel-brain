@@ -388,6 +388,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchReviewController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue/claim": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchReviewController_claim"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue/decisions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchReviewController_decide"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
     parameters: {
       query?: never;
@@ -3783,6 +3831,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -4106,6 +4158,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -5056,6 +5112,96 @@ export interface operations {
             };
           };
         };
+      };
+    };
+  };
+  BatchReviewController_list: {
+    parameters: {
+      query?: {
+        status?: string;
+        risk?: string;
+        targetType?: string;
+        cursor?: string;
+        limit?: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tenant-scoped batch review queue */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BatchReviewController_claim: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          itemIds: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description Claimed batch review items */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BatchReviewController_decide: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same review decision batch */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          items: {
+            itemId: string;
+            expectedVersion: number;
+            /** @enum {string} */
+            action: "approve" | "reject";
+            reason?: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Independent batch review decision results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
@@ -8984,6 +9130,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9531,6 +9681,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9904,6 +10058,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -10278,6 +10436,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -10652,6 +10814,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11039,6 +11205,10 @@ export interface operations {
                     | "BATCH_PLAN_INVALID"
                     | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                     | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -28296,6 +28466,10 @@ export interface operations {
                     | "BATCH_PLAN_INVALID"
                     | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                     | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -28499,6 +28673,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -28678,6 +28856,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -38942,6 +39124,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -39702,6 +39888,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40239,6 +40429,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40776,6 +40970,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -41313,6 +41511,10 @@ export interface operations {
                   | "BATCH_PLAN_INVALID"
                   | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                   | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -41863,6 +42065,10 @@ export interface operations {
                     | "BATCH_PLAN_INVALID"
                     | "BATCH_PLAN_OUTLINE_INCOMPLETE"
                     | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
