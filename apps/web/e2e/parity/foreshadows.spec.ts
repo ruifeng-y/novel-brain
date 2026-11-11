@@ -2,17 +2,15 @@ import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { Pool } from "pg";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage, freezeApiTimestamps } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
-const screenshotOptions = {
-  animations: "disabled",
-  caret: "hide",
-  fullPage: true,
-  maxDiffPixelRatio: 0.005,
-  scale: "css",
-} as const;
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("foreshadows");
@@ -244,11 +242,12 @@ test("renders a long ledger at four viewports and opens the outline ledger", asy
     await expect(page.locator("article.foreshadow-row")).toHaveCount(14);
     await expect(page.locator("article.foreshadow-row").first()).toContainText("第 1 条长线伏笔");
     await expectAuthorFacingLanguage(page);
+    await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await expect(page).toHaveScreenshot(
       ["foreshadows", `foreshadows-${width}.png`],
-      screenshotOptions,
+      productionScreenshotOptions,
     );
   }
 
@@ -266,6 +265,20 @@ test("renders a recoverable error state at four viewports", async ({ page, conte
   test.setTimeout(60_000);
   await authenticatedPage(page, context);
   const work = await createLedgerWork(page);
+  let releaseLedger: () => void = () => undefined;
+  const ledgerGate = new Promise<void>((resolve) => {
+    releaseLedger = resolve;
+  });
+  await page.route(`**${branchPath(work)}/ledger`, async (route) => {
+    await ledgerGate;
+    await route.continue();
+  });
+  await page.goto(`/workspace/${work.id}/foreshadows`, { waitUntil: "domcontentloaded" });
+  await expect(page.getByText("正在加载伏笔账本")).toBeVisible();
+  releaseLedger();
+  await expect(page.getByRole("heading", { name: "埋下的，都要有回收计划" })).toBeVisible();
+  await page.unroute(`**${branchPath(work)}/ledger`);
+
   await page.route(`**${branchPath(work)}/ledger`, async (route) => {
     await route.fulfill({
       status: 500,

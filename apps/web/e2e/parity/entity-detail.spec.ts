@@ -1,17 +1,15 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage, freezeApiTimestamps } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
 const viewports = [390, 900, 1180, 1440];
-const screenshotOptions = {
-  animations: "disabled",
-  caret: "hide",
-  fullPage: true,
-  maxDiffPixelRatio: 0.005,
-  scale: "css",
-} as const;
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("entity-detail");
@@ -758,11 +756,16 @@ test("loads the dedicated character profile, relationships, state history and he
     await expect(detail.getByText("还没有角色认知记录。")).toBeVisible();
     await expect(detail.getByText("设定体检")).toBeVisible();
     await expectAuthorFacingLanguage(page);
+    const prototypeOnlyScan = await expectNoPrototypeOnlyLeakage(page);
+    await testInfo.attach(`entity-detail-prototype-only-scan-${width}`, {
+      body: JSON.stringify(prototypeOnlyScan, null, 2),
+      contentType: "application/json",
+    });
     await expectNoOverflow(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     await expect(page).toHaveScreenshot(
       ["entity-detail", `entity-detail-${width}.png`],
-      screenshotOptions,
+      productionScreenshotOptions,
     );
     await capture(page, testInfo, `entity-detail-profile-${width}`);
   }
