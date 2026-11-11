@@ -85,7 +85,7 @@ In the columns below, the prototype screenshot path and production test/golden p
 >
 > #90 在 work-overview 增加真实卷末审计：选择卷、运行审计、定位章节/账本证据、记录作者通过或要求修改。`apps/web/e2e/parity/m1-closeout.spec.ts` 对 bible/settings/entity-detail/outline/foreshadows/writing/work-overview/account-settings 做四档视口、作者语言和溢出检查。作者视觉签收已记录；#172、#174、#176 与 #177 已补齐八个 M1 页面的自动 Golden 和必需状态证据。
 >
-> #92 为 new-project 增加仙侠/架空历史/都市三题材模板，为 settings 增加题材包版本切换，开放历史/都市故事圣经生成，并让 entity-detail 的力量层级文案随题材变化。settings/bible/entity-detail 的当前生产布局或文案已改变，旧 golden 不再代表新状态；页面保持 `production-built`，待四档候选截图和作者视觉签收后再升级。
+> #92 为 new-project 增加仙侠/架空历史/都市三题材模板，为 settings 增加题材包版本切换，开放历史/都市故事圣经生成，并让 entity-detail 的力量层级文案随题材变化。作者已确认 settings/bible 四档候选并生成正式 Linux/CI golden；最终正常 PR CI 通过后升级为 `parity-verified`。entity-detail 仍待单独视觉签收。
 
 ## 4. UI issue ownership rules
 

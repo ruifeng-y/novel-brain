@@ -61,6 +61,7 @@
 ## 6. 视觉与边界
 
 - settings/bible 新增 pack 版本栏和历史题材故事圣经后，旧 production golden 不再代表当前布局。
-- 当前状态为 `production-built`；四档候选截图已生成到 `artifacts/ui/candidates/m2-92/`，仍需作者按 ADR 0027 完成视觉签收，才能升级为 `parity-verified`。
+- 作者已确认 `artifacts/ui/candidates/m2-92/` 的 settings/bible 四档候选截图；正式 Linux/CI golden 已生成，settings 4 张更新，bible 4 张保持当前正式基线。
+- entity-detail 仍为 `production-built`，其题材化层级文案等待单独视觉签收。
 - 不实现题材包后台编辑器；题材包版本由受控迁移发布。
 - 不实现自动整库字段重写；版本切换只更新作品 pack 引用和默认字段快照，作者设定与历史版本保持不变。

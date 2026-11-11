@@ -87,6 +87,14 @@ Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者�
 
 签收人：ruifeng-y。#174 为 `bible`、`settings`、`outline`、`writing` 与 `account-settings` 补齐四档真实生产路由 `toHaveScreenshot`，生成 20 张代表性生产状态 Linux/CI Golden；同时补齐 `foreshadows` 的 `loading` 状态和 `entity-detail` 的 `prototype_only` 泄漏扫描附件。生成证据为 [Production CI #42948984698](https://github.com/ruifeng-y/novel-brain/actions/runs/42948984698)。8 个 M1 验收页面在正常 Linux 回归通过后进入 `parity-verified`；本记录不扩张到 work-settings、M2 或 M3 页面。
 
+## 2026-11-11 M2 Genre Pack settings/bible Golden 签收
+
+签收人：ruifeng-y。作者已确认 `artifacts/ui/candidates/m2-92/` 中 `settings` 与 `bible` 的 390 / 900 / 1180 / 1440 四档候选截图。
+
+正式 Linux/CI Golden 由 [Production CI #43024840541](https://github.com/ruifeng-y/novel-brain/actions/runs/43024840541) 的 `update_golden` 任务生成并上传 `playwright-evidence` artifact。`settings` 的 4 张正式 Golden 已更新；`bible` 的 4 张经当前回归确认保持既有正式基线。最终正常 PR CI 通过后，`bible` 与 `settings` 进入 `parity-verified`。
+
+本次签收只覆盖 #92 引起的 `settings`/`bible` 视觉变化，不扩张到 `entity-detail`、`new-project` 或其他 M2 页面。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。
