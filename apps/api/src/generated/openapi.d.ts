@@ -308,6 +308,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/cost-report": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchPlanController_getCostReport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/start": {
     parameters: {
       query?: never;
@@ -4279,6 +4295,24 @@ export interface operations {
            * @enum {string}
            */
           priorityClass?: "interactive" | "batch";
+          /**
+           * @default {
+           *       "chapterMaxCostCny": 2.5,
+           *       "volumeMaxCostCny": null,
+           *       "taskMaxCostCny": null,
+           *       "perTenThousandCharsMaxCostCny": null
+           *     }
+           */
+          costBudgetPolicy?: {
+            /** @default 2.5 */
+            chapterMaxCostCny?: number;
+            /** @default null */
+            volumeMaxCostCny?: number | null;
+            /** @default null */
+            taskMaxCostCny?: number | null;
+            /** @default null */
+            perTenThousandCharsMaxCostCny?: number | null;
+          };
           /** @default 2 */
           maxConcurrency?: number;
           /**
@@ -4351,6 +4385,16 @@ export interface operations {
                   };
               /** @enum {string} */
               approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
               /** @enum {string} */
               priorityClass: "interactive" | "batch";
               idempotencyKey: string;
@@ -4455,6 +4499,16 @@ export interface operations {
                   };
               /** @enum {string} */
               approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
               /** @enum {string} */
               priorityClass: "interactive" | "batch";
               idempotencyKey: string;
@@ -4585,6 +4639,30 @@ export interface operations {
       };
     };
   };
+  BatchPlanController_getCostReport: {
+    parameters: {
+      query?: {
+        groupBy?: "volume" | "chapter" | "model" | "time";
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tenant-scoped batch cost and failure report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   BatchPlanController_start: {
     parameters: {
       query?: never;
@@ -4646,6 +4724,16 @@ export interface operations {
                   };
               /** @enum {string} */
               approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
               /** @enum {string} */
               priorityClass: "interactive" | "batch";
               idempotencyKey: string;
@@ -4752,6 +4840,16 @@ export interface operations {
                   };
               /** @enum {string} */
               approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
               /** @enum {string} */
               priorityClass: "interactive" | "batch";
               idempotencyKey: string;
@@ -4858,6 +4956,16 @@ export interface operations {
                   };
               /** @enum {string} */
               approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
               /** @enum {string} */
               priorityClass: "interactive" | "batch";
               idempotencyKey: string;
@@ -4964,6 +5072,16 @@ export interface operations {
                   };
               /** @enum {string} */
               approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
               /** @enum {string} */
               priorityClass: "interactive" | "batch";
               idempotencyKey: string;
@@ -5070,6 +5188,16 @@ export interface operations {
                   };
               /** @enum {string} */
               approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
               /** @enum {string} */
               priorityClass: "interactive" | "batch";
               idempotencyKey: string;

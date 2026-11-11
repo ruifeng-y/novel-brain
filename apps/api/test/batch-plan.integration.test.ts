@@ -6,13 +6,19 @@ import {
   batchReviewDecisionResponseSchema,
   batchReviewQueueListResponseSchema,
   batchPlanResponseSchema,
+  batchCostReportResponseSchema,
   chapterVersionSaveResponseSchema,
   type GenerateChapterJob,
   type GenerationJobStatus,
   type BatchPlanSummary,
   type BatchWorkItem,
 } from "@novel-brain/contracts";
-import { createDatabasePool, runMigrations } from "@novel-brain/db";
+import {
+  BudgetReservationError,
+  CostLedger,
+  createDatabasePool,
+  runMigrations,
+} from "@novel-brain/db";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
 import { uuidv7 } from "uuidv7";
@@ -233,6 +239,7 @@ describe("batch plan integration", () => {
         {
           workId: plan.workId,
           branchId: plan.branchId,
+          chapterLengthTarget: 3000,
         },
         plan.id,
       );
@@ -1498,6 +1505,160 @@ describe("batch plan integration", () => {
       (await owner.get(`${branchPath}/batch-plans/${plan.id}`).expect(200)).body,
     ).data;
     expect(rejectedPlan.status).toBe("failed");
+  });
+
+  it("serializes task budget reservations and reports settled batch cost", async () => {
+    const owner = await createAuthenticatedAgent("batch-cost-owner@example.com");
+    const work = await createWork(owner, "批量成本报告书");
+    const token = await csrf(owner);
+    const branchPath = branchPathOf(work);
+    const outlinePath = `${branchPath}/outline`;
+    const userId = await userIdFor(owner);
+    const book = await createNode(owner, token, outlinePath, {
+      level: "book",
+      parentId: null,
+      title: "批量成本报告书",
+    });
+    const volume = await createNode(owner, token, outlinePath, {
+      level: "volume",
+      parentId: book.id,
+      title: "第一卷",
+    });
+    const act = await createNode(owner, token, outlinePath, {
+      level: "act",
+      parentId: volume.id,
+      title: "第一幕",
+    });
+    const chapterIds: string[] = [];
+    for (const number of [1, 2]) {
+      const chapterNode = await createNode(owner, token, outlinePath, {
+        level: "chapter",
+        parentId: act.id,
+        chapterCreate: {
+          number,
+          title: `第${number}章`,
+          brief: completeBrief(number),
+        },
+      });
+      chapterIds.push(chapterNode.chapter!.id);
+    }
+    await createModelConfig(owner, token);
+    const plan = batchPlanResponseSchema.parse(
+      (
+        await postPlan(
+          owner,
+          branchPath,
+          token,
+          "batch-cost-plan",
+          { type: "chapter", chapterIds },
+          {
+            approvalMode: "auto",
+            costBudgetPolicy: {
+              chapterMaxCostCny: 1,
+              volumeMaxCostCny: 1,
+              taskMaxCostCny: 0.15,
+              perTenThousandCharsMaxCostCny: null,
+            },
+          },
+        )
+      ).body,
+    ).data;
+    await postPlanAction(owner, branchPath, token, plan.id, "start", "batch-cost-start").expect(
+      202,
+    );
+    const repository = new WorkerBatchPlanRepository();
+    const tickQueue = {
+      enqueueTick: async () => undefined,
+    } as unknown as WorkerBatchPlanQueue;
+    const childQueue = {
+      enqueueChapter: async () => undefined,
+    } as unknown as BatchPlanChildQueue;
+    try {
+      const processor = new BatchPlanTickProcessor(repository, childQueue, tickQueue);
+      await processor.process(tickPayload(plan));
+      const firstChild = await tenantQuery<{ id: string }>(
+        userId,
+        "SELECT id FROM jobs WHERE parent_job_id = $1 AND chapter_id = $2 LIMIT 1",
+        [plan.id, chapterIds[0]!],
+      );
+      await tenantQuery(
+        userId,
+        `UPDATE jobs SET status = 'failed', current_step = 'verify',
+         error_code = 'MODEL_PROVIDER_ERROR', error_message = '模拟首章失败',
+         finished_at = now(), updated_at = now() WHERE id = $1`,
+        [firstChild.rows[0]!.id],
+      );
+      await processor.onChildFinished({
+        jobId: firstChild.rows[0]!.id,
+        actorId: userId,
+        chapterId: chapterIds[0]!,
+      });
+      await processor.process(tickPayload(plan));
+    } finally {
+      await repository.onModuleDestroy();
+    }
+    const childJobs = await tenantQuery<{ id: string; chapter_id: string }>(
+      userId,
+      `SELECT id, chapter_id FROM jobs
+       WHERE parent_job_id = $1 AND type = 'generate_chapter'
+       ORDER BY chapter_id`,
+      [plan.id],
+    );
+    expect(childJobs.rows).toHaveLength(2);
+    const ledger = new CostLedger(databaseUrl);
+    try {
+      const reservations = await Promise.allSettled(
+        childJobs.rows.map((child, index) =>
+          ledger.reserve({
+            userId,
+            workId: work.id,
+            branchId: work.mainBranch.id,
+            jobId: child.id,
+            idempotencyKey: `batch-cost-reservation-${index}`,
+            estimatedTokens: 1_000,
+            estimatedCostCny: 0.1,
+          }),
+        ),
+      );
+      expect(reservations.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+      expect(
+        reservations.filter(
+          (result): result is PromiseRejectedResult =>
+            result.status === "rejected" && result.reason instanceof BudgetReservationError,
+        ),
+      ).toHaveLength(1);
+      const fulfilledIndex = reservations.findIndex((result) => result.status === "fulfilled");
+      await ledger.settle({
+        userId,
+        jobId: childJobs.rows[fulfilledIndex]!.id,
+        idempotencyKey: `batch-cost-reservation-${fulfilledIndex}`,
+        actualTokens: 800,
+        actualCostCny: 0.08,
+        actualInputTokens: 500,
+        actualOutputTokens: 300,
+      });
+    } finally {
+      await ledger.close();
+    }
+
+    const report = batchCostReportResponseSchema.parse(
+      (
+        await owner
+          .get(`${branchPath}/batch-plans/${plan.id}/cost-report?groupBy=chapter`)
+          .expect(200)
+      ).body,
+    ).data;
+    expect(report).toMatchObject({
+      totals: {
+        chapters: 2,
+        settledCostCny: 0.08,
+      },
+      budget: {
+        status: "exhausted",
+        remainingCostCny: 0,
+      },
+    });
+    expect(report.groups).toHaveLength(2);
   });
 
   async function createAuthenticatedAgent(email: string): Promise<SuperAgentTest> {

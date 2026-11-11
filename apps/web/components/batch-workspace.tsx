@@ -14,6 +14,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   apiErrorSchema,
+  batchCostReportResponseSchema,
   batchPlanResponseSchema,
   batchReviewClaimResponseSchema,
   batchReviewDecisionResponseSchema,
@@ -23,6 +24,7 @@ import {
   type BatchReviewQueueItem,
   type BatchReviewRisk,
   type BatchReviewStatus,
+  type BatchCostReport,
   type GenerationJobStatus,
   type WorkOverview,
 } from "@novel-brain/contracts";
@@ -53,9 +55,9 @@ export function BatchWorkspace({ workId }: { workId: string }) {
     highRisk: 0,
     stale: 0,
   });
-  const [planStates, setPlanStates] = useState<Array<{ id: string; status: GenerationJobStatus }>>(
-    [],
-  );
+  const [planStates, setPlanStates] = useState<
+    Array<{ id: string; status: GenerationJobStatus; report: BatchCostReport | null }>
+  >([]);
   const [risk, setRisk] = useState<"" | BatchReviewRisk>("");
   const [status, setStatus] = useState<"pending" | "claimed" | "">("pending");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -103,14 +105,29 @@ export function BatchWorkspace({ workId }: { workId: string }) {
             return null;
           }
           const plan = batchPlanResponseSchema.parse(await response.json()).data;
-          return { id: plan.id, status: plan.status };
+          const reportResponse = await fetch(
+            `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans/${planId}/cost-report?groupBy=volume`,
+            { cache: "no-store" },
+          );
+          const report = reportResponse.ok
+            ? batchCostReportResponseSchema.parse(await reportResponse.json()).data
+            : null;
+          return { id: plan.id, status: plan.status, report };
         }),
       );
       setWork(workData);
       setItems(queue.data);
       setCounts(queue.meta.counts);
       setPlanStates(
-        plans.filter((plan): plan is { id: string; status: GenerationJobStatus } => plan !== null),
+        plans.filter(
+          (
+            plan,
+          ): plan is {
+            id: string;
+            status: GenerationJobStatus;
+            report: BatchCostReport | null;
+          } => plan !== null,
+        ),
       );
       setSelected((current) => {
         const available = new Set(queue.data.map((item) => item.id));
@@ -288,8 +305,19 @@ export function BatchWorkspace({ workId }: { workId: string }) {
       {planStates.length > 0 ? (
         <section className="batch-review-plan-states" aria-label="批量任务状态">
           {planStates.map((plan) => (
-            <div className={`batch-plan-state ${plan.status}`} key={plan.id}>
+            <div
+              className={`batch-plan-state ${plan.status}${plan.report?.budget.status === "exhausted" ? " budget-exhausted" : ""}`}
+              key={plan.id}
+            >
               <span>{planStateLabel(plan.status)}</span>
+              {plan.report ? (
+                <small>
+                  ¥{plan.report.totals.settledCostCny.toFixed(2)}
+                  {plan.report.budget.remainingCostCny === null
+                    ? " · 未设任务上限"
+                    : ` · 剩余 ¥${plan.report.budget.remainingCostCny.toFixed(2)}`}
+                </small>
+              ) : null}
             </div>
           ))}
         </section>

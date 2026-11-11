@@ -25,6 +25,8 @@ import {
   batchPlanCreateRequestSchema,
   batchPlanItemListResponseSchema,
   batchPlanResponseSchema,
+  batchCostReportGroupBySchema,
+  batchCostReportResponseSchema,
   batchWorkItemStatusSchema,
   cursorPageQuerySchema,
   uuidV7Schema,
@@ -147,6 +149,33 @@ export class BatchPlanController {
       requestId,
       meta: { nextCursor: page.nextCursor },
     });
+  }
+
+  @Get(":planId/cost-report")
+  @ApiQuery({
+    name: "groupBy",
+    required: false,
+    enum: ["volume", "chapter", "model", "time"],
+  })
+  @ApiOkResponse({ description: "Tenant-scoped batch cost and failure report" })
+  async getCostReport(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("planId") planId: string,
+    @Query("groupBy") groupBy?: string,
+  ) {
+    const requestId = createRequestId();
+    const data = await this.service.getCostReport(
+      this.userId(request),
+      {
+        workId: uuidV7Schema.parse(workId),
+        branchId: uuidV7Schema.parse(branchId),
+      },
+      uuidV7Schema.parse(planId),
+      batchCostReportGroupBySchema.parse(groupBy ?? "volume"),
+    );
+    return batchCostReportResponseSchema.parse({ data, requestId, meta: {} });
   }
 
   @Post(":planId/start")

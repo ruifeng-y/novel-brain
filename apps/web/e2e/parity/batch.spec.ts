@@ -269,6 +269,98 @@ test("keeps the batch review workspace within four viewports", async ({
     mode: "blank",
     title: "批量审核响应式",
   });
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+  await page.route(`**${branchPath}/batch-plans/${planId}`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          id: planId,
+          jobId: planId,
+          workId: work.id,
+          branchId: work.mainBranch.id,
+          userId,
+          status: "running",
+          scope: { type: "chapter", chapterIds: [chapterId] },
+          approvalMode: "auto",
+          costBudgetPolicy: {
+            chapterMaxCostCny: 2.5,
+            volumeMaxCostCny: 80,
+            taskMaxCostCny: 200,
+            perTenThousandCharsMaxCostCny: 12,
+          },
+          priorityClass: "batch",
+          idempotencyKey: "batch-e2e",
+          counts: {
+            total: 1,
+            book: 0,
+            volume: 0,
+            chapter: 1,
+            step: 0,
+            pending: 0,
+            ready: 0,
+            running: 0,
+            paused: 0,
+            waiting_review: 1,
+            succeeded: 0,
+            failed: 0,
+            skipped: 0,
+            cancelled: 0,
+          },
+          scheduling: {
+            caps: { global: 4, perWork: 2, perUser: 2 },
+            effectivePerWork: 2,
+            priority: 1_000,
+            initialRunnableKeys: [],
+          },
+          createdAt: "2026-11-11T05:00:00.000Z",
+          updatedAt: "2026-11-11T05:00:00.000Z",
+        },
+        requestId: "req_batch_plan",
+        meta: {},
+      }),
+    });
+  });
+  await page.route(`**${branchPath}/batch-plans/${planId}/cost-report?**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: {
+          planId,
+          workId: work.id,
+          currency: "CNY",
+          generatedAt: "2026-11-11T06:00:00.000Z",
+          totals: {
+            chapters: 1,
+            calls: 3,
+            failedCalls: 1,
+            inputTokens: 4_000,
+            outputTokens: 2_000,
+            reservedCostCny: 1.2,
+            settledCostCny: 0.84,
+          },
+          budget: {
+            policy: {
+              chapterMaxCostCny: 2.5,
+              volumeMaxCostCny: 80,
+              taskMaxCostCny: 200,
+              perTenThousandCharsMaxCostCny: 12,
+            },
+            projectedCharacters: 3_000,
+            perTenThousandCharactersLimitCny: 3.6,
+            remainingCostCny: 199.16,
+            status: "ok",
+          },
+          groups: [],
+          hardStops: [],
+        },
+        requestId: "req_batch_cost",
+        meta: {},
+      }),
+    });
+  });
   await page.route(
     `**/api/v1/works/${work.id}/branches/${work.mainBranch.id}/review-queue?**`,
     async (route) => {
@@ -285,6 +377,7 @@ test("keeps the batch review workspace within four viewports", async ({
     await page.goto(`/workspace/${work.id}/batch`);
     await expect(page.getByRole("heading", { name: "审核队列" })).toBeVisible();
     await expect(page.getByLabel("审核队列摘要")).toBeVisible();
+    await expect(page.getByText("¥0.84 · 剩余 ¥199.16")).toBeVisible();
     await expectNoPrototypeOnlyLeakage(page);
     await expectAuthorFacingLanguage(page);
     const overflow = await page.evaluate(

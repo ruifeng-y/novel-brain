@@ -7,6 +7,8 @@ import {
   type BatchPlanCreateRequest,
   type BatchPlanScope,
   type BatchPlanSummary,
+  type BatchCostReport,
+  type BatchCostReportGroupBy,
   type BatchWorkItem,
 } from "@novel-brain/contracts";
 import {
@@ -80,7 +82,11 @@ export class BatchPlanService {
         idempotencyKey: key,
         requestHash,
         build: (sources) => {
-          const selection = selectPlanSources(request.scope, sources);
+          const selection = selectPlanSources(
+            request.scope,
+            sources,
+            workContext.chapterLengthTarget,
+          );
           const planId = deterministicUuidV7(
             `batch-plan:${userId}:${context.workId}:${context.branchId}:${key}`,
           );
@@ -104,10 +110,12 @@ export class BatchPlanService {
               requestHash,
               scope: request.scope,
               approvalMode: request.approvalMode,
+              costBudgetPolicy: request.costBudgetPolicy,
               priorityClass: request.priorityClass,
               stepKeys: request.stepKeys,
               scheduling: built.scheduling,
               counts: built.counts,
+              projectedCharacters: selection.projectedCharacters,
             },
           };
         },
@@ -163,6 +171,19 @@ export class BatchPlanService {
       throw new ApiError(404, "BATCH_PLAN_NOT_FOUND", "批量计划不存在或无权访问");
     }
     return page;
+  }
+
+  async getCostReport(
+    userId: string,
+    context: BatchPlanContext,
+    planId: string,
+    groupBy: BatchCostReportGroupBy,
+  ): Promise<BatchCostReport> {
+    const report = await this.repository.getCostReport(userId, context, planId, groupBy);
+    if (!report) {
+      throw new ApiError(404, "BATCH_PLAN_NOT_FOUND", "批量计划不存在或无权访问");
+    }
+    return report;
   }
 
   async control(
@@ -249,7 +270,12 @@ class BatchPlanScopeError extends Error {
 function selectPlanSources(
   scope: BatchPlanScope,
   sources: BatchPlanSources,
-): { volumes: BatchPlanVolumeInput[]; chapters: BatchPlanChapterInput[] } {
+  chapterLengthTarget: number,
+): {
+  volumes: BatchPlanVolumeInput[];
+  chapters: BatchPlanChapterInput[];
+  projectedCharacters: number;
+} {
   const nodeById = new Map(sources.nodes.map((node) => [node.id, node]));
   const chapterNodeByChapterId = new Map(
     sources.nodes
@@ -374,7 +400,11 @@ function selectPlanSources(
     volumeNodeId: volume.id,
     volumeVersion: volume.version,
   }));
-  return { volumes, chapters };
+  const projectedCharacters = selectedChapters.reduce(
+    (total, { chapter }) => total + Math.max(chapter.wordCount, chapterLengthTarget),
+    0,
+  );
+  return { volumes, chapters, projectedCharacters };
 }
 
 function selectedVolumeNodeIds(
@@ -453,6 +483,7 @@ function hashRequest(request: BatchPlanCreateRequest): string {
       stableStringify({
         scope: request.scope,
         approvalMode: request.approvalMode,
+        costBudgetPolicy: request.costBudgetPolicy,
         priorityClass: request.priorityClass,
         maxConcurrency: request.maxConcurrency,
         stepKeys: request.stepKeys,
