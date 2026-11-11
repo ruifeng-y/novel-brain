@@ -1,12 +1,6 @@
-import {
-  expect,
-  test,
-  type APIRequestContext,
-  type BrowserContext,
-  type Page,
-} from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
-import { createWork, getCsrf, resetRateLimits, uniqueEmail } from "../helpers/auth";
+import { createWork, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import { expectAuthorFacingLanguage, expectNoPrototypeOnlyLeakage } from "../helpers/ui";
 
 const itemId = "019c1e8c-8e1c-7000-8000-000000000001";
@@ -17,7 +11,7 @@ const userId = "019c1e8c-8e1c-7000-8000-000000000005";
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("batch-review");
-  const session = await registerBatchUser(page.request, email);
+  const session = await registerUser(page.request, email, "StrongPassword123", "批量作者");
   await context.addCookies([
     {
       name: "nb_session",
@@ -28,52 +22,6 @@ async function authenticatedPage(page: Page, context: BrowserContext) {
       sameSite: "Lax",
     },
   ]);
-}
-
-async function registerBatchUser(request: APIRequestContext, email: string): Promise<string> {
-  const origin = "http://localhost:3000";
-  const csrf = await getCsrf(request);
-  await request
-    .post("/api/v1/auth/register/send-code", {
-      headers: { Origin: origin, "X-CSRF-Token": csrf },
-      data: { email },
-    })
-    .then((response) => expect(response.status()).toBe(200));
-  const code = await maildevCode(email);
-  const registerCsrf = await getCsrf(request);
-  const response = await request.post("/api/v1/auth/register", {
-    headers: { Origin: origin, "X-CSRF-Token": registerCsrf },
-    data: {
-      email,
-      code,
-      password: "StrongPassword123",
-      displayName: "批量作者",
-    },
-  });
-  expect(response.status()).toBe(200);
-  const session = /nb_session=([^;]+)/.exec(response.headers()["set-cookie"] ?? "")?.[1];
-  if (!session) {
-    throw new Error("Registration did not return nb_session");
-  }
-  return session;
-}
-
-async function maildevCode(email: string): Promise<string> {
-  for (let attempt = 0; attempt < 30; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 250));
-    const response = await fetch("http://127.0.0.1:8025/api/email");
-    const messages = (await response.json()) as Array<{
-      to?: Array<{ address?: string }>;
-      text?: string;
-      html?: string;
-    }>;
-    const message = messages.find((item) => item.to?.[0]?.address === email);
-    const code = `${message?.text ?? ""}\n${message?.html ?? ""}`.match(/\d{6}/)?.[0];
-    if (code) {
-      return code;
-    }
-  }
-  throw new Error(`Verification code not found for ${email}`);
 }
 
 function queueResponse(status: "pending" | "claimed" | "rejected", version: number) {
