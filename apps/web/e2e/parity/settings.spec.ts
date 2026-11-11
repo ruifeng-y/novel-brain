@@ -481,7 +481,10 @@ test("filters settings by search and status and opens recent updates", async ({
   await expect(page.getByRole("heading", { name: "已锁定的规则" })).toBeVisible();
 });
 
-test("holds the empty settings state at all four viewports", async ({ page, context }) => {
+test("holds the empty settings state at all four viewports", async ({
+  page,
+  context,
+}, testInfo) => {
   await authenticatedPage(page, context);
   const work = await createSettingsWork(page);
   await freezeApiTimestamps(page);
@@ -496,10 +499,7 @@ test("holds the empty settings state at all four viewports", async ({ page, cont
     await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
-    await expect(page).toHaveScreenshot(
-      ["settings", `settings-${width}.png`],
-      productionScreenshotOptions,
-    );
+    await capture(page, testInfo, `settings-empty-${width}`);
   }
 });
 
@@ -557,7 +557,7 @@ test("holds the proposal state at all four viewports", async ({ page, context },
   }
 });
 
-test("holds a long settings list at all four viewports", async ({ page, context }, testInfo) => {
+test("holds a long settings list at all four viewports", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const work = await createSettingsWork(page);
   for (let index = 1; index <= 10; index += 1) {
@@ -571,13 +571,19 @@ test("holds a long settings list at all four viewports", async ({ page, context 
       data: { rule: "所有角色都必须遵守这条规则。" },
     });
   }
+  await freezeApiTimestamps(page);
 
   for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/settings`);
     await expect(page.locator(".settings-entity-card")).toHaveCount(10);
+    await expectNoPrototypeOnlyLeakage(page);
     await expectNoOverflow(page);
-    await capture(page, testInfo, `settings-long-${width}`);
+    await page.evaluate(() => document.fonts.ready.then(() => undefined));
+    await expect(page).toHaveScreenshot(
+      ["settings", `settings-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });
 
