@@ -9477,6 +9477,30 @@ a:focus-visible {
   background: var(--white);
 }
 
+.batch-plan-state small {
+  margin-left: 7px;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.batch-budget-alert {
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  padding: 9px 11px;
+  color: var(--cinnabar);
+  font-size: 11px;
+  border: 1px solid color-mix(in srgb, var(--cinnabar) 30%, var(--line));
+  border-radius: 7px;
+  background: var(--cinnabar-soft);
+}
+
+.batch-budget-alert span {
+  color: var(--ink-2);
+}
+
 .batch-plan-state.paused {
   color: #8b5b17;
   background: #fbf1de;
@@ -9496,6 +9520,12 @@ a:focus-visible {
 .batch-plan-state.completed {
   color: var(--jade);
   background: var(--jade-soft);
+}
+
+.batch-plan-state.budget-exhausted {
+  color: var(--cinnabar);
+  background: var(--cinnabar-soft);
+  border-color: color-mix(in srgb, var(--cinnabar) 30%, var(--line));
 }
 
 .batch-review-toolbar label {

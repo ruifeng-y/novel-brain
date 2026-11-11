@@ -11,6 +11,7 @@ import {
 } from "@novel-brain/contracts";
 import {
   applyBatchWorkItemStatus,
+  calculateBatchBudgetAllocation,
   deriveChapterWorkItemStatus,
   derivePlanExecutionStatus,
   deriveVolumeWorkItemStatus,
@@ -234,6 +235,27 @@ export class WorkerBatchPlanRepository implements OnModuleDestroy {
       if (!modelConfigId) {
         throw new BatchPlanExecutionError("MODEL_CONFIG_REQUIRED", "批量执行需要先配置正文模型");
       }
+      const budgetUsage = await batchBudgetUsage(transaction, plan, chapterId);
+      const budgetAllocation = calculateBatchBudgetAllocation({
+        chapterMaxCostCny: plan.metadata.costBudgetPolicy.chapterMaxCostCny,
+        volumeMaxCostCny: plan.metadata.costBudgetPolicy.volumeMaxCostCny,
+        taskMaxCostCny: plan.metadata.costBudgetPolicy.taskMaxCostCny,
+        perTenThousandCharsMaxCostCny: plan.metadata.costBudgetPolicy.perTenThousandCharsMaxCostCny,
+        projectedCharacters: plan.metadata.projectedCharacters,
+        taskCostUsedCny: budgetUsage.taskCostUsedCny,
+        volumeCostUsedCny: budgetUsage.volumeCostUsedCny,
+      });
+      if (budgetAllocation.allowedCostCny <= 0) {
+        throw new BatchPlanExecutionError(
+          "BATCH_BUDGET_EXHAUSTED",
+          "批量任务已达到成本上限，后续章节已暂停",
+          {
+            bindingScope: budgetAllocation.bindingScope,
+            taskCostUsedCny: budgetUsage.taskCostUsedCny,
+            volumeCostUsedCny: budgetUsage.volumeCostUsedCny,
+          },
+        );
+      }
       const checkpoint = generationCheckpointSchema.parse({
         schemaVersion: 1,
         revision: 0,
@@ -269,9 +291,10 @@ export class WorkerBatchPlanRepository implements OnModuleDestroy {
           plan.metadata.scheduling.priority,
           `batch:${plan.id}:${chapterId}`,
           JSON.stringify({
-            maxCostCny: 2.5,
+            maxCostCny: budgetAllocation.allowedCostCny,
             maxTokens: 30_000,
             maxRevisionRounds: 2,
+            bindingScope: budgetAllocation.bindingScope,
           }),
           JSON.stringify(checkpoint),
           JSON.stringify({ inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 }),
@@ -414,6 +437,34 @@ export class WorkerBatchPlanRepository implements OnModuleDestroy {
     );
   }
 
+  async pausePlanForBudget(
+    userId: string,
+    plan: WorkerBatchPlanContext,
+    failure: { code: string; message: string; details: Record<string, unknown> },
+  ): Promise<void> {
+    await this.withTenant(userId, async (transaction) => {
+      await transaction.query(
+        `UPDATE jobs
+         SET status = 'paused', current_step = 'budget', error_code = $2,
+             error_message = $3, updated_at = now()
+         WHERE id = $1 AND user_id = $4`,
+        [plan.id, failure.code, failure.message, userId],
+      );
+      await transaction.query(
+        `UPDATE job_work_items
+         SET status = CASE WHEN status = 'running' THEN 'paused' ELSE status END,
+             updated_at = now()
+         WHERE job_id = $1 AND user_id = $2`,
+        [plan.id, userId],
+      );
+      await appendPlanEvent(transaction, plan, "job.budget.exceeded", {
+        code: failure.code,
+        message: failure.message,
+        ...failure.details,
+      });
+    });
+  }
+
   private async recomputePlanStatusInTransaction(
     transaction: BatchTransaction,
     plan: WorkerBatchPlanContext,
@@ -513,8 +564,9 @@ export class WorkerBatchPlanRepository implements OnModuleDestroy {
 
 export class BatchPlanExecutionError extends Error {
   constructor(
-    readonly code: "MODEL_CONFIG_REQUIRED" | "CHILD_JOB_MISSING",
+    readonly code: "MODEL_CONFIG_REQUIRED" | "CHILD_JOB_MISSING" | "BATCH_BUDGET_EXHAUSTED",
     message: string,
+    readonly details: Record<string, unknown> = {},
   ) {
     super(message);
     this.name = "BatchPlanExecutionError";
@@ -563,6 +615,51 @@ async function findChildJob(
     [planId, chapterId, userId],
   );
   return result.rows[0] ?? null;
+}
+
+async function batchBudgetUsage(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  chapterId: string,
+): Promise<{ taskCostUsedCny: number; volumeCostUsedCny: number }> {
+  const task = await transaction.query<{ cost_cny: string }>(
+    `SELECT COALESCE(sum((cost ->> 'costCny')::numeric), 0)::text AS cost_cny
+     FROM jobs
+     WHERE parent_job_id = $1 AND user_id = $2`,
+    [plan.id, plan.userId],
+  );
+  const volume = await transaction.query<{ cost_cny: string }>(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, parent_id, level, chapter_id
+       FROM outline_nodes
+       WHERE chapter_id = $1 AND user_id = $2 AND work_id = $3 AND branch_id = $4
+       UNION ALL
+       SELECT parent.id, parent.parent_id, parent.level, parent.chapter_id
+       FROM outline_nodes parent
+       INNER JOIN ancestors child ON child.parent_id = parent.id
+       WHERE parent.user_id = $2 AND parent.work_id = $3 AND parent.branch_id = $4
+     ), volume_node AS (
+       SELECT id FROM ancestors WHERE level = 'volume' LIMIT 1
+     ), volume_item AS (
+       SELECT id FROM job_work_items
+       WHERE job_id = $5 AND user_id = $2 AND item_type = 'volume'
+         AND outline_node_id = (SELECT id FROM volume_node)
+       LIMIT 1
+     ), volume_chapters AS (
+       SELECT chapter_id FROM job_work_items
+       WHERE job_id = $5 AND user_id = $2 AND item_type = 'chapter'
+         AND parent_id = (SELECT id FROM volume_item)
+     )
+     SELECT COALESCE(sum((job.cost ->> 'costCny')::numeric), 0)::text AS cost_cny
+     FROM jobs job
+     INNER JOIN volume_chapters chapter ON chapter.chapter_id = job.chapter_id
+     WHERE job.parent_job_id = $5 AND job.user_id = $2`,
+    [chapterId, plan.userId, plan.workId, plan.branchId, plan.id],
+  );
+  return {
+    taskCostUsedCny: Number(task.rows[0]?.cost_cny ?? 0),
+    volumeCostUsedCny: Number(volume.rows[0]?.cost_cny ?? 0),
+  };
 }
 
 function stepItemStatusForChild(

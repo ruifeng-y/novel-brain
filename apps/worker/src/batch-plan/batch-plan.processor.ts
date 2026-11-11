@@ -10,7 +10,11 @@ import { BatchPlanChildQueue } from "./batch-plan-child.queue";
 import { WorkerBatchPlanQueue } from "./batch-plan.queue";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { toGenerateChapterJob, WorkerBatchPlanRepository } from "./batch-plan.repository";
+import {
+  BatchPlanExecutionError,
+  toGenerateChapterJob,
+  WorkerBatchPlanRepository,
+} from "./batch-plan.repository";
 
 @Injectable()
 export class BatchPlanTickProcessor {
@@ -37,7 +41,20 @@ export class BatchPlanTickProcessor {
       return;
     }
 
-    const child = await this.repository.ensureChildJob(payload.actorId, plan, claimed.chapterId);
+    let child;
+    try {
+      child = await this.repository.ensureChildJob(payload.actorId, plan, claimed.chapterId);
+    } catch (error) {
+      if (error instanceof BatchPlanExecutionError && error.code === "BATCH_BUDGET_EXHAUSTED") {
+        await this.repository.pausePlanForBudget(payload.actorId, plan, {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+        });
+        return;
+      }
+      throw error;
+    }
     if (["queued", "preparing", "running"].includes(child.status)) {
       await this.childQueue.enqueueChapter(
         toGenerateChapterJob(child),

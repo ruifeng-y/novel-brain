@@ -5660,6 +5660,16 @@ export type BatchPriorityClass = z.infer<typeof batchPriorityClassSchema>;
 export const batchApprovalModeSchema = z.enum(["per_chapter", "per_volume", "auto"]);
 export type BatchApprovalMode = z.infer<typeof batchApprovalModeSchema>;
 
+export const batchCostBudgetPolicySchema = z
+  .object({
+    chapterMaxCostCny: z.number().positive().max(1_000).default(2.5),
+    volumeMaxCostCny: z.number().positive().max(100_000).nullable().default(null),
+    taskMaxCostCny: z.number().positive().max(1_000_000).nullable().default(null),
+    perTenThousandCharsMaxCostCny: z.number().positive().max(10_000).nullable().default(null),
+  })
+  .strict();
+export type BatchCostBudgetPolicy = z.infer<typeof batchCostBudgetPolicySchema>;
+
 const batchPlanScopeBaseSchema = z.discriminatedUnion("type", [
   z
     .object({
@@ -5699,6 +5709,12 @@ export const batchPlanCreateRequestSchema = z
     scope: batchPlanScopeSchema,
     approvalMode: batchApprovalModeSchema.default("per_volume"),
     priorityClass: batchPriorityClassSchema.default("batch"),
+    costBudgetPolicy: batchCostBudgetPolicySchema.default({
+      chapterMaxCostCny: 2.5,
+      volumeMaxCostCny: null,
+      taskMaxCostCny: null,
+      perTenThousandCharsMaxCostCny: null,
+    }),
     maxConcurrency: z.number().int().min(1).max(4).default(2),
     stepKeys: z
       .array(workerJobStepSchema)
@@ -5817,6 +5833,7 @@ export const batchPlanSummarySchema = z
     status: generationJobStatusSchema,
     scope: batchPlanScopeSchema,
     approvalMode: batchApprovalModeSchema,
+    costBudgetPolicy: batchCostBudgetPolicySchema,
     priorityClass: batchPriorityClassSchema,
     idempotencyKey: z.string().min(1).max(200),
     counts: batchPlanCountsSchema,
@@ -5833,7 +5850,14 @@ export const batchPlanMetadataSchema = z
     requestHash: z.string().regex(/^[a-f0-9]{64}$/),
     scope: batchPlanScopeSchema,
     approvalMode: batchApprovalModeSchema,
+    costBudgetPolicy: batchCostBudgetPolicySchema.default({
+      chapterMaxCostCny: 2.5,
+      volumeMaxCostCny: null,
+      taskMaxCostCny: null,
+      perTenThousandCharsMaxCostCny: null,
+    }),
     priorityClass: batchPriorityClassSchema,
+    projectedCharacters: z.number().int().nonnegative().default(0),
     stepKeys: z.array(workerJobStepSchema).min(1).max(16),
     scheduling: batchPlanSchedulingSchema,
     counts: batchPlanCountsSchema,
@@ -5862,6 +5886,113 @@ export const batchPlanResponseSchema = apiEnvelopeSchema(batchPlanSummarySchema)
 export const batchPlanItemListResponseSchema = cursorListResponseSchema(
   z.array(batchWorkItemSchema),
 );
+
+export const batchCostReportGroupBySchema = z.enum(["volume", "chapter", "model", "time"]);
+export type BatchCostReportGroupBy = z.infer<typeof batchCostReportGroupBySchema>;
+
+export const batchCostReportQuerySchema = z
+  .object({
+    planId: uuidV7Schema,
+    groupBy: batchCostReportGroupBySchema.default("volume"),
+  })
+  .strict();
+export type BatchCostReportQuery = z.infer<typeof batchCostReportQuerySchema>;
+
+export const batchCostReportStatusCountsSchema = z
+  .object({
+    queued: z.number().int().nonnegative(),
+    preparing: z.number().int().nonnegative(),
+    running: z.number().int().nonnegative(),
+    paused: z.number().int().nonnegative(),
+    waitingReview: z.number().int().nonnegative(),
+    completed: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    cancelled: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    budgetExceeded: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchCostReportStatusCounts = z.infer<typeof batchCostReportStatusCountsSchema>;
+
+export const batchCostReportTotalsSchema = z
+  .object({
+    chapters: z.number().int().nonnegative(),
+    completedChapters: z.number().int().nonnegative(),
+    statusCounts: batchCostReportStatusCountsSchema,
+    calls: z.number().int().nonnegative(),
+    failedCalls: z.number().int().nonnegative(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    reservedCostCny: z.number().nonnegative(),
+    settledCostCny: z.number().nonnegative(),
+    durationMs: z.number().int().nonnegative(),
+    chaptersPerHour: z.number().nonnegative().nullable(),
+  })
+  .strict();
+export type BatchCostReportTotals = z.infer<typeof batchCostReportTotalsSchema>;
+
+export const batchCostReportBudgetSchema = z
+  .object({
+    policy: batchCostBudgetPolicySchema,
+    projectedCharacters: z.number().int().nonnegative(),
+    perTenThousandCharactersLimitCny: z.number().nonnegative().nullable(),
+    remainingCostCny: z.number().nonnegative().nullable(),
+    status: z.enum(["ok", "near_limit", "exhausted"]),
+  })
+  .strict();
+export type BatchCostReportBudget = z.infer<typeof batchCostReportBudgetSchema>;
+
+export const batchCostReportGroupSchema = z
+  .object({
+    key: z.string().min(1).max(200),
+    label: z.string().min(1).max(200),
+    chapters: z.number().int().nonnegative(),
+    completedChapters: z.number().int().nonnegative(),
+    calls: z.number().int().nonnegative(),
+    failedCalls: z.number().int().nonnegative(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    costCny: z.number().nonnegative(),
+    durationMs: z.number().int().nonnegative(),
+    chaptersPerHour: z.number().nonnegative().nullable(),
+  })
+  .strict();
+export type BatchCostReportGroup = z.infer<typeof batchCostReportGroupSchema>;
+
+export const batchCostBindingScopeSchema = z.enum([
+  "chapter",
+  "volume",
+  "task",
+  "per_ten_thousand_characters",
+]);
+export type BatchCostBindingScope = z.infer<typeof batchCostBindingScopeSchema>;
+
+export const batchCostReportHardStopSchema = z
+  .object({
+    jobId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    code: z.string().min(1).max(100),
+    message: z.string().min(1).max(1_000),
+    scope: batchCostBindingScopeSchema.nullable(),
+    occurredAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchCostReportHardStop = z.infer<typeof batchCostReportHardStopSchema>;
+
+export const batchCostReportSchema = z
+  .object({
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    currency: z.literal("CNY"),
+    generatedAt: z.string().datetime(),
+    totals: batchCostReportTotalsSchema,
+    budget: batchCostReportBudgetSchema,
+    groups: z.array(batchCostReportGroupSchema).max(500),
+    hardStops: z.array(batchCostReportHardStopSchema).max(100),
+  })
+  .strict();
+export type BatchCostReport = z.infer<typeof batchCostReportSchema>;
+export const batchCostReportResponseSchema = apiEnvelopeSchema(batchCostReportSchema);
 
 export const batchReviewTargetTypeSchema = z.enum(["chapter", "volume"]);
 export type BatchReviewTargetType = z.infer<typeof batchReviewTargetTypeSchema>;

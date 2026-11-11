@@ -13,6 +13,12 @@ describe("batch plan contracts", () => {
     expect(batchPlanCreateRequestSchema.parse({ scope: { type: "book" } })).toEqual({
       scope: { type: "book" },
       approvalMode: "per_volume",
+      costBudgetPolicy: {
+        chapterMaxCostCny: 2.5,
+        volumeMaxCostCny: null,
+        taskMaxCostCny: null,
+        perTenThousandCharsMaxCostCny: null,
+      },
       priorityClass: "batch",
       maxConcurrency: 2,
       stepKeys: [...WORKER_JOB_STEPS],

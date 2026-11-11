@@ -3871,6 +3871,49 @@
                     "type": "string",
                     "enum": ["interactive", "batch"]
                   },
+                  "costBudgetPolicy": {
+                    "default": {
+                      "chapterMaxCostCny": 2.5,
+                      "volumeMaxCostCny": null,
+                      "taskMaxCostCny": null,
+                      "perTenThousandCharsMaxCostCny": null
+                    },
+                    "type": "object",
+                    "properties": {
+                      "chapterMaxCostCny": {
+                        "default": 2.5,
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 1000
+                      },
+                      "volumeMaxCostCny": {
+                        "default": null,
+                        "nullable": true,
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 100000
+                      },
+                      "taskMaxCostCny": {
+                        "default": null,
+                        "nullable": true,
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 1000000
+                      },
+                      "perTenThousandCharsMaxCostCny": {
+                        "default": null,
+                        "nullable": true,
+                        "type": "number",
+                        "minimum": 0,
+                        "exclusiveMinimum": true,
+                        "maximum": 10000
+                      }
+                    },
+                    "additionalProperties": false
+                  },
                   "maxConcurrency": {
                     "default": 2,
                     "type": "integer",
@@ -4035,6 +4078,49 @@
                         "approvalMode": {
                           "type": "string",
                           "enum": ["per_chapter", "per_volume", "auto"]
+                        },
+                        "costBudgetPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "chapterMaxCostCny": {
+                              "default": 2.5,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000
+                            },
+                            "volumeMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "taskMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000000
+                            },
+                            "perTenThousandCharsMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 10000
+                            }
+                          },
+                          "required": [
+                            "chapterMaxCostCny",
+                            "volumeMaxCostCny",
+                            "taskMaxCostCny",
+                            "perTenThousandCharsMaxCostCny"
+                          ],
+                          "additionalProperties": false
                         },
                         "priorityClass": {
                           "type": "string",
@@ -4215,6 +4301,7 @@
                         "status",
                         "scope",
                         "approvalMode",
+                        "costBudgetPolicy",
                         "priorityClass",
                         "idempotencyKey",
                         "counts",
@@ -4400,6 +4487,49 @@
                           "type": "string",
                           "enum": ["per_chapter", "per_volume", "auto"]
                         },
+                        "costBudgetPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "chapterMaxCostCny": {
+                              "default": 2.5,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000
+                            },
+                            "volumeMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "taskMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000000
+                            },
+                            "perTenThousandCharsMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 10000
+                            }
+                          },
+                          "required": [
+                            "chapterMaxCostCny",
+                            "volumeMaxCostCny",
+                            "taskMaxCostCny",
+                            "perTenThousandCharsMaxCostCny"
+                          ],
+                          "additionalProperties": false
+                        },
                         "priorityClass": {
                           "type": "string",
                           "enum": ["interactive", "batch"]
@@ -4579,6 +4709,7 @@
                         "status",
                         "scope",
                         "approvalMode",
+                        "costBudgetPolicy",
                         "priorityClass",
                         "idempotencyKey",
                         "counts",
@@ -4898,6 +5029,440 @@
         "tags": ["batch"]
       }
     },
+    "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/cost-report": {
+      "get": {
+        "operationId": "BatchPlanController_getCostReport",
+        "parameters": [
+          {
+            "name": "workId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "branchId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "planId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupBy",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": ["volume", "chapter", "model", "time"],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped batch cost and failure report",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "planId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "currency": {
+                          "type": "string",
+                          "enum": ["CNY"]
+                        },
+                        "generatedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "chapters": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "completedChapters": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "statusCounts": {
+                              "type": "object",
+                              "properties": {
+                                "queued": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "preparing": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "running": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "paused": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "waitingReview": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "completed": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "failed": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "cancelled": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "skipped": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "budgetExceeded": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "queued",
+                                "preparing",
+                                "running",
+                                "paused",
+                                "waitingReview",
+                                "completed",
+                                "failed",
+                                "cancelled",
+                                "skipped",
+                                "budgetExceeded"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "calls": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "failedCalls": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "inputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "outputTokens": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "reservedCostCny": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "settledCostCny": {
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "durationMs": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "chaptersPerHour": {
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0
+                            }
+                          },
+                          "required": [
+                            "chapters",
+                            "completedChapters",
+                            "statusCounts",
+                            "calls",
+                            "failedCalls",
+                            "inputTokens",
+                            "outputTokens",
+                            "reservedCostCny",
+                            "settledCostCny",
+                            "durationMs",
+                            "chaptersPerHour"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "budget": {
+                          "type": "object",
+                          "properties": {
+                            "policy": {
+                              "type": "object",
+                              "properties": {
+                                "chapterMaxCostCny": {
+                                  "default": 2.5,
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 1000
+                                },
+                                "volumeMaxCostCny": {
+                                  "default": null,
+                                  "nullable": true,
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 100000
+                                },
+                                "taskMaxCostCny": {
+                                  "default": null,
+                                  "nullable": true,
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 1000000
+                                },
+                                "perTenThousandCharsMaxCostCny": {
+                                  "default": null,
+                                  "nullable": true,
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "exclusiveMinimum": true,
+                                  "maximum": 10000
+                                }
+                              },
+                              "required": [
+                                "chapterMaxCostCny",
+                                "volumeMaxCostCny",
+                                "taskMaxCostCny",
+                                "perTenThousandCharsMaxCostCny"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "projectedCharacters": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "perTenThousandCharactersLimitCny": {
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "remainingCostCny": {
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": ["ok", "near_limit", "exhausted"]
+                            }
+                          },
+                          "required": [
+                            "policy",
+                            "projectedCharacters",
+                            "perTenThousandCharactersLimitCny",
+                            "remainingCostCny",
+                            "status"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "groups": {
+                          "maxItems": 500,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "key": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "chapters": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "completedChapters": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "calls": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "failedCalls": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "inputTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "outputTokens": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "costCny": {
+                                "type": "number",
+                                "minimum": 0
+                              },
+                              "durationMs": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "chaptersPerHour": {
+                                "nullable": true,
+                                "type": "number",
+                                "minimum": 0
+                              }
+                            },
+                            "required": [
+                              "key",
+                              "label",
+                              "chapters",
+                              "completedChapters",
+                              "calls",
+                              "failedCalls",
+                              "inputTokens",
+                              "outputTokens",
+                              "costCny",
+                              "durationMs",
+                              "chaptersPerHour"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "hardStops": {
+                          "maxItems": 100,
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "jobId": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "chapterId": {
+                                "nullable": true,
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                              },
+                              "code": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 100
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              },
+                              "scope": {
+                                "nullable": true,
+                                "type": "string",
+                                "enum": ["chapter", "volume", "task", "per_ten_thousand_characters"]
+                              },
+                              "occurredAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "jobId",
+                              "chapterId",
+                              "code",
+                              "message",
+                              "scope",
+                              "occurredAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "planId",
+                        "workId",
+                        "currency",
+                        "generatedAt",
+                        "totals",
+                        "budget",
+                        "groups",
+                        "hardStops"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["batch"]
+      }
+    },
     "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/start": {
       "post": {
         "operationId": "BatchPlanController_start",
@@ -5060,6 +5625,49 @@
                         "approvalMode": {
                           "type": "string",
                           "enum": ["per_chapter", "per_volume", "auto"]
+                        },
+                        "costBudgetPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "chapterMaxCostCny": {
+                              "default": 2.5,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000
+                            },
+                            "volumeMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "taskMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000000
+                            },
+                            "perTenThousandCharsMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 10000
+                            }
+                          },
+                          "required": [
+                            "chapterMaxCostCny",
+                            "volumeMaxCostCny",
+                            "taskMaxCostCny",
+                            "perTenThousandCharsMaxCostCny"
+                          ],
+                          "additionalProperties": false
                         },
                         "priorityClass": {
                           "type": "string",
@@ -5240,6 +5848,7 @@
                         "status",
                         "scope",
                         "approvalMode",
+                        "costBudgetPolicy",
                         "priorityClass",
                         "idempotencyKey",
                         "counts",
@@ -5433,6 +6042,49 @@
                           "type": "string",
                           "enum": ["per_chapter", "per_volume", "auto"]
                         },
+                        "costBudgetPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "chapterMaxCostCny": {
+                              "default": 2.5,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000
+                            },
+                            "volumeMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "taskMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000000
+                            },
+                            "perTenThousandCharsMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 10000
+                            }
+                          },
+                          "required": [
+                            "chapterMaxCostCny",
+                            "volumeMaxCostCny",
+                            "taskMaxCostCny",
+                            "perTenThousandCharsMaxCostCny"
+                          ],
+                          "additionalProperties": false
+                        },
                         "priorityClass": {
                           "type": "string",
                           "enum": ["interactive", "batch"]
@@ -5612,6 +6264,7 @@
                         "status",
                         "scope",
                         "approvalMode",
+                        "costBudgetPolicy",
                         "priorityClass",
                         "idempotencyKey",
                         "counts",
@@ -5805,6 +6458,49 @@
                           "type": "string",
                           "enum": ["per_chapter", "per_volume", "auto"]
                         },
+                        "costBudgetPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "chapterMaxCostCny": {
+                              "default": 2.5,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000
+                            },
+                            "volumeMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "taskMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000000
+                            },
+                            "perTenThousandCharsMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 10000
+                            }
+                          },
+                          "required": [
+                            "chapterMaxCostCny",
+                            "volumeMaxCostCny",
+                            "taskMaxCostCny",
+                            "perTenThousandCharsMaxCostCny"
+                          ],
+                          "additionalProperties": false
+                        },
                         "priorityClass": {
                           "type": "string",
                           "enum": ["interactive", "batch"]
@@ -5984,6 +6680,7 @@
                         "status",
                         "scope",
                         "approvalMode",
+                        "costBudgetPolicy",
                         "priorityClass",
                         "idempotencyKey",
                         "counts",
@@ -6177,6 +6874,49 @@
                           "type": "string",
                           "enum": ["per_chapter", "per_volume", "auto"]
                         },
+                        "costBudgetPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "chapterMaxCostCny": {
+                              "default": 2.5,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000
+                            },
+                            "volumeMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "taskMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000000
+                            },
+                            "perTenThousandCharsMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 10000
+                            }
+                          },
+                          "required": [
+                            "chapterMaxCostCny",
+                            "volumeMaxCostCny",
+                            "taskMaxCostCny",
+                            "perTenThousandCharsMaxCostCny"
+                          ],
+                          "additionalProperties": false
+                        },
                         "priorityClass": {
                           "type": "string",
                           "enum": ["interactive", "batch"]
@@ -6356,6 +7096,7 @@
                         "status",
                         "scope",
                         "approvalMode",
+                        "costBudgetPolicy",
                         "priorityClass",
                         "idempotencyKey",
                         "counts",
@@ -6549,6 +7290,49 @@
                           "type": "string",
                           "enum": ["per_chapter", "per_volume", "auto"]
                         },
+                        "costBudgetPolicy": {
+                          "type": "object",
+                          "properties": {
+                            "chapterMaxCostCny": {
+                              "default": 2.5,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000
+                            },
+                            "volumeMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 100000
+                            },
+                            "taskMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 1000000
+                            },
+                            "perTenThousandCharsMaxCostCny": {
+                              "default": null,
+                              "nullable": true,
+                              "type": "number",
+                              "minimum": 0,
+                              "exclusiveMinimum": true,
+                              "maximum": 10000
+                            }
+                          },
+                          "required": [
+                            "chapterMaxCostCny",
+                            "volumeMaxCostCny",
+                            "taskMaxCostCny",
+                            "perTenThousandCharsMaxCostCny"
+                          ],
+                          "additionalProperties": false
+                        },
                         "priorityClass": {
                           "type": "string",
                           "enum": ["interactive", "batch"]
@@ -6728,6 +7512,7 @@
                         "status",
                         "scope",
                         "approvalMode",
+                        "costBudgetPolicy",
                         "priorityClass",
                         "idempotencyKey",
                         "counts",

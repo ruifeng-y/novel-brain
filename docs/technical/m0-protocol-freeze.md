@@ -201,6 +201,7 @@ M0 关键错误：
 | GET | `/api/v1/works/:workId/branches/:branchId/review-queue` | 分页读取章节/卷审核队列 |
 | POST | `/api/v1/works/:workId/branches/:branchId/review-queue/claim` | 领取一个或一批审核项 |
 | POST | `/api/v1/works/:workId/branches/:branchId/review-queue/decisions` | 幂等提交逐项批准/驳回并返回部分失败 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/cost-report` | 按卷/章/模型/日期聚合成本、吞吐和硬停报告 |
 
 ### 5.7 审核、事实与故事事实提交
 
