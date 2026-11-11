@@ -1,5 +1,6 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
+  batchCostBindingScopeSchema,
   batchPlanMetadataSchema,
   generationCheckpointSchema,
   WORKER_JOB_STEPS,
@@ -379,14 +380,48 @@ export class BatchPlanRepository implements OnModuleDestroy {
       }
       const totals = await transaction.query<{
         chapters: string;
+        completed_chapters: string;
+        queued_chapters: string;
+        preparing_chapters: string;
+        running_chapters: string;
+        paused_chapters: string;
+        waiting_review_chapters: string;
+        failed_chapters: string;
+        cancelled_chapters: string;
+        skipped_chapters: string;
         calls: string;
         failed_calls: string;
         input_tokens: string;
         output_tokens: string;
         reserved_cost: string;
         settled_cost: string;
+        duration_ms: string;
       }>(
         `SELECT count(DISTINCT child.chapter_id)::text AS chapters,
+                count(DISTINCT child.chapter_id) FILTER (WHERE child.status = 'completed')::text
+                  AS completed_chapters,
+                count(DISTINCT child.id) FILTER (WHERE child.status = 'queued')::text
+                  AS queued_chapters,
+                count(DISTINCT child.id) FILTER (WHERE child.status = 'preparing')::text
+                  AS preparing_chapters,
+                count(DISTINCT child.id) FILTER (WHERE child.status = 'running')::text
+                  AS running_chapters,
+                count(DISTINCT child.id) FILTER (WHERE child.status = 'paused')::text
+                  AS paused_chapters,
+                count(DISTINCT child.id) FILTER (WHERE child.status = 'waiting_review')::text
+                  AS waiting_review_chapters,
+                count(DISTINCT child.id) FILTER (WHERE child.status = 'failed')::text
+                  AS failed_chapters,
+                count(DISTINCT child.id) FILTER (WHERE child.status = 'cancelled')::text
+                  AS cancelled_chapters,
+                COALESCE((
+                  SELECT count(DISTINCT item.chapter_id)
+                  FROM job_work_items item
+                  WHERE item.job_id = $1
+                    AND item.user_id = $2
+                    AND item.item_type = 'chapter'
+                    AND item.status = 'skipped'
+                ), 0)::text AS skipped_chapters,
                 count(call.id)::text AS calls,
                 count(call.id) FILTER (WHERE call.status = 'failed')::text AS failed_calls,
                 COALESCE(sum(call.input_tokens), 0)::text AS input_tokens,
@@ -395,14 +430,17 @@ export class BatchPlanRepository implements OnModuleDestroy {
                   SELECT sum(reservation.reserved_cost_cny)
                   FROM cost_reservations reservation
                   INNER JOIN jobs reserved_child ON reserved_child.id = reservation.job_id
-                  WHERE reserved_child.parent_job_id = $1
+                  WHERE reserved_child.parent_job_id = $1 AND reservation.status = 'reserved'
                 ), 0)::text AS reserved_cost,
                 COALESCE((
                   SELECT sum(reservation.settled_cost_cny)
                   FROM cost_reservations reservation
                   INNER JOIN jobs settled_child ON settled_child.id = reservation.job_id
                   WHERE settled_child.parent_job_id = $1 AND reservation.status = 'settled'
-                ), 0)::text AS settled_cost
+                ), 0)::text AS settled_cost,
+                COALESCE(sum(
+                  EXTRACT(EPOCH FROM (call.finished_at - call.started_at)) * 1000
+                ), 0)::text AS duration_ms
          FROM jobs child
          LEFT JOIN model_calls call ON call.job_id = child.id
          WHERE child.parent_job_id = $1 AND child.user_id = $2`,
@@ -415,11 +453,13 @@ export class BatchPlanRepository implements OnModuleDestroy {
         chapter_id: string | null;
         code: string;
         message: string;
+        scope: string | null;
         occurred_at: Date;
       }>(
         `SELECT event.job_id, child.chapter_id,
                 COALESCE(event.payload ->> 'code', 'JOB_BUDGET_EXCEEDED') AS code,
                 COALESCE(event.payload ->> 'message', '任务已达到成本上限') AS message,
+                event.payload ->> 'bindingScope' AS scope,
                 event.occurred_at
          FROM job_events event
          INNER JOIN jobs child ON child.id = event.job_id
@@ -443,6 +483,12 @@ export class BatchPlanRepository implements OnModuleDestroy {
       const taskLimit = taskLimitCandidates.length === 0 ? null : Math.min(...taskLimitCandidates);
       const used = roundCost(Number(total.reserved_cost) + Number(total.settled_cost));
       const remainingCostCny = taskLimit === null ? null : Math.max(0, roundCost(taskLimit - used));
+      const durationMs = Math.round(Number(total.duration_ms));
+      const completedChapters = Number(total.completed_chapters);
+      const budgetExceededChapters = Math.max(
+        new Set(hardStops.rows.flatMap((row) => (row.chapter_id ? [row.chapter_id] : []))).size,
+        hardStops.rows.length > 0 ? 1 : 0,
+      );
       return {
         planId,
         workId: context.workId,
@@ -450,12 +496,27 @@ export class BatchPlanRepository implements OnModuleDestroy {
         generatedAt: new Date().toISOString(),
         totals: {
           chapters: Number(total.chapters),
+          completedChapters,
+          statusCounts: {
+            queued: Number(total.queued_chapters),
+            preparing: Number(total.preparing_chapters),
+            running: Number(total.running_chapters),
+            paused: Number(total.paused_chapters),
+            waitingReview: Number(total.waiting_review_chapters),
+            completed: completedChapters,
+            failed: Number(total.failed_chapters),
+            cancelled: Number(total.cancelled_chapters),
+            skipped: Number(total.skipped_chapters),
+            budgetExceeded: budgetExceededChapters,
+          },
           calls: Number(total.calls),
           failedCalls: Number(total.failed_calls),
           inputTokens: Number(total.input_tokens),
           outputTokens: Number(total.output_tokens),
           reservedCostCny: roundCost(Number(total.reserved_cost)),
           settledCostCny: roundCost(Number(total.settled_cost)),
+          durationMs,
+          chaptersPerHour: calculateChaptersPerHour(completedChapters, durationMs),
         },
         budget: {
           policy,
@@ -463,7 +524,7 @@ export class BatchPlanRepository implements OnModuleDestroy {
           perTenThousandCharactersLimitCny,
           remainingCostCny,
           status:
-            remainingCostCny !== null && remainingCostCny <= 0
+            hardStops.rows.length > 0 || (remainingCostCny !== null && remainingCostCny <= 0)
               ? "exhausted"
               : remainingCostCny !== null &&
                   taskLimit !== null &&
@@ -477,6 +538,7 @@ export class BatchPlanRepository implements OnModuleDestroy {
           chapterId: row.chapter_id,
           code: row.code,
           message: row.message,
+          scope: row.scope === null ? null : batchCostBindingScopeSchema.parse(row.scope),
           occurredAt: row.occurred_at.toISOString(),
         })),
       };
@@ -917,6 +979,13 @@ function roundCost(value: number): number {
   return Number(value.toFixed(8));
 }
 
+function calculateChaptersPerHour(chapters: number, durationMs: number): number | null {
+  if (chapters <= 0 || durationMs <= 0) {
+    return null;
+  }
+  return Number((chapters / (durationMs / 3_600_000)).toFixed(2));
+}
+
 async function costGroups(
   transaction: BatchPlanTransaction,
   userId: string,
@@ -930,11 +999,16 @@ async function costGroups(
         SELECT volume.outline_node_id::text AS key,
                COALESCE(node.title, '未分卷') AS label,
                count(DISTINCT child.chapter_id)::text AS chapters,
+               count(DISTINCT child.chapter_id) FILTER (WHERE child.status = 'completed')::text
+                 AS completed_chapters,
                count(call.id)::text AS calls,
                count(call.id) FILTER (WHERE call.status = 'failed')::text AS failed_calls,
                COALESCE(sum(call.input_tokens), 0)::text AS input_tokens,
                COALESCE(sum(call.output_tokens), 0)::text AS output_tokens,
-               COALESCE(sum(call.cost_cny), 0)::text AS cost_cny
+               COALESCE(sum(call.cost_cny), 0)::text AS cost_cny,
+               COALESCE(sum(
+                 EXTRACT(EPOCH FROM (call.finished_at - call.started_at)) * 1000
+               ), 0)::text AS duration_ms
         FROM jobs child
         INNER JOIN job_work_items chapter_item
           ON chapter_item.job_id = child.parent_job_id
@@ -949,40 +1023,53 @@ async function costGroups(
         LEFT JOIN model_calls call ON call.job_id = child.id
         WHERE child.parent_job_id = $1 AND child.user_id = $2
         GROUP BY volume.outline_node_id, node.title
-        ORDER BY node.title NULLS LAST`;
+        ORDER BY node.title NULLS LAST
+        LIMIT 500`;
       break;
     case "chapter":
       query = `
         SELECT child.chapter_id::text AS key,
                '第 ' || chapter.number || ' 章 · ' || chapter.title AS label,
                count(DISTINCT child.chapter_id)::text AS chapters,
+               count(DISTINCT child.chapter_id) FILTER (WHERE child.status = 'completed')::text
+                 AS completed_chapters,
                count(call.id)::text AS calls,
                count(call.id) FILTER (WHERE call.status = 'failed')::text AS failed_calls,
                COALESCE(sum(call.input_tokens), 0)::text AS input_tokens,
                COALESCE(sum(call.output_tokens), 0)::text AS output_tokens,
-               COALESCE(sum(call.cost_cny), 0)::text AS cost_cny
+               COALESCE(sum(call.cost_cny), 0)::text AS cost_cny,
+               COALESCE(sum(
+                 EXTRACT(EPOCH FROM (call.finished_at - call.started_at)) * 1000
+               ), 0)::text AS duration_ms
         FROM jobs child
         INNER JOIN chapters chapter ON chapter.id = child.chapter_id
         LEFT JOIN model_calls call ON call.job_id = child.id
         WHERE child.parent_job_id = $1 AND child.user_id = $2
         GROUP BY child.chapter_id, chapter.number, chapter.title
-        ORDER BY chapter.number`;
+        ORDER BY chapter.number
+        LIMIT 500`;
       break;
     case "model":
       query = `
         SELECT COALESCE(call.model, '未调用') AS key,
                COALESCE(call.model, '未调用') AS label,
                count(DISTINCT child.chapter_id)::text AS chapters,
+               count(DISTINCT child.chapter_id) FILTER (WHERE child.status = 'completed')::text
+                 AS completed_chapters,
                count(call.id)::text AS calls,
                count(call.id) FILTER (WHERE call.status = 'failed')::text AS failed_calls,
                COALESCE(sum(call.input_tokens), 0)::text AS input_tokens,
                COALESCE(sum(call.output_tokens), 0)::text AS output_tokens,
-               COALESCE(sum(call.cost_cny), 0)::text AS cost_cny
+               COALESCE(sum(call.cost_cny), 0)::text AS cost_cny,
+               COALESCE(sum(
+                 EXTRACT(EPOCH FROM (call.finished_at - call.started_at)) * 1000
+               ), 0)::text AS duration_ms
         FROM jobs child
         LEFT JOIN model_calls call ON call.job_id = child.id
         WHERE child.parent_job_id = $1 AND child.user_id = $2
         GROUP BY call.model
-        ORDER BY cost_cny DESC`;
+        ORDER BY cost_cny DESC
+        LIMIT 500`;
       break;
     case "time":
       query = `
@@ -991,37 +1078,53 @@ async function costGroups(
                COALESCE(to_char(date_trunc('day', call.created_at), 'YYYY-MM-DD'), '未调用')
                  AS label,
                count(DISTINCT child.chapter_id)::text AS chapters,
+               count(DISTINCT child.chapter_id) FILTER (WHERE child.status = 'completed')::text
+                 AS completed_chapters,
                count(call.id)::text AS calls,
                count(call.id) FILTER (WHERE call.status = 'failed')::text AS failed_calls,
                COALESCE(sum(call.input_tokens), 0)::text AS input_tokens,
                COALESCE(sum(call.output_tokens), 0)::text AS output_tokens,
-               COALESCE(sum(call.cost_cny), 0)::text AS cost_cny
+               COALESCE(sum(call.cost_cny), 0)::text AS cost_cny,
+               COALESCE(sum(
+                 EXTRACT(EPOCH FROM (call.finished_at - call.started_at)) * 1000
+               ), 0)::text AS duration_ms
         FROM jobs child
         LEFT JOIN model_calls call ON call.job_id = child.id
         WHERE child.parent_job_id = $1 AND child.user_id = $2
         GROUP BY date_trunc('day', call.created_at)
-        ORDER BY date_trunc('day', call.created_at) NULLS LAST`;
+        ORDER BY date_trunc('day', call.created_at) NULLS LAST
+        LIMIT 500`;
       break;
+    default:
+      throw new Error(`Unsupported batch cost group: ${String(groupBy)}`);
   }
   const result = await transaction.query<{
     key: string;
     label: string;
     chapters: string;
+    completed_chapters: string;
     calls: string;
     failed_calls: string;
     input_tokens: string;
     output_tokens: string;
     cost_cny: string;
+    duration_ms: string;
   }>(query, [planId, userId]);
   return result.rows.map((row) => ({
     key: row.key,
     label: row.label,
     chapters: Number(row.chapters),
+    completedChapters: Number(row.completed_chapters),
     calls: Number(row.calls),
     failedCalls: Number(row.failed_calls),
     inputTokens: Number(row.input_tokens),
     outputTokens: Number(row.output_tokens),
     costCny: roundCost(Number(row.cost_cny)),
+    durationMs: Math.round(Number(row.duration_ms)),
+    chaptersPerHour: calculateChaptersPerHour(
+      Number(row.completed_chapters),
+      Number(row.duration_ms),
+    ),
   }));
 }
 

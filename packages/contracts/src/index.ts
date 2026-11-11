@@ -5898,15 +5898,35 @@ export const batchCostReportQuerySchema = z
   .strict();
 export type BatchCostReportQuery = z.infer<typeof batchCostReportQuerySchema>;
 
+export const batchCostReportStatusCountsSchema = z
+  .object({
+    queued: z.number().int().nonnegative(),
+    preparing: z.number().int().nonnegative(),
+    running: z.number().int().nonnegative(),
+    paused: z.number().int().nonnegative(),
+    waitingReview: z.number().int().nonnegative(),
+    completed: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    cancelled: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    budgetExceeded: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchCostReportStatusCounts = z.infer<typeof batchCostReportStatusCountsSchema>;
+
 export const batchCostReportTotalsSchema = z
   .object({
     chapters: z.number().int().nonnegative(),
+    completedChapters: z.number().int().nonnegative(),
+    statusCounts: batchCostReportStatusCountsSchema,
     calls: z.number().int().nonnegative(),
     failedCalls: z.number().int().nonnegative(),
     inputTokens: z.number().int().nonnegative(),
     outputTokens: z.number().int().nonnegative(),
     reservedCostCny: z.number().nonnegative(),
     settledCostCny: z.number().nonnegative(),
+    durationMs: z.number().int().nonnegative(),
+    chaptersPerHour: z.number().nonnegative().nullable(),
   })
   .strict();
 export type BatchCostReportTotals = z.infer<typeof batchCostReportTotalsSchema>;
@@ -5927,14 +5947,25 @@ export const batchCostReportGroupSchema = z
     key: z.string().min(1).max(200),
     label: z.string().min(1).max(200),
     chapters: z.number().int().nonnegative(),
+    completedChapters: z.number().int().nonnegative(),
     calls: z.number().int().nonnegative(),
     failedCalls: z.number().int().nonnegative(),
     inputTokens: z.number().int().nonnegative(),
     outputTokens: z.number().int().nonnegative(),
     costCny: z.number().nonnegative(),
+    durationMs: z.number().int().nonnegative(),
+    chaptersPerHour: z.number().nonnegative().nullable(),
   })
   .strict();
 export type BatchCostReportGroup = z.infer<typeof batchCostReportGroupSchema>;
+
+export const batchCostBindingScopeSchema = z.enum([
+  "chapter",
+  "volume",
+  "task",
+  "per_ten_thousand_characters",
+]);
+export type BatchCostBindingScope = z.infer<typeof batchCostBindingScopeSchema>;
 
 export const batchCostReportHardStopSchema = z
   .object({
@@ -5942,6 +5973,7 @@ export const batchCostReportHardStopSchema = z
     chapterId: uuidV7Schema.nullable(),
     code: z.string().min(1).max(100),
     message: z.string().min(1).max(1_000),
+    scope: batchCostBindingScopeSchema.nullable(),
     occurredAt: z.string().datetime(),
   })
   .strict();

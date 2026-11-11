@@ -2,6 +2,8 @@ import { and, eq, sql } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
+import { batchCostBindingScopeSchema, type BatchCostBindingScope } from "@novel-brain/contracts";
+
 import { createDatabaseClient, createDatabasePool, type DatabaseClient } from "./client";
 import { costReservations, jobs } from "./schema";
 
@@ -43,6 +45,7 @@ export class BudgetReservationError extends Error {
       reservedTokens: number;
       requestedCostCny: number;
       requestedTokens: number;
+      bindingScope?: BatchCostBindingScope;
     },
   ) {
     super("Generation budget reservation would exceed the job budget");
@@ -114,16 +117,20 @@ export async function reserveBudgetInTransaction(
 
   const active = await activeReservationTotals(transaction, input.jobId);
   const cost = job.cost as { costCny?: unknown; totalTokens?: unknown };
-  const budget = job.budget as { maxCostCny?: unknown; maxTokens?: unknown };
+  const budget = job.budget as {
+    maxCostCny?: unknown;
+    maxTokens?: unknown;
+    bindingScope?: unknown;
+  };
   const usedCostCny = finiteNumber(cost.costCny, 0);
   const usedTokens = finiteNumber(cost.totalTokens, 0);
   const maxCostCny = finiteNumber(budget.maxCostCny, Number.POSITIVE_INFINITY);
   const maxTokens = finiteNumber(budget.maxTokens, Number.POSITIVE_INFINITY);
+  const bindingScope = batchCostBindingScopeSchema.safeParse(budget.bindingScope);
+  const costExceeded = usedCostCny + active.costCny + input.estimatedCostCny > maxCostCny;
+  const tokensExceeded = usedTokens + active.tokens + input.estimatedTokens > maxTokens;
   // ADR 0021 requires a hard stop before the provider call when the reservation cannot fit.
-  if (
-    usedCostCny + active.costCny + input.estimatedCostCny > maxCostCny ||
-    usedTokens + active.tokens + input.estimatedTokens > maxTokens
-  ) {
+  if (costExceeded || tokensExceeded) {
     throw new BudgetReservationError({
       maxCostCny,
       maxTokens,
@@ -133,6 +140,7 @@ export async function reserveBudgetInTransaction(
       reservedTokens: active.tokens,
       requestedCostCny: input.estimatedCostCny,
       requestedTokens: input.estimatedTokens,
+      ...(bindingScope.success ? { bindingScope: bindingScope.data } : {}),
     });
   }
   if (parentJob) {
@@ -148,24 +156,29 @@ export async function reserveBudgetInTransaction(
       Number.POSITIVE_INFINITY,
     );
     const planUsage = await batchPlanUsage(transaction, parentJob.id, job.chapterId);
-    const limits = [
+    const limits: Array<{
+      max: number;
+      used: number;
+      reserved: number;
+      bindingScope: BatchCostBindingScope;
+    }> = [
       {
         max: taskMaxCostCny,
         used: planUsage.taskCostCny,
         reserved: planUsage.taskReservedCostCny,
-        label: "task",
+        bindingScope: "task",
       },
       {
         max: volumeMaxCostCny,
         used: planUsage.volumeCostCny,
         reserved: planUsage.volumeReservedCostCny,
-        label: "volume",
+        bindingScope: "volume",
       },
       {
         max: perTenThousandCharactersLimitCny,
         used: planUsage.taskCostCny,
         reserved: planUsage.taskReservedCostCny,
-        label: "per_ten_thousand_characters",
+        bindingScope: "per_ten_thousand_characters",
       },
     ];
     const binding = limits.find(
@@ -181,6 +194,7 @@ export async function reserveBudgetInTransaction(
         reservedTokens: 0,
         requestedCostCny: input.estimatedCostCny,
         requestedTokens: input.estimatedTokens,
+        bindingScope: binding.bindingScope,
       });
     }
   }

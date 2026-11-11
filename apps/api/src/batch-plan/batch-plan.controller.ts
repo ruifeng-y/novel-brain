@@ -25,7 +25,7 @@ import {
   batchPlanCreateRequestSchema,
   batchPlanItemListResponseSchema,
   batchPlanResponseSchema,
-  batchCostReportGroupBySchema,
+  batchCostReportQuerySchema,
   batchCostReportResponseSchema,
   batchWorkItemStatusSchema,
   cursorPageQuerySchema,
@@ -49,6 +49,7 @@ function schemaOf(schema: z.ZodType, io: "input" | "output" = "output"): SchemaO
 const createBodyJsonSchema = schemaOf(batchPlanCreateRequestSchema, "input");
 const planJsonSchema = schemaOf(batchPlanResponseSchema);
 const itemListJsonSchema = schemaOf(batchPlanItemListResponseSchema);
+const costReportJsonSchema = schemaOf(batchCostReportResponseSchema);
 
 @ApiTags("batch")
 @Controller("works/:workId/branches/:branchId/batch-plans")
@@ -157,7 +158,10 @@ export class BatchPlanController {
     required: false,
     enum: ["volume", "chapter", "model", "time"],
   })
-  @ApiOkResponse({ description: "Tenant-scoped batch cost and failure report" })
+  @ApiOkResponse({
+    description: "Tenant-scoped batch cost and failure report",
+    schema: costReportJsonSchema,
+  })
   async getCostReport(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
@@ -166,14 +170,19 @@ export class BatchPlanController {
     @Query("groupBy") groupBy?: string,
   ) {
     const requestId = createRequestId();
+    const parsedPlanId = uuidV7Schema.parse(planId);
+    const query = batchCostReportQuerySchema.parse({
+      planId: parsedPlanId,
+      groupBy: groupBy ?? "volume",
+    });
     const data = await this.service.getCostReport(
       this.userId(request),
       {
         workId: uuidV7Schema.parse(workId),
         branchId: uuidV7Schema.parse(branchId),
       },
-      uuidV7Schema.parse(planId),
-      batchCostReportGroupBySchema.parse(groupBy ?? "volume"),
+      parsedPlanId,
+      query.groupBy,
     );
     return batchCostReportResponseSchema.parse({ data, requestId, meta: {} });
   }

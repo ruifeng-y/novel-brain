@@ -4659,7 +4659,88 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": {
+            data: {
+              planId: string;
+              workId: string;
+              /** @enum {string} */
+              currency: "CNY";
+              /** Format: date-time */
+              generatedAt: string;
+              totals: {
+                chapters: number;
+                completedChapters: number;
+                statusCounts: {
+                  queued: number;
+                  preparing: number;
+                  running: number;
+                  paused: number;
+                  waitingReview: number;
+                  completed: number;
+                  failed: number;
+                  cancelled: number;
+                  skipped: number;
+                  budgetExceeded: number;
+                };
+                calls: number;
+                failedCalls: number;
+                inputTokens: number;
+                outputTokens: number;
+                reservedCostCny: number;
+                settledCostCny: number;
+                durationMs: number;
+                chaptersPerHour: number | null;
+              };
+              budget: {
+                policy: {
+                  /** @default 2.5 */
+                  chapterMaxCostCny: number;
+                  /** @default null */
+                  volumeMaxCostCny: number | null;
+                  /** @default null */
+                  taskMaxCostCny: number | null;
+                  /** @default null */
+                  perTenThousandCharsMaxCostCny: number | null;
+                };
+                projectedCharacters: number;
+                perTenThousandCharactersLimitCny: number | null;
+                remainingCostCny: number | null;
+                /** @enum {string} */
+                status: "ok" | "near_limit" | "exhausted";
+              };
+              groups: {
+                key: string;
+                label: string;
+                chapters: number;
+                completedChapters: number;
+                calls: number;
+                failedCalls: number;
+                inputTokens: number;
+                outputTokens: number;
+                costCny: number;
+                durationMs: number;
+                chaptersPerHour: number | null;
+              }[];
+              hardStops: {
+                jobId: string;
+                chapterId: string | null;
+                code: string;
+                message: string;
+                /** @enum {string|null} */
+                scope: "chapter" | "volume" | "task" | "per_ten_thousand_characters" | null;
+                /** Format: date-time */
+                occurredAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
       };
     };
   };

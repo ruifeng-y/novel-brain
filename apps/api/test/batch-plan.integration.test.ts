@@ -1597,9 +1597,13 @@ describe("batch plan integration", () => {
     } finally {
       await repository.onModuleDestroy();
     }
-    const childJobs = await tenantQuery<{ id: string; chapter_id: string }>(
+    const childJobs = await tenantQuery<{
+      id: string;
+      chapter_id: string;
+      model_config_id: string;
+    }>(
       userId,
-      `SELECT id, chapter_id FROM jobs
+      `SELECT id, chapter_id, model_config_id FROM jobs
        WHERE parent_job_id = $1 AND type = 'generate_chapter'
        ORDER BY chapter_id`,
       [plan.id],
@@ -1627,6 +1631,10 @@ describe("batch plan integration", () => {
             result.status === "rejected" && result.reason instanceof BudgetReservationError,
         ),
       ).toHaveLength(1);
+      const rejected = reservations.find(
+        (result): result is PromiseRejectedResult => result.status === "rejected",
+      );
+      expect((rejected?.reason as BudgetReservationError).details.bindingScope).toBe("task");
       const fulfilledIndex = reservations.findIndex((result) => result.status === "fulfilled");
       await ledger.settle({
         userId,
@@ -1651,14 +1659,81 @@ describe("batch plan integration", () => {
     expect(report).toMatchObject({
       totals: {
         chapters: 2,
+        completedChapters: 0,
+        statusCounts: {
+          completed: 0,
+          budgetExceeded: 0,
+        },
+        reservedCostCny: 0,
         settledCostCny: 0.08,
       },
       budget: {
-        status: "exhausted",
-        remainingCostCny: 0,
+        status: "ok",
+        remainingCostCny: 0.07,
       },
     });
     expect(report.groups).toHaveLength(2);
+
+    const failedChild = childJobs.rows[0]!;
+    const generationRepository = new WorkerGenerationRepository();
+    try {
+      await generationRepository.recordBudgetFailure({
+        payload: {
+          jobId: failedChild.id,
+          workId: work.id,
+          branchId: work.mainBranch.id,
+          chapterId: failedChild.chapter_id,
+          actorId: userId,
+          modelConfigId: failedChild.model_config_id,
+          idempotencyKey: "batch-cost-budget-failure",
+        },
+        step: "draft",
+        attempt: 1,
+        role: "writer",
+        prompt: "写一段正文",
+        system: "只输出正文",
+        estimatedTokens: 1_000,
+        estimatedCostCny: 0.01,
+        errorCode: "JOB_BUDGET_EXCEEDED",
+        message: "第一卷已达到成本上限，草稿和检查点已保留",
+        escalationReason: "单卷预算已耗尽",
+        bindingScope: "volume",
+      });
+    } finally {
+      await generationRepository.onModuleDestroy();
+    }
+    const hardStopReport = batchCostReportResponseSchema.parse(
+      (
+        await owner
+          .get(`${branchPath}/batch-plans/${plan.id}/cost-report?groupBy=volume`)
+          .expect(200)
+      ).body,
+    ).data;
+    expect(hardStopReport).toMatchObject({
+      budget: {
+        status: "exhausted",
+        remainingCostCny: 0.07,
+      },
+      totals: {
+        completedChapters: 0,
+        statusCounts: {
+          completed: 0,
+          budgetExceeded: 1,
+        },
+      },
+      hardStops: [
+        {
+          jobId: failedChild.id,
+          chapterId: failedChild.chapter_id,
+          code: "JOB_BUDGET_EXCEEDED",
+          message: "第一卷已达到成本上限，草稿和检查点已保留",
+          scope: "volume",
+        },
+      ],
+    });
+
+    const other = await createAuthenticatedAgent("batch-cost-other@example.com");
+    await other.get(`${branchPath}/batch-plans/${plan.id}/cost-report`).expect(404);
   });
 
   async function createAuthenticatedAgent(email: string): Promise<SuperAgentTest> {

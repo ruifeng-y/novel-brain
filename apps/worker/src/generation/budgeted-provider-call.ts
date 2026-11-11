@@ -9,7 +9,7 @@ import {
   type GenerationResult,
 } from "@novel-brain/ai";
 import { planProviderCallBudget, PROVIDER_CALL_MAX_OUTPUT_TOKENS } from "@novel-brain/core";
-import { calculateModelCallCost as calculateCost } from "@novel-brain/db";
+import { BudgetReservationError, calculateModelCallCost as calculateCost } from "@novel-brain/db";
 
 import {
   type StartedModelCall,
@@ -87,7 +87,7 @@ export class BudgetedProviderCallExecutor {
       if (error instanceof JobStoppedError) {
         throw error;
       }
-      if (isBudgetReservationError(error)) {
+      if (error instanceof BudgetReservationError) {
         await this.repository.recordBudgetFailure({
           payload: input.payload,
           step: input.step,
@@ -100,6 +100,7 @@ export class BudgetedProviderCallExecutor {
           errorCode: "JOB_BUDGET_EXCEEDED",
           message: BUDGET_EXHAUSTED_MESSAGE,
           escalationReason: BUDGET_EXHAUSTED_ESCALATION,
+          ...(error.details.bindingScope ? { bindingScope: error.details.bindingScope } : {}),
         });
         throw new ProviderBudgetExceededError();
       }
@@ -245,10 +246,6 @@ export function describeProviderFailure(error: unknown): {
     },
   } as const;
   return { failureClass, ...mapping[failureClass] };
-}
-
-function isBudgetReservationError(error: unknown): boolean {
-  return error instanceof Error && error.name === "BudgetReservationError";
 }
 
 function sha256(value: string): string {

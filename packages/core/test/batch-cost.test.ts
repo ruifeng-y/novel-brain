@@ -11,7 +11,7 @@ describe("batch budget allocation", () => {
         taskMaxCostCny: 200,
         perTenThousandCharsMaxCostCny: 20,
         projectedCharacters: 25_000,
-        taskCostUsedCny: 198.5,
+        taskCostUsedCny: 10,
         volumeCostUsedCny: 99.4,
       }),
     ).toEqual({
@@ -36,6 +36,23 @@ describe("batch budget allocation", () => {
     ).toMatchObject({
       allowedCostCny: 0,
       bindingScope: "task",
+    });
+  });
+
+  it("subtracts used cost from the per-ten-thousand-character cap", () => {
+    expect(
+      calculateBatchBudgetAllocation({
+        chapterMaxCostCny: 10,
+        volumeMaxCostCny: null,
+        taskMaxCostCny: null,
+        perTenThousandCharsMaxCostCny: 20,
+        projectedCharacters: 10_000,
+        taskCostUsedCny: 12,
+        volumeCostUsedCny: 0,
+      }),
+    ).toMatchObject({
+      allowedCostCny: 8,
+      bindingScope: "per_ten_thousand_characters",
     });
   });
 });

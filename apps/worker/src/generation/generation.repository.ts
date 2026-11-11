@@ -2,10 +2,12 @@ import { createHash } from "node:crypto";
 
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
+  batchCostBindingScopeSchema,
   contextPackManifestSchema,
   contextPackVersionSchema,
   WRITING_ACTION_STEPS,
   WORKER_JOB_STEPS,
+  type BatchCostBindingScope,
   type ContextPackManifest,
   type GenerateChapterJob,
   type GenerationCost,
@@ -2011,7 +2013,12 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         .where(eq(jobs.id, job.id))
         .returning();
       if (failedJob) {
+        const bindingScope = batchCostBindingScopeSchema.safeParse(
+          (job.budget as { bindingScope?: unknown }).bindingScope,
+        );
         await appendEvent(transaction, failedJob, "job.budget.exceeded", {
+          code: "JOB_BUDGET_EXCEEDED",
+          message: BUDGET_EXHAUSTED_MESSAGE,
           step: input.step,
           attempt: input.call.attempt,
           reservationId: settlement.id,
@@ -2019,6 +2026,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           reservedCostCny: settlement.reservedCostCny,
           actualTokens: totalTokens,
           actualCostCny: costCny,
+          ...(bindingScope.success ? { bindingScope: bindingScope.data } : {}),
         });
         await appendEvent(transaction, failedJob, "job.step.failed", {
           step: input.step,
@@ -2101,9 +2109,18 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     errorCode: string;
     message: string;
     escalationReason: string;
+    bindingScope?: BatchCostBindingScope;
   }): Promise<void> {
     await this.withTenant(input.payload.actorId, async (transaction) => {
       const now = new Date();
+      const [job] = await transaction
+        .select()
+        .from(jobs)
+        .where(and(eq(jobs.id, input.payload.jobId), eq(jobs.userId, input.payload.actorId)))
+        .limit(1);
+      if (!job) {
+        throw new Error("Budget failure job is not accessible for this tenant");
+      }
       const promptHash = sha256(input.prompt);
       const systemHash = sha256(input.system);
       const inputHash = sha256(`${input.system}\u0000${input.prompt}`);
@@ -2206,6 +2223,16 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           finishedAt: now,
         })
         .where(eq(agentRuns.id, run.id));
+      await appendEvent(transaction, job, "job.budget.exceeded", {
+        code: input.errorCode,
+        message: input.message,
+        step: input.step,
+        attempt: input.attempt,
+        reservationId: reservation.id,
+        estimatedTokens: input.estimatedTokens,
+        estimatedCostCny: input.estimatedCostCny,
+        ...(input.bindingScope ? { bindingScope: input.bindingScope } : {}),
+      });
     });
   }
 

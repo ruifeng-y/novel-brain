@@ -320,6 +320,17 @@ export function BatchWorkspace({ workId }: { workId: string }) {
               ) : null}
             </div>
           ))}
+          {planStates.flatMap((plan) =>
+            (plan.report?.hardStops ?? []).slice(0, 3).map((hardStop) => (
+              <div
+                className="batch-budget-alert"
+                key={`${plan.id}:${hardStop.jobId}:${hardStop.occurredAt}`}
+              >
+                <strong>{budgetScopeLabel(hardStop.scope)}预算已耗尽</strong>
+                <span>{hardStop.message}</span>
+              </div>
+            )),
+          )}
         </section>
       ) : null}
 
@@ -613,6 +624,19 @@ function severityLabel(severity: BatchReviewQueueItem["findings"][number]["sever
       return "提醒";
     case "P3":
       return "建议";
+  }
+}
+
+function budgetScopeLabel(scope: string | null) {
+  switch (scope) {
+    case "chapter":
+      return "单章";
+    case "volume":
+      return "单卷";
+    case "per_ten_thousand_characters":
+      return "每万字";
+    default:
+      return "任务";
   }
 }
 

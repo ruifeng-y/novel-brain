@@ -334,12 +334,27 @@ test("keeps the batch review workspace within four viewports", async ({
           generatedAt: "2026-11-11T06:00:00.000Z",
           totals: {
             chapters: 1,
+            completedChapters: 0,
+            statusCounts: {
+              queued: 0,
+              preparing: 0,
+              running: 0,
+              paused: 1,
+              waitingReview: 0,
+              completed: 0,
+              failed: 0,
+              cancelled: 0,
+              skipped: 0,
+              budgetExceeded: 1,
+            },
             calls: 3,
             failedCalls: 1,
             inputTokens: 4_000,
             outputTokens: 2_000,
             reservedCostCny: 1.2,
             settledCostCny: 0.84,
+            durationMs: 18_000,
+            chaptersPerHour: null,
           },
           budget: {
             policy: {
@@ -350,11 +365,28 @@ test("keeps the batch review workspace within four viewports", async ({
             },
             projectedCharacters: 3_000,
             perTenThousandCharactersLimitCny: 3.6,
-            remainingCostCny: 199.16,
-            status: "ok",
+            remainingCostCny: 0,
+            status: "exhausted",
           },
           groups: [],
-          hardStops: [],
+          hardStops: [
+            {
+              jobId: "019c1e8c-8e1c-7000-8000-000000000008",
+              chapterId,
+              code: "JOB_BUDGET_EXCEEDED",
+              message: "第一卷已达到成本上限，草稿和检查点已保留",
+              scope: "volume",
+              occurredAt: "2026-11-11T05:59:00.000Z",
+            },
+            {
+              jobId: "019c1e8c-8e1c-7000-8000-000000000009",
+              chapterId: null,
+              code: "JOB_BUDGET_EXCEEDED",
+              message: "模型调用超过预留，生成已暂停",
+              scope: null,
+              occurredAt: "2026-11-11T05:58:00.000Z",
+            },
+          ],
         },
         requestId: "req_batch_cost",
         meta: {},
@@ -377,7 +409,11 @@ test("keeps the batch review workspace within four viewports", async ({
     await page.goto(`/workspace/${work.id}/batch`);
     await expect(page.getByRole("heading", { name: "审核队列" })).toBeVisible();
     await expect(page.getByLabel("审核队列摘要")).toBeVisible();
-    await expect(page.getByText("¥0.84 · 剩余 ¥199.16")).toBeVisible();
+    await expect(page.getByText("¥0.84 · 剩余 ¥0.00")).toBeVisible();
+    await expect(page.getByText("单卷预算已耗尽")).toBeVisible();
+    await expect(page.getByText("任务预算已耗尽")).toBeVisible();
+    await expect(page.getByText("第一卷已达到成本上限，草稿和检查点已保留")).toBeVisible();
+    await expect(page.getByText("模型调用超过预留，生成已暂停")).toBeVisible();
     await expectNoPrototypeOnlyLeakage(page);
     await expectAuthorFacingLanguage(page);
     const overflow = await page.evaluate(

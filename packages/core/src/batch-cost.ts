@@ -30,7 +30,7 @@ export function calculateBatchBudgetAllocation(
     { scope: "volume", remaining: subtractLimit(input.volumeMaxCostCny, input.volumeCostUsedCny) },
     {
       scope: "per_ten_thousand_characters",
-      remaining: perTenThousandCharactersLimitCny ?? Number.POSITIVE_INFINITY,
+      remaining: subtractLimit(perTenThousandCharactersLimitCny, input.taskCostUsedCny),
     },
     { scope: "chapter", remaining: input.chapterMaxCostCny },
   ];

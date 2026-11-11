@@ -294,6 +294,7 @@ export class WorkerBatchPlanRepository implements OnModuleDestroy {
             maxCostCny: budgetAllocation.allowedCostCny,
             maxTokens: 30_000,
             maxRevisionRounds: 2,
+            bindingScope: budgetAllocation.bindingScope,
           }),
           JSON.stringify(checkpoint),
           JSON.stringify({ inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 }),
