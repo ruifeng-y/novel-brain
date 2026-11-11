@@ -7,8 +7,16 @@ import {
   createRequestId,
   elapsedMilliseconds,
   extractFactCandidates,
+  findControlAreaConflicts,
+  findShortestMapRoute,
+  findTimelineOrderConflicts,
+  projectActiveRelationshipsAtChapter,
+  projectCharacterKnowledgeAtChapter,
+  projectCharacterStateAtChapter,
   resolveProxyIpSecret,
+  sortTimelineEvents,
   signClientIp,
+  validateItinerarySchedule,
   verifyClientIp,
 } from "../src";
 
@@ -188,6 +196,58 @@ describe("context compiler", () => {
     );
   });
 
+  it("compiles structured world rules as a separately cited required source", () => {
+    const pack = compileChapterContext(
+      {
+        chapter: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c19",
+          number: 6,
+          title: "断碑",
+          brief: {
+            goal: "沈砚在断碑前越阶迎敌",
+            pov: "沈砚",
+            location: "断碑前",
+            sceneBeats: ["沈砚付出寿元代价。"],
+            requiredFacts: ["越阶必须付出代价"],
+          },
+        },
+        storyBible: {
+          id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c20",
+          cards: [{ title: "世界铁律", content: "越阶必须付出代价。" }],
+          worldRules: [
+            {
+              id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c21",
+              name: "境界差距",
+              constraint: "越阶必须付出寿元、资源或关系代价。",
+              scope: "所有战斗与冲突",
+              exceptions: [],
+            },
+          ],
+        },
+        settings: [],
+        previousVersions: [],
+      },
+      200,
+    );
+
+    const worldRuleSource = pack.selected.find(
+      (source) => source.key === "story-bible:world-rules",
+    );
+    expect(worldRuleSource).toMatchObject({
+      label: "世界铁律",
+      priority: "required",
+      content: expect.stringContaining("境界差距：越阶必须付出寿元、资源或关系代价。"),
+    });
+    expect(worldRuleSource?.sourceRefs).toEqual([
+      {
+        sourceType: "story_bible",
+        sourceId: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c20",
+        label: "故事圣经",
+        citation: "已锁定故事圣经",
+      },
+    ]);
+  });
+
   it("excludes confirmed facts outside their chapter validity window", () => {
     const pack = compileChapterContext(
       {
@@ -323,5 +383,275 @@ describe("fact extraction", () => {
         },
       ]),
     );
+  });
+});
+
+describe("character domain projections", () => {
+  const hiddenFact = {
+    id: "fact-parents-murdered",
+    subject: "沈砚父母",
+    predicate: "死因",
+    object: "被仇家杀死",
+    validFromChapter: 1,
+    validToChapter: null,
+  };
+  const publicFact = {
+    id: "fact-sect-expelled",
+    subject: "沈砚",
+    predicate: "身份",
+    object: "被太玄门逐出",
+    validFromChapter: 3,
+    validToChapter: null,
+  };
+
+  it("does not disclose objective facts without an active knowledge state", () => {
+    const projection = projectCharacterKnowledgeAtChapter(
+      [hiddenFact, publicFact],
+      [
+        {
+          objectiveFactId: publicFact.id,
+          state: "knowledge",
+          claimedContent: "沈砚知道自己被逐出宗门。",
+          validFromChapter: 3,
+          validToChapter: null,
+        },
+      ],
+      5,
+    );
+
+    expect(projection.knownFacts.map((fact) => fact.id)).toEqual([publicFact.id]);
+    expect(projection.hiddenFactIds).toEqual([hiddenFact.id]);
+  });
+
+  it("keeps a misbelief from overwriting objective canon", () => {
+    const factsBefore = structuredClone([hiddenFact]);
+    const projection = projectCharacterKnowledgeAtChapter(
+      [hiddenFact],
+      [
+        {
+          objectiveFactId: hiddenFact.id,
+          state: "misbelief",
+          claimedContent: "沈砚相信父母是自尽。",
+          validFromChapter: 2,
+          validToChapter: null,
+        },
+      ],
+      6,
+    );
+
+    expect(projection.knownFacts).toEqual([]);
+    expect(projection.beliefs).toEqual([
+      {
+        objectiveFactId: hiddenFact.id,
+        state: "misbelief",
+        claimedContent: "沈砚相信父母是自尽。",
+      },
+    ]);
+    expect([hiddenFact]).toEqual(factsBefore);
+  });
+
+  it("replays body, location and ability transitions at a chapter boundary", () => {
+    const states = [
+      {
+        stateKind: "body" as const,
+        stateKey: "overall",
+        value: "左臂骨折",
+        validFromChapter: 1,
+        validToChapter: 9,
+      },
+      {
+        stateKind: "body" as const,
+        stateKey: "overall",
+        value: "伤势痊愈",
+        validFromChapter: 10,
+        validToChapter: null,
+      },
+      {
+        stateKind: "ability" as const,
+        stateKey: "seal",
+        value: "不能双手结印",
+        validFromChapter: 1,
+        validToChapter: 9,
+      },
+    ];
+
+    expect(projectCharacterStateAtChapter(states, 9)).toMatchObject({
+      "body:overall": { value: "左臂骨折" },
+      "ability:seal": { value: "不能双手结印" },
+    });
+    expect(projectCharacterStateAtChapter(states, 10)).toMatchObject({
+      "body:overall": { value: "伤势痊愈" },
+    });
+  });
+
+  it("returns only relationships valid at the requested chapter", () => {
+    const relationships = [
+      {
+        id: "rel-ally",
+        relationType: "ally" as const,
+        validFromChapter: 1,
+        validToChapter: 11,
+      },
+      {
+        id: "rel-enemy",
+        relationType: "enemy" as const,
+        validFromChapter: 12,
+        validToChapter: null,
+      },
+    ];
+
+    expect(projectActiveRelationshipsAtChapter(relationships, 11).map((edge) => edge.id)).toEqual([
+      "rel-ally",
+    ]);
+    expect(projectActiveRelationshipsAtChapter(relationships, 12)).toEqual([relationships[1]]);
+  });
+});
+
+describe("world simulation rules", () => {
+  const nodes = [
+    { id: "village", mapId: "north" },
+    { id: "pass", mapId: "north" },
+    { id: "gate", mapId: "north" },
+    { id: "sect", mapId: "north" },
+    { id: "isolated", mapId: "north" },
+  ];
+
+  it("finds the shortest cross-layer route and respects directed edges", () => {
+    const edges = [
+      {
+        id: "village-pass",
+        mapId: "north",
+        fromNodeId: "village",
+        toNodeId: "pass",
+        bidirectional: true,
+        travelMinutes: 30,
+      },
+      {
+        id: "pass-gate",
+        mapId: "north",
+        fromNodeId: "pass",
+        toNodeId: "gate",
+        bidirectional: true,
+        travelMinutes: 45,
+      },
+      {
+        id: "village-sect",
+        mapId: "north",
+        fromNodeId: "village",
+        toNodeId: "sect",
+        bidirectional: false,
+        travelMinutes: 60,
+      },
+      {
+        id: "sect-gate",
+        mapId: "north",
+        fromNodeId: "sect",
+        toNodeId: "gate",
+        bidirectional: false,
+        travelMinutes: 20,
+      },
+    ];
+
+    expect(findShortestMapRoute(nodes, edges, "village", "gate")).toMatchObject({
+      pathNodeIds: ["village", "pass", "gate"],
+      travelMinutes: 75,
+    });
+    expect(findShortestMapRoute(nodes, edges, "village", "isolated")).toBeNull();
+  });
+
+  it("reports itinerary order, travel-time and overlap conflicts", () => {
+    const existing = [
+      {
+        id: "trip-1",
+        characterId: "shen",
+        departureSortKey: 1000,
+        arrivalSortKey: 1200,
+      },
+    ];
+    expect(
+      validateItinerarySchedule(
+        {
+          characterId: "shen",
+          departureSortKey: 1000,
+          arrivalSortKey: 1100,
+          travelMinutes: 240,
+        },
+        existing,
+      ).map((finding) => finding.code),
+    ).toEqual(["ITINERARY_TRAVEL_TIME", "ITINERARY_OVERLAP"]);
+    expect(
+      validateItinerarySchedule(
+        {
+          characterId: "shen",
+          departureSortKey: 1200,
+          arrivalSortKey: 1200,
+          travelMinutes: 0,
+        },
+        existing,
+      ).map((finding) => finding.code),
+    ).toContain("ITINERARY_TIME_ORDER");
+  });
+
+  it("detects overlapping control areas for different factions", () => {
+    const conflicts = findControlAreaConflicts([
+      {
+        id: "control-sect",
+        factionId: "tai-xuan",
+        nodeId: "village",
+        validFromChapter: 1,
+        validToChapter: 9,
+      },
+      {
+        id: "control-blood",
+        factionId: "blood-river",
+        nodeId: "village",
+        validFromChapter: 5,
+        validToChapter: null,
+      },
+      {
+        id: "control-later",
+        factionId: "blood-river",
+        nodeId: "village",
+        validFromChapter: 10,
+        validToChapter: null,
+      },
+    ]);
+
+    expect(conflicts).toEqual([
+      {
+        code: "CONTROL_AREA_OVERLAP",
+        leftId: "control-sect",
+        rightId: "control-blood",
+        nodeId: "village",
+      },
+    ]);
+  });
+
+  it("orders timeline events by era and story time while detecting duplicate slots", () => {
+    const eras = [
+      { id: "era-2", name: "新历", orderIndex: 2 },
+      { id: "era-1", name: "大玄历", orderIndex: 1 },
+    ];
+    const events = [
+      { id: "later", era: "新历", sortKey: 10 },
+      { id: "first", era: "大玄历", sortKey: 20 },
+      { id: "second", era: "大玄历", sortKey: 30 },
+    ];
+
+    expect(sortTimelineEvents(eras, events).map((event) => event.id)).toEqual([
+      "first",
+      "second",
+      "later",
+    ]);
+    expect(
+      findTimelineOrderConflicts(events.concat({ id: "duplicate", era: "大玄历", sortKey: 20 })),
+    ).toEqual([
+      {
+        code: "TIMELINE_EVENT_OVERLAP",
+        era: "大玄历",
+        sortKey: 20,
+        eventIds: ["first", "duplicate"],
+      },
+    ]);
   });
 });

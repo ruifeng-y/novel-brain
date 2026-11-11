@@ -29,6 +29,14 @@ const signedOffCards = [
   ["readerPromise", "读者承诺"],
 ] as const;
 
+const worldRule = {
+  id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c60",
+  name: "境界差距",
+  constraint: "境界差距不能靠情绪直接抹平，越阶必须付出寿元、资源或关系代价。",
+  scope: "所有战斗与冲突",
+  exceptions: ["主角在付出寿元代价时可以短暂抗衡一位境界。"],
+};
+
 class CapturingMailGateway implements MailGateway {
   codes = new Map<string, string>();
 
@@ -122,7 +130,7 @@ describe("story bible HTTP integration", () => {
     expect(response.body.data.readiness.missingCards).toHaveLength(9);
   });
 
-  it("generates a reviewable nine-card proposal without locking or creating a version", async () => {
+  it("generates a reviewable nine-card proposal as an immutable unlocked version", async () => {
     const owner = await createAuthenticatedAgent("bible-proposal@example.com");
     const work = await createWork(
       owner,
@@ -172,7 +180,155 @@ describe("story bible HTTP integration", () => {
         (SELECT count(*) FROM version_nodes WHERE object_type = 'story_bible' AND object_id = $1) AS version_nodes`,
       [generated.body.data.id],
     );
-    expect(versionCounts.rows[0]).toEqual({ bible_versions: "0", version_nodes: "0" });
+    expect(versionCounts.rows[0]).toEqual({ bible_versions: "1", version_nodes: "1" });
+  });
+
+  it("appends immutable edit versions and exposes queryable world rules", async () => {
+    const owner = await createAuthenticatedAgent("bible-history@example.com");
+    const work = await createWork(
+      owner,
+      "忘川书",
+      "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    );
+    const token = await csrf(owner);
+    const basePath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible`;
+
+    const generated = await owner
+      .post(`${basePath}/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({})
+      .expect(200);
+
+    const edited = await owner
+      .patch(basePath)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: generated.body.data.version,
+        reason: "按开篇战斗规则收紧越阶条件。",
+        cards: [
+          {
+            key: "oneSentence",
+            content: "一个失去名字的杂役，用吞噬记忆的古书寻找自己的过去。",
+          },
+          {
+            key: "worldLaws",
+            content: "境界差距：越阶必须付出寿元、资源或关系代价。",
+            worldRules: [worldRule],
+          },
+        ],
+      })
+      .expect(200);
+
+    expect(edited.body.data.version).toBe(3);
+    const worldRules = await owner.get(`${basePath}/world-rules`).expect(200);
+    expect(worldRules.body.data).toHaveLength(1);
+    expect(worldRules.body.data[0]).toMatchObject(worldRule);
+
+    const versions = await owner.get(`${basePath}/versions?limit=1`).expect(200);
+    expect(versions.body.data).toEqual([
+      expect.objectContaining({
+        action: "edited",
+        reason: "按开篇战斗规则收紧越阶条件。",
+      }),
+    ]);
+    expect(versions.body.meta.nextCursor).toEqual(expect.any(String));
+    const olderVersions = await owner
+      .get(`${basePath}/versions?limit=1&cursor=${versions.body.meta.nextCursor}`)
+      .expect(200);
+    expect(olderVersions.body.data).toEqual([
+      expect.objectContaining({ action: "proposed", reason: "生成九卡提案" }),
+    ]);
+
+    const graph = await databasePool.query<{
+      version: number;
+      action: string;
+      reason: string;
+      actor_id: string;
+      own_node_id: string;
+      parent_node_id: string | null;
+      branch_head_node_id: string | null;
+    }>(
+      `SELECT sbv.version, sbv.action, sbv.reason, vn.id AS own_node_id, vn.actor_id, vn.parent_node_id,
+              wb.head_node_id AS branch_head_node_id
+       FROM story_bible_versions sbv
+       JOIN version_nodes vn ON vn.id = sbv.version_node_id
+       JOIN work_branches wb ON wb.id = sbv.branch_id
+       WHERE sbv.story_bible_id = $1
+       ORDER BY sbv.version`,
+      [generated.body.data.id],
+    );
+    expect(graph.rows).toHaveLength(2);
+    expect(graph.rows[1]?.parent_node_id).toBe(graph.rows[0]?.own_node_id);
+    expect(graph.rows[1]?.branch_head_node_id).toBe(graph.rows[1]?.own_node_id);
+  });
+
+  it("blocks locking when structured world rules conflict", async () => {
+    const owner = await createAuthenticatedAgent("bible-conflict@example.com");
+    const work = await createWork(
+      owner,
+      "忘川书",
+      "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    );
+    const token = await csrf(owner);
+    const basePath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible`;
+    const generated = await owner
+      .post(`${basePath}/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({})
+      .expect(200);
+
+    const edited = await owner
+      .patch(basePath)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: generated.body.data.version,
+        reason: "测试同名世界铁律冲突。",
+        cards: [
+          {
+            key: "worldLaws",
+            content: "两条同名规则互相冲突。",
+            worldRules: [
+              { ...worldRule, constraint: "越阶必须付出寿元。" },
+              {
+                ...worldRule,
+                id: "0190f5e2-7e7a-7f4e-8d38-7e4e5b2a1c61",
+                constraint: "越阶不需要代价。",
+              },
+            ],
+          },
+        ],
+      })
+      .expect(200);
+
+    expect(edited.body.data.readiness).toMatchObject({
+      status: "partial",
+      completed: 9,
+      canLock: false,
+    });
+    expect(edited.body.data.readiness.issues).toEqual([
+      expect.objectContaining({
+        code: "contradictory_world_rule",
+        key: "worldLaws",
+        title: "世界铁律",
+      }),
+    ]);
+
+    const locked = await owner
+      .post(`${basePath}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: edited.body.data.version })
+      .expect(409);
+    expect(locked.body.error).toMatchObject({
+      code: "BIBLE_NOT_READY",
+      details: {
+        issues: [expect.objectContaining({ code: "contradictory_world_rule" })],
+      },
+    });
   });
 
   it("edits unlocked cards, reports partial readiness and rejects stale versions", async () => {
@@ -193,6 +349,7 @@ describe("story bible HTTP integration", () => {
       .set("X-CSRF-Token", token)
       .send({
         version: initial.body.data.version,
+        reason: "补齐一句话故事与主角。",
         cards: [
           {
             key: "oneSentence",
@@ -244,7 +401,8 @@ describe("story bible HTTP integration", () => {
       .set("X-CSRF-Token", token)
       .send({
         version: initial.body.data.version,
-        cards: [{ key: "worldLaws", content: "旧版本不应覆盖新内容。" }],
+        reason: "旧版本不应覆盖新内容。",
+        cards: [{ key: "oneSentence", content: "旧版本不应覆盖新内容。" }],
       })
       .expect(409);
     expect(stale.body.error.code).toBe("VERSION_CONFLICT");
@@ -291,8 +449,6 @@ describe("story bible HTTP integration", () => {
       "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
     );
     const token = await csrf(owner);
-    const beforeLock = await owner.get(`/api/v1/works/${work.id}`).expect(200);
-    const parentNodeId = beforeLock.body.data.mainBranch.headNodeId as string;
     const generated = await owner
       .post(`/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible/generate`)
       .set("Origin", origin)
@@ -310,7 +466,7 @@ describe("story bible HTTP integration", () => {
 
     expect(locked.body.data).toMatchObject({
       id: generated.body.data.id,
-      version: generated.body.data.version,
+      version: generated.body.data.version + 1,
       status: "locked",
       lockedBy: user.body.data.user.id,
       readiness: {
@@ -342,16 +498,17 @@ describe("story bible HTTP integration", () => {
       FROM story_bible_versions sbv
       JOIN version_nodes vn ON vn.id = sbv.version_node_id
       JOIN work_branches wb ON wb.id = sbv.branch_id
-      WHERE sbv.story_bible_id = $1`,
+      WHERE sbv.story_bible_id = $1
+      ORDER BY sbv.version`,
       [generated.body.data.id],
     );
-    expect(versionGraph.rows).toHaveLength(1);
-    expect(versionGraph.rows[0]).toMatchObject({
+    expect(versionGraph.rows).toHaveLength(2);
+    expect(versionGraph.rows[1]).toMatchObject({
       node_type: "story_bible_version",
       actor_id: user.body.data.user.id,
-      parent_node_id: parentNodeId,
-      branch_head_node_id: versionGraph.rows[0]?.version_node_id,
-      snapshot_id: versionGraph.rows[0]?.bible_version_id,
+      parent_node_id: versionGraph.rows[0]?.version_node_id,
+      branch_head_node_id: versionGraph.rows[1]?.version_node_id,
+      snapshot_id: versionGraph.rows[1]?.bible_version_id,
     });
     const overview = await owner.get(`/api/v1/works/${work.id}`).expect(200);
     expect(overview.body.data.readiness.items).toContainEqual({
@@ -366,6 +523,7 @@ describe("story bible HTTP integration", () => {
       .set("X-CSRF-Token", token)
       .send({
         version: locked.body.data.version,
+        reason: "锁定后不应被覆盖。",
         cards: [{ key: "oneSentence", content: "锁定后不应被覆盖。" }],
       })
       .expect(409);
@@ -379,6 +537,127 @@ describe("story bible HTTP integration", () => {
       .set("X-CSRF-Token", token)
       .expect(409);
     expect(directDelete.body.error.code).toBe("BIBLE_LOCKED");
+  });
+
+  it("accepts locked change requests and records audited unlock history", async () => {
+    const owner = await createAuthenticatedAgent("bible-unlock@example.com");
+    const work = await createWork(
+      owner,
+      "忘川书",
+      "一个被宗门抛弃的杂役，靠吞噬记忆的古书爬上仙途。",
+    );
+    const token = await csrf(owner);
+    const user = await owner.get("/api/v1/auth/me").expect(200);
+    const basePath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible`;
+    const generated = await owner
+      .post(`${basePath}/generate`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({})
+      .expect(200);
+    const locked = await owner
+      .post(`${basePath}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: generated.body.data.version })
+      .expect(200);
+
+    const changeRequest = await owner
+      .post(`${basePath}/change-requests`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "bible-change-request-1")
+      .send({
+        version: locked.body.data.version,
+        cardKey: "worldLaws",
+        title: "调整越阶代价",
+        reason: "第 3 章战斗需要更清晰的代价。",
+        after: {
+          key: "worldLaws",
+          title: "世界铁律",
+          content: "越阶必须付出寿元或关系代价。",
+          complete: true,
+          worldRules: [worldRule],
+        },
+      })
+      .expect(201);
+    expect(changeRequest.body.data).toMatchObject({
+      status: "pending",
+      risk: "medium",
+      source: "author",
+      cardKey: "worldLaws",
+    });
+    const retriedChangeRequest = await owner
+      .post(`${basePath}/change-requests`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "bible-change-request-1")
+      .send({
+        version: locked.body.data.version,
+        cardKey: "worldLaws",
+        title: "调整越阶代价",
+        reason: "第 3 章战斗需要更清晰的代价。",
+        after: {
+          key: "worldLaws",
+          title: "世界铁律",
+          content: "越阶必须付出寿元或关系代价。",
+          complete: true,
+          worldRules: [worldRule],
+        },
+      })
+      .expect(201);
+    expect(retriedChangeRequest.body.data.id).toBe(changeRequest.body.data.id);
+
+    const storedRequest = await databasePool.query<{
+      before: { content: string };
+      after: { content: string };
+      status: string;
+    }>("SELECT before, after, status FROM story_bible_change_requests WHERE id = $1", [
+      changeRequest.body.data.id,
+    ]);
+    expect(storedRequest.rows[0]).toMatchObject({
+      before: { key: "worldLaws" },
+      after: { content: "越阶必须付出寿元或关系代价。" },
+      status: "pending",
+    });
+    const requestCount = await databasePool.query<{ count: string }>(
+      "SELECT count(*) FROM story_bible_change_requests WHERE story_bible_id = $1",
+      [generated.body.data.id],
+    );
+    expect(requestCount.rows[0]?.count).toBe("1");
+
+    const unlocked = await owner
+      .post(`${basePath}/unlock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: locked.body.data.version, reason: "开篇前需要调整设定。" })
+      .expect(200);
+    expect(unlocked.body.data).toMatchObject({
+      status: "draft",
+      lockedAt: null,
+      lockedBy: null,
+    });
+
+    const audit = await databasePool.query<{ action: string; actor_id: string }>(
+      "SELECT action, actor_id FROM audit_logs WHERE target_id = $1 ORDER BY created_at",
+      [generated.body.data.id],
+    );
+    expect(audit.rows.map((row) => row.action).sort()).toEqual(
+      [
+        "story_bible.proposed",
+        "story_bible.locked",
+        "story_bible.change_requested",
+        "story_bible.unlocked",
+      ].sort(),
+    );
+    expect(audit.rows.every((row) => row.actor_id === user.body.data.user.id)).toBe(true);
+
+    const history = await owner.get(`${basePath}/versions`).expect(200);
+    expect(history.body.data.map((version: { action: string }) => version.action)).toEqual([
+      "unlocked",
+      "locked",
+      "proposed",
+    ]);
   });
 
   it("keeps the nine-card invariant, rejects invalid updates and isolates tenants", async () => {
@@ -410,6 +689,7 @@ describe("story bible HTTP integration", () => {
       .set("X-CSRF-Token", ownerToken)
       .send({
         version: initial.body.data.version,
+        reason: "测试重复卡片键。",
         cards: [
           { key: "oneSentence", content: "第一份内容" },
           { key: "oneSentence", content: "重复键内容" },
@@ -424,6 +704,7 @@ describe("story bible HTTP integration", () => {
       .set("X-CSRF-Token", ownerToken)
       .send({
         version: initial.body.data.version,
+        reason: "测试未知卡片键。",
         cards: [{ key: "unknownCard", content: "不应写入" }],
       })
       .expect(400);
@@ -432,6 +713,12 @@ describe("story bible HTTP integration", () => {
     const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible`;
     expect((await other.get(path).expect(403)).body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
     expect((await other.get(`${path}/readiness`).expect(403)).body.error.code).toBe(
+      "FORBIDDEN_TENANT_ACCESS",
+    );
+    expect((await other.get(`${path}/versions`).expect(403)).body.error.code).toBe(
+      "FORBIDDEN_TENANT_ACCESS",
+    );
+    expect((await other.get(`${path}/world-rules`).expect(403)).body.error.code).toBe(
       "FORBIDDEN_TENANT_ACCESS",
     );
     expect(
@@ -452,6 +739,7 @@ describe("story bible HTTP integration", () => {
           .set("X-CSRF-Token", otherToken)
           .send({
             version: initial.body.data.version,
+            reason: "越权修改。",
             cards: [{ key: "oneSentence", content: "越权内容" }],
           })
           .expect(403)
@@ -464,6 +752,38 @@ describe("story bible HTTP integration", () => {
           .set("Origin", origin)
           .set("X-CSRF-Token", otherToken)
           .send({ version: initial.body.data.version })
+          .expect(403)
+      ).body.error.code,
+    ).toBe("FORBIDDEN_TENANT_ACCESS");
+    expect(
+      (
+        await other
+          .post(`${path}/unlock`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", otherToken)
+          .send({ version: initial.body.data.version, reason: "越权解锁。" })
+          .expect(403)
+      ).body.error.code,
+    ).toBe("FORBIDDEN_TENANT_ACCESS");
+    expect(
+      (
+        await other
+          .post(`${path}/change-requests`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", otherToken)
+          .send({
+            version: initial.body.data.version,
+            cardKey: "oneSentence",
+            title: "越权修改请求",
+            reason: "越权修改请求。",
+            after: {
+              key: "oneSentence",
+              title: "一句话故事",
+              content: "越权内容",
+              complete: true,
+              worldRules: [],
+            },
+          })
           .expect(403)
       ).body.error.code,
     ).toBe("FORBIDDEN_TENANT_ACCESS");
@@ -508,6 +828,7 @@ describe("story bible HTTP integration", () => {
       .set("X-CSRF-Token", token)
       .send({
         version: initial.body.data.version,
+        reason: "历史作品不应写入仙侠模板。",
         cards: [{ key: "oneSentence", content: "历史作品不应写入仙侠模板。" }],
       })
       .expect(400);

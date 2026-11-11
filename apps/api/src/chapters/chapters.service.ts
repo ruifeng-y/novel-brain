@@ -4,16 +4,22 @@ import {
   type Chapter,
   type ChapterBrief,
   type ChapterCreateRequest,
+  type ChapterListQuery,
   type ChapterPatchRequest,
   type ChapterReadiness,
   type ChapterVersion,
+  type ChapterVersionListQuery,
   type ChapterVersionCreateRequest,
   type ChapterVersionSaveData,
   type ChapterWorkspace,
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 import type { WorksAuditContext } from "../works/works.repository";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { ReadinessService } from "../readiness/readiness.service";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { ChaptersRepository } from "./chapters.repository";
@@ -27,15 +33,29 @@ import type {
 
 @Injectable()
 export class ChaptersService {
-  constructor(private readonly repository: ChaptersRepository) {}
+  constructor(
+    private readonly repository: ChaptersRepository,
+    private readonly readiness: ReadinessService,
+  ) {}
 
-  async list(userId: string, workId: string, branchId: string): Promise<ChapterWorkspace[]> {
+  async list(
+    userId: string,
+    workId: string,
+    branchId: string,
+    query: ChapterListQuery,
+  ): Promise<CursorPageResult<ChapterWorkspace>> {
     const context = await this.requireWorkContext(userId, workId, branchId);
     const [records, sources] = await Promise.all([
-      this.repository.list(userId, context),
+      this.repository.list(userId, context, query),
       this.repository.readinessSources(userId, context),
     ]);
-    return records.map((record) => this.toWorkspace(record, sources));
+    if (records === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: records.data.map((record) => this.toWorkspace(record, sources)),
+      nextCursor: records.nextCursor,
+    };
   }
 
   async get(
@@ -152,13 +172,20 @@ export class ChaptersService {
     workId: string,
     branchId: string,
     chapterId: string,
-  ): Promise<ChapterVersion[]> {
+    query: ChapterVersionListQuery,
+  ): Promise<CursorPageResult<ChapterVersion>> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const versions = await this.repository.listVersions(userId, context, chapterId);
-    if (!versions) {
+    const versions = await this.repository.listVersions(userId, context, chapterId, query);
+    if (versions === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "章节不存在或无权访问");
     }
-    return versions.map(toVersionContract);
+    if (versions === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: versions.data.map(toVersionContract),
+      nextCursor: versions.nextCursor,
+    };
   }
 
   async chapterReadiness(
@@ -167,15 +194,7 @@ export class ChaptersService {
     branchId: string,
     chapterId: string,
   ): Promise<ChapterReadiness> {
-    const context = await this.requireWorkContext(userId, workId, branchId);
-    const [record, sources] = await Promise.all([
-      this.repository.find(userId, context, chapterId),
-      this.repository.readinessSources(userId, context),
-    ]);
-    if (!record) {
-      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "章节不存在或无权访问");
-    }
-    return chapterReadiness(sources, parseBrief(record.chapter.brief));
+    return this.readiness.chapterReadiness(userId, workId, branchId, chapterId);
   }
 
   async outlineReadiness(
@@ -183,16 +202,7 @@ export class ChaptersService {
     workId: string,
     branchId: string,
   ): Promise<ChapterReadiness> {
-    const context = await this.requireWorkContext(userId, workId, branchId);
-    const [records, sources] = await Promise.all([
-      this.repository.list(userId, context),
-      this.repository.readinessSources(userId, context),
-    ]);
-    if (records.length === 0) {
-      return chapterReadiness(sources, null);
-    }
-    const hasCompleteBrief = records.some((record) => parseBrief(record.chapter.brief));
-    return chapterReadiness(sources, null, hasCompleteBrief);
+    return this.readiness.outlineReadiness(userId, workId, branchId);
   }
 
   private async requireWorkContext(

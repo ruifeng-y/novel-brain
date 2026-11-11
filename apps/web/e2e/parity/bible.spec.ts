@@ -7,9 +7,15 @@ import {
 } from "@playwright/test";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  freezeApiTimestamps,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const origin = "http://localhost:3000";
+const viewports = [390, 900, 1180, 1440];
 
 async function authenticatedPage(page: Page, context: BrowserContext) {
   const email = uniqueEmail("bible");
@@ -85,10 +91,52 @@ test("generates, edits, checks readiness, locks and rejects locked edits", async
   await expect(page.getByRole("heading", { name: "AI 已生成九卡提案" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "九卡已完整" })).toBeVisible();
   await expect(page.getByRole("button", { name: "锁定故事圣经" })).toBeEnabled();
+  await expect(page.getByText("境界差距", { exact: true })).toBeVisible();
+
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByRole("heading", { name: "AI 已生成九卡提案" })).toBeVisible();
+    await expect(page.locator(".story-bible-nav-item")).toHaveCount(9);
+    await expect(page.getByText("境界差距", { exact: true })).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+
+  await page.route(`**${biblePath(work)}`, async (route) => {
+    if (route.request().method() !== "PATCH") {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 409,
+      contentType: "application/json",
+      body: JSON.stringify({
+        error: {
+          code: "VERSION_CONFLICT",
+          message: "故事圣经已被其他操作更新，请刷新后重试。",
+          details: {},
+          requestId: "req_bible_conflict",
+        },
+      }),
+    });
+  });
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.getByRole("button", { name: "编辑一句话故事" }).click();
+    await page.getByRole("textbox", { name: "编辑一句话故事" }).fill("冲突内容不应保存。");
+    await page.getByRole("textbox", { name: "修改原因" }).fill("测试版本冲突。");
+    await page.getByRole("button", { name: "保存卡片" }).click();
+    await expect(page.getByText("故事圣经已被其他操作更新，请刷新后重试。")).toBeVisible();
+    await page.getByRole("button", { name: "取消" }).click();
+  }
+  await page.unroute(`**${biblePath(work)}`);
 
   await page.getByRole("button", { name: "编辑一句话故事" }).click();
   const editor = page.getByRole("textbox", { name: "编辑一句话故事" });
   await editor.fill("一个失去名字的杂役，用吞噬记忆的古书寻找自己的过去。");
+  await page.getByRole("textbox", { name: "修改原因" }).fill("按开篇记忆设定收紧一句话故事。");
   await page.getByRole("button", { name: "保存卡片" }).click();
   await expect(
     page
@@ -110,12 +158,31 @@ test("generates, edits, checks readiness, locks and rejects locked edits", async
     )
     .toBe(true);
 
+  for (const width of viewports) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(page.getByText("故事圣经已锁定，修改需要发起修改请求。")).toBeVisible();
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(overflow).toBeLessThanOrEqual(0);
+  }
+
+  await page.getByRole("button", { name: "发起修改请求" }).click();
+  await page.getByRole("textbox", { name: "修改请求标题" }).fill("调整一句话故事");
+  await page.getByRole("textbox", { name: "修改请求原因" }).fill("第 2 章需要更明确的开篇承诺。");
+  await page
+    .getByRole("textbox", { name: "修改后的内容" })
+    .fill("一个失去名字的杂役，用记忆换仙途。");
+  await page.getByRole("button", { name: "提交修改请求" }).click();
+  await expect(page.getByText("修改请求已创建，等待影响分析。")).toBeVisible();
+
   const bible = await getStoryBible(page.request, work);
   const csrfToken = await getCsrf(page.request);
   const directEdit = await page.request.patch(biblePath(work), {
     headers: { Origin: origin, "X-CSRF-Token": csrfToken },
     data: {
       version: bible.version,
+      reason: "锁定后不应被覆盖。",
       cards: [{ key: "oneSentence", content: "锁定后不应被覆盖。" }],
     },
   });
@@ -127,12 +194,19 @@ test("generates, edits, checks readiness, locks and rejects locked edits", async
   });
   expect(directDelete.status()).toBe(409);
   expect((await directDelete.json()).error.code).toBe("BIBLE_LOCKED");
+
+  await page.reload();
+  await expect(page.getByText("故事圣经已锁定，修改需要发起修改请求。")).toBeVisible();
+  await page.getByRole("button", { name: "解锁并记录原因" }).click();
+  await page.getByRole("textbox", { name: "解锁原因" }).fill("开篇前需要调整一句话故事。");
+  await page.getByRole("button", { name: "确认解锁" }).click();
+  await expect(page.getByText("故事圣经已解锁，本次操作已记录。")).toBeVisible();
 });
 
 test("renders loading, error, partial and long states across four viewports", async ({
   page,
   context,
-}, testInfo) => {
+}) => {
   await authenticatedPage(page, context);
   const work = await createBibleWork(page, "长夜仙途");
   const initial = await getStoryBible(page.request, work);
@@ -141,6 +215,7 @@ test("renders loading, error, partial and long states across four viewports", as
     headers: { Origin: origin, "X-CSRF-Token": csrfToken },
     data: {
       version: initial.version,
+      reason: "补齐一句话故事。",
       cards: [{ key: "oneSentence", content: "一个守碑人发现每次修碑都会失去一段记忆。" }],
     },
   });
@@ -185,28 +260,32 @@ test("renders loading, error, partial and long states across four viewports", as
     headers: { Origin: origin, "X-CSRF-Token": csrfToken },
     data: {
       version: current.version,
+      reason: "补充长内容验收数据。",
       cards: [{ key: "oneSentence", content: longContent }],
     },
   });
   expect(longUpdate.ok()).toBe(true);
+  await freezeApiTimestamps(page);
 
-  for (const width of [390, 900, 1180, 1440]) {
+  for (const width of viewports) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`/workspace/${work.id}/bible`);
+    await expect(page).toHaveURL(new RegExp(`/workspace/${work.id}/bible$`, "u"));
     await expect(page.getByRole("heading", { name: work.title })).toBeVisible();
     await expect(page.locator(".story-bible-nav-item")).toHaveCount(9);
     await expect(page.locator("#bible-oneSentence .story-bible-card-copy")).toContainText(
       "长内容：",
     );
+    await expectNoPrototypeOnlyLeakage(page);
     await page.evaluate(() => document.fonts.ready.then(() => undefined));
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
-    await testInfo.attach(`bible-${width}`, {
-      body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
-      contentType: "image/png",
-    });
+    await expect(page).toHaveScreenshot(
+      ["bible", `bible-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });
 

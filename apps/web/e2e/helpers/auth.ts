@@ -40,6 +40,34 @@ export async function mailCode(email: string): Promise<string> {
   throw new Error(`Verification code not found for ${email}`);
 }
 
+export async function mailPasswordResetToken(email: string): Promise<string> {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const response = await fetch("http://127.0.0.1:8025/api/v1/messages");
+    const messages = (await response.json()) as {
+      messages: Array<{
+        ID: string;
+        Subject?: string;
+        To?: Array<{ Address?: string }>;
+      }>;
+    };
+    const message = messages.messages.find(
+      (item) => item.To?.[0]?.Address === email && item.Subject === "墨舟密码重置",
+    );
+    if (!message) {
+      continue;
+    }
+    const detailResponse = await fetch(`http://127.0.0.1:8025/api/v1/message/${message.ID}`);
+    const detail = (await detailResponse.json()) as { Text?: string; HTML?: string };
+    const body = `${detail.Text ?? ""}\n${detail.HTML ?? ""}`;
+    const token = /[?&]token=([A-Za-z0-9_-]+)/u.exec(body)?.[1];
+    if (token) {
+      return decodeURIComponent(token);
+    }
+  }
+  throw new Error(`Password reset link not found for ${email}`);
+}
+
 export async function sendCode(request: APIRequestContext, email: string): Promise<void> {
   const token = await getCsrf(request);
   const response = await request.post("/api/v1/auth/register/send-code", {

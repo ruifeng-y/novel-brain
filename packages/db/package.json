@@ -21,8 +21,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@novel-brain/contracts": "workspace:*",
     "drizzle-orm": "0.45.4",
-    "pg": "8.23.1"
+    "pg": "8.23.1",
+    "uuidv7": "1.2.1"
   },
   "devDependencies": {
     "drizzle-kit": "0.31.11"

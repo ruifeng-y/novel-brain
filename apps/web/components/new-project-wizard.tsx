@@ -172,7 +172,7 @@ export function NewProjectWizard() {
             </label>
 
             {mode === "idea" ? (
-              <label className="auth-field">
+              <label className="creation-field">
                 <span>故事灵感</span>
                 <textarea
                   minLength={10}

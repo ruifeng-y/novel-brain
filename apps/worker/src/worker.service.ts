@@ -5,7 +5,9 @@ import {
 } from "@nestjs/common";
 import {
   GENERATE_CHAPTER_JOB,
+  SUMMARY_REBUILD_JOB,
   WORKER_QUEUE_NAME,
+  WRITE_ACTION_JOB,
   workerJobSchema,
   type WorkerJob,
 } from "@novel-brain/contracts";
@@ -16,6 +18,12 @@ import pino, { type Logger } from "pino";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GenerationJobProcessor } from "./generation/generation.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
@@ -24,7 +32,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
   private readonly queue: Queue<WorkerJob>;
   private readonly worker: BullWorker<WorkerJob, void>;
 
-  constructor(private readonly processor: GenerationJobProcessor) {
+  constructor(
+    private readonly processor: GenerationJobProcessor,
+    private readonly summaryProcessor: SummaryRebuildProcessor,
+    private readonly writingActionProcessor: WritingActionProcessor,
+  ) {
     const redisUrl = process.env.REDIS_URL;
     if (!redisUrl) {
       throw new Error("REDIS_URL is required");
@@ -34,6 +46,9 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       level: process.env.LOG_LEVEL ?? "info",
       base: { service: "worker" },
     });
+    this.processor.setTraceLogger(this.logger);
+    this.processor.configureRecovery({ maxAutomaticAttempts: 3 });
+    this.writingActionProcessor.setTraceLogger(this.logger);
     this.connection = new Redis(redisUrl, {
       maxRetriesPerRequest: null,
       enableReadyCheck: true,
@@ -56,7 +71,11 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     await this.queue.waitUntilReady();
     await this.worker.waitUntilReady();
     this.logger.info(
-      { event: "worker.ready", queue: WORKER_QUEUE_NAME, jobType: GENERATE_CHAPTER_JOB },
+      {
+        event: "worker.ready",
+        queue: WORKER_QUEUE_NAME,
+        jobTypes: [GENERATE_CHAPTER_JOB, WRITE_ACTION_JOB, SUMMARY_REBUILD_JOB],
+      },
       "Worker is consuming its queue",
     );
   }
@@ -76,12 +95,21 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     this.logger.info(
       {
         event: "worker.job.started",
-        jobId: payload.jobId,
         jobType: payload.jobType,
-        checkpointStep: payload.checkpoint.step,
+        ...(payload.jobType === SUMMARY_REBUILD_JOB
+          ? { runId: payload.runId }
+          : { jobId: payload.jobId, checkpointStep: payload.checkpoint.step }),
       },
-      "Processing typed generation job",
+      "Processing typed worker job",
     );
+    if (payload.jobType === SUMMARY_REBUILD_JOB) {
+      await this.summaryProcessor.process(payload);
+      return;
+    }
+    if (payload.jobType === WRITE_ACTION_JOB) {
+      await this.writingActionProcessor.process(payload);
+      return;
+    }
     await this.processor.process(payload);
   }
 }

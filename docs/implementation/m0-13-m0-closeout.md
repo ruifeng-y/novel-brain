@@ -60,9 +60,9 @@ pnpm smoke:deepseek
 
 ## UI Parity 状态
 
-自动化证据覆盖全部 M0 页面和四档视口。2026-11-05 作者已对照初始生产截图并签收 M0 九页 golden baseline；36 张生产截图已提交到 `artifacts/ui/golden/`，并由 `m0-closeout.spec.ts` 以 0.5% 像素差异容忍度进行回归比对。Linux/Chromium 基线更新证据：[Production CI #42005502769](https://github.com/ruifeng-y/novel-brain/actions/runs/42005502769)。
+这一段记录 2026-11-05 的历史 M0 closeout。作者当时对照初始生产截图并签收 M0 九页 golden baseline；36 张生产截图已提交到 `artifacts/ui/golden/`，Linux/Chromium 基线更新证据为 [Production CI #42005502769](https://github.com/ruifeng-y/novel-brain/actions/runs/42005502769)。
 
-因此 auth、dashboard、new-project、account-settings、work-overview、bible、settings、outline、writing 已标记为 `parity-verified`。M1–M3 页面仍需按 ADR 0027 单独完成生产截图、比对和作者签收。
+M0 初始 closeout 当时将 auth、dashboard、new-project、account-settings、work-overview、bible、settings、outline、writing 纳入签收范围。后续 M1 变更使部分页面需要新的自动视觉证据；当前测试只对 auth、dashboard、new-project 启用 active Golden comparison，其他页面的当前状态以 `docs/ui/v1-ui-parity-matrix.md` 为准，不能从本历史记录推导为仍然 `parity-verified`。
 
 ## 验证结果
 
@@ -77,4 +77,4 @@ pnpm smoke:deepseek
 ## 待补证据与风险
 
 - Docker 镜像重建在 Corepack 下载 pnpm 时停滞；stack smoke 使用已有镜像完成服务级检查，当前源码由本地 check、integration 和 E2E 验证。
-- M1–M3 生产页面的 golden 截图与签收仍待各自页面 ticket 完成。
+- M1 页面的视觉方向已签收，但正式 Golden、必需状态和泄漏扫描证据仍由 #174 补齐；M2–M3 页面按各自 ticket 继续完成。

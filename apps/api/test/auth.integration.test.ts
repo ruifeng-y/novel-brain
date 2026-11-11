@@ -19,9 +19,14 @@ const origin = "http://localhost:3000";
 
 class CapturingMailGateway implements MailGateway {
   codes = new Map<string, string>();
+  resetLinks = new Map<string, string>();
 
   async sendVerificationCode(email: string, code: string): Promise<void> {
     this.codes.set(email, code);
+  }
+
+  async sendPasswordResetLink(email: string, token: string): Promise<void> {
+    this.resetLinks.set(email, token);
   }
 }
 
@@ -65,6 +70,7 @@ describe("auth HTTP integration", () => {
 
   beforeEach(async () => {
     mail.codes.clear();
+    mail.resetLinks.clear();
     await databasePool.query("TRUNCATE TABLE users CASCADE");
     await redis.flushdb();
   });
@@ -107,6 +113,23 @@ describe("auth HTTP integration", () => {
       .set("Origin", origin)
       .set("X-CSRF-Token", token)
       .send({ email, code: mail.codes.get(email), password, displayName })
+      .expect(200);
+    return userAgent;
+  }
+
+  async function loginAgent(
+    email: string,
+    password: string,
+    userAgentName: string,
+  ): Promise<SuperAgentTest> {
+    const userAgent = request.agent(app.getHttpServer());
+    const token = (await userAgent.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+    await userAgent
+      .post("/api/v1/auth/login")
+      .set("Origin", origin)
+      .set("User-Agent", userAgentName)
+      .set("X-CSRF-Token", token)
+      .send({ email, password })
       .expect(200);
     return userAgent;
   }
@@ -244,6 +267,508 @@ describe("auth HTTP integration", () => {
       })
       .expect(400);
     expect(weak.body.error.code).toBe("AUTH_PASSWORD_WEAK");
+  });
+
+  it("resets a password once, stores only the token hash and revokes existing sessions", async () => {
+    const email = "reset@example.com";
+    const oldPassword = "OldPassword123";
+    const newPassword = "NewPassword456";
+    const owner = await createAuthenticatedAgent(email, oldPassword, "找回密码作者");
+    const csrfToken = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const forgot = await owner
+      .post("/api/v1/auth/password/forgot")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ email })
+      .expect(200);
+    expect(forgot.body.data.sent).toBe(true);
+
+    const resetToken = mail.resetLinks.get(email);
+    expect(resetToken).toMatch(/^[A-Za-z0-9_-]{32,}$/);
+    const stored = await databasePool.query<{ token_hash: string }>(
+      "SELECT token_hash FROM password_resets WHERE user_id = (SELECT id FROM users WHERE email = $1)",
+      [email],
+    );
+    expect(stored.rows[0]?.token_hash).toBeTruthy();
+    expect(stored.rows[0]?.token_hash).not.toContain(resetToken);
+
+    await owner
+      .post("/api/v1/auth/password/reset")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ token: resetToken, password: newPassword })
+      .expect(200);
+
+    const staleSession = await owner.get("/api/v1/auth/me").expect(401);
+    expect(staleSession.body.error.code).toBe("AUTH_SESSION_INVALID");
+
+    const replay = await owner
+      .post("/api/v1/auth/password/reset")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ token: resetToken, password: "AnotherPassword789" })
+      .expect(400);
+    expect(replay.body.error.code).toBe("AUTH_CODE_INVALID");
+
+    const oldLoginCsrf = await csrf();
+    await post("/api/v1/auth/login", oldLoginCsrf)
+      .send({ email, password: oldPassword })
+      .expect(401);
+    await post("/api/v1/auth/login", oldLoginCsrf)
+      .send({ email, password: newPassword })
+      .expect(200);
+  });
+
+  it("does not reveal whether an account exists when a reset is requested", async () => {
+    const knownEmail = "known-reset@example.com";
+    const unknownEmail = "unknown-reset@example.com";
+    await createAuthenticatedAgent(knownEmail, "StrongPassword123", "已知作者");
+    const csrfToken = await csrf();
+
+    const known = await post("/api/v1/auth/password/forgot", csrfToken)
+      .send({ email: knownEmail })
+      .expect(200);
+    const unknown = await post("/api/v1/auth/password/forgot", csrfToken)
+      .send({ email: unknownEmail })
+      .expect(200);
+
+    expect(known.body.data.sent).toBe(true);
+    expect(unknown.body.data).toMatchObject({ sent: true });
+    expect(Object.keys(unknown.body.data).sort()).toEqual(Object.keys(known.body.data).sort());
+    expect(mail.resetLinks.has(knownEmail)).toBe(true);
+    expect(mail.resetLinks.has(unknownEmail)).toBe(false);
+  });
+
+  it("rejects invalid and expired password reset tokens without changing the password", async () => {
+    const email = "expired-reset@example.com";
+    const password = "StrongPassword123";
+    await createAuthenticatedAgent(email, password, "过期链接作者");
+    const csrfToken = await csrf();
+
+    const invalid = await post("/api/v1/auth/password/reset", csrfToken)
+      .send({ token: "x".repeat(64), password: "ChangedPassword456" })
+      .expect(400);
+    expect(invalid.body.error.code).toBe("AUTH_CODE_INVALID");
+
+    await post("/api/v1/auth/password/forgot", csrfToken).send({ email }).expect(200);
+    const resetToken = mail.resetLinks.get(email);
+    await databasePool.query(
+      "UPDATE password_resets SET expires_at = now() - interval '1 minute' WHERE user_id = (SELECT id FROM users WHERE email = $1)",
+      [email],
+    );
+    const expired = await post("/api/v1/auth/password/reset", csrfToken)
+      .send({ token: resetToken, password: "ChangedPassword456" })
+      .expect(400);
+    expect(expired.body.error.code).toBe("AUTH_CODE_INVALID");
+
+    await post("/api/v1/auth/login", csrfToken).send({ email, password }).expect(200);
+  });
+
+  it("rate limits reset email delivery and repeated token attempts", async () => {
+    const csrfToken = await csrf();
+    const email = "rate-limited-reset@example.com";
+
+    await post("/api/v1/auth/password/forgot", csrfToken).send({ email }).expect(200);
+    const limitedEmail = await post("/api/v1/auth/password/forgot", csrfToken)
+      .send({ email })
+      .expect(429);
+    expect(limitedEmail.body.error.code).toBe("AUTH_RATE_LIMITED");
+
+    for (let index = 0; index < 10; index += 1) {
+      const invalid = await post("/api/v1/auth/password/reset", csrfToken)
+        .send({ token: "x".repeat(64), password: "ChangedPassword456" })
+        .expect(400);
+      expect(invalid.body.error.code).toBe("AUTH_CODE_INVALID");
+    }
+    const limitedAttempt = await post("/api/v1/auth/password/reset", csrfToken)
+      .send({ token: "x".repeat(64), password: "ChangedPassword456" })
+      .expect(429);
+    expect(limitedAttempt.body.error.code).toBe("AUTH_RATE_LIMITED");
+  });
+
+  it("lists current and other devices, then revokes a device immediately", async () => {
+    const email = "sessions@example.com";
+    const password = "StrongPassword123";
+    const current = await createAuthenticatedAgent(email, password, "会话作者");
+    const second = await loginAgent(email, password, "Device B");
+    await loginAgent(email, password, "Device C");
+    const currentId = (await current.get("/api/v1/auth/me").expect(200)).body.data.session
+      .id as string;
+
+    const listed = await current.get("/api/v1/auth/sessions").expect(200);
+    expect(listed.body.data).toHaveLength(3);
+    expect(listed.body.data.filter((session: { current: boolean }) => session.current)).toEqual([
+      expect.objectContaining({ id: currentId, current: true }),
+    ]);
+    const secondSession = listed.body.data.find(
+      (session: { userAgent: string }) => session.userAgent === "Device B",
+    );
+    expect(secondSession).toMatchObject({ current: false });
+
+    const csrfToken = (await current.get("/api/v1/auth/csrf").expect(200)).body.data
+      .token as string;
+    await current
+      .delete(`/api/v1/auth/sessions/${secondSession.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(200);
+
+    const revoked = await second.get("/api/v1/auth/me").expect(401);
+    expect(revoked.body.error.code).toBe("AUTH_SESSION_INVALID");
+  });
+
+  it("revokes every device when the author signs out everywhere", async () => {
+    const email = "logout-all@example.com";
+    const password = "StrongPassword123";
+    const first = await createAuthenticatedAgent(email, password, "第一台设备");
+    const second = await loginAgent(email, password, "Device B");
+    const third = await loginAgent(email, password, "Device C");
+    const csrfToken = (await first.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const response = await first
+      .post("/api/v1/auth/logout-all")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(200);
+    expect(response.body.data.loggedOut).toBe(true);
+
+    await first.get("/api/v1/auth/me").expect(401);
+    await second.get("/api/v1/auth/me").expect(401);
+    await third.get("/api/v1/auth/me").expect(401);
+  });
+
+  it("keeps session revocation tenant-scoped and safe under concurrent requests", async () => {
+    const email = "concurrent-sessions@example.com";
+    const password = "StrongPassword123";
+    const owner = await createAuthenticatedAgent(email, password, "会话所有者");
+    const second = await loginAgent(email, password, "Device B");
+    const third = await loginAgent(email, password, "Device C");
+    const other = await createAuthenticatedAgent(
+      "concurrent-other@example.com",
+      password,
+      "其他作者",
+    );
+    const sessions = (await owner.get("/api/v1/auth/sessions").expect(200)).body.data as Array<{
+      id: string;
+      userAgent: string;
+    }>;
+    const secondSession = sessions.find((session) => session.userAgent === "Device B");
+    const thirdSession = sessions.find((session) => session.userAgent === "Device C");
+    const ownerCsrf = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+    const otherCsrf = (await other.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const foreign = await other
+      .delete(`/api/v1/auth/sessions/${secondSession.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherCsrf)
+      .expect(403);
+    expect(foreign.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+
+    const responses = await Promise.all(
+      [secondSession.id, thirdSession.id].map((sessionId) =>
+        owner
+          .delete(`/api/v1/auth/sessions/${sessionId}`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", ownerCsrf),
+      ),
+    );
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    await second.get("/api/v1/auth/me").expect(401);
+    await third.get("/api/v1/auth/me").expect(401);
+    await owner.get("/api/v1/auth/me").expect(200);
+  });
+
+  it("rejects malformed session identifiers with a stable validation error", async () => {
+    const owner = await createAuthenticatedAgent(
+      "invalid-session@example.com",
+      "StrongPassword123",
+      "会话校验作者",
+    );
+    const csrfToken = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const invalid = await owner
+      .delete("/api/v1/auth/sessions/not-a-session-id")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(400);
+    expect(invalid.body.error.code).toBe("VALIDATION_INVALID");
+  });
+
+  it("revokes the same session idempotently under concurrent requests", async () => {
+    const email = "same-session@example.com";
+    const password = "StrongPassword123";
+    const owner = await createAuthenticatedAgent(email, password, "同会话作者");
+    const second = await loginAgent(email, password, "Device B");
+    const third = await loginAgent(email, password, "Device C");
+    const sessions = (await owner.get("/api/v1/auth/sessions").expect(200)).body.data as Array<{
+      id: string;
+      userAgent: string;
+    }>;
+    const secondSession = sessions.find((session) => session.userAgent === "Device B");
+    const ownerCsrf = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const responses = await Promise.all(
+      [secondSession.id, secondSession.id].map((sessionId) =>
+        owner
+          .delete(`/api/v1/auth/sessions/${sessionId}`)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", ownerCsrf),
+      ),
+    );
+    expect(responses.map((response) => response.status)).toEqual([200, 200]);
+    await second.get("/api/v1/auth/me").expect(401);
+    await owner.get("/api/v1/auth/me").expect(200);
+    await third.get("/api/v1/auth/me").expect(200);
+  });
+
+  it("consumes a password reset token exactly once under concurrent use", async () => {
+    const email = "reset-concurrent@example.com";
+    const oldPassword = "StrongPassword123";
+    const firstPassword = "FirstPassword456";
+    const secondPassword = "SecondPassword789";
+    const owner = await createAuthenticatedAgent(email, oldPassword, "并发重置作者");
+    const csrfToken = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    await owner
+      .post("/api/v1/auth/password/forgot")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ email })
+      .expect(200);
+    const resetToken = mail.resetLinks.get(email);
+
+    const responses = await Promise.all(
+      [firstPassword, secondPassword].map((password) =>
+        owner
+          .post("/api/v1/auth/password/reset")
+          .set("Origin", origin)
+          .set("X-CSRF-Token", csrfToken)
+          .send({ token: resetToken, password }),
+      ),
+    );
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 400]);
+    const rejected = responses.find((response) => response.status === 400);
+    expect(rejected?.body.error.code).toBe("AUTH_CODE_INVALID");
+
+    const winningPassword = responses[0]?.status === 200 ? firstPassword : secondPassword;
+    const losingPassword = winningPassword === firstPassword ? secondPassword : firstPassword;
+    const loginCsrf = await csrf();
+    await post("/api/v1/auth/login", loginCsrf).send({ email, password: oldPassword }).expect(401);
+    await post("/api/v1/auth/login", loginCsrf)
+      .send({ email, password: losingPassword })
+      .expect(401);
+    await post("/api/v1/auth/login", loginCsrf)
+      .send({ email, password: winningPassword })
+      .expect(200);
+  });
+
+  it("invalidates the previous reset link when a new reset is requested", async () => {
+    const email = "reset-superseded@example.com";
+    const owner = await createAuthenticatedAgent(email, "StrongPassword123", "重置链接作者");
+    const csrfToken = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    await owner
+      .post("/api/v1/auth/password/forgot")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ email })
+      .expect(200);
+    const firstToken = mail.resetLinks.get(email);
+    await redis.flushdb();
+    await owner
+      .post("/api/v1/auth/password/forgot")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ email })
+      .expect(200);
+    const secondToken = mail.resetLinks.get(email);
+    expect(secondToken).not.toBe(firstToken);
+
+    const stale = await owner
+      .post("/api/v1/auth/password/reset")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ token: firstToken, password: "FirstPassword456" })
+      .expect(400);
+    expect(stale.body.error.code).toBe("AUTH_CODE_INVALID");
+    await owner
+      .post("/api/v1/auth/password/reset")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ token: secondToken, password: "SecondPassword789" })
+      .expect(200);
+  });
+
+  it("updates the display profile with version-safe writes", async () => {
+    const owner = await createAuthenticatedAgent(
+      "profile@example.com",
+      "StrongPassword123",
+      "资料作者",
+    );
+    const csrfToken = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const updated = await owner
+      .patch("/api/v1/users/me")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({
+        version: 1,
+        displayName: "新笔名",
+        bio: "写长篇仙侠，也写短篇。",
+        avatarUrl: "https://example.com/avatar.png",
+      })
+      .expect(200);
+    expect(updated.body.data).toMatchObject({
+      displayName: "新笔名",
+      bio: "写长篇仙侠，也写短篇。",
+      avatarUrl: "https://example.com/avatar.png",
+      version: 2,
+    });
+
+    const me = await owner.get("/api/v1/auth/me").expect(200);
+    expect(me.body.data.user).toMatchObject({
+      displayName: "新笔名",
+      bio: "写长篇仙侠，也写短篇。",
+      version: 2,
+    });
+
+    const stale = await owner
+      .patch("/api/v1/users/me")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ version: 1, displayName: "过期修改" })
+      .expect(409);
+    expect(stale.body.error.code).toBe("VERSION_CONFLICT");
+
+    const unsafeAvatar = await owner
+      .patch("/api/v1/users/me")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ version: 2, avatarUrl: "javascript:alert(1)" })
+      .expect(400);
+    expect(unsafeAvatar.body.error.code).toBe("VALIDATION_INVALID");
+  });
+
+  it("manages multiple pen names with ownership and version checks", async () => {
+    const owner = await createAuthenticatedAgent(
+      "pen-names@example.com",
+      "StrongPassword123",
+      "笔名作者",
+    );
+    const other = await createAuthenticatedAgent(
+      "pen-names-other@example.com",
+      "StrongPassword123",
+      "其他笔名作者",
+    );
+    const csrfToken = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+    const otherCsrf = (await other.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const empty = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    expect(empty.body.data).toEqual([]);
+
+    const first = await owner
+      .post("/api/v1/users/me/pen-names")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ name: "青舟", bio: "写仙侠长篇。" })
+      .expect(200);
+    expect(first.body.data).toMatchObject({ name: "青舟", isDefault: true, version: 1 });
+
+    const second = await owner
+      .post("/api/v1/users/me/pen-names")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ name: "砚秋", bio: "写都市短篇。", isDefault: true })
+      .expect(200);
+    expect(second.body.data).toMatchObject({ name: "砚秋", isDefault: true, version: 1 });
+
+    const listed = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    expect(listed.body.data).toHaveLength(2);
+    expect(
+      listed.body.data.find((penName: { name: string }) => penName.name === "青舟"),
+    ).toMatchObject({ isDefault: false, version: 2 });
+
+    const updated = await owner
+      .patch(`/api/v1/users/me/pen-names/${second.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ version: second.body.data.version, name: "砚秋新笔名" })
+      .expect(200);
+    expect(updated.body.data).toMatchObject({ name: "砚秋新笔名", version: 2 });
+
+    const stale = await owner
+      .patch(`/api/v1/users/me/pen-names/${second.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ version: second.body.data.version, bio: "过期修改" })
+      .expect(409);
+    expect(stale.body.error.code).toBe("VERSION_CONFLICT");
+
+    const foreign = await other
+      .delete(`/api/v1/users/me/pen-names/${first.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", otherCsrf)
+      .expect(403);
+    expect(foreign.body.error.code).toBe("FORBIDDEN_TENANT_ACCESS");
+
+    await owner
+      .delete(`/api/v1/users/me/pen-names/${first.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .expect(200);
+    const remaining = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    expect(remaining.body.data).toHaveLength(1);
+    expect(remaining.body.data[0]).toMatchObject({ name: "砚秋新笔名", isDefault: true });
+  });
+
+  it("keeps exactly one default pen name when updates are attempted", async () => {
+    const owner = await createAuthenticatedAgent(
+      "pen-defaults@example.com",
+      "StrongPassword123",
+      "默认笔名作者",
+    );
+    const csrfToken = (await owner.get("/api/v1/auth/csrf").expect(200)).body.data.token as string;
+
+    const first = await owner
+      .post("/api/v1/users/me/pen-names")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ name: "青舟" })
+      .expect(200);
+    const second = await owner
+      .post("/api/v1/users/me/pen-names")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ name: "砚秋" })
+      .expect(200);
+    expect(first.body.data).toMatchObject({ isDefault: true });
+    expect(second.body.data).toMatchObject({ isDefault: false });
+
+    const unsetDefault = await owner
+      .patch(`/api/v1/users/me/pen-names/${first.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ version: first.body.data.version, isDefault: false })
+      .expect(400);
+    expect(unsetDefault.body.error.code).toBe("VALIDATION_INVALID");
+
+    const listed = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    expect(
+      listed.body.data.filter((penName: { isDefault: boolean }) => penName.isDefault),
+    ).toHaveLength(1);
+
+    const switchDefault = await owner
+      .patch(`/api/v1/users/me/pen-names/${second.body.data.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", csrfToken)
+      .send({ version: second.body.data.version, isDefault: true })
+      .expect(200);
+    expect(switchDefault.body.data).toMatchObject({ isDefault: true, version: 2 });
+    const afterSwitch = await owner.get("/api/v1/users/me/pen-names").expect(200);
+    expect(
+      afterSwitch.body.data.find((penName: { id: string }) => penName.id === first.body.data.id),
+    ).toMatchObject({ isDefault: false });
   });
 
   it("encrypts model keys, returns masks and tests connections", async () => {
@@ -384,6 +909,41 @@ describe("auth HTTP integration", () => {
     expect(providerErrorTest.body.error.code).toBe("MODEL_PROVIDER_ERROR");
     expect(providerErrorTest.body.error.details.status).toBe("provider_error");
     expect(JSON.stringify(providerErrorTest.body)).not.toContain("sk-provider-error-1234");
+
+    const invalidApiKey = "sk-invalid-key-4321";
+    const invalidKeyConfig = await owner
+      .post("/api/v1/model-configs")
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "model-create-invalid-key")
+      .send({
+        provider: "deepseek",
+        label: "无效 Key",
+        baseUrl: "https://api.deepseek.com",
+        model: "deepseek-chat",
+        apiKey: invalidApiKey,
+        purposes: ["writing"],
+        isDefault: false,
+      })
+      .expect(200);
+    const invalidKeyTest = await owner
+      .post(`/api/v1/model-configs/${invalidKeyConfig.body.data.id}/test`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .expect(400);
+    expect(invalidKeyTest.body.error.code).toBe("MODEL_KEY_INVALID");
+    expect(invalidKeyTest.body.error.details.status).toBe("key_invalid");
+    expect(JSON.stringify(invalidKeyTest.body)).not.toContain(invalidApiKey);
+
+    const afterInvalidKeyTest = await owner.get("/api/v1/model-configs").expect(200);
+    const invalidKeyRecord = afterInvalidKeyTest.body.data.find(
+      (config: { id: string }) => config.id === invalidKeyConfig.body.data.id,
+    );
+    expect(invalidKeyRecord).toMatchObject({
+      keyMasked: "****4321",
+      lastTestStatus: "key_invalid",
+    });
+    expect(JSON.stringify(afterInvalidKeyTest.body)).not.toContain(invalidApiKey);
 
     const expiredIdempotencyKey = "model-create-expired";
     const expiringConfig = await owner

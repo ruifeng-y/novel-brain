@@ -1,27 +1,49 @@
 import { Injectable } from "@nestjs/common";
 import {
-  characterDataSchema,
-  factionDataSchema,
-  goldenFingerDataSchema,
-  mapDataSchema,
-  powerSystemDataSchema,
+  type CustomFieldDefinitionListQuery,
+  type CustomFieldDefinition,
+  type CustomFieldDefinitionCreateRequest,
+  type CustomFieldDefinitionPatchRequest,
+  type CustomFieldValue,
+  settingEntityTypeSchema,
+  settingEntityVersionSnapshotSummarySchema,
+  settingStatusSchema,
   type CharacterData,
   type ConfirmedSetting,
+  type ConfirmedSettingListQuery,
   type GoldenFingerData,
+  type ItemData,
   type SettingEntity,
   type SettingEntityCreateRequest,
   type SettingEntityListQuery,
   type SettingEntityLockRequest,
   type SettingEntityPatchRequest,
+  type SettingEntityRestoreRequest,
+  type SettingEntityVersion,
+  type SettingEntityVersionListQuery,
+  type SettingChangeRequest,
+  type SettingChangeRequestCreateRequest,
+  type SettingChangeRequestListQuery,
+  type SettingChangeImpact,
+  type SettingProposal,
+  type SettingProposalCreateRequest,
+  type SettingProposalDecisionRequest,
+  type SettingProposalListQuery,
+  type TimelineEventData,
   type WorldRuleData,
   worldRuleDataSchema,
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SettingsRepository } from "./settings.repository";
 import type {
+  CustomFieldDefinitionRecord,
+  SettingProposalRecord,
+  SettingChangeRequestRecord,
+  SettingWriteViolation,
   SettingEntityRecord,
   SettingsAuditContext,
   SettingsWorkContext,
@@ -36,10 +58,63 @@ export class SettingsService {
     workId: string,
     branchId: string,
     query: SettingEntityListQuery,
-  ): Promise<SettingEntity[]> {
+  ): Promise<{ data: SettingEntity[]; nextCursor: string | null }> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const records = await this.repository.list(userId, context, query);
-    return records.map((record) => this.toContract(record));
+    const [page, customFields] = await Promise.all([
+      this.repository.list(userId, context, query),
+      this.repository.listEntityCustomFieldValues(userId, context),
+    ]);
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新列表后重试");
+    }
+    return {
+      data: page.records.map((record) => this.toContract(record, customFields[record.id] ?? {})),
+      nextCursor: page.nextCursor,
+    };
+  }
+
+  async listVersions(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    query: SettingEntityVersionListQuery,
+  ): Promise<{ data: SettingEntityVersion[]; nextCursor: string | null }> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const page = await this.repository.listVersions(userId, context, entityId, query);
+    if (page === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
+    }
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新历史后重试");
+    }
+    const domain = settingEntityTypeSchema.parse(page.domain);
+    return {
+      data: page.versions.map((version) => {
+        const name = typeof version.snapshot.name === "string" ? version.snapshot.name : null;
+        const summary =
+          typeof version.snapshot.summary === "string" ? version.snapshot.summary : null;
+        const parsedStatus = settingStatusSchema.safeParse(version.snapshot.status);
+        const snapshotSummary = settingEntityVersionSnapshotSummarySchema.parse({
+          name,
+          summary,
+          status: parsedStatus.success ? parsedStatus.data : null,
+        });
+        return {
+          version: version.version,
+          node: version.node,
+          createdAt: version.createdAt.toISOString(),
+          actor: version.actor,
+          reason: version.reason,
+          snapshot: {
+            domain,
+            payload: version.snapshot,
+          },
+          summary: snapshotSummary,
+        };
+      }),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async get(userId: string, workId: string, branchId: string, entityId: string) {
@@ -48,7 +123,10 @@ export class SettingsService {
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
     }
-    return this.toContract(record);
+    const customFields = await this.repository.listEntityCustomFieldValues(userId, context, [
+      record.id,
+    ]);
+    return this.toContract(record, customFields[record.id] ?? {});
   }
 
   async create(
@@ -59,44 +137,60 @@ export class SettingsService {
     audit: SettingsAuditContext,
   ): Promise<SettingEntity> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    return this.toContract(await this.repository.create(userId, context, input, audit));
+    const created = await this.repository.create(userId, context, input, audit);
+    if (isSettingWriteViolation(created)) {
+      throw settingConflict(created);
+    }
+    const customFields = await this.repository.listEntityCustomFieldValues(userId, context, [
+      created.id,
+    ]);
+    return this.toContract(created, customFields[created.id] ?? {});
   }
 
-  async confirmed(userId: string, workId: string, branchId: string): Promise<ConfirmedSetting[]> {
+  async confirmed(
+    userId: string,
+    workId: string,
+    branchId: string,
+    query: ConfirmedSettingListQuery,
+  ): Promise<CursorPageResult<ConfirmedSetting>> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    const [records, canonFacts] = await Promise.all([
-      this.repository.list(userId, context, { status: "locked" }),
-      this.repository.listCanonFacts(userId, context),
-    ]);
-    return [
-      ...records.map((record) => ({
-        id: record.id,
-        type: record.type as ConfirmedSetting["type"],
-        name: record.name,
-        summary: record.summary,
-        source: record.source as ConfirmedSetting["source"],
-        status: "locked" as const,
-        version: record.version,
-        lockedAt: record.lockedAt?.toISOString() ?? new Date(0).toISOString(),
-      })),
-      ...canonFacts.map((fact) => ({
-        kind: "fact" as const,
-        id: fact.id,
-        type: factType(fact.predicate),
-        name: fact.subject,
-        summary: `${fact.predicate}：${fact.object}`,
-        source: "canon" as const,
-        status: "locked" as const,
-        version: 1,
-        lockedAt: fact.createdAt.toISOString(),
-        sourceChapterId: fact.chapterId,
-        sourceFactId: fact.id,
-        validFromChapter: fact.validFromChapter,
-        validToChapter: fact.validToChapter,
-        predicate: fact.predicate,
-        object: fact.object,
-      })),
-    ];
+    const page = await this.repository.listConfirmedPage(userId, context, query);
+    if (page === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      data: page.data.map((row) =>
+        row.kind === "entity"
+          ? {
+              id: row.record.id,
+              type: row.record.type as ConfirmedSetting["type"],
+              name: row.record.name,
+              summary: row.record.summary,
+              source: row.record.source as ConfirmedSetting["source"],
+              status: "locked" as const,
+              version: row.record.version,
+              lockedAt: row.record.lockedAt?.toISOString() ?? new Date(0).toISOString(),
+            }
+          : {
+              kind: "fact" as const,
+              id: row.record.id,
+              type: factType(row.record.predicate),
+              name: row.record.subject,
+              summary: `${row.record.predicate}：${row.record.object}`,
+              source: "canon" as const,
+              status: "locked" as const,
+              version: 1,
+              lockedAt: row.record.createdAt.toISOString(),
+              sourceChapterId: row.record.chapterId,
+              sourceFactId: row.record.id,
+              validFromChapter: row.record.validFromChapter,
+              validToChapter: row.record.validToChapter,
+              predicate: row.record.predicate,
+              object: row.record.object,
+            },
+      ),
+      nextCursor: page.nextCursor,
+    };
   }
 
   async patch(
@@ -115,11 +209,18 @@ export class SettingsService {
     if (current.status === "locked") {
       throw new ApiError(409, "SETTING_LOCKED", "设定已锁定，不能直接编辑或修改别名");
     }
+    if (input.data !== undefined && current.type !== "world_rule") {
+      throw new ApiError(
+        400,
+        "SETTING_DOMAIN_DATA_FORBIDDEN",
+        "该设定类型必须通过专用接口编辑领域数据",
+      );
+    }
     if (current.version !== input.version) {
       throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
     }
     if (input.data !== undefined) {
-      requireMatchingSettingData(current.type as SettingEntity["type"], input.data);
+      requireWorldRuleData(input.data);
     }
     const updated = await this.repository.update(userId, context, entityId, input, audit);
     if (updated === "not_found") {
@@ -128,10 +229,22 @@ export class SettingsService {
     if (updated === "locked") {
       throw new ApiError(409, "SETTING_LOCKED", "设定已锁定，不能直接编辑或修改别名");
     }
+    if (updated === "proposed") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定有待确认提案，请先完成裁决");
+    }
+    if (updated === "discarded") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定已废弃，不能再编辑");
+    }
     if (updated === "version_conflict") {
       throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
     }
-    return this.toContract(updated);
+    if (isSettingWriteViolation(updated)) {
+      throw settingConflict(updated);
+    }
+    const customFields = await this.repository.listEntityCustomFieldValues(userId, context, [
+      updated.id,
+    ]);
+    return this.toContract(updated, customFields[updated.id] ?? {});
   }
 
   async lock(
@@ -150,10 +263,56 @@ export class SettingsService {
     if (locked === "locked") {
       throw new ApiError(409, "SETTING_LOCKED", "设定已锁定");
     }
+    if (locked === "proposed") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定有待确认提案，请先完成裁决");
+    }
+    if (locked === "discarded") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定已废弃，不能再锁定");
+    }
     if (locked === "version_conflict") {
       throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
     }
-    return this.toContract(locked);
+    const customFields = await this.repository.listEntityCustomFieldValues(userId, context, [
+      locked.id,
+    ]);
+    return this.toContract(locked, customFields[locked.id] ?? {});
+  }
+
+  async restore(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    input: SettingEntityRestoreRequest,
+    audit: SettingsAuditContext,
+  ): Promise<SettingEntity> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const restored = await this.repository.restore(userId, context, entityId, input, audit);
+    if (restored === "not_found" || restored === "version_not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定版本不存在或无权访问");
+    }
+    if (restored === "locked") {
+      throw new ApiError(409, "SETTING_LOCKED", "设定已锁定，恢复旧版本必须通过修改请求");
+    }
+    if (restored === "proposed") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定有待确认提案，请先完成裁决");
+    }
+    if (restored === "discarded") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定已废弃，不能恢复版本");
+    }
+    if (restored === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
+    }
+    if (restored === "invalid_snapshot") {
+      throw new ApiError(400, "VALIDATION_INVALID", "历史版本快照与当前设定类型不兼容");
+    }
+    if (isSettingWriteViolation(restored)) {
+      throw settingConflict(restored);
+    }
+    const customFields = await this.repository.listEntityCustomFieldValues(userId, context, [
+      restored.id,
+    ]);
+    return this.toContract(restored, customFields[restored.id] ?? {});
   }
 
   async remove(
@@ -171,7 +330,218 @@ export class SettingsService {
     if (removed === "locked") {
       throw new ApiError(409, "SETTING_LOCKED", "设定已锁定，不能直接删除");
     }
+    if (removed === "proposed") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定有待确认提案，请先完成裁决");
+    }
+    if (removed === "discarded") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "设定已废弃");
+    }
     return { deleted: true };
+  }
+
+  async listCustomFields(
+    userId: string,
+    workId: string,
+    branchId: string,
+    query: CustomFieldDefinitionListQuery,
+  ): Promise<{ data: CustomFieldDefinition[]; nextCursor: string | null }> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const page = await this.repository.listCustomFields(userId, context, query);
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新列表后重试");
+    }
+    return {
+      data: page.definitions.map((definition) => this.toCustomFieldContract(definition)),
+      nextCursor: page.nextCursor,
+    };
+  }
+
+  async createCustomField(
+    userId: string,
+    workId: string,
+    branchId: string,
+    input: CustomFieldDefinitionCreateRequest,
+    audit: SettingsAuditContext,
+  ): Promise<CustomFieldDefinition> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const definition = await this.repository.createCustomField(userId, context, input, audit);
+    if (definition === "duplicate") {
+      throw new ApiError(409, "CUSTOM_FIELD_DUPLICATE", "自定义字段标识已存在", {
+        key: input.key,
+      });
+    }
+    return this.toCustomFieldContract(definition);
+  }
+
+  async updateCustomField(
+    userId: string,
+    workId: string,
+    branchId: string,
+    fieldId: string,
+    input: CustomFieldDefinitionPatchRequest,
+    audit: SettingsAuditContext,
+  ): Promise<CustomFieldDefinition> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const updated = await this.repository.updateCustomField(userId, context, fieldId, input, audit);
+    if (updated === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "自定义字段不存在或无权访问");
+    }
+    if (updated === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "自定义字段已被其他操作更新，请刷新后重试");
+    }
+    if (updated === "immutable") {
+      throw new ApiError(
+        400,
+        "CUSTOM_FIELD_IMMUTABLE",
+        "字段标识、类型和适用范围创建后不能直接修改",
+      );
+    }
+    if (updated === "option_in_use") {
+      throw new ApiError(409, "CUSTOM_FIELD_INVALID", "已有设定使用该选项，不能删除");
+    }
+    if (updated === "duplicate") {
+      throw new ApiError(409, "CUSTOM_FIELD_DUPLICATE", "自定义字段标识已存在");
+    }
+    return this.toCustomFieldContract(updated);
+  }
+
+  async listProposals(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    query: SettingProposalListQuery,
+  ): Promise<{ data: SettingProposal[]; nextCursor: string | null }> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const page = await this.repository.listProposals(userId, context, entityId, query);
+    if (page === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
+    }
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新提案后重试");
+    }
+    return {
+      data: page.proposals.map((proposal) => this.toProposalContract(proposal)),
+      nextCursor: page.nextCursor,
+    };
+  }
+
+  async createProposal(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    input: SettingProposalCreateRequest,
+    audit: SettingsAuditContext,
+  ): Promise<SettingProposal> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const proposal = await this.repository.createProposal(userId, context, entityId, input, audit);
+    if (proposal === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
+    }
+    if (proposal === "locked") {
+      throw new ApiError(409, "SETTING_LOCKED", "锁定设定需要发起修改请求");
+    }
+    if (proposal === "discarded") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "废弃设定不能再提交提案");
+    }
+    if (proposal === "pending_exists") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "该设定已有待确认提案");
+    }
+    if (proposal === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
+    }
+    return this.toProposalContract(proposal);
+  }
+
+  async decideProposal(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    proposalId: string,
+    input: SettingProposalDecisionRequest,
+    audit: SettingsAuditContext,
+  ): Promise<SettingProposal> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const proposal = await this.repository.decideProposal(
+      userId,
+      context,
+      entityId,
+      proposalId,
+      input,
+      audit,
+    );
+    if (proposal === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "提案不存在或无权访问");
+    }
+    if (proposal === "invalid_state") {
+      throw new ApiError(409, "SETTING_PROPOSAL_STATE", "提案或设定状态已变化，请刷新后重试");
+    }
+    if (proposal === "unresolved_conflict") {
+      throw new ApiError(409, "SETTING_CONFLICT_UNRESOLVED", "冲突未解决，不能直接确认提案");
+    }
+    if (proposal === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
+    }
+    return this.toProposalContract(proposal);
+  }
+
+  async listChangeRequests(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    query: SettingChangeRequestListQuery,
+  ): Promise<{ data: SettingChangeRequest[]; nextCursor: string | null }> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const page = await this.repository.listChangeRequests(userId, context, entityId, query);
+    if (page === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
+    }
+    if (page === "invalid_cursor") {
+      throw new ApiError(400, "VALIDATION_INVALID", "分页游标无效，请刷新修改请求后重试");
+    }
+    return {
+      data: page.requests.map((request) => this.toChangeRequestContract(request)),
+      nextCursor: page.nextCursor,
+    };
+  }
+
+  async createChangeRequest(
+    userId: string,
+    workId: string,
+    branchId: string,
+    entityId: string,
+    input: SettingChangeRequestCreateRequest,
+    audit: SettingsAuditContext,
+    idempotencyKey?: string,
+  ): Promise<SettingChangeRequest> {
+    const context = await this.requireWorkContext(userId, workId, branchId);
+    const request = await this.repository.createChangeRequest(
+      userId,
+      context,
+      entityId,
+      input,
+      audit,
+      idempotencyKey,
+    );
+    if (request === "not_found") {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
+    }
+    if (request === "not_locked") {
+      throw new ApiError(409, "SETTING_NOT_LOCKED", "只有锁定设定需要发起修改请求");
+    }
+    if (request === "version_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
+    }
+    if (request === "invalid_data") {
+      throw new ApiError(400, "VALIDATION_INVALID", "修改内容与当前设定类型不匹配");
+    }
+    if (isSettingWriteViolation(request)) {
+      throw settingConflict(request);
+    }
+    return this.toChangeRequestContract(request);
   }
 
   private async requireWorkContext(
@@ -186,7 +556,11 @@ export class SettingsService {
     return context;
   }
 
-  private toContract(record: SettingEntityRecord): SettingEntity {
+  private toContract(
+    record: SettingEntityRecord,
+    customFields: Record<string, unknown>,
+  ): SettingEntity {
+    const values = customFields as Record<string, CustomFieldValue>;
     if (record.type === "character") {
       return {
         id: record.id,
@@ -198,6 +572,7 @@ export class SettingsService {
         summary: record.summary,
         description: record.description,
         tags: record.tags,
+        customFields: values,
         status: record.status as SettingEntity["status"],
         source: record.source as SettingEntity["source"],
         version: record.version,
@@ -220,6 +595,7 @@ export class SettingsService {
         summary: record.summary,
         description: record.description,
         tags: record.tags,
+        customFields: values,
         status: record.status as SettingEntity["status"],
         source: record.source as SettingEntity["source"],
         version: record.version,
@@ -242,10 +618,57 @@ export class SettingsService {
         summary: record.summary,
         description: record.description,
         tags: record.tags,
+        customFields: values,
         status: record.status as SettingEntity["status"],
         source: record.source as SettingEntity["source"],
         version: record.version,
         data: record.attributes as { details: string },
+        lockedAt: record.lockedAt?.toISOString() ?? null,
+        lockedBy: record.lockedBy,
+        createdAt: record.createdAt.toISOString(),
+        updatedAt: record.updatedAt.toISOString(),
+      };
+    }
+
+    if (record.type === "item") {
+      return {
+        id: record.id,
+        workId: record.workId,
+        branchId: record.branchId,
+        type: "item",
+        name: record.name,
+        aliases: record.aliases,
+        summary: record.summary,
+        description: record.description,
+        tags: record.tags,
+        customFields: values,
+        status: record.status as SettingEntity["status"],
+        source: record.source as SettingEntity["source"],
+        version: record.version,
+        data: record.attributes as ItemData,
+        lockedAt: record.lockedAt?.toISOString() ?? null,
+        lockedBy: record.lockedBy,
+        createdAt: record.createdAt.toISOString(),
+        updatedAt: record.updatedAt.toISOString(),
+      };
+    }
+
+    if (record.type === "timeline_event") {
+      return {
+        id: record.id,
+        workId: record.workId,
+        branchId: record.branchId,
+        type: "timeline_event",
+        name: record.name,
+        aliases: record.aliases,
+        summary: record.summary,
+        description: record.description,
+        tags: record.tags,
+        customFields: values,
+        status: record.status as SettingEntity["status"],
+        source: record.source as SettingEntity["source"],
+        version: record.version,
+        data: record.attributes as TimelineEventData,
         lockedAt: record.lockedAt?.toISOString() ?? null,
         lockedBy: record.lockedBy,
         createdAt: record.createdAt.toISOString(),
@@ -263,6 +686,7 @@ export class SettingsService {
       summary: record.summary,
       description: record.description,
       tags: record.tags,
+      customFields: values,
       status: record.status as SettingEntity["status"],
       source: record.source as SettingEntity["source"],
       version: record.version,
@@ -273,6 +697,110 @@ export class SettingsService {
       updatedAt: record.updatedAt.toISOString(),
     };
   }
+
+  private toCustomFieldContract(record: CustomFieldDefinitionRecord): CustomFieldDefinition {
+    return {
+      id: record.id,
+      workId: record.workId,
+      branchId: record.branchId,
+      key: record.key,
+      label: record.label,
+      fieldType: record.fieldType as CustomFieldDefinition["fieldType"],
+      appliesTo: record.appliesTo as CustomFieldDefinition["appliesTo"],
+      required: record.required,
+      options: record.options,
+      relationTarget: record.relationTarget as CustomFieldDefinition["relationTarget"],
+      enabled: record.enabled,
+      schemaVersion: record.schemaVersion,
+      sortOrder: record.sortOrder,
+      createdAt: record.createdAt.toISOString(),
+      updatedAt: record.updatedAt.toISOString(),
+    };
+  }
+
+  private toProposalContract(record: SettingProposalRecord): SettingProposal {
+    return {
+      id: record.id,
+      entityId: record.entityId,
+      workId: record.workId,
+      branchId: record.branchId,
+      entityVersion: record.entityVersion,
+      status: record.status as SettingProposal["status"],
+      conflictType: record.conflictType as SettingProposal["conflictType"],
+      evidence: record.evidence as SettingProposal["evidence"],
+      reason: record.reason,
+      proposedBy: record.proposedBy,
+      createdAt: record.createdAt.toISOString(),
+      decidedBy: record.decidedBy,
+      decidedAt: record.decidedAt?.toISOString() ?? null,
+      decisionReason: record.decisionReason,
+      decisionEvidence: record.decisionEvidence as SettingProposal["decisionEvidence"],
+      decisionConflictType: record.decisionConflictType as SettingProposal["decisionConflictType"],
+    };
+  }
+
+  private toChangeRequestContract(record: SettingChangeRequestRecord): SettingChangeRequest {
+    return {
+      id: record.id,
+      entityId: record.entityId,
+      workId: record.workId,
+      branchId: record.branchId,
+      entityVersion: record.entityVersion,
+      title: record.title,
+      reason: record.reason,
+      before: record.before,
+      after: record.after,
+      status: record.status as SettingChangeRequest["status"],
+      conflictType: record.conflictType as SettingChangeRequest["conflictType"],
+      evidence: record.evidence as SettingChangeRequest["evidence"],
+      impact: normalizeSettingChangeImpact(record.impact),
+      createdBy: record.createdBy,
+      createdAt: record.createdAt.toISOString(),
+    };
+  }
+}
+
+function normalizeSettingChangeImpact(value: unknown): SettingChangeImpact {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return noSettingChangeImpact();
+  }
+  const impact = value as Partial<SettingChangeImpact>;
+  const chapterCount = nonNegativeInteger(impact.chapterCount);
+  const settingRefCount = nonNegativeInteger(impact.settingRefCount);
+  const versionRefCount = nonNegativeInteger(impact.versionRefCount);
+  const total = chapterCount + settingRefCount + versionRefCount;
+  return {
+    chapterCount,
+    settingRefCount,
+    versionRefCount,
+    total,
+    hasImpact: total > 0,
+    message:
+      typeof impact.message === "string" && impact.message.trim()
+        ? impact.message
+        : total === 0
+          ? "未发现影响：当前没有章节、设定或版本图引用这条设定。"
+          : `影响 ${chapterCount} 章、${settingRefCount} 条设定引用、${versionRefCount} 个版本节点。`,
+    resources: Array.isArray(impact.resources)
+      ? (impact.resources as SettingChangeImpact["resources"])
+      : [],
+  };
+}
+
+function noSettingChangeImpact(): SettingChangeImpact {
+  return {
+    chapterCount: 0,
+    settingRefCount: 0,
+    versionRefCount: 0,
+    total: 0,
+    hasImpact: false,
+    message: "未发现影响：当前没有章节、设定或版本图引用这条设定。",
+    resources: [],
+  };
+}
+
+function nonNegativeInteger(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0;
 }
 
 function factType(predicate: string): ConfirmedSetting["type"] {
@@ -285,27 +813,44 @@ function factType(predicate: string): ConfirmedSetting["type"] {
   return "world_rule";
 }
 
-function requireMatchingSettingData(
-  type: SettingEntity["type"],
-  data: SettingEntityPatchRequest["data"],
-): void {
+function requireWorldRuleData(data: SettingEntityPatchRequest["data"]): void {
   if (!data || Object.keys(data).length === 0) {
     throw new ApiError(400, "VALIDATION_INVALID", "至少需要修改一个类型字段");
   }
-  const schema =
-    type === "character"
-      ? characterDataSchema.partial()
-      : type === "golden_finger"
-        ? goldenFingerDataSchema.partial()
-        : type === "faction"
-          ? factionDataSchema.partial()
-          : type === "map"
-            ? mapDataSchema.partial()
-            : type === "power_system"
-              ? powerSystemDataSchema.partial()
-              : worldRuleDataSchema.partial();
-  const parsed = schema.safeParse(data);
+  const parsed = worldRuleDataSchema.partial().safeParse(data);
   if (!parsed.success) {
     throw new ApiError(400, "VALIDATION_INVALID", "设定字段与当前类型不匹配");
   }
+}
+
+function isSettingWriteViolation(
+  value: Awaited<ReturnType<SettingsRepository["create"]>> | object,
+): value is SettingWriteViolation {
+  return typeof value === "object" && value !== null && "kind" in value;
+}
+
+function settingConflict(conflict: SettingWriteViolation): ApiError {
+  if (conflict.kind === "custom_field_required") {
+    return new ApiError(400, "CUSTOM_FIELD_REQUIRED", conflict.message, {
+      fieldKey: conflict.fieldKey,
+    });
+  }
+  if (conflict.kind === "custom_field_invalid") {
+    return new ApiError(400, "CUSTOM_FIELD_INVALID", conflict.message, {
+      fieldKey: conflict.fieldKey,
+    });
+  }
+  if (conflict.kind === "name_conflict") {
+    return new ApiError(409, "SETTING_NAME_CONFLICT", "同一栏目已有同名设定，请使用别名区分", {
+      entityId: conflict.entityId,
+      conflictingName: conflict.value,
+    });
+  }
+  if (conflict.kind === "alias_conflict") {
+    return new ApiError(409, "SETTING_ALIAS_CONFLICT", "别名已被其他设定使用，请换一个名称", {
+      entityId: conflict.entityId,
+      conflictingAlias: conflict.value,
+    });
+  }
+  throw new Error("Unhandled setting write conflict");
 }

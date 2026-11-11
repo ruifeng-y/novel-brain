@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import {
   uuidV7Schema,
+  workBranchListQuerySchema,
   workBranchesResponseSchema,
   workCreateRequestSchema,
   workListQuerySchema,
@@ -22,6 +23,7 @@ import { ApiBody, ApiHeader, ApiOkResponse, ApiTags, type SchemaObject } from "@
 import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
+import { ApiQuerySchema } from "../common/zod-openapi";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
@@ -45,6 +47,7 @@ export class WorksController {
   constructor(private readonly service: WorksService) {}
 
   @Get()
+  @ApiQuerySchema(workListQuerySchema)
   @ApiOkResponse({ description: "Current user works", schema: worksResponseJsonSchema })
   async list(@Req() request: AuthenticatedRequest, @Query() query: unknown) {
     const requestId = createRequestId();
@@ -94,13 +97,23 @@ export class WorksController {
   }
 
   @Get(":workId/branches")
+  @ApiQuerySchema(workBranchListQuerySchema)
   @ApiOkResponse({ description: "Work branches", schema: branchesResponseJsonSchema })
-  async branches(@Req() request: AuthenticatedRequest, @Param("workId") workId: string) {
+  async branches(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Query() query: unknown,
+  ) {
     const requestId = createRequestId();
+    const page = await this.service.branches(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      workBranchListQuerySchema.parse(query ?? {}),
+    );
     return workBranchesResponseSchema.parse({
-      data: await this.service.branches(this.userId(request), uuidV7Schema.parse(workId)),
+      data: page.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: page.nextCursor },
     });
   }
 

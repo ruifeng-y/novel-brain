@@ -1,27 +1,43 @@
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
+  auditLogs,
   chapterVersions,
   chapters,
+  characterKnowledgeStates,
   contextPackVersions,
   createDatabaseClient,
   createDatabasePool,
   entities,
   facts as canonicalFacts,
   jobEvents,
+  jobCheckpoints,
+  jobRecoveries,
+  jobSteps,
   jobs,
   modelConfigs,
   storyBibles,
+  storyBibleVersions,
+  storyBibleWorldRules,
+  summaryRecords,
   workBranches,
   works,
   type DatabaseClient,
 } from "@novel-brain/db";
-import type {
-  ContextPackEviction,
-  ContextPackSelected,
-  ContextSourceRef,
-  GenerateChapterRequest,
+import {
+  generationBudgetSchema,
+  generationCheckpointSchema,
+  jobRecoveryRecordSchema,
+  type ContextPackEviction,
+  type ContextPackSelected,
+  type ContextSourceRef,
+  type GenerateChapterRequest,
+  type GenerationJobListQuery,
+  type JobRecoveryRecord,
+  type JobRecoveryRequest,
 } from "@novel-brain/contracts";
-import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { GENERATE_CHAPTER_JOB, WORKER_JOB_STEPS } from "@novel-brain/contracts";
+import { resolveRecoveryStep, type RecoveryStepStatus } from "@novel-brain/core";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Pool } from "pg";
@@ -43,9 +59,27 @@ export interface GenerationBranchContext {
   branchId: string;
 }
 
+export interface GenerationAuditContext {
+  requestId: string;
+  ip: string;
+  userAgent: string;
+}
+
 export interface GenerationSources {
   chapter: InferSelectModel<typeof chapters>;
+  branch: {
+    id: string;
+    status: "active" | "archived";
+    headNodeId: string | null;
+  };
   storyBible: InferSelectModel<typeof storyBibles>;
+  worldRules: Array<{
+    id: string;
+    name: string;
+    constraint: string;
+    scope: string;
+    exceptions: string[];
+  }>;
   styleSample?: string;
   settings: GenerationSettingSource[];
   previousVersions: Array<{
@@ -55,7 +89,35 @@ export interface GenerationSources {
     versionId: string;
     content: string;
   }>;
+  summaries: Array<{
+    id: string;
+    level: "chapter" | "stage" | "volume" | "book";
+    label: string;
+    content: string;
+    branchId: string;
+    fromChapter: number;
+    toChapter: number | null;
+    status: "fresh" | "stale" | "rebuilding";
+  }>;
   modelConfig: InferSelectModel<typeof modelConfigs>;
+  povCharacterId?: string;
+  knowledge?: {
+    facts: Array<{
+      id: string;
+      subject: string;
+      predicate: string;
+      object: string;
+      validFromChapter: number;
+      validToChapter: number | null;
+    }>;
+    states: Array<{
+      objectiveFactId: string;
+      state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+      claimedContent: string | null;
+      validFromChapter: number;
+      validToChapter: number | null;
+    }>;
+  };
 }
 
 export interface GenerationSettingSource {
@@ -76,6 +138,33 @@ export interface GenerationSettingSource {
 export interface JobWithContextPack {
   job: JobRecord;
   contextPack: ContextPackRecord | null;
+}
+
+export interface GenerationRecoveryResult {
+  job: JobWithContextPack;
+  recovery: JobRecoveryRecord;
+  created: boolean;
+}
+
+export class JobRecoveryConflictError extends Error {
+  constructor() {
+    super("Generation checkpoint changed before recovery");
+    this.name = "JobRecoveryConflictError";
+  }
+}
+
+export class JobRecoveryBudgetInvalidError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "JobRecoveryBudgetInvalidError";
+  }
+}
+
+export class JobNotRecoverableError extends Error {
+  constructor(readonly status: string) {
+    super(`Generation job in status ${status} cannot be recovered`);
+    this.name = "JobNotRecoverableError";
+  }
 }
 
 export interface PersistedContextPack {
@@ -151,6 +240,24 @@ export class GenerationRepository implements OnModuleDestroy {
       if (!chapter) {
         return undefined;
       }
+      const [branch] = await transaction
+        .select({
+          id: workBranches.id,
+          status: workBranches.status,
+          headNodeId: workBranches.headNodeId,
+        })
+        .from(workBranches)
+        .where(
+          and(
+            eq(workBranches.id, context.branchId),
+            eq(workBranches.workId, context.workId),
+            eq(workBranches.userId, userId),
+          ),
+        )
+        .limit(1);
+      if (!branch) {
+        return undefined;
+      }
       const [storyBible] = await transaction
         .select()
         .from(storyBibles)
@@ -166,6 +273,29 @@ export class GenerationRepository implements OnModuleDestroy {
       if (!storyBible) {
         return undefined;
       }
+      const [storyBibleVersion] = await transaction
+        .select({ id: storyBibleVersions.id })
+        .from(storyBibleVersions)
+        .where(
+          and(
+            eq(storyBibleVersions.storyBibleId, storyBible.id),
+            eq(storyBibleVersions.userId, userId),
+            eq(storyBibleVersions.version, storyBible.version),
+          ),
+        )
+        .limit(1);
+      const worldRules = storyBibleVersion
+        ? await transaction
+            .select()
+            .from(storyBibleWorldRules)
+            .where(
+              and(
+                eq(storyBibleWorldRules.storyBibleVersionId, storyBibleVersion.id),
+                eq(storyBibleWorldRules.userId, userId),
+              ),
+            )
+            .orderBy(asc(storyBibleWorldRules.name))
+        : [];
       const [work] = await transaction
         .select({ settings: works.settings })
         .from(works)
@@ -228,6 +358,20 @@ export class GenerationRepository implements OnModuleDestroy {
         )
         .orderBy(desc(chapters.number))
         .limit(3);
+      const summaries = await transaction
+        .select()
+        .from(summaryRecords)
+        .where(
+          and(
+            eq(summaryRecords.userId, userId),
+            eq(summaryRecords.workId, context.workId),
+            eq(summaryRecords.branchId, context.branchId),
+            eq(summaryRecords.status, "fresh"),
+            sql`${summaryRecords.toChapter} is not null and ${summaryRecords.toChapter} < ${chapter.number}`,
+          ),
+        )
+        .orderBy(desc(summaryRecords.fromChapter))
+        .limit(8);
       const configs = await transaction
         .select()
         .from(modelConfigs)
@@ -244,9 +388,41 @@ export class GenerationRepository implements OnModuleDestroy {
       if (!modelConfig) {
         return undefined;
       }
+      const povName = chapter.brief?.pov;
+      const hasPov = typeof povName === "string" && povName.trim().length > 0;
+      const povCharacter =
+        typeof povName === "string"
+          ? settings.find((setting) => setting.type === "character" && setting.name === povName)
+          : undefined;
+      const knowledgeStates = povCharacter
+        ? await transaction
+            .select()
+            .from(characterKnowledgeStates)
+            .where(
+              and(
+                eq(characterKnowledgeStates.characterId, povCharacter.id),
+                eq(characterKnowledgeStates.workId, context.workId),
+                eq(characterKnowledgeStates.branchId, context.branchId),
+                eq(characterKnowledgeStates.userId, userId),
+              ),
+            )
+            .orderBy(asc(characterKnowledgeStates.validFromChapter))
+        : [];
       return {
         chapter,
+        branch: {
+          id: branch.id,
+          status: branch.status === "archived" ? "archived" : "active",
+          headNodeId: branch.headNodeId,
+        },
         storyBible,
+        worldRules: worldRules.map((rule) => ({
+          id: rule.id,
+          name: rule.name,
+          constraint: rule.constraint,
+          scope: rule.scope,
+          exceptions: rule.exceptions,
+        })),
         settings: [
           ...settings.map((setting) => ({
             id: setting.id,
@@ -285,7 +461,40 @@ export class GenerationRepository implements OnModuleDestroy {
           ? { styleSample: work.settings.styleSample }
           : {}),
         previousVersions,
+        summaries: summaries.map((summary) => ({
+          id: summary.id,
+          level: summary.level as "chapter" | "stage" | "volume" | "book",
+          label: summary.title,
+          content: summary.content,
+          branchId: summary.branchId,
+          fromChapter: summary.fromChapter,
+          toChapter: summary.toChapter,
+          status: summary.status as "fresh" | "stale" | "rebuilding",
+        })),
         modelConfig,
+        ...(povCharacter ? { povCharacterId: povCharacter.id } : {}),
+        ...(hasPov
+          ? {
+              knowledge: {
+                facts: submittedFacts.map(({ fact }) => ({
+                  id: fact.id,
+                  subject: fact.subject,
+                  predicate: fact.predicate,
+                  object: fact.object,
+                  validFromChapter: fact.validFromChapter,
+                  validToChapter: fact.validToChapter,
+                })),
+                states: knowledgeStates.map((state) => ({
+                  objectiveFactId: state.objectiveFactId,
+                  state: state.state as
+                    "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown",
+                  claimedContent: state.claimedContent,
+                  validFromChapter: state.validFromChapter,
+                  validToChapter: state.validToChapter,
+                })),
+              },
+            }
+          : {}),
       };
     });
   }
@@ -305,6 +514,7 @@ export class GenerationRepository implements OnModuleDestroy {
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
             eq(jobs.chapterId, context.chapterId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
             eq(jobs.idempotencyKey, idempotencyKey),
           ),
         )
@@ -334,6 +544,7 @@ export class GenerationRepository implements OnModuleDestroy {
           and(
             eq(jobs.userId, input.userId),
             eq(jobs.chapterId, input.context.chapterId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
             eq(jobs.idempotencyKey, input.idempotencyKey),
           ),
         )
@@ -396,6 +607,7 @@ export class GenerationRepository implements OnModuleDestroy {
             eq(jobs.userId, userId),
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
           ),
         )
         .limit(1);
@@ -406,37 +618,69 @@ export class GenerationRepository implements OnModuleDestroy {
     });
   }
 
-  async listJobs(userId: string, context: GenerationWorkContext): Promise<JobWithContextPack[]> {
+  async listJobs(
+    userId: string,
+    context: GenerationWorkContext,
+    query: GenerationJobListQuery,
+  ): Promise<{ data: JobWithContextPack[]; nextCursor: string | null } | "invalid_cursor"> {
     return this.withTenant(userId, async (transaction) => {
+      const scope = and(
+        eq(jobs.userId, userId),
+        eq(jobs.workId, context.workId),
+        eq(jobs.branchId, context.branchId),
+        eq(jobs.type, GENERATE_CHAPTER_JOB),
+        eq(jobs.chapterId, context.chapterId),
+      );
+      const cursor = query.cursor
+        ? (
+            await transaction
+              .select({ id: jobs.id, createdAt: jobs.createdAt })
+              .from(jobs)
+              .where(and(scope, eq(jobs.id, query.cursor)))
+              .limit(1)
+          )[0]
+        : undefined;
+      if (query.cursor && !cursor) {
+        return "invalid_cursor";
+      }
       const records = await transaction
         .select()
         .from(jobs)
         .where(
           and(
-            eq(jobs.userId, userId),
-            eq(jobs.workId, context.workId),
-            eq(jobs.branchId, context.branchId),
-            eq(jobs.chapterId, context.chapterId),
+            scope,
+            cursor
+              ? or(
+                  lt(jobs.createdAt, cursor.createdAt),
+                  and(eq(jobs.createdAt, cursor.createdAt), lt(jobs.id, cursor.id)),
+                )
+              : undefined,
           ),
         )
-        .orderBy(desc(jobs.createdAt));
+        .orderBy(desc(jobs.createdAt), desc(jobs.id))
+        .limit(query.limit + 1);
       if (records.length === 0) {
-        return [];
+        return { data: [], nextCursor: null };
       }
+      const hasMore = records.length > query.limit;
+      const page = hasMore ? records.slice(0, query.limit) : records;
       const packs = await transaction
         .select()
         .from(contextPackVersions)
         .where(
           inArray(
             contextPackVersions.jobId,
-            records.map((record) => record.id),
+            page.map((record) => record.id),
           ),
         )
         .orderBy(desc(contextPackVersions.version));
-      return records.map((job) => ({
-        job,
-        contextPack: packs.find((pack) => pack.jobId === job.id) ?? null,
-      }));
+      return {
+        data: page.map((job) => ({
+          job,
+          contextPack: packs.find((pack) => pack.jobId === job.id) ?? null,
+        })),
+        nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+      };
     });
   }
 
@@ -477,6 +721,7 @@ export class GenerationRepository implements OnModuleDestroy {
             eq(jobs.userId, userId),
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
           ),
         )
         .for("update")
@@ -510,21 +755,24 @@ export class GenerationRepository implements OnModuleDestroy {
     });
   }
 
-  async retryJob(
-    userId: string,
-    context: GenerationBranchContext,
-    jobId: string,
-  ): Promise<JobWithContextPack | undefined> {
-    return this.withTenant(userId, async (transaction) => {
+  async recoverJob(input: {
+    userId: string;
+    context: GenerationBranchContext;
+    jobId: string;
+    request: JobRecoveryRequest;
+    audit: GenerationAuditContext;
+  }): Promise<GenerationRecoveryResult | undefined> {
+    return this.withTenant(input.userId, async (transaction) => {
       const [current] = await transaction
         .select()
         .from(jobs)
         .where(
           and(
-            eq(jobs.id, jobId),
-            eq(jobs.userId, userId),
-            eq(jobs.workId, context.workId),
-            eq(jobs.branchId, context.branchId),
+            eq(jobs.id, input.jobId),
+            eq(jobs.userId, input.userId),
+            eq(jobs.workId, input.context.workId),
+            eq(jobs.branchId, input.context.branchId),
+            eq(jobs.type, GENERATE_CHAPTER_JOB),
           ),
         )
         .for("update")
@@ -532,14 +780,90 @@ export class GenerationRepository implements OnModuleDestroy {
       if (!current) {
         return undefined;
       }
-      if (current.status !== "failed" && current.status !== "cancelled") {
-        return { job: current, contextPack: await this.findContextPack(transaction, current.id) };
+
+      const [existingRecovery] = await transaction
+        .select()
+        .from(jobRecoveries)
+        .where(
+          and(
+            eq(jobRecoveries.jobId, current.id),
+            eq(jobRecoveries.idempotencyKey, input.request.idempotencyKey),
+          ),
+        )
+        .limit(1);
+      if (existingRecovery) {
+        return {
+          job: {
+            job: current,
+            contextPack: await this.findContextPack(transaction, current.id),
+          },
+          recovery: toJobRecoveryRecord(existingRecovery),
+          created: false,
+        };
       }
+
+      if (!["failed", "cancelled", "paused"].includes(current.status)) {
+        throw new JobNotRecoverableError(current.status);
+      }
+      if (
+        input.request.expectedCheckpointVersion !== undefined &&
+        input.request.expectedCheckpointVersion !== current.checkpointVersion
+      ) {
+        throw new JobRecoveryConflictError();
+      }
+      const currentBudget = generationBudgetSchema.parse(current.budget);
+      const nextBudget = recoveryBudget(
+        currentBudget,
+        input.request.budget,
+        current.errorCode === "JOB_BUDGET_EXCEEDED",
+      );
+
+      const steps = await transaction
+        .select({ stepKey: jobSteps.stepKey, status: jobSteps.status })
+        .from(jobSteps)
+        .where(eq(jobSteps.jobId, current.id));
+      const resume = resolveRecoveryStep(
+        WORKER_JOB_STEPS,
+        steps.map((step) => ({
+          stepKey: step.stepKey,
+          status: step.status as RecoveryStepStatus,
+        })),
+      );
+      const [resumeStepRecord] = await transaction
+        .select({ inputHash: jobSteps.inputHash })
+        .from(jobSteps)
+        .where(and(eq(jobSteps.jobId, current.id), eq(jobSteps.stepKey, resume.step)))
+        .limit(1);
+      const previousCheckpoint = generationCheckpointSchema.parse(current.checkpoint);
+      const recoveryId = uuidv7();
+      const checkpointVersion = current.checkpointVersion + 1;
+      const checkpoint = generationCheckpointSchema.parse({
+        schemaVersion: 1,
+        revision: checkpointVersion,
+        step: resume.step,
+        inputHash: resumeStepRecord?.inputHash ?? null,
+        outputRefs: previousCheckpoint.outputRefs,
+        payload: {
+          ...previousCheckpoint.payload,
+          recovery: {
+            reason: input.request.reason,
+            idempotencyKey: input.request.idempotencyKey,
+            fromCheckpointVersion: current.checkpointVersion,
+            budgetBefore: currentBudget,
+            budgetAfter: nextBudget,
+          },
+        },
+      });
       const now = new Date();
+      const action = current.status === "paused" ? "resume" : "retry";
       const [job] = await transaction
         .update(jobs)
         .set({
           status: "queued",
+          budget: nextBudget,
+          currentStep: resume.step,
+          checkpoint,
+          checkpointVersion,
           errorCode: null,
           errorMessage: null,
           finishedAt: null,
@@ -548,13 +872,75 @@ export class GenerationRepository implements OnModuleDestroy {
         .where(eq(jobs.id, current.id))
         .returning();
       if (!job) {
-        throw new Error("Failed to retry generation job");
+        throw new Error("Failed to recover generation job");
       }
-      await appendEvent(transaction, job, "job.resumed", {
-        status: "queued",
-        checkpoint: job.checkpoint,
+      await transaction.insert(jobCheckpoints).values({
+        id: uuidv7(),
+        jobId: job.id,
+        workId: job.workId,
+        branchId: job.branchId,
+        userId: job.userId,
+        stepKey: resume.step,
+        schemaVersion: 1,
+        revision: checkpointVersion,
+        attempt: 0,
+        inputHash: resumeStepRecord?.inputHash ?? null,
+        outputRefs: previousCheckpoint.outputRefs,
+        payload: checkpoint,
+        createdAt: now,
       });
-      return { job, contextPack: await this.findContextPack(transaction, job.id) };
+      const [recovery] = await transaction
+        .insert(jobRecoveries)
+        .values({
+          id: recoveryId,
+          jobId: job.id,
+          workId: job.workId,
+          branchId: job.branchId,
+          userId: job.userId,
+          actorId: input.userId,
+          action,
+          reason: input.request.reason,
+          idempotencyKey: input.request.idempotencyKey,
+          fromStatus: current.status,
+          fromCheckpointVersion: current.checkpointVersion,
+          checkpointVersion,
+          resumeStep: resume.step,
+          correlationId: input.audit.requestId,
+          createdAt: now,
+        })
+        .returning();
+      if (!recovery) {
+        throw new Error("Failed to record generation recovery");
+      }
+      await transaction.insert(auditLogs).values({
+        id: uuidv7(),
+        actorId: input.userId,
+        action: "job.recovered",
+        targetType: "job",
+        targetId: job.id,
+        decision: "allowed",
+        correlationId: input.audit.requestId,
+        ip: input.audit.ip,
+        userAgent: input.audit.userAgent,
+        createdAt: now,
+      });
+      await appendEvent(transaction, job, "job.recovered", {
+        status: "queued",
+        recoveryId,
+        reason: input.request.reason,
+        resumeStep: resume.step,
+        budgetBefore: currentBudget,
+        budgetAfter: nextBudget,
+        checkpoint,
+      });
+      return {
+        job: {
+          job,
+          contextPack: await this.findContextPack(transaction, job.id),
+        },
+        recovery: toJobRecoveryRecord(recovery),
+        created: true,
+      };
     });
   }
 
@@ -654,4 +1040,44 @@ export function isTerminal(status: string): boolean {
     status === "failed" ||
     status === "cancelled"
   );
+}
+
+function toJobRecoveryRecord(row: InferSelectModel<typeof jobRecoveries>): JobRecoveryRecord {
+  return jobRecoveryRecordSchema.parse({
+    id: row.id,
+    jobId: row.jobId,
+    actorId: row.actorId,
+    action: row.action,
+    reason: row.reason,
+    idempotencyKey: row.idempotencyKey,
+    fromStatus: row.fromStatus,
+    fromCheckpointVersion: row.fromCheckpointVersion,
+    resumeStep: row.resumeStep,
+    checkpointVersion: row.checkpointVersion,
+    createdAt: row.createdAt.toISOString(),
+  });
+}
+
+function recoveryBudget(
+  current: ReturnType<typeof generationBudgetSchema.parse>,
+  increase: JobRecoveryRequest["budget"],
+  required: boolean,
+): ReturnType<typeof generationBudgetSchema.parse> {
+  if (!increase) {
+    if (required) {
+      throw new JobRecoveryBudgetInvalidError("预算暂停任务恢复前必须明确提高预算");
+    }
+    return current;
+  }
+  if (increase.maxTokens !== undefined && increase.maxTokens <= current.maxTokens) {
+    throw new JobRecoveryBudgetInvalidError("恢复预算的 maxTokens 必须高于当前上限");
+  }
+  if (increase.maxCostCny !== undefined && increase.maxCostCny <= current.maxCostCny) {
+    throw new JobRecoveryBudgetInvalidError("恢复预算的 maxCostCny 必须高于当前上限");
+  }
+  return generationBudgetSchema.parse({
+    ...current,
+    ...(increase.maxTokens !== undefined ? { maxTokens: increase.maxTokens } : {}),
+    ...(increase.maxCostCny !== undefined ? { maxCostCny: increase.maxCostCny } : {}),
+  });
 }

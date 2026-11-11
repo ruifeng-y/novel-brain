@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LoaderCircle, LockKeyhole, MailCheck, TriangleAlert } from "lucide-react";
+import { LoaderCircle, LockKeyhole, MailCheck, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,6 +11,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { AuthShell } from "./auth-shell";
 
 type AuthMode = "login" | "register";
 
@@ -115,192 +116,136 @@ export function AuthForm({ mode, sessionExpired, permissionDenied }: AuthFormPro
   const disabled = submitting || !csrfToken || Boolean(csrfError);
 
   return (
-    <main className="auth-shell">
-      <aside className="auth-brand-panel">
-        <Link className="brand auth-brand" href="/health">
-          <span className="brand-mark" aria-hidden="true">
-            墨
-          </span>
-          <span className="brand-copy">
-            <strong>墨舟</strong>
-            <span>NovelBrain</span>
-          </span>
-        </Link>
-
-        <div className="auth-brand-copy">
-          <p className="eyebrow">写给认真写长篇的人</p>
-          <h1>把故事写到最后一行，也让它始终站得住。</h1>
-          <p>从一句想法开始，照看人物的选择、世界的规则和每一次伏笔。</p>
+    <AuthShell activeTab={mode}>
+      {sessionExpired ? (
+        <div className="auth-notice warning" role="status">
+          <TriangleAlert size={16} aria-hidden="true" />
+          登录状态已失效，请重新登录。
         </div>
-
-        <div className="auth-points">
-          <span>
-            <Check size={14} aria-hidden="true" />
-            故事圣经与设定中心
-          </span>
-          <span>
-            <Check size={14} aria-hidden="true" />
-            五层大纲与写作台
-          </span>
-          <span>
-            <Check size={14} aria-hidden="true" />
-            连续性、事实与版本
-          </span>
+      ) : null}
+      {permissionDenied ? (
+        <div className="auth-notice danger" role="status">
+          <LockKeyhole size={16} aria-hidden="true" />
+          当前账号无权访问此页面。
         </div>
-      </aside>
+      ) : null}
+      {csrfError ? (
+        <div className="auth-notice danger" role="alert">
+          <TriangleAlert size={16} aria-hidden="true" />
+          {csrfError}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="auth-notice danger" role="alert">
+          <TriangleAlert size={16} aria-hidden="true" />
+          {error}
+        </div>
+      ) : null}
+      {success ? (
+        <div className="auth-notice success" role="status">
+          <MailCheck size={16} aria-hidden="true" />
+          {success}
+        </div>
+      ) : null}
 
-      <section className="auth-main">
-        <div className="auth-card panel">
-          <div className="auth-top">
-            <span className="panel-kicker">账号入口</span>
-            <Link className="text-link" href="/health">
-              服务状态
-            </Link>
-          </div>
+      <form className="auth-form" onSubmit={submit}>
+        <h2>{mode === "login" ? "欢迎回来" : "创建作者账号"}</h2>
+        <p className="auth-help">
+          {mode === "login" ? "登录后继续上次的创作。" : "邮箱验证码注册，不需要额外验证。"}
+        </p>
 
-          <div className="auth-tabs" role="tablist" aria-label="账号入口">
-            <Link
-              className={`auth-tab${mode === "login" ? " active" : ""}`}
-              href="/login"
-              role="tab"
-              aria-selected={mode === "login"}
-            >
-              登录
-            </Link>
-            <Link
-              className={`auth-tab${mode === "register" ? " active" : ""}`}
-              href="/register"
-              role="tab"
-              aria-selected={mode === "register"}
-            >
-              注册
-            </Link>
-          </div>
+        <label className="auth-field">
+          <span>邮箱</span>
+          <input
+            autoComplete="email"
+            disabled={submitting}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="you@example.com"
+            required
+            type="email"
+            value={email}
+          />
+        </label>
 
-          {sessionExpired ? (
-            <div className="auth-notice warning" role="status">
-              <TriangleAlert size={16} aria-hidden="true" />
-              登录状态已失效，请重新登录。
+        {mode === "register" ? (
+          <>
+            <div className="auth-code-row">
+              <label className="auth-field">
+                <span>验证码</span>
+                <input
+                  autoComplete="one-time-code"
+                  disabled={submitting}
+                  inputMode="numeric"
+                  maxLength={6}
+                  onChange={(event) => setCode(event.target.value)}
+                  placeholder="6 位验证码"
+                  required
+                  value={code}
+                />
+              </label>
+              <button
+                className="btn btn-ghost auth-code-button"
+                disabled={sendingCode || codeCooldown > 0 || !email || !csrfToken}
+                onClick={sendCode}
+                type="button"
+              >
+                {sendingCode
+                  ? "发送中"
+                  : codeCooldown > 0
+                    ? `${codeCooldown} 秒后重发`
+                    : "发送验证码"}
+              </button>
             </div>
-          ) : null}
-          {permissionDenied ? (
-            <div className="auth-notice danger" role="status">
-              <LockKeyhole size={16} aria-hidden="true" />
-              当前账号无权访问此页面。
-            </div>
-          ) : null}
-          {csrfError ? (
-            <div className="auth-notice danger" role="alert">
-              <TriangleAlert size={16} aria-hidden="true" />
-              {csrfError}
-            </div>
-          ) : null}
-          {error ? (
-            <div className="auth-notice danger" role="alert">
-              <TriangleAlert size={16} aria-hidden="true" />
-              {error}
-            </div>
-          ) : null}
-          {success ? (
-            <div className="auth-notice success" role="status">
-              <MailCheck size={16} aria-hidden="true" />
-              {success}
-            </div>
-          ) : null}
-
-          <form className="auth-form" onSubmit={submit}>
-            <h2>{mode === "login" ? "欢迎回来" : "创建作者账号"}</h2>
-            <p className="auth-help">
-              {mode === "login" ? "登录后继续上次的创作。" : "邮箱验证码注册，不需要额外验证。"}
-            </p>
-
             <label className="auth-field">
-              <span>邮箱</span>
+              <span>显示名称</span>
               <input
-                autoComplete="email"
+                autoComplete="nickname"
                 disabled={submitting}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
+                maxLength={50}
+                onChange={(event) => setDisplayName(event.target.value)}
+                placeholder="林见鹿"
                 required
-                type="email"
-                value={email}
+                value={displayName}
               />
             </label>
+          </>
+        ) : null}
 
-            {mode === "register" ? (
-              <>
-                <div className="auth-code-row">
-                  <label className="auth-field">
-                    <span>验证码</span>
-                    <input
-                      autoComplete="one-time-code"
-                      disabled={submitting}
-                      inputMode="numeric"
-                      maxLength={6}
-                      onChange={(event) => setCode(event.target.value)}
-                      placeholder="6 位验证码"
-                      required
-                      value={code}
-                    />
-                  </label>
-                  <button
-                    className="btn btn-ghost auth-code-button"
-                    disabled={sendingCode || codeCooldown > 0 || !email || !csrfToken}
-                    onClick={sendCode}
-                    type="button"
-                  >
-                    {sendingCode
-                      ? "发送中"
-                      : codeCooldown > 0
-                        ? `${codeCooldown} 秒后重发`
-                        : "发送验证码"}
-                  </button>
-                </div>
-                <label className="auth-field">
-                  <span>显示名称</span>
-                  <input
-                    autoComplete="nickname"
-                    disabled={submitting}
-                    maxLength={50}
-                    onChange={(event) => setDisplayName(event.target.value)}
-                    placeholder="林见鹿"
-                    required
-                    value={displayName}
-                  />
-                </label>
-              </>
+        <label className="auth-field">
+          <span className="auth-field-label">
+            <span>密码</span>
+            {mode === "login" ? (
+              <Link className="text-link auth-forgot-link" href="/forgot-password">
+                忘记密码？
+              </Link>
             ) : null}
+          </span>
+          <input
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
+            disabled={submitting}
+            minLength={mode === "register" ? 12 : undefined}
+            onChange={(event) => setPassword(event.target.value)}
+            placeholder={mode === "register" ? "至少 12 位，包含字母和数字" : "输入密码"}
+            required
+            type="password"
+            value={password}
+          />
+        </label>
 
-            <label className="auth-field">
-              <span>密码</span>
-              <input
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                disabled={submitting}
-                minLength={mode === "register" ? 12 : undefined}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={mode === "register" ? "至少 12 位，包含字母和数字" : "输入密码"}
-                required
-                type="password"
-                value={password}
-              />
-            </label>
-
-            <button className="btn btn-primary auth-submit" disabled={disabled} type="submit">
-              {submitting ? (
-                <>
-                  <LoaderCircle className="spin" size={15} aria-hidden="true" />
-                  {mode === "login" ? "登录中" : "注册中"}
-                </>
-              ) : mode === "login" ? (
-                "登录"
-              ) : (
-                "注册并进入"
-              )}
-            </button>
-          </form>
-        </div>
-      </section>
-    </main>
+        <button className="btn btn-primary auth-submit" disabled={disabled} type="submit">
+          {submitting ? (
+            <>
+              <LoaderCircle className="spin" size={15} aria-hidden="true" />
+              {mode === "login" ? "登录中" : "注册中"}
+            </>
+          ) : mode === "login" ? (
+            "登录"
+          ) : (
+            "注册并进入"
+          )}
+        </button>
+      </form>
+    </AuthShell>
   );
 }
 

@@ -6,10 +6,12 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
+  canonCommitListQuerySchema,
   canonCommitListResponseSchema,
   canonCommitRequestSchema,
   canonCommitResponseSchema,
@@ -24,6 +26,7 @@ import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 import { ApiError } from "../common/api-error";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { CanonService } from "./canon.service";
@@ -85,21 +88,26 @@ export class CanonController {
   }
 
   @Get("canon/commits")
+  @ApiQuerySchema(canonCommitListQuerySchema)
   @ApiOkResponse({ description: "Canon commits", schema: commitListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = canonCommitListQuerySchema.parse(query ?? {});
+    const result = await this.service.list(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      page,
+    );
     return canonCommitListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-      ),
+      data: result.commits,
       requestId,
-      meta: {},
+      meta: { nextCursor: result.nextCursor },
     });
   }
 

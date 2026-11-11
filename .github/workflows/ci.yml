@@ -8,6 +8,11 @@ on:
         required: false
         default: false
         type: boolean
+      repeat_m1_closeout:
+        description: "Run the M1 closeout author loop five times without retries"
+        required: false
+        default: false
+        type: boolean
   pull_request:
   push:
     branches:
@@ -79,7 +84,7 @@ jobs:
       - run: pnpm build
 
   playwright:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
@@ -133,8 +138,12 @@ jobs:
         run: pnpm test:e2e:update
 
       - name: Run Playwright
-        if: github.event_name != 'workflow_dispatch' || inputs.update_golden != true
+        if: github.event_name != 'workflow_dispatch' || (inputs.update_golden != true && inputs.repeat_m1_closeout != true)
         run: pnpm test:e2e
+
+      - name: Repeat M1 closeout stability
+        if: github.event_name == 'workflow_dispatch' && inputs.repeat_m1_closeout == true && inputs.update_golden != true
+        run: pnpm test:e2e:m1-closeout-stability
 
       - uses: actions/upload-artifact@v4
         if: always()

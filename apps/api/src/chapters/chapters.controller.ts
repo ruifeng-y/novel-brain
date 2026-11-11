@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
@@ -14,10 +15,12 @@ import {
   chapterPatchRequestSchema,
   chapterReadinessResponseSchema,
   chapterVersionCreateRequestSchema,
+  chapterVersionListQuerySchema,
   chapterVersionListResponseSchema,
   chapterVersionSaveResponseSchema,
   chapterWorkspaceListResponseSchema,
   chapterWorkspaceResponseSchema,
+  chapterListQuerySchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
 import {
@@ -34,6 +37,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { ChaptersService } from "./chapters.service";
@@ -58,21 +62,25 @@ export class ChaptersController {
   constructor(private readonly service: ChaptersService) {}
 
   @Get("chapters")
+  @ApiQuerySchema(chapterListQuerySchema)
   @ApiOkResponse({ description: "Ordered chapter briefs", schema: chapterListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = await this.service.list(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      chapterListQuerySchema.parse(query ?? {}),
+    );
     return chapterWorkspaceListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-      ),
+      data: page.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: page.nextCursor },
     });
   }
 
@@ -187,23 +195,27 @@ export class ChaptersController {
   }
 
   @Get("chapters/:chapterId/versions")
+  @ApiQuerySchema(chapterVersionListQuerySchema)
   @ApiOkResponse({ description: "Append-only chapter versions", schema: versionsJsonSchema })
   async versions(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
     @Param("chapterId") chapterId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const page = await this.service.versions(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      uuidV7Schema.parse(chapterId),
+      chapterVersionListQuerySchema.parse(query ?? {}),
+    );
     return chapterVersionListResponseSchema.parse({
-      data: await this.service.versions(
-        this.userId(request),
-        uuidV7Schema.parse(workId),
-        uuidV7Schema.parse(branchId),
-        uuidV7Schema.parse(chapterId),
-      ),
+      data: page.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: page.nextCursor },
     });
   }
 

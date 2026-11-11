@@ -14,17 +14,109 @@ export const ERROR_CODES = [
   "MODEL_CONNECTION_FAILED",
   "MODEL_RATE_LIMITED",
   "MODEL_TIMEOUT",
+  "MODEL_POLICY_BLOCKED",
+  "MODEL_RESPONSE_INVALID",
   "MODEL_PROVIDER_ERROR",
+  "GEN_READINESS_BLOCKED",
   "BIBLE_NOT_READY",
   "BIBLE_LOCKED",
+  "BIBLE_NOT_LOCKED",
   "SETTING_LOCKED",
+  "SETTING_NAME_CONFLICT",
+  "SETTING_ALIAS_CONFLICT",
+  "SETTING_CONFLICT_UNRESOLVED",
+  "SETTING_PROPOSAL_STATE",
+  "SETTING_NOT_LOCKED",
+  "SETTING_DOMAIN_DATA_FORBIDDEN",
+  "CUSTOM_FIELD_REQUIRED",
+  "CUSTOM_FIELD_INVALID",
+  "CUSTOM_FIELD_IMMUTABLE",
+  "CUSTOM_FIELD_DUPLICATE",
+  "CHARACTER_STATE_OVERLAP",
+  "MAP_NODE_PARENT_MISMATCH",
+  "MAP_LAYER_MISMATCH",
+  "MAP_ROUTE_ENDPOINT_MISMATCH",
+  "MAP_ROUTE_DISCONNECTED",
+  "MAP_ROUTE_TRAVEL_TIME_CONFLICT",
+  "CONTROL_AREA_OVERLAP",
+  "TIMELINE_EVENT_OVERLAP",
+  "TIMELINE_ERA_NOT_FOUND",
+  "ITINERARY_TIME_ORDER",
+  "ITINERARY_OVERLAP",
+  "POWER_PATH_MISMATCH",
+  "POWER_REALM_LADDER_INVALID",
+  "POWER_LIFESPAN_POLICY_INVALID",
+  "ITEM_RIGHT_CONFLICT",
+  "ITEM_NOT_CONSUMABLE",
+  "ITEM_QUANTITY_INSUFFICIENT",
+  "EQUIPMENT_SLOT_CONFLICT",
+  "ITEM_NOT_EQUIPMENT",
   "JOB_BUDGET_EXCEEDED",
+  "JOB_CONTEXT_BRANCH_STALE",
+  "JOB_CONTEXT_WINDOW_TOO_SMALL",
   "JOB_CANCELLED",
+  "JOB_NOT_RECOVERABLE",
+  "JOB_RECOVERY_CONFLICT",
+  "JOB_RECOVERY_BUDGET_INVALID",
+  "JOB_ATTEMPTS_EXHAUSTED",
+  "SUMMARY_REBUILD_FAILED",
+  "WRITING_ACTION_NOT_EDITABLE",
+  "WRITING_ACTION_SELECTION_INVALID",
+  "WRITING_ACTION_SOURCE_VERSION_INVALID",
   "FACT_DECISION_REQUIRED",
   "FACT_SUBMISSION_BLOCKED",
   "CANON_CHAPTER_NOT_APPROVED",
+  "CANON_IDEMPOTENCY_CONFLICT",
   "IMPORT_CONFLICT_UNRESOLVED",
+  "OUTLINE_STRUCTURE_INVALID",
+  "OUTLINE_NODE_LOCKED",
+  "OUTLINE_PARENT_INVALID",
+  "OUTLINE_CHAPTER_INVALID",
+  "OUTLINE_REFERENCE_INVALID",
+  "GOLDEN_THREE_CANDIDATES_EXIST",
+  "GOLDEN_THREE_INVALID_CANDIDATES",
+  "GOLDEN_THREE_CANDIDATE_LOCKED",
+  "GOLDEN_THREE_REVIEW_FAILED",
+  "GOLDEN_THREE_SELECTION_REQUIRED",
+  "GOLDEN_THREE_CONTINUATION_REQUIRED",
+  "GOLDEN_THREE_MODEL_REQUIRED",
+  "GOLDEN_THREE_GENERATION_FAILED",
+  "GOLDEN_THREE_ALREADY_LOCKED",
+  "GOLDEN_THREE_OVERRIDE_INVALID",
+  "GOLDEN_THREE_CHAPTERS_EMPTY",
+  "LEDGER_TRANSITION_INVALID",
+  "LEDGER_SOURCE_REQUIRED",
+  "LEDGER_EVIDENCE_REQUIRED",
+  "LEDGER_REFERENCE_INVALID",
   "VERSION_CONFLICT",
+  "AGENT_CONTRACT_INVALID",
+  "AGENT_GRANT_INVALID",
+  "AGENT_GRANT_EXPIRED",
+  "AGENT_GRANT_REVOKED",
+  "AGENT_TOOL_NOT_REGISTERED",
+  "AGENT_TOOL_DENIED",
+  "AGENT_BUDGET_EXCEEDED",
+  "AGENT_APPROVAL_REQUIRED",
+  "CRITIC_VERSION_REQUIRED",
+  "CRITIC_FINDING_NOT_DISMISSIBLE",
+  "QUALITY_GATE_BLOCKED",
+  "VOLUME_AUDIT_VOLUME_NOT_FOUND",
+  "VOLUME_AUDIT_BLOCKED",
+  "VOLUME_AUDIT_STALE",
+  "GOLDEN_THREE_LOCK_REQUIRED",
+  "STYLE_SOURCE_NOT_APPROVED",
+  "STYLE_BASELINE_UNAPPROVED",
+  "STYLE_BASELINE_REQUIRED",
+  "STYLE_REFERENCE_INVALID",
+  "STYLE_RANGE_EMPTY",
+  "CHAPTER_VERSION_REQUIRED",
+  "REVISION_NOT_EDITABLE",
+  "REVISION_SOURCE_INVALID",
+  "REVISION_FINDING_HIGH_RISK",
+  "REVISION_FINDING_INVALID",
+  "REVISION_FINDING_REJECTED",
+  "REVISION_ROUND_LIMIT_REACHED",
+  "REVISION_INVALID_STATE",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -62,6 +154,25 @@ export type ApiEnvelope<T> = {
   meta: Record<string, unknown>;
 };
 
+export const cursorPageQuerySchema = z
+  .object({
+    cursor: uuidV7Schema.optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  })
+  .strict();
+export type CursorPageQuery = z.infer<typeof cursorPageQuerySchema>;
+
+export const cursorPageMetaSchema = z.object({
+  nextCursor: uuidV7Schema.nullable(),
+});
+
+export const cursorListResponseSchema = <T extends z.ZodType>(dataSchema: T) =>
+  z.object({
+    data: dataSchema,
+    requestId: z.string().startsWith("req_"),
+    meta: cursorPageMetaSchema,
+  });
+
 export const authEmailSchema = z.string().trim().toLowerCase().email().max(254);
 export const authPasswordSchema = z
   .string()
@@ -70,6 +181,13 @@ export const authPasswordSchema = z
   .regex(/[A-Za-z]/, "Password must contain a letter")
   .regex(/\d/, "Password must contain a number");
 export const authDisplayNameSchema = z.string().trim().min(1).max(50);
+export const authorAvatarUrlSchema = z
+  .url()
+  .max(500)
+  .refine((value) => {
+    const protocol = new URL(value).protocol;
+    return protocol === "http:" || protocol === "https:";
+  }, "Avatar URL must use http or https");
 
 export const sendRegistrationCodeRequestSchema = z.object({
   email: authEmailSchema,
@@ -90,13 +208,41 @@ export const loginRequestSchema = z.object({
 });
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
 
+export const sendPasswordResetRequestSchema = z.object({
+  email: authEmailSchema,
+});
+export type SendPasswordResetRequest = z.infer<typeof sendPasswordResetRequestSchema>;
+
+export const resetPasswordRequestSchema = z.object({
+  token: z.string().min(32).max(256),
+  password: authPasswordSchema,
+});
+export type ResetPasswordRequest = z.infer<typeof resetPasswordRequestSchema>;
+
 export const authUserSchema = z.object({
   id: uuidV7Schema,
   emailMasked: z.string().min(3),
   displayName: z.string().min(1),
+  bio: z.string().max(500).default(""),
+  avatarUrl: authorAvatarUrlSchema.nullable().default(null),
+  version: z.number().int().positive().default(1),
   createdAt: z.string().datetime(),
 });
 export type AuthUser = z.infer<typeof authUserSchema>;
+
+export const profileUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    displayName: authDisplayNameSchema.optional(),
+    bio: z.string().trim().max(500).optional(),
+    avatarUrl: authorAvatarUrlSchema.nullable().optional(),
+  })
+  .refine(
+    (input) =>
+      input.displayName !== undefined || input.bio !== undefined || input.avatarUrl !== undefined,
+    { message: "At least one profile field is required" },
+  );
+export type ProfileUpdateRequest = z.infer<typeof profileUpdateRequestSchema>;
 
 export const authSessionSchema = z.object({
   id: uuidV7Schema,
@@ -106,6 +252,17 @@ export const authSessionSchema = z.object({
   createdAt: z.string().datetime(),
 });
 export type AuthSession = z.infer<typeof authSessionSchema>;
+
+export const authDeviceSessionSchema = z.object({
+  id: uuidV7Schema,
+  expiresAt: z.string().datetime(),
+  current: z.boolean(),
+  userAgent: z.string(),
+  ip: z.string(),
+  lastSeenAt: z.string().datetime(),
+  createdAt: z.string().datetime(),
+});
+export type AuthDeviceSession = z.infer<typeof authDeviceSessionSchema>;
 
 export const authSessionDataSchema = z.object({
   user: authUserSchema,
@@ -120,14 +277,81 @@ export const sendRegistrationCodeDataSchema = z.object({
   sent: z.literal(true),
   expiresAt: z.string().datetime(),
 });
+export const sendPasswordResetDataSchema = z.object({
+  sent: z.literal(true),
+  expiresAt: z.string().datetime(),
+});
+export const resetPasswordDataSchema = z.object({
+  reset: z.literal(true),
+});
+export const revokeSessionDataSchema = z.object({
+  revoked: z.literal(true),
+});
 export const logoutDataSchema = z.object({
   loggedOut: z.literal(true),
 });
 
 export const csrfResponseSchema = apiEnvelopeSchema(csrfDataSchema);
 export const sendRegistrationCodeResponseSchema = apiEnvelopeSchema(sendRegistrationCodeDataSchema);
+export const sendPasswordResetResponseSchema = apiEnvelopeSchema(sendPasswordResetDataSchema);
+export const resetPasswordResponseSchema = apiEnvelopeSchema(resetPasswordDataSchema);
 export const authSessionResponseSchema = apiEnvelopeSchema(authSessionDataSchema);
+export const authDeviceSessionsQuerySchema = cursorPageQuerySchema;
+export type AuthDeviceSessionsQuery = z.infer<typeof authDeviceSessionsQuerySchema>;
+export const authDeviceSessionsResponseSchema = cursorListResponseSchema(
+  z.array(authDeviceSessionSchema),
+);
+export const revokeSessionResponseSchema = apiEnvelopeSchema(revokeSessionDataSchema);
+export const profileResponseSchema = apiEnvelopeSchema(authUserSchema);
 export const logoutResponseSchema = apiEnvelopeSchema(logoutDataSchema);
+
+export const authorPenNameSchema = z.object({
+  id: uuidV7Schema,
+  name: z.string().min(1).max(50),
+  bio: z.string().max(500),
+  avatarUrl: authorAvatarUrlSchema.nullable(),
+  isDefault: z.boolean(),
+  version: z.number().int().positive(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type AuthorPenName = z.infer<typeof authorPenNameSchema>;
+
+export const authorPenNameCreateRequestSchema = z.object({
+  name: z.string().trim().min(1).max(50),
+  bio: z.string().trim().max(500).default(""),
+  avatarUrl: authorAvatarUrlSchema.nullable().optional(),
+  isDefault: z.boolean().default(false),
+});
+export type AuthorPenNameCreateRequest = z.infer<typeof authorPenNameCreateRequestSchema>;
+
+export const authorPenNameUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(50).optional(),
+    bio: z.string().trim().max(500).optional(),
+    avatarUrl: authorAvatarUrlSchema.nullable().optional(),
+    isDefault: z.boolean().optional(),
+  })
+  .refine(
+    (input) =>
+      input.name !== undefined ||
+      input.bio !== undefined ||
+      input.avatarUrl !== undefined ||
+      input.isDefault !== undefined,
+    { message: "At least one pen name field is required" },
+  );
+export type AuthorPenNameUpdateRequest = z.infer<typeof authorPenNameUpdateRequestSchema>;
+
+export const authorPenNameResponseSchema = apiEnvelopeSchema(authorPenNameSchema);
+export const authorPenNameListQuerySchema = cursorPageQuerySchema;
+export type AuthorPenNameListQuery = z.infer<typeof authorPenNameListQuerySchema>;
+export const authorPenNameListResponseSchema = cursorListResponseSchema(
+  z.array(authorPenNameSchema),
+);
+export const authorPenNameDeleteResponseSchema = apiEnvelopeSchema(
+  z.object({ deleted: z.literal(true) }),
+);
 
 export const modelProviderSchema = z.enum(["deepseek", "openai-compatible"]);
 export const modelPurposeSchema = z.enum(["planning", "writing", "review"]);
@@ -191,7 +415,9 @@ export const modelProviderInfoSchema = z.object({
 });
 export type ModelProviderInfo = z.infer<typeof modelProviderInfoSchema>;
 
-export const modelConfigsResponseSchema = apiEnvelopeSchema(z.array(modelConfigSchema));
+export const modelConfigListQuerySchema = cursorPageQuerySchema;
+export type ModelConfigListQuery = z.infer<typeof modelConfigListQuerySchema>;
+export const modelConfigsResponseSchema = cursorListResponseSchema(z.array(modelConfigSchema));
 export const modelProvidersResponseSchema = apiEnvelopeSchema(z.array(modelProviderInfoSchema));
 export const modelConfigResponseSchema = apiEnvelopeSchema(modelConfigSchema);
 export const modelConnectionTestResponseSchema = apiEnvelopeSchema(
@@ -312,22 +538,20 @@ export const workOverviewSchema = workSchema.extend({
 });
 export type WorkOverview = z.infer<typeof workOverviewSchema>;
 
-export const workListQuerySchema = z.object({
-  q: z.string().trim().max(120).optional(),
-  status: workStatusSchema.optional(),
-  genre: workGenreSchema.optional(),
-  cursor: uuidV7Schema.optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-});
+export const workListQuerySchema = cursorPageQuerySchema
+  .extend({
+    q: z.string().trim().max(120).optional(),
+    status: workStatusSchema.optional(),
+    genre: workGenreSchema.optional(),
+  })
+  .strict();
 export type WorkListQuery = z.infer<typeof workListQuerySchema>;
 
 export const workResponseSchema = apiEnvelopeSchema(workOverviewSchema);
-export const workListResponseSchema = z.object({
-  data: z.array(workSchema),
-  requestId: z.string().startsWith("req_"),
-  meta: z.object({ nextCursor: uuidV7Schema.nullable() }),
-});
-export const workBranchesResponseSchema = apiEnvelopeSchema(z.array(workBranchSchema));
+export const workListResponseSchema = cursorListResponseSchema(z.array(workSchema));
+export const workBranchListQuerySchema = cursorPageQuerySchema;
+export type WorkBranchListQuery = z.infer<typeof workBranchListQuerySchema>;
+export const workBranchesResponseSchema = cursorListResponseSchema(z.array(workBranchSchema));
 
 export const importCandidateTypeSchema = z.enum([
   "character",
@@ -485,12 +709,40 @@ export const STORY_BIBLE_CARD_TITLES: Record<StoryBibleCardKey, string> = {
 export const storyBibleStatusSchema = z.enum(["draft", "proposed", "locked"]);
 export type StoryBibleStatus = z.infer<typeof storyBibleStatusSchema>;
 
-export const storyBibleCardSchema = z.object({
-  key: storyBibleCardKeySchema,
-  title: z.string().min(1),
-  content: z.string().max(20_000),
-  complete: z.boolean(),
+export const storyBibleWorldRuleSchema = z
+  .object({
+    id: uuidV7Schema,
+    name: z.string().trim().min(1).max(120),
+    constraint: z.string().trim().min(1).max(2_000),
+    scope: z.string().trim().min(1).max(500),
+    exceptions: z.array(z.string().trim().min(1).max(500)).max(20).default([]),
+  })
+  .strict();
+export type StoryBibleWorldRule = z.infer<typeof storyBibleWorldRuleSchema>;
+
+export const storyBibleWorldRuleInputSchema = storyBibleWorldRuleSchema.extend({
+  id: uuidV7Schema.optional(),
 });
+export type StoryBibleWorldRuleInput = z.infer<typeof storyBibleWorldRuleInputSchema>;
+
+export const storyBibleCardSchema = z
+  .object({
+    key: storyBibleCardKeySchema,
+    title: z.string().min(1),
+    content: z.string().max(20_000),
+    complete: z.boolean(),
+    worldRules: z.array(storyBibleWorldRuleSchema).max(20).default([]),
+  })
+  .strict()
+  .superRefine((card, context) => {
+    if (card.key !== "worldLaws" && card.worldRules.length > 0) {
+      context.addIssue({
+        code: "custom",
+        message: "worldRules are only allowed on worldLaws",
+        path: ["worldRules"],
+      });
+    }
+  });
 export type StoryBibleCard = z.infer<typeof storyBibleCardSchema>;
 
 export const storyBibleMissingCardSchema = z.object({
@@ -499,12 +751,21 @@ export const storyBibleMissingCardSchema = z.object({
 });
 export type StoryBibleMissingCard = z.infer<typeof storyBibleMissingCardSchema>;
 
+export const storyBibleIssueSchema = z.object({
+  code: z.enum(["missing_card", "missing_world_rule", "contradictory_world_rule"]),
+  key: storyBibleCardKeySchema,
+  title: z.string().min(1),
+  message: z.string().min(1),
+});
+export type StoryBibleIssue = z.infer<typeof storyBibleIssueSchema>;
+
 export const storyBibleReadinessSchema = z.object({
   status: z.enum(["not_ready", "partial", "ready"]),
   completed: z.number().int().min(0).max(9),
   total: z.literal(9),
   canLock: z.boolean(),
   missingCards: z.array(storyBibleMissingCardSchema).max(9),
+  issues: z.array(storyBibleIssueSchema).max(20),
 });
 export type StoryBibleReadiness = z.infer<typeof storyBibleReadinessSchema>;
 
@@ -548,11 +809,13 @@ export type StoryBible = z.infer<typeof storyBibleSchema>;
 export const storyBiblePatchRequestSchema = z
   .object({
     version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(500),
     cards: z
       .array(
         z.object({
           key: storyBibleCardKeySchema,
           content: z.string().max(20_000),
+          worldRules: z.array(storyBibleWorldRuleInputSchema).max(20).optional(),
         }),
       )
       .min(1)
@@ -567,6 +830,22 @@ export const storyBiblePatchRequestSchema = z
         path: ["cards"],
       });
     }
+    for (const card of input.cards) {
+      if (card.key === "worldLaws" && card.worldRules === undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "worldLaws card requires structured world rules",
+          path: ["cards"],
+        });
+      }
+      if (card.key !== "worldLaws" && card.worldRules !== undefined) {
+        context.addIssue({
+          code: "custom",
+          message: "worldRules are only allowed on worldLaws",
+          path: ["cards"],
+        });
+      }
+    }
   });
 export type StoryBiblePatchRequest = z.infer<typeof storyBiblePatchRequestSchema>;
 
@@ -578,8 +857,97 @@ export const storyBibleLockRequestSchema = z.object({
 });
 export type StoryBibleLockRequest = z.infer<typeof storyBibleLockRequestSchema>;
 
+export const storyBibleUnlockRequestSchema = z.object({
+  version: z.number().int().positive(),
+  reason: z.string().trim().min(1).max(500),
+});
+export type StoryBibleUnlockRequest = z.infer<typeof storyBibleUnlockRequestSchema>;
+
+export const storyBibleVersionActionSchema = z.enum(["proposed", "edited", "locked", "unlocked"]);
+export type StoryBibleVersionAction = z.infer<typeof storyBibleVersionActionSchema>;
+
+export const storyBibleVersionSchema = z.object({
+  id: uuidV7Schema,
+  storyBibleId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  version: z.number().int().positive(),
+  action: storyBibleVersionActionSchema,
+  actorId: uuidV7Schema,
+  reason: z.string().min(1),
+  cards: storyBibleCardsSchema,
+  createdAt: z.string().datetime(),
+});
+export type StoryBibleVersion = z.infer<typeof storyBibleVersionSchema>;
+
+export const storyBibleChangeRequestCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    cardKey: storyBibleCardKeySchema,
+    title: z.string().trim().min(1).max(120),
+    reason: z.string().trim().min(1).max(500),
+    after: storyBibleCardSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.cardKey !== input.after.key) {
+      context.addIssue({
+        code: "custom",
+        message: "Change request card key must match the after card",
+        path: ["cardKey"],
+      });
+    }
+    if (input.cardKey === "worldLaws" && input.after.worldRules.length === 0) {
+      context.addIssue({
+        code: "custom",
+        message: "Locked worldLaws change requests require structured world rules",
+        path: ["after", "worldRules"],
+      });
+    }
+  });
+export type StoryBibleChangeRequestCreateRequest = z.infer<
+  typeof storyBibleChangeRequestCreateRequestSchema
+>;
+
+export const storyBibleChangeRequestSchema = z.object({
+  id: uuidV7Schema,
+  storyBibleId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  cardKey: storyBibleCardKeySchema,
+  title: z.string().min(1),
+  reason: z.string().min(1),
+  before: storyBibleCardSchema,
+  after: storyBibleCardSchema,
+  status: z.enum(["pending", "analyzing", "approved", "rejected", "applied"]),
+  risk: z.enum(["low", "medium", "high"]),
+  source: z.enum(["author", "ai", "import", "batch"]),
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type StoryBibleChangeRequest = z.infer<typeof storyBibleChangeRequestSchema>;
+
 export const storyBibleResponseSchema = apiEnvelopeSchema(storyBibleSchema);
 export const storyBibleReadinessResponseSchema = apiEnvelopeSchema(storyBibleReadinessSchema);
+export const storyBibleVersionListQuerySchema = cursorPageQuerySchema;
+export type StoryBibleVersionListQuery = z.infer<typeof storyBibleVersionListQuerySchema>;
+
+export const storyBibleWorldRuleListQuerySchema = cursorPageQuerySchema
+  .extend({
+    limit: z.coerce.number().int().min(1).max(100).default(100),
+  })
+  .strict();
+export type StoryBibleWorldRuleListQuery = z.infer<typeof storyBibleWorldRuleListQuerySchema>;
+
+export const storyBibleVersionListResponseSchema = cursorListResponseSchema(
+  z.array(storyBibleVersionSchema),
+);
+export const storyBibleWorldRuleListResponseSchema = cursorListResponseSchema(
+  z.array(storyBibleWorldRuleSchema),
+);
+export const storyBibleChangeRequestResponseSchema = apiEnvelopeSchema(
+  storyBibleChangeRequestSchema,
+);
 export const storyBibleDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
@@ -591,6 +959,8 @@ export const settingEntityTypeSchema = z.enum([
   "map",
   "power_system",
   "golden_finger",
+  "item",
+  "timeline_event",
 ]);
 export type SettingEntityType = z.infer<typeof settingEntityTypeSchema>;
 
@@ -599,6 +969,196 @@ export type SettingStatus = z.infer<typeof settingStatusSchema>;
 
 export const settingSourceSchema = z.enum(["author", "import", "ai", "canon"]);
 export type SettingSource = z.infer<typeof settingSourceSchema>;
+
+export const customFieldTypeSchema = z.enum([
+  "text",
+  "long_text",
+  "number",
+  "date",
+  "single_select",
+  "multi_select",
+  "boolean",
+  "relation_ref",
+]);
+export type CustomFieldType = z.infer<typeof customFieldTypeSchema>;
+
+export const customFieldAppliesToSchema = z.enum([
+  "all",
+  "world_rule",
+  "character",
+  "faction",
+  "map",
+  "power_system",
+  "golden_finger",
+  "item",
+  "timeline_event",
+]);
+export type CustomFieldAppliesTo = z.infer<typeof customFieldAppliesToSchema>;
+
+const customFieldOptionsSchema = z.array(z.string().trim().min(1).max(80)).max(100).default([]);
+
+const customFieldDefinitionBaseShape = {
+  label: z.string().trim().min(1).max(80),
+  fieldType: customFieldTypeSchema,
+  appliesTo: customFieldAppliesToSchema,
+  required: z.boolean().default(false),
+  options: customFieldOptionsSchema,
+  relationTarget: settingEntityTypeSchema.nullable().default(null),
+  sortOrder: z.number().int().min(0).max(10_000).default(0),
+};
+
+export const customFieldDefinitionCreateRequestSchema = z
+  .object({
+    key: z
+      .string()
+      .trim()
+      .regex(/^[a-z][a-z0-9_]{0,63}$/, "Expected a lowercase field key"),
+    ...customFieldDefinitionBaseShape,
+  })
+  .strict()
+  .superRefine(validateCustomFieldDefinitionShape);
+export type CustomFieldDefinitionCreateRequest = z.infer<
+  typeof customFieldDefinitionCreateRequestSchema
+>;
+
+export const customFieldDefinitionPatchRequestSchema = z
+  .object({
+    schemaVersion: z.number().int().positive(),
+    key: z.string().trim().optional(),
+    label: z.string().trim().min(1).max(80).optional(),
+    fieldType: customFieldTypeSchema.optional(),
+    appliesTo: customFieldAppliesToSchema.optional(),
+    required: z.boolean().optional(),
+    options: z.array(z.string().trim().min(1).max(80)).max(100).optional(),
+    relationTarget: settingEntityTypeSchema.nullable().optional(),
+    enabled: z.boolean().optional(),
+    sortOrder: z.number().int().min(0).max(10_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "schemaVersion"), {
+    message: "At least one custom field change is required",
+  });
+export type CustomFieldDefinitionPatchRequest = z.infer<
+  typeof customFieldDefinitionPatchRequestSchema
+>;
+
+export const customFieldDefinitionSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  key: z.string(),
+  label: z.string(),
+  fieldType: customFieldTypeSchema,
+  appliesTo: customFieldAppliesToSchema,
+  required: z.boolean(),
+  options: z.array(z.string()),
+  relationTarget: settingEntityTypeSchema.nullable(),
+  enabled: z.boolean(),
+  schemaVersion: z.number().int().positive(),
+  sortOrder: z.number().int().nonnegative(),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+export type CustomFieldDefinition = z.infer<typeof customFieldDefinitionSchema>;
+
+export const customFieldValueSchema = z.union([
+  z.string(),
+  z.number().finite(),
+  z.boolean(),
+  z.array(z.string()),
+]);
+export type CustomFieldValue = z.infer<typeof customFieldValueSchema>;
+
+export const customFieldValuesSchema = z.record(z.string().trim().min(1).max(80), z.unknown());
+export type CustomFieldValues = z.infer<typeof customFieldValuesSchema>;
+
+export const customFieldDefinitionResponseSchema = apiEnvelopeSchema(customFieldDefinitionSchema);
+export const customFieldDefinitionListQuerySchema = cursorPageQuerySchema.strict();
+export type CustomFieldDefinitionListQuery = z.infer<typeof customFieldDefinitionListQuerySchema>;
+export const customFieldDefinitionListResponseSchema = cursorListResponseSchema(
+  z.array(customFieldDefinitionSchema),
+);
+
+export const settingConflictTypeSchema = z.enum([
+  "none",
+  "duplicate_name",
+  "alias_collision",
+  "contradictory_fact",
+  "import_candidate",
+  "ai_disagreement",
+]);
+export type SettingConflictType = z.infer<typeof settingConflictTypeSchema>;
+
+export const settingEvidenceKindSchema = z.enum([
+  "chapter",
+  "entity",
+  "import",
+  "author_note",
+  "ai_suggestion",
+]);
+export type SettingEvidenceKind = z.infer<typeof settingEvidenceKindSchema>;
+
+export const settingEvidenceSchema = z
+  .object({
+    kind: settingEvidenceKindSchema,
+    sourceId: uuidV7Schema.nullable().default(null),
+    label: z.string().trim().min(1).max(200),
+    quote: z.string().max(5_000).default(""),
+    locator: z.string().max(500).default(""),
+    confidence: z.number().min(0).max(1).nullable().default(null),
+  })
+  .strict();
+export type SettingEvidence = z.infer<typeof settingEvidenceSchema>;
+
+export const settingProposalCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingProposalCreateRequest = z.infer<typeof settingProposalCreateRequestSchema>;
+
+export const settingProposalDecisionRequestSchema = z
+  .object({
+    decision: z.enum(["accept", "reject"]),
+    reason: z.string().trim().min(1).max(1_000),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingProposalDecisionRequest = z.infer<typeof settingProposalDecisionRequestSchema>;
+
+export const settingProposalStatusSchema = z.enum(["pending", "accepted", "rejected"]);
+export type SettingProposalStatus = z.infer<typeof settingProposalStatusSchema>;
+
+export const settingProposalSchema = z.object({
+  id: uuidV7Schema,
+  entityId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  entityVersion: z.number().int().positive(),
+  status: settingProposalStatusSchema,
+  conflictType: settingConflictTypeSchema,
+  evidence: z.array(settingEvidenceSchema),
+  reason: z.string(),
+  proposedBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+  decidedBy: uuidV7Schema.nullable(),
+  decidedAt: z.string().datetime().nullable(),
+  decisionReason: z.string().nullable(),
+  decisionEvidence: z.array(settingEvidenceSchema),
+  decisionConflictType: settingConflictTypeSchema.nullable(),
+});
+export type SettingProposal = z.infer<typeof settingProposalSchema>;
+
+export const settingProposalResponseSchema = apiEnvelopeSchema(settingProposalSchema);
+export const settingProposalListQuerySchema = cursorPageQuerySchema.strict();
+export type SettingProposalListQuery = z.infer<typeof settingProposalListQuerySchema>;
+export const settingProposalListResponseSchema = cursorListResponseSchema(
+  z.array(settingProposalSchema),
+);
 
 export const worldRuleDataSchema = z
   .object({
@@ -647,6 +1207,29 @@ export const powerSystemDataSchema = z
   .strict();
 export type PowerSystemData = z.infer<typeof powerSystemDataSchema>;
 
+export const itemDataSchema = z
+  .object({
+    category: z.string().trim().min(1).max(200),
+    grade: z.string().trim().max(200).default(""),
+    effect: z.string().trim().min(1).max(20_000),
+    cost: z.string().trim().max(20_000).default(""),
+    ownership: z.string().trim().max(500).default(""),
+    limits: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type ItemData = z.infer<typeof itemDataSchema>;
+
+export const timelineEventDataSchema = z
+  .object({
+    era: z.string().trim().max(200).default(""),
+    storyTime: z.string().trim().min(1).max(500),
+    storySortKey: z.number().int().optional(),
+    duration: z.string().trim().max(500).default(""),
+    event: z.string().trim().min(1).max(20_000),
+  })
+  .strict();
+export type TimelineEventData = z.infer<typeof timelineEventDataSchema>;
+
 const settingEntityBaseShape = {
   name: z.string().trim().min(1).max(120),
   aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
@@ -655,36 +1238,62 @@ const settingEntityBaseShape = {
   tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
 };
 
+const settingEntityPatchShape = {
+  name: z.string().trim().min(1).max(120).optional(),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+  summary: z.string().trim().min(1).max(500).optional(),
+  description: z.string().max(20_000).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+};
+
 export const settingEntityCreateRequestSchema = z.discriminatedUnion("type", [
   z.object({
     type: z.literal("world_rule"),
     ...settingEntityBaseShape,
     data: worldRuleDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("character"),
     ...settingEntityBaseShape,
     data: characterDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("faction"),
     ...settingEntityBaseShape,
     data: factionDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("map"),
     ...settingEntityBaseShape,
     data: mapDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("power_system"),
     ...settingEntityBaseShape,
     data: powerSystemDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
   z.object({
     type: z.literal("golden_finger"),
     ...settingEntityBaseShape,
     data: goldenFingerDataSchema,
+    customFields: customFieldValuesSchema.default({}),
+  }),
+  z.object({
+    type: z.literal("item"),
+    ...settingEntityBaseShape,
+    data: itemDataSchema,
+    customFields: customFieldValuesSchema.default({}),
+  }),
+  z.object({
+    type: z.literal("timeline_event"),
+    ...settingEntityBaseShape,
+    data: timelineEventDataSchema,
+    customFields: customFieldValuesSchema.default({}),
   }),
 ]);
 export type SettingEntityCreateRequest = z.infer<typeof settingEntityCreateRequestSchema>;
@@ -692,11 +1301,8 @@ export type SettingEntityCreateRequest = z.infer<typeof settingEntityCreateReque
 export const settingEntityPatchRequestSchema = z
   .object({
     version: z.number().int().positive(),
-    name: settingEntityBaseShape.name.optional(),
-    aliases: settingEntityBaseShape.aliases.optional(),
-    summary: settingEntityBaseShape.summary.optional(),
-    description: settingEntityBaseShape.description.optional(),
-    tags: settingEntityBaseShape.tags.optional(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
     data: z
       .union([
         worldRuleDataSchema.partial(),
@@ -705,6 +1311,8 @@ export const settingEntityPatchRequestSchema = z
         mapDataSchema.partial(),
         powerSystemDataSchema.partial(),
         goldenFingerDataSchema.partial(),
+        itemDataSchema.partial(),
+        timelineEventDataSchema.partial(),
       ])
       .optional(),
   })
@@ -715,10 +1323,122 @@ export const settingEntityPatchRequestSchema = z
       input.summary !== undefined ||
       input.description !== undefined ||
       input.tags !== undefined ||
+      input.customFields !== undefined ||
       input.data !== undefined,
     { message: "At least one setting field is required" },
   );
 export type SettingEntityPatchRequest = z.infer<typeof settingEntityPatchRequestSchema>;
+
+export const settingChangeRequestCreateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(120),
+    reason: z.string().trim().min(1).max(1_000),
+    after: z
+      .object({
+        ...settingEntityPatchShape,
+        customFields: customFieldValuesSchema.optional(),
+        data: z
+          .union([
+            worldRuleDataSchema.partial(),
+            characterDataSchema.partial(),
+            factionDataSchema.partial(),
+            mapDataSchema.partial(),
+            powerSystemDataSchema.partial(),
+            goldenFingerDataSchema.partial(),
+            itemDataSchema.partial(),
+            timelineEventDataSchema.partial(),
+          ])
+          .optional(),
+        character: z.lazy(() => characterProfilePatchSchema).optional(),
+        faction: z.lazy(() => factionProfilePatchSchema).optional(),
+        map: z.lazy(() => mapChangePatchSchema).optional(),
+        timeline: z.lazy(() => timelineEventChangePatchSchema).optional(),
+        powerSystem: z.lazy(() => powerSystemChangePatchSchema).optional(),
+        mechanism: z.lazy(() => mechanismChangePatchSchema).optional(),
+        item: z.lazy(() => itemChangePatchSchema).optional(),
+      })
+      .refine(
+        (input) =>
+          input.name !== undefined ||
+          input.aliases !== undefined ||
+          input.summary !== undefined ||
+          input.description !== undefined ||
+          input.tags !== undefined ||
+          input.customFields !== undefined ||
+          input.data !== undefined ||
+          input.character !== undefined ||
+          input.faction !== undefined ||
+          input.map !== undefined ||
+          input.timeline !== undefined ||
+          input.powerSystem !== undefined ||
+          input.mechanism !== undefined ||
+          input.item !== undefined,
+        { message: "At least one setting field is required" },
+      ),
+    conflictType: settingConflictTypeSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SettingChangeRequestCreateRequest = z.infer<
+  typeof settingChangeRequestCreateRequestSchema
+>;
+
+export const settingChangeRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "applied",
+]);
+export type SettingChangeRequestStatus = z.infer<typeof settingChangeRequestStatusSchema>;
+
+export const settingChangeImpactResourceSchema = z
+  .object({
+    type: z.enum(["chapter", "setting", "version_node"]),
+    id: uuidV7Schema,
+    label: z.string().trim().min(1).max(200),
+  })
+  .strict();
+export type SettingChangeImpactResource = z.infer<typeof settingChangeImpactResourceSchema>;
+
+export const settingChangeImpactSchema = z
+  .object({
+    chapterCount: z.number().int().nonnegative(),
+    settingRefCount: z.number().int().nonnegative(),
+    versionRefCount: z.number().int().nonnegative(),
+    total: z.number().int().nonnegative(),
+    hasImpact: z.boolean(),
+    message: z.string().trim().min(1).max(1_000),
+    resources: z.array(settingChangeImpactResourceSchema).max(50),
+  })
+  .strict();
+export type SettingChangeImpact = z.infer<typeof settingChangeImpactSchema>;
+
+export const settingChangeRequestSchema = z.object({
+  id: uuidV7Schema,
+  entityId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  entityVersion: z.number().int().positive(),
+  title: z.string(),
+  reason: z.string(),
+  before: z.record(z.string(), z.unknown()),
+  after: z.record(z.string(), z.unknown()),
+  status: settingChangeRequestStatusSchema,
+  conflictType: settingConflictTypeSchema,
+  evidence: z.array(settingEvidenceSchema),
+  impact: settingChangeImpactSchema,
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type SettingChangeRequest = z.infer<typeof settingChangeRequestSchema>;
+
+export const settingChangeRequestResponseSchema = apiEnvelopeSchema(settingChangeRequestSchema);
+export const settingChangeRequestListQuerySchema = cursorPageQuerySchema.strict();
+export type SettingChangeRequestListQuery = z.infer<typeof settingChangeRequestListQuerySchema>;
+export const settingChangeRequestListResponseSchema = cursorListResponseSchema(
+  z.array(settingChangeRequestSchema),
+);
 
 export const settingEntityLockRequestSchema = z.object({
   version: z.number().int().positive(),
@@ -734,6 +1454,7 @@ const settingEntityCommonShape = {
   summary: z.string(),
   description: z.string(),
   tags: z.array(z.string()),
+  customFields: z.record(z.string(), customFieldValueSchema),
   status: settingStatusSchema,
   source: settingSourceSchema,
   version: z.number().int().positive(),
@@ -774,20 +1495,1945 @@ export const settingEntitySchema = z.discriminatedUnion("type", [
     type: z.literal("golden_finger"),
     data: goldenFingerDataSchema,
   }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("item"),
+    data: itemDataSchema,
+  }),
+  z.object({
+    ...settingEntityCommonShape,
+    type: z.literal("timeline_event"),
+    data: timelineEventDataSchema,
+  }),
 ]);
 export type SettingEntity = z.infer<typeof settingEntitySchema>;
 
-export const settingEntityListQuerySchema = z.object({
-  type: settingEntityTypeSchema.optional(),
-  status: settingStatusSchema.optional(),
-});
+export const settingEntityListQuerySchema = cursorPageQuerySchema
+  .extend({
+    type: settingEntityTypeSchema.optional(),
+    status: settingStatusSchema.optional(),
+  })
+  .strict();
 export type SettingEntityListQuery = z.infer<typeof settingEntityListQuerySchema>;
 
 export const settingEntityResponseSchema = apiEnvelopeSchema(settingEntitySchema);
-export const settingEntityListResponseSchema = apiEnvelopeSchema(z.array(settingEntitySchema));
+export const settingEntityListResponseSchema = cursorListResponseSchema(
+  z.array(settingEntitySchema),
+);
 export const settingEntityDeleteResponseSchema = apiEnvelopeSchema(
   z.object({ deleted: z.literal(true) }),
 );
+
+export const settingEntityVersionSnapshotSummarySchema = z
+  .object({
+    name: z.string().nullable(),
+    summary: z.string().nullable(),
+    status: settingStatusSchema.nullable(),
+  })
+  .strict();
+export type SettingEntityVersionSnapshotSummary = z.infer<
+  typeof settingEntityVersionSnapshotSummarySchema
+>;
+
+export const settingEntityVersionSnapshotSchema = z
+  .object({
+    domain: settingEntityTypeSchema,
+    payload: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+export type SettingEntityVersionSnapshot = z.infer<typeof settingEntityVersionSnapshotSchema>;
+
+export const settingEntityVersionSchema = z
+  .object({
+    version: z.number().int().positive(),
+    node: uuidV7Schema,
+    createdAt: z.string().datetime(),
+    actor: uuidV7Schema,
+    reason: z.string(),
+    snapshot: settingEntityVersionSnapshotSchema,
+    summary: settingEntityVersionSnapshotSummarySchema,
+  })
+  .strict();
+export type SettingEntityVersion = z.infer<typeof settingEntityVersionSchema>;
+
+export const settingEntityVersionListQuerySchema = cursorPageQuerySchema.strict();
+export type SettingEntityVersionListQuery = z.infer<typeof settingEntityVersionListQuerySchema>;
+export const settingEntityVersionListResponseSchema = cursorListResponseSchema(
+  z.array(settingEntityVersionSchema),
+);
+
+export const settingEntityRestoreRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    targetVersion: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type SettingEntityRestoreRequest = z.infer<typeof settingEntityRestoreRequestSchema>;
+
+export const domainRefTypeSchema = z.enum([
+  "character",
+  "faction",
+  "map",
+  "world_rule",
+  "map_layer",
+  "map_node",
+  "map_edge",
+  "map_marker",
+  "territory",
+  "power_system",
+  "golden_finger",
+  "item",
+  "timeline_event",
+  "timeline_era",
+  "itinerary",
+  "fact",
+  "chapter",
+  "character_relationship",
+  "character_state",
+  "character_knowledge",
+]);
+export type DomainRefType = z.infer<typeof domainRefTypeSchema>;
+
+export const storyTimePointSchema = z
+  .object({
+    era: z.string().trim().min(1).max(120),
+    label: z.string().trim().min(1).max(200),
+    sortKey: z.number().int(),
+  })
+  .strict();
+export type StoryTimePoint = z.infer<typeof storyTimePointSchema>;
+
+export const versionRefSchema = z
+  .object({
+    branchId: uuidV7Schema,
+    versionNodeId: uuidV7Schema.nullable().default(null),
+    objectVersion: z.number().int().positive().nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if ((input.versionNodeId === null) !== (input.objectVersion === null)) {
+      context.addIssue({
+        code: "custom",
+        path: ["versionNodeId"],
+        message: "Version node and object version must be provided together",
+      });
+    }
+  });
+export type VersionRef = z.infer<typeof versionRefSchema>;
+
+export const domainRefSchema = z
+  .object({
+    type: domainRefTypeSchema,
+    id: uuidV7Schema,
+    branchId: uuidV7Schema,
+    label: z.string().trim().min(1).max(200).nullable().default(null),
+    version: versionRefSchema.nullable().default(null),
+  })
+  .strict();
+export type DomainRef = z.infer<typeof domainRefSchema>;
+
+export const validityIntervalSchema = z
+  .object({
+    fromChapter: z.number().int().positive(),
+    toChapter: z.number().int().positive().nullable().default(null),
+    fromStoryTime: storyTimePointSchema.nullable().default(null),
+    toStoryTime: storyTimePointSchema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.toChapter !== null && input.toChapter < input.fromChapter) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Validity end chapter cannot precede its start",
+      });
+    }
+    if (
+      input.fromStoryTime !== null &&
+      input.toStoryTime !== null &&
+      input.fromStoryTime.era === input.toStoryTime.era &&
+      input.toStoryTime.sortKey < input.fromStoryTime.sortKey
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["toStoryTime"],
+        message: "Validity end story time cannot precede its start",
+      });
+    }
+    if (input.fromStoryTime === null && input.toStoryTime !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["fromStoryTime"],
+        message: "Validity start story time is required when an end is provided",
+      });
+    }
+  });
+export type ValidityInterval = z.infer<typeof validityIntervalSchema>;
+
+export const retrievalSourceKindSchema = z.enum(["entity", "fact", "timeline_event", "map_node"]);
+export type RetrievalSourceKind = z.infer<typeof retrievalSourceKindSchema>;
+
+export const retrievalMatchKindSchema = z.enum([
+  "canonical_name",
+  "alias",
+  "title",
+  "synonym",
+  "fuzzy",
+  "content",
+  "relationship",
+]);
+export type RetrievalMatchKind = z.infer<typeof retrievalMatchKindSchema>;
+
+export const retrievalMatchFieldSchema = z.enum([
+  "name",
+  "aliases",
+  "title",
+  "content",
+  "relationship",
+]);
+export type RetrievalMatchField = z.infer<typeof retrievalMatchFieldSchema>;
+
+export const retrievalQuerySchema = z
+  .object({
+    query: z.string().trim().min(1).max(200),
+    synonyms: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+    sourceKinds: z
+      .array(retrievalSourceKindSchema)
+      .min(1)
+      .max(4)
+      .default(["entity", "fact", "timeline_event", "map_node"]),
+    entityTypes: z.array(settingEntityTypeSchema).max(8).default([]),
+    chapterNumber: z.number().int().positive(),
+    versionNodeId: uuidV7Schema.nullable().default(null),
+    storyTime: storyTimePointSchema.nullable().default(null),
+    povCharacterId: uuidV7Schema.nullable().default(null),
+    expandRelationships: z.boolean().default(true),
+    relationshipDepth: z.number().int().min(0).max(2).optional(),
+    limit: z.number().int().min(1).max(100).default(20),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (!input.expandRelationships && (input.relationshipDepth ?? 0) > 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["relationshipDepth"],
+        message: "Relationship depth requires relationship expansion",
+      });
+    }
+  })
+  .transform((input) => ({
+    ...input,
+    relationshipDepth: input.expandRelationships ? (input.relationshipDepth ?? 1) : 0,
+  }));
+export type RetrievalQuery = z.infer<typeof retrievalQuerySchema>;
+
+export const retrievalRelationshipHopSchema = z
+  .object({
+    relationId: uuidV7Schema,
+    relationType: z.string().trim().min(1).max(80),
+    direction: z.enum(["outgoing", "incoming"]),
+    from: domainRefSchema,
+    to: domainRefSchema,
+  })
+  .strict();
+export type RetrievalRelationshipHop = z.infer<typeof retrievalRelationshipHopSchema>;
+
+export const retrievalSourceChapterSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    number: z.number().int().positive(),
+    title: z.string(),
+  })
+  .strict();
+export type RetrievalSourceChapter = z.infer<typeof retrievalSourceChapterSchema>;
+
+export const retrievalDisambiguationSchema = z
+  .object({
+    sameNameCount: z.number().int().min(1),
+    key: z.string().trim().min(1),
+  })
+  .strict();
+export type RetrievalDisambiguation = z.infer<typeof retrievalDisambiguationSchema>;
+
+export const retrievalResultSchema = z
+  .object({
+    id: uuidV7Schema,
+    sourceKind: retrievalSourceKindSchema,
+    matchKind: retrievalMatchKindSchema,
+    score: z.number().min(0).max(1),
+    label: z.string().trim().min(1).max(200),
+    canonicalName: z.string().trim().min(1).max(200),
+    entityType: settingEntityTypeSchema.nullable(),
+    summary: z.string(),
+    source: domainRefSchema,
+    validity: validityIntervalSchema,
+    sourceChapter: retrievalSourceChapterSchema.nullable(),
+    matchedTerm: z.string().trim().min(1).max(200),
+    matchedField: retrievalMatchFieldSchema,
+    relationshipPath: z.array(retrievalRelationshipHopSchema),
+    disambiguation: retrievalDisambiguationSchema,
+  })
+  .strict();
+export type RetrievalResult = z.infer<typeof retrievalResultSchema>;
+
+export const retrievalResultListResponseSchema = apiEnvelopeSchema(z.array(retrievalResultSchema));
+
+export const searchDocumentSourceTypeSchema = z.enum([
+  "entity",
+  "fact",
+  "timeline_event",
+  "map_node",
+  "chapter",
+  "setting",
+]);
+export type SearchDocumentSourceType = z.infer<typeof searchDocumentSourceTypeSchema>;
+
+export const searchDocumentSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    sourceType: searchDocumentSourceTypeSchema,
+    sourceId: uuidV7Schema,
+    entityType: settingEntityTypeSchema.nullable(),
+    title: z.string(),
+    content: z.string(),
+    aliases: z.array(z.string()),
+    version: versionRefSchema,
+    sourceChapterId: uuidV7Schema.nullable(),
+    validity: validityIntervalSchema,
+    metadata: z.record(z.string(), z.unknown()),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type SearchDocument = z.infer<typeof searchDocumentSchema>;
+
+const characterProfileFields = {
+  desire: z.string().trim().max(20_000).default(""),
+  fear: z.string().trim().max(20_000).default(""),
+  goal: z.string().trim().max(20_000).default(""),
+  voiceSample: z.string().trim().max(20_000).default(""),
+  voiceGuide: z.string().trim().max(20_000).default(""),
+  disguise: z.string().trim().max(20_000).default(""),
+};
+
+export const characterProfileSchema = z.object(characterProfileFields).strict();
+export type CharacterProfile = z.infer<typeof characterProfileSchema>;
+
+export const characterProfilePatchSchema = z
+  .object({
+    desire: characterProfileFields.desire.optional(),
+    fear: characterProfileFields.fear.optional(),
+    goal: characterProfileFields.goal.optional(),
+    voiceSample: characterProfileFields.voiceSample.optional(),
+    voiceGuide: characterProfileFields.voiceGuide.optional(),
+    disguise: characterProfileFields.disguise.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one character profile field is required",
+  });
+export type CharacterProfilePatch = z.infer<typeof characterProfilePatchSchema>;
+
+export const characterProfileUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    profile: characterProfilePatchSchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one character field is required",
+  });
+export type CharacterProfileUpdateRequest = z.infer<typeof characterProfileUpdateRequestSchema>;
+
+export const characterRelationshipTypeSchema = z.enum([
+  "kinship",
+  "ally",
+  "enemy",
+  "mentor",
+  "student",
+  "subordinate",
+  "superior",
+  "member_of",
+  "located_at",
+  "controls",
+  "owns",
+]);
+export type CharacterRelationshipType = z.infer<typeof characterRelationshipTypeSchema>;
+
+export const characterRelationshipCreateRequestSchema = z
+  .object({
+    target: domainRefSchema,
+    relationType: characterRelationshipTypeSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict();
+export type CharacterRelationshipCreateRequest = z.infer<
+  typeof characterRelationshipCreateRequestSchema
+>;
+
+export const characterStateKindSchema = z.enum(["body", "limb", "location", "ability", "disguise"]);
+export type CharacterStateKind = z.infer<typeof characterStateKindSchema>;
+
+export const characterStateKeySchema = z
+  .string()
+  .trim()
+  .regex(/^[a-z][a-z0-9_]{0,63}$/, "Expected a lowercase state key");
+
+export const characterStateTransitionCreateRequestSchema = z
+  .object({
+    stateKind: characterStateKindSchema,
+    stateKey: characterStateKeySchema,
+    value: z.string().trim().min(1).max(20_000),
+    target: domainRefSchema.nullable().default(null),
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.stateKind === "location") {
+      if (input.target === null) {
+        context.addIssue({
+          code: "custom",
+          path: ["target"],
+          message: "Location transitions require a map or map node reference",
+        });
+      } else if (input.target.type !== "map" && input.target.type !== "map_node") {
+        context.addIssue({
+          code: "custom",
+          path: ["target", "type"],
+          message: "Location transitions must reference a map or map node",
+        });
+      }
+      return;
+    }
+    if (input.target !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["target"],
+        message: "Only location transitions can carry a domain reference",
+      });
+    }
+  });
+export type CharacterStateTransitionCreateRequest = z.infer<
+  typeof characterStateTransitionCreateRequestSchema
+>;
+
+export const characterKnowledgeStateKindSchema = z.enum([
+  "knowledge",
+  "belief",
+  "suspicion",
+  "misbelief",
+  "unknown",
+]);
+export type CharacterKnowledgeStateKind = z.infer<typeof characterKnowledgeStateKindSchema>;
+
+export const characterKnowledgeSourceKindSchema = z.enum([
+  "observed",
+  "told",
+  "inferred",
+  "read",
+  "assumed",
+]);
+export type CharacterKnowledgeSourceKind = z.infer<typeof characterKnowledgeSourceKindSchema>;
+
+export const characterKnowledgeStateCreateRequestSchema = z
+  .object({
+    objectiveFactId: uuidV7Schema,
+    state: characterKnowledgeStateKindSchema,
+    claimedContent: z.string().trim().max(20_000).nullable().default(null),
+    sourceKind: characterKnowledgeSourceKindSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const hasClaim = Boolean(input.claimedContent?.trim());
+    if (input.state === "unknown" && hasClaim) {
+      context.addIssue({
+        code: "custom",
+        path: ["claimedContent"],
+        message: "Unknown knowledge states cannot carry claimed content",
+      });
+    }
+    if (input.state !== "unknown" && !hasClaim) {
+      context.addIssue({
+        code: "custom",
+        path: ["claimedContent"],
+        message: "Known, believed, suspected and misbelieved states require content",
+      });
+    }
+  });
+export type CharacterKnowledgeStateCreateRequest = z.infer<
+  typeof characterKnowledgeStateCreateRequestSchema
+>;
+
+export const characterCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+    summary: z.string().trim().min(1).max(500),
+    description: z.string().max(20_000).default(""),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+    profile: characterProfileSchema.default({
+      desire: "",
+      fear: "",
+      goal: "",
+      voiceSample: "",
+      voiceGuide: "",
+      disguise: "",
+    }),
+  })
+  .strict();
+export type CharacterCreateRequest = z.infer<typeof characterCreateRequestSchema>;
+
+export const characterRelationshipSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  sourceCharacterId: uuidV7Schema,
+  target: domainRefSchema,
+  relationType: characterRelationshipTypeSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterRelationship = z.infer<typeof characterRelationshipSchema>;
+export const characterRelationshipResponseSchema = apiEnvelopeSchema(characterRelationshipSchema);
+
+export const characterStateTransitionSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  characterId: uuidV7Schema,
+  stateKind: characterStateKindSchema,
+  stateKey: characterStateKeySchema,
+  value: z.string(),
+  target: domainRefSchema.nullable(),
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterStateTransition = z.infer<typeof characterStateTransitionSchema>;
+export const characterStateTransitionResponseSchema = apiEnvelopeSchema(
+  characterStateTransitionSchema,
+);
+
+export const characterKnowledgeStateSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  characterId: uuidV7Schema,
+  objectiveFactId: uuidV7Schema,
+  state: characterKnowledgeStateKindSchema,
+  claimedContent: z.string().nullable(),
+  sourceKind: characterKnowledgeSourceKindSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterKnowledgeState = z.infer<typeof characterKnowledgeStateSchema>;
+export const characterKnowledgeStateResponseSchema = apiEnvelopeSchema(
+  characterKnowledgeStateSchema,
+);
+
+export const characterHealthFindingSchema = z.object({
+  code: z.string().min(1),
+  severity: z.enum(["info", "warning", "blocker"]),
+  message: z.string().min(1),
+});
+export type CharacterHealthFinding = z.infer<typeof characterHealthFindingSchema>;
+
+export const characterDetailSchema = z.object({
+  character: domainRefSchema,
+  profile: characterProfileSchema,
+  relationships: z.array(characterRelationshipSchema),
+  stateTransitions: z.array(characterStateTransitionSchema),
+  knowledgeStates: z.array(characterKnowledgeStateSchema),
+  health: z.array(characterHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type CharacterDetail = z.infer<typeof characterDetailSchema>;
+
+export const characterDetailResponseSchema = apiEnvelopeSchema(characterDetailSchema);
+export const characterListQuerySchema = cursorPageQuerySchema;
+export type CharacterListQuery = z.infer<typeof characterListQuerySchema>;
+export const characterListResponseSchema = cursorListResponseSchema(z.array(characterDetailSchema));
+
+export const characterHistoryQuerySchema = z
+  .object({
+    chapterNumber: z.coerce.number().int().positive().optional(),
+    versionNodeId: uuidV7Schema.optional(),
+  })
+  .strict()
+  .refine((input) => input.chapterNumber !== undefined || input.versionNodeId !== undefined, {
+    message: "A chapter number or version node is required",
+  });
+export type CharacterHistoryQuery = z.infer<typeof characterHistoryQuerySchema>;
+
+export const characterKnowledgeProjectionQuerySchema = z
+  .object({
+    chapterNumber: z.coerce.number().int().positive(),
+  })
+  .strict();
+export type CharacterKnowledgeProjectionQuery = z.infer<
+  typeof characterKnowledgeProjectionQuerySchema
+>;
+
+export const characterHistorySchema = z.object({
+  character: domainRefSchema,
+  at: z.object({
+    chapterNumber: z.number().int().positive().nullable(),
+    versionNodeId: uuidV7Schema.nullable(),
+  }),
+  profile: characterProfileSchema,
+  relationships: z.array(characterRelationshipSchema),
+  stateTransitions: z.array(characterStateTransitionSchema),
+  knowledgeStates: z.array(characterKnowledgeStateSchema),
+});
+export type CharacterHistory = z.infer<typeof characterHistorySchema>;
+export const characterHistoryResponseSchema = apiEnvelopeSchema(characterHistorySchema);
+
+export const characterKnowledgeProjectionSchema = z.object({
+  knownFacts: z.array(
+    z.object({
+      id: uuidV7Schema,
+      subject: z.string(),
+      predicate: z.string(),
+      object: z.string(),
+      validFromChapter: z.number().int().positive(),
+      validToChapter: z.number().int().positive().nullable(),
+    }),
+  ),
+  beliefs: z.array(
+    z.object({
+      objectiveFactId: uuidV7Schema,
+      state: z.enum(["belief", "suspicion", "misbelief", "unknown"]),
+      claimedContent: z.string().nullable(),
+    }),
+  ),
+  hiddenFactIds: z.array(uuidV7Schema),
+});
+export type CharacterKnowledgeProjection = z.infer<typeof characterKnowledgeProjectionSchema>;
+export const characterKnowledgeProjectionResponseSchema = apiEnvelopeSchema(
+  characterKnowledgeProjectionSchema,
+);
+
+export const characterChangeRequestKindSchema = z.enum([
+  "profile",
+  "relationship",
+  "state_transition",
+  "knowledge_state",
+]);
+export type CharacterChangeRequestKind = z.infer<typeof characterChangeRequestKindSchema>;
+
+const characterChangeRequestBaseShape = {
+  version: z.number().int().positive(),
+  title: z.string().trim().min(1).max(120),
+  reason: z.string().trim().min(1).max(1_000),
+  evidence: z.array(settingEvidenceSchema).min(1).max(20),
+};
+
+export const characterChangeRequestCreateRequestSchema = z.discriminatedUnion("kind", [
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("profile"),
+      after: characterProfilePatchSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("relationship"),
+      after: characterRelationshipCreateRequestSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("state_transition"),
+      after: characterStateTransitionCreateRequestSchema,
+    })
+    .strict(),
+  z
+    .object({
+      ...characterChangeRequestBaseShape,
+      kind: z.literal("knowledge_state"),
+      after: characterKnowledgeStateCreateRequestSchema,
+    })
+    .strict(),
+]);
+export type CharacterChangeRequestCreateRequest = z.infer<
+  typeof characterChangeRequestCreateRequestSchema
+>;
+
+export const characterChangeRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "applied",
+]);
+export type CharacterChangeRequestStatus = z.infer<typeof characterChangeRequestStatusSchema>;
+
+export const characterChangeRequestSchema = z.object({
+  id: uuidV7Schema,
+  characterId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  version: z.number().int().positive(),
+  kind: characterChangeRequestKindSchema,
+  title: z.string(),
+  reason: z.string(),
+  before: z.record(z.string(), z.unknown()),
+  after: z.record(z.string(), z.unknown()),
+  status: characterChangeRequestStatusSchema,
+  evidence: z.array(settingEvidenceSchema),
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterChangeRequest = z.infer<typeof characterChangeRequestSchema>;
+
+export const characterChangeRequestResponseSchema = apiEnvelopeSchema(characterChangeRequestSchema);
+export const characterChangeRequestListQuerySchema = cursorPageQuerySchema;
+export type CharacterChangeRequestListQuery = z.infer<typeof characterChangeRequestListQuerySchema>;
+export const characterChangeRequestListResponseSchema = cursorListResponseSchema(
+  z.array(characterChangeRequestSchema),
+);
+
+export const domainHealthFindingSchema = z.object({
+  code: z.string().min(1),
+  severity: z.enum(["info", "warning", "blocker"]),
+  message: z.string().min(1),
+  relatedIds: z.array(uuidV7Schema).max(20).default([]),
+});
+export type DomainHealthFinding = z.infer<typeof domainHealthFindingSchema>;
+
+const worldEntityBaseShape = {
+  name: z.string().trim().min(1).max(120),
+  aliases: z.array(z.string().trim().min(1).max(80)).max(30).default([]),
+  summary: z.string().trim().min(1).max(500),
+  description: z.string().max(20_000).default(""),
+  tags: z.array(z.string().trim().min(1).max(40)).max(30).default([]),
+};
+
+export const factionProfileSchema = z
+  .object({
+    overview: z.string().trim().max(20_000).default(""),
+    goals: z.string().trim().max(20_000).default(""),
+    resources: z.string().trim().max(20_000).default(""),
+    doctrine: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type FactionProfile = z.infer<typeof factionProfileSchema>;
+
+export const factionProfilePatchSchema = z
+  .object({
+    overview: z.string().trim().max(20_000).optional(),
+    goals: z.string().trim().max(20_000).optional(),
+    resources: z.string().trim().max(20_000).optional(),
+    doctrine: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one faction profile field is required",
+  });
+export type FactionProfilePatch = z.infer<typeof factionProfilePatchSchema>;
+
+export const factionProfileUpdateRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    profile: factionProfilePatchSchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one faction field is required",
+  });
+export type FactionProfileUpdateRequest = z.infer<typeof factionProfileUpdateRequestSchema>;
+
+export const factionCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    profile: factionProfileSchema.default({
+      overview: "",
+      goals: "",
+      resources: "",
+      doctrine: "",
+    }),
+  })
+  .strict();
+export type FactionCreateRequest = z.infer<typeof factionCreateRequestSchema>;
+
+export const mapCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    details: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type MapCreateRequest = z.infer<typeof mapCreateRequestSchema>;
+
+export const mapPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    details: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one map field is required",
+  });
+export type MapPatchRequest = z.infer<typeof mapPatchRequestSchema>;
+
+export const mapChangePatchSchema = z
+  .object({
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    details: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one map field is required",
+  });
+export type MapChangePatch = z.infer<typeof mapChangePatchSchema>;
+
+export const factionRelationTypeSchema = z.enum([
+  "ally",
+  "enemy",
+  "vassal",
+  "overlord",
+  "trade",
+  "neutral",
+]);
+export type FactionRelationType = z.infer<typeof factionRelationTypeSchema>;
+
+export const factionRelationshipCreateRequestSchema = z
+  .object({
+    target: domainRefSchema,
+    relationType: factionRelationTypeSchema,
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.target.type !== "faction") {
+      context.addIssue({
+        code: "custom",
+        path: ["target", "type"],
+        message: "Faction relationships must target another faction",
+      });
+    }
+  });
+export type FactionRelationshipCreateRequest = z.infer<
+  typeof factionRelationshipCreateRequestSchema
+>;
+
+export const factionRelationshipSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  sourceFactionId: uuidV7Schema,
+  target: domainRefSchema,
+  relationType: factionRelationTypeSchema,
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type FactionRelationship = z.infer<typeof factionRelationshipSchema>;
+export const factionRelationshipResponseSchema = apiEnvelopeSchema(factionRelationshipSchema);
+
+export const territoryControlLevelSchema = z.enum(["direct", "military", "influence", "contested"]);
+export type TerritoryControlLevel = z.infer<typeof territoryControlLevelSchema>;
+
+export const territoryCreateRequestSchema = z
+  .object({
+    node: domainRefSchema,
+    controlLevel: territoryControlLevelSchema,
+    validity: validityIntervalSchema,
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.node.type !== "map_node" && input.node.type !== "map") {
+      context.addIssue({
+        code: "custom",
+        path: ["node", "type"],
+        message: "Territory control must reference a map or map node",
+      });
+    }
+  });
+export type TerritoryCreateRequest = z.infer<typeof territoryCreateRequestSchema>;
+
+export const territorySchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  factionId: uuidV7Schema,
+  node: domainRefSchema,
+  controlLevel: territoryControlLevelSchema,
+  validity: validityIntervalSchema,
+  evidence: z.array(settingEvidenceSchema),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type Territory = z.infer<typeof territorySchema>;
+export const territoryResponseSchema = apiEnvelopeSchema(territorySchema);
+
+export const mapLayerCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    parentLayerId: uuidV7Schema.nullable().default(null),
+    sortOrder: z.number().int().nonnegative().default(0),
+    minScale: z.number().finite().nonnegative().default(0),
+    maxScale: z.number().finite().nonnegative().default(100),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.maxScale < input.minScale) {
+      context.addIssue({
+        code: "custom",
+        path: ["maxScale"],
+        message: "Map layer maximum scale cannot be below its minimum",
+      });
+    }
+  });
+export type MapLayerCreateRequest = z.infer<typeof mapLayerCreateRequestSchema>;
+
+export const mapLayerSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  parentLayerId: uuidV7Schema.nullable(),
+  sortOrder: z.number().int().nonnegative(),
+  minScale: z.number(),
+  maxScale: z.number(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapLayer = z.infer<typeof mapLayerSchema>;
+export const mapLayerResponseSchema = apiEnvelopeSchema(mapLayerSchema);
+
+export const mapNodeTypeSchema = z.enum([
+  "region",
+  "settlement",
+  "landmark",
+  "passage",
+  "battlefield",
+  "sect",
+  "dungeon",
+  "other",
+]);
+export type MapNodeType = z.infer<typeof mapNodeTypeSchema>;
+
+const mapCoordinateSchema = z.number().finite().min(0).max(1);
+
+export const mapNodeCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    parentNodeId: uuidV7Schema.nullable().default(null),
+    name: z.string().trim().min(1).max(120),
+    nodeType: mapNodeTypeSchema,
+    summary: z.string().trim().max(5_000).default(""),
+    x: mapCoordinateSchema.nullable().default(null),
+    y: mapCoordinateSchema.nullable().default(null),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if ((input.x === null) !== (input.y === null)) {
+      context.addIssue({
+        code: "custom",
+        path: ["x"],
+        message: "Map node coordinates require both x and y",
+      });
+    }
+  });
+export type MapNodeCreateRequest = z.infer<typeof mapNodeCreateRequestSchema>;
+
+export const mapNodeSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  parentNodeId: uuidV7Schema.nullable(),
+  name: z.string(),
+  nodeType: mapNodeTypeSchema,
+  summary: z.string(),
+  x: z.number().nullable(),
+  y: z.number().nullable(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapNode = z.infer<typeof mapNodeSchema>;
+export const mapNodeResponseSchema = apiEnvelopeSchema(mapNodeSchema);
+
+export const mapRouteTypeSchema = z.enum(["road", "trail", "water", "air", "teleport", "secret"]);
+export type MapRouteType = z.infer<typeof mapRouteTypeSchema>;
+
+export const mapEdgeCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    fromNodeId: uuidV7Schema,
+    toNodeId: uuidV7Schema,
+    routeType: mapRouteTypeSchema,
+    bidirectional: z.boolean().default(true),
+    travelMinutes: z.number().int().positive(),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.fromNodeId === input.toNodeId) {
+      context.addIssue({
+        code: "custom",
+        path: ["toNodeId"],
+        message: "Route endpoints must differ",
+      });
+    }
+    if (input.travelMinutes <= 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["travelMinutes"],
+        message: "Travel time must be positive",
+      });
+    }
+  });
+export type MapEdgeCreateRequest = z.infer<typeof mapEdgeCreateRequestSchema>;
+
+export const mapEdgeSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  fromNodeId: uuidV7Schema,
+  toNodeId: uuidV7Schema,
+  routeType: mapRouteTypeSchema,
+  bidirectional: z.boolean(),
+  travelMinutes: z.number().int().positive(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapEdge = z.infer<typeof mapEdgeSchema>;
+export const mapEdgeResponseSchema = apiEnvelopeSchema(mapEdgeSchema);
+
+export const mapMarkerTypeSchema = z.enum(["danger", "event", "resource", "note", "character"]);
+export type MapMarkerType = z.infer<typeof mapMarkerTypeSchema>;
+
+export const mapMarkerCreateRequestSchema = z
+  .object({
+    layerId: uuidV7Schema.nullable().default(null),
+    nodeId: uuidV7Schema.nullable().default(null),
+    label: z.string().trim().min(1).max(120),
+    markerType: mapMarkerTypeSchema,
+    x: mapCoordinateSchema,
+    y: mapCoordinateSchema,
+    validity: validityIntervalSchema,
+  })
+  .strict();
+export type MapMarkerCreateRequest = z.infer<typeof mapMarkerCreateRequestSchema>;
+
+export const mapMarkerSchema = z.object({
+  id: uuidV7Schema,
+  mapId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  layerId: uuidV7Schema.nullable(),
+  nodeId: uuidV7Schema.nullable(),
+  label: z.string(),
+  markerType: mapMarkerTypeSchema,
+  x: z.number(),
+  y: z.number(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type MapMarker = z.infer<typeof mapMarkerSchema>;
+export const mapMarkerResponseSchema = apiEnvelopeSchema(mapMarkerSchema);
+
+export const mapRouteQuerySchema = z
+  .object({
+    fromNodeId: uuidV7Schema,
+    toNodeId: uuidV7Schema,
+    chapterNumber: z.coerce.number().int().positive().optional(),
+  })
+  .strict();
+export type MapRouteQuery = z.infer<typeof mapRouteQuerySchema>;
+
+export const mapRouteSchema = z.object({
+  mapId: uuidV7Schema,
+  fromNodeId: uuidV7Schema,
+  toNodeId: uuidV7Schema,
+  pathNodeIds: z.array(uuidV7Schema),
+  edgeIds: z.array(uuidV7Schema),
+  travelMinutes: z.number().int().nonnegative(),
+});
+export type MapRoute = z.infer<typeof mapRouteSchema>;
+export const mapRouteResponseSchema = apiEnvelopeSchema(mapRouteSchema);
+
+export const timelineEraCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    orderIndex: z.number().int().nonnegative(),
+    startSortKey: z.number().int(),
+    endSortKey: z.number().int().nullable().default(null),
+    description: z.string().trim().max(20_000).default(""),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endSortKey !== null && input.endSortKey < input.startSortKey) {
+      context.addIssue({
+        code: "custom",
+        path: ["endSortKey"],
+        message: "Timeline era end cannot precede its start",
+      });
+    }
+  });
+export type TimelineEraCreateRequest = z.infer<typeof timelineEraCreateRequestSchema>;
+
+export const timelineEraSchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  orderIndex: z.number().int().nonnegative(),
+  startSortKey: z.number().int(),
+  endSortKey: z.number().int().nullable(),
+  description: z.string(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type TimelineEra = z.infer<typeof timelineEraSchema>;
+export const timelineEraResponseSchema = apiEnvelopeSchema(timelineEraSchema);
+
+export const timelineEventCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    era: z.string().trim().min(1).max(120),
+    storyTime: storyTimePointSchema,
+    durationMinutes: z.number().int().nonnegative().default(0),
+    durationLabel: z.string().trim().max(200).default(""),
+    event: z.string().trim().min(1).max(20_000),
+    validity: validityIntervalSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  });
+export type TimelineEventCreateRequest = z.infer<typeof timelineEventCreateRequestSchema>;
+
+export const timelineEventPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    era: z.string().trim().min(1).max(120).optional(),
+    storyTime: storyTimePointSchema.optional(),
+    durationMinutes: z.number().int().nonnegative().optional(),
+    durationLabel: z.string().trim().max(200).optional(),
+    event: z.string().trim().min(1).max(20_000).optional(),
+    validity: validityIntervalSchema.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime && input.era && input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  })
+  .refine((input) => Object.keys(input).some((key) => key !== "version"), {
+    message: "At least one timeline event field is required",
+  });
+export type TimelineEventPatchRequest = z.infer<typeof timelineEventPatchRequestSchema>;
+
+export const timelineEventChangePatchSchema = z
+  .object({
+    ...settingEntityPatchShape,
+    customFields: customFieldValuesSchema.optional(),
+    era: z.string().trim().min(1).max(120).optional(),
+    storyTime: storyTimePointSchema.optional(),
+    durationMinutes: z.number().int().nonnegative().optional(),
+    durationLabel: z.string().trim().max(200).optional(),
+    event: z.string().trim().min(1).max(20_000).optional(),
+    validity: validityIntervalSchema.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.storyTime && input.era && input.storyTime.era !== input.era) {
+      context.addIssue({
+        code: "custom",
+        path: ["storyTime", "era"],
+        message: "Timeline event era must match its story time era",
+      });
+    }
+  })
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one timeline event field is required",
+  });
+export type TimelineEventChangePatch = z.infer<typeof timelineEventChangePatchSchema>;
+
+export const timelineEventDetailSchema = z.object({
+  event: domainRefSchema,
+  era: z.string(),
+  storyTime: storyTimePointSchema,
+  durationMinutes: z.number().int().nonnegative(),
+  durationLabel: z.string(),
+  eventText: z.string(),
+  validity: validityIntervalSchema,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type TimelineEventDetail = z.infer<typeof timelineEventDetailSchema>;
+export const timelineEventResponseSchema = apiEnvelopeSchema(timelineEventDetailSchema);
+
+export const characterItineraryCreateRequestSchema = z
+  .object({
+    character: domainRefSchema,
+    fromNode: domainRefSchema,
+    toNode: domainRefSchema,
+    departure: storyTimePointSchema,
+    arrival: storyTimePointSchema,
+    travelMinutes: z.number().int().positive(),
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.character.type !== "character") {
+      context.addIssue({
+        code: "custom",
+        path: ["character", "type"],
+        message: "Itineraries must reference a character",
+      });
+    }
+    if (input.fromNode.type !== "map_node" || input.toNode.type !== "map_node") {
+      context.addIssue({
+        code: "custom",
+        path: ["fromNode", "type"],
+        message: "Itineraries must reference map nodes",
+      });
+    }
+    if (
+      input.departure.era === input.arrival.era &&
+      input.arrival.sortKey <= input.departure.sortKey
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["arrival"],
+        message: "Itinerary arrival must follow departure",
+      });
+    }
+  });
+export type CharacterItineraryCreateRequest = z.infer<typeof characterItineraryCreateRequestSchema>;
+
+export const characterItinerarySchema = z.object({
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  character: domainRefSchema,
+  fromNode: domainRefSchema,
+  toNode: domainRefSchema,
+  departure: storyTimePointSchema,
+  arrival: storyTimePointSchema,
+  routeTravelMinutes: z.number().int().positive(),
+  travelMinutes: z.number().int().positive(),
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  evidence: z.array(settingEvidenceSchema),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type CharacterItinerary = z.infer<typeof characterItinerarySchema>;
+export const characterItineraryResponseSchema = apiEnvelopeSchema(characterItinerarySchema);
+
+export const factionDetailSchema = z.object({
+  faction: domainRefSchema,
+  profile: factionProfileSchema,
+  relationships: z.array(factionRelationshipSchema),
+  territories: z.array(territorySchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type FactionDetail = z.infer<typeof factionDetailSchema>;
+export const factionDetailResponseSchema = apiEnvelopeSchema(factionDetailSchema);
+export const factionListResponseSchema = cursorListResponseSchema(z.array(factionDetailSchema));
+
+export const mapDetailSchema = z.object({
+  map: domainRefSchema,
+  layers: z.array(mapLayerSchema),
+  nodes: z.array(mapNodeSchema),
+  edges: z.array(mapEdgeSchema),
+  markers: z.array(mapMarkerSchema),
+  controlAreas: z.array(territorySchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type MapDetail = z.infer<typeof mapDetailSchema>;
+export const mapDetailResponseSchema = apiEnvelopeSchema(mapDetailSchema);
+export const mapListResponseSchema = cursorListResponseSchema(z.array(mapDetailSchema));
+
+export const worldTimelineSchema = z.object({
+  eras: z.array(timelineEraSchema),
+  events: z.array(timelineEventDetailSchema),
+  itineraries: z.array(characterItinerarySchema),
+  health: z.array(domainHealthFindingSchema),
+  latestVersionNodeId: uuidV7Schema,
+});
+export type WorldTimeline = z.infer<typeof worldTimelineSchema>;
+export const worldTimelineResponseSchema = apiEnvelopeSchema(worldTimelineSchema);
+
+export const powerLifespanModeSchema = z.enum(["none", "realm", "fixed", "custom"]);
+export type PowerLifespanMode = z.infer<typeof powerLifespanModeSchema>;
+
+export const powerLifespanPolicySchema = z
+  .object({
+    mode: powerLifespanModeSchema.default("none"),
+    unit: z.string().trim().min(1).max(40).default("年"),
+    basis: z.string().trim().max(200).default(""),
+    description: z.string().trim().max(2_000).default(""),
+    pathId: uuidV7Schema.nullable().default(null),
+    fixedAmount: z.number().int().positive().max(1_000_000).nullable().default(null),
+  })
+  .strict()
+  .superRefine((policy, context) => {
+    if (policy.mode === "fixed" && policy.fixedAmount === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["fixedAmount"],
+        message: "Fixed lifespan policies require an amount",
+      });
+    }
+    if (policy.mode !== "fixed" && policy.fixedAmount !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["fixedAmount"],
+        message: "Only fixed lifespan policies carry a fixed amount",
+      });
+    }
+    if (policy.mode === "custom" && policy.description.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["description"],
+        message: "Custom lifespan policies require a rule description",
+      });
+    }
+  });
+export type PowerLifespanPolicy = z.infer<typeof powerLifespanPolicySchema>;
+
+export const powerRealmCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    rank: z.number().int().positive().max(1_000),
+    description: z.string().trim().max(20_000).default(""),
+    breakthroughConditions: z.string().trim().min(1).max(20_000),
+    breakthroughCosts: z.string().trim().max(20_000).default(""),
+    bottlenecks: z.string().trim().max(20_000).default(""),
+    counters: z.string().trim().max(20_000).default(""),
+    counteredBy: z.string().trim().max(20_000).default(""),
+    lifespanAmount: z.number().int().positive().max(1_000_000).nullable().default(null),
+    prerequisiteRealmId: uuidV7Schema.nullable().default(null),
+  })
+  .strict();
+export type PowerRealmCreateRequest = z.infer<typeof powerRealmCreateRequestSchema>;
+
+export const powerRealmSchema = z.object({
+  id: uuidV7Schema,
+  pathId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  ...powerRealmCreateRequestSchema.shape,
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type PowerRealm = z.infer<typeof powerRealmSchema>;
+export const powerRealmResponseSchema = apiEnvelopeSchema(powerRealmSchema);
+
+export const powerPathCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(120),
+    pathType: z.string().trim().min(1).max(80),
+    description: z.string().trim().max(20_000).default(""),
+    sortOrder: z.number().int().nonnegative().max(10_000).default(0),
+    realms: z.array(powerRealmCreateRequestSchema).max(100).default([]),
+  })
+  .strict()
+  .superRefine((path, context) => {
+    const names = path.realms.map((realm) => realm.name);
+    if (new Set(names).size !== names.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["realms"],
+        message: "Realm names must be unique within a path",
+      });
+    }
+    const ranks = path.realms.map((realm) => realm.rank);
+    if (new Set(ranks).size !== ranks.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["realms"],
+        message: "Realm ranks must be unique within a path",
+      });
+    }
+  });
+export type PowerPathCreateRequest = z.infer<typeof powerPathCreateRequestSchema>;
+
+export const powerPathSchema = z.object({
+  id: uuidV7Schema,
+  powerSystemId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  name: z.string(),
+  pathType: z.string(),
+  description: z.string(),
+  sortOrder: z.number().int().nonnegative(),
+  realms: z.array(powerRealmSchema),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type PowerPath = z.infer<typeof powerPathSchema>;
+export const powerPathResponseSchema = apiEnvelopeSchema(powerPathSchema);
+
+export const powerSystemCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    overview: z.string().trim().max(20_000).default(""),
+    lifespanPolicy: powerLifespanPolicySchema.default({
+      mode: "none",
+      unit: "年",
+      basis: "",
+      description: "",
+      pathId: null,
+      fixedAmount: null,
+    }),
+    paths: z.array(powerPathCreateRequestSchema).max(50).default([]),
+  })
+  .strict()
+  .superRefine((system, context) => {
+    const names = system.paths.map((path) => path.name);
+    if (new Set(names).size !== names.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["paths"],
+        message: "Power path names must be unique within a system",
+      });
+    }
+  });
+export type PowerSystemCreateRequest = z.infer<typeof powerSystemCreateRequestSchema>;
+
+export const powerSystemPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(120).optional(),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+    summary: z.string().trim().min(1).max(500).optional(),
+    description: z.string().max(20_000).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    overview: z.string().trim().max(20_000).optional(),
+    lifespanPolicy: powerLifespanPolicySchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 1, {
+    message: "At least one power system field is required",
+  });
+export type PowerSystemPatchRequest = z.infer<typeof powerSystemPatchRequestSchema>;
+
+export const powerSystemSchema = z.object({
+  powerSystem: domainRefSchema,
+  overview: z.string(),
+  lifespanPolicy: powerLifespanPolicySchema,
+  paths: z.array(powerPathSchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type PowerSystem = z.infer<typeof powerSystemSchema>;
+export const powerSystemResponseSchema = apiEnvelopeSchema(powerSystemSchema);
+export const powerSystemListResponseSchema = cursorListResponseSchema(z.array(powerSystemSchema));
+
+export const mechanismOwnerRefSchema = domainRefSchema.refine(
+  (owner) => owner.type === "character" || owner.type === "faction" || owner.type === "item",
+  { message: "Mechanism owners must be a character, faction or item" },
+);
+export type MechanismOwnerRef = z.infer<typeof mechanismOwnerRefSchema>;
+
+export const powerSystemRefSchema = domainRefSchema.refine(
+  (reference) => reference.type === "power_system",
+  { message: "Mechanism power systems must reference a power system" },
+);
+export type PowerSystemRef = z.infer<typeof powerSystemRefSchema>;
+
+export const specialMechanismCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    mechanismType: z.string().trim().min(1).max(120),
+    owner: mechanismOwnerRefSchema.nullable().default(null),
+    powerSystem: powerSystemRefSchema.nullable().default(null),
+    rules: z.string().trim().min(1).max(20_000),
+    costs: z.string().trim().max(20_000).default(""),
+    limits: z.string().trim().max(20_000).default(""),
+    growth: z.string().trim().max(20_000).default(""),
+  })
+  .strict();
+export type SpecialMechanismCreateRequest = z.infer<typeof specialMechanismCreateRequestSchema>;
+
+export const specialMechanismPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(120).optional(),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+    summary: z.string().trim().min(1).max(500).optional(),
+    description: z.string().max(20_000).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    mechanismType: z.string().trim().min(1).max(120).optional(),
+    powerSystem: powerSystemRefSchema.nullable().optional(),
+    rules: z.string().trim().min(1).max(20_000).optional(),
+    costs: z.string().trim().max(20_000).optional(),
+    limits: z.string().trim().max(20_000).optional(),
+    growth: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 1, {
+    message: "At least one mechanism field is required",
+  });
+export type SpecialMechanismPatchRequest = z.infer<typeof specialMechanismPatchRequestSchema>;
+
+export const specialMechanismOwnershipTransferRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    owner: mechanismOwnerRefSchema,
+    reason: z.string().trim().min(1).max(1_000),
+    validity: validityIntervalSchema,
+    evidence: z.array(settingEvidenceSchema).min(1).max(20),
+  })
+  .strict();
+export type SpecialMechanismOwnershipTransferRequest = z.infer<
+  typeof specialMechanismOwnershipTransferRequestSchema
+>;
+
+export const specialMechanismOwnershipRecordSchema = z.object({
+  id: uuidV7Schema,
+  mechanismId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  previousOwner: domainRefSchema.nullable(),
+  owner: domainRefSchema,
+  reason: z.string(),
+  validity: validityIntervalSchema,
+  evidence: z.array(settingEvidenceSchema),
+  versionNodeId: uuidV7Schema,
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type SpecialMechanismOwnershipRecord = z.infer<typeof specialMechanismOwnershipRecordSchema>;
+
+export const specialMechanismSchema = z.object({
+  mechanism: domainRefSchema,
+  mechanismType: z.string(),
+  owner: domainRefSchema.nullable(),
+  powerSystem: domainRefSchema.nullable(),
+  rules: z.string(),
+  costs: z.string(),
+  limits: z.string(),
+  growth: z.string(),
+  ownershipHistory: z.array(specialMechanismOwnershipRecordSchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type SpecialMechanism = z.infer<typeof specialMechanismSchema>;
+export const specialMechanismResponseSchema = apiEnvelopeSchema(specialMechanismSchema);
+export const specialMechanismListResponseSchema = cursorListResponseSchema(
+  z.array(specialMechanismSchema),
+);
+
+export const itemKindSchema = z.enum(["item", "technique", "equipment", "resource"]);
+export type ItemKind = z.infer<typeof itemKindSchema>;
+
+export const itemOwnershipModelSchema = z.enum(["shared", "unique"]);
+export type ItemOwnershipModel = z.infer<typeof itemOwnershipModelSchema>;
+
+export const itemCreateRequestSchema = z
+  .object({
+    ...worldEntityBaseShape,
+    kind: itemKindSchema,
+    category: z.string().trim().min(1).max(200),
+    grade: z.string().trim().max(200).default(""),
+    effect: z.string().trim().min(1).max(20_000),
+    cost: z.string().trim().max(20_000).default(""),
+    limits: z.string().trim().max(20_000).default(""),
+    ownershipModel: itemOwnershipModelSchema,
+    consumable: z.boolean().default(false),
+    quantity: z.number().int().min(1).max(1_000_000).default(1),
+    equipmentSlot: z.string().trim().min(1).max(80).nullable().default(null),
+  })
+  .strict()
+  .superRefine((item, context) => {
+    if (item.kind === "equipment" && item.equipmentSlot === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["equipmentSlot"],
+        message: "Equipment requires an equipment slot",
+      });
+    }
+    if (item.kind !== "equipment" && item.equipmentSlot !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["equipmentSlot"],
+        message: "Only equipment can define an equipment slot",
+      });
+    }
+    if (item.ownershipModel === "unique" && item.quantity !== 1) {
+      context.addIssue({
+        code: "custom",
+        path: ["quantity"],
+        message: "Unique items start with exactly one instance",
+      });
+    }
+  });
+export type ItemCreateRequest = z.infer<typeof itemCreateRequestSchema>;
+
+export const itemPatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    name: z.string().trim().min(1).max(120).optional(),
+    aliases: z.array(z.string().trim().min(1).max(80)).max(30).optional(),
+    summary: z.string().trim().min(1).max(500).optional(),
+    description: z.string().max(20_000).optional(),
+    tags: z.array(z.string().trim().min(1).max(40)).max(30).optional(),
+    kind: itemKindSchema.optional(),
+    category: z.string().trim().min(1).max(200).optional(),
+    grade: z.string().trim().max(200).optional(),
+    effect: z.string().trim().min(1).max(20_000).optional(),
+    cost: z.string().trim().max(20_000).optional(),
+    limits: z.string().trim().max(20_000).optional(),
+    ownershipModel: itemOwnershipModelSchema.optional(),
+    consumable: z.boolean().optional(),
+    equipmentSlot: z.string().trim().min(1).max(80).nullable().optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 1, {
+    message: "At least one item field is required",
+  });
+export type ItemPatchRequest = z.infer<typeof itemPatchRequestSchema>;
+
+export const itemRightTypeSchema = z.enum([
+  "ownership",
+  "custody",
+  "location",
+  "usage",
+  "disposal",
+]);
+export type ItemRightType = z.infer<typeof itemRightTypeSchema>;
+
+export const itemRightHolderSchema = domainRefSchema.refine(
+  (holder) =>
+    holder.type === "character" ||
+    holder.type === "faction" ||
+    holder.type === "item" ||
+    holder.type === "map" ||
+    holder.type === "map_node",
+  { message: "Item rights must reference a character, faction, item or map location" },
+);
+export type ItemRightHolder = z.infer<typeof itemRightHolderSchema>;
+
+export const itemRightGrantRequestSchema = z
+  .object({
+    rightType: itemRightTypeSchema,
+    holder: itemRightHolderSchema,
+    sharePercent: z.number().min(0.01).max(100).nullable().default(null),
+    validity: validityIntervalSchema,
+    sourceChapterId: uuidV7Schema.nullable().default(null),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+    reason: z.string().trim().min(1).max(1_000),
+  })
+  .strict()
+  .superRefine((right, context) => {
+    if (right.rightType === "location") {
+      if (right.holder.type !== "map" && right.holder.type !== "map_node") {
+        context.addIssue({
+          code: "custom",
+          path: ["holder", "type"],
+          message: "Location rights must reference a map or map node",
+        });
+      }
+      if (right.sharePercent !== null) {
+        context.addIssue({
+          code: "custom",
+          path: ["sharePercent"],
+          message: "Location rights cannot carry an ownership share",
+        });
+      }
+      return;
+    }
+    if (
+      right.holder.type !== "character" &&
+      right.holder.type !== "faction" &&
+      right.holder.type !== "item"
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["holder", "type"],
+        message: "This right type must reference a character, faction or item",
+      });
+    }
+    if (right.rightType === "ownership" && right.sharePercent === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["sharePercent"],
+        message: "Ownership rights require a share percentage",
+      });
+    }
+    if (right.rightType !== "ownership" && right.sharePercent !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["sharePercent"],
+        message: "Only ownership rights carry a share percentage",
+      });
+    }
+  });
+export type ItemRightGrantRequest = z.infer<typeof itemRightGrantRequestSchema>;
+
+export const itemRightSchema = z.object({
+  id: uuidV7Schema,
+  itemId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  rightType: itemRightTypeSchema,
+  holder: domainRefSchema,
+  sharePercent: z.number().nullable(),
+  validity: validityIntervalSchema,
+  sourceChapterId: uuidV7Schema.nullable(),
+  evidence: z.array(settingEvidenceSchema),
+  reason: z.string(),
+  versionNodeId: uuidV7Schema,
+  createdBy: uuidV7Schema,
+  createdAt: z.string().datetime(),
+});
+export type ItemRight = z.infer<typeof itemRightSchema>;
+export const itemRightResponseSchema = apiEnvelopeSchema(itemRightSchema);
+
+export const itemConsumeRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    quantity: z.number().int().positive().max(1_000_000),
+    reason: z.string().trim().min(1).max(1_000),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict();
+export type ItemConsumeRequest = z.infer<typeof itemConsumeRequestSchema>;
+
+export const itemEquipRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    holder: domainRefSchema.refine(
+      (holder) => holder.type === "character" || holder.type === "faction",
+      { message: "Equipment can only be held by a character or faction" },
+    ),
+    reason: z.string().trim().min(1).max(1_000),
+    evidence: z.array(settingEvidenceSchema).max(20).default([]),
+  })
+  .strict();
+export type ItemEquipRequest = z.infer<typeof itemEquipRequestSchema>;
+
+export const itemUnequipRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type ItemUnequipRequest = z.infer<typeof itemUnequipRequestSchema>;
+
+export const itemSchema = z.object({
+  item: domainRefSchema,
+  kind: itemKindSchema,
+  category: z.string(),
+  grade: z.string(),
+  effect: z.string(),
+  cost: z.string(),
+  limits: z.string(),
+  ownershipModel: itemOwnershipModelSchema,
+  consumable: z.boolean(),
+  quantity: z.number().int().nonnegative(),
+  equipmentSlot: z.string().nullable(),
+  equippedBy: domainRefSchema.nullable(),
+  rights: z.array(itemRightSchema),
+  health: z.array(domainHealthFindingSchema),
+  version: z.number().int().positive(),
+  latestVersionNodeId: uuidV7Schema,
+  status: settingStatusSchema,
+  lockedAt: z.string().datetime().nullable(),
+});
+export type ItemDomain = z.infer<typeof itemSchema>;
+export const itemResponseSchema = apiEnvelopeSchema(itemSchema);
+export const itemListResponseSchema = cursorListResponseSchema(z.array(itemSchema));
+
+export const powerSystemChangePatchSchema = z
+  .object({
+    overview: z.string().trim().max(20_000).optional(),
+    lifespanPolicy: powerLifespanPolicySchema.optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one power system change is required",
+  });
+export type PowerSystemChangePatch = z.infer<typeof powerSystemChangePatchSchema>;
+
+export const mechanismChangePatchSchema = z
+  .object({
+    mechanismType: z.string().trim().min(1).max(120).optional(),
+    powerSystem: powerSystemRefSchema.nullable().optional(),
+    rules: z.string().trim().min(1).max(20_000).optional(),
+    costs: z.string().trim().max(20_000).optional(),
+    limits: z.string().trim().max(20_000).optional(),
+    growth: z.string().trim().max(20_000).optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one mechanism change is required",
+  });
+export type MechanismChangePatch = z.infer<typeof mechanismChangePatchSchema>;
+
+export const itemChangePatchSchema = z
+  .object({
+    kind: itemKindSchema.optional(),
+    category: z.string().trim().min(1).max(200).optional(),
+    grade: z.string().trim().max(200).optional(),
+    effect: z.string().trim().min(1).max(20_000).optional(),
+    cost: z.string().trim().max(20_000).optional(),
+    limits: z.string().trim().max(20_000).optional(),
+    ownershipModel: itemOwnershipModelSchema.optional(),
+    consumable: z.boolean().optional(),
+    equipmentSlot: z.string().trim().min(1).max(80).nullable().optional(),
+  })
+  .strict()
+  .refine((input) => Object.keys(input).length > 0, {
+    message: "At least one item change is required",
+  });
+export type ItemChangePatch = z.infer<typeof itemChangePatchSchema>;
+
+export const worldSnapshotQuerySchema = z
+  .object({
+    versionNodeId: uuidV7Schema.optional(),
+    chapterNumber: z.coerce.number().int().positive().optional(),
+  })
+  .strict();
+export type WorldSnapshotQuery = z.infer<typeof worldSnapshotQuerySchema>;
+
+export const factionListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type FactionListQuery = z.infer<typeof factionListQuerySchema>;
+export const mapListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type MapListQuery = z.infer<typeof mapListQuerySchema>;
+export const powerSystemListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type PowerSystemListQuery = z.infer<typeof powerSystemListQuerySchema>;
+export const specialMechanismListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type SpecialMechanismListQuery = z.infer<typeof specialMechanismListQuerySchema>;
+export const itemListQuerySchema = cursorPageQuerySchema
+  .extend(worldSnapshotQuerySchema.shape)
+  .strict();
+export type ItemListQuery = z.infer<typeof itemListQuerySchema>;
+
+export const worldSnapshotSchema = z.object({
+  at: z.object({
+    versionNodeId: uuidV7Schema.nullable(),
+    chapterNumber: z.number().int().positive().nullable(),
+  }),
+  factions: z.array(factionDetailSchema),
+  maps: z.array(mapDetailSchema),
+  timeline: worldTimelineSchema,
+  powerSystems: z.array(powerSystemSchema),
+  mechanisms: z.array(specialMechanismSchema),
+  items: z.array(itemSchema),
+});
+export type WorldSnapshot = z.infer<typeof worldSnapshotSchema>;
+export const worldSnapshotResponseSchema = apiEnvelopeSchema(worldSnapshotSchema);
+
+function validateCustomFieldDefinitionShape(
+  input: Pick<CustomFieldDefinitionCreateRequest, "fieldType" | "options" | "relationTarget">,
+  context: z.RefinementCtx,
+): void {
+  const selectField = input.fieldType === "single_select" || input.fieldType === "multi_select";
+  if (selectField && input.options.length === 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Select fields require at least one option",
+    });
+  }
+  if (!selectField && input.options.length > 0) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Only select fields can define options",
+    });
+  }
+  if (new Set(input.options).size !== input.options.length) {
+    context.addIssue({
+      code: "custom",
+      path: ["options"],
+      message: "Select field options must be unique",
+    });
+  }
+  if (input.fieldType === "relation_ref" && input.relationTarget === null) {
+    context.addIssue({
+      code: "custom",
+      path: ["relationTarget"],
+      message: "Relation fields require a target type",
+    });
+  }
+  if (input.fieldType !== "relation_ref" && input.relationTarget !== null) {
+    context.addIssue({
+      code: "custom",
+      path: ["relationTarget"],
+      message: "Only relation fields can define a target type",
+    });
+  }
+}
 
 export const confirmedSettingSchema = z
   .object({
@@ -830,7 +3476,9 @@ export const confirmedSettingSchema = z
   });
 export type ConfirmedSetting = z.infer<typeof confirmedSettingSchema>;
 
-export const confirmedSettingListResponseSchema = apiEnvelopeSchema(
+export const confirmedSettingListQuerySchema = cursorPageQuerySchema;
+export type ConfirmedSettingListQuery = z.infer<typeof confirmedSettingListQuerySchema>;
+export const confirmedSettingListResponseSchema = cursorListResponseSchema(
   z.array(confirmedSettingSchema),
 );
 
@@ -942,12 +3590,18 @@ export const chapterVersionCreateRequestSchema = z
   .strict();
 export type ChapterVersionCreateRequest = z.infer<typeof chapterVersionCreateRequestSchema>;
 
-export const chapterWorkspaceListResponseSchema = apiEnvelopeSchema(
+export const chapterListQuerySchema = cursorPageQuerySchema;
+export type ChapterListQuery = z.infer<typeof chapterListQuerySchema>;
+export const chapterWorkspaceListResponseSchema = cursorListResponseSchema(
   z.array(chapterWorkspaceSchema),
 );
 export const chapterWorkspaceResponseSchema = apiEnvelopeSchema(chapterWorkspaceSchema);
 export const chapterReadinessResponseSchema = apiEnvelopeSchema(chapterReadinessSchema);
-export const chapterVersionListResponseSchema = apiEnvelopeSchema(z.array(chapterVersionSchema));
+export const chapterVersionListQuerySchema = cursorPageQuerySchema;
+export type ChapterVersionListQuery = z.infer<typeof chapterVersionListQuerySchema>;
+export const chapterVersionListResponseSchema = cursorListResponseSchema(
+  z.array(chapterVersionSchema),
+);
 export const chapterVersionSaveDataSchema = z.object({
   chapter: chapterWorkspaceSchema,
   version: chapterVersionSchema,
@@ -982,6 +3636,779 @@ export const chapterReviewDataSchema = z.object({
 });
 export type ChapterReviewData = z.infer<typeof chapterReviewDataSchema>;
 export const chapterReviewResponseSchema = apiEnvelopeSchema(chapterReviewDataSchema);
+
+export const outlineLevelSchema = z.enum(["book", "volume", "act", "chapter", "scene"]);
+export type OutlineLevel = z.infer<typeof outlineLevelSchema>;
+
+export const outlineNodeStatusSchema = z.enum(["planned", "active", "done"]);
+export type OutlineNodeStatus = z.infer<typeof outlineNodeStatusSchema>;
+
+export const outlineChapterRefSchema = z
+  .object({
+    id: uuidV7Schema,
+    number: z.number().int().positive(),
+    title: z.string().min(1).max(200),
+    status: chapterStatusSchema,
+    version: z.number().int().positive(),
+    wordCount: z.number().int().nonnegative(),
+    brief: chapterBriefSchema.nullable().default(null),
+  })
+  .strict();
+export type OutlineChapterRef = z.infer<typeof outlineChapterRefSchema>;
+
+export const outlineNodeSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    level: outlineLevelSchema,
+    parentId: uuidV7Schema.nullable(),
+    sortOrder: z.number().int().min(0).max(100_000),
+    title: z.string().trim().min(1).max(200),
+    summary: z.string().max(2_000),
+    status: outlineNodeStatusSchema,
+    locked: z.boolean(),
+    version: z.number().int().positive(),
+    chapter: outlineChapterRefSchema.nullable(),
+    tension: z.number().int().min(0).max(100).nullable(),
+    versionNodeId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type OutlineNode = z.infer<typeof outlineNodeSchema>;
+
+export const volumePlotLineSchema = z
+  .object({
+    name: z.string().trim().min(1).max(200),
+    status: z.enum(["planned", "active", "resolved", "dropped"]),
+    note: z.string().max(500),
+  })
+  .strict();
+export type VolumePlotLine = z.infer<typeof volumePlotLineSchema>;
+
+export const volumeContractSchema = z
+  .object({
+    id: uuidV7Schema,
+    nodeId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    objective: z.string().trim().min(1).max(2_000),
+    conflict: z.string().trim().min(1).max(2_000),
+    turningPoints: z.array(z.string().trim().min(1).max(500)).max(30),
+    exitConditions: z.array(z.string().trim().min(1).max(500)).max(30),
+    plotLines: z.array(volumePlotLineSchema).max(30),
+    version: z.number().int().positive(),
+    versionNodeId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type VolumeContract = z.infer<typeof volumeContractSchema>;
+
+export const sceneBeatSchema = z
+  .object({
+    id: uuidV7Schema,
+    order: z.number().int().positive(),
+    description: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type SceneBeat = z.infer<typeof sceneBeatSchema>;
+
+export const sceneInformationReleaseSchema = z
+  .object({
+    id: uuidV7Schema,
+    order: z.number().int().positive(),
+    description: z.string().trim().min(1).max(500),
+    constraint: z.string().max(1_000).nullable(),
+  })
+  .strict();
+export type SceneInformationRelease = z.infer<typeof sceneInformationReleaseSchema>;
+
+export const sceneCardSchema = z
+  .object({
+    id: uuidV7Schema,
+    nodeId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    title: z.string().trim().min(1).max(200),
+    pov: domainRefSchema.nullable(),
+    location: domainRefSchema.nullable(),
+    storyTime: storyTimePointSchema.nullable(),
+    beats: z.array(sceneBeatSchema).max(50),
+    informationReleases: z.array(sceneInformationReleaseSchema).max(50),
+    tension: z.number().int().min(0).max(100).nullable(),
+    version: z.number().int().positive(),
+    versionNodeId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type SceneCard = z.infer<typeof sceneCardSchema>;
+
+export const outlineReadinessItemSchema = z
+  .object({
+    key: z.string().min(1),
+    label: z.string().min(1),
+    severity: z.enum(["blocker", "warning"]),
+    ready: z.boolean(),
+    resourceType: z.enum(["outline_branch", "outline_node"]),
+    resourceId: uuidV7Schema.nullable(),
+    remediation: z.string().min(1),
+  })
+  .strict();
+export type OutlineReadinessItem = z.infer<typeof outlineReadinessItemSchema>;
+
+export const outlineReadinessSchema = z
+  .object({
+    ruleVersion: z.literal("outline-readiness-v1"),
+    status: z.enum(["not_ready", "partial", "ready"]),
+    canProceed: z.boolean(),
+    completed: z.number().int().min(0),
+    total: z.number().int().min(0),
+    items: z.array(outlineReadinessItemSchema),
+  })
+  .strict();
+export type OutlineReadiness = z.infer<typeof outlineReadinessSchema>;
+
+export const outlineReplanIssueSchema = z
+  .object({
+    code: z.string().min(1),
+    message: z.string().min(1),
+    nodeId: uuidV7Schema.nullable(),
+  })
+  .strict();
+export type OutlineReplanIssue = z.infer<typeof outlineReplanIssueSchema>;
+
+export const outlineReplanResultSchema = z
+  .object({
+    ruleVersion: z.literal("outline-replan-v1"),
+    nodeId: uuidV7Schema,
+    canApply: z.boolean(),
+    impacted: z
+      .object({
+        nodeIds: z.array(uuidV7Schema),
+        chapterIds: z.array(uuidV7Schema),
+        sceneNodeIds: z.array(uuidV7Schema),
+        lockedNodeIds: z.array(uuidV7Schema),
+      })
+      .strict(),
+    blockers: z.array(outlineReplanIssueSchema),
+    warnings: z.array(outlineReplanIssueSchema),
+  })
+  .strict();
+export type OutlineReplanResult = z.infer<typeof outlineReplanResultSchema>;
+
+export const outlineStatsSchema = z
+  .object({
+    totalNodes: z.number().int().min(0),
+    chapterCount: z.number().int().min(0),
+    plannedChapters: z.number().int().min(0),
+    activeChapters: z.number().int().min(0),
+    lockedChapters: z.number().int().min(0),
+    wordCount: z.number().int().min(0),
+    tensionPoints: z.number().int().min(0),
+  })
+  .strict();
+export type OutlineStats = z.infer<typeof outlineStatsSchema>;
+
+export const outlineWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    nodes: z.array(outlineNodeSchema),
+    volumeContracts: z.array(volumeContractSchema),
+    sceneCards: z.array(sceneCardSchema),
+    readiness: outlineReadinessSchema,
+    stats: outlineStatsSchema,
+  })
+  .strict();
+export type OutlineWorkspace = z.infer<typeof outlineWorkspaceSchema>;
+
+export const outlineSceneCardWriteRequestSchema = z
+  .object({
+    version: z.number().int().positive().optional(),
+    title: z.string().trim().min(1).max(200),
+    pov: domainRefSchema.nullable().default(null),
+    location: domainRefSchema.nullable().default(null),
+    storyTime: storyTimePointSchema.nullable().default(null),
+    beats: z.array(z.object({ description: z.string().trim().min(1).max(1_000) }).strict()).max(50),
+    informationReleases: z
+      .array(
+        z
+          .object({
+            description: z.string().trim().min(1).max(500),
+            constraint: z.string().max(1_000).nullable().default(null),
+          })
+          .strict(),
+      )
+      .max(50),
+    tension: z.number().int().min(0).max(100).nullable().default(null),
+  })
+  .strict();
+export type OutlineSceneCardWriteRequest = z.infer<typeof outlineSceneCardWriteRequestSchema>;
+
+export const outlineNodeCreateRequestSchema = z
+  .object({
+    level: outlineLevelSchema,
+    parentId: uuidV7Schema.nullable(),
+    sortOrder: z.number().int().min(0).max(100_000).optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+    summary: z.string().max(2_000).default(""),
+    status: outlineNodeStatusSchema.default("planned"),
+    tension: z.number().int().min(0).max(100).nullable().default(null),
+    chapterId: uuidV7Schema.optional(),
+    chapterCreate: chapterCreateRequestSchema.optional(),
+    sceneCard: outlineSceneCardWriteRequestSchema.omit({ version: true }).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.level === "chapter") {
+      if (Boolean(input.chapterId) === Boolean(input.chapterCreate)) {
+        context.addIssue({
+          code: "custom",
+          path: ["chapterId"],
+          message: "Chapter nodes require exactly one existing chapter or a new chapter",
+        });
+      }
+    } else if (input.chapterId || input.chapterCreate) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "Only chapter nodes can reference a chapter",
+      });
+    }
+    if (input.sceneCard && input.level !== "scene") {
+      context.addIssue({
+        code: "custom",
+        path: ["sceneCard"],
+        message: "Only scene nodes can carry a scene card",
+      });
+    }
+    if (!input.title && !input.sceneCard?.title && input.level !== "chapter") {
+      context.addIssue({
+        code: "custom",
+        path: ["title"],
+        message: "Title is required for non-chapter nodes",
+      });
+    }
+  });
+export type OutlineNodeCreateRequest = z.infer<typeof outlineNodeCreateRequestSchema>;
+
+export const outlineNodePatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    title: z.string().trim().min(1).max(200).optional(),
+    summary: z.string().max(2_000).optional(),
+    status: outlineNodeStatusSchema.optional(),
+    tension: z.number().int().min(0).max(100).nullable().optional(),
+  })
+  .strict()
+  .refine(
+    (input) =>
+      input.title !== undefined ||
+      input.summary !== undefined ||
+      input.status !== undefined ||
+      input.tension !== undefined,
+    { message: "At least one outline node field is required" },
+  );
+export type OutlineNodePatchRequest = z.infer<typeof outlineNodePatchRequestSchema>;
+
+export const outlineNodeMoveRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    parentId: uuidV7Schema.nullable(),
+    sortOrder: z.number().int().min(0).max(100_000).optional(),
+  })
+  .strict();
+export type OutlineNodeMoveRequest = z.infer<typeof outlineNodeMoveRequestSchema>;
+
+export const outlineNodeVersionRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type OutlineNodeVersionRequest = z.infer<typeof outlineNodeVersionRequestSchema>;
+
+export const outlineVolumeContractWriteRequestSchema = z
+  .object({
+    version: z.number().int().positive().optional(),
+    objective: z.string().trim().min(1).max(2_000),
+    conflict: z.string().trim().min(1).max(2_000),
+    turningPoints: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
+    exitConditions: z.array(z.string().trim().min(1).max(500)).max(30).default([]),
+    plotLines: z.array(volumePlotLineSchema).max(30).default([]),
+  })
+  .strict();
+export type OutlineVolumeContractWriteRequest = z.infer<
+  typeof outlineVolumeContractWriteRequestSchema
+>;
+
+export const outlineReplanCheckRequestSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    proposedParentId: uuidV7Schema.nullable().optional(),
+    proposedSortOrder: z.number().int().min(0).max(100_000).optional(),
+  })
+  .strict();
+export type OutlineReplanCheckRequest = z.infer<typeof outlineReplanCheckRequestSchema>;
+
+export const outlineWorkspaceResponseSchema = apiEnvelopeSchema(outlineWorkspaceSchema);
+export const outlineReadinessResponseSchema = apiEnvelopeSchema(outlineReadinessSchema);
+export const outlineReplanResponseSchema = apiEnvelopeSchema(outlineReplanResultSchema);
+
+export const outlineNodeMutationDataSchema = z
+  .object({
+    workspace: outlineWorkspaceSchema,
+    node: outlineNodeSchema,
+    versionNodeId: uuidV7Schema,
+    auditId: uuidV7Schema,
+    replan: outlineReplanResultSchema,
+  })
+  .strict();
+export type OutlineNodeMutationData = z.infer<typeof outlineNodeMutationDataSchema>;
+export const outlineNodeMutationResponseSchema = apiEnvelopeSchema(outlineNodeMutationDataSchema);
+
+export const storyLedgerKindSchema = z.enum(["plot_thread", "foreshadow", "character_arc"]);
+export type StoryLedgerKind = z.infer<typeof storyLedgerKindSchema>;
+
+export const storyLedgerStatusSchema = z.enum([
+  "planned",
+  "planted",
+  "progressed",
+  "paid_off",
+  "failed_payoff",
+  "abandoned",
+  "deferred",
+]);
+export type StoryLedgerStatus = z.infer<typeof storyLedgerStatusSchema>;
+
+export const storyLedgerResponsibleRoleSchema = z.enum([
+  "protagonist",
+  "antagonist",
+  "supporting",
+  "ensemble",
+  "author",
+]);
+export type StoryLedgerResponsibleRole = z.infer<typeof storyLedgerResponsibleRoleSchema>;
+
+export const storyLedgerThreadTypeSchema = z.enum([
+  "main",
+  "subplot",
+  "character",
+  "faction",
+  "world",
+  "mystery",
+  "romance",
+]);
+export type StoryLedgerThreadType = z.infer<typeof storyLedgerThreadTypeSchema>;
+
+export const storyLedgerImportanceSchema = z.enum(["must", "optional"]);
+export type StoryLedgerImportance = z.infer<typeof storyLedgerImportanceSchema>;
+
+export const storyLedgerLifecycleActionSchema = z.enum([
+  "setup",
+  "progress",
+  "payoff",
+  "fail_payoff",
+  "abandon",
+  "defer",
+]);
+export type StoryLedgerLifecycleAction = z.infer<typeof storyLedgerLifecycleActionSchema>;
+
+export const storyLedgerTargetWindowSchema = z
+  .object({
+    fromChapter: z.number().int().positive(),
+    toChapter: z.number().int().positive(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.toChapter < input.fromChapter) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Target window end cannot precede its start",
+      });
+    }
+  });
+export type StoryLedgerTargetWindow = z.infer<typeof storyLedgerTargetWindowSchema>;
+
+export const storyLedgerChapterRefSchema = z
+  .object({
+    id: uuidV7Schema,
+    number: z.number().int().positive(),
+    title: z.string().min(1).max(200),
+  })
+  .strict();
+export type StoryLedgerChapterRef = z.infer<typeof storyLedgerChapterRefSchema>;
+
+export const storyLedgerEvidenceSchema = z
+  .object({
+    kind: settingEvidenceKindSchema,
+    sourceId: uuidV7Schema.nullable().default(null),
+    label: z.string().trim().min(1).max(200),
+    quote: z.string().max(5_000).default(""),
+    locator: z.string().max(500).default(""),
+    confidence: z.number().min(0).max(1).nullable().default(null),
+    strength: z.enum(["weak", "strong"]).default("strong"),
+  })
+  .strict();
+export type StoryLedgerEvidence = z.infer<typeof storyLedgerEvidenceSchema>;
+
+export const storyLedgerEventRefSchema = z
+  .object({
+    eventId: uuidV7Schema,
+    label: z.string().min(1).max(200),
+    chapterNumber: z.number().int().positive().nullable(),
+    validFromChapter: z.number().int().positive().nullable(),
+    validToChapter: z.number().int().positive().nullable(),
+  })
+  .strict();
+export type StoryLedgerEventRef = z.infer<typeof storyLedgerEventRefSchema>;
+
+export const storyLedgerLifecycleEventSchema = z
+  .object({
+    id: uuidV7Schema,
+    action: storyLedgerLifecycleActionSchema,
+    fromStatus: storyLedgerStatusSchema,
+    toStatus: storyLedgerStatusSchema,
+    chapter: storyLedgerChapterRefSchema.nullable(),
+    event: storyLedgerEventRefSchema.nullable(),
+    reason: z.string().min(1).max(1_000),
+    evidence: z.array(storyLedgerEvidenceSchema),
+    actorId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type StoryLedgerLifecycleEvent = z.infer<typeof storyLedgerLifecycleEventSchema>;
+
+export const storyLedgerFindingSchema = z
+  .object({
+    code: z.enum([
+      "LEDGER_OVERDUE",
+      "LEDGER_DUPLICATE",
+      "LEDGER_PREMATURE_PAYOFF",
+      "LEDGER_WEAK_PAYOFF",
+      "LEDGER_UNSUPPORTED_PAYOFF",
+      "LEDGER_INVALIDATED_PAYOFF",
+      "LEDGER_NO_CAUSAL_PAYOFF",
+    ]),
+    severity: z.enum(["warning", "blocker"]),
+    entryId: uuidV7Schema,
+    relatedEntryIds: z.array(uuidV7Schema),
+    message: z.string().min(1),
+    remediation: z.string().min(1),
+  })
+  .strict();
+export type StoryLedgerFinding = z.infer<typeof storyLedgerFindingSchema>;
+
+const storyLedgerEntryBaseShape = {
+  id: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  title: z.string().trim().min(1).max(200),
+  summary: z.string().max(2_000),
+  status: storyLedgerStatusSchema,
+  responsibleRole: storyLedgerResponsibleRoleSchema,
+  sourceChapter: storyLedgerChapterRefSchema.nullable(),
+  sourceEvent: storyLedgerEventRefSchema.nullable(),
+  targetWindow: storyLedgerTargetWindowSchema,
+  prerequisiteEvents: z.array(storyLedgerEventRefSchema),
+  evidence: z.array(storyLedgerEvidenceSchema),
+  history: z.array(storyLedgerLifecycleEventSchema),
+  version: z.number().int().positive(),
+  versionNodeId: uuidV7Schema,
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+};
+
+export const plotThreadSchema = z
+  .object({
+    ...storyLedgerEntryBaseShape,
+    kind: z.literal("plot_thread"),
+    threadType: storyLedgerThreadTypeSchema,
+    stakes: z.string().trim().min(1).max(2_000),
+    tension: z.number().int().min(0).max(100).nullable(),
+  })
+  .strict();
+export type PlotThread = z.infer<typeof plotThreadSchema>;
+
+export const foreshadowSchema = z
+  .object({
+    ...storyLedgerEntryBaseShape,
+    kind: z.literal("foreshadow"),
+    importance: storyLedgerImportanceSchema,
+    readerPromise: z.string().trim().min(1).max(500),
+    relatedCharacters: z.array(domainRefSchema).max(20),
+    relatedFactions: z.array(domainRefSchema).max(20),
+  })
+  .strict();
+export type Foreshadow = z.infer<typeof foreshadowSchema>;
+
+export const characterArcSchema = z
+  .object({
+    ...storyLedgerEntryBaseShape,
+    kind: z.literal("character_arc"),
+    character: domainRefSchema,
+    startState: z.string().trim().min(1).max(2_000),
+    desire: z.string().trim().min(1).max(2_000),
+    fear: z.string().trim().min(1).max(2_000),
+    lie: z.string().trim().min(1).max(2_000),
+    truth: z.string().trim().min(1).max(2_000),
+    endState: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type CharacterArc = z.infer<typeof characterArcSchema>;
+
+export const storyLedgerEntrySchema = z.discriminatedUnion("kind", [
+  plotThreadSchema,
+  foreshadowSchema,
+  characterArcSchema,
+]);
+export type StoryLedgerEntry = z.infer<typeof storyLedgerEntrySchema>;
+
+const storyLedgerCreateBaseShape = {
+  title: z.string().trim().min(1).max(200),
+  summary: z.string().max(2_000).default(""),
+  responsibleRole: storyLedgerResponsibleRoleSchema,
+  status: z.enum(["planned", "planted"]).default("planned"),
+  sourceChapterId: uuidV7Schema.nullable().default(null),
+  sourceEventId: uuidV7Schema.nullable().default(null),
+  targetWindow: storyLedgerTargetWindowSchema,
+  prerequisiteEventIds: z.array(uuidV7Schema).max(20).default([]),
+  evidence: z.array(storyLedgerEvidenceSchema).max(20).default([]),
+  reason: z.string().trim().min(1).max(1_000).optional(),
+};
+
+type StoryLedgerCreateBase = {
+  status: "planned" | "planted";
+  sourceChapterId: string | null;
+  sourceEventId: string | null;
+  reason?: string | undefined;
+};
+
+const storyLedgerCreateRefinement = (input: StoryLedgerCreateBase, context: z.RefinementCtx) => {
+  if (input.status === "planted" && !input.sourceChapterId && !input.sourceEventId) {
+    context.addIssue({
+      code: "custom",
+      path: ["sourceChapterId"],
+      message: "Planted ledger entries require a source chapter or event",
+    });
+  }
+  if (input.status === "planted" && !input.reason) {
+    context.addIssue({
+      code: "custom",
+      path: ["reason"],
+      message: "Planted ledger entries require a reason",
+    });
+  }
+};
+
+export const plotThreadCreateRequestSchema = z
+  .object({
+    kind: z.literal("plot_thread"),
+    ...storyLedgerCreateBaseShape,
+    threadType: storyLedgerThreadTypeSchema,
+    stakes: z.string().trim().min(1).max(2_000),
+    tension: z.number().int().min(0).max(100).nullable().default(null),
+  })
+  .strict()
+  .superRefine(storyLedgerCreateRefinement);
+export type PlotThreadCreateRequest = z.infer<typeof plotThreadCreateRequestSchema>;
+
+export const foreshadowCreateRequestSchema = z
+  .object({
+    kind: z.literal("foreshadow"),
+    ...storyLedgerCreateBaseShape,
+    importance: storyLedgerImportanceSchema.default("must"),
+    readerPromise: z.string().trim().min(1).max(500),
+    relatedCharacterIds: z.array(uuidV7Schema).max(20).default([]),
+    relatedFactionIds: z.array(uuidV7Schema).max(20).default([]),
+  })
+  .strict()
+  .superRefine(storyLedgerCreateRefinement);
+export type ForeshadowCreateRequest = z.infer<typeof foreshadowCreateRequestSchema>;
+
+export const characterArcCreateRequestSchema = z
+  .object({
+    kind: z.literal("character_arc"),
+    ...storyLedgerCreateBaseShape,
+    characterId: uuidV7Schema,
+    startState: z.string().trim().min(1).max(2_000),
+    desire: z.string().trim().min(1).max(2_000),
+    fear: z.string().trim().min(1).max(2_000),
+    lie: z.string().trim().min(1).max(2_000),
+    truth: z.string().trim().min(1).max(2_000),
+    endState: z.string().trim().min(1).max(2_000),
+  })
+  .strict()
+  .superRefine(storyLedgerCreateRefinement);
+export type CharacterArcCreateRequest = z.infer<typeof characterArcCreateRequestSchema>;
+
+export const storyLedgerEntryCreateRequestSchema = z.discriminatedUnion("kind", [
+  plotThreadCreateRequestSchema,
+  foreshadowCreateRequestSchema,
+  characterArcCreateRequestSchema,
+]);
+export type StoryLedgerEntryCreateRequest = z.infer<typeof storyLedgerEntryCreateRequestSchema>;
+
+const storyLedgerPatchBaseShape = {
+  version: z.number().int().positive(),
+  title: z.string().trim().min(1).max(200).optional(),
+  summary: z.string().max(2_000).optional(),
+  responsibleRole: storyLedgerResponsibleRoleSchema.optional(),
+  sourceChapterId: uuidV7Schema.nullable().optional(),
+  sourceEventId: uuidV7Schema.nullable().optional(),
+  targetWindow: storyLedgerTargetWindowSchema.optional(),
+  prerequisiteEventIds: z.array(uuidV7Schema).max(20).optional(),
+  evidence: z.array(storyLedgerEvidenceSchema).max(20).optional(),
+};
+
+export const plotThreadPatchRequestSchema = z
+  .object({
+    kind: z.literal("plot_thread"),
+    ...storyLedgerPatchBaseShape,
+    threadType: storyLedgerThreadTypeSchema.optional(),
+    stakes: z.string().trim().min(1).max(2_000).optional(),
+    tension: z.number().int().min(0).max(100).nullable().optional(),
+  })
+  .strict();
+export type PlotThreadPatchRequest = z.infer<typeof plotThreadPatchRequestSchema>;
+
+export const foreshadowPatchRequestSchema = z
+  .object({
+    kind: z.literal("foreshadow"),
+    ...storyLedgerPatchBaseShape,
+    importance: storyLedgerImportanceSchema.optional(),
+    readerPromise: z.string().trim().min(1).max(500).optional(),
+    relatedCharacterIds: z.array(uuidV7Schema).max(20).optional(),
+    relatedFactionIds: z.array(uuidV7Schema).max(20).optional(),
+  })
+  .strict();
+export type ForeshadowPatchRequest = z.infer<typeof foreshadowPatchRequestSchema>;
+
+export const characterArcPatchRequestSchema = z
+  .object({
+    kind: z.literal("character_arc"),
+    ...storyLedgerPatchBaseShape,
+    characterId: uuidV7Schema.optional(),
+    startState: z.string().trim().min(1).max(2_000).optional(),
+    desire: z.string().trim().min(1).max(2_000).optional(),
+    fear: z.string().trim().min(1).max(2_000).optional(),
+    lie: z.string().trim().min(1).max(2_000).optional(),
+    truth: z.string().trim().min(1).max(2_000).optional(),
+    endState: z.string().trim().min(1).max(2_000).optional(),
+  })
+  .strict();
+export type CharacterArcPatchRequest = z.infer<typeof characterArcPatchRequestSchema>;
+
+export const storyLedgerEntryPatchRequestSchema = z.discriminatedUnion("kind", [
+  plotThreadPatchRequestSchema,
+  foreshadowPatchRequestSchema,
+  characterArcPatchRequestSchema,
+]);
+export type StoryLedgerEntryPatchRequest = z.infer<typeof storyLedgerEntryPatchRequestSchema>;
+
+export const storyLedgerDeleteRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type StoryLedgerDeleteRequest = z.infer<typeof storyLedgerDeleteRequestSchema>;
+
+export const storyLedgerLifecycleRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    action: storyLedgerLifecycleActionSchema,
+    chapterId: uuidV7Schema.nullable().default(null),
+    eventId: uuidV7Schema.nullable().default(null),
+    reason: z.string().trim().min(1).max(1_000),
+    evidence: z.array(storyLedgerEvidenceSchema).max(20).default([]),
+    targetWindow: storyLedgerTargetWindowSchema.optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const sourceRequired = ["setup", "progress", "payoff", "fail_payoff", "abandon"].includes(
+      input.action,
+    );
+    if (sourceRequired && !input.chapterId && !input.eventId) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "This lifecycle action requires a source chapter or event",
+      });
+    }
+    if (["payoff", "fail_payoff"].includes(input.action) && input.evidence.length === 0) {
+      context.addIssue({
+        code: "custom",
+        path: ["evidence"],
+        message: "Payoff transitions require evidence",
+      });
+    }
+    if (input.action === "defer" && !input.targetWindow) {
+      context.addIssue({
+        code: "custom",
+        path: ["targetWindow"],
+        message: "Defer transitions require a new target window",
+      });
+    }
+  });
+export type StoryLedgerLifecycleRequest = z.infer<typeof storyLedgerLifecycleRequestSchema>;
+
+export const storyLedgerSummarySchema = z
+  .object({
+    total: z.number().int().min(0),
+    open: z.number().int().min(0),
+    overdue: z.number().int().min(0),
+    mustPayoff: z.number().int().min(0),
+    paidOff: z.number().int().min(0),
+    abandoned: z.number().int().min(0),
+    weakPayoff: z.number().int().min(0),
+  })
+  .strict();
+export type StoryLedgerSummary = z.infer<typeof storyLedgerSummarySchema>;
+
+export const storyLedgerWorkspaceSchema = z
+  .object({
+    ruleVersion: z.literal("story-ledger-checks-v1"),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    writtenThroughChapter: z.number().int().min(0),
+    entries: z.array(storyLedgerEntrySchema),
+    findings: z.array(storyLedgerFindingSchema),
+    summary: storyLedgerSummarySchema,
+  })
+  .strict();
+export type StoryLedgerWorkspace = z.infer<typeof storyLedgerWorkspaceSchema>;
+
+export const storyLedgerWorkspaceResponseSchema = apiEnvelopeSchema(storyLedgerWorkspaceSchema);
+export const storyLedgerEntryResponseSchema = apiEnvelopeSchema(storyLedgerEntrySchema);
+export const storyLedgerEntryListResponseSchema = apiEnvelopeSchema(
+  z.array(storyLedgerEntrySchema),
+);
+
+export const storyLedgerMutationDataSchema = z
+  .object({
+    workspace: storyLedgerWorkspaceSchema,
+    entry: storyLedgerEntrySchema,
+    versionNodeId: uuidV7Schema,
+    auditId: uuidV7Schema,
+  })
+  .strict();
+export type StoryLedgerMutationData = z.infer<typeof storyLedgerMutationDataSchema>;
+export const storyLedgerMutationResponseSchema = apiEnvelopeSchema(storyLedgerMutationDataSchema);
+
+export const storyLedgerDeleteDataSchema = z
+  .object({
+    workspace: storyLedgerWorkspaceSchema,
+    entryId: uuidV7Schema,
+    versionNodeId: uuidV7Schema,
+    auditId: uuidV7Schema,
+  })
+  .strict();
+export type StoryLedgerDeleteData = z.infer<typeof storyLedgerDeleteDataSchema>;
+export const storyLedgerDeleteResponseSchema = apiEnvelopeSchema(storyLedgerDeleteDataSchema);
 
 export const canonCommitRequestSchema = z.object({
   chapterVersionId: uuidV7Schema,
@@ -1074,7 +4501,9 @@ export const factProposalDecisionRequestSchema = z
   });
 export type FactProposalDecisionRequest = z.infer<typeof factProposalDecisionRequestSchema>;
 
-export const factProposalListResponseSchema = apiEnvelopeSchema(z.array(factProposalSchema));
+export const factProposalListQuerySchema = cursorPageQuerySchema;
+export type FactProposalListQuery = z.infer<typeof factProposalListQuerySchema>;
+export const factProposalListResponseSchema = cursorListResponseSchema(z.array(factProposalSchema));
 export const factProposalResponseSchema = apiEnvelopeSchema(factProposalSchema);
 
 export const canonCommitFactSchema = z.object({
@@ -1137,7 +4566,9 @@ export const canonCommitSchema = z.object({
 export type CanonCommit = z.infer<typeof canonCommitSchema>;
 
 export const canonCommitResponseSchema = apiEnvelopeSchema(canonCommitSchema);
-export const canonCommitListResponseSchema = apiEnvelopeSchema(z.array(canonCommitSchema));
+export const canonCommitListQuerySchema = cursorPageQuerySchema;
+export type CanonCommitListQuery = z.infer<typeof canonCommitListQuerySchema>;
+export const canonCommitListResponseSchema = cursorListResponseSchema(z.array(canonCommitSchema));
 
 export const manuscriptImportConfirmRequestSchema = z.object({
   title: z.string().trim().min(1).max(120),
@@ -1209,6 +4640,8 @@ export type WorkerReadinessData = z.infer<typeof workerReadinessDataSchema>;
 
 export const WORKER_QUEUE_NAME = "novel-brain-jobs";
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
+export const SUMMARY_REBUILD_JOB = "rebuild_summaries";
+export const WRITE_ACTION_JOB = "write_action";
 export const WORKER_JOB_STEPS = [
   "prepare",
   "compile_context",
@@ -1221,6 +4654,32 @@ export const WORKER_JOB_STEPS = [
 
 export const workerJobStepSchema = z.enum(WORKER_JOB_STEPS);
 export type WorkerJobStep = z.infer<typeof workerJobStepSchema>;
+
+export const RECOVERY_CHECKPOINT_SCHEMA_VERSION = 1 as const;
+
+export const checkpointOutputRefSchema = z
+  .object({
+    type: z.enum(["chapter_version", "context_pack", "fact_proposal", "canon_commit", "artifact"]),
+    id: z.string().min(1).max(200),
+  })
+  .strict();
+export type CheckpointOutputRef = z.infer<typeof checkpointOutputRefSchema>;
+
+export const generationCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(RECOVERY_CHECKPOINT_SCHEMA_VERSION).default(1),
+    revision: z.number().int().nonnegative().default(0),
+    step: workerJobStepSchema,
+    inputHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable()
+      .default(null),
+    outputRefs: z.array(checkpointOutputRefSchema).max(100).default([]),
+    payload: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type GenerationCheckpoint = z.infer<typeof generationCheckpointSchema>;
 
 export const generateChapterJobSchema = z.object({
   jobId: uuidV7Schema,
@@ -1236,18 +4695,398 @@ export const generateChapterJobSchema = z.object({
     maxTokens: z.number().int().positive(),
     maxRevisionRounds: z.number().int().nonnegative(),
   }),
-  checkpoint: z.object({
-    step: workerJobStepSchema,
-    payload: z.record(z.string(), z.unknown()),
-  }),
+  checkpoint: generationCheckpointSchema,
 });
 export type GenerateChapterJob = z.infer<typeof generateChapterJobSchema>;
 
-export const workerJobSchema = z.discriminatedUnion("jobType", [generateChapterJobSchema]);
-export type WorkerJob = z.infer<typeof workerJobSchema>;
-
 export const generationBudgetSchema = generateChapterJobSchema.shape.budget;
 export type GenerationBudget = z.infer<typeof generationBudgetSchema>;
+
+export const WRITING_ACTION_KINDS = [
+  "continue",
+  "rewrite",
+  "expand",
+  "condense",
+  "change_pov",
+  "add_hook",
+  "generate_title",
+  "generate_summary",
+  "selection_rewrite",
+  "targeted_revision",
+] as const;
+export const writingActionKindSchema = z.enum(WRITING_ACTION_KINDS);
+export type WritingActionKind = z.infer<typeof writingActionKindSchema>;
+
+export const WRITING_ACTION_STEPS = ["prepare", "generate", "await_review"] as const;
+export const writingActionStepSchema = z.enum(WRITING_ACTION_STEPS);
+export type WritingActionStep = z.infer<typeof writingActionStepSchema>;
+
+export const writingActionSelectionSchema = z
+  .object({
+    start: z.number().int().nonnegative(),
+    end: z.number().int().positive(),
+  })
+  .strict()
+  .refine((selection) => selection.end > selection.start, {
+    message: "Selection end must be after start",
+    path: ["end"],
+  });
+export type WritingActionSelection = z.infer<typeof writingActionSelectionSchema>;
+
+export const REVISION_MAX_ROUNDS = 2 as const;
+
+export const revisionBudgetSchema = generationBudgetSchema.extend({
+  maxRevisionRounds: z.number().int().min(1).max(REVISION_MAX_ROUNDS),
+});
+export type RevisionBudget = z.infer<typeof revisionBudgetSchema>;
+
+export const revisionManuscriptBlockSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z0-9_-]{1,40}$/),
+    start: z.number().int().nonnegative(),
+    end: z.number().int().positive(),
+    label: z.string().trim().min(1).max(100).optional(),
+  })
+  .strict()
+  .refine((block) => block.end > block.start, {
+    message: "Revision block end must be after start",
+    path: ["end"],
+  });
+export type RevisionManuscriptBlock = z.infer<typeof revisionManuscriptBlockSchema>;
+
+export const revisionConstraintsSchema = z
+  .object({
+    preserveOutsideSelection: z.literal(true).default(true),
+    protectLockedContent: z.literal(true).default(true),
+    authorInstruction: z.string().trim().min(1).max(2_000).optional(),
+  })
+  .strict();
+export type RevisionConstraints = z.infer<typeof revisionConstraintsSchema>;
+
+const revisionSelectionShape = {
+  sourceVersionId: uuidV7Schema,
+  findingIds: z.array(uuidV7Schema).min(1).max(10),
+  blocks: z.array(revisionManuscriptBlockSchema).min(1).max(20),
+  constraints: revisionConstraintsSchema.default({
+    preserveOutsideSelection: true,
+    protectLockedContent: true,
+  }),
+};
+
+function validateRevisionSelection(
+  input: { blocks: Array<{ id: string; start: number; end: number }> },
+  context: z.RefinementCtx,
+): void {
+  const ids = new Set<string>();
+  const sorted = [...input.blocks].sort((left, right) => left.start - right.start);
+  for (const [index, block] of sorted.entries()) {
+    if (ids.has(block.id)) {
+      context.addIssue({
+        code: "custom",
+        path: ["blocks", index, "id"],
+        message: "Revision block ids must be unique",
+      });
+    }
+    ids.add(block.id);
+    const previous = sorted[index - 1];
+    if (previous && block.start < previous.end) {
+      context.addIssue({
+        code: "custom",
+        path: ["blocks", index, "start"],
+        message: "Revision blocks must not overlap",
+      });
+    }
+  }
+}
+
+export const revisionPlanCreateRequestSchema = z
+  .object({
+    ...revisionSelectionShape,
+    budget: revisionBudgetSchema.default({
+      maxCostCny: 2.5,
+      maxTokens: 30_000,
+      maxRevisionRounds: REVISION_MAX_ROUNDS,
+    }),
+  })
+  .strict()
+  .superRefine(validateRevisionSelection);
+export type RevisionPlanCreateRequest = z.infer<typeof revisionPlanCreateRequestSchema>;
+
+export const revisionRoundCreateRequestSchema = revisionPlanCreateRequestSchema;
+export type RevisionRoundCreateRequest = z.infer<typeof revisionRoundCreateRequestSchema>;
+
+export const targetedRevisionWritingActionSchema = z
+  .object({
+    action: z.literal("targeted_revision"),
+    ...revisionSelectionShape,
+    budget: revisionBudgetSchema.default({
+      maxCostCny: 2.5,
+      maxTokens: 30_000,
+      maxRevisionRounds: REVISION_MAX_ROUNDS,
+    }),
+  })
+  .strict()
+  .superRefine(validateRevisionSelection);
+export type TargetedRevisionWritingAction = z.infer<typeof targetedRevisionWritingActionSchema>;
+
+const writingActionBaseShape = {
+  sourceVersionId: uuidV7Schema,
+  budget: generationBudgetSchema.default({
+    maxCostCny: 2.5,
+    maxTokens: 30_000,
+    maxRevisionRounds: 0,
+  }),
+};
+
+export const continueWritingActionSchema = z
+  .object({
+    action: z.literal("continue"),
+    ...writingActionBaseShape,
+    instruction: z.string().trim().min(1).max(2_000).optional(),
+    targetLength: z.number().int().min(100).max(20_000).optional(),
+  })
+  .strict();
+
+export const rewriteWritingActionSchema = z
+  .object({
+    action: z.literal("rewrite"),
+    ...writingActionBaseShape,
+    instruction: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+
+export const expandWritingActionSchema = z
+  .object({
+    action: z.literal("expand"),
+    ...writingActionBaseShape,
+    instruction: z.string().trim().min(1).max(2_000).optional(),
+    targetLength: z.number().int().min(100).max(50_000),
+  })
+  .strict();
+
+export const condenseWritingActionSchema = z
+  .object({
+    action: z.literal("condense"),
+    ...writingActionBaseShape,
+    instruction: z.string().trim().min(1).max(2_000).optional(),
+    targetLength: z.number().int().min(100).max(50_000),
+  })
+  .strict();
+
+export const changePovWritingActionSchema = z
+  .object({
+    action: z.literal("change_pov"),
+    ...writingActionBaseShape,
+    pov: z.string().trim().min(1).max(200),
+  })
+  .strict();
+
+export const addHookWritingActionSchema = z
+  .object({
+    action: z.literal("add_hook"),
+    ...writingActionBaseShape,
+    hookStyle: z.enum(["suspense", "reversal", "question"]).optional(),
+    count: z.number().int().min(1).max(3).default(3),
+  })
+  .strict();
+
+export const generateTitleWritingActionSchema = z
+  .object({
+    action: z.literal("generate_title"),
+    ...writingActionBaseShape,
+    count: z.number().int().min(1).max(3).default(3),
+  })
+  .strict();
+
+export const generateSummaryWritingActionSchema = z
+  .object({
+    action: z.literal("generate_summary"),
+    ...writingActionBaseShape,
+    maxLength: z.number().int().min(50).max(1_000).default(200),
+  })
+  .strict();
+
+export const selectionRewriteWritingActionSchema = z
+  .object({
+    action: z.literal("selection_rewrite"),
+    ...writingActionBaseShape,
+    selection: writingActionSelectionSchema,
+    instruction: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+
+export const writingActionRequestSchema = z.discriminatedUnion("action", [
+  continueWritingActionSchema,
+  rewriteWritingActionSchema,
+  expandWritingActionSchema,
+  condenseWritingActionSchema,
+  changePovWritingActionSchema,
+  addHookWritingActionSchema,
+  generateTitleWritingActionSchema,
+  generateSummaryWritingActionSchema,
+  selectionRewriteWritingActionSchema,
+  targetedRevisionWritingActionSchema,
+]);
+export type WritingActionRequest = z.infer<typeof writingActionRequestSchema>;
+export type ContinueWritingAction = z.infer<typeof continueWritingActionSchema>;
+export type RewriteWritingAction = z.infer<typeof rewriteWritingActionSchema>;
+export type ExpandWritingAction = z.infer<typeof expandWritingActionSchema>;
+export type CondenseWritingAction = z.infer<typeof condenseWritingActionSchema>;
+export type ChangePovWritingAction = z.infer<typeof changePovWritingActionSchema>;
+export type AddHookWritingAction = z.infer<typeof addHookWritingActionSchema>;
+export type GenerateTitleWritingAction = z.infer<typeof generateTitleWritingActionSchema>;
+export type GenerateSummaryWritingAction = z.infer<typeof generateSummaryWritingActionSchema>;
+export type SelectionRewriteWritingAction = z.infer<typeof selectionRewriteWritingActionSchema>;
+export type TargetedRevisionWritingActionInput = z.infer<
+  typeof targetedRevisionWritingActionSchema
+>;
+
+export const writingActionAffectedRangeSchema = z
+  .object({
+    originalStart: z.number().int().nonnegative(),
+    originalEnd: z.number().int().positive(),
+    start: z.number().int().nonnegative(),
+    end: z.number().int().positive(),
+  })
+  .strict()
+  .refine((range) => range.originalEnd > range.originalStart && range.end > range.start, {
+    message: "Affected range end must be after start",
+  });
+export type WritingActionAffectedRange = z.infer<typeof writingActionAffectedRangeSchema>;
+
+const writingActionOutputBaseShape = {
+  id: uuidV7Schema,
+  action: writingActionKindSchema,
+  version: z.number().int().positive(),
+  versionNodeId: uuidV7Schema,
+  sourceVersionId: uuidV7Schema,
+  chapterVersionId: uuidV7Schema.nullable(),
+  affectedRange: writingActionAffectedRangeSchema.nullable(),
+  provenance: z
+    .object({
+      promptKey: z.string().min(1).max(200),
+      promptVersion: z.number().int().positive(),
+      promptHash: z.string().regex(/^[a-f0-9]{64}$/),
+      provider: z.string().min(1).max(100),
+      model: z.string().min(1).max(200),
+      parameters: z.record(z.string(), z.unknown()),
+    })
+    .strict(),
+  createdAt: z.string().datetime(),
+};
+
+export const writingActionChapterTextOutputSchema = z
+  .object({
+    ...writingActionOutputBaseShape,
+    kind: z.literal("chapter_text"),
+    content: z.string().min(1).max(200_000),
+  })
+  .strict();
+export const writingActionTitleOutputSchema = z
+  .object({
+    ...writingActionOutputBaseShape,
+    kind: z.literal("title_options"),
+    titles: z.array(z.string().trim().min(1).max(200)).min(1).max(3),
+  })
+  .strict();
+export const writingActionSummaryOutputSchema = z
+  .object({
+    ...writingActionOutputBaseShape,
+    kind: z.literal("summary"),
+    summary: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export const writingActionHookOutputSchema = z
+  .object({
+    ...writingActionOutputBaseShape,
+    kind: z.literal("hooks"),
+    hooks: z.array(z.string().trim().min(1).max(1_000)).min(1).max(3),
+  })
+  .strict();
+export const writingActionOutputSchema = z
+  .discriminatedUnion("kind", [
+    writingActionChapterTextOutputSchema,
+    writingActionTitleOutputSchema,
+    writingActionSummaryOutputSchema,
+    writingActionHookOutputSchema,
+  ])
+  .superRefine((output, context) => {
+    if (output.kind === "chapter_text" && output.chapterVersionId === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterVersionId"],
+        message: "Chapter text output requires a chapter version",
+      });
+    }
+    if (output.kind !== "chapter_text" && output.chapterVersionId !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterVersionId"],
+        message: "Non-text output cannot replace a chapter version",
+      });
+    }
+    if (output.action === "selection_rewrite" && output.affectedRange === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["affectedRange"],
+        message: "Selection rewrite requires the affected range",
+      });
+    }
+    if (output.action !== "selection_rewrite" && output.affectedRange !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["affectedRange"],
+        message: "Only selection rewrite reports an affected range",
+      });
+    }
+  });
+export type WritingActionOutput = z.infer<typeof writingActionOutputSchema>;
+
+export const writingActionCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(RECOVERY_CHECKPOINT_SCHEMA_VERSION).default(1),
+    revision: z.number().int().nonnegative().default(0),
+    step: writingActionStepSchema,
+    inputHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable()
+      .default(null),
+    outputRefs: z.array(checkpointOutputRefSchema).max(100).default([]),
+    payload: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type WritingActionCheckpoint = z.infer<typeof writingActionCheckpointSchema>;
+
+export const writeActionJobSchema = z
+  .object({
+    jobId: uuidV7Schema,
+    jobType: z.literal(WRITE_ACTION_JOB),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    modelConfigId: uuidV7Schema,
+    idempotencyKey: z.string().min(1),
+    action: writingActionKindSchema,
+    sourceVersionId: uuidV7Schema,
+    input: writingActionRequestSchema,
+    budget: generationBudgetSchema,
+    checkpoint: writingActionCheckpointSchema,
+  })
+  .superRefine((job, context) => {
+    if (job.action !== job.input.action) {
+      context.addIssue({
+        code: "custom",
+        path: ["input", "action"],
+        message: "Writing action job and input must use the same action",
+      });
+    }
+  });
+export type WriteActionJob = z.infer<typeof writeActionJobSchema>;
 
 export const generationJobStatusSchema = z.enum([
   "queued",
@@ -1269,12 +5108,6 @@ export const generationCostSchema = z.object({
 });
 export type GenerationCost = z.infer<typeof generationCostSchema>;
 
-export const generationCheckpointSchema = z.object({
-  step: workerJobStepSchema,
-  payload: z.record(z.string(), z.unknown()),
-});
-export type GenerationCheckpoint = z.infer<typeof generationCheckpointSchema>;
-
 export const generationJobErrorSchema = z.object({
   code: errorCodeSchema,
   message: z.string().min(1),
@@ -1287,6 +5120,7 @@ export const contextSourceTypeSchema = z.enum([
   "chapter_brief",
   "chapter_version",
   "style",
+  "summary",
 ]);
 export type ContextSourceType = z.infer<typeof contextSourceTypeSchema>;
 
@@ -1301,23 +5135,107 @@ export type ContextSourceRef = z.infer<typeof contextSourceRefSchema>;
 export const contextSourcePrioritySchema = z.enum(["required", "high", "normal"]);
 export type ContextSourcePriority = z.infer<typeof contextSourcePrioritySchema>;
 
+export const contextLayerSchema = z.enum(["P0", "P1", "P2", "P3", "P4"]);
+export type ContextLayer = z.infer<typeof contextLayerSchema>;
+
+export const contextTaskSchema = z.enum([
+  "chapter_draft",
+  "chapter_revision",
+  "continuity_check",
+  "fact_extraction",
+]);
+export type ContextTask = z.infer<typeof contextTaskSchema>;
+
+export const contextInclusionReasonSchema = z.enum([
+  "p0_hard_constraint",
+  "scene_relevant_canon",
+  "recent_narrative",
+  "style_and_promise",
+  "optional_reference",
+]);
+export type ContextInclusionReason = z.infer<typeof contextInclusionReasonSchema>;
+
+export const contextEvictionReasonSchema = z.enum([
+  "token_budget",
+  "stale_branch",
+  "summary_stale",
+  "task_mismatch",
+  "pov_mismatch",
+  "future_fact",
+  "expired_fact",
+  "time_window",
+  "knowledge_boundary",
+  "empty_content",
+  "missing_source",
+]);
+export type ContextEvictionReason = z.infer<typeof contextEvictionReasonSchema>;
+
 export const contextPackSelectedSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
-  priority: contextSourcePrioritySchema,
+  layer: contextLayerSchema.optional(),
+  priority: z.union([contextSourcePrioritySchema, contextLayerSchema]),
   content: z.string().min(1),
   tokenCount: z.number().int().positive(),
   sourceRefs: z.array(contextSourceRefSchema).min(1),
+  reason: contextInclusionReasonSchema.optional(),
 });
 export type ContextPackSelected = z.infer<typeof contextPackSelectedSchema>;
 
 export const contextPackEvictionSchema = z.object({
   key: z.string().min(1),
   label: z.string().min(1),
-  reason: z.literal("token_budget"),
+  layer: contextLayerSchema.optional(),
+  reason: contextEvictionReasonSchema,
   tokenCount: z.number().int().positive(),
+  sourceRefs: z.array(contextSourceRefSchema).optional(),
+  detail: z.string().optional(),
 });
 export type ContextPackEviction = z.infer<typeof contextPackEvictionSchema>;
+
+export const contextLayerAccountingSchema = z.object({
+  selectedCount: z.number().int().nonnegative(),
+  selectedTokens: z.number().int().nonnegative(),
+  evictedCount: z.number().int().nonnegative(),
+  evictedTokens: z.number().int().nonnegative(),
+});
+export type ContextLayerAccounting = z.infer<typeof contextLayerAccountingSchema>;
+
+export const contextBudgetAccountingSchema = z.object({
+  requestedTokenBudget: z.number().int().positive(),
+  effectiveTokenBudget: z.number().int().positive(),
+  modelContextWindowTokens: z.number().int().positive().nullable(),
+  reservedOutputTokens: z.number().int().nonnegative(),
+  tokenUsed: z.number().int().nonnegative(),
+  tokenRemaining: z.number().int().nonnegative(),
+  tokenEstimator: z.string().min(1),
+  layers: z.object({
+    P0: contextLayerAccountingSchema,
+    P1: contextLayerAccountingSchema,
+    P2: contextLayerAccountingSchema,
+    P3: contextLayerAccountingSchema,
+    P4: contextLayerAccountingSchema,
+  }),
+});
+export type ContextBudgetAccounting = z.infer<typeof contextBudgetAccountingSchema>;
+
+export const contextPackManifestSchema = z.object({
+  compilerVersion: z.string().min(1),
+  manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
+  task: contextTaskSchema,
+  chapterId: uuidV7Schema,
+  chapterNumber: z.number().int().positive(),
+  povCharacterId: uuidV7Schema.nullable(),
+  branchId: uuidV7Schema,
+  tokenBudget: z.number().int().positive(),
+  tokenUsed: z.number().int().nonnegative(),
+  effectiveTokenBudget: z.number().int().positive(),
+  selected: z.array(contextPackSelectedSchema),
+  evicted: z.array(contextPackEvictionSchema),
+  sourceRefs: z.array(contextSourceRefSchema),
+  budget: contextBudgetAccountingSchema,
+});
+export type ContextPackManifest = z.infer<typeof contextPackManifestSchema>;
 
 export const contextPackVersionSchema = z.object({
   id: uuidV7Schema,
@@ -1330,6 +5248,17 @@ export const contextPackVersionSchema = z.object({
   evicted: z.array(contextPackEvictionSchema),
   sourceRefs: z.array(contextSourceRefSchema),
   createdAt: z.string().datetime(),
+  manifestHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  task: contextTaskSchema.optional(),
+  chapterId: uuidV7Schema.optional(),
+  chapterNumber: z.number().int().positive().optional(),
+  povCharacterId: uuidV7Schema.nullable().optional(),
+  branchId: uuidV7Schema.optional(),
+  effectiveTokenBudget: z.number().int().positive().optional(),
+  budget: contextBudgetAccountingSchema.optional(),
 });
 export type ContextPackVersion = z.infer<typeof contextPackVersionSchema>;
 
@@ -1340,8 +5269,184 @@ export const contextPackPreviewSchema = z.object({
   selected: z.array(contextPackSelectedSchema),
   evicted: z.array(contextPackEvictionSchema),
   sourceRefs: z.array(contextSourceRefSchema),
+  manifestHash: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .optional(),
+  task: contextTaskSchema.optional(),
+  chapterId: uuidV7Schema.optional(),
+  chapterNumber: z.number().int().positive().optional(),
+  povCharacterId: uuidV7Schema.nullable().optional(),
+  branchId: uuidV7Schema.optional(),
+  effectiveTokenBudget: z.number().int().positive().optional(),
+  budget: contextBudgetAccountingSchema.optional(),
 });
 export type ContextPackPreview = z.infer<typeof contextPackPreviewSchema>;
+
+export const summaryLevelSchema = z.enum(["chapter", "stage", "volume", "book"]);
+export type SummaryLevel = z.infer<typeof summaryLevelSchema>;
+
+export const summaryStatusSchema = z.enum(["fresh", "stale", "rebuilding"]);
+export type SummaryStatus = z.infer<typeof summaryStatusSchema>;
+
+const summaryHashSchema = z.string().regex(/^[a-f0-9]{64}$/i, "Expected a SHA-256 hash");
+
+export const summarySourceRangeSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    versionNodeId: uuidV7Schema.nullable(),
+    objectVersion: z.number().int().positive(),
+    chapterFrom: z.number().int().positive(),
+    chapterTo: z.number().int().positive().nullable(),
+  })
+  .strict()
+  .superRefine((range, context) => {
+    if (range.chapterTo !== null && range.chapterTo < range.chapterFrom) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterTo"],
+        message: "Source range end cannot precede its start",
+      });
+    }
+  });
+export type SummarySourceRange = z.infer<typeof summarySourceRangeSchema>;
+
+export const summaryRecordSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    level: summaryLevelSchema,
+    scopeId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    title: z.string().trim().min(1).max(200),
+    content: z.string().trim().min(1).max(20_000),
+    status: summaryStatusSchema,
+    version: z.number().int().positive(),
+    contentHash: summaryHashSchema,
+    inputHash: summaryHashSchema,
+    compilerVersion: z.string().trim().min(1).max(100),
+    modelVersion: z.string().trim().min(1).max(200),
+    sourceRanges: z.array(summarySourceRangeSchema).min(1).max(10_000),
+    fromChapter: z.number().int().positive(),
+    toChapter: z.number().int().positive().nullable(),
+    generatedAt: z.string().datetime(),
+    invalidatedAt: z.string().datetime().nullable(),
+    invalidationReason: z.string().trim().min(1).max(500).nullable(),
+  })
+  .strict()
+  .superRefine((summary, context) => {
+    if (summary.toChapter !== null && summary.toChapter < summary.fromChapter) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Summary range end cannot precede its start",
+      });
+    }
+    if (summary.level === "chapter" && !summary.chapterId) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "Chapter summaries require a chapter",
+      });
+    }
+    if (summary.status === "fresh" && (summary.invalidatedAt || summary.invalidationReason)) {
+      context.addIssue({
+        code: "custom",
+        path: ["invalidatedAt"],
+        message: "Fresh summaries cannot carry invalidation evidence",
+      });
+    }
+    if (summary.status !== "fresh" && (!summary.invalidatedAt || !summary.invalidationReason)) {
+      context.addIssue({
+        code: "custom",
+        path: ["invalidatedAt"],
+        message: "Stale or rebuilding summaries require invalidation evidence",
+      });
+    }
+  });
+export type SummaryRecord = z.infer<typeof summaryRecordSchema>;
+
+export const summaryRebuildStatusSchema = z.enum([
+  "queued",
+  "running",
+  "completed",
+  "failed",
+  "cancelled",
+]);
+export type SummaryRebuildStatus = z.infer<typeof summaryRebuildStatusSchema>;
+
+export const summaryRebuildRequestSchema = z
+  .object({
+    levels: z.array(summaryLevelSchema).min(1).default(["chapter", "stage", "volume", "book"]),
+    force: z.boolean().default(false),
+  })
+  .strict();
+export type SummaryRebuildRequest = z.infer<typeof summaryRebuildRequestSchema>;
+
+export const summaryRebuildRunSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    status: summaryRebuildStatusSchema,
+    levels: z.array(summaryLevelSchema).min(1),
+    idempotencyKey: z.string().min(1).max(200),
+    compilerVersion: z.string().min(1).max(100),
+    modelVersion: z.string().min(1).max(200),
+    checkpointRevision: z.number().int().nonnegative(),
+    totalItems: z.number().int().nonnegative(),
+    completedItems: z.number().int().nonnegative(),
+    failedItems: z.number().int().nonnegative(),
+    error: generationJobErrorSchema.nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type SummaryRebuildRun = z.infer<typeof summaryRebuildRunSchema>;
+
+export const summaryStatsSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    fresh: z.number().int().nonnegative(),
+    stale: z.number().int().nonnegative(),
+    rebuilding: z.number().int().nonnegative(),
+  })
+  .strict();
+export type SummaryStats = z.infer<typeof summaryStatsSchema>;
+
+export const summaryWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    invalidationRuleVersion: z.literal("summary-invalidation-v1"),
+    summaries: z.array(summaryRecordSchema),
+    rebuilds: z.array(summaryRebuildRunSchema),
+    stats: summaryStatsSchema,
+  })
+  .strict();
+export type SummaryWorkspace = z.infer<typeof summaryWorkspaceSchema>;
+
+export const summaryWorkspaceResponseSchema = apiEnvelopeSchema(summaryWorkspaceSchema);
+export const summaryRebuildRunResponseSchema = apiEnvelopeSchema(summaryRebuildRunSchema);
+
+export const summaryRebuildJobSchema = z.object({
+  jobType: z.literal(SUMMARY_REBUILD_JOB),
+  runId: uuidV7Schema,
+  workId: uuidV7Schema,
+  branchId: uuidV7Schema,
+  actorId: uuidV7Schema,
+  idempotencyKey: z.string().min(1).max(200),
+});
+export type SummaryRebuildJob = z.infer<typeof summaryRebuildJobSchema>;
+
+export const workerJobSchema = z.discriminatedUnion("jobType", [
+  generateChapterJobSchema,
+  summaryRebuildJobSchema,
+  writeActionJobSchema,
+]);
+export type WorkerJob = z.infer<typeof workerJobSchema>;
 
 export const generationJobSchema = z.object({
   id: uuidV7Schema,
@@ -1362,6 +5467,86 @@ export const generationJobSchema = z.object({
   finishedAt: z.string().datetime().nullable(),
 });
 export type GenerationJob = z.infer<typeof generationJobSchema>;
+
+export const writingActionJobSchema = z
+  .object({
+    id: uuidV7Schema,
+    type: z.literal(WRITE_ACTION_JOB),
+    action: writingActionKindSchema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    sourceVersionId: uuidV7Schema,
+    status: generationJobStatusSchema,
+    progress: z.number().int().min(0).max(100),
+    currentStep: writingActionStepSchema,
+    budget: generationBudgetSchema,
+    cost: generationCostSchema,
+    checkpoint: writingActionCheckpointSchema,
+    output: writingActionOutputSchema.nullable(),
+    contextPack: contextPackVersionSchema.nullable(),
+    error: generationJobErrorSchema.nullable(),
+    createdAt: z.string().datetime(),
+    startedAt: z.string().datetime().nullable(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type WritingActionJob = z.infer<typeof writingActionJobSchema>;
+
+export const jobRecoveryActionSchema = z.enum(["retry", "resume"]);
+export type JobRecoveryAction = z.infer<typeof jobRecoveryActionSchema>;
+
+export const jobRecoveryBudgetIncreaseSchema = z
+  .object({
+    maxTokens: z.number().int().positive().optional(),
+    maxCostCny: z.number().positive().optional(),
+  })
+  .strict()
+  .refine((budget) => budget.maxTokens !== undefined || budget.maxCostCny !== undefined, {
+    message: "Recovery budget must increase at least one limit",
+  });
+export type JobRecoveryBudgetIncrease = z.infer<typeof jobRecoveryBudgetIncreaseSchema>;
+
+export const jobRecoveryRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(1_000),
+    idempotencyKey: z.string().trim().min(1).max(200),
+    expectedCheckpointVersion: z.number().int().nonnegative().optional(),
+    budget: jobRecoveryBudgetIncreaseSchema.optional(),
+  })
+  .strict();
+export type JobRecoveryRequest = z.infer<typeof jobRecoveryRequestSchema>;
+
+export const jobRecoveryRecordSchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    action: jobRecoveryActionSchema,
+    reason: z.string().min(1),
+    idempotencyKey: z.string().min(1),
+    fromStatus: generationJobStatusSchema,
+    fromCheckpointVersion: z.number().int().nonnegative(),
+    resumeStep: z.union([workerJobStepSchema, writingActionStepSchema]),
+    checkpointVersion: z.number().int().nonnegative(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type JobRecoveryRecord = z.infer<typeof jobRecoveryRecordSchema>;
+
+export const jobRecoveryResponseSchema = apiEnvelopeSchema(
+  z.object({
+    job: generationJobSchema,
+    recovery: jobRecoveryRecordSchema,
+  }),
+);
+
+export const writingActionRecoveryResponseSchema = apiEnvelopeSchema(
+  z.object({
+    job: writingActionJobSchema,
+    recovery: jobRecoveryRecordSchema,
+  }),
+);
 
 export const generateChapterRequestSchema = z
   .object({
@@ -1384,6 +5569,7 @@ export const jobEventTypeSchema = z.enum([
   "job.waiting_review",
   "job.paused",
   "job.resumed",
+  "job.recovered",
   "job.canceled",
   "job.completed",
   "job.failed",
@@ -1399,6 +5585,2376 @@ export const jobEventSchema = z.object({
 export type JobEvent = z.infer<typeof jobEventSchema>;
 
 export const generationJobResponseSchema = apiEnvelopeSchema(generationJobSchema);
-export const generationJobListResponseSchema = apiEnvelopeSchema(z.array(generationJobSchema));
+export const generationJobListQuerySchema = cursorPageQuerySchema
+  .extend({ chapterId: uuidV7Schema })
+  .strict();
+export type GenerationJobListQuery = z.infer<typeof generationJobListQuerySchema>;
+export const generationJobListResponseSchema = cursorListResponseSchema(
+  z.array(generationJobSchema),
+);
+export const writingActionJobResponseSchema = apiEnvelopeSchema(writingActionJobSchema);
+export const writingActionJobListQuerySchema = cursorPageQuerySchema;
+export type WritingActionJobListQuery = z.infer<typeof writingActionJobListQuerySchema>;
+export const writingActionJobListResponseSchema = cursorListResponseSchema(
+  z.array(writingActionJobSchema),
+);
 export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
 export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);
+
+export const agentRoleSchema = z.enum([
+  "planner",
+  "context_curator",
+  "writer",
+  "critic",
+  "reviser",
+  "fact_extractor",
+  "canon_curator",
+]);
+export type AgentRole = z.infer<typeof agentRoleSchema>;
+
+export const toolSideEffectLevelSchema = z.enum(["S0", "S1", "S2", "S3", "S4"]);
+export type ToolSideEffectLevel = z.infer<typeof toolSideEffectLevelSchema>;
+
+export const toolCategorySchema = z.enum([
+  "read_story",
+  "read_context",
+  "write_draft",
+  "write_review",
+  "propose_fact",
+  "commit_canon",
+  "external_irreversible",
+]);
+export type ToolCategory = z.infer<typeof toolCategorySchema>;
+
+export const toolNameSchema = z
+  .string()
+  .min(3)
+  .max(100)
+  .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced tool name");
+export type ToolName = z.infer<typeof toolNameSchema>;
+
+export const jsonSchemaDocumentSchema = z
+  .record(z.string(), z.unknown())
+  .refine((schema) => typeof schema.type === "string", "JSON Schema must declare a root type");
+export type JsonSchemaDocument = z.infer<typeof jsonSchemaDocumentSchema>;
+
+export const agentToolDeclarationSchema = z
+  .object({
+    name: toolNameSchema,
+    required: z.boolean(),
+  })
+  .strict();
+export type AgentToolDeclaration = z.infer<typeof agentToolDeclarationSchema>;
+
+export const agentFailureSemanticsSchema = z
+  .object({
+    invalidOutput: z.literal("fail_run"),
+    toolDenied: z.literal("fail_run"),
+    budgetExceeded: z.literal("pause_task"),
+    retry: z
+      .object({
+        maxAttempts: z.number().int().min(1).max(5),
+        retryableCodes: z.array(z.string().min(1).max(100)).max(8),
+        exhaustedAction: z.enum(["fail_run", "pause_task", "escalate_to_author"]),
+        preserveCheckpoint: z.literal(true),
+      })
+      .strict(),
+  })
+  .strict();
+export type AgentFailureSemantics = z.infer<typeof agentFailureSemanticsSchema>;
+
+export const agentContractSchema = z
+  .object({
+    key: z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced contract key"),
+    version: z.number().int().positive(),
+    role: agentRoleSchema,
+    description: z.string().trim().min(1).max(2_000),
+    inputSchema: jsonSchemaDocumentSchema,
+    outputSchema: jsonSchemaDocumentSchema,
+    tools: z.array(agentToolDeclarationSchema).max(32),
+    failureSemantics: agentFailureSemanticsSchema,
+  })
+  .strict()
+  .superRefine((contract, context) => {
+    const names = contract.tools.map((tool) => tool.name);
+    if (new Set(names).size !== names.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tools"],
+        message: "Tool declarations must be unique",
+      });
+    }
+  });
+export type AgentContract = z.infer<typeof agentContractSchema>;
+
+export const toolRegistryEntrySchema = z
+  .object({
+    name: toolNameSchema,
+    category: toolCategorySchema,
+    sideEffect: toolSideEffectLevelSchema,
+    description: z.string().trim().min(1).max(2_000),
+    inputSchema: jsonSchemaDocumentSchema,
+    agentCallable: z.boolean(),
+    approval: z.enum(["none", "human"]),
+  })
+  .strict();
+export type ToolRegistryEntry = z.infer<typeof toolRegistryEntrySchema>;
+
+export const agentGrantStateSchema = z.enum(["active", "revoked", "expired"]);
+export type AgentGrantState = z.infer<typeof agentGrantStateSchema>;
+
+export const agentResourceScopeSchema = z
+  .object({
+    chapterIds: z.array(uuidV7Schema).max(500),
+    settingIds: z.array(uuidV7Schema).max(500),
+    includeCanon: z.boolean(),
+  })
+  .strict()
+  .superRefine((scope, context) => {
+    if (new Set(scope.chapterIds).size !== scope.chapterIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterIds"],
+        message: "Chapter scope entries must be unique",
+      });
+    }
+    if (new Set(scope.settingIds).size !== scope.settingIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["settingIds"],
+        message: "Setting scope entries must be unique",
+      });
+    }
+  });
+export type AgentResourceScope = z.infer<typeof agentResourceScopeSchema>;
+
+export const agentGrantBudgetLimitsSchema = z
+  .object({
+    maxCostCny: z.number().positive().max(1_000),
+    maxTokens: z.number().int().positive().max(10_000_000),
+    maxCalls: z.number().int().positive().max(10_000),
+  })
+  .strict();
+export type AgentGrantBudgetLimits = z.infer<typeof agentGrantBudgetLimitsSchema>;
+
+export const agentGrantBudgetSchema = agentGrantBudgetLimitsSchema
+  .extend({
+    spentCostCny: z.number().nonnegative(),
+    spentTokens: z.number().int().nonnegative(),
+    callCount: z.number().int().nonnegative(),
+  })
+  .strict()
+  .superRefine((budget, context) => {
+    if (budget.spentCostCny > budget.maxCostCny) {
+      context.addIssue({ code: "custom", path: ["spentCostCny"], message: "Cost budget exceeded" });
+    }
+    if (budget.spentTokens > budget.maxTokens) {
+      context.addIssue({
+        code: "custom",
+        path: ["spentTokens"],
+        message: "Token budget exceeded",
+      });
+    }
+    if (budget.callCount > budget.maxCalls) {
+      context.addIssue({ code: "custom", path: ["callCount"], message: "Call budget exceeded" });
+    }
+  });
+export type AgentGrantBudget = z.infer<typeof agentGrantBudgetSchema>;
+
+export const agentGrantMaxImpactSchema = z
+  .object({
+    maxSideEffect: toolSideEffectLevelSchema,
+    maxAffectedResources: z.number().int().positive().max(5_000),
+  })
+  .strict();
+export type AgentGrantMaxImpact = z.infer<typeof agentGrantMaxImpactSchema>;
+
+export const agentGrantCreateRequestSchema = z
+  .object({
+    taskId: uuidV7Schema,
+    role: agentRoleSchema,
+    tools: z.array(toolNameSchema).min(1).max(32),
+    resourceScope: agentResourceScopeSchema,
+    budget: agentGrantBudgetLimitsSchema,
+    maxImpact: agentGrantMaxImpactSchema,
+    expiresAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((request, context) => {
+    if (new Set(request.tools).size !== request.tools.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tools"],
+        message: "Grant tools must be unique",
+      });
+    }
+  });
+export type AgentGrantCreateRequest = z.infer<typeof agentGrantCreateRequestSchema>;
+
+export const agentGrantSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    taskId: uuidV7Schema,
+    userId: uuidV7Schema,
+    role: agentRoleSchema,
+    state: agentGrantStateSchema,
+    tools: z.array(toolNameSchema).min(1).max(32),
+    resourceScope: agentResourceScopeSchema,
+    budget: agentGrantBudgetSchema,
+    maxImpact: agentGrantMaxImpactSchema,
+    expiresAt: z.string().datetime(),
+    issuedBy: uuidV7Schema,
+    revokedAt: z.string().datetime().nullable(),
+    revokedBy: uuidV7Schema.nullable(),
+    revocationReason: z.string().min(1).max(500).nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((grant, context) => {
+    if (grant.state === "revoked") {
+      if (!grant.revokedAt || !grant.revokedBy || !grant.revocationReason) {
+        context.addIssue({
+          code: "custom",
+          path: ["revokedAt"],
+          message: "Revoked grants require revocation evidence",
+        });
+      }
+    } else if (grant.revokedAt || grant.revokedBy || grant.revocationReason) {
+      context.addIssue({
+        code: "custom",
+        path: ["revokedAt"],
+        message: "Only revoked grants may carry revocation evidence",
+      });
+    }
+  });
+export type AgentGrant = z.infer<typeof agentGrantSchema>;
+
+export const agentGrantRevokeRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(500),
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type AgentGrantRevokeRequest = z.infer<typeof agentGrantRevokeRequestSchema>;
+
+export const agentToolApprovalSchema = z
+  .object({
+    approvalId: uuidV7Schema,
+    approvedBy: uuidV7Schema,
+    approvedSideEffect: toolSideEffectLevelSchema,
+  })
+  .strict();
+export type AgentToolApproval = z.infer<typeof agentToolApprovalSchema>;
+
+export const agentToolResourceSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("task"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("chapter"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("setting"), id: uuidV7Schema }).strict(),
+  z.object({ type: z.literal("canon"), id: uuidV7Schema.nullable() }).strict(),
+]);
+export type AgentToolResource = z.infer<typeof agentToolResourceSchema>;
+
+export const agentToolCallRequestSchema = z
+  .object({
+    grantId: uuidV7Schema,
+    taskId: uuidV7Schema,
+    toolName: toolNameSchema,
+    resource: agentToolResourceSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative().max(1_000),
+    estimatedTokens: z.number().int().nonnegative().max(10_000_000),
+    affectedResources: z.number().int().positive().max(5_000),
+    approval: agentToolApprovalSchema.nullable(),
+  })
+  .strict();
+export type AgentToolCallRequest = z.infer<typeof agentToolCallRequestSchema>;
+
+export const agentGrantResponseSchema = apiEnvelopeSchema(agentGrantSchema);
+export const agentGrantListQuerySchema = cursorPageQuerySchema;
+export type AgentGrantListQuery = z.infer<typeof agentGrantListQuerySchema>;
+export const agentGrantListResponseSchema = cursorListResponseSchema(z.array(agentGrantSchema));
+export const agentGrantRevokeResponseSchema = agentGrantResponseSchema;
+
+export const agentFailureClassSchema = z.enum([
+  "provider",
+  "timeout",
+  "rate_limit",
+  "schema",
+  "policy",
+  "budget",
+  "cancelled",
+  "unknown",
+]);
+export type AgentFailureClass = z.infer<typeof agentFailureClassSchema>;
+
+export const agentRunStatusSchema = z.enum(["running", "succeeded", "failed"]);
+export type AgentRunStatus = z.infer<typeof agentRunStatusSchema>;
+
+const sha256HashSchema = z.string().regex(/^[a-f0-9]{64}$/i, "Expected a SHA-256 hash");
+
+export const promptVersionSchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    stepKey: z.string().min(1).max(100),
+    key: z.string().min(1).max(100),
+    version: z.number().int().positive(),
+    role: agentRoleSchema,
+    promptHash: sha256HashSchema,
+    systemHash: sha256HashSchema,
+    inputHash: sha256HashSchema,
+    contextPackId: uuidV7Schema.nullable(),
+    compilerVersion: z.string().min(1).max(100).nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type PromptVersion = z.infer<typeof promptVersionSchema>;
+
+export const costReservationStatusSchema = z.enum(["reserved", "settled", "released"]);
+export type CostReservationStatus = z.infer<typeof costReservationStatusSchema>;
+
+export const costReservationSchema = z
+  .object({
+    id: uuidV7Schema,
+    status: costReservationStatusSchema,
+    reservedTokens: z.number().int().nonnegative(),
+    reservedCostCny: z.number().nonnegative(),
+    settledTokens: z.number().int().nonnegative(),
+    settledCostCny: z.number().nonnegative(),
+    failureClass: agentFailureClassSchema.nullable(),
+    createdAt: z.string().datetime(),
+    settledAt: z.string().datetime().nullable(),
+  })
+  .strict()
+  .superRefine((reservation, context) => {
+    if (
+      reservation.status !== "settled" &&
+      (reservation.settledTokens !== 0 || reservation.settledCostCny !== 0)
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["settledTokens"],
+        message: "Unsettled reservations cannot carry settled usage",
+      });
+    }
+    if (reservation.status === "settled" && !reservation.settledAt) {
+      context.addIssue({
+        code: "custom",
+        path: ["settledAt"],
+        message: "Settled reservations require settlement time",
+      });
+    }
+    if (reservation.status === "reserved" && reservation.settledAt) {
+      context.addIssue({
+        code: "custom",
+        path: ["settledAt"],
+        message: "Reserved reservations cannot be settled",
+      });
+    }
+  });
+export type CostReservation = z.infer<typeof costReservationSchema>;
+
+export const modelCallStatusSchema = z.enum(["started", "succeeded", "failed"]);
+export type ModelCallStatus = z.infer<typeof modelCallStatusSchema>;
+
+export const modelCallSchema = z
+  .object({
+    id: uuidV7Schema,
+    agentRunId: uuidV7Schema,
+    promptVersionId: uuidV7Schema,
+    costReservationId: uuidV7Schema,
+    stepKey: z.string().min(1).max(100),
+    attempt: z.number().int().positive(),
+    status: modelCallStatusSchema,
+    provider: z.string().min(1).max(100),
+    model: z.string().min(1).max(200),
+    parameters: z.record(z.string(), z.unknown()),
+    configHash: sha256HashSchema,
+    inputHash: sha256HashSchema,
+    outputHash: sha256HashSchema.nullable(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    costCny: z.number().nonnegative(),
+    failureClass: agentFailureClassSchema.nullable(),
+    errorCode: errorCodeSchema.nullable(),
+    escalationReason: z.string().min(1).max(500).nullable(),
+    providerRequestId: z.string().min(1).max(200).nullable(),
+    startedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict()
+  .superRefine((call, context) => {
+    if (call.status === "failed" && !call.failureClass) {
+      context.addIssue({
+        code: "custom",
+        path: ["failureClass"],
+        message: "Failed model calls require a failure class",
+      });
+    }
+    if (call.status !== "failed" && call.failureClass) {
+      context.addIssue({
+        code: "custom",
+        path: ["failureClass"],
+        message: "Only failed model calls may carry a failure class",
+      });
+    }
+    if (call.status === "succeeded" && !call.outputHash) {
+      context.addIssue({
+        code: "custom",
+        path: ["outputHash"],
+        message: "Succeeded model calls require an output hash",
+      });
+    }
+  });
+export type ModelCall = z.infer<typeof modelCallSchema>;
+
+export const agentToolCallTraceSchema = z
+  .object({
+    id: uuidV7Schema,
+    toolName: z.string().min(3).max(100),
+    sideEffect: toolSideEffectLevelSchema.nullable(),
+    decision: z.enum(["allow", "deny"]),
+    status: z.enum(["authorized", "denied", "succeeded", "failed"]),
+    reason: z.string().min(1).max(200),
+    inputHash: sha256HashSchema,
+    inputSummary: z.record(z.string(), z.unknown()),
+    outputSummary: z.record(z.string(), z.unknown()).nullable(),
+    estimatedCostCny: z.number().nonnegative(),
+    estimatedTokens: z.number().int().nonnegative(),
+    createdAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type AgentToolCallTrace = z.infer<typeof agentToolCallTraceSchema>;
+
+export const agentRunTraceRunSchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    stepKey: z.string().min(1).max(100),
+    role: agentRoleSchema,
+    status: agentRunStatusSchema,
+    failureClass: agentFailureClassSchema.nullable(),
+    escalationReason: z.string().min(1).max(500).nullable(),
+    inputHash: sha256HashSchema,
+    outputHash: sha256HashSchema.nullable(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    costCny: z.number().nonnegative(),
+    startedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type AgentRunTraceRun = z.infer<typeof agentRunTraceRunSchema>;
+
+export const agentRunReplaySchema = z
+  .object({
+    modelConfigId: uuidV7Schema.nullable(),
+    provider: z.string().min(1).max(100),
+    model: z.string().min(1).max(200),
+    parameters: z.record(z.string(), z.unknown()),
+    configHash: sha256HashSchema,
+    promptVersion: z
+      .object({
+        id: uuidV7Schema,
+        key: z.string().min(1).max(100),
+        version: z.number().int().positive(),
+        promptHash: sha256HashSchema,
+        systemHash: sha256HashSchema,
+        inputHash: sha256HashSchema,
+      })
+      .strict(),
+  })
+  .strict();
+export type AgentRunReplay = z.infer<typeof agentRunReplaySchema>;
+
+export const agentRunTraceSchema = z
+  .object({
+    run: agentRunTraceRunSchema,
+    replay: agentRunReplaySchema.nullable(),
+    promptVersions: z.array(promptVersionSchema),
+    modelCalls: z.array(modelCallSchema),
+    toolCalls: z.array(agentToolCallTraceSchema),
+    costReservations: z.array(costReservationSchema),
+  })
+  .strict();
+export type AgentRunTrace = z.infer<typeof agentRunTraceSchema>;
+
+export const agentRunTraceListQuerySchema = cursorPageQuerySchema
+  .extend({
+    limit: z.coerce.number().int().min(1).max(200).default(50),
+    chapterId: uuidV7Schema.optional(),
+    jobId: uuidV7Schema.optional(),
+  })
+  .strict();
+export type AgentRunTraceListQuery = z.infer<typeof agentRunTraceListQuerySchema>;
+export const agentRunTraceListResponseSchema = cursorListResponseSchema(
+  z.array(agentRunTraceSchema),
+);
+export const agentRunTraceResponseSchema = apiEnvelopeSchema(agentRunTraceSchema);
+
+export const ORCHESTRATOR_CONTRACT_VERSION = 1 as const;
+export const ORCHESTRATOR_SCHEMA_VERSION = ORCHESTRATOR_CONTRACT_VERSION;
+export const ORCHESTRATOR_AGENT_WORKFLOW_JOB = "agent_workflow" as const;
+
+export const orchestratorRunStatusSchema = generationJobStatusSchema;
+export type OrchestratorRunStatus = z.infer<typeof orchestratorRunStatusSchema>;
+
+export const orchestratorTaskStatusSchema = z.enum([
+  "pending",
+  "ready",
+  "running",
+  "waiting_review",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export type OrchestratorTaskStatus = z.infer<typeof orchestratorTaskStatusSchema>;
+
+export const orchestratorStepStatusSchema = z.enum([
+  "pending",
+  "running",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export type OrchestratorStepStatus = z.infer<typeof orchestratorStepStatusSchema>;
+
+export const orchestratorRiskSchema = z.enum(["low", "medium", "high"]);
+export type OrchestratorRisk = z.infer<typeof orchestratorRiskSchema>;
+
+export const orchestratorApprovalPolicySchema = z.enum(["none", "human"]);
+export type OrchestratorApprovalPolicy = z.infer<typeof orchestratorApprovalPolicySchema>;
+
+const orchestratorActorBaseShape = {
+  id: uuidV7Schema,
+};
+
+export const orchestratorHumanActorSchema = z
+  .object({
+    type: z.literal("human"),
+    ...orchestratorActorBaseShape,
+  })
+  .strict();
+export type OrchestratorHumanActor = z.infer<typeof orchestratorHumanActorSchema>;
+
+export const orchestratorAgentActorSchema = z
+  .object({
+    type: z.literal("agent"),
+    ...orchestratorActorBaseShape,
+  })
+  .strict();
+export type OrchestratorAgentActor = z.infer<typeof orchestratorAgentActorSchema>;
+
+export const orchestratorActorSchema = z.discriminatedUnion("type", [
+  orchestratorHumanActorSchema,
+  orchestratorAgentActorSchema,
+]);
+export type OrchestratorActor = z.infer<typeof orchestratorActorSchema>;
+
+export const orchestratorBudgetSchema = z
+  .object({
+    maxCostCny: z.number().positive().max(1_000),
+    maxTokens: z.number().int().positive().max(10_000_000),
+    maxCalls: z.number().int().positive().max(10_000),
+  })
+  .strict();
+export type OrchestratorBudget = z.infer<typeof orchestratorBudgetSchema>;
+
+export const orchestratorEnvelopeSchema = z
+  .object({
+    key: z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/, "Expected a namespaced envelope key"),
+    version: z.number().int().positive(),
+    maxTasks: z.number().int().min(1).max(1_000),
+    maxDepth: z.number().int().min(1).max(32),
+    maxFanOut: z.number().int().min(0).max(64),
+    maxConcurrency: z.number().int().min(1).max(8),
+    dynamicSubtasks: z.boolean(),
+    budget: orchestratorBudgetSchema,
+  })
+  .strict();
+export type OrchestratorEnvelope = z.infer<typeof orchestratorEnvelopeSchema>;
+
+export const orchestratorTaskKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_.-]*$/, "Expected a stable task key");
+export type OrchestratorTaskKey = z.infer<typeof orchestratorTaskKeySchema>;
+
+export const orchestratorStepKeySchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-z][a-z0-9_.-]*$/, "Expected a stable step key");
+export type OrchestratorStepKey = z.infer<typeof orchestratorStepKeySchema>;
+
+export const orchestratorTaskStepSchema = z
+  .object({
+    key: orchestratorStepKeySchema,
+    toolName: toolNameSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative().max(1_000),
+    estimatedTokens: z.number().int().nonnegative().max(10_000_000),
+  })
+  .strict();
+export type OrchestratorTaskStep = z.infer<typeof orchestratorTaskStepSchema>;
+
+export const orchestratorTaskSchema = z
+  .object({
+    id: uuidV7Schema,
+    key: orchestratorTaskKeySchema,
+    title: z.string().trim().min(1).max(200),
+    priority: z.number().int().min(0).max(100),
+    dependsOn: z.array(orchestratorTaskKeySchema).max(64),
+    role: agentRoleSchema,
+    grantId: uuidV7Schema,
+    resource: agentToolResourceSchema,
+    affectedResources: z.number().int().positive().max(5_000),
+    risk: orchestratorRiskSchema,
+    approval: orchestratorApprovalPolicySchema,
+    steps: z.array(orchestratorTaskStepSchema).min(1).max(32),
+  })
+  .strict()
+  .superRefine((task, context) => {
+    if (new Set(task.dependsOn).size !== task.dependsOn.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["dependsOn"],
+        message: "Task dependencies must be unique",
+      });
+    }
+    const stepKeys = task.steps.map((step) => step.key);
+    if (new Set(stepKeys).size !== stepKeys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["steps"],
+        message: "Task step keys must be unique",
+      });
+    }
+    if (task.risk === "high" && task.approval !== "human") {
+      context.addIssue({
+        code: "custom",
+        path: ["approval"],
+        message: "High-risk tasks require a human approval gate",
+      });
+    }
+  });
+export type OrchestratorTask = z.infer<typeof orchestratorTaskSchema>;
+
+const orchestratorCommandBaseShape = {
+  schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+  commandId: uuidV7Schema,
+  runId: uuidV7Schema,
+};
+
+export const orchestratorScheduleCommandSchema = z
+  .object({
+    type: z.literal("schedule"),
+    ...orchestratorCommandBaseShape,
+    idempotencyKey: z.string().trim().min(1).max(200),
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    actor: orchestratorHumanActorSchema,
+    envelope: orchestratorEnvelopeSchema,
+    tasks: z.array(orchestratorTaskSchema).min(1).max(1_000),
+  })
+  .strict();
+export type OrchestratorScheduleCommand = z.infer<typeof orchestratorScheduleCommandSchema>;
+
+export const orchestratorPauseCommandSchema = z
+  .object({
+    type: z.literal("pause"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorPauseCommand = z.infer<typeof orchestratorPauseCommandSchema>;
+
+export const orchestratorResumeCommandSchema = z
+  .object({
+    type: z.literal("resume"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+  })
+  .strict();
+export type OrchestratorResumeCommand = z.infer<typeof orchestratorResumeCommandSchema>;
+
+export const orchestratorCancelCommandSchema = z
+  .object({
+    type: z.literal("cancel"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorCancelCommand = z.infer<typeof orchestratorCancelCommandSchema>;
+
+export const orchestratorApproveTaskCommandSchema = z
+  .object({
+    type: z.literal("approve_task"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorHumanActorSchema,
+    taskKey: orchestratorTaskKeySchema,
+    approvalId: uuidV7Schema,
+  })
+  .strict();
+export type OrchestratorApproveTaskCommand = z.infer<typeof orchestratorApproveTaskCommandSchema>;
+
+export const orchestratorEscalateTaskCommandSchema = z
+  .object({
+    type: z.literal("escalate_task"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorActorSchema,
+    taskKey: orchestratorTaskKeySchema,
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type OrchestratorEscalateTaskCommand = z.infer<typeof orchestratorEscalateTaskCommandSchema>;
+
+export const orchestratorAddSubtasksCommandSchema = z
+  .object({
+    type: z.literal("add_subtasks"),
+    ...orchestratorCommandBaseShape,
+    actor: orchestratorActorSchema,
+    parentTaskKey: orchestratorTaskKeySchema,
+    tasks: z.array(orchestratorTaskSchema).min(1).max(100),
+  })
+  .strict();
+export type OrchestratorAddSubtasksCommand = z.infer<typeof orchestratorAddSubtasksCommandSchema>;
+
+export const orchestratorCommandSchema = z.discriminatedUnion("type", [
+  orchestratorScheduleCommandSchema,
+  orchestratorPauseCommandSchema,
+  orchestratorResumeCommandSchema,
+  orchestratorCancelCommandSchema,
+  orchestratorApproveTaskCommandSchema,
+  orchestratorEscalateTaskCommandSchema,
+  orchestratorAddSubtasksCommandSchema,
+]);
+export type OrchestratorCommand = z.infer<typeof orchestratorCommandSchema>;
+
+export const orchestratorEventTypeSchema = z.enum([
+  "run.scheduled",
+  "run.started",
+  "run.pause_requested",
+  "run.paused",
+  "run.resumed",
+  "run.waiting_review",
+  "run.completed",
+  "run.failed",
+  "run.cancelled",
+  "tasks.added",
+  "task.ready",
+  "task.started",
+  "task.waiting_review",
+  "task.approved",
+  "task.escalated",
+  "task.succeeded",
+  "task.failed",
+  "task.skipped",
+  "task.cancelled",
+  "step.started",
+  "step.succeeded",
+  "step.failed",
+  "step.skipped",
+  "step.cancelled",
+]);
+export type OrchestratorEventType = z.infer<typeof orchestratorEventTypeSchema>;
+
+export const orchestratorEventSchema = z
+  .object({
+    schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+    eventId: z.string().min(1).max(120),
+    runId: uuidV7Schema,
+    sequence: z.number().int().positive(),
+    type: orchestratorEventTypeSchema,
+    occurredAt: z.string().datetime(),
+    taskKey: orchestratorTaskKeySchema.nullable().default(null),
+    stepKey: orchestratorStepKeySchema.nullable().default(null),
+    data: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type OrchestratorEvent = z.infer<typeof orchestratorEventSchema>;
+
+export const orchestratorTaskStepStateSchema = z
+  .object({
+    key: orchestratorStepKeySchema,
+    toolName: toolNameSchema,
+    input: z.record(z.string(), z.unknown()),
+    estimatedCostCny: z.number().nonnegative(),
+    estimatedTokens: z.number().int().nonnegative(),
+    status: orchestratorStepStatusSchema,
+    attempt: z.number().int().nonnegative(),
+    output: z.record(z.string(), z.unknown()).default({}),
+    errorCode: z.string().min(1).max(100).nullable(),
+    errorMessage: z.string().min(1).max(2_000).nullable(),
+  })
+  .strict();
+export type OrchestratorTaskStepState = z.infer<typeof orchestratorTaskStepStateSchema>;
+
+export const orchestratorTaskStateSchema = z
+  .object({
+    id: uuidV7Schema,
+    key: orchestratorTaskKeySchema,
+    title: z.string().min(1),
+    priority: z.number().int().min(0).max(100),
+    dependsOn: z.array(orchestratorTaskKeySchema),
+    role: agentRoleSchema,
+    grantId: uuidV7Schema,
+    resource: agentToolResourceSchema,
+    affectedResources: z.number().int().positive(),
+    risk: orchestratorRiskSchema,
+    approval: orchestratorApprovalPolicySchema,
+    status: orchestratorTaskStatusSchema,
+    attempt: z.number().int().nonnegative(),
+    approvedBy: uuidV7Schema.nullable(),
+    approvalId: uuidV7Schema.nullable(),
+    escalationReason: z.string().min(1).max(500).nullable(),
+    steps: z.array(orchestratorTaskStepStateSchema).min(1),
+  })
+  .strict();
+export type OrchestratorTaskState = z.infer<typeof orchestratorTaskStateSchema>;
+
+export const orchestratorRunStateSchema = z
+  .object({
+    schemaVersion: z.literal(ORCHESTRATOR_CONTRACT_VERSION),
+    runId: uuidV7Schema,
+    ownerId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    workflowKey: z.string().min(1),
+    workflowVersion: z.number().int().positive(),
+    idempotencyKey: z.string().min(1),
+    envelope: orchestratorEnvelopeSchema,
+    status: orchestratorRunStatusSchema,
+    pauseRequested: z.boolean(),
+    cancelReason: z.string().min(1).max(500).nullable(),
+    failureMessage: z.string().min(1).max(2_000).nullable(),
+    lastSequence: z.number().int().nonnegative(),
+    appliedCommandIds: z.array(uuidV7Schema).max(10_000),
+    appliedEventIds: z.array(z.string().min(1).max(120)).max(20_000),
+    tasks: z.array(orchestratorTaskStateSchema).min(1),
+  })
+  .strict()
+  .superRefine((state, context) => {
+    const keys = state.tasks.map((task) => task.key);
+    if (new Set(keys).size !== keys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["tasks"],
+        message: "Task keys must be unique",
+      });
+    }
+  });
+export type OrchestratorRunState = z.infer<typeof orchestratorRunStateSchema>;
+
+export const orchestratorValidationIssueSchema = z
+  .object({
+    code: z.enum([
+      "duplicate_task",
+      "unknown_dependency",
+      "cycle",
+      "task_limit_exceeded",
+      "depth_exceeded",
+      "fanout_exceeded",
+      "concurrency_exceeded",
+      "budget_exceeded",
+      "human_gate_required",
+      "dynamic_subtasks_disabled",
+      "invalid_child_task",
+      "tool_not_registered",
+      "role_tool_denied",
+      "tool_not_agent_callable",
+    ]),
+    message: z.string().min(1),
+    taskKey: orchestratorTaskKeySchema.nullable(),
+  })
+  .strict();
+export type OrchestratorValidationIssue = z.infer<typeof orchestratorValidationIssueSchema>;
+
+export const orchestratorRunResponseSchema = apiEnvelopeSchema(orchestratorRunStateSchema);
+
+export const GOLDEN_THREE_REVIEW_DIMENSIONS = [
+  "opening_hook",
+  "protagonist_appeal",
+  "world_rules",
+  "core_conflict",
+  "reader_promise",
+  "chapter_end_hook",
+] as const;
+export const goldenThreeReviewDimensionSchema = z.enum(GOLDEN_THREE_REVIEW_DIMENSIONS);
+export type GoldenThreeReviewDimension = z.infer<typeof goldenThreeReviewDimensionSchema>;
+
+export const GOLDEN_THREE_REVIEW_DIMENSION_LABELS: Record<GoldenThreeReviewDimension, string> = {
+  opening_hook: "开篇钩子",
+  protagonist_appeal: "主角吸引力",
+  world_rules: "世界规则展示",
+  core_conflict: "核心冲突",
+  reader_promise: "读者承诺",
+  chapter_end_hook: "章末追读钩子",
+};
+
+export const GOLDEN_THREE_PASSING_SCORE = 4 as const;
+
+export const goldenThreeStrategySchema = z.enum(["hook_focus", "character_focus", "world_focus"]);
+export type GoldenThreeStrategy = z.infer<typeof goldenThreeStrategySchema>;
+
+export const goldenThreeCandidateStatusSchema = z.enum(["draft", "reviewed", "selected", "locked"]);
+export type GoldenThreeCandidateStatus = z.infer<typeof goldenThreeCandidateStatusSchema>;
+
+export const goldenThreePromptProvenanceSchema = z
+  .object({
+    key: z.string().trim().min(1).max(200),
+    version: z.number().int().positive(),
+    hash: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type GoldenThreePromptProvenance = z.infer<typeof goldenThreePromptProvenanceSchema>;
+
+export const goldenThreeModelProvenanceSchema = z
+  .object({
+    provider: z.string().trim().min(1).max(100),
+    model: z.string().trim().min(1).max(200),
+    parameters: z.record(z.string(), z.unknown()),
+  })
+  .strict();
+export type GoldenThreeModelProvenance = z.infer<typeof goldenThreeModelProvenanceSchema>;
+
+export const goldenThreeContextProvenanceSchema = z
+  .object({
+    packVersionId: uuidV7Schema.nullable(),
+    manifestHash: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict();
+export type GoldenThreeContextProvenance = z.infer<typeof goldenThreeContextProvenanceSchema>;
+
+export const goldenThreeChapterPinInputSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    expectedContentHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  })
+  .strict();
+export type GoldenThreeChapterPinInput = z.infer<typeof goldenThreeChapterPinInputSchema>;
+
+export const goldenThreePinnedChapterSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    chapterTitle: z.string().min(1).max(200),
+    chapterVersionId: uuidV7Schema,
+    chapterVersion: z.number().int().positive(),
+    versionNodeId: uuidV7Schema,
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+    wordCount: z.number().int().nonnegative(),
+    content: z.string(),
+  })
+  .strict();
+export type GoldenThreePinnedChapter = z.infer<typeof goldenThreePinnedChapterSchema>;
+
+export const goldenThreeCandidateInputSchema = z
+  .object({
+    label: z.string().trim().min(1).max(100),
+    strategy: goldenThreeStrategySchema,
+    prompt: goldenThreePromptProvenanceSchema,
+    model: goldenThreeModelProvenanceSchema,
+    context: goldenThreeContextProvenanceSchema,
+    pins: z.array(goldenThreeChapterPinInputSchema).length(1),
+  })
+  .strict();
+export type GoldenThreeCandidateInput = z.infer<typeof goldenThreeCandidateInputSchema>;
+
+export const goldenThreeCandidateBatchRequestSchema = z
+  .object({
+    candidates: z.array(goldenThreeCandidateInputSchema).min(2).max(3),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const labels = input.candidates.map((candidate) => candidate.label.toLocaleLowerCase());
+    if (new Set(labels).size !== labels.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["candidates"],
+        message: "Candidate labels must be unique",
+      });
+    }
+    const strategies = input.candidates.map((candidate) => candidate.strategy);
+    if (new Set(strategies).size !== strategies.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["candidates"],
+        message: "Candidate strategies must be unique",
+      });
+    }
+    const chapterIds = input.candidates.map((candidate) => candidate.pins[0]!.chapterId);
+    if (new Set(chapterIds).size !== 1) {
+      context.addIssue({
+        code: "custom",
+        path: ["candidates"],
+        message: "Every candidate must compare the same first chapter",
+      });
+    }
+  });
+export type GoldenThreeCandidateBatchRequest = z.infer<
+  typeof goldenThreeCandidateBatchRequestSchema
+>;
+
+export const goldenThreeGenerateRequestSchema = z
+  .object({
+    candidateCount: z.union([z.literal(2), z.literal(3)]).default(3),
+  })
+  .strict();
+export type GoldenThreeGenerateRequest = z.infer<typeof goldenThreeGenerateRequestSchema>;
+
+export const goldenThreeContinuationRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    pins: z.array(goldenThreeChapterPinInputSchema).length(2).optional(),
+  })
+  .strict();
+export type GoldenThreeContinuationRequest = z.infer<typeof goldenThreeContinuationRequestSchema>;
+
+export const goldenThreeReviewInputSchema = z
+  .object({
+    dimension: goldenThreeReviewDimensionSchema,
+    score: z.number().int().min(1).max(5),
+    evidence: z
+      .object({
+        chapterId: uuidV7Schema,
+        chapterVersionId: uuidV7Schema,
+        passage: z.string().trim().min(1).max(2_000),
+        locator: z.string().trim().min(1).max(200),
+      })
+      .strict(),
+    reviewerOrigin: z.enum(["model", "author", "critic"]),
+  })
+  .strict();
+export type GoldenThreeReviewInput = z.infer<typeof goldenThreeReviewInputSchema>;
+
+export const goldenThreeReviewBatchRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    reviews: z.array(goldenThreeReviewInputSchema).length(GOLDEN_THREE_REVIEW_DIMENSIONS.length),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const dimensions = input.reviews.map((review) => review.dimension);
+    if (new Set(dimensions).size !== GOLDEN_THREE_REVIEW_DIMENSIONS.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["reviews"],
+        message: "Each golden-three review dimension must appear exactly once",
+      });
+    }
+  });
+export type GoldenThreeReviewBatchRequest = z.infer<typeof goldenThreeReviewBatchRequestSchema>;
+
+export const goldenThreeReviewSchema = goldenThreeReviewInputSchema
+  .extend({
+    id: uuidV7Schema,
+    candidateId: uuidV7Schema,
+    required: z.boolean(),
+    passed: z.boolean(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type GoldenThreeReview = z.infer<typeof goldenThreeReviewSchema>;
+
+export const goldenThreeReviewSummarySchema = z
+  .object({
+    completed: z.number().int().min(0).max(6),
+    total: z.literal(6),
+    requiredFailed: z.number().int().min(0).max(6),
+    failedDimensions: z.array(goldenThreeReviewDimensionSchema).max(6),
+  })
+  .strict();
+export type GoldenThreeReviewSummary = z.infer<typeof goldenThreeReviewSummarySchema>;
+
+export const goldenThreeCandidateSchema = z
+  .object({
+    id: uuidV7Schema,
+    batchId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    label: z.string().min(1).max(100),
+    strategy: goldenThreeStrategySchema,
+    status: goldenThreeCandidateStatusSchema,
+    version: z.number().int().positive(),
+    prompt: goldenThreePromptProvenanceSchema,
+    model: goldenThreeModelProvenanceSchema,
+    context: goldenThreeContextProvenanceSchema,
+    pins: z.array(goldenThreePinnedChapterSchema).length(1),
+    continuation: z
+      .object({
+        versionNodeId: uuidV7Schema,
+        pins: z.array(goldenThreePinnedChapterSchema).length(2),
+        createdAt: z.string().datetime(),
+      })
+      .strict()
+      .nullable(),
+    trace: z
+      .object({
+        jobId: uuidV7Schema,
+        agentRunId: uuidV7Schema,
+        modelCallId: uuidV7Schema,
+      })
+      .strict()
+      .nullable(),
+    reviews: z.array(goldenThreeReviewSchema).max(6),
+    reviewSummary: goldenThreeReviewSummarySchema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type GoldenThreeCandidate = z.infer<typeof goldenThreeCandidateSchema>;
+
+export const goldenThreeGateBlockerCodeSchema = z.enum([
+  "NO_CANDIDATES",
+  "NO_SELECTION",
+  "REVIEW_INCOMPLETE",
+  "REQUIRED_DIMENSION_FAILED",
+  "CONTINUATION_REQUIRED",
+  "CANDIDATE_LOCKED",
+]);
+export type GoldenThreeGateBlockerCode = z.infer<typeof goldenThreeGateBlockerCodeSchema>;
+
+export const goldenThreeGateSchema = z
+  .object({
+    candidateId: uuidV7Schema.nullable(),
+    canLock: z.boolean(),
+    blockers: z
+      .array(
+        z
+          .object({
+            code: goldenThreeGateBlockerCodeSchema,
+            message: z.string().min(1),
+            dimension: goldenThreeReviewDimensionSchema.nullable(),
+          })
+          .strict(),
+      )
+      .max(6),
+    failedDimensions: z.array(goldenThreeReviewDimensionSchema).max(6),
+  })
+  .strict();
+export type GoldenThreeGate = z.infer<typeof goldenThreeGateSchema>;
+
+export const goldenThreeOverrideSchema = z
+  .object({
+    policy: z.literal("author_override_v1"),
+    rationale: z.string().trim().min(10).max(2_000),
+  })
+  .strict();
+export type GoldenThreeOverride = z.infer<typeof goldenThreeOverrideSchema>;
+
+export const goldenThreeLockRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    override: goldenThreeOverrideSchema.optional(),
+  })
+  .strict();
+export type GoldenThreeLockRequest = z.infer<typeof goldenThreeLockRequestSchema>;
+
+export const goldenThreeSelectionRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type GoldenThreeSelectionRequest = z.infer<typeof goldenThreeSelectionRequestSchema>;
+
+export const goldenThreeLockSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    candidateId: uuidV7Schema,
+    versionNodeId: uuidV7Schema,
+    styleBaselineId: uuidV7Schema,
+    chapterPins: z.array(goldenThreePinnedChapterSchema).length(3),
+    override: goldenThreeOverrideSchema.nullable(),
+    lockedBy: uuidV7Schema,
+    lockedAt: z.string().datetime(),
+  })
+  .strict();
+export type GoldenThreeLock = z.infer<typeof goldenThreeLockSchema>;
+
+export const goldenThreeStyleBaselineSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    sourceType: z.literal("golden_three"),
+    sourceId: uuidV7Schema,
+    version: z.number().int().positive(),
+    versionNodeId: uuidV7Schema,
+    profile: z
+      .object({
+        strategy: goldenThreeStrategySchema,
+        candidateLabel: z.string().min(1).max(100),
+        excerpts: z
+          .array(
+            z
+              .object({
+                chapterId: uuidV7Schema,
+                chapterVersionId: uuidV7Schema,
+                excerpt: z.string().min(1),
+              })
+              .strict(),
+          )
+          .length(3),
+      })
+      .strict(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type GoldenThreeStyleBaseline = z.infer<typeof goldenThreeStyleBaselineSchema>;
+
+export const goldenThreeWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    candidates: z.array(goldenThreeCandidateSchema).max(3),
+    selectedCandidateId: uuidV7Schema.nullable(),
+    lock: goldenThreeLockSchema.nullable(),
+    styleBaseline: goldenThreeStyleBaselineSchema.nullable(),
+    gate: goldenThreeGateSchema,
+  })
+  .strict();
+export type GoldenThreeWorkspace = z.infer<typeof goldenThreeWorkspaceSchema>;
+
+export const goldenThreeWorkspaceResponseSchema = apiEnvelopeSchema(goldenThreeWorkspaceSchema);
+
+export const QUALITY_RUBRIC_VERSION = "m1-quality-rubric-v1" as const;
+export const CRITIC_RULE_VERSION = "m1-critic-rules-v1" as const;
+
+export const QUALITY_DIMENSIONS = [
+  "hook",
+  "pacing",
+  "information_density",
+  "character_voice",
+  "prose",
+  "continuity",
+] as const;
+export const qualityDimensionSchema = z.enum(QUALITY_DIMENSIONS);
+export type QualityDimension = z.infer<typeof qualityDimensionSchema>;
+
+export const QUALITY_DIMENSION_LABELS: Record<QualityDimension, string> = {
+  hook: "章末钩子",
+  pacing: "节奏",
+  information_density: "信息密度",
+  character_voice: "人物声纹",
+  prose: "文笔",
+  continuity: "连续性",
+};
+
+export const criticFindingDimensionSchema = z.enum(["continuity", "style", "reader_experience"]);
+export type CriticFindingDimension = z.infer<typeof criticFindingDimensionSchema>;
+
+export const criticSeveritySchema = z.enum(["P0", "P1", "P2", "P3"]);
+export type CriticSeverity = z.infer<typeof criticSeveritySchema>;
+
+export const CRITIC_SEVERITY_LABELS: Record<CriticSeverity, string> = {
+  P0: "阻断",
+  P1: "高风险",
+  P2: "提醒",
+  P3: "建议",
+};
+
+export const criticFindingStatusSchema = z.enum(["open", "dismissed", "superseded"]);
+export type CriticFindingStatus = z.infer<typeof criticFindingStatusSchema>;
+
+export const criticFindingCodeSchema = z.enum([
+  "FACT_CONTRADICTION",
+  "TIMELINE_CONFLICT",
+  "UNDISCLOSED_KNOWLEDGE",
+  "MOTIVATION_BREAK",
+  "LOCATION_CONFLICT",
+  "STYLE_DRIFT",
+  "WEAK_CHAPTER_END_HOOK",
+]);
+export type CriticFindingCode = z.infer<typeof criticFindingCodeSchema>;
+
+export const criticEvidenceKindSchema = z.enum([
+  "fact",
+  "timeline",
+  "knowledge",
+  "outline",
+  "location",
+  "voice",
+  "text",
+]);
+export type CriticEvidenceKind = z.infer<typeof criticEvidenceKindSchema>;
+
+export const criticEvidenceSchema = z
+  .object({
+    kind: criticEvidenceKindSchema,
+    sourceId: uuidV7Schema.nullable(),
+    sourceVersionId: uuidV7Schema.nullable(),
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema.nullable(),
+    quote: z.string().trim().min(1).max(2_000),
+    startOffset: z.number().int().nonnegative(),
+    endOffset: z.number().int().nonnegative(),
+    locator: z.string().trim().min(1).max(200),
+    explanation: z.string().trim().min(1).max(1_000),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endOffset <= input.startOffset) {
+      context.addIssue({
+        code: "custom",
+        path: ["endOffset"],
+        message: "Evidence end must follow its start",
+      });
+    }
+  });
+export type CriticEvidence = z.infer<typeof criticEvidenceSchema>;
+
+export const criticSourceRefTypeSchema = z.enum([
+  "fact",
+  "timeline_event",
+  "character_knowledge",
+  "outline_node",
+  "map",
+  "map_node",
+  "style_baseline",
+  "character",
+  "world_rule",
+  "golden_finger",
+  "chapter",
+  "chapter_version",
+  "story_bible",
+  "story_ledger_entry",
+]);
+export type CriticSourceRefType = z.infer<typeof criticSourceRefTypeSchema>;
+
+export const criticSourceRefSchema = z
+  .object({
+    type: criticSourceRefTypeSchema,
+    id: uuidV7Schema,
+    versionId: uuidV7Schema.nullable(),
+    label: z.string().trim().min(1).max(200),
+  })
+  .strict();
+export type CriticSourceRef = z.infer<typeof criticSourceRefSchema>;
+
+export const criticAffectedObjectTypeSchema = z.enum([
+  "chapter",
+  "chapter_version",
+  "fact",
+  "timeline_event",
+  "character",
+  "world_rule",
+  "golden_finger",
+  "character_knowledge",
+  "outline_node",
+  "map",
+  "map_node",
+  "style_baseline",
+  "story_ledger_entry",
+]);
+export type CriticAffectedObjectType = z.infer<typeof criticAffectedObjectTypeSchema>;
+
+export const criticAffectedObjectSchema = z
+  .object({
+    type: criticAffectedObjectTypeSchema,
+    id: uuidV7Schema,
+    label: z.string().trim().min(1).max(200).nullable(),
+  })
+  .strict();
+export type CriticAffectedObject = z.infer<typeof criticAffectedObjectSchema>;
+
+export const qualityDimensionResultSchema = z
+  .object({
+    dimension: qualityDimensionSchema,
+    label: z.string().trim().min(1).max(100),
+    score: z.number().int().min(1).max(5),
+    rationale: z.string().trim().min(1).max(1_000),
+    evidence: z.array(criticEvidenceSchema).min(1).max(3),
+  })
+  .strict();
+export type QualityDimensionResult = z.infer<typeof qualityDimensionResultSchema>;
+
+export const qualityReportSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    rubricVersion: z.literal(QUALITY_RUBRIC_VERSION),
+    ruleVersion: z.literal(CRITIC_RULE_VERSION),
+    sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+    dimensions: z.array(qualityDimensionResultSchema).length(QUALITY_DIMENSIONS.length),
+    summary: z.string().trim().min(1).max(2_000),
+    createdAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    const dimensions = input.dimensions.map((entry) => entry.dimension);
+    if (new Set(dimensions).size !== QUALITY_DIMENSIONS.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["dimensions"],
+        message: "Each quality dimension must appear exactly once",
+      });
+    }
+  });
+export type QualityReport = z.infer<typeof qualityReportSchema>;
+
+export const criticFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    reportId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    dimension: criticFindingDimensionSchema,
+    qualityDimension: qualityDimensionSchema,
+    severity: criticSeveritySchema,
+    structural: z.boolean(),
+    code: criticFindingCodeSchema,
+    evidence: z.array(criticEvidenceSchema).min(1).max(5),
+    sourceRefs: z.array(criticSourceRefSchema).min(1).max(10),
+    affectedObjects: z.array(criticAffectedObjectSchema).min(1).max(10),
+    recommendation: z.string().trim().min(1).max(2_000),
+    status: criticFindingStatusSchema,
+    ignoredReason: z.string().trim().min(1).max(1_000).nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.status === "dismissed" && input.ignoredReason === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["ignoredReason"],
+        message: "Dismissed findings require an author reason",
+      });
+    }
+    if (input.status !== "dismissed" && input.ignoredReason !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["ignoredReason"],
+        message: "Only dismissed findings carry an ignored reason",
+      });
+    }
+  });
+export type CriticFinding = z.infer<typeof criticFindingSchema>;
+
+export const criticAnnotationSchema = z
+  .object({
+    findingId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    dimension: criticFindingDimensionSchema,
+    qualityDimension: qualityDimensionSchema,
+    severity: criticSeveritySchema,
+    structural: z.boolean(),
+    code: criticFindingCodeSchema,
+    quote: z.string().trim().min(1).max(2_000),
+    startOffset: z.number().int().nonnegative(),
+    endOffset: z.number().int().nonnegative(),
+    recommendation: z.string().trim().min(1).max(2_000),
+    status: criticFindingStatusSchema,
+    ignoredReason: z.string().nullable(),
+    version: z.number().int().positive(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endOffset <= input.startOffset) {
+      context.addIssue({
+        code: "custom",
+        path: ["endOffset"],
+        message: "Annotation end must follow its start",
+      });
+    }
+  });
+export type CriticAnnotation = z.infer<typeof criticAnnotationSchema>;
+
+export const qualityGateBlockerSchema = z
+  .object({
+    findingId: uuidV7Schema,
+    code: criticFindingCodeSchema,
+    severity: criticSeveritySchema,
+    gate: z.enum(["chapter_approval", "canon_commit", "both"]),
+    message: z.string().trim().min(1).max(1_000),
+  })
+  .strict();
+export type QualityGateBlocker = z.infer<typeof qualityGateBlockerSchema>;
+
+export const qualityReportStateSchema = z.enum(["fresh", "missing", "stale"]);
+export type QualityReportState = z.infer<typeof qualityReportStateSchema>;
+
+export const qualityGateSchema = z
+  .object({
+    canApprove: z.boolean(),
+    canCommitCanon: z.boolean(),
+    reportState: qualityReportStateSchema,
+    reportId: uuidV7Schema.nullable(),
+    blockers: z.array(qualityGateBlockerSchema),
+  })
+  .strict();
+export type QualityGate = z.infer<typeof qualityGateSchema>;
+
+export const qualityWorkspaceSchema = z
+  .object({
+    report: qualityReportSchema.nullable(),
+    findings: z.array(criticFindingSchema),
+    annotations: z.array(criticAnnotationSchema),
+    gate: qualityGateSchema,
+  })
+  .strict();
+export type QualityWorkspace = z.infer<typeof qualityWorkspaceSchema>;
+
+export const criticVerifyRequestSchema = z
+  .object({
+    chapterVersionId: uuidV7Schema.optional(),
+  })
+  .strict();
+export type CriticVerifyRequest = z.infer<typeof criticVerifyRequestSchema>;
+
+export const criticAnnotationPatchRequestSchema = z
+  .object({
+    action: z.enum(["dismiss", "reopen"]),
+    version: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(1_000).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.action === "dismiss" && !input.reason) {
+      context.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "Dismissing a finding requires a reason",
+      });
+    }
+    if (input.action === "reopen" && input.reason) {
+      context.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "Reopening a finding does not accept a dismiss reason",
+      });
+    }
+  });
+export type CriticAnnotationPatchRequest = z.infer<typeof criticAnnotationPatchRequestSchema>;
+
+export const qualityWorkspaceResponseSchema = apiEnvelopeSchema(qualityWorkspaceSchema);
+export const criticAnnotationListQuerySchema = cursorPageQuerySchema;
+export type CriticAnnotationListQuery = z.infer<typeof criticAnnotationListQuerySchema>;
+export const criticAnnotationListResponseSchema = cursorListResponseSchema(
+  z.array(criticAnnotationSchema),
+);
+export const criticAnnotationResponseSchema = apiEnvelopeSchema(criticAnnotationSchema);
+
+export const VOLUME_AUDIT_RULE_VERSION = "m1-volume-audit-v1" as const;
+
+export const VOLUME_AUDIT_FINDING_CODES = [
+  ...criticFindingCodeSchema.options,
+  "UNRESOLVED_LEDGER_ENTRY",
+  "ANTAGONIST_UNDERESTIMATION",
+  "POWER_INFLATION",
+  "VOLUME_CHAPTER_UNAUDITED",
+] as const;
+
+export const volumeAuditFindingCodeSchema = z.enum(VOLUME_AUDIT_FINDING_CODES);
+export type VolumeAuditFindingCode = z.infer<typeof volumeAuditFindingCodeSchema>;
+
+export const volumeAuditFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    chapterVersionId: uuidV7Schema.nullable(),
+    chapterNumber: z.number().int().positive().nullable(),
+    dimension: criticFindingDimensionSchema,
+    qualityDimension: qualityDimensionSchema,
+    severity: criticSeveritySchema,
+    structural: z.boolean(),
+    code: volumeAuditFindingCodeSchema,
+    evidence: z.array(criticEvidenceSchema).min(1).max(5),
+    sourceRefs: z.array(criticSourceRefSchema).min(1).max(10),
+    affectedObjects: z.array(criticAffectedObjectSchema).min(1).max(10),
+    recommendation: z.string().trim().min(1).max(2_000),
+    upstreamFindingId: uuidV7Schema.nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type VolumeAuditFinding = z.infer<typeof volumeAuditFindingSchema>;
+
+export const volumeAuditCoverageItemSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    title: z.string().trim().min(1).max(200),
+    chapterVersionId: uuidV7Schema.nullable(),
+    wordCount: z.number().int().nonnegative(),
+    qualityReportId: uuidV7Schema.nullable(),
+    qualityFindingCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type VolumeAuditCoverageItem = z.infer<typeof volumeAuditCoverageItemSchema>;
+
+export const volumeAuditSummarySchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    blockers: z.number().int().nonnegative(),
+    warnings: z.number().int().nonnegative(),
+    unresolvedLedger: z.number().int().nonnegative(),
+    motivation: z.number().int().nonnegative(),
+    antagonist: z.number().int().nonnegative(),
+    powerInflation: z.number().int().nonnegative(),
+    mapTime: z.number().int().nonnegative(),
+    knowledgeLeak: z.number().int().nonnegative(),
+    other: z.number().int().nonnegative(),
+  })
+  .strict();
+export type VolumeAuditSummary = z.infer<typeof volumeAuditSummarySchema>;
+
+export const volumeAuditSignoffSchema = z
+  .object({
+    decision: z.enum(["accepted", "changes_requested"]),
+    rationale: z.string().trim().min(10).max(2_000),
+    signedOffBy: uuidV7Schema,
+    signedOffAt: z.string().datetime(),
+  })
+  .strict();
+export type VolumeAuditSignoff = z.infer<typeof volumeAuditSignoffSchema>;
+
+export const volumeAuditStatusSchema = z.enum(["passed", "warnings", "blocked"]);
+export type VolumeAuditStatus = z.infer<typeof volumeAuditStatusSchema>;
+
+export const volumeAuditReportSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    volumeNodeId: uuidV7Schema,
+    volumeTitle: z.string().trim().min(1).max(200),
+    chapterFrom: z.number().int().positive(),
+    chapterTo: z.number().int().positive(),
+    ruleVersion: z.literal(VOLUME_AUDIT_RULE_VERSION),
+    sourceHash: z.string().regex(/^[a-f0-9]{64}$/),
+    status: volumeAuditStatusSchema,
+    findings: z.array(volumeAuditFindingSchema),
+    coverage: z.array(volumeAuditCoverageItemSchema),
+    summary: volumeAuditSummarySchema,
+    signoff: volumeAuditSignoffSchema.nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((report, context) => {
+    if (report.chapterTo < report.chapterFrom) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterTo"],
+        message: "Volume audit chapter range is invalid",
+      });
+    }
+  });
+export type VolumeAuditReport = z.infer<typeof volumeAuditReportSchema>;
+
+export const volumeAuditSummaryVolumeSchema = z
+  .object({
+    nodeId: uuidV7Schema,
+    title: z.string().trim().min(1).max(200),
+    chapterFrom: z.number().int().positive(),
+    chapterTo: z.number().int().positive(),
+    chapterCount: z.number().int().positive(),
+    writtenChapters: z.number().int().nonnegative(),
+    latestReportId: uuidV7Schema.nullable(),
+  })
+  .strict();
+export type VolumeAuditSummaryVolume = z.infer<typeof volumeAuditSummaryVolumeSchema>;
+
+export const volumeAuditWorkspaceSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    goldenThreeLocked: z.boolean(),
+    volumes: z.array(volumeAuditSummaryVolumeSchema),
+    latestReport: volumeAuditReportSchema.nullable(),
+    signoffUser: z
+      .object({
+        id: uuidV7Schema,
+        displayName: z.string().trim().min(1).max(120),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict();
+export type VolumeAuditWorkspace = z.infer<typeof volumeAuditWorkspaceSchema>;
+
+export const volumeAuditRunRequestSchema = z
+  .object({
+    volumeNodeId: uuidV7Schema,
+  })
+  .strict();
+export type VolumeAuditRunRequest = z.infer<typeof volumeAuditRunRequestSchema>;
+
+export const volumeAuditSignoffRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    decision: z.enum(["accepted", "changes_requested"]),
+    rationale: z.string().trim().min(10).max(2_000),
+  })
+  .strict();
+export type VolumeAuditSignoffRequest = z.infer<typeof volumeAuditSignoffRequestSchema>;
+
+export const volumeAuditWorkspaceResponseSchema = apiEnvelopeSchema(volumeAuditWorkspaceSchema);
+export const volumeAuditReportResponseSchema = apiEnvelopeSchema(volumeAuditReportSchema);
+
+export const STYLE_DRIFT_RULE_VERSION = "m1-style-drift-v1" as const;
+
+export const styleBaselineDimensionSchema = z.enum(["character_voice", "prose"]);
+export type StyleBaselineDimension = z.infer<typeof styleBaselineDimensionSchema>;
+
+export const styleProfileScopeSchema = z.enum(["work", "character"]);
+export type StyleProfileScope = z.infer<typeof styleProfileScopeSchema>;
+
+export const styleProfileApprovalStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+  "superseded",
+]);
+export type StyleProfileApprovalStatus = z.infer<typeof styleProfileApprovalStatusSchema>;
+
+export const styleProfileSourceTypeSchema = z.enum([
+  "author_sample",
+  "approved_chapter_version",
+  "golden_three",
+]);
+export type StyleProfileSourceType = z.infer<typeof styleProfileSourceTypeSchema>;
+
+export const styleProfileSourceSchema = z
+  .object({
+    type: styleProfileSourceTypeSchema,
+    id: uuidV7Schema,
+    versionId: uuidV7Schema,
+    versionNodeId: uuidV7Schema.nullable(),
+    label: z.string().trim().min(1).max(200),
+  })
+  .strict();
+export type StyleProfileSource = z.infer<typeof styleProfileSourceSchema>;
+
+export const styleProfileSampleSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    excerpt: z.string().trim().min(1).max(2_000),
+    locator: z.string().trim().min(1).max(200),
+  })
+  .strict();
+export type StyleProfileSample = z.infer<typeof styleProfileSampleSchema>;
+
+export const styleProfileMetricsSchema = z
+  .object({
+    averageSentenceLength: z.number().nonnegative(),
+    exclamationRate: z.number().nonnegative(),
+    dialogueRatio: z.number().nonnegative(),
+  })
+  .strict();
+export type StyleProfileMetrics = z.infer<typeof styleProfileMetricsSchema>;
+
+export const styleProfileBodySchema = z
+  .object({
+    guides: z.array(z.string().trim().min(1).max(500)).min(1).max(20),
+    samples: z.array(styleProfileSampleSchema).min(1).max(20),
+    metrics: styleProfileMetricsSchema,
+  })
+  .strict();
+export type StyleProfileBody = z.infer<typeof styleProfileBodySchema>;
+
+export const styleProfileApprovalSchema = z
+  .object({
+    approvedBy: uuidV7Schema,
+    approvedAt: z.string().datetime(),
+    rationale: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type StyleProfileApproval = z.infer<typeof styleProfileApprovalSchema>;
+
+export const styleProfileSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    scope: styleProfileScopeSchema,
+    scopeId: uuidV7Schema.nullable(),
+    dimension: styleBaselineDimensionSchema,
+    name: z.string().trim().min(1).max(200),
+    version: z.number().int().positive(),
+    approvalStatus: styleProfileApprovalStatusSchema,
+    source: styleProfileSourceSchema,
+    profile: styleProfileBodySchema,
+    approval: styleProfileApprovalSchema.nullable(),
+    versionNodeId: uuidV7Schema.nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.scope === "work" && input.scopeId !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["scopeId"],
+        message: "Work-scoped style profiles do not accept a scope id",
+      });
+    }
+    if (input.scope === "character" && input.scopeId === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["scopeId"],
+        message: "Character-scoped style profiles require a character id",
+      });
+    }
+    if (input.approvalStatus === "approved" && input.approval === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["approval"],
+        message: "Approved style profiles require explicit approval metadata",
+      });
+    }
+    if (input.approvalStatus !== "approved" && input.approval !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["approval"],
+        message: "Only approved style profiles carry approval metadata",
+      });
+    }
+  });
+export type StyleProfile = z.infer<typeof styleProfileSchema>;
+
+export const styleProfileCreateRequestSchema = z
+  .object({
+    scope: styleProfileScopeSchema,
+    scopeId: uuidV7Schema.nullable().default(null),
+    dimension: styleBaselineDimensionSchema,
+    name: z.string().trim().min(1).max(200),
+    approvalStatus: z.literal("pending").optional().default("pending"),
+    source: z
+      .object({
+        type: styleProfileSourceTypeSchema,
+        id: uuidV7Schema,
+        versionId: uuidV7Schema,
+        label: z.string().trim().min(1).max(200),
+      })
+      .strict(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.scope === "work" && input.scopeId !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["scopeId"],
+        message: "Work-scoped style profiles do not accept a scope id",
+      });
+    }
+    if (input.scope === "character" && input.scopeId === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["scopeId"],
+        message: "Character-scoped style profiles require a character id",
+      });
+    }
+  });
+export type StyleProfileCreateRequest = z.infer<typeof styleProfileCreateRequestSchema>;
+
+export const styleProfileApproveRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    rationale: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type StyleProfileApproveRequest = z.infer<typeof styleProfileApproveRequestSchema>;
+
+export const styleDriftScopeSchema = z.enum(["chapter", "volume", "cross_volume"]);
+export type StyleDriftScope = z.infer<typeof styleDriftScopeSchema>;
+
+export const styleDriftModelProvenanceSchema = z
+  .object({
+    provider: z.string().trim().min(1).max(100),
+    model: z.string().trim().min(1).max(200),
+    parameters: z.record(z.string(), z.unknown()).default({}),
+  })
+  .strict();
+export type StyleDriftModelProvenance = z.infer<typeof styleDriftModelProvenanceSchema>;
+
+export const styleDriftPromptProvenanceSchema = z
+  .object({
+    key: z.string().trim().min(1).max(100),
+    version: z.number().int().positive(),
+  })
+  .strict();
+export type StyleDriftPromptProvenance = z.infer<typeof styleDriftPromptProvenanceSchema>;
+
+export const styleDriftCheckRequestSchema = z
+  .object({
+    scope: styleDriftScopeSchema,
+    chapterId: uuidV7Schema.optional(),
+    fromChapter: z.number().int().positive().optional(),
+    toChapter: z.number().int().positive().optional(),
+    model: styleDriftModelProvenanceSchema,
+    prompt: styleDriftPromptProvenanceSchema,
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.scope === "chapter") {
+      if (!input.chapterId) {
+        context.addIssue({
+          code: "custom",
+          path: ["chapterId"],
+          message: "Chapter drift checks require a chapter id",
+        });
+      }
+      if (input.fromChapter !== undefined || input.toChapter !== undefined) {
+        context.addIssue({
+          code: "custom",
+          path: ["fromChapter"],
+          message: "Chapter drift checks do not accept a chapter range",
+        });
+      }
+      return;
+    }
+    if (input.chapterId !== undefined) {
+      context.addIssue({
+        code: "custom",
+        path: ["chapterId"],
+        message: "Volume and cross-volume checks do not accept a chapter id",
+      });
+    }
+    if (
+      input.fromChapter === undefined ||
+      input.toChapter === undefined ||
+      input.toChapter < input.fromChapter
+    ) {
+      context.addIssue({
+        code: "custom",
+        path: ["toChapter"],
+        message: "Range checks require an ordered chapter window",
+      });
+    }
+  });
+export type StyleDriftCheckRequest = z.infer<typeof styleDriftCheckRequestSchema>;
+
+export const styleDriftFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    code: z.enum([
+      "CHARACTER_VOICE_DRIFT",
+      "WORK_STYLE_DRIFT",
+      "INTENTIONAL_CHARACTER_DEVELOPMENT",
+    ]),
+    classification: z.enum(["drift", "intentional_development"]),
+    severity: criticSeveritySchema,
+    dimension: styleBaselineDimensionSchema,
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    quote: z.string().trim().min(1).max(2_000),
+    startOffset: z.number().int().nonnegative(),
+    endOffset: z.number().int().nonnegative(),
+    locator: z.string().trim().min(1).max(200),
+    explanation: z.string().trim().min(1).max(1_000),
+    recommendation: z.string().trim().min(1).max(2_000),
+    growthEvidence: z
+      .object({
+        markerId: uuidV7Schema,
+        startState: z.string().trim().min(1).max(2_000),
+        endState: z.string().trim().min(1).max(2_000),
+        reason: z.string().trim().min(1).max(2_000),
+      })
+      .strict()
+      .nullable(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.endOffset <= input.startOffset) {
+      context.addIssue({
+        code: "custom",
+        path: ["endOffset"],
+        message: "Drift evidence end must follow its start",
+      });
+    }
+    if (input.classification === "intentional_development" && input.growthEvidence === null) {
+      context.addIssue({
+        code: "custom",
+        path: ["growthEvidence"],
+        message: "Intentional development requires character arc evidence",
+      });
+    }
+    if (input.classification === "drift" && input.growthEvidence !== null) {
+      context.addIssue({
+        code: "custom",
+        path: ["growthEvidence"],
+        message: "Drift findings do not carry growth evidence",
+      });
+    }
+  });
+export type StyleDriftFinding = z.infer<typeof styleDriftFindingSchema>;
+
+export const styleDriftTrendPointSchema = z
+  .object({
+    chapterId: uuidV7Schema,
+    chapterVersionId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    exclamationRate: z.number().nonnegative(),
+    averageSentenceLength: z.number().nonnegative(),
+    dialogueRatio: z.number().nonnegative(),
+    deviationScore: z.number().nonnegative(),
+  })
+  .strict();
+export type StyleDriftTrendPoint = z.infer<typeof styleDriftTrendPointSchema>;
+
+export const styleDriftReportSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    scope: styleDriftScopeSchema,
+    chapterId: uuidV7Schema.nullable(),
+    window: z
+      .object({
+        fromChapter: z.number().int().positive(),
+        toChapter: z.number().int().positive(),
+      })
+      .strict(),
+    baseline: z
+      .object({
+        id: uuidV7Schema,
+        version: z.number().int().positive(),
+        dimension: styleBaselineDimensionSchema,
+        sourceType: styleProfileSourceTypeSchema,
+      })
+      .strict(),
+    profileVersion: z.number().int().positive(),
+    ruleVersion: z.literal(STYLE_DRIFT_RULE_VERSION),
+    model: styleDriftModelProvenanceSchema,
+    prompt: styleDriftPromptProvenanceSchema,
+    summary: z.string().trim().min(1).max(2_000),
+    findings: z.array(styleDriftFindingSchema),
+    trend: z.array(styleDriftTrendPointSchema),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type StyleDriftReport = z.infer<typeof styleDriftReportSchema>;
+
+export const styleDriftWorkspaceSchema = z
+  .object({
+    profiles: z.array(styleProfileSchema),
+    latestChapterReport: styleDriftReportSchema.nullable(),
+    latestVolumeReport: styleDriftReportSchema.nullable(),
+    latestCrossVolumeReport: styleDriftReportSchema.nullable(),
+  })
+  .strict();
+export type StyleDriftWorkspace = z.infer<typeof styleDriftWorkspaceSchema>;
+
+export const styleProfileListResponseSchema = apiEnvelopeSchema(z.array(styleProfileSchema));
+export const styleProfileResponseSchema = apiEnvelopeSchema(styleProfileSchema);
+export const styleDriftWorkspaceResponseSchema = apiEnvelopeSchema(styleDriftWorkspaceSchema);
+export const styleDriftReportResponseSchema = apiEnvelopeSchema(styleDriftReportSchema);
+
+export const revisionPlanStatusSchema = z.enum([
+  "active",
+  "awaiting_feedback",
+  "completed",
+  "rejected",
+]);
+export type RevisionPlanStatus = z.infer<typeof revisionPlanStatusSchema>;
+
+export const revisionRoundStatusSchema = z.enum([
+  "queued",
+  "running",
+  "waiting_review",
+  "accepted",
+  "rejected",
+  "rewrite_requested",
+  "failed",
+]);
+export type RevisionRoundStatus = z.infer<typeof revisionRoundStatusSchema>;
+
+export const revisionSelectedFindingSchema = z
+  .object({
+    findingId: uuidV7Schema,
+    code: criticFindingCodeSchema,
+    severity: criticSeveritySchema,
+    qualityDimension: qualityDimensionSchema,
+    recommendation: z.string().trim().min(1).max(2_000),
+    evidence: z.array(criticEvidenceSchema).min(1).max(5),
+  })
+  .strict();
+export type RevisionSelectedFinding = z.infer<typeof revisionSelectedFindingSchema>;
+
+export const revisionDiffChangeSchema = z
+  .object({
+    blockId: z.string().trim().min(1).max(40),
+    beforeStart: z.number().int().nonnegative(),
+    beforeEnd: z.number().int().positive(),
+    afterStart: z.number().int().nonnegative(),
+    afterEnd: z.number().int().positive(),
+    before: z.string(),
+    after: z.string(),
+  })
+  .strict()
+  .refine(
+    (change) => change.beforeEnd > change.beforeStart && change.afterEnd > change.afterStart,
+    {
+      message: "Revision change ranges must be non-empty",
+    },
+  );
+export type RevisionDiffChange = z.infer<typeof revisionDiffChangeSchema>;
+
+export const revisionDiffSchema = z
+  .object({
+    sourceVersionId: uuidV7Schema,
+    resultVersionId: uuidV7Schema,
+    beforeHash: z.string().regex(/^[a-f0-9]{64}$/),
+    afterHash: z.string().regex(/^[a-f0-9]{64}$/),
+    changes: z.array(revisionDiffChangeSchema).min(1),
+    unresolvedFindingIds: z.array(uuidV7Schema),
+  })
+  .strict();
+export type RevisionDiff = z.infer<typeof revisionDiffSchema>;
+
+export const revisionPlanSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    sourceVersionId: uuidV7Schema,
+    status: revisionPlanStatusSchema,
+    maxRounds: z.number().int().min(1).max(REVISION_MAX_ROUNDS),
+    budget: revisionBudgetSchema,
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    completedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type RevisionPlan = z.infer<typeof revisionPlanSchema>;
+
+export const revisionRoundSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    roundNumber: z.number().int().min(1).max(REVISION_MAX_ROUNDS),
+    status: revisionRoundStatusSchema,
+    jobId: uuidV7Schema.nullable(),
+    jobStatus: generationJobStatusSchema.nullable(),
+    sourceVersionId: uuidV7Schema,
+    resultVersionId: uuidV7Schema.nullable(),
+    versionNodeId: uuidV7Schema.nullable(),
+    selectedFindings: z.array(revisionSelectedFindingSchema).min(1).max(10),
+    blocks: z.array(revisionManuscriptBlockSchema).min(1).max(20),
+    constraints: revisionConstraintsSchema,
+    diff: revisionDiffSchema.nullable(),
+    unresolvedFindingIds: z.array(uuidV7Schema),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+    finishedAt: z.string().datetime().nullable(),
+  })
+  .strict();
+export type RevisionRound = z.infer<typeof revisionRoundSchema>;
+
+export const revisionFeedbackActionSchema = z.enum(["accept", "reject", "rewrite"]);
+export type RevisionFeedbackAction = z.infer<typeof revisionFeedbackActionSchema>;
+
+export const revisionFeedbackCreateRequestSchema = z
+  .object({
+    action: revisionFeedbackActionSchema,
+    reason: z.string().trim().min(1).max(1_000),
+    version: z.number().int().positive(),
+    findingId: uuidV7Schema.optional(),
+    evaluationOptIn: z.boolean().default(false),
+  })
+  .strict();
+export type RevisionFeedbackCreateRequest = z.infer<typeof revisionFeedbackCreateRequestSchema>;
+
+export const revisionFeedbackSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    roundId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema,
+    findingId: uuidV7Schema.nullable(),
+    action: revisionFeedbackActionSchema,
+    reason: z.string().trim().min(1).max(1_000),
+    targetVersionId: uuidV7Schema,
+    evaluationOptIn: z.boolean(),
+    actorId: uuidV7Schema,
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type RevisionFeedback = z.infer<typeof revisionFeedbackSchema>;
+
+export const revisionPlanWorkspaceSchema = z
+  .object({
+    plan: revisionPlanSchema,
+    rounds: z.array(revisionRoundSchema).max(REVISION_MAX_ROUNDS),
+    feedback: z.array(revisionFeedbackSchema),
+    evaluationFeedback: z.array(revisionFeedbackSchema),
+  })
+  .strict();
+export type RevisionPlanWorkspace = z.infer<typeof revisionPlanWorkspaceSchema>;
+
+export const revisionPlanWorkspaceResponseSchema = apiEnvelopeSchema(revisionPlanWorkspaceSchema);
+export const revisionPlanListQuerySchema = cursorPageQuerySchema;
+export type RevisionPlanListQuery = z.infer<typeof revisionPlanListQuerySchema>;
+export const revisionPlanWorkspaceListResponseSchema = cursorListResponseSchema(
+  z.array(revisionPlanWorkspaceSchema),
+);
+
+export const GENERATION_READINESS_RULE_VERSION = "readiness-v1" as const;
+
+export const generationReadinessSeveritySchema = z.enum(["blocker", "warning"]);
+export type GenerationReadinessSeverity = z.infer<typeof generationReadinessSeveritySchema>;
+
+export const generationReadinessStatusSchema = z.enum(["not_ready", "partial", "ready"]);
+export type GenerationReadinessStatus = z.infer<typeof generationReadinessStatusSchema>;
+
+export const generationReadinessItemStateSchema = z.enum([
+  "ready",
+  "missing",
+  "unlocked",
+  "invalid",
+  "conflict",
+  "pending",
+]);
+export type GenerationReadinessItemState = z.infer<typeof generationReadinessItemStateSchema>;
+
+export const generationReadinessResourceTypeSchema = z.enum([
+  "story_bible",
+  "story_bible_card",
+  "world_rule",
+  "setting",
+  "character",
+  "outline_node",
+  "chapter",
+  "required_facts",
+  "model_config",
+  "budget",
+  "risk_approval",
+]);
+export type GenerationReadinessResourceType = z.infer<typeof generationReadinessResourceTypeSchema>;
+
+export const generationReadinessResourceRefSchema = z
+  .object({
+    type: generationReadinessResourceTypeSchema,
+    id: z.string().min(1).nullable(),
+    version: z.string().min(1).nullable(),
+    label: z.string().min(1),
+  })
+  .strict();
+export type GenerationReadinessResourceRef = z.infer<typeof generationReadinessResourceRefSchema>;
+
+export const generationReadinessEvidenceSchema = z
+  .object({
+    kind: z.enum([
+      "resource_state",
+      "missing_dependency",
+      "conflict",
+      "configuration",
+      "budget",
+      "pending_approval",
+    ]),
+    summary: z.string().min(1),
+    resource: generationReadinessResourceRefSchema,
+  })
+  .strict();
+export type GenerationReadinessEvidence = z.infer<typeof generationReadinessEvidenceSchema>;
+
+export const generationReadinessRemediationSchema = z
+  .object({
+    action: z.enum(["complete", "lock", "resolve", "configure", "review"]),
+    label: z.string().min(1),
+    href: z.string().regex(/^\/workspace(?:\/|$)/u),
+  })
+  .strict();
+export type GenerationReadinessRemediation = z.infer<typeof generationReadinessRemediationSchema>;
+
+export const generationReadinessItemSchema = z
+  .object({
+    key: z.string().min(1),
+    label: z.string().min(1),
+    severity: generationReadinessSeveritySchema,
+    state: generationReadinessItemStateSchema,
+    ready: z.boolean(),
+    reason: z.string().min(1),
+    resource: generationReadinessResourceRefSchema,
+    evidence: z.array(generationReadinessEvidenceSchema).max(20),
+    remediation: generationReadinessRemediationSchema.nullable(),
+  })
+  .strict();
+export type GenerationReadinessItem = z.infer<typeof generationReadinessItemSchema>;
+
+export const generationReadinessDependencySchema = z
+  .object({
+    key: z.string().min(1),
+    version: z.string().min(1),
+  })
+  .strict();
+export type GenerationReadinessDependency = z.infer<typeof generationReadinessDependencySchema>;
+
+export const generationReadinessSchema = z
+  .object({
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    ruleVersion: z.literal(GENERATION_READINESS_RULE_VERSION),
+    status: generationReadinessStatusSchema,
+    canProceed: z.boolean(),
+    completed: z.number().int().nonnegative(),
+    total: z.number().int().positive(),
+    blockers: z.number().int().nonnegative(),
+    warnings: z.number().int().nonnegative(),
+    dependencyFingerprint: z.string().regex(/^[a-f0-9]{64}$/u),
+    dependencies: z.array(generationReadinessDependencySchema),
+    items: z.array(generationReadinessItemSchema).min(1),
+  })
+  .strict();
+export type GenerationReadiness = z.infer<typeof generationReadinessSchema>;
+
+export const generationReadinessQuerySchema = z
+  .object({
+    chapterId: uuidV7Schema.optional(),
+    modelConfigId: uuidV7Schema.optional(),
+    maxCostCny: z.coerce.number().nonnegative().optional(),
+    maxTokens: z.coerce.number().int().positive().optional(),
+    maxRevisionRounds: z.coerce.number().int().nonnegative().optional(),
+  })
+  .strict();
+export type GenerationReadinessQuery = z.infer<typeof generationReadinessQuerySchema>;
+
+export const generationReadinessResponseSchema = apiEnvelopeSchema(generationReadinessSchema);

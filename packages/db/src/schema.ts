@@ -6,6 +6,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   real,
   text,
   timestamp,
@@ -27,6 +28,9 @@ export const users = pgTable(
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
     displayName: text("display_name").notNull(),
+    bio: text("bio").notNull().default(""),
+    avatarUrl: text("avatar_url"),
+    version: integer("version").notNull().default(1),
     status: text("status").notNull().default("active"),
     lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -34,6 +38,33 @@ export const users = pgTable(
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => [uniqueIndex("users_email_lower_unique").on(sql`lower(${table.email})`)],
+);
+
+export const penNames = pgTable(
+  "pen_names",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    bio: text("bio").notNull().default(""),
+    avatarUrl: text("avatar_url"),
+    isDefault: boolean("is_default").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("pen_names_user_name_unique")
+      .on(table.userId, table.name)
+      .where(sql`${table.deletedAt} is null`),
+    uniqueIndex("pen_names_user_default_unique")
+      .on(table.userId)
+      .where(sql`${table.isDefault} and ${table.deletedAt} is null`),
+    index("pen_names_user_updated_idx").on(table.userId, table.updatedAt),
+  ],
 );
 
 export const sessions = pgTable(
@@ -72,6 +103,25 @@ export const emailVerificationCodes = pgTable(
   },
   (table) => [
     index("email_codes_email_purpose_created_idx").on(table.email, table.purpose, table.createdAt),
+  ],
+);
+
+export const passwordResets = pgTable(
+  "password_resets",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    requestedIp: text("requested_ip").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("password_resets_token_hash_unique").on(table.tokenHash),
+    index("password_resets_user_created_idx").on(table.userId, table.createdAt),
   ],
 );
 
@@ -126,6 +176,30 @@ export const auditLogs = pgTable(
   (table) => [
     index("audit_logs_actor_created_idx").on(table.actorId, table.createdAt),
     index("audit_logs_target_idx").on(table.targetType, table.targetId),
+  ],
+);
+
+export const idempotencyRecords = pgTable(
+  "idempotency_records",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: uuid("resource_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("idempotency_records_user_scope_key_unique").on(
+      table.userId,
+      table.scope,
+      table.idempotencyKey,
+    ),
+    index("idempotency_records_resource_idx").on(table.resourceType, table.resourceId),
+    check("idempotency_records_key_check", sql`length(trim(${table.idempotencyKey})) > 0`),
   ],
 );
 
@@ -248,7 +322,7 @@ export const versionNodes = pgTable(
     index("version_nodes_user_work_idx").on(table.userId, table.workId),
     check(
       "version_nodes_node_type_check",
-      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'story_bible_version', 'entity_version', 'canon_commit', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
+      sql`${table.nodeType} in ('chapter_version', 'outline_version', 'ledger_version', 'story_bible_version', 'entity_version', 'canon_commit', 'writing_action_output', 'snapshot', 'change_apply', 'branch_merge', 'rollback')`,
     ),
   ],
 );
@@ -275,6 +349,13 @@ export const storyBibles = pgTable(
           title: string;
           content: string;
           complete: boolean;
+          worldRules?: Array<{
+            id: string;
+            name: string;
+            constraint: string;
+            scope: string;
+            exceptions: string[];
+          }>;
         }>
       >()
       .notNull(),
@@ -320,10 +401,19 @@ export const storyBibleVersions = pgTable(
           title: string;
           content: string;
           complete: boolean;
+          worldRules?: Array<{
+            id: string;
+            name: string;
+            constraint: string;
+            scope: string;
+            exceptions: string[];
+          }>;
         }>
       >()
       .notNull(),
     readiness: jsonb("readiness").$type<Record<string, unknown>>().notNull(),
+    action: text("action").notNull().default("locked"),
+    reason: text("reason").notNull().default("锁定故事圣经"),
     versionNodeId: uuid("version_node_id")
       .notNull()
       .references(() => versionNodes.id, { onDelete: "restrict" }),
@@ -337,6 +427,129 @@ export const storyBibleVersions = pgTable(
     uniqueIndex("story_bible_versions_node_unique").on(table.versionNodeId),
     index("story_bible_versions_user_work_idx").on(table.userId, table.workId),
     check("story_bible_versions_nine_cards_check", sql`jsonb_array_length(${table.cards}) = 9`),
+    check(
+      "story_bible_versions_action_check",
+      sql`${table.action} in ('proposed', 'edited', 'locked', 'unlocked')`,
+    ),
+    check("story_bible_versions_reason_check", sql`length(trim(${table.reason})) > 0`),
+  ],
+);
+
+export const storyBibleWorldRules = pgTable(
+  "story_bible_world_rules",
+  {
+    id: uuid("id").notNull(),
+    storyBibleVersionId: uuid("story_bible_version_id")
+      .notNull()
+      .references(() => storyBibleVersions.id, { onDelete: "cascade" }),
+    storyBibleId: uuid("story_bible_id")
+      .notNull()
+      .references(() => storyBibles.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    constraint: text("constraint").notNull(),
+    scope: text("scope").notNull(),
+    exceptions: jsonb("exceptions").$type<string[]>().notNull().default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.id, table.storyBibleVersionId] }),
+    index("story_bible_world_rules_version_name_idx").on(table.storyBibleVersionId, table.name),
+    index("story_bible_world_rules_user_work_idx").on(table.userId, table.workId),
+    index("story_bible_world_rules_branch_idx").on(table.branchId),
+  ],
+);
+
+export const storyBibleChangeRequests = pgTable(
+  "story_bible_change_requests",
+  {
+    id: uuid("id").primaryKey(),
+    storyBibleId: uuid("story_bible_id")
+      .notNull()
+      .references(() => storyBibles.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    cardKey: text("card_key").notNull(),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    before: jsonb("before")
+      .$type<{
+        key: string;
+        title: string;
+        content: string;
+        complete: boolean;
+        worldRules?: Array<{
+          id: string;
+          name: string;
+          constraint: string;
+          scope: string;
+          exceptions: string[];
+        }>;
+      }>()
+      .notNull(),
+    after: jsonb("after")
+      .$type<{
+        key: string;
+        title: string;
+        content: string;
+        complete: boolean;
+        worldRules?: Array<{
+          id: string;
+          name: string;
+          constraint: string;
+          scope: string;
+          exceptions: string[];
+        }>;
+      }>()
+      .notNull(),
+    status: text("status").notNull().default("pending"),
+    risk: text("risk").notNull().default("medium"),
+    source: text("source").notNull().default("author"),
+    idempotencyKey: text("idempotency_key"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("story_bible_change_requests_user_work_idx").on(table.userId, table.workId),
+    index("story_bible_change_requests_status_idx").on(table.workId, table.branchId, table.status),
+    uniqueIndex("story_bible_change_requests_user_idempotency_unique").on(
+      table.userId,
+      table.storyBibleId,
+      table.idempotencyKey,
+    ),
+    check(
+      "story_bible_change_requests_card_key_check",
+      sql`${table.cardKey} in ('oneSentence', 'sellingPoints', 'protagonist', 'goldenFinger', 'worldLaws', 'mainPlot', 'subplots', 'ending', 'readerPromise')`,
+    ),
+    check(
+      "story_bible_change_requests_status_check",
+      sql`${table.status} in ('pending', 'analyzing', 'approved', 'rejected', 'applied')`,
+    ),
+    check(
+      "story_bible_change_requests_risk_check",
+      sql`${table.risk} in ('low', 'medium', 'high')`,
+    ),
+    check(
+      "story_bible_change_requests_source_check",
+      sql`${table.source} in ('author', 'ai', 'import', 'batch')`,
+    ),
   ],
 );
 
@@ -379,7 +592,7 @@ export const entities = pgTable(
     index("entities_branch_type_idx").on(table.branchId, table.type),
     check(
       "entities_type_check",
-      sql`${table.type} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger')`,
+      sql`${table.type} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
     ),
     check(
       "entities_status_check",
@@ -423,6 +636,194 @@ export const entityVersions = pgTable(
     uniqueIndex("entity_versions_entity_version_unique").on(table.entityId, table.version),
     uniqueIndex("entity_versions_node_unique").on(table.versionNodeId),
     index("entity_versions_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
+export const customFieldDefinitions = pgTable(
+  "custom_field_definitions",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    key: text("key").notNull(),
+    label: text("label").notNull(),
+    fieldType: text("field_type").notNull(),
+    appliesTo: text("applies_to").notNull(),
+    required: boolean("required").notNull().default(false),
+    options: jsonb("options").$type<string[]>().notNull().default([]),
+    relationTarget: text("relation_target"),
+    enabled: boolean("enabled").notNull().default(true),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("custom_field_definitions_scope_key_unique").on(
+      table.workId,
+      table.branchId,
+      table.key,
+    ),
+    index("custom_field_definitions_user_work_idx").on(table.userId, table.workId),
+    check(
+      "custom_field_definitions_type_check",
+      sql`${table.fieldType} in ('text', 'long_text', 'number', 'date', 'single_select', 'multi_select', 'boolean', 'relation_ref')`,
+    ),
+    check(
+      "custom_field_definitions_applies_to_check",
+      sql`${table.appliesTo} in ('all', 'world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
+    ),
+    check(
+      "custom_field_definitions_relation_target_check",
+      sql`${table.relationTarget} is null or ${table.relationTarget} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
+    ),
+    check("custom_field_definitions_schema_version_check", sql`${table.schemaVersion} > 0`),
+  ],
+);
+
+export const customFieldValues = pgTable(
+  "custom_field_values",
+  {
+    id: uuid("id").primaryKey(),
+    fieldDefinitionId: uuid("field_definition_id")
+      .notNull()
+      .references(() => customFieldDefinitions.id, { onDelete: "cascade" }),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    value: jsonb("value").$type<unknown>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("custom_field_values_field_entity_unique").on(
+      table.fieldDefinitionId,
+      table.entityId,
+    ),
+    index("custom_field_values_entity_idx").on(table.entityId),
+    index("custom_field_values_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
+export const settingProposals = pgTable(
+  "setting_proposals",
+  {
+    id: uuid("id").primaryKey(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entityVersion: integer("entity_version").notNull(),
+    status: text("status").notNull().default("pending"),
+    conflictType: text("conflict_type").notNull().default("none"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull(),
+    reason: text("reason").notNull(),
+    proposedBy: uuid("proposed_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    decidedBy: uuid("decided_by").references(() => users.id, { onDelete: "restrict" }),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    decisionReason: text("decision_reason"),
+    decisionEvidence: jsonb("decision_evidence")
+      .$type<Array<Record<string, unknown>>>()
+      .notNull()
+      .default([]),
+    decisionConflictType: text("decision_conflict_type"),
+  },
+  (table) => [
+    index("setting_proposals_entity_idx").on(table.entityId),
+    index("setting_proposals_user_work_status_idx").on(table.userId, table.workId, table.status),
+    check(
+      "setting_proposals_status_check",
+      sql`${table.status} in ('pending', 'accepted', 'rejected')`,
+    ),
+    check(
+      "setting_proposals_conflict_type_check",
+      sql`${table.conflictType} in ('none', 'duplicate_name', 'alias_collision', 'contradictory_fact', 'import_candidate', 'ai_disagreement')`,
+    ),
+    check(
+      "setting_proposals_decision_conflict_type_check",
+      sql`${table.decisionConflictType} is null or ${table.decisionConflictType} in ('none', 'duplicate_name', 'alias_collision', 'contradictory_fact', 'import_candidate', 'ai_disagreement')`,
+    ),
+    check(
+      "setting_proposals_decision_metadata_check",
+      sql`(${table.status} = 'pending' and ${table.decidedBy} is null and ${table.decidedAt} is null and ${table.decisionReason} is null) or (${table.status} <> 'pending' and ${table.decidedBy} is not null and ${table.decidedAt} is not null and ${table.decisionReason} is not null)`,
+    ),
+  ],
+);
+
+export const settingChangeRequests = pgTable(
+  "setting_change_requests",
+  {
+    id: uuid("id").primaryKey(),
+    entityId: uuid("entity_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    entityVersion: integer("entity_version").notNull(),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    before: jsonb("before").$type<Record<string, unknown>>().notNull(),
+    after: jsonb("after").$type<Record<string, unknown>>().notNull(),
+    status: text("status").notNull().default("pending"),
+    conflictType: text("conflict_type").notNull().default("none"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull(),
+    impact: jsonb("impact").$type<Record<string, unknown>>().notNull().default({}),
+    idempotencyKey: text("idempotency_key"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("setting_change_requests_entity_idx").on(table.entityId, table.status),
+    index("setting_change_requests_user_work_idx").on(table.userId, table.workId),
+    uniqueIndex("setting_change_requests_user_entity_idempotency_unique").on(
+      table.userId,
+      table.entityId,
+      table.idempotencyKey,
+    ),
+    check(
+      "setting_change_requests_status_check",
+      sql`${table.status} in ('pending', 'approved', 'rejected', 'applied')`,
+    ),
+    check(
+      "setting_change_requests_conflict_type_check",
+      sql`${table.conflictType} in ('none', 'duplicate_name', 'alias_collision', 'contradictory_fact', 'import_candidate', 'ai_disagreement')`,
+    ),
   ],
 );
 
@@ -724,6 +1125,1172 @@ export const facts = pgTable(
   ],
 );
 
+export const characterProfiles = pgTable(
+  "character_profiles",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    desire: text("desire").notNull().default(""),
+    fear: text("fear").notNull().default(""),
+    goal: text("goal").notNull().default(""),
+    voiceSample: text("voice_sample").notNull().default(""),
+    voiceGuide: text("voice_guide").notNull().default(""),
+    disguise: text("disguise").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_profiles_user_work_idx").on(table.userId, table.workId),
+    index("character_profiles_branch_idx").on(table.branchId),
+  ],
+);
+
+export const characterRelationships = pgTable(
+  "character_relationships",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceCharacterId: uuid("source_character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    targetLabel: text("target_label"),
+    relationType: text("relation_type").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_relationships_source_valid_idx").on(
+      table.sourceCharacterId,
+      table.validFromChapter,
+    ),
+    index("character_relationships_user_work_idx").on(table.userId, table.workId),
+    check(
+      "character_relationships_relation_type_check",
+      sql`${table.relationType} in ('kinship', 'ally', 'enemy', 'mentor', 'student', 'subordinate', 'superior', 'member_of', 'located_at', 'controls', 'owns')`,
+    ),
+    check(
+      "character_relationships_target_type_check",
+      sql`${table.targetType} in ('character', 'faction', 'map', 'map_node', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
+    ),
+    check(
+      "character_relationships_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+    check(
+      "character_relationships_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "character_relationships_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const characterStateTransitions = pgTable(
+  "character_state_transitions",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    stateKind: text("state_kind").notNull(),
+    stateKey: text("state_key").notNull(),
+    value: text("value").notNull(),
+    targetType: text("target_type"),
+    targetId: uuid("target_id"),
+    targetLabel: text("target_label"),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_state_transitions_character_valid_idx").on(
+      table.characterId,
+      table.validFromChapter,
+    ),
+    index("character_state_transitions_user_work_idx").on(table.userId, table.workId),
+    check(
+      "character_state_transitions_kind_check",
+      sql`${table.stateKind} in ('body', 'limb', 'location', 'ability', 'disguise')`,
+    ),
+    check(
+      "character_state_transitions_key_check",
+      sql`${table.stateKey} ~ '^[a-z][a-z0-9_]{0,63}$'`,
+    ),
+    check(
+      "character_state_transitions_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+    check(
+      "character_state_transitions_target_check",
+      sql`(${table.stateKind} = 'location' and ${table.targetType} in ('map', 'map_node') and ${table.targetId} is not null) or (${table.stateKind} <> 'location' and ${table.targetType} is null and ${table.targetId} is null and ${table.targetLabel} is null)`,
+    ),
+    check(
+      "character_state_transitions_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "character_state_transitions_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const characterKnowledgeStates = pgTable(
+  "character_knowledge_states",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    objectiveFactId: uuid("objective_fact_id")
+      .notNull()
+      .references(() => facts.id, { onDelete: "restrict" }),
+    state: text("state").notNull(),
+    claimedContent: text("claimed_content"),
+    sourceKind: text("source_kind").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_knowledge_states_character_valid_idx").on(
+      table.characterId,
+      table.validFromChapter,
+    ),
+    index("character_knowledge_states_fact_idx").on(table.objectiveFactId),
+    index("character_knowledge_states_user_work_idx").on(table.userId, table.workId),
+    check(
+      "character_knowledge_states_state_check",
+      sql`${table.state} in ('knowledge', 'belief', 'suspicion', 'misbelief', 'unknown')`,
+    ),
+    check(
+      "character_knowledge_states_source_kind_check",
+      sql`${table.sourceKind} in ('observed', 'told', 'inferred', 'read', 'assumed')`,
+    ),
+    check(
+      "character_knowledge_states_content_check",
+      sql`(${table.state} = 'unknown' and ${table.claimedContent} is null) or (${table.state} <> 'unknown' and length(trim(coalesce(${table.claimedContent}, ''))) > 0)`,
+    ),
+    check(
+      "character_knowledge_states_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+    check(
+      "character_knowledge_states_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "character_knowledge_states_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const characterChangeRequests = pgTable(
+  "character_change_requests",
+  {
+    id: uuid("id").primaryKey(),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    kind: text("kind").notNull(),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    before: jsonb("before").$type<Record<string, unknown>>().notNull().default({}),
+    after: jsonb("after").$type<Record<string, unknown>>().notNull(),
+    status: text("status").notNull().default("pending"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull(),
+    idempotencyKey: text("idempotency_key"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_change_requests_character_idx").on(table.characterId, table.status),
+    index("character_change_requests_user_work_idx").on(table.userId, table.workId),
+    uniqueIndex("character_change_requests_user_idempotency_unique").on(
+      table.userId,
+      table.characterId,
+      table.idempotencyKey,
+    ),
+    check(
+      "character_change_requests_kind_check",
+      sql`${table.kind} in ('profile', 'relationship', 'state_transition', 'knowledge_state')`,
+    ),
+    check(
+      "character_change_requests_status_check",
+      sql`${table.status} in ('pending', 'approved', 'rejected', 'applied')`,
+    ),
+    check("character_change_requests_version_check", sql`${table.version} > 0`),
+  ],
+);
+
+export const factionProfiles = pgTable(
+  "faction_profiles",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    overview: text("overview").notNull().default(""),
+    goals: text("goals").notNull().default(""),
+    resources: text("resources").notNull().default(""),
+    doctrine: text("doctrine").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("faction_profiles_user_work_idx").on(table.userId, table.workId),
+    index("faction_profiles_branch_idx").on(table.branchId),
+  ],
+);
+
+export const factionRelationships = pgTable(
+  "faction_relationships",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceFactionId: uuid("source_faction_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    targetLabel: text("target_label"),
+    relationType: text("relation_type").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("faction_relationships_source_valid_idx").on(
+      table.sourceFactionId,
+      table.validFromChapter,
+    ),
+    index("faction_relationships_user_work_idx").on(table.userId, table.workId),
+    check("faction_relationships_target_type_check", sql`${table.targetType} = 'faction'`),
+    check(
+      "faction_relationships_relation_type_check",
+      sql`${table.relationType} in ('ally', 'enemy', 'vassal', 'overlord', 'trade', 'neutral')`,
+    ),
+    check(
+      "faction_relationships_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+    check(
+      "faction_relationships_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "faction_relationships_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const mapControl = pgTable(
+  "map_control",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    factionId: uuid("faction_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    nodeType: text("node_type").notNull(),
+    nodeId: uuid("node_id").notNull(),
+    nodeLabel: text("node_label"),
+    controlLevel: text("control_level").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("map_control_node_valid_idx").on(table.nodeId, table.validFromChapter),
+    index("map_control_user_work_idx").on(table.userId, table.workId),
+    check("map_control_node_type_check", sql`${table.nodeType} in ('map', 'map_node')`),
+    check(
+      "map_control_level_check",
+      sql`${table.controlLevel} in ('direct', 'military', 'influence', 'contested')`,
+    ),
+    check(
+      "map_control_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const mapLayers = pgTable(
+  "map_layers",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    parentLayerId: uuid("parent_layer_id").references((): AnyPgColumn => mapLayers.id, {
+      onDelete: "set null",
+    }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    minScale: real("min_scale").notNull().default(0),
+    maxScale: real("max_scale").notNull().default(100),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("map_layers_map_name_unique").on(table.mapId, table.name),
+    index("map_layers_user_work_idx").on(table.userId, table.workId),
+    check("map_layers_scale_check", sql`${table.maxScale} >= ${table.minScale}`),
+    check(
+      "map_layers_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const mapNodes = pgTable(
+  "map_nodes",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    layerId: uuid("layer_id").references(() => mapLayers.id, { onDelete: "set null" }),
+    parentNodeId: uuid("parent_node_id").references((): AnyPgColumn => mapNodes.id, {
+      onDelete: "set null",
+    }),
+    name: text("name").notNull(),
+    nodeType: text("node_type").notNull(),
+    summary: text("summary").notNull().default(""),
+    x: real("x"),
+    y: real("y"),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("map_nodes_map_name_unique").on(table.mapId, table.name),
+    index("map_nodes_map_parent_idx").on(table.mapId, table.parentNodeId),
+    index("map_nodes_user_work_idx").on(table.userId, table.workId),
+    check(
+      "map_nodes_type_check",
+      sql`${table.nodeType} in ('region', 'settlement', 'landmark', 'passage', 'battlefield', 'sect', 'dungeon', 'other')`,
+    ),
+    check(
+      "map_nodes_coordinates_check",
+      sql`(${table.x} is null and ${table.y} is null) or (${table.x} >= 0 and ${table.x} <= 1 and ${table.y} >= 0 and ${table.y} <= 1)`,
+    ),
+    check(
+      "map_nodes_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const mapEdges = pgTable(
+  "map_edges",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    layerId: uuid("layer_id").references(() => mapLayers.id, { onDelete: "set null" }),
+    fromNodeId: uuid("from_node_id")
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: "cascade" }),
+    toNodeId: uuid("to_node_id")
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: "cascade" }),
+    routeType: text("route_type").notNull(),
+    bidirectional: boolean("bidirectional").notNull().default(true),
+    travelMinutes: integer("travel_minutes").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("map_edges_map_from_idx").on(table.mapId, table.fromNodeId),
+    index("map_edges_user_work_idx").on(table.userId, table.workId),
+    check(
+      "map_edges_type_check",
+      sql`${table.routeType} in ('road', 'trail', 'water', 'air', 'teleport', 'secret')`,
+    ),
+    check("map_edges_endpoint_check", sql`${table.fromNodeId} <> ${table.toNodeId}`),
+    check("map_edges_travel_time_check", sql`${table.travelMinutes} > 0`),
+    check(
+      "map_edges_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const mapMarkers = pgTable(
+  "map_markers",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mapId: uuid("map_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    layerId: uuid("layer_id").references(() => mapLayers.id, { onDelete: "set null" }),
+    nodeId: uuid("node_id").references(() => mapNodes.id, { onDelete: "set null" }),
+    label: text("label").notNull(),
+    markerType: text("marker_type").notNull(),
+    x: real("x").notNull(),
+    y: real("y").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("map_markers_map_idx").on(table.mapId),
+    index("map_markers_user_work_idx").on(table.userId, table.workId),
+    check(
+      "map_markers_type_check",
+      sql`${table.markerType} in ('danger', 'event', 'resource', 'note', 'character')`,
+    ),
+    check(
+      "map_markers_coordinates_check",
+      sql`${table.x} >= 0 and ${table.x} <= 1 and ${table.y} >= 0 and ${table.y} <= 1`,
+    ),
+    check(
+      "map_markers_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const timelineEras = pgTable(
+  "timeline_eras",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    orderIndex: integer("order_index").notNull(),
+    startSortKey: integer("start_sort_key").notNull(),
+    endSortKey: integer("end_sort_key"),
+    description: text("description").notNull().default(""),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("timeline_eras_branch_name_unique").on(table.branchId, table.name),
+    index("timeline_eras_user_work_idx").on(table.userId, table.workId),
+    check(
+      "timeline_eras_range_check",
+      sql`${table.endSortKey} is null or ${table.endSortKey} >= ${table.startSortKey}`,
+    ),
+  ],
+);
+
+export const timelineEvents = pgTable(
+  "timeline_events",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    era: text("era").notNull(),
+    storyTimeLabel: text("story_time_label").notNull(),
+    storyTimeSortKey: integer("story_time_sort_key").notNull(),
+    durationMinutes: integer("duration_minutes").notNull().default(0),
+    durationLabel: text("duration_label").notNull().default(""),
+    eventText: text("event_text").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("timeline_events_branch_slot_unique").on(
+      table.branchId,
+      table.era,
+      table.storyTimeSortKey,
+    ),
+    index("timeline_events_user_work_idx").on(table.userId, table.workId),
+    check("timeline_events_duration_check", sql`${table.durationMinutes} >= 0`),
+    check(
+      "timeline_events_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const characterItineraries = pgTable(
+  "character_itineraries",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    fromNodeId: uuid("from_node_id")
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: "restrict" }),
+    toNodeId: uuid("to_node_id")
+      .notNull()
+      .references(() => mapNodes.id, { onDelete: "restrict" }),
+    departureEra: text("departure_era").notNull(),
+    departureLabel: text("departure_label").notNull(),
+    departureSortKey: integer("departure_sort_key").notNull(),
+    arrivalEra: text("arrival_era").notNull(),
+    arrivalLabel: text("arrival_label").notNull(),
+    arrivalSortKey: integer("arrival_sort_key").notNull(),
+    routeTravelMinutes: integer("route_travel_minutes").notNull(),
+    travelMinutes: integer("travel_minutes").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_itineraries_character_time_idx").on(table.characterId, table.departureSortKey),
+    index("character_itineraries_user_work_idx").on(table.userId, table.workId),
+    check(
+      "character_itineraries_time_check",
+      sql`${table.arrivalEra} <> ${table.departureEra} or ${table.arrivalSortKey} > ${table.departureSortKey}`,
+    ),
+    check(
+      "character_itineraries_travel_check",
+      sql`${table.travelMinutes} >= ${table.routeTravelMinutes}`,
+    ),
+    check(
+      "character_itineraries_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const powerSystems = pgTable(
+  "power_systems",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    overview: text("overview").notNull().default(""),
+    lifespanMode: text("lifespan_mode").notNull().default("none"),
+    lifespanUnit: text("lifespan_unit").notNull().default("年"),
+    lifespanBasis: text("lifespan_basis").notNull().default(""),
+    lifespanDescription: text("lifespan_description").notNull().default(""),
+    lifespanPathId: uuid("lifespan_path_id"),
+    lifespanFixedAmount: integer("lifespan_fixed_amount"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("power_systems_user_work_idx").on(table.userId, table.workId),
+    index("power_systems_branch_idx").on(table.branchId),
+    check(
+      "power_systems_lifespan_mode_check",
+      sql`${table.lifespanMode} in ('none', 'realm', 'fixed', 'custom')`,
+    ),
+    check(
+      "power_systems_lifespan_amount_check",
+      sql`(${table.lifespanMode} = 'fixed' and ${table.lifespanFixedAmount} is not null and ${table.lifespanFixedAmount} > 0) or (${table.lifespanMode} <> 'fixed' and ${table.lifespanFixedAmount} is null)`,
+    ),
+    check("power_systems_lifespan_unit_check", sql`length(trim(${table.lifespanUnit})) > 0`),
+  ],
+);
+
+export const powerPaths = pgTable(
+  "power_paths",
+  {
+    id: uuid("id").primaryKey(),
+    powerSystemId: uuid("power_system_id")
+      .notNull()
+      .references(() => powerSystems.entityId, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    pathType: text("path_type").notNull(),
+    description: text("description").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("power_paths_system_name_unique").on(table.powerSystemId, table.name),
+    index("power_paths_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
+export const powerRealms = pgTable(
+  "power_realms",
+  {
+    id: uuid("id").primaryKey(),
+    pathId: uuid("path_id")
+      .notNull()
+      .references(() => powerPaths.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    rank: integer("rank").notNull(),
+    description: text("description").notNull().default(""),
+    breakthroughConditions: text("breakthrough_conditions").notNull(),
+    breakthroughCosts: text("breakthrough_costs").notNull().default(""),
+    bottlenecks: text("bottlenecks").notNull().default(""),
+    counters: text("counters").notNull().default(""),
+    counteredBy: text("countered_by").notNull().default(""),
+    lifespanAmount: integer("lifespan_amount"),
+    prerequisiteRealmId: uuid("prerequisite_realm_id").references(
+      (): AnyPgColumn => powerRealms.id,
+      { onDelete: "set null" },
+    ),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("power_realms_path_name_unique").on(table.pathId, table.name),
+    uniqueIndex("power_realms_path_rank_unique").on(table.pathId, table.rank),
+    index("power_realms_user_work_idx").on(table.userId, table.workId),
+    check("power_realms_rank_check", sql`${table.rank} > 0`),
+    check(
+      "power_realms_lifespan_check",
+      sql`${table.lifespanAmount} is null or ${table.lifespanAmount} > 0`,
+    ),
+    check(
+      "power_realms_prerequisite_check",
+      sql`${table.prerequisiteRealmId} is null or ${table.prerequisiteRealmId} <> ${table.id}`,
+    ),
+  ],
+);
+
+export const specialMechanisms = pgTable(
+  "special_mechanisms",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    mechanismType: text("mechanism_type").notNull(),
+    ownerType: text("owner_type"),
+    ownerId: uuid("owner_id"),
+    ownerLabel: text("owner_label"),
+    powerSystemId: uuid("power_system_id").references(() => entities.id, {
+      onDelete: "set null",
+    }),
+    rules: text("rules").notNull(),
+    costs: text("costs").notNull().default(""),
+    limits: text("limits").notNull().default(""),
+    growth: text("growth").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("special_mechanisms_user_work_idx").on(table.userId, table.workId),
+    check(
+      "special_mechanisms_owner_check",
+      sql`(${table.ownerType} is null and ${table.ownerId} is null and ${table.ownerLabel} is null) or (${table.ownerType} in ('character', 'faction', 'item') and ${table.ownerId} is not null)`,
+    ),
+    check("special_mechanisms_type_check", sql`length(trim(${table.mechanismType})) > 0`),
+  ],
+);
+
+export const mechanismOwnershipEvents = pgTable(
+  "mechanism_ownership_events",
+  {
+    id: uuid("id").primaryKey(),
+    mechanismId: uuid("mechanism_id")
+      .notNull()
+      .references(() => specialMechanisms.entityId, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    previousOwnerType: text("previous_owner_type"),
+    previousOwnerId: uuid("previous_owner_id"),
+    previousOwnerLabel: text("previous_owner_label"),
+    ownerType: text("owner_type").notNull(),
+    ownerId: uuid("owner_id").notNull(),
+    ownerLabel: text("owner_label"),
+    reason: text("reason").notNull(),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("mechanism_ownership_events_mechanism_idx").on(table.mechanismId, table.createdAt),
+    index("mechanism_ownership_events_user_work_idx").on(table.userId, table.workId),
+    check(
+      "mechanism_ownership_events_owner_check",
+      sql`${table.ownerType} in ('character', 'faction', 'item')`,
+    ),
+    check(
+      "mechanism_ownership_events_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
+export const itemTechniques = pgTable(
+  "item_techniques",
+  {
+    entityId: uuid("entity_id")
+      .primaryKey()
+      .references(() => entities.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    category: text("category").notNull(),
+    grade: text("grade").notNull().default(""),
+    effect: text("effect").notNull(),
+    cost: text("cost").notNull().default(""),
+    limits: text("limits").notNull().default(""),
+    ownershipModel: text("ownership_model").notNull(),
+    consumable: boolean("consumable").notNull().default(false),
+    quantity: integer("quantity").notNull().default(1),
+    equipmentSlot: text("equipment_slot"),
+    equippedByType: text("equipped_by_type"),
+    equippedById: uuid("equipped_by_id"),
+    equippedByLabel: text("equipped_by_label"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("item_techniques_user_work_idx").on(table.userId, table.workId),
+    check(
+      "item_techniques_kind_check",
+      sql`${table.kind} in ('item', 'technique', 'equipment', 'resource')`,
+    ),
+    check(
+      "item_techniques_ownership_model_check",
+      sql`${table.ownershipModel} in ('shared', 'unique')`,
+    ),
+    check("item_techniques_quantity_check", sql`${table.quantity} >= 0`),
+    check(
+      "item_techniques_unique_quantity_check",
+      sql`${table.ownershipModel} <> 'unique' or ${table.quantity} <= 1`,
+    ),
+    check(
+      "item_techniques_equipment_check",
+      sql`(${table.kind} = 'equipment' and ${table.equipmentSlot} is not null) or (${table.kind} <> 'equipment' and ${table.equipmentSlot} is null and ${table.equippedByType} is null and ${table.equippedById} is null and ${table.equippedByLabel} is null)`,
+    ),
+  ],
+);
+
+export const itemRights = pgTable(
+  "item_rights",
+  {
+    id: uuid("id").primaryKey(),
+    itemId: uuid("item_id")
+      .notNull()
+      .references(() => itemTechniques.entityId, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    rightType: text("right_type").notNull(),
+    holderType: text("holder_type").notNull(),
+    holderId: uuid("holder_id").notNull(),
+    holderLabel: text("holder_label"),
+    sharePercent: real("share_percent"),
+    validFromChapter: integer("valid_from_chapter").notNull(),
+    validToChapter: integer("valid_to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    evidence: jsonb("evidence").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    reason: text("reason").notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("item_rights_item_type_valid_idx").on(
+      table.itemId,
+      table.rightType,
+      table.validFromChapter,
+    ),
+    index("item_rights_user_work_idx").on(table.userId, table.workId),
+    check(
+      "item_rights_type_check",
+      sql`${table.rightType} in ('ownership', 'custody', 'location', 'usage', 'disposal')`,
+    ),
+    check(
+      "item_rights_holder_check",
+      sql`(${table.rightType} = 'location' and ${table.holderType} in ('map', 'map_node') and ${table.sharePercent} is null) or (${table.rightType} <> 'location' and ${table.holderType} in ('character', 'faction', 'item'))`,
+    ),
+    check(
+      "item_rights_share_check",
+      sql`(${table.rightType} = 'ownership' and ${table.sharePercent} is not null and ${table.sharePercent} > 0 and ${table.sharePercent} <= 100) or (${table.rightType} <> 'ownership' and ${table.sharePercent} is null)`,
+    ),
+    check(
+      "item_rights_validity_check",
+      sql`${table.validToChapter} is null or ${table.validToChapter} >= ${table.validFromChapter}`,
+    ),
+  ],
+);
+
 export const jobs = pgTable(
   "jobs",
   {
@@ -737,19 +2304,25 @@ export const jobs = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    chapterId: uuid("chapter_id")
-      .notNull()
-      .references(() => chapters.id, { onDelete: "cascade" }),
-    modelConfigId: uuid("model_config_id")
-      .notNull()
-      .references(() => modelConfigs.id, { onDelete: "restrict" }),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    sourceVersionId: uuid("source_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
+      onDelete: "restrict",
+    }),
     type: text("type").notNull(),
     status: text("status").notNull().default("queued"),
     progress: integer("progress").notNull().default(0),
     currentStep: text("current_step").notNull().default("prepare"),
+    priority: integer("priority").notNull().default(0),
     idempotencyKey: text("idempotency_key").notNull(),
     budget: jsonb("budget").$type<Record<string, unknown>>().notNull(),
     checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull(),
+    checkpointVersion: integer("checkpoint_version").notNull().default(0),
+    orchestration: jsonb("orchestration").$type<Record<string, unknown>>(),
+    action: text("action"),
+    actionInput: jsonb("action_input").$type<Record<string, unknown>>(),
     cost: jsonb("cost").$type<Record<string, unknown>>().notNull(),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
@@ -762,16 +2335,97 @@ export const jobs = pgTable(
     uniqueIndex("jobs_chapter_idempotency_unique").on(
       table.userId,
       table.chapterId,
+      table.type,
       table.idempotencyKey,
     ),
+    uniqueIndex("jobs_workflow_idempotency_unique")
+      .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
+      .where(sql`${table.type} = 'agent_workflow'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
-    check("jobs_type_check", sql`${table.type} in ('generate_chapter')`),
+    check(
+      "jobs_type_check",
+      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action')`,
+    ),
+    check(
+      "jobs_required_scope_check",
+      sql`(${table.type} = 'agent_workflow') or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+    ),
+    check(
+      "jobs_writing_action_scope_check",
+      sql`(${table.type} = 'write_action' and ${table.action} is not null and ${table.sourceVersionId} is not null and ${table.actionInput} is not null) or (${table.type} <> 'write_action' and ${table.action} is null and ${table.sourceVersionId} is null and ${table.actionInput} is null)`,
+    ),
     check(
       "jobs_status_check",
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
     ),
     check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
+  ],
+);
+
+export const writingActions = pgTable(
+  "writing_actions",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    version: integer("version").notNull(),
+    outputKind: text("output_kind").notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    affectedRange: jsonb("affected_range").$type<Record<string, number>>(),
+    artifact: jsonb("artifact").$type<Record<string, unknown>>().notNull(),
+    promptKey: text("prompt_key").notNull(),
+    promptVersion: integer("prompt_version").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    modelProvider: text("model_provider").notNull(),
+    model: text("model").notNull(),
+    modelParameters: jsonb("model_parameters")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("writing_actions_job_unique").on(table.jobId),
+    uniqueIndex("writing_actions_chapter_version_unique").on(table.chapterId, table.version),
+    index("writing_actions_user_work_idx").on(table.userId, table.workId),
+    index("writing_actions_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check(
+      "writing_actions_action_check",
+      sql`${table.action} in ('continue', 'rewrite', 'expand', 'condense', 'change_pov', 'add_hook', 'generate_title', 'generate_summary', 'selection_rewrite', 'targeted_revision')`,
+    ),
+    check(
+      "writing_actions_output_kind_check",
+      sql`${table.outputKind} in ('chapter_text', 'title_options', 'summary', 'hooks')`,
+    ),
+    check("writing_actions_version_check", sql`${table.version} > 0`),
+    check(
+      "writing_actions_chapter_output_check",
+      sql`(${table.outputKind} = 'chapter_text' and ${table.chapterVersionId} is not null) or (${table.outputKind} <> 'chapter_text' and ${table.chapterVersionId} is null)`,
+    ),
+    check("writing_actions_prompt_hash_check", sql`${table.promptHash} ~ '^[a-f0-9]{64}$'`),
   ],
 );
 
@@ -796,6 +2450,10 @@ export const jobSteps = pgTable(
     attempt: integer("attempt").notNull().default(0),
     inputHash: text("input_hash"),
     output: jsonb("output").$type<Record<string, unknown>>().notNull().default({}),
+    outputRefs: jsonb("output_refs")
+      .$type<Array<{ type: string; id: string }>>()
+      .notNull()
+      .default([]),
     cost: jsonb("cost").$type<Record<string, unknown>>().notNull().default({}),
     errorCode: text("error_code"),
     errorMessage: text("error_message"),
@@ -806,14 +2464,59 @@ export const jobSteps = pgTable(
   (table) => [
     uniqueIndex("job_steps_job_step_unique").on(table.jobId, table.stepKey),
     index("job_steps_job_status_idx").on(table.jobId, table.status),
-    check(
-      "job_steps_step_check",
-      sql`${table.stepKey} in ('prepare', 'compile_context', 'draft', 'verify', 'revise', 'extract_facts', 'await_review')`,
-    ),
+    check("job_steps_step_check", sql`${table.stepKey} ~ '^[a-z][a-z0-9_.-]{0,99}$'`),
     check(
       "job_steps_status_check",
-      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed', 'skipped')`,
+      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed', 'skipped', 'cancelled')`,
     ),
+  ],
+);
+
+export const jobStepAttempts = pgTable(
+  "job_step_attempts",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stepKey: text("step_key").notNull(),
+    attempt: integer("attempt").notNull(),
+    status: text("status").notNull().default("running"),
+    inputHash: text("input_hash"),
+    outputRefs: jsonb("output_refs")
+      .$type<Array<{ type: string; id: string }>>()
+      .notNull()
+      .default([]),
+    checkpointRevision: integer("checkpoint_revision").notNull().default(0),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_step_attempts_job_step_attempt_unique").on(
+      table.jobId,
+      table.stepKey,
+      table.attempt,
+    ),
+    index("job_step_attempts_job_step_started_idx").on(table.jobId, table.stepKey, table.startedAt),
+    check("job_step_attempts_step_check", sql`${table.stepKey} ~ '^[a-z][a-z0-9_.-]{0,99}$'`),
+    check(
+      "job_step_attempts_status_check",
+      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed', 'skipped', 'cancelled')`,
+    ),
+    check("job_step_attempts_attempt_check", sql`${table.attempt} > 0`),
+    check("job_step_attempts_checkpoint_revision_check", sql`${table.checkpointRevision} >= 0`),
   ],
 );
 
@@ -834,10 +2537,76 @@ export const jobCheckpoints = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     stepKey: text("step_key").notNull(),
+    schemaVersion: integer("schema_version").notNull().default(1),
+    revision: integer("revision").notNull().default(0),
+    attempt: integer("attempt").notNull().default(0),
+    inputHash: text("input_hash"),
+    outputRefs: jsonb("output_refs")
+      .$type<Array<{ type: string; id: string }>>()
+      .notNull()
+      .default([]),
     payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [index("job_checkpoints_job_created_idx").on(table.jobId, table.createdAt)],
+  (table) => [
+    uniqueIndex("job_checkpoints_job_revision_unique").on(table.jobId, table.revision),
+    index("job_checkpoints_job_created_idx").on(table.jobId, table.createdAt),
+    check("job_checkpoints_schema_version_check", sql`${table.schemaVersion} > 0`),
+    check("job_checkpoints_revision_check", sql`${table.revision} >= 0`),
+    check("job_checkpoints_attempt_check", sql`${table.attempt} >= 0`),
+  ],
+);
+
+export const jobRecoveries = pgTable(
+  "job_recoveries",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    action: text("action").notNull(),
+    reason: text("reason").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    fromStatus: text("from_status").notNull(),
+    fromCheckpointVersion: integer("from_checkpoint_version").notNull(),
+    checkpointVersion: integer("checkpoint_version").notNull(),
+    resumeStep: text("resume_step").notNull(),
+    correlationId: text("correlation_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_recoveries_job_idempotency_unique").on(table.jobId, table.idempotencyKey),
+    index("job_recoveries_user_work_idx").on(table.userId, table.workId),
+    index("job_recoveries_job_created_idx").on(table.jobId, table.createdAt),
+    check("job_recoveries_action_check", sql`${table.action} in ('retry', 'resume')`),
+    check("job_recoveries_reason_check", sql`length(trim(${table.reason})) > 0`),
+    check(
+      "job_recoveries_from_status_check",
+      sql`${table.fromStatus} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
+    ),
+    check(
+      "job_recoveries_versions_check",
+      sql`${table.fromCheckpointVersion} >= 0 and ${table.checkpointVersion} > ${table.fromCheckpointVersion}`,
+    ),
+    check(
+      "job_recoveries_resume_step_check",
+      sql`${table.resumeStep} ~ '^[a-z][a-z0-9_.-]{0,99}$'`,
+    ),
+  ],
 );
 
 export const jobEvents = pgTable(
@@ -902,6 +2671,55 @@ export const contextPackVersions = pgTable(
   ],
 );
 
+export const promptVersions = pgTable(
+  "prompt_versions",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    stepKey: text("step_key").notNull(),
+    key: text("key").notNull(),
+    version: integer("version").notNull(),
+    role: text("role").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    systemHash: text("system_hash").notNull(),
+    inputHash: text("input_hash").notNull(),
+    contextPackId: uuid("context_pack_id").references(() => contextPackVersions.id, {
+      onDelete: "set null",
+    }),
+    compilerVersion: text("compiler_version"),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("prompt_versions_job_step_hash_unique").on(
+      table.jobId,
+      table.stepKey,
+      table.key,
+      table.promptHash,
+    ),
+    index("prompt_versions_user_work_idx").on(table.userId, table.workId),
+    index("prompt_versions_job_created_idx").on(table.jobId, table.createdAt),
+    check(
+      "prompt_versions_role_check",
+      sql`${table.role} in ('planner', 'context_curator', 'writer', 'critic', 'reviser', 'fact_extractor', 'canon_curator')`,
+    ),
+    check("prompt_versions_version_check", sql`${table.version} > 0`),
+  ],
+);
+
 export const agentRuns = pgTable(
   "agent_runs",
   {
@@ -918,19 +2736,165 @@ export const agentRuns = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    promptVersionId: uuid("prompt_version_id").references(() => promptVersions.id, {
+      onDelete: "set null",
+    }),
+    modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
+      onDelete: "set null",
+    }),
     stepKey: text("step_key").notNull(),
     role: text("role").notNull(),
     status: text("status").notNull(),
+    provider: text("provider"),
+    model: text("model"),
     inputHash: text("input_hash").notNull(),
+    outputHash: text("output_hash"),
     output: text("output").notNull().default(""),
+    inputSummary: jsonb("input_summary").$type<Record<string, unknown>>().notNull().default({}),
+    outputSummary: jsonb("output_summary").$type<Record<string, unknown>>().notNull().default({}),
     citations: jsonb("citations").$type<unknown[]>().notNull().default([]),
     usage: jsonb("usage").$type<Record<string, unknown>>().notNull().default({}),
+    failureClass: text("failure_class"),
+    escalationReason: text("escalation_reason"),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
   (table) => [
     uniqueIndex("agent_runs_job_step_unique").on(table.jobId, table.stepKey),
     index("agent_runs_job_step_idx").on(table.jobId, table.stepKey),
+    index("agent_runs_chapter_created_idx").on(table.chapterId, table.startedAt),
+    index("agent_runs_user_work_idx").on(table.userId, table.workId),
+    check("agent_runs_status_check", sql`${table.status} in ('running', 'succeeded', 'failed')`),
+    check(
+      "agent_runs_role_check",
+      sql`${table.role} in ('planner', 'context_curator', 'writer', 'critic', 'reviser', 'fact_extractor', 'canon_curator')`,
+    ),
+    check(
+      "agent_runs_failure_class_check",
+      sql`${table.failureClass} is null or ${table.failureClass} in ('provider', 'timeout', 'rate_limit', 'schema', 'policy', 'budget', 'cancelled', 'unknown')`,
+    ),
+  ],
+);
+
+export const costReservations = pgTable(
+  "cost_reservations",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    agentRunId: uuid("agent_run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    status: text("status").notNull().default("reserved"),
+    reservedTokens: integer("reserved_tokens").notNull(),
+    reservedCostCny: real("reserved_cost_cny").notNull(),
+    settledTokens: integer("settled_tokens").notNull().default(0),
+    settledCostCny: real("settled_cost_cny").notNull().default(0),
+    failureClass: text("failure_class"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("cost_reservations_job_idempotency_unique").on(table.jobId, table.idempotencyKey),
+    index("cost_reservations_job_status_idx").on(table.jobId, table.status),
+    index("cost_reservations_user_work_idx").on(table.userId, table.workId),
+    index("cost_reservations_agent_run_idx").on(table.agentRunId),
+    check(
+      "cost_reservations_status_check",
+      sql`${table.status} in ('reserved', 'settled', 'released')`,
+    ),
+    check(
+      "cost_reservations_amounts_check",
+      sql`${table.reservedTokens} >= 0 and ${table.reservedCostCny} >= 0 and ${table.settledTokens} >= 0 and ${table.settledCostCny} >= 0`,
+    ),
+    check(
+      "cost_reservations_failure_class_check",
+      sql`${table.failureClass} is null or ${table.failureClass} in ('provider', 'timeout', 'rate_limit', 'schema', 'policy', 'budget', 'cancelled', 'unknown')`,
+    ),
+    check(
+      "cost_reservations_evidence_check",
+      sql`(${table.status} = 'settled' and ${table.settledAt} is not null) or (${table.status} <> 'settled' and ${table.settledAt} is null)`,
+    ),
+  ],
+);
+
+export const modelCalls = pgTable(
+  "model_calls",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    agentRunId: uuid("agent_run_id")
+      .notNull()
+      .references(() => agentRuns.id, { onDelete: "cascade" }),
+    promptVersionId: uuid("prompt_version_id")
+      .notNull()
+      .references(() => promptVersions.id, { onDelete: "restrict" }),
+    costReservationId: uuid("cost_reservation_id")
+      .notNull()
+      .references(() => costReservations.id, { onDelete: "restrict" }),
+    stepKey: text("step_key").notNull(),
+    attempt: integer("attempt").notNull(),
+    status: text("status").notNull().default("started"),
+    provider: text("provider").notNull(),
+    model: text("model").notNull(),
+    parameters: jsonb("parameters").$type<Record<string, unknown>>().notNull(),
+    configHash: text("config_hash").notNull(),
+    inputHash: text("input_hash").notNull(),
+    outputHash: text("output_hash"),
+    inputSummary: jsonb("input_summary").$type<Record<string, unknown>>().notNull().default({}),
+    outputSummary: jsonb("output_summary").$type<Record<string, unknown>>().notNull().default({}),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    costCny: real("cost_cny").notNull().default(0),
+    failureClass: text("failure_class"),
+    errorCode: text("error_code"),
+    escalationReason: text("escalation_reason"),
+    providerRequestId: text("provider_request_id"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("model_calls_job_step_attempt_unique").on(
+      table.jobId,
+      table.stepKey,
+      table.attempt,
+    ),
+    uniqueIndex("model_calls_cost_reservation_unique").on(table.costReservationId),
+    index("model_calls_job_created_idx").on(table.jobId, table.createdAt),
+    index("model_calls_chapter_created_idx").on(table.chapterId, table.createdAt),
+    index("model_calls_user_work_idx").on(table.userId, table.workId),
+    check("model_calls_status_check", sql`${table.status} in ('started', 'succeeded', 'failed')`),
+    check(
+      "model_calls_failure_class_check",
+      sql`${table.failureClass} is null or ${table.failureClass} in ('provider', 'timeout', 'rate_limit', 'schema', 'policy', 'budget', 'cancelled', 'unknown')`,
+    ),
+    check(
+      "model_calls_usage_check",
+      sql`${table.inputTokens} >= 0 and ${table.outputTokens} >= 0 and ${table.costCny} >= 0`,
+    ),
   ],
 );
 
@@ -959,6 +2923,107 @@ export const usageRecords = pgTable(
       .on(table.jobId, table.stepKey)
       .where(sql`${table.stepKey} is not null`),
     index("usage_records_job_created_idx").on(table.jobId, table.createdAt),
+  ],
+);
+
+export const agentGrants = pgTable(
+  "agent_grants",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id").notNull(),
+    role: text("role").notNull(),
+    status: text("status").notNull().default("active"),
+    toolNames: jsonb("tool_names").$type<string[]>().notNull(),
+    resourceScope: jsonb("resource_scope").$type<Record<string, unknown>>().notNull(),
+    budget: jsonb("budget").$type<Record<string, unknown>>().notNull(),
+    maxImpact: jsonb("max_impact").$type<Record<string, unknown>>().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    issuedBy: uuid("issued_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    revokedBy: uuid("revoked_by").references(() => users.id, { onDelete: "restrict" }),
+    revocationReason: text("revocation_reason"),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("agent_grants_user_work_idx").on(table.userId, table.workId),
+    index("agent_grants_branch_task_idx").on(table.branchId, table.taskId),
+    index("agent_grants_expires_idx").on(table.expiresAt),
+    check(
+      "agent_grants_role_check",
+      sql`${table.role} in ('planner', 'context_curator', 'writer', 'critic', 'reviser', 'fact_extractor', 'canon_curator')`,
+    ),
+    check("agent_grants_status_check", sql`${table.status} in ('active', 'revoked')`),
+    check("agent_grants_version_check", sql`${table.version} > 0`),
+    check(
+      "agent_grants_revocation_check",
+      sql`(${table.status} = 'active' and ${table.revokedAt} is null and ${table.revokedBy} is null and ${table.revocationReason} is null) or (${table.status} = 'revoked' and ${table.revokedAt} is not null and ${table.revokedBy} is not null and ${table.revocationReason} is not null)`,
+    ),
+  ],
+);
+
+export const agentToolCalls = pgTable(
+  "agent_tool_calls",
+  {
+    id: uuid("id").primaryKey(),
+    grantId: uuid("grant_id")
+      .notNull()
+      .references(() => agentGrants.id, { onDelete: "cascade" }),
+    agentRunId: uuid("agent_run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    taskId: uuid("task_id").notNull(),
+    toolName: text("tool_name").notNull(),
+    sideEffect: text("side_effect"),
+    decision: text("decision").notNull(),
+    reason: text("reason").notNull(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: uuid("resource_id"),
+    inputHash: text("input_hash").notNull(),
+    inputSummary: jsonb("input_summary").$type<Record<string, unknown>>().notNull(),
+    outputSummary: jsonb("output_summary").$type<Record<string, unknown>>(),
+    affectedResources: integer("affected_resources").notNull(),
+    estimatedCostCny: real("estimated_cost_cny").notNull(),
+    estimatedTokens: integer("estimated_tokens").notNull(),
+    status: text("status").notNull(),
+    errorCode: text("error_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("agent_tool_calls_grant_created_idx").on(table.grantId, table.createdAt),
+    index("agent_tool_calls_user_work_idx").on(table.userId, table.workId),
+    check("agent_tool_calls_decision_check", sql`${table.decision} in ('allow', 'deny')`),
+    check(
+      "agent_tool_calls_side_effect_check",
+      sql`${table.sideEffect} is null or ${table.sideEffect} in ('S0', 'S1', 'S2', 'S3', 'S4')`,
+    ),
+    check(
+      "agent_tool_calls_status_check",
+      sql`${table.status} in ('authorized', 'denied', 'succeeded', 'failed')`,
+    ),
+    check("agent_tool_calls_affected_check", sql`${table.affectedResources} > 0`),
+    check("agent_tool_calls_cost_check", sql`${table.estimatedCostCny} >= 0`),
+    check("agent_tool_calls_tokens_check", sql`${table.estimatedTokens} >= 0`),
   ],
 );
 
@@ -1076,4 +3141,1629 @@ export const importReports = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [uniqueIndex("import_reports_job_unique").on(table.importJobId)],
+);
+
+export type SceneBeatJson = {
+  id: string;
+  order: number;
+  description: string;
+};
+
+export type SceneInformationReleaseJson = {
+  id: string;
+  order: number;
+  description: string;
+  constraint: string | null;
+};
+
+export type SummarySourceRangeJson = {
+  nodeId: string;
+  versionNodeId: string | null;
+  objectVersion: number;
+  chapterFrom: number;
+  chapterTo: number | null;
+};
+
+export type VolumePlotLineJson = {
+  name: string;
+  status: string;
+  note: string;
+};
+
+export const outlineNodes = pgTable(
+  "outline_nodes",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    level: text("level").notNull(),
+    parentId: uuid("parent_id").references((): AnyPgColumn => outlineNodes.id, {
+      onDelete: "restrict",
+    }),
+    sortOrder: integer("sort_order").notNull().default(0),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("planned"),
+    locked: boolean("locked").notNull().default(false),
+    version: integer("version").notNull().default(1),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
+    tension: integer("tension"),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("outline_nodes_user_work_idx").on(table.userId, table.workId),
+    index("outline_nodes_branch_parent_idx").on(table.branchId, table.parentId, table.sortOrder),
+    uniqueIndex("outline_nodes_parent_order_unique").on(
+      table.branchId,
+      sql`coalesce(${table.parentId}::text, 'root')`,
+      table.sortOrder,
+    ),
+    uniqueIndex("outline_nodes_branch_chapter_unique")
+      .on(table.branchId, table.chapterId)
+      .where(sql`${table.chapterId} is not null`),
+    uniqueIndex("outline_nodes_branch_book_unique")
+      .on(table.branchId)
+      .where(sql`${table.level} = 'book'`),
+    check(
+      "outline_nodes_level_check",
+      sql`${table.level} in ('book', 'volume', 'act', 'chapter', 'scene')`,
+    ),
+    check("outline_nodes_status_check", sql`${table.status} in ('planned', 'active', 'done')`),
+    check(
+      "outline_nodes_tension_check",
+      sql`${table.tension} is null or (${table.tension} >= 0 and ${table.tension} <= 100)`,
+    ),
+    check(
+      "outline_nodes_parent_check",
+      sql`(${table.level} = 'book' and ${table.parentId} is null) or (${table.level} <> 'book' and ${table.parentId} is not null)`,
+    ),
+    check(
+      "outline_nodes_chapter_check",
+      sql`(${table.level} = 'chapter' and ${table.chapterId} is not null) or (${table.level} <> 'chapter' and ${table.chapterId} is null)`,
+    ),
+  ],
+);
+
+export const volumeContracts = pgTable(
+  "volume_contracts",
+  {
+    id: uuid("id").primaryKey(),
+    nodeId: uuid("node_id")
+      .notNull()
+      .references(() => outlineNodes.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    objective: text("objective").notNull(),
+    conflict: text("conflict").notNull(),
+    turningPoints: jsonb("turning_points").$type<string[]>().notNull().default([]),
+    exitConditions: jsonb("exit_conditions").$type<string[]>().notNull().default([]),
+    plotLines: jsonb("plot_lines").$type<VolumePlotLineJson[]>().notNull().default([]),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("volume_contracts_node_unique").on(table.nodeId),
+    index("volume_contracts_user_work_idx").on(table.userId, table.workId),
+  ],
+);
+
+export const sceneCards = pgTable(
+  "scene_cards",
+  {
+    id: uuid("id").primaryKey(),
+    nodeId: uuid("node_id")
+      .notNull()
+      .references(() => outlineNodes.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    povType: text("pov_type"),
+    povId: uuid("pov_id"),
+    povBranchId: uuid("pov_branch_id"),
+    povLabel: text("pov_label"),
+    povVersionNodeId: uuid("pov_version_node_id"),
+    povObjectVersion: integer("pov_object_version"),
+    locationType: text("location_type"),
+    locationId: uuid("location_id"),
+    locationBranchId: uuid("location_branch_id"),
+    locationLabel: text("location_label"),
+    locationVersionNodeId: uuid("location_version_node_id"),
+    locationObjectVersion: integer("location_object_version"),
+    storyEra: text("story_era"),
+    storyTimeLabel: text("story_time_label"),
+    storySortKey: integer("story_sort_key"),
+    beats: jsonb("beats").$type<SceneBeatJson[]>().notNull().default([]),
+    informationReleases: jsonb("information_releases")
+      .$type<SceneInformationReleaseJson[]>()
+      .notNull()
+      .default([]),
+    tension: integer("tension"),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("scene_cards_node_unique").on(table.nodeId),
+    index("scene_cards_user_work_idx").on(table.userId, table.workId),
+    check(
+      "scene_cards_pov_check",
+      sql`(${table.povType} is null and ${table.povId} is null and ${table.povBranchId} is null) or (${table.povType} is not null and ${table.povId} is not null and ${table.povBranchId} is not null)`,
+    ),
+    check(
+      "scene_cards_location_check",
+      sql`(${table.locationType} is null and ${table.locationId} is null and ${table.locationBranchId} is null) or (${table.locationType} is not null and ${table.locationId} is not null and ${table.locationBranchId} is not null)`,
+    ),
+    check(
+      "scene_cards_story_time_check",
+      sql`(${table.storyEra} is null and ${table.storyTimeLabel} is null and ${table.storySortKey} is null) or (${table.storyEra} is not null and ${table.storyTimeLabel} is not null and ${table.storySortKey} is not null)`,
+    ),
+    check(
+      "scene_cards_tension_check",
+      sql`${table.tension} is null or (${table.tension} >= 0 and ${table.tension} <= 100)`,
+    ),
+  ],
+);
+
+export const searchDocuments = pgTable(
+  "search_documents",
+  {
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    entityType: text("entity_type"),
+    title: text("title").notNull().default(""),
+    content: text("content").notNull().default(""),
+    aliases: jsonb("aliases").$type<string[]>().notNull().default([]),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "cascade" }),
+    objectVersion: integer("object_version").notNull(),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    fromChapter: integer("from_chapter").notNull(),
+    toChapter: integer("to_chapter"),
+    fromEra: text("from_era"),
+    fromStoryTimeLabel: text("from_story_time_label"),
+    fromStorySortKey: integer("from_story_sort_key"),
+    toEra: text("to_era"),
+    toStoryTimeLabel: text("to_story_time_label"),
+    toStorySortKey: integer("to_story_sort_key"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    primaryKey({
+      name: "search_documents_pkey",
+      columns: [table.branchId, table.sourceType, table.sourceId, table.versionNodeId],
+    }),
+    index("search_documents_user_work_branch_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.sourceType,
+    ),
+    index("search_documents_branch_chapter_idx").on(
+      table.branchId,
+      table.fromChapter,
+      table.toChapter,
+    ),
+    check(
+      "search_documents_source_type_check",
+      sql`${table.sourceType} in ('entity', 'fact', 'timeline_event', 'map_node')`,
+    ),
+    check(
+      "search_documents_entity_type_check",
+      sql`${table.entityType} is null or ${table.entityType} in ('world_rule', 'character', 'faction', 'map', 'power_system', 'golden_finger', 'item', 'timeline_event')`,
+    ),
+    check(
+      "search_documents_validity_check",
+      sql`${table.toChapter} is null or ${table.toChapter} >= ${table.fromChapter}`,
+    ),
+    check(
+      "search_documents_from_story_time_check",
+      sql`(${table.fromEra} is null and ${table.fromStoryTimeLabel} is null and ${table.fromStorySortKey} is null) or (${table.fromEra} is not null and ${table.fromStoryTimeLabel} is not null and ${table.fromStorySortKey} is not null)`,
+    ),
+    check(
+      "search_documents_to_story_time_check",
+      sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const summaryRecords = pgTable(
+  "summary_records",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    level: text("level").notNull(),
+    scopeId: uuid("scope_id").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    content: text("content").notNull(),
+    status: text("status").notNull().default("stale"),
+    version: integer("version").notNull().default(1),
+    contentHash: text("content_hash").notNull(),
+    inputHash: text("input_hash").notNull(),
+    compilerVersion: text("compiler_version").notNull(),
+    modelVersion: text("model_version").notNull(),
+    sourceRanges: jsonb("source_ranges").$type<SummarySourceRangeJson[]>().notNull(),
+    fromChapter: integer("from_chapter").notNull(),
+    toChapter: integer("to_chapter"),
+    generatedAt: timestamp("generated_at", { withTimezone: true }).notNull().defaultNow(),
+    invalidatedAt: timestamp("invalidated_at", { withTimezone: true }),
+    invalidationReason: text("invalidation_reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("summary_records_branch_scope_unique").on(
+      table.branchId,
+      table.level,
+      table.scopeId,
+    ),
+    index("summary_records_user_work_branch_status_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.status,
+    ),
+    index("summary_records_branch_range_idx").on(
+      table.branchId,
+      table.fromChapter,
+      table.toChapter,
+    ),
+    check(
+      "summary_records_level_check",
+      sql`${table.level} in ('chapter', 'stage', 'volume', 'book')`,
+    ),
+    check("summary_records_status_check", sql`${table.status} in ('fresh', 'stale', 'rebuilding')`),
+    check("summary_records_version_check", sql`${table.version} > 0`),
+    check(
+      "summary_records_content_hash_check",
+      sql`${table.contentHash} ~ '^[a-fA-F0-9]{64}$' and ${table.inputHash} ~ '^[a-fA-F0-9]{64}$'`,
+    ),
+    check(
+      "summary_records_range_check",
+      sql`${table.toChapter} is null or ${table.toChapter} >= ${table.fromChapter}`,
+    ),
+    check(
+      "summary_records_invalidation_check",
+      sql`(${table.status} = 'fresh' and ${table.invalidatedAt} is null and ${table.invalidationReason} is null) or (${table.status} <> 'fresh' and ${table.invalidatedAt} is not null and length(trim(${table.invalidationReason})) > 0)`,
+    ),
+  ],
+);
+
+export const summaryRebuildRuns = pgTable(
+  "summary_rebuild_runs",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    levels: jsonb("levels").$type<string[]>().notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    compilerVersion: text("compiler_version").notNull(),
+    modelVersion: text("model_version").notNull(),
+    checkpointRevision: integer("checkpoint_revision").notNull().default(0),
+    totalItems: integer("total_items").notNull().default(0),
+    completedItems: integer("completed_items").notNull().default(0),
+    failedItems: integer("failed_items").notNull().default(0),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("summary_rebuild_runs_branch_idempotency_unique").on(
+      table.branchId,
+      table.idempotencyKey,
+    ),
+    index("summary_rebuild_runs_user_work_branch_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.createdAt,
+    ),
+    check(
+      "summary_rebuild_runs_status_check",
+      sql`${table.status} in ('queued', 'running', 'completed', 'failed', 'cancelled')`,
+    ),
+    check(
+      "summary_rebuild_runs_counts_check",
+      sql`${table.checkpointRevision} >= 0 and ${table.totalItems} >= 0 and ${table.completedItems} >= 0 and ${table.completedItems} <= ${table.totalItems} and ${table.failedItems} >= 0 and ${table.failedItems} <= ${table.totalItems}`,
+    ),
+  ],
+);
+
+export const summaryRebuildItems = pgTable(
+  "summary_rebuild_items",
+  {
+    id: uuid("id").primaryKey(),
+    runId: uuid("run_id")
+      .notNull()
+      .references(() => summaryRebuildRuns.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    ordinal: integer("ordinal").notNull(),
+    level: text("level").notNull(),
+    scopeId: uuid("scope_id").notNull(),
+    status: text("status").notNull().default("pending"),
+    inputHash: text("input_hash"),
+    outputSummaryId: uuid("output_summary_id").references(() => summaryRecords.id, {
+      onDelete: "set null",
+    }),
+    attempts: integer("attempts").notNull().default(0),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("summary_rebuild_items_run_ordinal_unique").on(table.runId, table.ordinal),
+    uniqueIndex("summary_rebuild_items_run_scope_unique").on(
+      table.runId,
+      table.level,
+      table.scopeId,
+    ),
+    index("summary_rebuild_items_run_status_idx").on(table.runId, table.status, table.ordinal),
+    check(
+      "summary_rebuild_items_level_check",
+      sql`${table.level} in ('chapter', 'stage', 'volume', 'book')`,
+    ),
+    check(
+      "summary_rebuild_items_status_check",
+      sql`${table.status} in ('pending', 'running', 'succeeded', 'failed')`,
+    ),
+    check("summary_rebuild_items_ordinal_check", sql`${table.ordinal} >= 0`),
+    check("summary_rebuild_items_attempts_check", sql`${table.attempts} >= 0`),
+  ],
+);
+
+export type StoryLedgerEvidenceJson = {
+  kind: string;
+  sourceId: string | null;
+  label: string;
+  quote: string;
+  locator: string;
+  confidence: number | null;
+  strength: "weak" | "strong";
+};
+
+export type StoryLedgerHistoryJson = {
+  id: string;
+  action: string;
+  fromStatus: string;
+  toStatus: string;
+  chapter: {
+    id: string;
+    number: number;
+    title: string;
+  } | null;
+  event: {
+    eventId: string;
+    label: string;
+    chapterNumber: number | null;
+    validFromChapter: number | null;
+    validToChapter: number | null;
+  } | null;
+  reason: string;
+  evidence: StoryLedgerEvidenceJson[];
+  actorId: string;
+  createdAt: string;
+};
+
+const ledgerStatusCheck = (column: AnyPgColumn) =>
+  sql`${column} in ('planned', 'planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned', 'deferred')`;
+
+const ledgerResponsibleRoleCheck = (column: AnyPgColumn) =>
+  sql`${column} in ('protagonist', 'antagonist', 'supporting', 'ensemble', 'author')`;
+
+const ledgerSourceCheck = (
+  status: AnyPgColumn,
+  sourceChapterId: AnyPgColumn,
+  sourceEventId: AnyPgColumn,
+) =>
+  sql`(${status} not in ('planted', 'progressed', 'paid_off', 'failed_payoff', 'abandoned') or ${sourceChapterId} is not null or ${sourceEventId} is not null)`;
+
+const ledgerHistoryCheck = (status: AnyPgColumn, history: AnyPgColumn) =>
+  sql`(${status} = 'planned' or jsonb_array_length(${history}) > 0)`;
+
+const ledgerEvidenceCheck = (status: AnyPgColumn, evidence: AnyPgColumn) =>
+  sql`(${status} not in ('paid_off', 'failed_payoff') or jsonb_array_length(${evidence}) > 0)`;
+
+export const plotThreads = pgTable(
+  "plot_threads",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("planned"),
+    responsibleRole: text("responsible_role").notNull(),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    sourceEventId: uuid("source_event_id").references(() => timelineEvents.id, {
+      onDelete: "set null",
+    }),
+    targetFromChapter: integer("target_from_chapter").notNull(),
+    targetToChapter: integer("target_to_chapter").notNull(),
+    prerequisiteEventIds: jsonb("prerequisite_event_ids").$type<string[]>().notNull().default([]),
+    evidence: jsonb("evidence").$type<StoryLedgerEvidenceJson[]>().notNull().default([]),
+    history: jsonb("history").$type<StoryLedgerHistoryJson[]>().notNull().default([]),
+    threadType: text("thread_type").notNull(),
+    stakes: text("stakes").notNull(),
+    tension: integer("tension"),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("plot_threads_user_work_idx").on(table.userId, table.workId),
+    index("plot_threads_branch_status_idx").on(table.branchId, table.status),
+    index("plot_threads_branch_target_idx").on(table.branchId, table.targetToChapter),
+    check(
+      "plot_threads_thread_type_check",
+      sql`${table.threadType} in ('main', 'subplot', 'character', 'faction', 'world', 'mystery', 'romance')`,
+    ),
+    check("plot_threads_status_check", ledgerStatusCheck(table.status)),
+    check("plot_threads_responsible_role_check", ledgerResponsibleRoleCheck(table.responsibleRole)),
+    check(
+      "plot_threads_source_check",
+      ledgerSourceCheck(table.status, table.sourceChapterId, table.sourceEventId),
+    ),
+    check("plot_threads_history_check", ledgerHistoryCheck(table.status, table.history)),
+    check("plot_threads_evidence_check", ledgerEvidenceCheck(table.status, table.evidence)),
+    check(
+      "plot_threads_target_window_check",
+      sql`${table.targetToChapter} >= ${table.targetFromChapter}`,
+    ),
+    check(
+      "plot_threads_tension_check",
+      sql`${table.tension} is null or (${table.tension} >= 0 and ${table.tension} <= 100)`,
+    ),
+  ],
+);
+
+export const foreshadows = pgTable(
+  "foreshadows",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("planned"),
+    responsibleRole: text("responsible_role").notNull(),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    sourceEventId: uuid("source_event_id").references(() => timelineEvents.id, {
+      onDelete: "set null",
+    }),
+    targetFromChapter: integer("target_from_chapter").notNull(),
+    targetToChapter: integer("target_to_chapter").notNull(),
+    prerequisiteEventIds: jsonb("prerequisite_event_ids").$type<string[]>().notNull().default([]),
+    evidence: jsonb("evidence").$type<StoryLedgerEvidenceJson[]>().notNull().default([]),
+    history: jsonb("history").$type<StoryLedgerHistoryJson[]>().notNull().default([]),
+    importance: text("importance").notNull().default("must"),
+    readerPromise: text("reader_promise").notNull(),
+    relatedCharacterIds: jsonb("related_character_ids").$type<string[]>().notNull().default([]),
+    relatedFactionIds: jsonb("related_faction_ids").$type<string[]>().notNull().default([]),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("foreshadows_user_work_idx").on(table.userId, table.workId),
+    index("foreshadows_branch_status_idx").on(table.branchId, table.status),
+    index("foreshadows_branch_target_idx").on(table.branchId, table.targetToChapter),
+    check("foreshadows_importance_check", sql`${table.importance} in ('must', 'optional')`),
+    check("foreshadows_status_check", ledgerStatusCheck(table.status)),
+    check("foreshadows_responsible_role_check", ledgerResponsibleRoleCheck(table.responsibleRole)),
+    check(
+      "foreshadows_source_check",
+      ledgerSourceCheck(table.status, table.sourceChapterId, table.sourceEventId),
+    ),
+    check("foreshadows_history_check", ledgerHistoryCheck(table.status, table.history)),
+    check("foreshadows_evidence_check", ledgerEvidenceCheck(table.status, table.evidence)),
+    check(
+      "foreshadows_target_window_check",
+      sql`${table.targetToChapter} >= ${table.targetFromChapter}`,
+    ),
+  ],
+);
+
+export const characterArcs = pgTable(
+  "character_arcs",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    summary: text("summary").notNull().default(""),
+    status: text("status").notNull().default("planned"),
+    responsibleRole: text("responsible_role").notNull(),
+    sourceChapterId: uuid("source_chapter_id").references(() => chapters.id, {
+      onDelete: "set null",
+    }),
+    sourceEventId: uuid("source_event_id").references(() => timelineEvents.id, {
+      onDelete: "set null",
+    }),
+    targetFromChapter: integer("target_from_chapter").notNull(),
+    targetToChapter: integer("target_to_chapter").notNull(),
+    prerequisiteEventIds: jsonb("prerequisite_event_ids").$type<string[]>().notNull().default([]),
+    evidence: jsonb("evidence").$type<StoryLedgerEvidenceJson[]>().notNull().default([]),
+    history: jsonb("history").$type<StoryLedgerHistoryJson[]>().notNull().default([]),
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => entities.id, { onDelete: "restrict" }),
+    startState: text("start_state").notNull(),
+    desire: text("desire").notNull(),
+    fear: text("fear").notNull(),
+    lie: text("lie").notNull(),
+    truth: text("truth").notNull(),
+    endState: text("end_state").notNull(),
+    version: integer("version").notNull().default(1),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("character_arcs_user_work_idx").on(table.userId, table.workId),
+    index("character_arcs_branch_status_idx").on(table.branchId, table.status),
+    index("character_arcs_branch_target_idx").on(table.branchId, table.targetToChapter),
+    index("character_arcs_character_idx").on(table.characterId),
+    check("character_arcs_status_check", ledgerStatusCheck(table.status)),
+    check(
+      "character_arcs_responsible_role_check",
+      ledgerResponsibleRoleCheck(table.responsibleRole),
+    ),
+    check(
+      "character_arcs_source_check",
+      ledgerSourceCheck(table.status, table.sourceChapterId, table.sourceEventId),
+    ),
+    check("character_arcs_history_check", ledgerHistoryCheck(table.status, table.history)),
+    check("character_arcs_evidence_check", ledgerEvidenceCheck(table.status, table.evidence)),
+    check(
+      "character_arcs_target_window_check",
+      sql`${table.targetToChapter} >= ${table.targetFromChapter}`,
+    ),
+  ],
+);
+
+export type GoldenThreeChapterPinJson = {
+  chapterId: string;
+  chapterNumber: number;
+  chapterTitle: string;
+  chapterVersionId: string;
+  chapterVersion: number;
+  versionNodeId: string;
+  contentHash: string;
+  wordCount: number;
+  content: string;
+};
+
+export type GoldenThreeReviewSnapshotJson = {
+  dimension: string;
+  score: number;
+  evidenceChapterId: string;
+  evidenceChapterVersionId: string;
+  evidencePassage: string;
+  evidenceLocator: string;
+  reviewerOrigin: string;
+  required: boolean;
+  passed: boolean;
+};
+
+export type GoldenThreeStyleProfileJson = {
+  strategy: string;
+  candidateLabel: string;
+  excerpts: Array<{
+    chapterId: string;
+    chapterVersionId: string;
+    excerpt: string;
+  }>;
+};
+
+export const goldenThreeCandidates = pgTable(
+  "golden_three_candidates",
+  {
+    id: uuid("id").primaryKey(),
+    batchId: uuid("batch_id").notNull(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    label: text("label").notNull(),
+    strategy: text("strategy").notNull(),
+    status: text("status").notNull().default("draft"),
+    version: integer("version").notNull().default(1),
+    promptKey: text("prompt_key").notNull(),
+    promptVersion: integer("prompt_version").notNull(),
+    promptHash: text("prompt_hash").notNull(),
+    modelProvider: text("model_provider").notNull(),
+    model: text("model").notNull(),
+    modelParameters: jsonb("model_parameters")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    contextPackVersionId: uuid("context_pack_version_id").references(() => contextPackVersions.id, {
+      onDelete: "set null",
+    }),
+    contextManifestHash: text("context_manifest_hash").notNull(),
+    chapterPins: jsonb("chapter_pins").$type<GoldenThreeChapterPinJson[]>().notNull(),
+    generationJobId: uuid("generation_job_id").references(() => jobs.id, {
+      onDelete: "set null",
+    }),
+    agentRunId: uuid("agent_run_id").references(() => agentRuns.id, { onDelete: "set null" }),
+    modelCallId: uuid("model_call_id").references(() => modelCalls.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("golden_three_candidates_idempotency_strategy_unique").on(
+      table.workId,
+      table.branchId,
+      table.idempotencyKey,
+      table.strategy,
+    ),
+    uniqueIndex("golden_three_candidates_batch_strategy_unique").on(table.batchId, table.strategy),
+    index("golden_three_candidates_user_work_idx").on(table.userId, table.workId),
+    index("golden_three_candidates_branch_created_idx").on(table.branchId, table.createdAt),
+    check(
+      "golden_three_candidates_strategy_check",
+      sql`${table.strategy} in ('hook_focus', 'character_focus', 'world_focus')`,
+    ),
+    check(
+      "golden_three_candidates_status_check",
+      sql`${table.status} in ('draft', 'reviewed', 'selected', 'locked')`,
+    ),
+    check("golden_three_candidates_prompt_hash_check", sql`${table.promptHash} ~ '^[a-f0-9]{64}$'`),
+    check(
+      "golden_three_candidates_context_hash_check",
+      sql`${table.contextManifestHash} ~ '^[a-f0-9]{64}$'`,
+    ),
+    check(
+      "golden_three_candidates_pins_check",
+      sql`jsonb_typeof(${table.chapterPins}) = 'array' and jsonb_array_length(${table.chapterPins}) = 1`,
+    ),
+  ],
+);
+
+export const goldenThreeReviews = pgTable(
+  "golden_three_reviews",
+  {
+    id: uuid("id").primaryKey(),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => goldenThreeCandidates.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    dimension: text("dimension").notNull(),
+    score: integer("score").notNull(),
+    evidenceChapterId: uuid("evidence_chapter_id").notNull(),
+    evidenceChapterVersionId: uuid("evidence_chapter_version_id").notNull(),
+    evidencePassage: text("evidence_passage").notNull(),
+    evidenceLocator: text("evidence_locator").notNull(),
+    reviewerOrigin: text("reviewer_origin").notNull(),
+    required: boolean("required").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("golden_three_reviews_candidate_dimension_unique").on(
+      table.candidateId,
+      table.dimension,
+    ),
+    index("golden_three_reviews_user_work_idx").on(table.userId, table.workId),
+    check(
+      "golden_three_reviews_dimension_check",
+      sql`${table.dimension} in ('opening_hook', 'protagonist_appeal', 'world_rules', 'core_conflict', 'reader_promise', 'chapter_end_hook')`,
+    ),
+    check("golden_three_reviews_score_check", sql`${table.score} between 1 and 5`),
+    check(
+      "golden_three_reviews_origin_check",
+      sql`${table.reviewerOrigin} in ('model', 'author', 'critic')`,
+    ),
+    check(
+      "golden_three_reviews_evidence_check",
+      sql`length(trim(${table.evidencePassage})) > 0 and length(trim(${table.evidenceLocator})) > 0`,
+    ),
+  ],
+);
+
+export const styleBaselines = pgTable(
+  "style_baselines",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    version: integer("version").notNull().default(1),
+    profile: jsonb("profile").$type<GoldenThreeStyleProfileJson>().notNull(),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("style_baselines_source_unique").on(
+      table.workId,
+      table.branchId,
+      table.sourceType,
+      table.sourceId,
+    ),
+    index("style_baselines_user_work_idx").on(table.userId, table.workId),
+    check("style_baselines_source_type_check", sql`${table.sourceType} = 'golden_three'`),
+  ],
+);
+
+export const goldenThreeLocks = pgTable(
+  "golden_three_locks",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    candidateId: uuid("candidate_id")
+      .notNull()
+      .references(() => goldenThreeCandidates.id, { onDelete: "restrict" }),
+    versionNodeId: uuid("version_node_id")
+      .notNull()
+      .references(() => versionNodes.id, { onDelete: "restrict" }),
+    styleBaselineId: uuid("style_baseline_id")
+      .notNull()
+      .references(() => styleBaselines.id, { onDelete: "restrict" }),
+    chapterPins: jsonb("chapter_pins").$type<GoldenThreeChapterPinJson[]>().notNull(),
+    reviewSnapshot: jsonb("review_snapshot").$type<GoldenThreeReviewSnapshotJson[]>().notNull(),
+    overridePolicy: text("override_policy"),
+    overrideRationale: text("override_rationale"),
+    lockedBy: uuid("locked_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("golden_three_locks_branch_unique").on(table.workId, table.branchId),
+    uniqueIndex("golden_three_locks_candidate_unique").on(table.candidateId),
+    index("golden_three_locks_user_work_idx").on(table.userId, table.workId),
+    check(
+      "golden_three_locks_override_check",
+      sql`(${table.overridePolicy} is null and ${table.overrideRationale} is null) or (${table.overridePolicy} = 'author_override_v1' and ${table.overrideRationale} is not null and length(trim(${table.overrideRationale})) >= 10)`,
+    ),
+    check(
+      "golden_three_locks_pins_check",
+      sql`jsonb_typeof(${table.chapterPins}) = 'array' and jsonb_array_length(${table.chapterPins}) = 3`,
+    ),
+  ],
+);
+
+export type QualityDimensionEvidenceJson = {
+  kind: string;
+  sourceId: string | null;
+  sourceVersionId: string | null;
+  chapterId: string;
+  chapterVersionId: string | null;
+  quote: string;
+  startOffset: number;
+  endOffset: number;
+  locator: string;
+  explanation: string;
+};
+
+export type QualityDimensionJson = {
+  dimension: string;
+  label: string;
+  score: number;
+  rationale: string;
+  evidence: QualityDimensionEvidenceJson[];
+};
+
+export const qualityReports = pgTable(
+  "quality_reports",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    rubricVersion: text("rubric_version").notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    dimensions: jsonb("dimensions").$type<QualityDimensionJson[]>().notNull(),
+    summary: text("summary").notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("quality_reports_user_work_idx").on(table.userId, table.workId),
+    index("quality_reports_chapter_created_idx").on(table.chapterId, table.createdAt),
+    index("quality_reports_version_created_idx").on(table.chapterVersionId, table.createdAt),
+    check(
+      "quality_reports_rubric_version_check",
+      sql`${table.rubricVersion} = 'm1-quality-rubric-v1'`,
+    ),
+    check("quality_reports_rule_version_check", sql`${table.ruleVersion} = 'm1-critic-rules-v1'`),
+    check("quality_reports_source_hash_check", sql`${table.sourceHash} ~ '^[a-f0-9]{64}$'`),
+    check(
+      "quality_reports_dimensions_check",
+      sql`jsonb_typeof(${table.dimensions}) = 'array' and jsonb_array_length(${table.dimensions}) = 6`,
+    ),
+  ],
+);
+
+export const qualityFindings = pgTable(
+  "quality_findings",
+  {
+    id: uuid("id").primaryKey(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => qualityReports.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    dimension: text("dimension").notNull(),
+    qualityDimension: text("quality_dimension").notNull(),
+    severity: text("severity").notNull(),
+    structural: boolean("structural").notNull().default(false),
+    code: text("code").notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    evidence: jsonb("evidence").$type<QualityDimensionEvidenceJson[]>().notNull(),
+    sourceRefs: jsonb("source_refs").$type<Array<Record<string, unknown>>>().notNull(),
+    affectedObjects: jsonb("affected_objects").$type<Array<Record<string, unknown>>>().notNull(),
+    recommendation: text("recommendation").notNull(),
+    status: text("status").notNull().default("open"),
+    ignoredReason: text("ignored_reason"),
+    dismissedBy: uuid("dismissed_by").references(() => users.id, { onDelete: "set null" }),
+    dismissedAt: timestamp("dismissed_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("quality_findings_report_dedupe_unique").on(table.reportId, table.dedupeKey),
+    index("quality_findings_user_work_idx").on(table.userId, table.workId),
+    index("quality_findings_chapter_status_idx").on(
+      table.chapterId,
+      table.chapterVersionId,
+      table.status,
+    ),
+    check(
+      "quality_findings_dimension_check",
+      sql`${table.dimension} in ('continuity', 'style', 'reader_experience')`,
+    ),
+    check(
+      "quality_findings_quality_dimension_check",
+      sql`${table.qualityDimension} in ('hook', 'pacing', 'information_density', 'character_voice', 'prose', 'continuity')`,
+    ),
+    check("quality_findings_severity_check", sql`${table.severity} in ('P0', 'P1', 'P2', 'P3')`),
+    check(
+      "quality_findings_status_check",
+      sql`${table.status} in ('open', 'dismissed', 'superseded')`,
+    ),
+    check(
+      "quality_findings_ignored_reason_check",
+      sql`(${table.status} = 'dismissed' and ${table.ignoredReason} is not null and length(trim(${table.ignoredReason})) > 0) or (${table.status} <> 'dismissed' and ${table.ignoredReason} is null and ${table.dismissedBy} is null and ${table.dismissedAt} is null)`,
+    ),
+    check(
+      "quality_findings_evidence_check",
+      sql`jsonb_typeof(${table.evidence}) = 'array' and jsonb_array_length(${table.evidence}) > 0`,
+    ),
+    check(
+      "quality_findings_source_refs_check",
+      sql`jsonb_typeof(${table.sourceRefs}) = 'array' and jsonb_array_length(${table.sourceRefs}) > 0`,
+    ),
+    check(
+      "quality_findings_affected_objects_check",
+      sql`jsonb_typeof(${table.affectedObjects}) = 'array' and jsonb_array_length(${table.affectedObjects}) > 0`,
+    ),
+  ],
+);
+
+export type VolumeAuditFindingJson = {
+  id: string;
+  chapterId: string | null;
+  chapterVersionId: string | null;
+  chapterNumber: number | null;
+  dimension: string;
+  qualityDimension: string;
+  severity: string;
+  structural: boolean;
+  code: string;
+  evidence: Array<Record<string, unknown>>;
+  sourceRefs: Array<Record<string, unknown>>;
+  affectedObjects: Array<Record<string, unknown>>;
+  recommendation: string;
+  upstreamFindingId: string | null;
+  createdAt: string;
+};
+
+export type VolumeAuditCoverageJson = {
+  chapterId: string;
+  chapterNumber: number;
+  title: string;
+  chapterVersionId: string | null;
+  wordCount: number;
+  qualityReportId: string | null;
+  qualityFindingCount: number;
+};
+
+export type VolumeAuditSummaryJson = {
+  total: number;
+  blockers: number;
+  warnings: number;
+  unresolvedLedger: number;
+  motivation: number;
+  antagonist: number;
+  powerInflation: number;
+  mapTime: number;
+  knowledgeLeak: number;
+  other: number;
+};
+
+export const volumeAuditReports = pgTable(
+  "volume_audit_reports",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    volumeNodeId: uuid("volume_node_id")
+      .notNull()
+      .references(() => outlineNodes.id, { onDelete: "cascade" }),
+    chapterFrom: integer("chapter_from").notNull(),
+    chapterTo: integer("chapter_to").notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    status: text("status").notNull(),
+    findings: jsonb("findings").$type<VolumeAuditFindingJson[]>().notNull(),
+    coverage: jsonb("coverage").$type<VolumeAuditCoverageJson[]>().notNull(),
+    summary: jsonb("summary").$type<VolumeAuditSummaryJson>().notNull(),
+    signoffDecision: text("signoff_decision"),
+    signoffRationale: text("signoff_rationale"),
+    signedOffBy: uuid("signed_off_by").references(() => users.id, { onDelete: "restrict" }),
+    signedOffAt: timestamp("signed_off_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("volume_audit_reports_user_work_idx").on(table.userId, table.workId),
+    index("volume_audit_reports_volume_created_idx").on(table.volumeNodeId, table.createdAt),
+    check("volume_audit_reports_range_check", sql`${table.chapterTo} >= ${table.chapterFrom}`),
+    check(
+      "volume_audit_reports_rule_version_check",
+      sql`${table.ruleVersion} = 'm1-volume-audit-v1'`,
+    ),
+    check("volume_audit_reports_source_hash_check", sql`${table.sourceHash} ~ '^[a-f0-9]{64}$'`),
+    check(
+      "volume_audit_reports_status_check",
+      sql`${table.status} in ('passed', 'warnings', 'blocked')`,
+    ),
+    check(
+      "volume_audit_reports_signoff_check",
+      sql`(${table.signoffDecision} is null and ${table.signoffRationale} is null and ${table.signedOffBy} is null and ${table.signedOffAt} is null) or (${table.signoffDecision} in ('accepted', 'changes_requested') and length(trim(${table.signoffRationale})) >= 10 and ${table.signedOffBy} is not null and ${table.signedOffAt} is not null)`,
+    ),
+    check("volume_audit_reports_version_check", sql`${table.version} > 0`),
+    check("volume_audit_reports_findings_check", sql`jsonb_typeof(${table.findings}) = 'array'`),
+    check("volume_audit_reports_coverage_check", sql`jsonb_typeof(${table.coverage}) = 'array'`),
+  ],
+);
+
+export type StyleProfileJson = {
+  guides: string[];
+  samples: Array<{
+    chapterId: string;
+    chapterVersionId: string;
+    excerpt: string;
+    locator: string;
+  }>;
+  metrics: {
+    averageSentenceLength: number;
+    exclamationRate: number;
+    dialogueRatio: number;
+  };
+};
+
+export type StyleDriftTrendJson = {
+  chapterId: string;
+  chapterVersionId: string;
+  chapterNumber: number;
+  exclamationRate: number;
+  averageSentenceLength: number;
+  dialogueRatio: number;
+  deviationScore: number;
+};
+
+export type StyleDriftGrowthEvidenceJson = {
+  markerId: string;
+  startState: string;
+  endState: string;
+  reason: string;
+};
+
+export const styleProfiles = pgTable(
+  "style_profiles",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    scopeId: uuid("scope_id").references(() => entities.id, { onDelete: "restrict" }),
+    dimension: text("dimension").notNull(),
+    name: text("name").notNull(),
+    version: integer("version").notNull(),
+    approvalStatus: text("approval_status").notNull().default("pending"),
+    sourceType: text("source_type").notNull(),
+    sourceId: uuid("source_id").notNull(),
+    sourceVersionId: uuid("source_version_id").notNull(),
+    sourceVersionNodeId: uuid("source_version_node_id").references(() => versionNodes.id, {
+      onDelete: "set null",
+    }),
+    sourceLabel: text("source_label").notNull(),
+    profile: jsonb("profile").$type<StyleProfileJson>().notNull(),
+    approvalRationale: text("approval_rationale"),
+    approvedBy: uuid("approved_by").references(() => users.id, { onDelete: "set null" }),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    versionNodeId: uuid("version_node_id").references(() => versionNodes.id, {
+      onDelete: "set null",
+    }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("style_profiles_character_version_unique")
+      .on(table.workId, table.branchId, table.dimension, table.scopeId, table.version)
+      .where(sql`${table.scope} = 'character'`),
+    uniqueIndex("style_profiles_work_version_unique")
+      .on(table.workId, table.branchId, table.dimension, table.version)
+      .where(sql`${table.scope} = 'work'`),
+    index("style_profiles_user_work_idx").on(table.userId, table.workId),
+    index("style_profiles_branch_status_idx").on(table.branchId, table.approvalStatus),
+    check("style_profiles_scope_check", sql`${table.scope} in ('work', 'character')`),
+    check(
+      "style_profiles_scope_id_check",
+      sql`(${table.scope} = 'work' and ${table.scopeId} is null) or (${table.scope} = 'character' and ${table.scopeId} is not null)`,
+    ),
+    check(
+      "style_profiles_dimension_check",
+      sql`${table.dimension} in ('character_voice', 'prose')`,
+    ),
+    check("style_profiles_version_check", sql`${table.version} > 0`),
+    check(
+      "style_profiles_approval_status_check",
+      sql`${table.approvalStatus} in ('pending', 'approved', 'rejected', 'superseded')`,
+    ),
+    check(
+      "style_profiles_source_type_check",
+      sql`${table.sourceType} in ('author_sample', 'approved_chapter_version', 'golden_three')`,
+    ),
+    check(
+      "style_profiles_approval_check",
+      sql`(${table.approvalStatus} = 'approved' and ${table.approvedBy} is not null and ${table.approvedAt} is not null and ${table.approvalRationale} is not null and length(trim(${table.approvalRationale})) > 0) or (${table.approvalStatus} <> 'approved' and ${table.approvedBy} is null and ${table.approvedAt} is null and ${table.approvalRationale} is null)`,
+    ),
+    check(
+      "style_profiles_body_check",
+      sql`jsonb_typeof(${table.profile}) = 'object' and jsonb_typeof(${table.profile}->'samples') = 'array' and jsonb_array_length(${table.profile}->'samples') > 0`,
+    ),
+  ],
+);
+
+export const styleDriftReports = pgTable(
+  "style_drift_reports",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scope: text("scope").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    baselineProfileId: uuid("baseline_profile_id")
+      .notNull()
+      .references(() => styleProfiles.id, { onDelete: "restrict" }),
+    baselineVersion: integer("baseline_version").notNull(),
+    baselineDimension: text("baseline_dimension").notNull(),
+    baselineSourceType: text("baseline_source_type").notNull(),
+    ruleVersion: text("rule_version").notNull(),
+    modelProvider: text("model_provider").notNull(),
+    model: text("model").notNull(),
+    modelParameters: jsonb("model_parameters")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    promptKey: text("prompt_key").notNull(),
+    promptVersion: integer("prompt_version").notNull(),
+    profileVersion: integer("profile_version").notNull(),
+    windowFromChapter: integer("window_from_chapter").notNull(),
+    windowToChapter: integer("window_to_chapter").notNull(),
+    sourceHash: text("source_hash").notNull(),
+    summary: text("summary").notNull(),
+    trend: jsonb("trend").$type<StyleDriftTrendJson[]>().notNull(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("style_drift_reports_user_work_idx").on(table.userId, table.workId),
+    index("style_drift_reports_branch_scope_created_idx").on(
+      table.branchId,
+      table.scope,
+      table.createdAt,
+    ),
+    check(
+      "style_drift_reports_scope_check",
+      sql`${table.scope} in ('chapter', 'volume', 'cross_volume')`,
+    ),
+    check(
+      "style_drift_reports_window_check",
+      sql`${table.windowToChapter} >= ${table.windowFromChapter}`,
+    ),
+    check(
+      "style_drift_reports_scope_refs_check",
+      sql`(${table.scope} = 'chapter' and ${table.chapterId} is not null and ${table.chapterVersionId} is not null and ${table.windowFromChapter} = ${table.windowToChapter}) or (${table.scope} <> 'chapter' and ${table.chapterId} is null and ${table.chapterVersionId} is null)`,
+    ),
+    check(
+      "style_drift_reports_dimension_check",
+      sql`${table.baselineDimension} in ('character_voice', 'prose')`,
+    ),
+    check(
+      "style_drift_reports_source_type_check",
+      sql`${table.baselineSourceType} in ('author_sample', 'approved_chapter_version', 'golden_three')`,
+    ),
+    check(
+      "style_drift_reports_rule_version_check",
+      sql`${table.ruleVersion} = 'm1-style-drift-v1'`,
+    ),
+    check("style_drift_reports_source_hash_check", sql`${table.sourceHash} ~ '^[a-f0-9]{64}$'`),
+    check("style_drift_reports_trend_check", sql`jsonb_typeof(${table.trend}) = 'array'`),
+  ],
+);
+
+export const styleDriftFindings = pgTable(
+  "style_drift_findings",
+  {
+    id: uuid("id").primaryKey(),
+    reportId: uuid("report_id")
+      .notNull()
+      .references(() => styleDriftReports.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    baselineProfileId: uuid("baseline_profile_id")
+      .notNull()
+      .references(() => styleProfiles.id, { onDelete: "restrict" }),
+    baselineVersion: integer("baseline_version").notNull(),
+    dimension: text("dimension").notNull(),
+    classification: text("classification").notNull(),
+    severity: text("severity").notNull(),
+    code: text("code").notNull(),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    quote: text("quote").notNull(),
+    startOffset: integer("start_offset").notNull(),
+    endOffset: integer("end_offset").notNull(),
+    locator: text("locator").notNull(),
+    explanation: text("explanation").notNull(),
+    recommendation: text("recommendation").notNull(),
+    growthEvidence: jsonb("growth_evidence").$type<StyleDriftGrowthEvidenceJson>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("style_drift_findings_report_idx").on(table.reportId, table.classification),
+    index("style_drift_findings_user_work_idx").on(table.userId, table.workId),
+    check(
+      "style_drift_findings_dimension_check",
+      sql`${table.dimension} in ('character_voice', 'prose')`,
+    ),
+    check(
+      "style_drift_findings_classification_check",
+      sql`${table.classification} in ('drift', 'intentional_development')`,
+    ),
+    check("style_drift_findings_severity_check", sql`${table.severity} in ('P1', 'P2', 'P3')`),
+    check(
+      "style_drift_findings_code_check",
+      sql`${table.code} in ('CHARACTER_VOICE_DRIFT', 'WORK_STYLE_DRIFT', 'INTENTIONAL_CHARACTER_DEVELOPMENT')`,
+    ),
+    check(
+      "style_drift_findings_span_check",
+      sql`${table.startOffset} >= 0 and ${table.endOffset} > ${table.startOffset}`,
+    ),
+    check(
+      "style_drift_findings_growth_check",
+      sql`(${table.classification} = 'intentional_development' and ${table.code} = 'INTENTIONAL_CHARACTER_DEVELOPMENT' and ${table.growthEvidence} is not null) or (${table.classification} = 'drift' and ${table.code} <> 'INTENTIONAL_CHARACTER_DEVELOPMENT' and ${table.growthEvidence} is null)`,
+    ),
+  ],
+);
+
+export type RevisionSelectedFindingJson = {
+  findingId: string;
+  code: string;
+  severity: string;
+  qualityDimension: string;
+  recommendation: string;
+  evidence: QualityDimensionEvidenceJson[];
+};
+
+export type RevisionBlockJson = {
+  id: string;
+  start: number;
+  end: number;
+  label?: string;
+};
+
+export type RevisionConstraintsJson = {
+  preserveOutsideSelection: true;
+  protectLockedContent: true;
+  authorInstruction?: string;
+};
+
+export type RevisionDiffJson = {
+  sourceVersionId: string;
+  resultVersionId: string;
+  beforeHash: string;
+  afterHash: string;
+  changes: Array<{
+    blockId: string;
+    beforeStart: number;
+    beforeEnd: number;
+    afterStart: number;
+    afterEnd: number;
+    before: string;
+    after: string;
+  }>;
+  unresolvedFindingIds: string[];
+};
+
+export const revisionPlans = pgTable(
+  "revision_plans",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    status: text("status").notNull().default("active"),
+    maxRounds: integer("max_rounds").notNull(),
+    maxCostCny: real("max_cost_cny").notNull(),
+    maxTokens: integer("max_tokens").notNull(),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("revision_plans_chapter_idempotency_unique").on(
+      table.userId,
+      table.chapterId,
+      table.idempotencyKey,
+    ),
+    index("revision_plans_user_work_idx").on(table.userId, table.workId),
+    index("revision_plans_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check(
+      "revision_plans_status_check",
+      sql`${table.status} in ('active', 'awaiting_feedback', 'completed', 'rejected')`,
+    ),
+    check("revision_plans_max_rounds_check", sql`${table.maxRounds} between 1 and 2`),
+    check("revision_plans_budget_check", sql`${table.maxCostCny} > 0 and ${table.maxTokens} > 0`),
+    check("revision_plans_version_check", sql`${table.version} > 0`),
+  ],
+);
+
+export const revisionRounds = pgTable(
+  "revision_rounds",
+  {
+    id: uuid("id").primaryKey(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => revisionPlans.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    roundNumber: integer("round_number").notNull(),
+    status: text("status").notNull().default("queued"),
+    jobId: uuid("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    sourceVersionId: uuid("source_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    resultVersionId: uuid("result_version_id").references(() => chapterVersions.id, {
+      onDelete: "restrict",
+    }),
+    versionNodeId: uuid("version_node_id").references(() => versionNodes.id, {
+      onDelete: "restrict",
+    }),
+    selectedFindings: jsonb("selected_findings").$type<RevisionSelectedFindingJson[]>().notNull(),
+    blocks: jsonb("blocks").$type<RevisionBlockJson[]>().notNull(),
+    constraints: jsonb("constraints").$type<RevisionConstraintsJson>().notNull(),
+    diff: jsonb("diff").$type<RevisionDiffJson>(),
+    unresolvedFindingIds: jsonb("unresolved_finding_ids").$type<string[]>().notNull().default([]),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("revision_rounds_plan_round_unique").on(table.planId, table.roundNumber),
+    uniqueIndex("revision_rounds_job_unique").on(table.jobId),
+    index("revision_rounds_chapter_created_idx").on(table.chapterId, table.createdAt),
+    check("revision_rounds_round_number_check", sql`${table.roundNumber} between 1 and 2`),
+    check(
+      "revision_rounds_status_check",
+      sql`${table.status} in ('queued', 'running', 'waiting_review', 'accepted', 'rejected', 'rewrite_requested', 'failed')`,
+    ),
+    check(
+      "revision_rounds_selected_findings_check",
+      sql`jsonb_typeof(${table.selectedFindings}) = 'array' and jsonb_array_length(${table.selectedFindings}) > 0`,
+    ),
+    check(
+      "revision_rounds_blocks_check",
+      sql`jsonb_typeof(${table.blocks}) = 'array' and jsonb_array_length(${table.blocks}) > 0`,
+    ),
+    check(
+      "revision_rounds_unresolved_check",
+      sql`jsonb_typeof(${table.unresolvedFindingIds}) = 'array'`,
+    ),
+    check("revision_rounds_version_check", sql`${table.version} > 0`),
+  ],
+);
+
+export const revisionFeedbackEvents = pgTable(
+  "revision_feedback_events",
+  {
+    id: uuid("id").primaryKey(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => revisionPlans.id, { onDelete: "cascade" }),
+    roundId: uuid("round_id")
+      .notNull()
+      .references(() => revisionRounds.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    chapterId: uuid("chapter_id")
+      .notNull()
+      .references(() => chapters.id, { onDelete: "cascade" }),
+    findingId: uuid("finding_id").references(() => qualityFindings.id, {
+      onDelete: "set null",
+    }),
+    action: text("action").notNull(),
+    reason: text("reason").notNull(),
+    targetVersionId: uuid("target_version_id")
+      .notNull()
+      .references(() => chapterVersions.id, { onDelete: "restrict" }),
+    evaluationOptIn: boolean("evaluation_opt_in").notNull().default(false),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("revision_feedback_plan_created_idx").on(table.planId, table.createdAt),
+    index("revision_feedback_round_created_idx").on(table.roundId, table.createdAt),
+    index("revision_feedback_chapter_finding_idx").on(table.chapterId, table.findingId),
+    check(
+      "revision_feedback_action_check",
+      sql`${table.action} in ('accept', 'reject', 'rewrite')`,
+    ),
+    check("revision_feedback_reason_check", sql`length(trim(${table.reason})) > 0`),
+  ],
 );

@@ -1,4 +1,10 @@
 export * from "./client";
+export * from "./agent-grants";
+export * from "./agent-trace";
+export * from "./cost-ledger";
 export * from "./fact-proposals";
+export * from "./idempotency";
 export { runMigrations } from "./migrations";
 export * from "./schema";
+export * from "./summaries";
+export * from "./tenant";

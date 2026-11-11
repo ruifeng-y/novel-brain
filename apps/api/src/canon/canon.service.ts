@@ -9,6 +9,7 @@ import {
 } from "@novel-brain/contracts";
 
 import { ApiError } from "../common/api-error";
+import { invalidCursorError } from "../common/cursor-page";
 import type { WorksAuditContext } from "../works/works.repository";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -47,10 +48,36 @@ export class CanonService {
     if (result.kind === "version_conflict") {
       throw new ApiError(409, "VERSION_CONFLICT", "章节正文已更新，请重新审核后提交");
     }
+    if (result.kind === "idempotency_conflict") {
+      throw new ApiError(
+        409,
+        "CANON_IDEMPOTENCY_CONFLICT",
+        "本章事实已用另一个幂等键提交过，请勿重复提交",
+        {
+          commitId: result.commitId,
+          chapterVersionId: result.chapterVersionId,
+        },
+      );
+    }
     if (result.kind === "chapter_not_approved") {
       throw new ApiError(409, "CANON_CHAPTER_NOT_APPROVED", "请先批准本章，再提交事实", {
         chapterStatus: result.chapterStatus,
       });
+    }
+    if (result.kind === "quality_blocked") {
+      const reportReady = result.gate.reportState === "fresh";
+      throw new ApiError(
+        409,
+        "QUALITY_GATE_BLOCKED",
+        reportReady
+          ? "本章还有阻断级质量问题，不能提交正史"
+          : "请先检查本章，生成当前版本的质量报告后再提交正史",
+        {
+          gate: "canon_commit",
+          reportState: result.gate.reportState,
+          blockers: result.gate.blockers,
+        },
+      );
     }
     if (result.kind === "blocked") {
       throw new ApiError(409, "FACT_SUBMISSION_BLOCKED", "本章仍有必填事实待确认", {
@@ -62,12 +89,25 @@ export class CanonService {
     return toCommit(result.chapter, result.commit, result.facts);
   }
 
-  async list(userId: string, workId: string, branchId: string): Promise<CanonCommit[]> {
-    const results = await this.repository.listCommits(userId, workId, branchId);
+  async list(
+    userId: string,
+    workId: string,
+    branchId: string,
+    page: { cursor?: string | undefined; limit: number },
+  ): Promise<{ commits: CanonCommit[]; nextCursor: string | null }> {
+    const results = await this.repository.listCommits(userId, workId, branchId, page);
     if (results === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品或创作线不存在，或无权访问");
     }
-    return results.map((result) => toCommit(result.chapter, result.commit, result.facts));
+    if (results === "invalid_cursor") {
+      throw invalidCursorError();
+    }
+    return {
+      commits: results.commits.map((result) =>
+        toCommit(result.chapter, result.commit, result.facts),
+      ),
+      nextCursor: results.nextCursor,
+    };
   }
 }
 

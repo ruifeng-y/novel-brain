@@ -15,14 +15,18 @@ import {
 import {
   contextPackPreviewResponseSchema,
   generateChapterRequestSchema,
+  generationJobListQuerySchema,
   generationJobListResponseSchema,
   generationJobResponseSchema,
+  jobRecoveryRequestSchema,
+  jobRecoveryResponseSchema,
   uuidV7Schema,
   type JobEvent,
 } from "@novel-brain/contracts";
 import {
   ApiAcceptedResponse,
   ApiBody,
+  ApiConflictResponse,
   ApiHeader,
   ApiOkResponse,
   ApiTags,
@@ -33,8 +37,10 @@ import { map, type Observable } from "rxjs";
 import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
+import { getClientIp } from "../auth/client-ip";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
+import { ApiQuerySchema } from "../common/zod-openapi";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { GenerationService } from "./generation.service";
@@ -47,6 +53,8 @@ const generateBodyJsonSchema = schemaOf(generateChapterRequestSchema, "input");
 const jobJsonSchema = schemaOf(generationJobResponseSchema);
 const jobListJsonSchema = schemaOf(generationJobListResponseSchema);
 const contextPreviewJsonSchema = schemaOf(contextPackPreviewResponseSchema);
+const recoveryBodyJsonSchema = schemaOf(jobRecoveryRequestSchema, "input");
+const recoveryResponseJsonSchema = schemaOf(jobRecoveryResponseSchema);
 
 @ApiTags("generation")
 @Controller("works/:workId/branches/:branchId")
@@ -63,6 +71,9 @@ export class GenerationController {
     description: "Stable key for replaying the same chapter generation request",
   })
   @ApiAcceptedResponse({ description: "Queued chapter generation job", schema: jobJsonSchema })
+  @ApiConflictResponse({
+    description: "Generation readiness blockers must be resolved before queueing",
+  })
   async start(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
@@ -109,21 +120,25 @@ export class GenerationController {
   }
 
   @Get("jobs")
+  @ApiQuerySchema(generationJobListQuerySchema)
   @ApiOkResponse({ description: "Chapter generation jobs", schema: jobListJsonSchema })
   async list(
     @Req() request: AuthenticatedRequest,
     @Param("workId") workId: string,
     @Param("branchId") branchId: string,
-    @Query("chapterId") chapterId: string,
+    @Query() query: unknown,
   ) {
     const requestId = createRequestId();
+    const pageQuery = generationJobListQuerySchema.parse(query ?? {});
+    const page = await this.service.list(
+      this.userId(request),
+      this.context(workId, branchId, pageQuery.chapterId),
+      pageQuery,
+    );
     return generationJobListResponseSchema.parse({
-      data: await this.service.list(
-        this.userId(request),
-        this.context(workId, branchId, chapterId),
-      ),
+      data: page.data,
       requestId,
-      meta: {},
+      meta: { nextCursor: page.nextCursor },
     });
   }
 
@@ -183,6 +198,35 @@ export class GenerationController {
         this.userId(request),
         this.branchContext(workId, branchId),
         uuidV7Schema.parse(jobId),
+        this.audit(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("jobs/:jobId/recover")
+  @HttpCode(202)
+  @ApiBody({ schema: recoveryBodyJsonSchema })
+  @ApiAcceptedResponse({
+    description: "Recovered generation job with an audit record",
+    schema: recoveryResponseJsonSchema,
+  })
+  async recover(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Param("jobId") jobId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return jobRecoveryResponseSchema.parse({
+      data: await this.service.recover(
+        this.userId(request),
+        this.branchContext(workId, branchId),
+        uuidV7Schema.parse(jobId),
+        jobRecoveryRequestSchema.parse(body ?? {}),
+        this.audit(request, requestId),
       ),
       requestId,
       meta: {},
@@ -232,6 +276,14 @@ export class GenerationController {
     return {
       workId: uuidV7Schema.parse(workId),
       branchId: uuidV7Schema.parse(branchId),
+    };
+  }
+
+  private audit(request: AuthenticatedRequest, requestId: string) {
+    return {
+      requestId,
+      ip: getClientIp(request) || "unknown",
+      userAgent: String(request.headers["user-agent"] ?? "").trim() || "unknown",
     };
   }
 }

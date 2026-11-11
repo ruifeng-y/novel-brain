@@ -1,4 +1,5 @@
 import type { LoggerService } from "@nestjs/common";
+import { sanitizeLogPayload } from "@novel-brain/core";
 import pino, { type Logger } from "pino";
 
 export class AppLogger implements LoggerService {
@@ -16,10 +17,11 @@ export class AppLogger implements LoggerService {
   }
 
   error(message: unknown, stack?: string, context?: string): void {
+    const safeStack = stack ? this.stack(stack) : undefined;
     this.logger.error(
       {
         ...this.context(context),
-        ...(stack ? { stack } : {}),
+        ...(safeStack ? { stack: safeStack } : {}),
       },
       this.message(message),
     );
@@ -46,6 +48,19 @@ export class AppLogger implements LoggerService {
   }
 
   private message(message: unknown): string {
-    return typeof message === "string" ? message : JSON.stringify(message);
+    const sanitized = sanitizeLogPayload(message);
+    return typeof sanitized === "string" ? sanitized : JSON.stringify(sanitized);
+  }
+
+  private stack(stack: string): string | undefined {
+    const sanitized = sanitizeLogPayload(stack);
+    if (typeof sanitized !== "string") {
+      return undefined;
+    }
+    const frames = sanitized
+      .split(/\r?\n/u)
+      .map((line) => line.trimEnd())
+      .filter((line) => /^\s+at\s/u.test(line));
+    return frames.length > 0 ? frames.join("\n") : undefined;
   }
 }

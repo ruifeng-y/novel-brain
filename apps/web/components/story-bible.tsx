@@ -7,22 +7,29 @@ import {
   LoaderCircle,
   Lock,
   Pencil,
+  Plus,
   Sparkles,
+  Trash2,
   TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import {
   apiErrorSchema,
+  storyBibleChangeRequestResponseSchema,
   storyBibleResponseSchema,
+  storyBibleVersionListResponseSchema,
   workResponseSchema,
   type StoryBible,
   type StoryBibleCard,
+  type StoryBibleVersion,
+  type StoryBibleWorldRule,
   type Work,
   type WorkOverview,
 } from "@novel-brain/contracts";
 
 import { getCsrfToken } from "../lib/csrf-client";
+import { fetchAllCursorPages } from "../lib/cursor-pagination";
 
 const statusLabels: Record<StoryBible["status"], string> = {
   draft: "草稿",
@@ -36,6 +43,18 @@ const genreLabels: Record<Work["genre"], string> = {
   urban: "都市",
 };
 
+const versionActionLabels: Record<StoryBibleVersion["action"], string> = {
+  proposed: "生成提案",
+  edited: "编辑卡片",
+  locked: "锁定",
+  unlocked: "解锁",
+};
+
+type WorldRuleDraft = Omit<StoryBibleWorldRule, "id"> & {
+  id?: string;
+  clientKey: string;
+};
+
 export function StoryBibleWorkspace({ workId }: { workId: string }) {
   const [work, setWork] = useState<WorkOverview | null>(null);
   const [storyBible, setStoryBible] = useState<StoryBible | null>(null);
@@ -46,6 +65,17 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
   const [busy, setBusy] = useState("");
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [draftContent, setDraftContent] = useState("");
+  const [draftReason, setDraftReason] = useState("");
+  const [draftWorldRules, setDraftWorldRules] = useState<WorldRuleDraft[]>([]);
+  const [history, setHistory] = useState<StoryBibleVersion[]>([]);
+  const [changeRequestOpen, setChangeRequestOpen] = useState(false);
+  const [changeCardKey, setChangeCardKey] = useState("oneSentence");
+  const [changeTitle, setChangeTitle] = useState("");
+  const [changeReason, setChangeReason] = useState("");
+  const [changeContent, setChangeContent] = useState("");
+  const [changeRequestIdempotencyKey, setChangeRequestIdempotencyKey] = useState("");
+  const [unlockOpen, setUnlockOpen] = useState(false);
+  const [unlockReason, setUnlockReason] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -64,7 +94,14 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
         throw new Error(await readError(bibleResponse, "故事圣经加载失败。"));
       }
       setWork(workData);
-      setStoryBible(storyBibleResponseSchema.parse(await bibleResponse.json()).data);
+      const bibleData = storyBibleResponseSchema.parse(await bibleResponse.json()).data;
+      const historyData = await fetchAllCursorPages(
+        `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/story-bible/versions`,
+        storyBibleVersionListResponseSchema.parse,
+        "版本历史加载失败。",
+      );
+      setStoryBible(bibleData);
+      setHistory(historyData);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "故事圣经加载失败。");
     } finally {
@@ -81,14 +118,14 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
       return;
     }
     await runAction("generate", async () => {
-      setStoryBible(
-        await mutateStoryBible(
-          `${storyBiblePath(work)}/generate`,
-          "POST",
-          {},
-          "故事圣经生成失败。",
-        ),
+      const updated = await mutateStoryBible(
+        `${storyBiblePath(work)}/generate`,
+        "POST",
+        {},
+        "故事圣经生成失败。",
       );
+      setStoryBible(updated);
+      await refreshHistory(work);
       setActionMessage("九卡提案已生成，请逐卡检查后再锁定。");
     });
   }
@@ -97,20 +134,41 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
     if (!work || !storyBible) {
       return;
     }
+    if (!draftReason.trim()) {
+      setActionError("请填写本次修改原因。");
+      return;
+    }
     await runAction(`save-${card.key}`, async () => {
-      setStoryBible(
-        await mutateStoryBible(
-          storyBiblePath(work),
-          "PATCH",
-          {
-            version: storyBible.version,
-            cards: [{ key: card.key, content: draftContent }],
-          },
-          "卡片保存失败。",
-        ),
+      const worldRules =
+        card.key === "worldLaws"
+          ? draftWorldRules.map((rule) => ({
+              ...(rule.id ? { id: rule.id } : {}),
+              name: rule.name,
+              constraint: rule.constraint,
+              scope: rule.scope,
+              exceptions: rule.exceptions,
+            }))
+          : undefined;
+      const content =
+        card.key === "worldLaws"
+          ? (worldRules?.map((rule) => `${rule.name}：${rule.constraint}`).join("\n") ?? "")
+          : draftContent;
+      const updated = await mutateStoryBible(
+        storyBiblePath(work),
+        "PATCH",
+        {
+          version: storyBible.version,
+          reason: draftReason,
+          cards: [{ key: card.key, content, ...(worldRules ? { worldRules } : {}) }],
+        },
+        "卡片保存失败。",
       );
+      setStoryBible(updated);
+      await refreshHistory(work);
       setEditingKey(null);
       setDraftContent("");
+      setDraftReason("");
+      setDraftWorldRules([]);
       setActionMessage(`“${card.title}”已保存。`);
     });
   }
@@ -120,17 +178,89 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
       return;
     }
     await runAction("lock", async () => {
-      setStoryBible(
-        await mutateStoryBible(
-          `${storyBiblePath(work)}/lock`,
-          "POST",
-          { version: storyBible.version },
-          "故事圣经锁定失败。",
-        ),
+      const updated = await mutateStoryBible(
+        `${storyBiblePath(work)}/lock`,
+        "POST",
+        { version: storyBible.version },
+        "故事圣经锁定失败。",
       );
+      setStoryBible(updated);
+      await refreshHistory(work);
       setEditingKey(null);
       setActionMessage("故事圣经已锁定。");
     });
+  }
+
+  async function submitChangeRequest() {
+    if (!work || !storyBible) {
+      return;
+    }
+    const card = storyBible.cards.find((candidate) => candidate.key === changeCardKey);
+    if (!card) {
+      return;
+    }
+    await runAction("change-request", async () => {
+      const csrfToken = await getCsrfToken();
+      const response = await fetch(`${storyBiblePath(work)}/change-requests`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken,
+          "idempotency-key": changeRequestIdempotencyKey,
+        },
+        body: JSON.stringify({
+          version: storyBible.version,
+          cardKey: card.key,
+          title: changeTitle,
+          reason: changeReason,
+          after: {
+            ...card,
+            content: changeContent,
+            complete: changeContent.trim().length > 0,
+          },
+        }),
+      });
+      if (!response.ok) {
+        throw new Error(await readError(response, "修改请求创建失败。"));
+      }
+      storyBibleChangeRequestResponseSchema.parse(await response.json());
+      setChangeRequestOpen(false);
+      setChangeTitle("");
+      setChangeReason("");
+      setChangeContent("");
+      setChangeRequestIdempotencyKey("");
+      setActionMessage("修改请求已创建，等待影响分析。");
+    });
+  }
+
+  async function unlockStoryBible() {
+    if (!work || !storyBible) {
+      return;
+    }
+    await runAction("unlock", async () => {
+      const updated = await mutateStoryBible(
+        `${storyBiblePath(work)}/unlock`,
+        "POST",
+        { version: storyBible.version, reason: unlockReason },
+        "故事圣经解锁失败。",
+      );
+      setStoryBible(updated);
+      await refreshHistory(work);
+      setUnlockOpen(false);
+      setUnlockReason("");
+      setActionMessage("故事圣经已解锁，本次操作已记录。");
+    });
+  }
+
+  async function refreshHistory(targetWork: WorkOverview) {
+    const historyData = await fetchAllCursorPages(
+      `/api/v1/works/${targetWork.id}/branches/${targetWork.mainBranch.id}/story-bible/versions`,
+      storyBibleVersionListResponseSchema.parse,
+      "版本历史加载失败。",
+    ).catch(() => null);
+    if (historyData) {
+      setHistory(historyData);
+    }
   }
 
   async function runAction(key: string, action: () => Promise<void>) {
@@ -149,8 +279,45 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
   function beginEdit(card: StoryBibleCard) {
     setEditingKey(card.key);
     setDraftContent(card.content);
+    setDraftWorldRules((card.worldRules ?? []).map((rule) => ({ ...rule, clientKey: rule.id })));
+    setDraftReason("");
     setActionError("");
     setActionMessage("");
+  }
+
+  function openChangeRequest() {
+    const card = storyBible?.cards[0];
+    setChangeCardKey(card?.key ?? "oneSentence");
+    setChangeContent(card?.content ?? "");
+    setChangeTitle("");
+    setChangeReason("");
+    setChangeRequestIdempotencyKey(crypto.randomUUID());
+    setChangeRequestOpen(true);
+  }
+
+  function selectChangeCard(key: string) {
+    const card = storyBible?.cards.find((candidate) => candidate.key === key);
+    setChangeCardKey(key);
+    setChangeContent(card?.content ?? "");
+  }
+
+  function updateWorldRule(index: number, patch: Partial<WorldRuleDraft>) {
+    setDraftWorldRules((rules) =>
+      rules.map((rule, ruleIndex) => (ruleIndex === index ? { ...rule, ...patch } : rule)),
+    );
+  }
+
+  function addWorldRule() {
+    setDraftWorldRules((rules) => [
+      ...rules,
+      {
+        clientKey: crypto.randomUUID(),
+        name: "",
+        constraint: "",
+        scope: "",
+        exceptions: [],
+      },
+    ]);
   }
 
   if (loading) {
@@ -256,10 +423,120 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
         </div>
       ) : null}
       {locked ? (
-        <div className="story-bible-notice locked">
+        <div className="story-bible-notice locked" id="story-bible-change-requests">
           <Lock size={16} aria-hidden="true" />
           <span>故事圣经已锁定，修改需要发起修改请求。</span>
+          <button className="btn btn-ghost" onClick={openChangeRequest} type="button">
+            发起修改请求
+          </button>
+          <button className="btn btn-ghost" onClick={() => setUnlockOpen(true)} type="button">
+            解锁并记录原因
+          </button>
         </div>
+      ) : null}
+      {locked && changeRequestOpen ? (
+        <section className="story-bible-change-request panel">
+          <div>
+            <span className="panel-kicker">锁定修改入口</span>
+            <h2>发起修改请求</h2>
+            <p>请求会记录旧值、新值和原因，等待后续影响分析。</p>
+          </div>
+          <label>
+            修改卡片
+            <select
+              value={changeCardKey}
+              onChange={(event) => selectChangeCard(event.target.value)}
+            >
+              {storyBible.cards
+                .filter((card) => card.key !== "worldLaws")
+                .map((card) => (
+                  <option key={card.key} value={card.key}>
+                    {card.title}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label>
+            修改请求标题
+            <input
+              aria-label="修改请求标题"
+              onChange={(event) => setChangeTitle(event.target.value)}
+              value={changeTitle}
+            />
+          </label>
+          <label>
+            修改请求原因
+            <textarea
+              aria-label="修改请求原因"
+              onChange={(event) => setChangeReason(event.target.value)}
+              rows={3}
+              value={changeReason}
+            />
+          </label>
+          <label>
+            修改后的内容
+            <textarea
+              aria-label="修改后的内容"
+              onChange={(event) => setChangeContent(event.target.value)}
+              rows={5}
+              value={changeContent}
+            />
+          </label>
+          <div className="story-bible-editor-actions">
+            <button
+              className="btn btn-ghost"
+              onClick={() => setChangeRequestOpen(false)}
+              type="button"
+            >
+              取消
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={busy === "change-request"}
+              onClick={submitChangeRequest}
+              type="button"
+            >
+              {busy === "change-request" ? (
+                <LoaderCircle className="spin" size={15} aria-hidden="true" />
+              ) : null}
+              提交修改请求
+            </button>
+          </div>
+        </section>
+      ) : null}
+      {locked && unlockOpen ? (
+        <section className="story-bible-change-request panel">
+          <div>
+            <span className="panel-kicker">锁定审计</span>
+            <h2>解锁故事圣经</h2>
+            <p>解锁会保留一条可追溯记录，并记录操作者、时间和原因。</p>
+          </div>
+          <label>
+            解锁原因
+            <textarea
+              aria-label="解锁原因"
+              onChange={(event) => setUnlockReason(event.target.value)}
+              rows={3}
+              value={unlockReason}
+            />
+          </label>
+          <div className="story-bible-editor-actions">
+            <button className="btn btn-ghost" onClick={() => setUnlockOpen(false)} type="button">
+              取消
+            </button>
+            <button
+              className="btn btn-primary"
+              disabled={busy === "unlock"}
+              onClick={unlockStoryBible}
+              type="button"
+            >
+              {busy === "unlock" ? (
+                <LoaderCircle className="spin" size={15} aria-hidden="true" />
+              ) : null}
+              确认解锁
+            </button>
+          </div>
+        </section>
       ) : null}
       {!supported ? (
         <div className="story-bible-notice warning">
@@ -374,13 +651,97 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
                 </div>
                 {editing ? (
                   <div className="story-bible-editor">
-                    <label htmlFor={`bible-editor-${card.key}`}>编辑{card.title}</label>
-                    <textarea
-                      id={`bible-editor-${card.key}`}
-                      onChange={(event) => setDraftContent(event.target.value)}
-                      rows={8}
-                      value={draftContent}
-                    />
+                    {card.key === "worldLaws" ? (
+                      <div className="story-bible-world-rules">
+                        {draftWorldRules.map((rule, ruleIndex) => (
+                          <fieldset className="story-bible-world-rule" key={rule.clientKey}>
+                            <legend>世界铁律 {ruleIndex + 1}</legend>
+                            <label>
+                              规则名称
+                              <input
+                                aria-label={`规则 ${ruleIndex + 1} 名称`}
+                                onChange={(event) =>
+                                  updateWorldRule(ruleIndex, { name: event.target.value })
+                                }
+                                value={rule.name}
+                              />
+                            </label>
+                            <label>
+                              适用约束
+                              <textarea
+                                aria-label={`规则 ${ruleIndex + 1} 约束`}
+                                onChange={(event) =>
+                                  updateWorldRule(ruleIndex, { constraint: event.target.value })
+                                }
+                                rows={3}
+                                value={rule.constraint}
+                              />
+                            </label>
+                            <label>
+                              适用范围
+                              <input
+                                aria-label={`规则 ${ruleIndex + 1} 范围`}
+                                onChange={(event) =>
+                                  updateWorldRule(ruleIndex, { scope: event.target.value })
+                                }
+                                value={rule.scope}
+                              />
+                            </label>
+                            <label>
+                              例外（每行一条）
+                              <textarea
+                                aria-label={`规则 ${ruleIndex + 1} 例外`}
+                                onChange={(event) =>
+                                  updateWorldRule(ruleIndex, {
+                                    exceptions: event.target.value
+                                      .split("\n")
+                                      .map((value) => value.trim())
+                                      .filter(Boolean),
+                                  })
+                                }
+                                rows={2}
+                                value={rule.exceptions.join("\n")}
+                              />
+                            </label>
+                            <button
+                              className="btn btn-ghost"
+                              onClick={() =>
+                                setDraftWorldRules((rules) =>
+                                  rules.filter((_, index) => index !== ruleIndex),
+                                )
+                              }
+                              type="button"
+                            >
+                              <Trash2 size={13} aria-hidden="true" />
+                              删除这条
+                            </button>
+                          </fieldset>
+                        ))}
+                        <button className="btn btn-ghost" onClick={addWorldRule} type="button">
+                          <Plus size={14} aria-hidden="true" />
+                          添加世界铁律
+                        </button>
+                      </div>
+                    ) : (
+                      <label htmlFor={`bible-editor-${card.key}`}>编辑{card.title}</label>
+                    )}
+                    {card.key !== "worldLaws" ? (
+                      <textarea
+                        id={`bible-editor-${card.key}`}
+                        onChange={(event) => setDraftContent(event.target.value)}
+                        rows={8}
+                        value={draftContent}
+                      />
+                    ) : null}
+                    <label>
+                      修改原因
+                      <textarea
+                        aria-label="修改原因"
+                        onChange={(event) => setDraftReason(event.target.value)}
+                        rows={2}
+                        value={draftReason}
+                      />
+                    </label>
                     <div className="story-bible-editor-actions">
                       <button
                         className="btn btn-ghost"
@@ -409,9 +770,24 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
                     </div>
                   </div>
                 ) : (
-                  <p className={`story-bible-card-copy${card.complete ? "" : " empty"}`}>
-                    {card.content || "尚未填写。编辑这张卡片，补充故事方向。"}
-                  </p>
+                  <>
+                    <p className={`story-bible-card-copy${card.complete ? "" : " empty"}`}>
+                      {card.content || "尚未填写。编辑这张卡片，补充故事方向。"}
+                    </p>
+                    {card.key === "worldLaws" && card.worldRules.length > 0 ? (
+                      <div className="story-bible-rule-summary">
+                        {card.worldRules.map((rule) => (
+                          <div key={rule.id}>
+                            <strong>{rule.name}</strong>
+                            <span>{rule.scope}</span>
+                            {rule.exceptions.length > 0 ? (
+                              <small>例外：{rule.exceptions.join("；")}</small>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </>
                 )}
               </article>
             );
@@ -422,6 +798,7 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
           <section
             className="panel story-bible-readiness"
             aria-labelledby="story-bible-readiness-title"
+            id="story-bible-readiness"
           >
             <div className="panel-head">
               <div>
@@ -437,7 +814,16 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
             <div className="story-bible-progress" aria-hidden="true">
               <span style={{ width: `${(storyBible.readiness.completed / 9) * 100}%` }} />
             </div>
-            {missingCount > 0 ? (
+            {storyBible.readiness.issues.length > 0 ? (
+              <ul className="story-bible-missing-list">
+                {storyBible.readiness.issues.map((issue) => (
+                  <li key={`${issue.code}-${issue.key}-${issue.message}`}>
+                    <TriangleAlert size={11} aria-hidden="true" />
+                    {issue.message}
+                  </li>
+                ))}
+              </ul>
+            ) : missingCount > 0 ? (
               <ul className="story-bible-missing-list">
                 {storyBible.readiness.missingCards.map((card) => (
                   <li key={card.key}>
@@ -475,6 +861,29 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
                 </div>
               ) : null}
             </dl>
+          </section>
+
+          <section
+            className="panel story-bible-version"
+            aria-labelledby="story-bible-history-title"
+          >
+            <span className="panel-kicker">版本历史</span>
+            <h2 id="story-bible-history-title">最近版本</h2>
+            {history.length > 0 ? (
+              <ol className="story-bible-history">
+                {history.slice(0, 5).map((version) => (
+                  <li key={version.id}>
+                    <strong>
+                      第 {version.version} 版 · {versionActionLabels[version.action]}
+                    </strong>
+                    <span>{version.reason}</span>
+                    <small>{formatDateTime(version.createdAt)}</small>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="story-bible-ready-copy">还没有历史版本。</p>
+            )}
           </section>
         </aside>
       </div>

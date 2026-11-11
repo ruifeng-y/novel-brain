@@ -5303,6 +5303,21 @@ body[data-context="work"] [data-context-card="account"] {
   background: #fbfcf9;
 }
 
+.model-config-row-error {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  align-items: start;
+}
+
+.model-config-actions {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
 .model-logo {
   width: 36px;
   height: 36px;

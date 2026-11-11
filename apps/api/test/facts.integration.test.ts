@@ -3,6 +3,7 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import {
+  canonCommitListResponseSchema,
   chapterWorkspaceResponseSchema,
   confirmedSettingListResponseSchema,
   contextPackPreviewResponseSchema,
@@ -365,6 +366,7 @@ describe("fact proposal HTTP integration", () => {
       (await owner.get(`${branchPath}/facts`).expect(200)).body,
     ).data;
 
+    await verifyQuality(owner, token, branchPath, chapter.id, waitingChapter.currentVersionId);
     const approved = await owner
       .post(`${branchPath}/chapters/${chapter.id}/review`)
       .set("Origin", origin)
@@ -437,6 +439,7 @@ describe("fact proposal HTTP integration", () => {
       details: { chapterStatus: "waiting_review" },
     });
 
+    await verifyQuality(owner, token, branchPath, chapter.id, waitingChapter.currentVersionId);
     await owner
       .post(`${branchPath}/chapters/${chapter.id}/review`)
       .set("Origin", origin)
@@ -506,6 +509,7 @@ describe("fact proposal HTTP integration", () => {
     const proposalsBeforeSubmission = factProposalListResponseSchema.parse(
       (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
     ).data;
+    await verifyQuality(owner, token, branchPath, chapter.id, waitingChapter.currentVersionId);
     const approved = await owner
       .post(`${branchPath}/chapters/${chapter.id}/review`)
       .set("Origin", origin)
@@ -533,7 +537,14 @@ describe("fact proposal HTTP integration", () => {
       chapterVersionId: string;
       versionNodeId: string;
       sourceChapter: { id: string; number: number; title: string };
-      facts: Array<{ proposalId: string; decisionId: string }>;
+      facts: Array<{
+        id: string;
+        proposalId: string;
+        decisionId: string;
+        subject: string;
+        predicate: string;
+        object: string;
+      }>;
       decisions: Array<{ proposalId: string; decisionId: string }>;
       summary: { factCount: number; text: string };
     };
@@ -556,6 +567,52 @@ describe("fact proposal HTTP integration", () => {
     expect(commit.decisions.map((decision) => decision.proposalId)).toEqual(
       expect.arrayContaining(requiredProposals.map((proposal) => proposal.id)),
     );
+    const commitsPage = canonCommitListResponseSchema.parse(
+      (await owner.get(`${branchPath}/canon/commits?limit=1`).expect(200)).body,
+    );
+    expect(commitsPage.data).toHaveLength(1);
+    expect(commitsPage.meta).toHaveProperty("nextCursor");
+    const replay = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success")
+      .send(submissionBody)
+      .expect(200);
+    expect((replay.body.data as { id: string }).id).toBe(commit.id);
+    const conflictingKey = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success-second-key")
+      .send(submissionBody)
+      .expect(409);
+    expect(conflictingKey.body.error.code).toBe("CANON_IDEMPOTENCY_CONFLICT");
+    await databasePool.query("UPDATE chapters SET status = 'writing' WHERE id = $1", [chapter.id]);
+    const nextVersion = await saveChapterVersion(
+      owner,
+      token,
+      branchPath,
+      chapter.id,
+      `${generatedContent}\n\n新的段落。`,
+      approved.body.data.chapter.version,
+    );
+    const versionConflict = await owner
+      .post(`${branchPath}/chapters/${chapter.id}/canon/commit`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "facts-submit-success-new-version")
+      .send({ chapterVersionId: nextVersion.id })
+      .expect(409);
+    expect(versionConflict.body.error.code).toBe("VERSION_CONFLICT");
+    await databasePool.query(
+      "UPDATE chapters SET status = 'approved', current_version_id = $2 WHERE id = $1",
+      [chapter.id, waitingChapter.currentVersionId],
+    );
+    await databasePool.query("UPDATE work_branches SET head_node_id = $2 WHERE id = $1", [
+      work.mainBranch.id,
+      commit.versionNodeId,
+    ]);
     expect(
       factProposalListResponseSchema.parse(
         (await owner.get(`${branchPath}/chapters/${chapter.id}/fact-proposals`).expect(200)).body,
@@ -611,17 +668,43 @@ describe("fact proposal HTTP integration", () => {
     );
     expect(settingsAfterSubmission.body.data).not.toEqual(settingsBeforeSubmission);
 
+    const knowledgeStates = await databasePool.query<{
+      objective_fact_id: string;
+      state: string;
+      source_kind: string;
+      version_node_id: string;
+    }>(
+      `SELECT objective_fact_id, state, source_kind, version_node_id
+       FROM character_knowledge_states
+       WHERE objective_fact_id = ANY($1::uuid[])`,
+      [commit.facts.map((fact) => fact.id)],
+    );
+    expect(knowledgeStates.rows).toHaveLength(commit.facts.length);
+    expect(knowledgeStates.rows).toEqual(
+      expect.arrayContaining(
+        commit.facts.map((fact) =>
+          expect.objectContaining({
+            objective_fact_id: fact.id,
+            state: "knowledge",
+            source_kind: "observed",
+            version_node_id: commit.versionNodeId,
+          }),
+        ),
+      ),
+    );
+
     const secondChapter = await createReadyChapter(owner, token, branchPath, 2, "余波");
-    const context = contextPackPreviewResponseSchema.parse(
+    const unknownContext = contextPackPreviewResponseSchema.parse(
       (
         await owner
           .get(`${branchPath}/chapters/${secondChapter.id}/context-preview?tokenBudget=12000`)
           .expect(200)
       ).body,
     ).data;
-    expect(context.selected.map((source) => source.key)).toEqual(
+    expect(unknownContext.selected.map((source) => source.key)).toEqual(
       expect.arrayContaining(commit.facts.map((fact) => `setting:${fact.id}`)),
     );
+    const context = unknownContext;
     for (const fact of commit.facts) {
       const selectedFact = context.selected.find((source) => source.key === `setting:${fact.id}`);
       expect(selectedFact?.sourceRefs).toEqual([
@@ -653,6 +736,11 @@ describe("fact proposal HTTP integration", () => {
     expect(beforeValidity.selected.map((source) => source.key)).not.toContain(
       `setting:${futureFact.id}`,
     );
+    expect(beforeValidity.evicted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: `setting:${futureFact.id}`, reason: "future_fact" }),
+      ]),
+    );
 
     const thirdChapter = await createReadyChapter(owner, token, branchPath, 3, "回响");
     const afterValidity = contextPackPreviewResponseSchema.parse(
@@ -667,6 +755,11 @@ describe("fact proposal HTTP integration", () => {
     );
     expect(afterValidity.selected.map((source) => source.key)).not.toContain(
       `setting:${expiredFact.id}`,
+    );
+    expect(afterValidity.evicted).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ key: `setting:${expiredFact.id}`, reason: "expired_fact" }),
+      ]),
     );
     expect(
       afterValidity.selected.find((source) => source.key === `setting:${futureFact.id}`)
@@ -954,6 +1047,22 @@ describe("fact proposal HTTP integration", () => {
         purposes: ["writing"],
         isDefault: true,
       })
+      .expect(200);
+  }
+
+  async function verifyQuality(
+    agent: SuperAgentTest,
+    token: string,
+    branchPath: string,
+    chapterId: string,
+    chapterVersionId: string,
+  ): Promise<void> {
+    await agent
+      .post(`${branchPath}/chapters/${chapterId}/verify`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", crypto.randomUUID())
+      .send({ chapterVersionId })
       .expect(200);
   }
 

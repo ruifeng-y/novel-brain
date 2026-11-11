@@ -4,18 +4,27 @@ import {
   Delete,
   Get,
   HttpCode,
+  Headers,
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from "@nestjs/common";
 import {
+  storyBibleChangeRequestCreateRequestSchema,
+  storyBibleChangeRequestResponseSchema,
   storyBibleGenerateRequestSchema,
   storyBibleLockRequestSchema,
   storyBiblePatchRequestSchema,
   storyBibleReadinessResponseSchema,
   storyBibleResponseSchema,
+  storyBibleUnlockRequestSchema,
+  storyBibleVersionListQuerySchema,
+  storyBibleVersionListResponseSchema,
+  storyBibleWorldRuleListQuerySchema,
+  storyBibleWorldRuleListResponseSchema,
   uuidV7Schema,
 } from "@novel-brain/contracts";
 import { ApiOkResponse, ApiTags, type SchemaObject } from "@nestjs/swagger";
@@ -24,6 +33,7 @@ import { z } from "zod";
 
 import type { AuthenticatedRequest } from "../auth/auth.types";
 import { getClientIp } from "../auth/client-ip";
+import { ApiQuerySchema } from "../common/zod-openapi";
 import { CsrfGuard } from "../auth/csrf.guard";
 import { SessionAuthGuard } from "../auth/session.guard";
 // Nest uses the runtime class reference for dependency injection metadata.
@@ -36,6 +46,9 @@ function schemaOf(schema: z.ZodType): SchemaObject {
 
 const storyBibleResponseJsonSchema = schemaOf(storyBibleResponseSchema);
 const storyBibleReadinessResponseJsonSchema = schemaOf(storyBibleReadinessResponseSchema);
+const storyBibleVersionListResponseJsonSchema = schemaOf(storyBibleVersionListResponseSchema);
+const storyBibleWorldRuleListResponseJsonSchema = schemaOf(storyBibleWorldRuleListResponseSchema);
+const storyBibleChangeRequestResponseJsonSchema = schemaOf(storyBibleChangeRequestResponseSchema);
 
 @ApiTags("story-bible")
 @Controller("works/:workId/branches/:branchId/story-bible")
@@ -84,6 +97,58 @@ export class StoryBibleController {
     });
   }
 
+  @Get("versions")
+  @ApiQuerySchema(storyBibleVersionListQuerySchema)
+  @ApiOkResponse({
+    description: "Immutable story bible version history",
+    schema: storyBibleVersionListResponseJsonSchema,
+  })
+  async versions(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Query() query: unknown,
+  ) {
+    const requestId = createRequestId();
+    const result = await this.service.versions(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      storyBibleVersionListQuerySchema.parse(query ?? {}),
+    );
+    return storyBibleVersionListResponseSchema.parse({
+      data: result.versions,
+      requestId,
+      meta: { nextCursor: result.nextCursor },
+    });
+  }
+
+  @Get("world-rules")
+  @ApiQuerySchema(storyBibleWorldRuleListQuerySchema)
+  @ApiOkResponse({
+    description: "Structured world rule constraints",
+    schema: storyBibleWorldRuleListResponseJsonSchema,
+  })
+  async worldRules(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Query() query: unknown,
+  ) {
+    const requestId = createRequestId();
+    const result = await this.service.worldRules(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      uuidV7Schema.parse(branchId),
+      storyBibleWorldRuleListQuerySchema.parse(query ?? {}),
+    );
+    return storyBibleWorldRuleListResponseSchema.parse({
+      data: result.worldRules,
+      requestId,
+      meta: { nextCursor: result.nextCursor },
+    });
+  }
+
   @Post("generate")
   @HttpCode(200)
   @ApiOkResponse({
@@ -103,6 +168,7 @@ export class StoryBibleController {
         this.userId(request),
         uuidV7Schema.parse(workId),
         uuidV7Schema.parse(branchId),
+        this.auditContext(request, requestId),
       ),
       requestId,
       meta: {},
@@ -124,6 +190,57 @@ export class StoryBibleController {
         uuidV7Schema.parse(workId),
         uuidV7Schema.parse(branchId),
         storyBiblePatchRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("unlock")
+  @HttpCode(200)
+  @ApiOkResponse({ description: "Unlocked story bible", schema: storyBibleResponseJsonSchema })
+  async unlock(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return storyBibleResponseSchema.parse({
+      data: await this.service.unlock(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        storyBibleUnlockRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("change-requests")
+  @ApiOkResponse({
+    description: "Pending change request for a locked story bible",
+    schema: storyBibleChangeRequestResponseJsonSchema,
+  })
+  async createChangeRequest(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Param("branchId") branchId: string,
+    @Body() body: unknown,
+    @Headers("idempotency-key") idempotencyKey?: string,
+  ) {
+    const requestId = createRequestId();
+    return storyBibleChangeRequestResponseSchema.parse({
+      data: await this.service.createChangeRequest(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        uuidV7Schema.parse(branchId),
+        storyBibleChangeRequestCreateRequestSchema.parse(body),
+        this.auditContext(request, requestId),
+        idempotencyKey?.trim() || undefined,
       ),
       requestId,
       meta: {},

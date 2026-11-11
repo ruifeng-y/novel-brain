@@ -1,5 +1,10 @@
 import { createHmac, randomUUID, timingSafeEqual } from "node:crypto";
 
+import { ContextBudgetExceededError } from "./context-compiler";
+import { estimateContextTokens } from "./context-tokens";
+
+export { estimateContextTokens } from "./context-tokens";
+
 export type RandomUuid = () => string;
 
 export function createRequestId(generateUuid: RandomUuid = randomUUID): string {
@@ -116,6 +121,13 @@ export interface ChapterContextInput {
   storyBible: {
     id: string;
     cards: Array<{ title: string; content: string }>;
+    worldRules?: Array<{
+      id: string;
+      name: string;
+      constraint: string;
+      scope: string;
+      exceptions: string[];
+    }>;
   };
   styleSample?: string;
   styleSampleId?: string;
@@ -139,20 +151,6 @@ export interface ChapterContextInput {
     versionId: string;
     content: string;
   }>;
-}
-
-export class ContextBudgetExceededError extends Error {
-  constructor(
-    readonly requiredTokens: number,
-    readonly tokenBudget: number,
-  ) {
-    super("Required context exceeds the token budget");
-    this.name = "ContextBudgetExceededError";
-  }
-}
-
-export function estimateContextTokens(value: string): number {
-  return Math.max(1, Math.ceil(Array.from(value.replace(/\s/gu, "")).length / 2));
 }
 
 export function compileContextPack(input: CompileContextPackInput): CompiledContextPack {
@@ -230,6 +228,7 @@ export function compileChapterContext(
     label: "故事圣经",
     citation: "已锁定故事圣经",
   };
+  const hasStructuredWorldRules = (input.storyBible.worldRules ?? []).length > 0;
   const brief = input.chapter.brief;
   const sceneText = [
     input.chapter.title,
@@ -265,9 +264,30 @@ export function compileChapterContext(
       key: "story-bible:locked",
       label: "故事圣经",
       priority: "required",
-      content: input.storyBible.cards.map((card) => `${card.title}：${card.content}`).join("\n"),
+      content: input.storyBible.cards
+        .filter((card) => !(hasStructuredWorldRules && card.title === "世界铁律"))
+        .map((card) => `${card.title}：${card.content}`)
+        .join("\n"),
       sourceRefs: [bibleRef],
     },
+    ...((input.storyBible.worldRules ?? []).length > 0
+      ? [
+          {
+            key: "story-bible:world-rules",
+            label: "世界铁律",
+            priority: "required" as const,
+            content: (input.storyBible.worldRules ?? [])
+              .map(
+                (rule) =>
+                  `${rule.name}：${rule.constraint}\n适用范围：${rule.scope}${
+                    rule.exceptions.length > 0 ? `\n例外：${rule.exceptions.join("；")}` : ""
+                  }`,
+              )
+              .join("\n"),
+            sourceRefs: [bibleRef],
+          },
+        ]
+      : []),
     ...(input.styleSample?.trim()
       ? [
           {
@@ -352,6 +372,128 @@ function isSceneRelevantSetting(
   return identifiers.some((identifier) => sceneText.includes(identifier));
 }
 
+export interface CharacterKnowledgeFact {
+  id: string;
+  subject: string;
+  predicate: string;
+  object: string;
+  validFromChapter: number;
+  validToChapter: number | null;
+}
+
+export interface CharacterKnowledgeStateInput {
+  objectiveFactId: string;
+  state: "knowledge" | "belief" | "suspicion" | "misbelief" | "unknown";
+  claimedContent: string | null;
+  validFromChapter: number;
+  validToChapter: number | null;
+}
+
+export interface CharacterKnowledgeProjection {
+  knownFacts: CharacterKnowledgeFact[];
+  beliefs: Array<{
+    objectiveFactId: string;
+    state: Exclude<CharacterKnowledgeStateInput["state"], "knowledge">;
+    claimedContent: string | null;
+  }>;
+  hiddenFactIds: string[];
+}
+
+export function projectCharacterKnowledgeAtChapter(
+  facts: CharacterKnowledgeFact[],
+  states: CharacterKnowledgeStateInput[],
+  chapterNumber: number,
+): CharacterKnowledgeProjection {
+  const activeFacts = facts.filter((fact) =>
+    chapterWithinValidity(fact.validFromChapter, fact.validToChapter, chapterNumber),
+  );
+  const latestStateByFact = new Map<string, CharacterKnowledgeStateInput>();
+  for (const state of [...states].sort(
+    (left, right) => left.validFromChapter - right.validFromChapter,
+  )) {
+    if (chapterWithinValidity(state.validFromChapter, state.validToChapter, chapterNumber)) {
+      latestStateByFact.set(state.objectiveFactId, state);
+    }
+  }
+
+  const knownFacts = activeFacts.filter(
+    (fact) => latestStateByFact.get(fact.id)?.state === "knowledge",
+  );
+  const knownFactIds = new Set(knownFacts.map((fact) => fact.id));
+  const beliefs = [...latestStateByFact.values()].flatMap((state) => {
+    if (
+      state.state === "knowledge" ||
+      !activeFacts.some((fact) => fact.id === state.objectiveFactId)
+    ) {
+      return [];
+    }
+    return [
+      {
+        objectiveFactId: state.objectiveFactId,
+        state: state.state,
+        claimedContent: state.claimedContent,
+      },
+    ];
+  });
+
+  return {
+    knownFacts,
+    beliefs,
+    hiddenFactIds: activeFacts.filter((fact) => !knownFactIds.has(fact.id)).map((fact) => fact.id),
+  };
+}
+
+export interface CharacterStateTransitionInput {
+  stateKind: "body" | "limb" | "location" | "ability" | "disguise";
+  stateKey: string;
+  value: string;
+  validFromChapter: number;
+  validToChapter: number | null;
+}
+
+export function projectCharacterStateAtChapter<T extends CharacterStateTransitionInput>(
+  transitions: T[],
+  chapterNumber: number,
+): Record<string, T> {
+  const active: Record<string, T> = {};
+  for (const transition of [...transitions].sort(
+    (left, right) => left.validFromChapter - right.validFromChapter,
+  )) {
+    if (
+      chapterWithinValidity(transition.validFromChapter, transition.validToChapter, chapterNumber)
+    ) {
+      active[`${transition.stateKind}:${transition.stateKey}`] = transition;
+    }
+  }
+  return active;
+}
+
+export interface CharacterRelationshipValidity {
+  validFromChapter: number;
+  validToChapter: number | null;
+}
+
+export function projectActiveRelationshipsAtChapter<T extends CharacterRelationshipValidity>(
+  relationships: T[],
+  chapterNumber: number,
+): T[] {
+  return relationships.filter((relationship) =>
+    chapterWithinValidity(
+      relationship.validFromChapter,
+      relationship.validToChapter,
+      chapterNumber,
+    ),
+  );
+}
+
+function chapterWithinValidity(
+  fromChapter: number,
+  toChapter: number | null,
+  chapterNumber: number,
+): boolean {
+  return fromChapter <= chapterNumber && (toChapter === null || toChapter >= chapterNumber);
+}
+
 export interface ExtractedFactCandidate {
   subject: string;
   predicate: string;
@@ -432,3 +574,21 @@ function uniqueSourceRefs(refs: ContextSourceRef[]): ContextSourceRef[] {
     return true;
   });
 }
+
+export * from "./agent-runtime";
+export * from "./context-compiler";
+export * from "./world-simulation";
+export * from "./orchestrator";
+export * from "./logging";
+export * from "./power-items";
+export * from "./outline-planning";
+export * from "./readiness";
+export * from "./recovery";
+export * from "./story-ledger";
+export * from "./summary";
+export * from "./volume-audit";
+export * from "./writing-actions";
+export * from "./critic";
+export * from "./style-drift";
+export * from "./revision";
+export * from "./provider-call-budget";

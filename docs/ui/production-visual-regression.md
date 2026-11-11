@@ -32,7 +32,7 @@ Suggested Playwright assertion (keep the same screenshot options for actual and 
 - maxDiffPixelRatio: 0.005
 
 The current M0 baseline is rendered with Playwright 1.64.1 Chromium in the
-`Production CI` `ubuntu-latest` job, locale `zh-CN`, timezone `Asia/Shanghai`,
+`Production CI` `ubuntu-24.04` job, locale `zh-CN`, timezone `Asia/Shanghai`,
 light color scheme, reduced motion, device scale factor 1 and fixed API
 timestamps. The approved baseline evidence is
 [Production CI #42005502769](https://github.com/ruifeng-y/novel-brain/actions/runs/42005502769).

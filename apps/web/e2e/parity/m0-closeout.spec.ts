@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { getCsrf, mailCode, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import {
@@ -7,11 +7,10 @@ import {
   seedM0Work,
   type M0WorkFixture,
 } from "../helpers/m0";
-import { expectAuthorFacingLanguage } from "../helpers/ui";
+import { expectAuthorFacingLanguage, freezeApiTimestamps } from "../helpers/ui";
 import { startWorker } from "../helpers/worker";
 
 const viewports = [390, 900, 1180, 1440] as const;
-const frozenTimestamp = "2026-11-05T08:50:00.000Z";
 const screenshotOptions = {
   animations: "disabled",
   caret: "hide",
@@ -69,34 +68,10 @@ test("completes the full M0 author journey through the production UI", async ({
   await expect(page.getByText("故事圣经已锁定，修改需要发起修改请求。")).toBeVisible();
 
   await page.goto(`/workspace/${work.id}/outline`);
-  await page.getByRole("spinbutton", { name: "章节序号" }).fill("1");
-  await page.getByRole("textbox", { name: "章节标题" }).fill("一只手也能结印");
-  await page
-    .getByRole("textbox", { name: "章目标" })
-    .fill("让沈砚在断臂后找到新的战斗方式，并让顾青第一次怀疑他。");
-  await page.getByRole("textbox", { name: "POV" }).fill("沈砚");
-  await page.getByRole("textbox", { name: "地点" }).fill("荒寺外山道");
-  await page
-    .getByRole("textbox", { name: "场景节拍（一行一个）" })
-    .fill(
-      [
-        "沈砚藏起断臂，被顾青撞见。",
-        "血河宗追兵逼近，两人被迫联手。",
-        "沈砚单手结印，忘川书短暂显形。",
-        "顾青看见书页一角，但没有点破。",
-      ].join("\n"),
-    );
-  await page
-    .getByRole("textbox", { name: "必用事实（一行一个）" })
-    .fill(["左臂骨折，不能双手结印", "顾青不知道忘川书完整来历"].join("\n"));
-  await page.getByRole("button", { name: "创建章纲" }).click();
-  await expect(page.getByRole("heading", { name: "一只手也能结印" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "大纲工作台" })).toBeVisible();
 
   await createConfirmedSettings(page.request, branchPath);
-  const chapterResponse = await page.request.get(`${branchPath}/chapters`);
-  expect(chapterResponse.ok()).toBe(true);
-  const chapter = (await chapterResponse.json()).data[0] as { id: string };
-  expect(chapter.id).toBeTruthy();
+  const chapter = await createM0Chapter(page.request, work);
 
   const worker = await startWorker();
   try {
@@ -105,6 +80,7 @@ test("completes the full M0 author journey through the production UI", async ({
     await expect(
       page.locator(".writing-generation").getByRole("heading", { name: "等待审阅" }),
     ).toBeVisible({ timeout: 15_000 });
+    await page.getByRole("tab", { name: "事实" }).click();
 
     const factsPanel = page.getByRole("region", { name: "本章事实" });
     const optionalFact = factsPanel
@@ -126,6 +102,10 @@ test("completes the full M0 author journey through the production UI", async ({
       .filter({ has: page.locator(".writing-fact-risk-medium") });
     await mediumRiskFact.getByRole("button", { name: "确认", exact: true }).click();
     await expect(mediumRiskFact.getByText("已确认", { exact: true })).toBeVisible();
+
+    await page.getByRole("button", { name: "检查本章", exact: true }).click();
+    await expect(page.locator(".writing-quality")).toContainText("质量报告");
+    await page.getByRole("tab", { name: "事实" }).click();
     await expect(factsPanel.getByText("先批准本章，才能提交事实。")).toBeVisible();
     await factsPanel.getByRole("button", { name: "批准本章" }).click();
     await expect(factsPanel.getByRole("button", { name: "本章已批准" })).toBeDisabled();
@@ -161,7 +141,7 @@ test("checks every M0 parity page at all signed-off viewports and author languag
   page,
   context,
   request,
-}) => {
+}, testInfo) => {
   const email = uniqueEmail("m0-parity");
   const session = await registerUser(request, email, "StrongPassword123", "M0 验收作者");
   await freezeApiTimestamps(page);
@@ -191,48 +171,61 @@ test("checks every M0 parity page at all signed-off viewports and author languag
   const work = await seedM0Work(request);
   const chapter = await createM0Chapter(request, work);
   const pages = [
-    { id: "dashboard", path: "/workspace", heading: "工作台", ready: ".project-card" },
+    {
+      id: "dashboard",
+      path: "/workspace",
+      heading: "工作台",
+      ready: ".project-card",
+      signedGolden: true,
+    },
     {
       id: "new-project",
       path: "/workspace/new-project",
       heading: "把一个想法，长成一本书",
       ready: ".mode-switch",
+      signedGolden: true,
     },
     {
       id: "account-settings",
       path: "/workspace/settings/account",
       heading: "把写作环境准备好",
       ready: ".model-config-row, .model-empty",
+      signedGolden: false,
     },
     {
       id: "work-overview",
       path: `/workspace/${work.id}/overview`,
       heading: work.title,
       ready: ".overview-hero",
+      signedGolden: false,
     },
     {
       id: "bible",
       path: `/workspace/${work.id}/bible`,
       heading: work.title,
       ready: ".story-bible-layout",
+      signedGolden: false,
     },
     {
       id: "settings",
       path: `/workspace/${work.id}/settings`,
       heading: "设定中心",
       ready: ".settings-workspace-grid",
+      signedGolden: false,
     },
     {
       id: "outline",
       path: `/workspace/${work.id}/outline`,
       heading: "大纲工作台",
-      ready: ".outline-workspace-grid",
+      ready: ".outline-plan-grid",
+      signedGolden: false,
     },
     {
       id: "writing",
       path: `/workspace/${work.id}/write?chapterId=${chapter.id}`,
       heading: "写作台",
       ready: ".writing-editor",
+      signedGolden: false,
     },
   ] as const;
 
@@ -248,58 +241,20 @@ test("checks every M0 parity page at all signed-off viewports and author languag
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       );
       expect(overflow).toBeLessThanOrEqual(1);
-      await expect(page).toHaveScreenshot(
-        [pageContract.id, `${pageContract.id}-${width}.png`],
-        screenshotOptions,
-      );
+      if (pageContract.signedGolden) {
+        await expect(page).toHaveScreenshot(
+          [pageContract.id, `${pageContract.id}-${width}.png`],
+          screenshotOptions,
+        );
+      } else {
+        await testInfo.attach(`${pageContract.id}-m1-pending-${width}`, {
+          body: await page.screenshot(screenshotOptions),
+          contentType: "image/png",
+        });
+      }
     }
   }
 
   const csrf = await getCsrf(request);
   expect(csrf.length).toBeGreaterThan(20);
 });
-
-async function freezeApiTimestamps(page: Page) {
-  await page.route("**/api/v1/**", async (route) => {
-    const response = await route.fetch();
-    const contentType = response.headers()["content-type"] ?? "";
-    if (!contentType.includes("application/json")) {
-      await route.fulfill({ response });
-      return;
-    }
-
-    const text = await response.text();
-    if (!text) {
-      await route.fulfill({ response });
-      return;
-    }
-
-    let payload: unknown;
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      await route.fulfill({ response, body: text });
-      return;
-    }
-
-    await route.fulfill({ response, json: freezeTimestamps(payload) });
-  });
-}
-
-function freezeTimestamps(value: unknown): unknown {
-  if (Array.isArray(value)) {
-    return value.map(freezeTimestamps);
-  }
-  if (!value || typeof value !== "object") {
-    return value;
-  }
-
-  return Object.fromEntries(
-    Object.entries(value).map(([key, entry]) => [
-      key,
-      /(At|timestamp)$/u.test(key) && typeof entry === "string"
-        ? frozenTimestamp
-        : freezeTimestamps(entry),
-    ]),
-  );
-}

@@ -1,6 +1,10 @@
+import { createHash } from "node:crypto";
+
 import { Inject, Injectable } from "@nestjs/common";
 import {
   generateChapterJobSchema,
+  generationCheckpointSchema,
+  type ContextPackManifest,
   WORKER_JOB_STEPS,
   type GenerateChapterJob,
   type GenerationCost,
@@ -10,26 +14,47 @@ import {
   AiProviderError,
   M0_COST_PER_TOKEN_CNY,
   type AiGateway,
-  type GenerationOperation,
   type GenerationResult,
 } from "@novel-brain/ai";
 import {
-  compileChapterContext,
+  compileChapterContextManifest,
   ContextBudgetExceededError,
+  decideStepRecovery,
   extractFactCandidates,
-  type CompiledContextPack,
+  PROVIDER_CALL_MAX_OUTPUT_TOKENS,
+  resolveModelContextWindow,
 } from "@novel-brain/core";
-
+import { calculateModelCallCost } from "@novel-brain/db";
 import { AI_GATEWAY } from "./generation.tokens";
 import type { ByokAiGatewayFactory } from "./model-provider.factory";
+import {
+  BUDGET_EXHAUSTED_ESCALATION,
+  BUDGET_EXHAUSTED_MESSAGE,
+  BudgetedProviderCallExecutor,
+  CostBudgetOverrunRecordedError,
+  ProviderBudgetExceededError,
+  describeProviderFailure,
+} from "./budgeted-provider-call";
+import { JobStoppedError } from "./provider-call-errors";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
   WorkerGenerationRepository,
-  type JobRecord,
   type LoadedGenerationJob,
   type WorkerContextSources,
 } from "./generation.repository";
+
+export interface GenerationTraceLogger {
+  info(payload: Record<string, unknown>, message?: string): void;
+  warn(payload: Record<string, unknown>, message?: string): void;
+}
+
+export type GenerationStepBoundaryHook = (step: WorkerJobStep) => void | Promise<void>;
+
+export interface GenerationRecoveryOptions {
+  maxAutomaticAttempts?: number;
+  sleep?: (delayMs: number) => Promise<void>;
+}
 
 const STEP_PROGRESS: Record<WorkerJobStep, number> = {
   prepare: 10,
@@ -40,13 +65,9 @@ const STEP_PROGRESS: Record<WorkerJobStep, number> = {
   extract_facts: 96,
   await_review: 100,
 };
-class JobBudgetExceededError extends Error {
-  constructor() {
-    super("Generation budget exhausted");
-    this.name = "JobBudgetExceededError";
-  }
-}
 class ModelConfigurationError extends Error {
+  readonly failureClass = "policy" as const;
+
   constructor() {
     super("Model configuration could not be loaded");
     this.name = "ModelConfigurationError";
@@ -57,10 +78,37 @@ type AiGatewayResolver = AiGateway | Pick<ByokAiGatewayFactory, "create">;
 
 @Injectable()
 export class GenerationJobProcessor {
+  private readonly providerCalls: BudgetedProviderCallExecutor;
+  private traceLogger: GenerationTraceLogger | undefined;
+  private boundaryHook: GenerationStepBoundaryHook | undefined;
+  private recoveryOptions: Required<GenerationRecoveryOptions> = {
+    maxAutomaticAttempts: 1,
+    sleep: async (delayMs) => {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    },
+  };
+
   constructor(
     private readonly repository: WorkerGenerationRepository,
     @Inject(AI_GATEWAY) private readonly providerResolver: AiGatewayResolver,
-  ) {}
+  ) {
+    this.providerCalls = new BudgetedProviderCallExecutor(repository);
+  }
+
+  setTraceLogger(logger: GenerationTraceLogger): void {
+    this.traceLogger = logger;
+  }
+
+  setStepBoundaryHook(hook: GenerationStepBoundaryHook | undefined): void {
+    this.boundaryHook = hook;
+  }
+
+  configureRecovery(options: GenerationRecoveryOptions): void {
+    this.recoveryOptions = {
+      ...this.recoveryOptions,
+      ...options,
+    };
+  }
 
   async process(payload: GenerateChapterJob): Promise<void> {
     await this.repository.withJobLock(payload.jobId, () => this.processLocked(payload));
@@ -87,64 +135,121 @@ export class GenerationJobProcessor {
     if (started === "terminal" || !started) {
       return;
     }
-    let job = started;
     const resumeStep = await this.repository.resumeStep(durablePayload);
     const startIndex = WORKER_JOB_STEPS.indexOf(resumeStep);
-    let contextPack: CompiledContextPack | undefined;
+    let contextPack: ContextPackManifest | undefined;
     let provider: AiGateway | undefined;
+    let checkpoint = generationCheckpointSchema.parse(loaded.job.checkpoint);
 
     for (const step of WORKER_JOB_STEPS) {
       const stepIndex = WORKER_JOB_STEPS.indexOf(step);
       if (stepIndex < startIndex) {
         continue;
       }
-      if (await this.repository.isCancelled(durablePayload)) {
+      if ((await this.repository.stopReason(durablePayload)) !== null) {
         return;
       }
-      try {
-        if (stepRequiresProvider(step) && !provider) {
-          try {
-            provider =
-              "generateText" in this.providerResolver
-                ? this.providerResolver
-                : this.providerResolver.create(loaded.modelConfig);
-          } catch {
-            throw new ModelConfigurationError();
+      while (true) {
+        let jobStep: Awaited<ReturnType<WorkerGenerationRepository["startStep"]>> | undefined;
+        try {
+          if (stepRequiresProvider(step) && !provider) {
+            try {
+              provider =
+                "generateText" in this.providerResolver
+                  ? this.providerResolver
+                  : this.providerResolver.create(loaded.modelConfig);
+            } catch {
+              throw new ModelConfigurationError();
+            }
           }
+          jobStep = await this.repository.startStep(
+            durablePayload,
+            step,
+            stepInputHash(durablePayload, step, checkpoint),
+            STEP_PROGRESS[step],
+          );
+          const result = await this.executeStep({
+            payload: durablePayload,
+            loaded,
+            ...(provider ? { provider } : {}),
+            step,
+            attempt: jobStep.attempt,
+            ...(contextPack ? { contextPack } : {}),
+          });
+          contextPack = result.contextPack ?? contextPack;
+          const committed = await this.repository.succeedStep({
+            payload: durablePayload,
+            step,
+            progress: STEP_PROGRESS[step],
+            output: result.output,
+            cost: result.cost,
+            checkpointPayload: result.checkpointPayload,
+          });
+          checkpoint = generationCheckpointSchema.parse(committed.checkpoint);
+          break;
+        } catch (error) {
+          if (error instanceof JobStoppedError) {
+            return;
+          }
+          if (
+            error instanceof CostBudgetOverrunRecordedError ||
+            (error instanceof Error && error.name === "CostBudgetOverrunRecordedError")
+          ) {
+            return;
+          }
+          if (error instanceof ProviderBudgetExceededError) {
+            await this.repository.failStep({
+              payload: durablePayload,
+              step,
+              code: "JOB_BUDGET_EXCEEDED",
+              message: BUDGET_EXHAUSTED_MESSAGE,
+              terminal: true,
+              terminalStatus: "paused",
+            });
+            return;
+          }
+          const failure = toFailure(error);
+          if (failure.failureClass === "budget") {
+            await this.repository.failStep({
+              payload: durablePayload,
+              step,
+              code: failure.code,
+              message: failure.message,
+              terminal: true,
+              terminalStatus: "paused",
+            });
+            return;
+          }
+          const decision = decideStepRecovery({
+            failureClass: failure.failureClass,
+            attempt: jobStep?.attempt ?? 1,
+            maxAutomaticAttempts: this.recoveryOptions.maxAutomaticAttempts,
+          });
+          await this.repository.failStep({
+            payload: durablePayload,
+            step,
+            code: failure.code,
+            message: failure.message,
+            terminal: decision.terminal,
+          });
+          if (decision.terminal) {
+            return;
+          }
+          this.traceLogger?.warn(
+            {
+              event: "worker.step.retry_scheduled",
+              jobId: durablePayload.jobId,
+              step,
+              attempt: jobStep?.attempt ?? 1,
+              failureClass: failure.failureClass,
+              delayMs: decision.delayMs,
+            },
+            "Retryable generation step will resume from the committed checkpoint",
+          );
+          await this.recoveryOptions.sleep(decision.delayMs);
         }
-        await this.repository.startStep(
-          durablePayload,
-          step,
-          inputHash(durablePayload, step),
-          STEP_PROGRESS[step],
-        );
-        const result = await this.executeStep({
-          payload: durablePayload,
-          loaded,
-          job,
-          ...(provider ? { provider } : {}),
-          step,
-          ...(contextPack ? { contextPack } : {}),
-        });
-        contextPack = result.contextPack ?? contextPack;
-        job = await this.repository.succeedStep({
-          payload: durablePayload,
-          step,
-          progress: STEP_PROGRESS[step],
-          output: result.output,
-          cost: result.cost,
-          checkpointPayload: result.checkpointPayload,
-        });
-      } catch (error) {
-        const failure = toFailure(error);
-        await this.repository.failStep({
-          payload: durablePayload,
-          step,
-          code: failure.code,
-          message: failure.message,
-        });
-        return;
       }
+      await this.boundaryHook?.(step);
     }
     await this.repository.complete(durablePayload);
   }
@@ -152,15 +257,15 @@ export class GenerationJobProcessor {
   private async executeStep(input: {
     payload: GenerateChapterJob;
     loaded: LoadedGenerationJob;
-    job: JobRecord;
     provider?: AiGateway;
     step: WorkerJobStep;
-    contextPack?: CompiledContextPack;
+    attempt: number;
+    contextPack?: ContextPackManifest;
   }): Promise<{
     output: Record<string, unknown>;
     cost: GenerationCost;
     checkpointPayload: Record<string, unknown>;
-    contextPack?: CompiledContextPack;
+    contextPack?: ContextPackManifest;
   }> {
     switch (input.step) {
       case "prepare": {
@@ -177,8 +282,11 @@ export class GenerationJobProcessor {
       }
       case "compile_context": {
         const sources = await this.requireSources(input.payload);
-        const pack = compileChapterContext(
+        const pack = compileChapterContextManifest(
           {
+            branchId: input.payload.branchId,
+            branchStatus: sources.branch.status,
+            compilerVersion: "m1-context-v1",
             chapter: {
               id: sources.chapter.id,
               number: sources.chapter.number,
@@ -188,6 +296,7 @@ export class GenerationJobProcessor {
             storyBible: {
               id: sources.storyBible.id,
               cards: sources.storyBible.cards,
+              worldRules: sources.worldRules,
             },
             ...(sources.styleSample ? { styleSample: sources.styleSample } : {}),
             styleSampleId: sources.chapter.workId,
@@ -207,6 +316,11 @@ export class GenerationJobProcessor {
               validToChapter: setting.validToChapter ?? null,
             })),
             previousVersions: sources.previousVersions,
+            summaries: sources.summaries,
+            povCharacterId: sources.povCharacterId ?? null,
+            modelContextWindowTokens: resolveModelContextWindow(input.loaded.modelConfig.model),
+            reservedOutputTokens: PROVIDER_CALL_MAX_OUTPUT_TOKENS,
+            ...(sources.knowledge ? { knowledge: sources.knowledge } : {}),
           },
           input.payload.budget.maxTokens,
         );
@@ -224,20 +338,24 @@ export class GenerationJobProcessor {
       case "draft": {
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
         const prompt = promptFromPack(pack, "根据本章章纲起草完整章节。");
-        const result = await this.callProvider({
+        const result = await this.providerCalls.call({
           payload: input.payload,
-          job: input.job,
           provider: requireProvider(input.provider),
+          step: "draft",
+          attempt: input.attempt,
+          role: "writer",
           operation: "draft",
           prompt,
           system: "你是长篇仙侠小说写作助手。只输出本章正文。",
+          citations: pack.sourceRefs,
+          parameters: { operation: "draft" },
+          ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         const version = await this.repository.saveGeneratedVersion({
           payload: input.payload,
           step: "draft",
           content: result.text,
         });
-        await this.recordProviderResult(input.payload, "draft", "writer", prompt, result, pack);
         return {
           output: { chapterVersionId: version.id, version: version.version },
           cost: toCost(result),
@@ -251,15 +369,19 @@ export class GenerationJobProcessor {
         }
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
         const prompt = `${promptFromPack(pack, "检查草稿与章纲、已确认设定和必用事实是否一致。")}\n\n草稿：\n${draft}`;
-        const result = await this.callProvider({
+        const result = await this.providerCalls.call({
           payload: input.payload,
-          job: input.job,
           provider: requireProvider(input.provider),
+          step: "verify",
+          attempt: input.attempt,
+          role: "critic",
           operation: "verify",
           prompt,
           system: "你是连续性与知识边界审校员。输出简短、确定的审校结论。",
+          citations: pack.sourceRefs,
+          parameters: { operation: "verify" },
+          ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
-        await this.recordProviderResult(input.payload, "verify", "verifier", prompt, result, pack);
         return {
           output: { verification: result.text },
           cost: toCost(result),
@@ -274,20 +396,24 @@ export class GenerationJobProcessor {
         }
         const pack = input.contextPack ?? (await this.loadContextPack(input.payload));
         const prompt = `${promptFromPack(pack, "根据审校结论定向修订草稿，保留已满足的章纲和必用事实。")}\n\n草稿：\n${draft}\n\n审校：\n${String(verifyOutput?.verification ?? "")}`;
-        const result = await this.callProvider({
+        const result = await this.providerCalls.call({
           payload: input.payload,
-          job: input.job,
           provider: requireProvider(input.provider),
+          step: "revise",
+          attempt: input.attempt,
+          role: "reviser",
           operation: "revise",
           prompt,
           system: "你是定向修订编辑。只输出修订后的完整本章正文。",
+          citations: pack.sourceRefs,
+          parameters: { operation: "revise" },
+          ...(this.traceLogger ? { traceLogger: this.traceLogger } : {}),
         });
         const version = await this.repository.saveGeneratedVersion({
           payload: input.payload,
           step: "revise",
           content: result.text,
         });
-        await this.recordProviderResult(input.payload, "revise", "reviser", prompt, result, pack);
         return {
           output: { chapterVersionId: version.id, version: version.version },
           cost: toCost(result),
@@ -335,7 +461,7 @@ export class GenerationJobProcessor {
     return sources;
   }
 
-  private async loadContextPack(payload: GenerateChapterJob): Promise<CompiledContextPack> {
+  private async loadContextPack(payload: GenerateChapterJob): Promise<ContextPackManifest> {
     const output = await this.repository.findStepOutput(payload, "compile_context");
     const contextPackId = output?.contextPackId;
     if (typeof contextPackId !== "string") {
@@ -346,56 +472,6 @@ export class GenerationJobProcessor {
       throw new Error("Versioned context pack is missing");
     }
     return pack;
-  }
-
-  private async callProvider(input: {
-    payload: GenerateChapterJob;
-    job: JobRecord;
-    provider: AiGateway;
-    operation: GenerationOperation;
-    prompt: string;
-    system: string;
-  }): Promise<GenerationResult> {
-    const estimatedTokens = estimateTokens(input.prompt) + 600;
-    reserveBudget(input.job, estimatedTokens);
-    return input.provider.generateText({
-      prompt: input.prompt,
-      system: input.system,
-      maxTokens: 2_000,
-      operation: input.operation,
-    });
-  }
-
-  private async recordProviderResult(
-    payload: GenerateChapterJob,
-    step: "draft" | "verify" | "revise",
-    role: string,
-    prompt: string,
-    result: GenerationResult,
-    pack: CompiledContextPack,
-  ): Promise<void> {
-    await this.repository.recordAgentRun({
-      payload,
-      step,
-      role,
-      inputHash: createHash("sha256").update(prompt).digest("hex"),
-      output: result.text,
-      citations: pack.sourceRefs,
-      usage: {
-        inputTokens: result.usage.inputTokens,
-        outputTokens: result.usage.outputTokens,
-        costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
-      },
-      startedAt: new Date(),
-    });
-    await this.repository.recordUsage({
-      payload,
-      step,
-      model: result.model,
-      inputTokens: result.usage.inputTokens,
-      outputTokens: result.usage.outputTokens,
-      costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
-    });
   }
 }
 
@@ -424,7 +500,7 @@ function validateBrief(sources: WorkerContextSources): void {
   }
 }
 
-function promptFromPack(pack: CompiledContextPack, instruction: string): string {
+function promptFromPack(pack: ContextPackManifest, instruction: string): string {
   return [
     instruction,
     "本章参考：",
@@ -445,72 +521,93 @@ function requireProvider(provider: AiGateway | undefined): AiGateway {
   return provider;
 }
 
-function inputHash(payload: GenerateChapterJob, step: string): string {
-  return `${payload.jobId}:${payload.chapterId}:${step}:${payload.idempotencyKey}`;
-}
-
-function estimateTokens(value: string): number {
-  return Math.max(1, Math.ceil(Array.from(value.replace(/\s/gu, "")).length / 2));
-}
-
-function reserveBudget(job: JobRecord, estimatedTokens: number): void {
-  const budget = job.budget as { maxTokens?: number; maxCostCny?: number };
-  const cost = job.cost as Partial<GenerationCost>;
-  const usedTokens = Number(cost.totalTokens ?? 0);
-  const usedCost = Number(cost.costCny ?? 0);
-  if (
-    usedTokens + estimatedTokens > Number(budget.maxTokens ?? 0) ||
-    usedCost + calculateCost(estimatedTokens) > Number(budget.maxCostCny ?? 0)
-  ) {
-    throw new JobBudgetExceededError();
-  }
+function stepInputHash(
+  payload: GenerateChapterJob,
+  step: WorkerJobStep,
+  checkpoint: ReturnType<typeof generationCheckpointSchema.parse>,
+): string {
+  return sha256(
+    stableStringify({
+      jobId: payload.jobId,
+      workId: payload.workId,
+      branchId: payload.branchId,
+      chapterId: payload.chapterId,
+      idempotencyKey: payload.idempotencyKey,
+      step,
+      checkpointOutputRefs: checkpoint.outputRefs,
+      checkpointPayload: checkpoint.payload,
+    }),
+  );
 }
 
 function toCost(result: GenerationResult): GenerationCost {
+  const totalTokens = result.usage.inputTokens + result.usage.outputTokens;
   return {
     inputTokens: result.usage.inputTokens,
     outputTokens: result.usage.outputTokens,
-    totalTokens: result.usage.inputTokens + result.usage.outputTokens,
-    costCny: calculateCost(result.usage.inputTokens + result.usage.outputTokens),
+    totalTokens,
+    costCny: calculateModelCallCost(totalTokens, M0_COST_PER_TOKEN_CNY),
   };
-}
-
-function calculateCost(tokens: number): number {
-  return Number((tokens * M0_COST_PER_TOKEN_CNY).toFixed(8));
 }
 
 function zeroCost(): GenerationCost {
   return { inputTokens: 0, outputTokens: 0, totalTokens: 0, costCny: 0 };
 }
 
-function toFailure(error: unknown): { code: string; message: string } {
-  if (error instanceof JobBudgetExceededError) {
-    return {
-      code: "JOB_BUDGET_EXCEEDED",
-      message: "本章生成预算已用完，草稿和检查点已保留",
-    };
-  }
+function toFailure(error: unknown): {
+  code: string;
+  message: string;
+  failureClass:
+    | "provider"
+    | "timeout"
+    | "rate_limit"
+    | "schema"
+    | "policy"
+    | "budget"
+    | "cancelled"
+    | "unknown";
+  escalationReason: string;
+} {
   if (error instanceof AiProviderError) {
-    return {
-      code: "MODEL_PROVIDER_ERROR",
-      message: "模型服务暂时不可用，草稿和检查点已保留",
-    };
+    return describeProviderFailure(error);
   }
   if (error instanceof ModelConfigurationError) {
     return {
       code: "MODEL_PROVIDER_ERROR",
       message: "模型配置无法读取，草稿和检查点已保留",
+      failureClass: "policy",
+      escalationReason: "请检查正文模型配置后从断点重试",
     };
   }
   if (error instanceof ContextBudgetExceededError) {
     return {
       code: "JOB_BUDGET_EXCEEDED",
-      message: "本章生成预算已用完，草稿和检查点已保留",
+      message: BUDGET_EXHAUSTED_MESSAGE,
+      failureClass: "budget",
+      escalationReason: BUDGET_EXHAUSTED_ESCALATION,
     };
   }
   return {
     code: "INTERNAL_ERROR",
     message: "生成任务失败，草稿和检查点已保留",
+    failureClass: "unknown",
+    escalationReason: "生成任务异常，请从断点重试或联系支持",
   };
 }
-import { createHash } from "node:crypto";
+
+function sha256(value: string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function stableStringify(value: unknown): string {
+  if (value === null || typeof value !== "object") {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(",")}]`;
+  }
+  return `{${Object.entries(value as Record<string, unknown>)
+    .sort(([left], [right]) => (left < right ? -1 : left > right ? 1 : 0))
+    .map(([key, entry]) => `${JSON.stringify(key)}:${stableStringify(entry)}`)
+    .join(",")}}`;
+}

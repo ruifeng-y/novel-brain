@@ -2,6 +2,7 @@ import {
   decryptApiKey,
   DeepSeekProvider,
   FakeAiProvider,
+  WRITING_ACTION_OPERATIONS,
   type AiGateway,
   type GenerationOperation,
 } from "@novel-brain/ai";
@@ -54,4 +55,10 @@ export function resolveWorkerAiProviderMode(
     return "byok";
   }
   return env.NODE_ENV === "test" ? "fake" : "byok";
+}
+
+export function isFakeGenerationOperation(value: string): value is GenerationOperation {
+  return ["draft", "verify", "revise", ...WRITING_ACTION_OPERATIONS].includes(
+    value as GenerationOperation,
+  );
 }

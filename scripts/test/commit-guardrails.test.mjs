@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 
 import { validateCommitMessages, validateCommitSubjects } from "../validate-commits.mjs";
+import { resolveGuardrailBase } from "../check-pr-guardrails.mjs";
 import { commitFile, runGit, runNode, withRepository } from "./git-fixtures.mjs";
 
 const commitScript = fileURLToPath(new URL("../validate-commits.mjs", import.meta.url));
@@ -68,7 +69,7 @@ test("rejects an unknown English word beside Chinese text", () => {
 test("allows recognized technical words in Chinese prose", () => {
   assert.deepEqual(
     validateCommitMessages([
-      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围\n- 使用 release 与 Git ref resolver\n- 校验 Merge pull request subject",
+      "feat: 增加 OpenAPI 输出\n\n- 更新 Vitest 与 Playwright 校验\n- 固定 origin 与 base 范围\n- 使用 release 与 Git ref resolver\n- 校验 provenance 与 Merge pull request subject",
     ]),
     [],
   );
@@ -167,5 +168,44 @@ test("accepts a PR range with multiple Chinese commits", () => {
 
     const result = runNode(repository, commitScript, ["--base", base, "--head", "HEAD"]);
     assert.equal(result.status, 0, result.stderr);
+  });
+});
+
+test("uses the committed baseline to skip historical non-compliant commits", () => {
+  withRepository((repository) => {
+    const base = commitFile(repository, {
+      name: "root.txt",
+      content: "root\n",
+      message: "feat: 根提交",
+    });
+    const baseline = commitFile(repository, {
+      name: "legacy.txt",
+      content: "legacy\n",
+      message: "legacy english commit",
+    });
+    const head = commitFile(repository, {
+      name: "head.txt",
+      content: "head\n",
+      message: "fix: 新提交",
+    });
+
+    assert.equal(
+      resolveGuardrailBase({
+        baseSha: base,
+        headSha: head,
+        baselineSha: baseline,
+        cwd: repository,
+      }),
+      baseline,
+    );
+    assert.equal(
+      resolveGuardrailBase({
+        baseSha: base,
+        headSha: head,
+        baselineSha: undefined,
+        cwd: repository,
+      }),
+      base,
+    );
   });
 });
