@@ -21,7 +21,8 @@ Batch 页面原先只从审核队列提取 `planId`。当计划因预算硬停�
 - `packages/contracts/test/batch-plan.test.ts`
 - `apps/api/test/batch-plan.integration.test.ts`
 - `apps/web/e2e/parity/batch.spec.ts`：空审核队列 + 暂停预算计划
+- 四档候选截图：`artifacts/ui/candidates/m2-97-batch/batch-{390,900,1180,1440}.png`
 
 ## 4. 边界
 
-本记录只收口 #97 的 Batch 暂停计划发现缺口。Batch 正式四档 Golden、作者视觉签收、通知生命周期以及 changes/shell/work-overview parity 仍按 #97 的其他验收项跟踪。
+本记录只收口 #97 的 Batch 暂停计划发现缺口。Batch 正式四档 Golden、作者视觉签收、通知生命周期以及 changes/shell/work-overview parity 仍按 #97 的其他验收项跟踪；当前候选截图尚未升级为正式 Golden。
