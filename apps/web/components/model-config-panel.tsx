@@ -279,6 +279,16 @@ export function ModelConfigPanel() {
                   ) : null}
                   {connectionStatusLabel(config.lastTestStatus)}
                 </span>
+                {config.lastTestStatus === "key_invalid" ? (
+                  <button
+                    aria-label={`替换 ${config.label} 的 Key`}
+                    className="text-btn small"
+                    onClick={() => edit(config)}
+                    type="button"
+                  >
+                    替换 Key
+                  </button>
+                ) : null}
                 <button
                   className="text-btn small"
                   disabled={busy === config.id}
@@ -436,7 +446,7 @@ function connectionStatusLabel(status: ModelConnectionTestStatus | null): string
     case "success":
       return "连接正常";
     case "key_invalid":
-      return "Key 无效";
+      return "Key 无效或失效";
     case "rate_limited":
       return "已限流";
     case "timeout":

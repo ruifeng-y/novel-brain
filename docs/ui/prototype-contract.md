@@ -22,7 +22,7 @@
 | export-publish | `/workspace/[workId]/export` | 导出/下载/发布检查/预览/文案 | loading/empty/error/partial/expired/long | 任务报告 | 部分，缺失败/过期/长目录 |
 | work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/readonly | 无 | 已含删除强制导出和权限/只读状态 |
 | entity-detail | `/workspace/[workId]/settings?column=<column>&entityId=<entityId>` 独立整页 | 档案/关系/认知/引用/历史 | loading/error/disabled/locked/proposal/long | 来源引用 | M1 生产实现，作者视觉签收通过；四档 Golden 比较由 #172 补齐；prototype-only 扫描由 #174 跟踪 |
-| account-settings | `/workspace/settings`、`/workspace/settings/account` | 资料/笔名/会话/模型/导出/注销 | loading/error/disabled/partial/rate-limit | 无 | 部分，缺 Key 错误态和注销全流程 |
+| account-settings | `/workspace/settings`、`/workspace/settings/account` | 资料/笔名/会话/模型/导出/注销 | loading/error/invalid-key/disabled/partial/rate-limit | 无 | Key 错误态证据已由 #177 补齐；注销全流程仍由 #134 跟踪 |
 | help | `/help` | 快捷键/术语/FAQ | static/empty/error | 无 | 静态 |
 | legal | `/legal/*` | 协议/隐私/AI 标识 | static | 无 | 静态 |
 | states | `/workspace/[workId]/states` | 全局状态演示 | normal/empty/loading/error/locked/readonly/conflict | 无 | 演示页，缺 disabled/permission/partial/long |

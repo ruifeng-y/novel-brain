@@ -2765,7 +2765,7 @@
                   <tr><td>export-publish</td><td>normal / loading / error / empty / partial / disabled</td><td>normal / empty / error / partial / disabled</td><td>导出任务、发布检查</td></tr>
                   <tr><td>work-settings</td><td>normal / loading / error / disabled / permission / readonly</td><td>normal / error / disabled / permission / readonly</td><td>删除门禁、作品状态</td></tr>
                   <tr><td>entity-detail</td><td>normal / loading / error / empty / locked / permission / long</td><td>normal / empty / error / locked / permission / long</td><td>档案、关系、状态历史</td></tr>
-                  <tr><td>account-settings</td><td>normal / loading / error / disabled / permission / partial</td><td>normal / error / permission</td><td>Key、会话、导出与注销</td></tr>
+                  <tr><td>account-settings</td><td>normal / loading / error / invalid-key / disabled / permission / partial</td><td>normal / error / invalid-key / permission</td><td>Key、会话、导出与注销</td></tr>
                   <tr><td>help</td><td>normal / empty / error / permission</td><td>normal / empty / error / permission</td><td>快捷键、术语、FAQ</td></tr>
                   <tr><td>legal</td><td>normal / error / empty / permission / readonly</td><td>normal / error / empty / permission / readonly</td><td>协议、隐私、AI 标识</td></tr>
                   <tr><td>states</td><td>normal + 10 类页面状态</td><td>全部 11 类</td><td>顶栏演示模式与逐页状态面板</td></tr>
@@ -2895,6 +2895,19 @@
                 <button class="text-btn small" data-action="run-connection-test">测试连接</button>
                 <button class="icon-btn small" data-action="open-model-config" title="编辑模型配置"><i data-lucide="pencil"></i></button>
                 <button class="icon-btn small" data-action="delete-model-config" title="删除配置"><i data-lucide="trash-2"></i></button>
+              </div>
+              <div class="model-config-row model-config-row-error" data-model-id="deepseek-invalid" data-key-state="invalid">
+                <div class="model-logo">DS</div>
+                <div class="model-config-copy">
+                  <strong>DeepSeek 备用配置</strong>
+                  <small>deepseek-chat · 检查用途 · Key ••••••••</small>
+                </div>
+                <div class="model-config-actions">
+                  <span class="badge alert-badge">Key 无效或已失效</span>
+                  <button class="text-btn small" data-action="open-model-config">替换 Key</button>
+                  <button class="text-btn small" data-action="run-connection-test">测试连接</button>
+                  <button class="icon-btn small" data-action="delete-model-config" title="删除配置"><i data-lucide="trash-2"></i></button>
+                </div>
               </div>
               <div class="model-purpose-grid">
                 <div><span>规划</span><strong>deepseek-chat</strong><small>沿用正文配置</small></div>

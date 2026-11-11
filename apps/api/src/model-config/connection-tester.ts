@@ -43,7 +43,7 @@ export class HttpModelConnectionTester implements ModelConnectionTester {
       const response = await this.requestProvider(target, pinnedAddress, config.model, apiKey);
       const latencyMs = Date.now() - startedAt;
       if (response.status === 401 || response.status === 403) {
-        return { status: "key_invalid", latencyMs, message: "API Key 无效或无权限" };
+        return { status: "key_invalid", latencyMs, message: "API Key 无效或已失效" };
       }
       if (response.status === 429) {
         return { status: "rate_limited", latencyMs, message: "服务商已限流，请稍后重试" };
@@ -119,8 +119,8 @@ function requestPinned(
 @Injectable()
 export class FakeModelConnectionTester implements ModelConnectionTester {
   async test({ apiKey }: ConnectionTestInput): Promise<ConnectionTestResult> {
-    if (apiKey.includes("invalid")) {
-      return { status: "key_invalid", latencyMs: 1, message: "API Key 无效" };
+    if (apiKey.includes("invalid") || apiKey.includes("expired")) {
+      return { status: "key_invalid", latencyMs: 1, message: "API Key 无效或已失效" };
     }
     if (apiKey.includes("rate")) {
       return { status: "rate_limited", latencyMs: 1, message: "服务商已限流" };
