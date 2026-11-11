@@ -1338,7 +1338,11 @@ test("uses genre pack level labels for power systems in history and urban works"
     await expect(
       lifespanMode.getByRole("option", { name: `按${item.powerLevelLabel}绑定` }),
     ).toHaveCount(1);
-    await page.locator(".settings-editor").getByRole("button", { name: "取消" }).click();
+    await page
+      .locator(".settings-editor")
+      .getByRole("button", { name: "取消", exact: true })
+      .first()
+      .click();
   }
 });
 
