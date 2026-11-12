@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
   auditLogs,
@@ -7,6 +9,7 @@ import {
   entities,
   entityVersions,
   genrePacks,
+  idempotencyRecords,
   modelConfigs,
   storyBibles,
   versionNodes,
@@ -14,8 +17,13 @@ import {
   works,
   type DatabaseClient,
 } from "@novel-brain/db";
-import type { CursorPageQuery, ImportCandidateType, WorkListQuery } from "@novel-brain/contracts";
-import { and, desc, eq, gt, ilike, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import type {
+  CursorPageQuery,
+  ImportCandidateType,
+  WorkGenre,
+  WorkListQuery,
+} from "@novel-brain/contracts";
+import { and, asc, desc, eq, gt, ilike, inArray, isNull, lt, or, sql, type SQL } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
@@ -254,6 +262,227 @@ export class WorksRepository implements OnModuleDestroy {
     return pack;
   }
 
+  async findLatestGenrePack(key: WorkGenre): Promise<GenrePackRecord | undefined> {
+    const [pack] = await this.db
+      .select()
+      .from(genrePacks)
+      .where(eq(genrePacks.key, key))
+      .orderBy(desc(genrePacks.version))
+      .limit(1);
+    return pack;
+  }
+
+  async findGenrePackVersion(
+    key: WorkGenre,
+    version: number,
+  ): Promise<GenrePackRecord | undefined> {
+    const [pack] = await this.db
+      .select()
+      .from(genrePacks)
+      .where(and(eq(genrePacks.key, key), eq(genrePacks.version, version)))
+      .limit(1);
+    return pack;
+  }
+
+  async listGenrePacks(key?: WorkGenre): Promise<GenrePackRecord[]> {
+    return this.db
+      .select()
+      .from(genrePacks)
+      .where(key ? eq(genrePacks.key, key) : undefined)
+      .orderBy(asc(genrePacks.key), desc(genrePacks.version));
+  }
+
+  async changeGenrePackVersion(input: {
+    userId: string;
+    workId: string;
+    targetVersion: number;
+    reason: string;
+    idempotencyKey: string;
+    audit: WorksAuditContext;
+  }): Promise<
+    | { work: WorkRecord; branch: WorkBranchRecord; pack: GenrePackRecord }
+    | "not_found"
+    | "pack_not_found"
+    | "idempotency_conflict"
+  > {
+    return this.withTenant(input.userId, async (transaction) => {
+      const scope = `work.genre_pack.version:${input.workId}`;
+      const requestHash = createHash("sha256")
+        .update(JSON.stringify({ targetVersion: input.targetVersion, reason: input.reason }))
+        .digest("hex");
+      const [replayed] = await transaction
+        .select()
+        .from(idempotencyRecords)
+        .where(
+          and(
+            eq(idempotencyRecords.userId, input.userId),
+            eq(idempotencyRecords.scope, scope),
+            eq(idempotencyRecords.idempotencyKey, input.idempotencyKey),
+          ),
+        )
+        .limit(1);
+      if (replayed) {
+        if (replayed.requestHash && replayed.requestHash !== requestHash) {
+          return "idempotency_conflict";
+        }
+        return this.readGenrePackVersionResult(transaction, input.userId, input.workId);
+      }
+
+      const [work] = await transaction
+        .select()
+        .from(works)
+        .where(
+          and(eq(works.id, input.workId), eq(works.userId, input.userId), isNull(works.deletedAt)),
+        )
+        .for("update")
+        .limit(1);
+      if (!work) {
+        return "not_found";
+      }
+      const [branch] = await transaction
+        .select()
+        .from(workBranches)
+        .where(
+          and(
+            eq(workBranches.workId, work.id),
+            eq(workBranches.userId, input.userId),
+            eq(workBranches.name, "main"),
+            eq(workBranches.status, "active"),
+          ),
+        )
+        .for("update")
+        .limit(1);
+      if (!branch) {
+        return "not_found";
+      }
+      const [targetPack] = await transaction
+        .select()
+        .from(genrePacks)
+        .where(and(eq(genrePacks.key, work.genre), eq(genrePacks.version, input.targetVersion)))
+        .limit(1);
+      if (!targetPack) {
+        return "pack_not_found";
+      }
+
+      if (work.templatePackId !== targetPack.id) {
+        const [currentPack] = work.templatePackId
+          ? await transaction
+              .select()
+              .from(genrePacks)
+              .where(eq(genrePacks.id, work.templatePackId))
+              .limit(1)
+          : [undefined];
+        const migrationReport = packMigrationReport(currentPack, targetPack);
+        const nodeId = uuidv7();
+        await transaction.insert(versionNodes).values({
+          id: nodeId,
+          workId: work.id,
+          branchId: branch.id,
+          userId: input.userId,
+          parentNodeId: branch.headNodeId,
+          nodeType: "snapshot",
+          snapshotId: nodeId,
+          objectType: "genre_pack",
+          objectId: targetPack.id,
+          objectVersion: targetPack.version,
+          payload: {
+            previousPackId: currentPack?.id ?? null,
+            previousVersion: currentPack?.version ?? null,
+            targetPackId: targetPack.id,
+            targetVersion: targetPack.version,
+            reason: input.reason,
+            migrationReport,
+          },
+          actorId: input.userId,
+          message:
+            targetPack.version > (currentPack?.version ?? 0) ? "升级题材包版本" : "回滚题材包版本",
+        });
+        await transaction
+          .update(workBranches)
+          .set({ headNodeId: nodeId, updatedAt: new Date() })
+          .where(eq(workBranches.id, branch.id));
+        await transaction
+          .update(works)
+          .set({
+            templatePackId: targetPack.id,
+            settings: {
+              ...work.settings,
+              genrePack: {
+                key: targetPack.key,
+                version: targetPack.version,
+                fields: targetPack.fields,
+                migrationReport,
+              },
+            },
+            updatedAt: new Date(),
+          })
+          .where(eq(works.id, work.id));
+        await transaction.insert(auditLogs).values({
+          id: uuidv7(),
+          actorId: input.userId,
+          action: "work.genre_pack.changed",
+          targetType: "work",
+          targetId: work.id,
+          decision: "allowed",
+          correlationId: input.audit.requestId,
+          ip: input.audit.ip,
+          userAgent: input.audit.userAgent,
+        });
+      }
+
+      await transaction
+        .insert(idempotencyRecords)
+        .values({
+          id: uuidv7(),
+          userId: input.userId,
+          scope,
+          idempotencyKey: input.idempotencyKey,
+          requestHash,
+          resourceType: "work",
+          resourceId: work.id,
+        })
+        .onConflictDoNothing();
+      return this.readGenrePackVersionResult(transaction, input.userId, input.workId);
+    });
+  }
+
+  private async readGenrePackVersionResult(
+    transaction: DatabaseTransaction,
+    userId: string,
+    workId: string,
+  ): Promise<{ work: WorkRecord; branch: WorkBranchRecord; pack: GenrePackRecord } | "not_found"> {
+    const [work] = await transaction
+      .select()
+      .from(works)
+      .where(and(eq(works.id, workId), eq(works.userId, userId), isNull(works.deletedAt)))
+      .limit(1);
+    if (!work) {
+      return "not_found";
+    }
+    const [branch] = await transaction
+      .select()
+      .from(workBranches)
+      .where(
+        and(
+          eq(workBranches.workId, work.id),
+          eq(workBranches.userId, userId),
+          eq(workBranches.name, "main"),
+        ),
+      )
+      .limit(1);
+    const [pack] = work.templatePackId
+      ? await transaction
+          .select()
+          .from(genrePacks)
+          .where(eq(genrePacks.id, work.templatePackId))
+          .limit(1)
+      : [undefined];
+    if (!branch || !pack) {
+      return "not_found";
+    }
+    return { work, branch, pack };
+  }
+
   async findGenrePacksByIds(ids: string[]): Promise<GenrePackRecord[]> {
     if (ids.length === 0) {
       return [];
@@ -361,7 +590,7 @@ export class WorksRepository implements OnModuleDestroy {
         objectId: work.id,
         objectVersion: 1,
         snapshotId: input.nodeId,
-        payload: { sourceMode: input.sourceMode },
+        payload: { sourceMode: input.sourceMode, genrePackId: input.templatePackId },
         actorId: input.userId,
         message: "创建作品",
       });
@@ -481,4 +710,22 @@ export class WorksRepository implements OnModuleDestroy {
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
   }
+}
+
+function packMigrationReport(
+  currentPack: GenrePackRecord | undefined,
+  targetPack: GenrePackRecord,
+) {
+  const previousFields = currentPack?.fields ?? {};
+  const targetFields = targetPack.fields;
+  return {
+    fromVersion: currentPack?.version ?? null,
+    toVersion: targetPack.version,
+    missingFields: Object.keys(targetFields).filter((key) => !(key in previousFields)),
+    removedFields: Object.keys(previousFields).filter((key) => !(key in targetFields)),
+    conflicts:
+      currentPack && currentPack.key !== targetPack.key
+        ? [`题材包 key 不一致：${currentPack.key} -> ${targetPack.key}`]
+        : [],
+  };
 }

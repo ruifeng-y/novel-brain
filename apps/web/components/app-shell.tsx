@@ -6,21 +6,26 @@ import {
   BookOpen,
   ChevronDown,
   CircleHelp,
+  GitBranch,
   LayoutDashboard,
+  Layers3,
   ListTree,
   LogOut,
   Milestone,
   PenLine,
   Settings,
 } from "lucide-react";
-import { workResponseSchema, type AuthUser, type Work } from "@novel-brain/contracts";
+import { type AuthUser, type Work, type WorkOverview } from "@novel-brain/contracts";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
+import { clearActiveBranch, fetchWorkOverview, selectActiveBranch } from "../lib/work-api";
 import { subscribeWorkContextRefresh } from "../lib/work-context-events";
 import { branchLabel, isWorkReadonly, readonlyScopeLabel } from "../lib/work-presentation";
+import { NotificationCenter } from "./notification-center";
+import { SearchCenter } from "./search-center";
 
 const navigation = [
   { href: "/workspace", label: "工作台", icon: LayoutDashboard },
@@ -34,9 +39,13 @@ const workNavigation = [
   { suffix: "outline", label: "大纲工作台", icon: ListTree },
   { suffix: "foreshadows", label: "伏笔账本", icon: Milestone },
   { suffix: "write", label: "写作台", icon: PenLine },
+  { suffix: "batch", label: "批量生产", icon: Layers3 },
+  { suffix: "changes", label: "修改与版本", icon: GitBranch },
 ];
 
 interface ActiveWorkContext {
+  branchId: string;
+  branches: WorkOverview["branches"];
   title: string;
   branchName: string;
   branchStatus: "active" | "archived";
@@ -51,6 +60,8 @@ export function AppShell({
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [activeWork, setActiveWork] = useState<ActiveWorkContext | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [workContextError, setWorkContextError] = useState("");
   const workPathMatch = pathname.match(/^\/workspace\/([^/]+)\/([^/]+)/u);
   const workId = workPathMatch?.[1];
   const workSection = workPathMatch?.[2];
@@ -67,43 +78,50 @@ export function AppShell({
             ? "伏笔账本"
             : pathname.endsWith("/write")
               ? "写作台"
-              : pathname === "/workspace/new-project"
-                ? "新建作品"
-                : pathname.startsWith("/workspace/settings")
-                  ? "账号与模型"
-                  : pathname.startsWith("/workspace")
-                    ? "工作台"
-                    : "服务状态";
+              : pathname.endsWith("/batch")
+                ? "批量生产"
+                : pathname.endsWith("/changes")
+                  ? "修改与版本"
+                  : pathname === "/workspace/new-project"
+                    ? "新建作品"
+                    : pathname.startsWith("/workspace/settings")
+                      ? "账号与模型"
+                      : pathname.startsWith("/workspace")
+                        ? "工作台"
+                        : "服务状态";
+  const selectedBranch = activeWork?.branches.find((branch) => branch.id === selectedBranchId);
+  const selectedBranchName = selectedBranch
+    ? branchLabel(selectedBranch.name)
+    : activeWork?.branchName;
 
   useEffect(() => {
-    if (!workId || !showWorkContext) {
+    if (!workId) {
       setActiveWork(null);
       return;
     }
     let cancelled = false;
     setActiveWork(null);
+    setWorkContextError("");
     const loadActiveWork = () => {
-      void fetch(`/api/v1/works/${workId}`, { cache: "no-store" })
-        .then(async (response) => {
-          if (!response.ok) {
-            return null;
-          }
-          return workResponseSchema.parse(await response.json()).data;
-        })
+      void fetchWorkOverview(workId)
         .then((work) => {
-          if (cancelled || !work) {
+          if (cancelled) {
             return;
           }
           setActiveWork({
+            branchId: work.mainBranch.id,
+            branches: work.branches,
             title: work.title,
             branchName: branchLabel(work.mainBranch.name),
             branchStatus: work.mainBranch.status,
             workStatus: work.status,
           });
+          setSelectedBranchId(work.mainBranch.id);
         })
         .catch(() => {
           if (!cancelled) {
             setActiveWork(null);
+            setWorkContextError("当前创作线无法加载，可能已失效或无权访问。");
           }
         });
     };
@@ -113,7 +131,7 @@ export function AppShell({
       cancelled = true;
       unsubscribe();
     };
-  }, [showWorkContext, workId]);
+  }, [workId]);
 
   async function logout() {
     setLoggingOut(true);
@@ -150,11 +168,27 @@ export function AppShell({
             <strong title={activeWork?.title}>{activeWork?.title ?? "个人工作区"}</strong>
             <small>
               {activeWork
-                ? `创作线 ${activeWork.branchName} · ${activeWorkStateLabel(activeWork)}`
+                ? `创作线 ${selectedBranchName} · ${activeWorkStateLabel(activeWork)}`
                 : "长篇创作"}
             </small>
           </span>
           <ChevronDown className="workspace-chevron" size={15} aria-hidden="true" />
+          {activeWork && activeWork.branches.length > 1 ? (
+            <select
+              aria-label="切换创作线"
+              className="workspace-branch-select"
+              onChange={(event) => {
+                selectActiveBranch(workId!, event.target.value);
+              }}
+              value={selectedBranchId || activeWork.branchId}
+            >
+              {activeWork.branches.map((branch) => (
+                <option key={branch.id} value={branch.id}>
+                  {branchLabel(branch.name)}
+                </option>
+              ))}
+            </select>
+          ) : null}
         </div>
 
         <nav className="main-nav" aria-label="主导航">
@@ -255,14 +289,34 @@ export function AppShell({
             <span aria-hidden="true">/</span>
             <strong>{current}</strong>
           </div>
-          <div className="topbar-note">NovelBrain</div>
+          <div className="topbar-actions">
+            <SearchCenter branchId={selectedBranchId || activeWork?.branchId} workId={workId} />
+            <NotificationCenter enabled={Boolean(user)} />
+            <div className="topbar-note">NovelBrain</div>
+          </div>
         </header>
+
+        {workContextError ? (
+          <div className="page-inline-note error" role="alert">
+            <span>{workContextError}</span>
+            <button
+              className="btn ghost small"
+              onClick={() => {
+                clearActiveBranch(workId!);
+                window.location.reload();
+              }}
+              type="button"
+            >
+              回到主线
+            </button>
+          </div>
+        ) : null}
 
         {showWorkContext && activeWork ? (
           <div className="work-context-bar" aria-label="当前作品与创作线">
             <strong>{activeWork.title}</strong>
             <span>
-              创作线 {activeWork.branchName} · {activeWorkStateLabel(activeWork)}
+              创作线 {selectedBranchName} · {activeWorkStateLabel(activeWork)}
             </span>
           </div>
         ) : null}

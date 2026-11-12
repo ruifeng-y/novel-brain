@@ -3,10 +3,12 @@
 import { ArrowLeft, LoaderCircle, Plus, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   apiErrorSchema,
+  genrePackListResponseSchema,
   workResponseSchema,
+  type GenrePackDefinition,
   type WorkCreateRequest,
   type WorkGenre,
   type WorkScaleTarget,
@@ -36,9 +38,41 @@ export function NewProjectWizard() {
   const [genre, setGenre] = useState<WorkGenre>("xianxia");
   const [scaleTarget, setScaleTarget] = useState<WorkScaleTarget>("long");
   const [chapterLengthTarget, setChapterLengthTarget] = useState(3000);
-  const [templateKey, setTemplateKey] = useState<"xianxia">("xianxia");
+  const [templateKey, setTemplateKey] = useState<WorkGenre>("xianxia");
+  const [packs, setPacks] = useState<GenrePackDefinition[]>([]);
+  const [packsLoading, setPacksLoading] = useState(true);
+  const [packsError, setPacksError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/v1/genre-packs", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(await readError(response, "题材包加载失败。"));
+        }
+        return genrePackListResponseSchema.parse(await response.json()).data;
+      })
+      .then((items) => {
+        if (!cancelled) {
+          setPacks(latestGenrePacks(items));
+        }
+      })
+      .catch((caught) => {
+        if (!cancelled) {
+          setPacksError(caught instanceof Error ? caught.message : "题材包加载失败。");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setPacksLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function createWork(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -49,6 +83,9 @@ export function NewProjectWizard() {
     setError("");
     idempotencyKey.current ??= crypto.randomUUID();
     try {
+      if (mode === "template" && packs.length === 0) {
+        throw new Error(packsError || "题材包尚未加载完成，请稍后重试。");
+      }
       const csrfToken = await getCsrfToken();
       const common = {
         title,
@@ -189,10 +226,25 @@ export function NewProjectWizard() {
               <label className="auth-field">
                 <span>题材模板</span>
                 <select
-                  onChange={(event) => setTemplateKey(event.target.value as "xianxia")}
+                  disabled={packsLoading || packs.length === 0}
+                  onChange={(event) => {
+                    const next = event.target.value as WorkGenre;
+                    setTemplateKey(next);
+                    setGenre(next);
+                  }}
                   value={templateKey}
                 >
-                  <option value="xianxia">仙侠 · 修真文明</option>
+                  {packs.length === 0 ? (
+                    <option value={templateKey}>
+                      {packsLoading ? "题材包加载中…" : "题材包不可用"}
+                    </option>
+                  ) : (
+                    packs.map((pack) => (
+                      <option key={pack.key} value={pack.key}>
+                        {pack.label} · {String(pack.fields.world ?? "")}
+                      </option>
+                    ))
+                  )}
                 </select>
               </label>
             ) : null}
@@ -243,6 +295,7 @@ export function NewProjectWizard() {
               </label>
             </div>
 
+            {packsError ? <div className="model-notice danger">{packsError}</div> : null}
             {error ? <div className="model-notice danger">{error}</div> : null}
 
             <div className="model-form-actions">
@@ -275,7 +328,7 @@ export function NewProjectWizard() {
                   ? idea || "先写下一句最想讲的故事。"
                   : mode === "blank"
                     ? "空白起步，不预设任何故事事实。"
-                    : "仙侠模板 · 修真文明"}
+                    : templatePreview(packs, templateKey)}
               </p>
             </div>
             <ul className="creation-checklist">
@@ -290,13 +343,31 @@ export function NewProjectWizard() {
   );
 }
 
-async function readError(response: Response): Promise<string> {
+async function readError(response: Response, fallback = "作品创建失败。"): Promise<string> {
   const parsed = apiErrorSchema.safeParse(await response.json().catch(() => null));
-  return parsed.success ? parsed.data.error.message : "作品创建失败。";
+  return parsed.success ? parsed.data.error.message : fallback;
 }
 
 function genreLabel(genre: WorkGenre): string {
   return genre === "xianxia" ? "仙侠" : genre === "history" ? "历史" : "都市";
+}
+
+function latestGenrePacks(packs: GenrePackDefinition[]): GenrePackDefinition[] {
+  const latest = new Map<WorkGenre, GenrePackDefinition>();
+  for (const pack of packs) {
+    if (!latest.has(pack.key) || latest.get(pack.key)!.version < pack.version) {
+      latest.set(pack.key, pack);
+    }
+  }
+  return ["xianxia", "history", "urban"].flatMap((key) => {
+    const pack = latest.get(key as WorkGenre);
+    return pack ? [pack] : [];
+  });
+}
+
+function templatePreview(packs: GenrePackDefinition[], templateKey: WorkGenre): string {
+  const pack = packs.find((candidate) => candidate.key === templateKey);
+  return pack ? `${pack.label} · ${String(pack.fields.world ?? "")}` : "题材包加载中…";
 }
 
 function scaleLabel(scale: WorkScaleTarget): string {

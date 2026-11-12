@@ -1,4 +1,5 @@
 import { expect, test, type BrowserContext, type Page, type TestInfo } from "@playwright/test";
+import type { PowerSystemCreateRequest } from "@novel-brain/contracts";
 
 import { createWork, getCsrf, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
 import {
@@ -303,54 +304,91 @@ async function createTimeline(
     .then((response) => expect(response.status()).toBe(201));
 }
 
+type PowerSystemFixture = {
+  summary: PowerSystemCreateRequest["summary"];
+  tags: readonly PowerSystemCreateRequest["tags"][number][];
+  pathName: PowerSystemCreateRequest["paths"][number]["name"];
+  pathType: PowerSystemCreateRequest["paths"][number]["pathType"];
+  realmName: PowerSystemCreateRequest["paths"][number]["realms"][number]["name"];
+  rank: PowerSystemCreateRequest["paths"][number]["realms"][number]["rank"];
+  lifespanBasis: PowerSystemCreateRequest["lifespanPolicy"]["basis"];
+  pathDescription: PowerSystemCreateRequest["paths"][number]["description"];
+  breakthroughConditions: PowerSystemCreateRequest["paths"][number]["realms"][number]["breakthroughConditions"];
+  breakthroughCosts: PowerSystemCreateRequest["paths"][number]["realms"][number]["breakthroughCosts"];
+  bottlenecks: PowerSystemCreateRequest["paths"][number]["realms"][number]["bottlenecks"];
+  counters: PowerSystemCreateRequest["paths"][number]["realms"][number]["counters"];
+  counteredBy: PowerSystemCreateRequest["paths"][number]["realms"][number]["counteredBy"];
+  lifespanAmount: PowerSystemCreateRequest["paths"][number]["realms"][number]["lifespanAmount"];
+};
+
+const defaultPowerSystemFixture: PowerSystemFixture = {
+  summary: "剑修与体修并行的北域体系。",
+  tags: ["修行"],
+  pathName: "剑修",
+  pathType: "剑道",
+  realmName: "筑基",
+  rank: 2,
+  lifespanBasis: "境界",
+  pathDescription: "以剑意破境。",
+  breakthroughConditions: "灵台稳固。",
+  breakthroughCosts: "三百灵石。",
+  bottlenecks: "心魔未除不可筑基。",
+  counters: "被破阵术克制。",
+  counteredBy: "克制阴灵。",
+  lifespanAmount: 240,
+};
+
 async function createPowerSystem(
   page: Page,
   work: { id: string; mainBranch: { id: string } },
   name: string,
+  details: Partial<PowerSystemFixture> = {},
 ) {
+  const fixture = { ...defaultPowerSystemFixture, ...details };
   const token = await getCsrf(page.request);
+  const payload = {
+    name,
+    aliases: [],
+    summary: fixture.summary,
+    description: "",
+    tags: [...fixture.tags],
+    overview: "两条路径共享突破代价，但克制关系不同。",
+    lifespanPolicy: {
+      mode: "realm",
+      unit: "年",
+      basis: fixture.lifespanBasis,
+      description: `不同${fixture.lifespanBasis}提供不同寿命。`,
+      pathId: null,
+      fixedAmount: null,
+    },
+    paths: [
+      {
+        name: fixture.pathName,
+        pathType: fixture.pathType,
+        description: fixture.pathDescription,
+        sortOrder: 0,
+        realms: [
+          {
+            name: fixture.realmName,
+            rank: fixture.rank,
+            description: "",
+            breakthroughConditions: fixture.breakthroughConditions,
+            breakthroughCosts: fixture.breakthroughCosts,
+            bottlenecks: fixture.bottlenecks,
+            counters: fixture.counters,
+            counteredBy: fixture.counteredBy,
+            lifespanAmount: fixture.lifespanAmount,
+            prerequisiteRealmId: null,
+          },
+        ],
+      },
+    ],
+  } satisfies PowerSystemCreateRequest;
   const response = await page.request.post(
     `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/world/power-systems`,
     {
       headers: { Origin: origin, "X-CSRF-Token": token },
-      data: {
-        name,
-        aliases: [],
-        summary: "剑修与体修并行的北域体系。",
-        description: "",
-        tags: ["修行"],
-        overview: "两条路径共享突破代价，但克制关系不同。",
-        lifespanPolicy: {
-          mode: "realm",
-          unit: "年",
-          basis: "境界",
-          description: "不同境界提供不同寿命。",
-          pathId: null,
-          fixedAmount: null,
-        },
-        paths: [
-          {
-            name: "剑修",
-            pathType: "剑道",
-            description: "以剑意破境。",
-            sortOrder: 0,
-            realms: [
-              {
-                name: "筑基",
-                rank: 2,
-                description: "",
-                breakthroughConditions: "灵台稳固。",
-                breakthroughCosts: "三百灵石。",
-                bottlenecks: "心魔未除不可筑基。",
-                counters: "被破阵术克制。",
-                counteredBy: "克制阴灵。",
-                lifespanAmount: 240,
-                prerequisiteRealmId: null,
-              },
-            ],
-          },
-        ],
-      },
+      data: payload,
     },
   );
   expect(response.status(), await response.text()).toBe(201);
@@ -1193,8 +1231,9 @@ test("shows multi-path power systems and mechanism ownership at all four viewpor
     const power = await openEntity(page, work, /^力量体系/, "北域双路径");
     await expect(power.getByText("体系概览")).toBeVisible();
     await expect(power.getByText("按境界绑定")).toBeVisible();
+    await expect(power.getByText("路径与境界")).toBeVisible();
     await expect(power.getByText("剑修 · 剑道")).toBeVisible();
-    await expect(power.getByText("第 2 层 · 筑基")).toBeVisible();
+    await expect(power.getByText("境界 2 · 筑基")).toBeVisible();
     await expect(power.getByText("突破条件：灵台稳固。")).toBeVisible();
     await expect(power.getByText("瓶颈：心魔未除不可筑基。")).toBeVisible();
     await expect(power.getByText("克制：被破阵术克制。")).toBeVisible();
@@ -1212,6 +1251,99 @@ test("shows multi-path power systems and mechanism ownership at all four viewpor
     await expect(mechanism.getByText("首次登记 · 沈砚")).toBeVisible();
     await expectNoOverflow(page);
     await capture(page, testInfo, `entity-detail-mechanism-${width}`);
+  }
+});
+
+test("uses genre pack level labels for power systems in history and urban works", async ({
+  page,
+  context,
+}, testInfo) => {
+  test.setTimeout(120_000);
+  await authenticatedPage(page, context);
+
+  const cases = [
+    {
+      genre: "history",
+      title: "北境军功录",
+      idea: "边军校尉在粮道断绝后争夺军功，并追查军械失窃的真相。",
+      systemName: "北境军制",
+      pathName: "边军",
+      pathType: "军职",
+      realmName: "校尉",
+      rank: 3,
+      lifespanBasis: "军职",
+      powerLevelLabel: "军职层级",
+      summary: "边军以军功和军令维持晋升。",
+      tags: ["军制"],
+      pathDescription: "边军凭军功晋升。",
+      breakthroughConditions: "获得军功。",
+      breakthroughCosts: "承担军令风险。",
+      bottlenecks: "粮道断绝时无法晋升。",
+      counters: "被监军节制。",
+      counteredBy: "可压制地方豪强。",
+    },
+    {
+      genre: "urban",
+      title: "算法围城",
+      idea: "项目经理在平台规则与资本压力之间寻找出路，并追查算法歧视。",
+      systemName: "平台资源体系",
+      pathName: "平台资源",
+      pathType: "资源",
+      realmName: "合伙人",
+      rank: 4,
+      lifespanBasis: "资源等级",
+      powerLevelLabel: "资源等级",
+      summary: "资源与信用决定平台权限。",
+      tags: ["资源"],
+      pathDescription: "资源与信用决定权限。",
+      breakthroughConditions: "完成平台问责。",
+      breakthroughCosts: "让渡部分股权。",
+      bottlenecks: "资本链断裂时无法晋升。",
+      counters: "受合同约束。",
+      counteredBy: "可调动平台资源。",
+    },
+  ] as const;
+
+  for (const item of cases) {
+    const work = await createWork(page.request, {
+      mode: "idea",
+      title: item.title,
+      idea: item.idea,
+      genre: item.genre,
+      scaleTarget: "long",
+      chapterLengthTarget: 3000,
+    });
+    await createPowerSystem(page, work, item.systemName, item);
+
+    for (const width of viewports) {
+      await page.setViewportSize({ width, height: 1000 });
+      const power = await openEntity(page, work, /^力量体系/, item.systemName);
+      await expect(power.getByText(`路径与${item.powerLevelLabel}`)).toBeVisible();
+      await expect(power.getByText(`按${item.powerLevelLabel}绑定`)).toBeVisible();
+      await expect(
+        power.getByText(`${item.powerLevelLabel} ${item.rank} · ${item.realmName}`),
+      ).toBeVisible();
+      await expect(
+        power.getByRole("button", { name: new RegExp(`${item.powerLevelLabel}变化`) }),
+      ).toBeVisible();
+      await expect(power.getByText("路径与境界")).toHaveCount(0);
+      await expectNoOverflow(page);
+      await capture(page, testInfo, `entity-detail-power-${item.genre}-${width}`);
+    }
+
+    const editablePower = await openEntity(page, work, /^力量体系/, item.systemName);
+    await expect(editablePower.getByText(`按${item.powerLevelLabel}绑定`)).toBeVisible();
+    await editablePower.getByRole("button", { name: "编辑设定" }).click();
+    const lifespanMode = page.locator(".settings-editor").getByLabel("寿命绑定");
+    await expect(lifespanMode).toHaveValue("realm");
+    await expect(
+      lifespanMode.getByRole("option", { name: `按${item.powerLevelLabel}绑定` }),
+    ).toHaveCount(1);
+    await page
+      .locator(".settings-editor")
+      .getByRole("button", { name: "取消", exact: true })
+      .first()
+      .click();
   }
 });
 

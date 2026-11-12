@@ -117,6 +117,25 @@ export const ERROR_CODES = [
   "REVISION_FINDING_REJECTED",
   "REVISION_ROUND_LIMIT_REACHED",
   "REVISION_INVALID_STATE",
+  "GENRE_PACK_VERSION_NOT_FOUND",
+  "GENRE_PACK_IDEMPOTENCY_CONFLICT",
+  "BATCH_PLAN_NOT_FOUND",
+  "BATCH_PLAN_INVALID",
+  "BATCH_PLAN_OUTLINE_INCOMPLETE",
+  "BATCH_PLAN_IDEMPOTENCY_CONFLICT",
+  "BATCH_REVIEW_CONTEXT_NOT_FOUND",
+  "BATCH_REVIEW_CLAIM_CONFLICT",
+  "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
+  "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+  "NOTIFICATION_NOT_FOUND",
+  "CHANGE_NOT_FOUND",
+  "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED",
+  "CHANGE_INVALID_STATE",
+  "CHANGE_TARGET_NOT_FOUND",
+  "CHANGE_ANALYSIS_REQUIRED",
+  "BRANCH_SOURCE_NOT_FOUND",
+  "VERSION_NODE_NOT_FOUND",
+  "IMPORT_NOT_READY",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -476,19 +495,95 @@ export const workCreateRequestSchema = z.discriminatedUnion("mode", [
   }),
   z.object({
     mode: z.literal("template"),
-    templateKey: z.literal("xianxia"),
+    templateKey: workGenreSchema,
     ...workBaseInputShape,
   }),
 ]);
 export type WorkCreateRequest = z.infer<typeof workCreateRequestSchema>;
 
-export const workTemplatePackSchema = z.object({
-  id: uuidV7Schema,
-  key: workGenreSchema,
-  version: z.number().int().positive(),
-  label: z.string(),
-  fields: z.record(z.string(), z.unknown()),
-});
+export const genrePackRuleSchema = z
+  .object({
+    key: z.string().min(1).max(100),
+    label: z.string().min(1).max(200),
+    description: z.string().min(1).max(1_000),
+  })
+  .strict();
+export type GenrePackRule = z.infer<typeof genrePackRuleSchema>;
+
+export const genrePackUiHintsSchema = z
+  .object({
+    worldLabel: z.string().min(1).max(100),
+    powerSystemLabel: z.string().min(1).max(100),
+    powerLevelLabel: z.string().min(1).max(100),
+    factionLabel: z.string().min(1).max(100),
+    itemLabel: z.string().min(1).max(100),
+  })
+  .strict();
+export type GenrePackUiHints = z.infer<typeof genrePackUiHintsSchema>;
+
+export const genrePackGenerationGuidanceSchema = z
+  .object({
+    protagonistArchetypes: z.array(z.string().min(1).max(200)).max(20),
+    conflictSeeds: z.array(z.string().min(1).max(200)).max(30),
+    worldRuleSeeds: z.array(z.string().min(1).max(300)).max(30),
+    forbiddenElements: z.array(z.string().min(1).max(100)).max(30),
+  })
+  .strict();
+export type GenrePackGenerationGuidance = z.infer<typeof genrePackGenerationGuidanceSchema>;
+
+export const genrePackMigrationSchema = z
+  .object({
+    fromVersion: z.number().int().positive(),
+    toVersion: z.number().int().positive(),
+    notes: z.array(z.string().min(1).max(500)).max(20),
+  })
+  .strict();
+export type GenrePackMigration = z.infer<typeof genrePackMigrationSchema>;
+
+export const genrePackFieldDefinitionSchema = z
+  .object({
+    key: z.string().min(1).max(100),
+    label: z.string().min(1).max(100),
+    type: z.enum(["text", "number", "boolean", "list"]),
+    required: z.boolean(),
+    options: z.array(z.string().min(1).max(200)).max(100),
+  })
+  .strict();
+export type GenrePackFieldDefinition = z.infer<typeof genrePackFieldDefinitionSchema>;
+
+export const genrePackDefinitionSchema = z
+  .object({
+    id: uuidV7Schema,
+    key: workGenreSchema,
+    version: z.number().int().positive(),
+    label: z.string().min(1).max(100),
+    fields: z.record(z.string(), z.unknown()),
+    fieldSchema: z.array(genrePackFieldDefinitionSchema).max(100),
+    rules: z.array(genrePackRuleSchema).max(50),
+    uiHints: genrePackUiHintsSchema,
+    generationGuidance: genrePackGenerationGuidanceSchema,
+    migration: genrePackMigrationSchema.nullable(),
+  })
+  .strict();
+export type GenrePackDefinition = z.infer<typeof genrePackDefinitionSchema>;
+
+export const genrePackListQuerySchema = z
+  .object({
+    key: workGenreSchema.optional(),
+  })
+  .strict();
+export type GenrePackListQuery = z.infer<typeof genrePackListQuerySchema>;
+export const genrePackListResponseSchema = apiEnvelopeSchema(z.array(genrePackDefinitionSchema));
+
+export const genrePackVersionChangeRequestSchema = z
+  .object({
+    targetVersion: z.number().int().positive(),
+    reason: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type GenrePackVersionChangeRequest = z.infer<typeof genrePackVersionChangeRequestSchema>;
+
+export const workTemplatePackSchema = genrePackDefinitionSchema;
 export type WorkTemplatePack = z.infer<typeof workTemplatePackSchema>;
 
 export const workSchema = z.object({
@@ -537,6 +632,13 @@ export const workOverviewSchema = workSchema.extend({
   readiness: workReadinessSchema,
 });
 export type WorkOverview = z.infer<typeof workOverviewSchema>;
+
+export const workOverviewQuerySchema = z
+  .object({
+    branchId: uuidV7Schema.optional(),
+  })
+  .strict();
+export type WorkOverviewQuery = z.infer<typeof workOverviewQuerySchema>;
 
 export const workListQuerySchema = cursorPageQuerySchema
   .extend({
@@ -5441,10 +5543,34 @@ export const summaryRebuildJobSchema = z.object({
 });
 export type SummaryRebuildJob = z.infer<typeof summaryRebuildJobSchema>;
 
+export const BATCH_TICK_JOB = "batch_tick" as const;
+export const batchTickCheckpointSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    revision: z.number().int().nonnegative(),
+    planId: uuidV7Schema,
+  })
+  .strict();
+export type BatchTickCheckpoint = z.infer<typeof batchTickCheckpointSchema>;
+export const batchTickJobSchema = z
+  .object({
+    jobType: z.literal(BATCH_TICK_JOB),
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    actorId: uuidV7Schema,
+    idempotencyKey: z.string().min(1).max(200),
+    checkpoint: batchTickCheckpointSchema,
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
+export type BatchTickJob = z.infer<typeof batchTickJobSchema>;
+
 export const workerJobSchema = z.discriminatedUnion("jobType", [
   generateChapterJobSchema,
   summaryRebuildJobSchema,
   writeActionJobSchema,
+  batchTickJobSchema,
 ]);
 export type WorkerJob = z.infer<typeof workerJobSchema>;
 
@@ -5600,6 +5726,934 @@ export const writingActionJobListResponseSchema = cursorListResponseSchema(
 );
 export const contextPackResponseSchema = apiEnvelopeSchema(contextPackVersionSchema.nullable());
 export const contextPackPreviewResponseSchema = apiEnvelopeSchema(contextPackPreviewSchema);
+
+export const BATCH_PLAN_JOB_TYPE = "batch_plan" as const;
+export const BATCH_PLAN_PRIORITY = 1_000;
+export const INTERACTIVE_PRIORITY = 100;
+export const BATCH_REVIEW_PREDICATE_VERSION = "batch-review-v1" as const;
+
+export const batchJobItemTypeSchema = z.enum(["book", "volume", "chapter", "step"]);
+export type BatchJobItemType = z.infer<typeof batchJobItemTypeSchema>;
+
+export const batchWorkItemStatusSchema = z.enum([
+  "pending",
+  "ready",
+  "running",
+  "paused",
+  "waiting_review",
+  "succeeded",
+  "failed",
+  "skipped",
+  "cancelled",
+]);
+export type BatchWorkItemStatus = z.infer<typeof batchWorkItemStatusSchema>;
+
+export const batchPriorityClassSchema = z.enum(["interactive", "batch"]);
+export type BatchPriorityClass = z.infer<typeof batchPriorityClassSchema>;
+
+export const batchApprovalModeSchema = z.enum(["per_chapter", "per_volume", "auto"]);
+export type BatchApprovalMode = z.infer<typeof batchApprovalModeSchema>;
+
+export const batchCostBudgetPolicySchema = z
+  .object({
+    chapterMaxCostCny: z.number().positive().max(1_000).default(2.5),
+    volumeMaxCostCny: z.number().positive().max(100_000).nullable().default(null),
+    taskMaxCostCny: z.number().positive().max(1_000_000).nullable().default(null),
+    perTenThousandCharsMaxCostCny: z.number().positive().max(10_000).nullable().default(null),
+  })
+  .strict();
+export type BatchCostBudgetPolicy = z.infer<typeof batchCostBudgetPolicySchema>;
+
+const batchPlanScopeBaseSchema = z.discriminatedUnion("type", [
+  z
+    .object({
+      type: z.literal("chapter"),
+      chapterIds: z.array(uuidV7Schema).min(1).max(100),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("volume"),
+      volumeNodeIds: z.array(uuidV7Schema).min(1).max(100),
+    })
+    .strict(),
+  z
+    .object({
+      type: z.literal("range"),
+      fromChapterNumber: z.number().int().positive().max(10_000),
+      toChapterNumber: z.number().int().positive().max(10_000),
+    })
+    .strict(),
+  z.object({ type: z.literal("book") }).strict(),
+]);
+
+export const batchPlanScopeSchema = batchPlanScopeBaseSchema.superRefine((scope, context) => {
+  if (scope.type === "range" && scope.fromChapterNumber > scope.toChapterNumber) {
+    context.addIssue({
+      code: "custom",
+      path: ["toChapterNumber"],
+      message: "Chapter range end must not precede its start",
+    });
+  }
+});
+export type BatchPlanScope = z.infer<typeof batchPlanScopeSchema>;
+
+export const batchPlanCreateRequestSchema = z
+  .object({
+    scope: batchPlanScopeSchema,
+    approvalMode: batchApprovalModeSchema.default("per_volume"),
+    priorityClass: batchPriorityClassSchema.default("batch"),
+    costBudgetPolicy: batchCostBudgetPolicySchema.default({
+      chapterMaxCostCny: 2.5,
+      volumeMaxCostCny: null,
+      taskMaxCostCny: null,
+      perTenThousandCharsMaxCostCny: null,
+    }),
+    maxConcurrency: z.number().int().min(1).max(4).default(2),
+    stepKeys: z
+      .array(workerJobStepSchema)
+      .min(1)
+      .max(16)
+      .default([...WORKER_JOB_STEPS]),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.stepKeys).size !== input.stepKeys.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["stepKeys"],
+        message: "Step keys must be unique",
+      });
+    }
+  });
+export type BatchPlanCreateRequest = z.infer<typeof batchPlanCreateRequestSchema>;
+
+export const batchPlanActionRequestSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(500).optional(),
+  })
+  .strict();
+export type BatchPlanActionRequest = z.infer<typeof batchPlanActionRequestSchema>;
+
+export const batchWorkItemKeySchema = z
+  .string()
+  .min(1)
+  .max(120)
+  .regex(/^[a-z][a-z0-9:._-]*$/, "Expected a stable work-item key");
+export type BatchWorkItemKey = z.infer<typeof batchWorkItemKeySchema>;
+
+export const batchWorkItemInputVersionSchema = z
+  .object({
+    outlineVersion: z.number().int().positive().nullable(),
+    chapterVersion: z.number().int().positive().nullable(),
+  })
+  .strict();
+export type BatchWorkItemInputVersion = z.infer<typeof batchWorkItemInputVersionSchema>;
+
+export const batchWorkItemSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    userId: uuidV7Schema,
+    key: batchWorkItemKeySchema,
+    type: batchJobItemTypeSchema,
+    parentKey: batchWorkItemKeySchema.nullable(),
+    chapterId: uuidV7Schema.nullable(),
+    outlineNodeId: uuidV7Schema.nullable(),
+    status: batchWorkItemStatusSchema,
+    attempt: z.number().int().nonnegative(),
+    priority: z.number().int().min(0).max(1_000),
+    priorityClass: batchPriorityClassSchema,
+    sortOrder: z.number().int().nonnegative(),
+    inputVersion: batchWorkItemInputVersionSchema,
+    dependsOn: z.array(batchWorkItemKeySchema).max(500),
+    outputRefs: z.array(checkpointOutputRefSchema).max(100),
+    errorCode: z.string().min(1).max(100).nullable(),
+    errorMessage: z.string().min(1).max(2_000).nullable(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchWorkItem = z.infer<typeof batchWorkItemSchema>;
+
+export const batchPlanCountsSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    book: z.number().int().nonnegative(),
+    volume: z.number().int().nonnegative(),
+    chapter: z.number().int().nonnegative(),
+    step: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(),
+    ready: z.number().int().nonnegative(),
+    running: z.number().int().nonnegative(),
+    paused: z.number().int().nonnegative(),
+    waiting_review: z.number().int().nonnegative(),
+    succeeded: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    cancelled: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchPlanCounts = z.infer<typeof batchPlanCountsSchema>;
+
+export const batchSchedulingCapsSchema = z
+  .object({
+    global: z.number().int().positive(),
+    perWork: z.number().int().positive(),
+    perUser: z.number().int().positive(),
+  })
+  .strict();
+export type BatchSchedulingCaps = z.infer<typeof batchSchedulingCapsSchema>;
+
+export const batchPlanSchedulingSchema = z
+  .object({
+    caps: batchSchedulingCapsSchema,
+    effectivePerWork: z.number().int().positive(),
+    priority: z.number().int().min(0).max(1_000),
+    initialRunnableKeys: z.array(batchWorkItemKeySchema).max(8),
+  })
+  .strict();
+export type BatchPlanScheduling = z.infer<typeof batchPlanSchedulingSchema>;
+
+export const batchPlanSummarySchema = z
+  .object({
+    id: uuidV7Schema,
+    jobId: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    userId: uuidV7Schema,
+    status: generationJobStatusSchema,
+    scope: batchPlanScopeSchema,
+    approvalMode: batchApprovalModeSchema,
+    costBudgetPolicy: batchCostBudgetPolicySchema,
+    priorityClass: batchPriorityClassSchema,
+    idempotencyKey: z.string().min(1).max(200),
+    counts: batchPlanCountsSchema,
+    scheduling: batchPlanSchedulingSchema,
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchPlanSummary = z.infer<typeof batchPlanSummarySchema>;
+
+export const batchPlanMetadataSchema = z
+  .object({
+    schemaVersion: z.literal(1),
+    requestHash: z.string().regex(/^[a-f0-9]{64}$/),
+    scope: batchPlanScopeSchema,
+    approvalMode: batchApprovalModeSchema,
+    costBudgetPolicy: batchCostBudgetPolicySchema.default({
+      chapterMaxCostCny: 2.5,
+      volumeMaxCostCny: null,
+      taskMaxCostCny: null,
+      perTenThousandCharsMaxCostCny: null,
+    }),
+    priorityClass: batchPriorityClassSchema,
+    projectedCharacters: z.number().int().nonnegative().default(0),
+    stepKeys: z.array(workerJobStepSchema).min(1).max(16),
+    scheduling: batchPlanSchedulingSchema,
+    counts: batchPlanCountsSchema,
+  })
+  .strict();
+export type BatchPlanMetadata = z.infer<typeof batchPlanMetadataSchema>;
+
+export const batchPlanValidationIssueSchema = z
+  .object({
+    code: z.enum([
+      "duplicate_key",
+      "unknown_dependency",
+      "cycle",
+      "cross_work_reference",
+      "missing_parent",
+      "invalid_parent_type",
+      "invalid_root",
+    ]),
+    message: z.string().min(1),
+    itemKey: batchWorkItemKeySchema.nullable(),
+  })
+  .strict();
+export type BatchPlanValidationIssue = z.infer<typeof batchPlanValidationIssueSchema>;
+
+export const batchPlanResponseSchema = apiEnvelopeSchema(batchPlanSummarySchema);
+export const batchPlanListQuerySchema = cursorPageQuerySchema
+  .extend({ status: generationJobStatusSchema.optional() })
+  .strict();
+export type BatchPlanListQuery = z.infer<typeof batchPlanListQuerySchema>;
+export const batchPlanListResponseSchema = cursorListResponseSchema(
+  z.array(batchPlanSummarySchema),
+);
+export const batchPlanItemListResponseSchema = cursorListResponseSchema(
+  z.array(batchWorkItemSchema),
+);
+
+export const batchCostReportGroupBySchema = z.enum(["volume", "chapter", "model", "time"]);
+export type BatchCostReportGroupBy = z.infer<typeof batchCostReportGroupBySchema>;
+
+export const batchCostReportQuerySchema = z
+  .object({
+    planId: uuidV7Schema,
+    groupBy: batchCostReportGroupBySchema.default("volume"),
+  })
+  .strict();
+export type BatchCostReportQuery = z.infer<typeof batchCostReportQuerySchema>;
+
+export const batchCostReportStatusCountsSchema = z
+  .object({
+    queued: z.number().int().nonnegative(),
+    preparing: z.number().int().nonnegative(),
+    running: z.number().int().nonnegative(),
+    paused: z.number().int().nonnegative(),
+    waitingReview: z.number().int().nonnegative(),
+    completed: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    cancelled: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    budgetExceeded: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchCostReportStatusCounts = z.infer<typeof batchCostReportStatusCountsSchema>;
+
+export const batchCostReportTotalsSchema = z
+  .object({
+    chapters: z.number().int().nonnegative(),
+    completedChapters: z.number().int().nonnegative(),
+    statusCounts: batchCostReportStatusCountsSchema,
+    calls: z.number().int().nonnegative(),
+    failedCalls: z.number().int().nonnegative(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    reservedCostCny: z.number().nonnegative(),
+    settledCostCny: z.number().nonnegative(),
+    durationMs: z.number().int().nonnegative(),
+    chaptersPerHour: z.number().nonnegative().nullable(),
+  })
+  .strict();
+export type BatchCostReportTotals = z.infer<typeof batchCostReportTotalsSchema>;
+
+export const batchCostReportBudgetSchema = z
+  .object({
+    policy: batchCostBudgetPolicySchema,
+    projectedCharacters: z.number().int().nonnegative(),
+    perTenThousandCharactersLimitCny: z.number().nonnegative().nullable(),
+    remainingCostCny: z.number().nonnegative().nullable(),
+    status: z.enum(["ok", "near_limit", "exhausted"]),
+  })
+  .strict();
+export type BatchCostReportBudget = z.infer<typeof batchCostReportBudgetSchema>;
+
+export const batchCostReportGroupSchema = z
+  .object({
+    key: z.string().min(1).max(200),
+    label: z.string().min(1).max(200),
+    chapters: z.number().int().nonnegative(),
+    completedChapters: z.number().int().nonnegative(),
+    calls: z.number().int().nonnegative(),
+    failedCalls: z.number().int().nonnegative(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    costCny: z.number().nonnegative(),
+    durationMs: z.number().int().nonnegative(),
+    chaptersPerHour: z.number().nonnegative().nullable(),
+  })
+  .strict();
+export type BatchCostReportGroup = z.infer<typeof batchCostReportGroupSchema>;
+
+export const batchCostBindingScopeSchema = z.enum([
+  "chapter",
+  "volume",
+  "task",
+  "per_ten_thousand_characters",
+]);
+export type BatchCostBindingScope = z.infer<typeof batchCostBindingScopeSchema>;
+
+export const batchCostReportHardStopSchema = z
+  .object({
+    jobId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    code: z.string().min(1).max(100),
+    message: z.string().min(1).max(1_000),
+    scope: batchCostBindingScopeSchema.nullable(),
+    occurredAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchCostReportHardStop = z.infer<typeof batchCostReportHardStopSchema>;
+
+export const batchCostReportSchema = z
+  .object({
+    planId: uuidV7Schema,
+    workId: uuidV7Schema,
+    currency: z.literal("CNY"),
+    generatedAt: z.string().datetime(),
+    totals: batchCostReportTotalsSchema,
+    budget: batchCostReportBudgetSchema,
+    groups: z.array(batchCostReportGroupSchema).max(500),
+    hardStops: z.array(batchCostReportHardStopSchema).max(100),
+  })
+  .strict();
+export type BatchCostReport = z.infer<typeof batchCostReportSchema>;
+export const batchCostReportResponseSchema = apiEnvelopeSchema(batchCostReportSchema);
+
+export const notificationTypeSchema = z.enum([
+  "job_completed",
+  "job_failed",
+  "review_required",
+  "merge_completed",
+  "merge_conflict",
+]);
+export type NotificationType = z.infer<typeof notificationTypeSchema>;
+
+export const notificationTargetTypeSchema = z.enum(["job", "review", "merge", "work", "branch"]);
+export type NotificationTargetType = z.infer<typeof notificationTargetTypeSchema>;
+
+export const notificationPayloadSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    message: z.string().trim().min(1).max(1_000),
+    href: z
+      .string()
+      .trim()
+      .min(1)
+      .max(2_000)
+      .regex(/^\/(?!\/)(?!.*(?:\\|%5c))[^\s]*$/iu, "Expected an internal path"),
+  })
+  .strict();
+export type NotificationPayload = z.infer<typeof notificationPayloadSchema>;
+
+export const notificationSchema = z
+  .object({
+    id: uuidV7Schema,
+    userId: uuidV7Schema,
+    workId: uuidV7Schema.nullable(),
+    branchId: uuidV7Schema.nullable(),
+    type: notificationTypeSchema,
+    targetType: notificationTargetTypeSchema,
+    targetId: uuidV7Schema,
+    payload: notificationPayloadSchema,
+    dedupeKey: z.string().trim().min(1).max(200),
+    readAt: z.string().datetime().nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type Notification = z.infer<typeof notificationSchema>;
+
+export const notificationListQuerySchema = cursorPageQuerySchema
+  .extend({
+    unreadOnly: z
+      .enum(["true", "false"])
+      .transform((value) => value === "true")
+      .optional(),
+  })
+  .strict();
+export type NotificationListQuery = z.infer<typeof notificationListQuerySchema>;
+
+export const notificationListResponseSchema = z.object({
+  data: z.array(notificationSchema),
+  requestId: z.string().startsWith("req_"),
+  meta: z.object({
+    nextCursor: uuidV7Schema.nullable(),
+    unreadCount: z.number().int().nonnegative(),
+  }),
+});
+export const notificationReadResponseSchema = apiEnvelopeSchema(notificationSchema);
+export const notificationReadAllResponseSchema = apiEnvelopeSchema(
+  z.object({ updated: z.number().int().nonnegative() }).strict(),
+);
+
+export const changeTargetTypeSchema = z.enum([
+  "entity",
+  "chapter",
+  "outline",
+  "fact",
+  "ledger",
+  "work",
+]);
+export type ChangeTargetType = z.infer<typeof changeTargetTypeSchema>;
+
+export const changeRiskSchema = z.enum(["low", "medium", "high"]);
+export type ChangeRisk = z.infer<typeof changeRiskSchema>;
+
+export const changeStatusSchema = z.enum([
+  "draft",
+  "analyzing",
+  "awaiting_confirmation",
+  "applying",
+  "applied",
+  "rejected",
+  "cancelled",
+  "failed",
+  "branched",
+]);
+export type ChangeStatus = z.infer<typeof changeStatusSchema>;
+
+export const changeRequestCreateRequestSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    reason: z.string().trim().min(1).max(2_000),
+    targetVersion: z.number().int().positive(),
+    targetType: changeTargetTypeSchema,
+    targetId: uuidV7Schema,
+    objectType: z.string().trim().min(1).max(80),
+    before: z.record(z.string(), z.unknown()).default({}),
+    after: z.record(z.string(), z.unknown()).default({}),
+    risk: changeRiskSchema.default("low"),
+    source: z.enum(["author", "ai", "import", "batch"]).default("author"),
+  })
+  .strict();
+export type ChangeRequestCreateRequest = z.infer<typeof changeRequestCreateRequestSchema>;
+
+export const changeRequestSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    title: z.string(),
+    reason: z.string(),
+    targetVersion: z.number().int().positive(),
+    targetType: changeTargetTypeSchema,
+    targetId: uuidV7Schema,
+    objectType: z.string(),
+    before: z.record(z.string(), z.unknown()),
+    after: z.record(z.string(), z.unknown()),
+    diff: z.record(z.string(), z.unknown()),
+    source: z.enum(["author", "ai", "import", "batch"]),
+    risk: changeRiskSchema,
+    status: changeStatusSchema,
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type ChangeRequest = z.infer<typeof changeRequestSchema>;
+
+export const changeRequestListQuerySchema = cursorPageQuerySchema
+  .extend({
+    status: changeStatusSchema.optional(),
+    risk: changeRiskSchema.optional(),
+    targetType: changeTargetTypeSchema.optional(),
+  })
+  .strict();
+export type ChangeRequestListQuery = z.infer<typeof changeRequestListQuerySchema>;
+export const changeRequestListResponseSchema = cursorListResponseSchema(
+  z.array(changeRequestSchema),
+);
+export const changeRequestResponseSchema = apiEnvelopeSchema(changeRequestSchema);
+
+export const changeImpactSchema = z
+  .object({
+    id: uuidV7Schema,
+    category: z.enum(["safe", "repairable", "structural"]),
+    affectedType: z.string(),
+    affectedId: uuidV7Schema.nullable(),
+    chapterId: uuidV7Schema.nullable(),
+    summary: z.string(),
+    evidence: z.record(z.string(), z.unknown()),
+    confidence: z.number().min(0).max(1),
+  })
+  .strict();
+export type ChangeImpact = z.infer<typeof changeImpactSchema>;
+
+export const changeAnalysisResponseSchema = apiEnvelopeSchema(
+  z.object({
+    change: changeRequestSchema,
+    impacts: z.array(changeImpactSchema),
+  }),
+);
+
+export const changeApplyRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    expectedTargetVersion: z.number().int().positive(),
+    reason: z.string().trim().max(2_000).optional(),
+    confirmHighRisk: z.boolean().default(false),
+  })
+  .strict();
+export type ChangeApplyRequest = z.infer<typeof changeApplyRequestSchema>;
+export const changeApplyResponseSchema = apiEnvelopeSchema(
+  z.object({
+    change: changeRequestSchema,
+    versionNodeId: uuidV7Schema,
+  }),
+);
+
+export const branchCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    sourceNodeId: uuidV7Schema,
+    reason: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type BranchCreateRequest = z.infer<typeof branchCreateRequestSchema>;
+export const branchCreateResponseSchema = apiEnvelopeSchema(workBranchSchema);
+
+export const mergeObjectTypeSchema = z.enum(["chapter", "entity", "fact", "outline", "ledger"]);
+export type MergeObjectType = z.infer<typeof mergeObjectTypeSchema>;
+export const mergeChangeKindSchema = z.enum(["added", "removed", "changed", "unchanged"]);
+export type MergeChangeKind = z.infer<typeof mergeChangeKindSchema>;
+
+export const mergeItemSchema = z
+  .object({
+    id: uuidV7Schema,
+    sourceBranchId: uuidV7Schema,
+    targetBranchId: uuidV7Schema,
+    sourceNodeId: uuidV7Schema.nullable(),
+    targetNodeId: uuidV7Schema.nullable(),
+    objectType: mergeObjectTypeSchema,
+    objectId: uuidV7Schema,
+    objectKey: z.string(),
+    sourcePayload: z.record(z.string(), z.unknown()),
+    targetPayload: z.record(z.string(), z.unknown()),
+    diff: z.record(z.string(), z.unknown()),
+    changeKind: mergeChangeKindSchema,
+    risk: changeRiskSchema,
+    conflict: z.boolean(),
+    status: z.enum(["pending", "accepted", "rejected", "applied", "stale"]),
+    reason: z.string().nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type MergeItem = z.infer<typeof mergeItemSchema>;
+export const mergeItemListResponseSchema = apiEnvelopeSchema(z.array(mergeItemSchema));
+
+export const branchComparisonResponseSchema = apiEnvelopeSchema(
+  z.object({
+    sourceBranchId: uuidV7Schema,
+    targetBranchId: uuidV7Schema,
+    items: z.array(mergeItemSchema),
+  }),
+);
+
+export const mergeItemDecisionRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    action: z.enum(["accept", "reject"]),
+    reason: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type MergeItemDecisionRequest = z.infer<typeof mergeItemDecisionRequestSchema>;
+export const mergeItemDecisionResponseSchema = apiEnvelopeSchema(mergeItemSchema);
+
+export const mergeApplyRequestSchema = z
+  .object({
+    itemIds: z.array(uuidV7Schema).min(1).max(100),
+    expectedTargetHeadNodeId: uuidV7Schema,
+    confirmHighRisk: z.boolean().default(false),
+  })
+  .strict();
+export type MergeApplyRequest = z.infer<typeof mergeApplyRequestSchema>;
+export const mergeApplyResponseSchema = apiEnvelopeSchema(
+  z.object({
+    applied: z.array(uuidV7Schema),
+    versionNodeId: uuidV7Schema,
+  }),
+);
+
+export const versionRollbackRequestSchema = z
+  .object({
+    targetNodeId: uuidV7Schema,
+    expectedHeadNodeId: uuidV7Schema,
+    reason: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type VersionRollbackRequest = z.infer<typeof versionRollbackRequestSchema>;
+
+export const versionRollbackResponseSchema = apiEnvelopeSchema(
+  z.object({
+    versionNodeId: uuidV7Schema,
+    nodeType: z.literal("rollback"),
+  }),
+);
+
+export const searchQuerySchema = z
+  .object({
+    q: z.string().trim().min(1).max(200),
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+  })
+  .strict();
+export type SearchQuery = z.infer<typeof searchQuerySchema>;
+export const searchResultSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    sourceType: z.enum(["entity", "fact", "timeline_event", "map_node", "chapter", "setting"]),
+    sourceId: uuidV7Schema,
+    title: z.string(),
+    snippet: z.string(),
+    score: z.number(),
+    versionNodeId: uuidV7Schema,
+  })
+  .strict();
+export type SearchResult = z.infer<typeof searchResultSchema>;
+export const searchResponseSchema = apiEnvelopeSchema(z.array(searchResultSchema));
+export const searchRebuildProgressSchema = z
+  .object({
+    runId: uuidV7Schema,
+    status: z.enum(["queued", "running", "completed", "failed"]),
+    indexed: z.number().int().nonnegative(),
+    expectedTotal: z.number().int().nonnegative(),
+    stage: z.number().int().nonnegative(),
+    stageOffset: z.number().int().nonnegative(),
+  })
+  .strict();
+export type SearchRebuildProgress = z.infer<typeof searchRebuildProgressSchema>;
+export const searchRebuildResponseSchema = apiEnvelopeSchema(searchRebuildProgressSchema);
+
+export const chunkedImportCreateRequestSchema = z
+  .object({
+    sourceName: z.string().trim().min(1).max(240),
+    chunks: z.array(z.string().min(1).max(5_000_000)).min(1).max(10_000),
+  })
+  .strict();
+export type ChunkedImportCreateRequest = z.infer<typeof chunkedImportCreateRequestSchema>;
+export const chunkedImportStartRequestSchema = z
+  .object({
+    sourceName: z.string().trim().min(1).max(240),
+    chunkCount: z.number().int().min(1).max(10_000),
+  })
+  .strict();
+export type ChunkedImportStartRequest = z.infer<typeof chunkedImportStartRequestSchema>;
+export const chunkedImportChunkRequestSchema = z
+  .object({
+    sequence: z.number().int().nonnegative().max(9_999),
+    sourceText: z.string().min(1).max(5_000_000),
+  })
+  .strict();
+export type ChunkedImportChunkRequest = z.infer<typeof chunkedImportChunkRequestSchema>;
+export const chunkedImportProgressSchema = z
+  .object({
+    importId: uuidV7Schema,
+    status: z.enum([
+      "queued",
+      "processing",
+      "awaiting_confirmation",
+      "paused",
+      "partial",
+      "failed",
+      "cancelled",
+      "completed",
+    ]),
+    chunkCount: z.number().int().positive(),
+    processedChunks: z.number().int().nonnegative(),
+    canConfirm: z.boolean(),
+  })
+  .strict();
+export type ChunkedImportProgress = z.infer<typeof chunkedImportProgressSchema>;
+export const chunkedImportProgressResponseSchema = apiEnvelopeSchema(chunkedImportProgressSchema);
+
+export const batchReviewTargetTypeSchema = z.enum(["chapter", "volume"]);
+export type BatchReviewTargetType = z.infer<typeof batchReviewTargetTypeSchema>;
+
+export const batchReviewStatusSchema = z.enum([
+  "pending",
+  "claimed",
+  "approved",
+  "rejected",
+  "stale",
+]);
+export type BatchReviewStatus = z.infer<typeof batchReviewStatusSchema>;
+
+export const batchReviewRiskSchema = z.enum(["low", "medium", "high"]);
+export type BatchReviewRisk = z.infer<typeof batchReviewRiskSchema>;
+
+export const batchReviewRiskReasonCodeSchema = z.enum([
+  "MANUAL_APPROVAL_MODE",
+  "VOLUME_BOUNDARY",
+  "OUTLINE_NOT_LOCKED",
+  "PENDING_HIGH_RISK_APPROVAL",
+  "READINESS_BLOCKED",
+  "GOLDEN_THREE_UNLOCKED",
+  "QUALITY_REPORT_MISSING",
+  "QUALITY_REPORT_STALE",
+  "UNRESOLVED_P0",
+  "UNRESOLVED_P1",
+  "STRUCTURAL_FINDING",
+  "QUALITY_BELOW_THRESHOLD",
+  "QUALITY_WARNING",
+  "CHARACTER_DEATH",
+  "GOLDEN_FINGER_UPGRADE",
+  "LOCKED_CANON_CHANGE",
+  "BRANCH_MERGE",
+]);
+export type BatchReviewRiskReasonCode = z.infer<typeof batchReviewRiskReasonCodeSchema>;
+
+export const batchReviewRiskReasonSchema = z
+  .object({
+    code: batchReviewRiskReasonCodeSchema,
+    message: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type BatchReviewRiskReason = z.infer<typeof batchReviewRiskReasonSchema>;
+
+export const batchReviewQualitySummarySchema = z
+  .object({
+    reportState: z.enum(["fresh", "missing", "stale"]),
+    canApprove: z.boolean(),
+    scoreAverage: z.number().min(1).max(5).nullable(),
+    blockerCount: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewQualitySummary = z.infer<typeof batchReviewQualitySummarySchema>;
+
+export const batchReviewFindingSchema = z
+  .object({
+    id: uuidV7Schema,
+    severity: z.enum(["P0", "P1", "P2", "P3"]),
+    code: z.enum([
+      "FACT_CONTRADICTION",
+      "TIMELINE_CONFLICT",
+      "UNDISCLOSED_KNOWLEDGE",
+      "MOTIVATION_BREAK",
+      "LOCATION_CONFLICT",
+      "STYLE_DRIFT",
+      "WEAK_CHAPTER_END_HOOK",
+    ]),
+    qualityDimension: z.enum([
+      "hook",
+      "pacing",
+      "information_density",
+      "character_voice",
+      "prose",
+      "continuity",
+    ]),
+    recommendation: z.string().trim().min(1).max(2_000),
+    quote: z.string().trim().min(1).max(2_000).nullable(),
+  })
+  .strict();
+export type BatchReviewFinding = z.infer<typeof batchReviewFindingSchema>;
+
+export const batchReviewQueueItemSchema = z
+  .object({
+    id: uuidV7Schema,
+    planId: uuidV7Schema,
+    workItemId: uuidV7Schema,
+    targetType: batchReviewTargetTypeSchema,
+    targetId: uuidV7Schema,
+    chapterId: uuidV7Schema.nullable(),
+    chapterNumber: z.number().int().positive().nullable(),
+    chapterTitle: z.string().trim().min(1).max(200).nullable(),
+    volumeTitle: z.string().trim().min(1).max(200).nullable(),
+    status: batchReviewStatusSchema,
+    risk: batchReviewRiskSchema,
+    riskReasons: z.array(batchReviewRiskReasonSchema).max(20),
+    quality: batchReviewQualitySummarySchema,
+    findings: z.array(batchReviewFindingSchema).max(20),
+    claimedBy: uuidV7Schema.nullable(),
+    claimedAt: z.string().datetime().nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type BatchReviewQueueItem = z.infer<typeof batchReviewQueueItemSchema>;
+
+export const batchReviewQueueCountsSchema = z
+  .object({
+    total: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(),
+    claimed: z.number().int().nonnegative(),
+    highRisk: z.number().int().nonnegative(),
+    stale: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewQueueCounts = z.infer<typeof batchReviewQueueCountsSchema>;
+
+export const batchReviewQueueQuerySchema = z
+  .object({
+    status: batchReviewStatusSchema.optional(),
+    risk: batchReviewRiskSchema.optional(),
+    targetType: batchReviewTargetTypeSchema.optional(),
+    cursor: z.string().min(1).max(500).optional(),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+  })
+  .strict();
+export type BatchReviewQueueQuery = z.infer<typeof batchReviewQueueQuerySchema>;
+
+export const batchReviewQueueListResponseSchema = z.object({
+  data: z.array(batchReviewQueueItemSchema),
+  requestId: z.string().startsWith("req_"),
+  meta: cursorPageMetaSchema.extend({ counts: batchReviewQueueCountsSchema }),
+});
+
+export const batchReviewClaimRequestSchema = z
+  .object({
+    itemIds: z.array(uuidV7Schema).min(1).max(50),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.itemIds).size !== input.itemIds.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["itemIds"],
+        message: "Review queue item ids must be unique",
+      });
+    }
+  });
+export type BatchReviewClaimRequest = z.infer<typeof batchReviewClaimRequestSchema>;
+export const batchReviewClaimResponseSchema = apiEnvelopeSchema(
+  z.array(batchReviewQueueItemSchema),
+);
+
+export const batchReviewActionSchema = z.enum(["approve", "reject"]);
+export type BatchReviewAction = z.infer<typeof batchReviewActionSchema>;
+
+export const batchReviewDecisionSchema = z
+  .object({
+    itemId: uuidV7Schema,
+    expectedVersion: z.number().int().positive(),
+    action: batchReviewActionSchema,
+    reason: z.string().trim().min(1).max(1_000).optional(),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (input.action === "reject" && !input.reason) {
+      context.addIssue({
+        code: "custom",
+        path: ["reason"],
+        message: "Rejecting a batch review item requires a reason",
+      });
+    }
+  });
+export type BatchReviewDecision = z.infer<typeof batchReviewDecisionSchema>;
+
+export const batchReviewDecisionRequestSchema = z
+  .object({
+    items: z.array(batchReviewDecisionSchema).min(1).max(50),
+  })
+  .strict()
+  .superRefine((input, context) => {
+    if (new Set(input.items.map((item) => item.itemId)).size !== input.items.length) {
+      context.addIssue({
+        code: "custom",
+        path: ["items"],
+        message: "Each review queue item may appear only once",
+      });
+    }
+  });
+export type BatchReviewDecisionRequest = z.infer<typeof batchReviewDecisionRequestSchema>;
+
+export const batchReviewDecisionResultSchema = z
+  .object({
+    itemId: uuidV7Schema,
+    status: z.enum(["approved", "rejected", "failed"]),
+    errorCode: z.string().min(1).max(100).nullable(),
+    message: z.string().trim().min(1).max(1_000),
+    item: batchReviewQueueItemSchema.nullable(),
+  })
+  .strict();
+export type BatchReviewDecisionResult = z.infer<typeof batchReviewDecisionResultSchema>;
+
+export const batchReviewDecisionDataSchema = z
+  .object({
+    results: z.array(batchReviewDecisionResultSchema).min(1).max(50),
+    succeeded: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+  })
+  .strict();
+export type BatchReviewDecisionData = z.infer<typeof batchReviewDecisionDataSchema>;
+export const batchReviewDecisionResponseSchema = apiEnvelopeSchema(batchReviewDecisionDataSchema);
 
 export const agentRoleSchema = z.enum([
   "planner",

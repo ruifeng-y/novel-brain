@@ -2,6 +2,10 @@ import { Injectable } from "@nestjs/common";
 import type {
   Chapter,
   ChapterVersion,
+  ChunkedImportCreateRequest,
+  ChunkedImportStartRequest,
+  ChunkedImportChunkRequest,
+  ChunkedImportProgress,
   ManuscriptImport,
   ManuscriptImportConfirmData,
   ManuscriptImportConfirmRequest,
@@ -44,6 +48,88 @@ export class ManuscriptImportService {
     return this.toContract(record, input.format);
   }
 
+  async createChunked(
+    userId: string,
+    input: ChunkedImportCreateRequest,
+    idempotencyKey: string,
+  ): Promise<ChunkedImportProgress> {
+    if (!idempotencyKey.trim()) {
+      throw new ApiError(400, "VALIDATION_INVALID", "分块导入需要 Idempotency-Key");
+    }
+    const record = await this.repository.createChunked({
+      id: uuidv7(),
+      userId,
+      sourceName: input.sourceName,
+      chunks: input.chunks,
+      idempotencyKey: idempotencyKey.trim(),
+    });
+    if (record === "idempotency_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "同一 Idempotency-Key 不能用于不同分块导入");
+    }
+    return toChunkedProgress(record);
+  }
+
+  async startChunked(
+    userId: string,
+    input: ChunkedImportStartRequest,
+    idempotencyKey: string,
+  ): Promise<ChunkedImportProgress> {
+    if (!idempotencyKey.trim()) {
+      throw new ApiError(400, "VALIDATION_INVALID", "分块导入需要 Idempotency-Key");
+    }
+    const record = await this.repository.createChunkedStart({
+      id: uuidv7(),
+      userId,
+      sourceName: input.sourceName,
+      chunkCount: input.chunkCount,
+      idempotencyKey: idempotencyKey.trim(),
+    });
+    if (record === "idempotency_conflict") {
+      throw new ApiError(409, "VERSION_CONFLICT", "同一 Idempotency-Key 不能用于不同分块导入");
+    }
+    return toChunkedProgress(record);
+  }
+
+  async appendChunk(
+    userId: string,
+    importId: string,
+    input: ChunkedImportChunkRequest,
+  ): Promise<ChunkedImportProgress> {
+    const record = await this.repository.appendChunk({ userId, importId, ...input });
+    if (!record) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在、无权访问或分块序号无效");
+    }
+    return toChunkedProgress(record);
+  }
+
+  async processChunk(userId: string, importId: string): Promise<ChunkedImportProgress> {
+    const record = await this.repository.processChunk(userId, importId);
+    if (!record) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    return toChunkedProgress(record);
+  }
+
+  async progress(userId: string, importId: string): Promise<ChunkedImportProgress> {
+    const record = await this.repository.find(userId, importId);
+    if (!record) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    return toChunkedProgress(record);
+  }
+
+  async controlChunked(
+    userId: string,
+    importId: string,
+    action: "pause" | "resume" | "cancel",
+  ): Promise<ChunkedImportProgress> {
+    const record = await this.repository.setChunkedStatus(userId, importId, action);
+    if (!record) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    return toChunkedProgress(record);
+  }
+
   async get(
     userId: string,
     importId: string,
@@ -53,7 +139,14 @@ export class ManuscriptImportService {
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
-    return this.toContract(record, format ?? formatFromName(record.sourceName));
+    const sourceText =
+      record.metadata.chunked === true
+        ? await this.repository.sourceText(userId, importId)
+        : record.sourceText;
+    if (sourceText === undefined) {
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+    }
+    return this.toContract(record, format ?? formatFromName(record.sourceName), sourceText);
   }
 
   async confirm(
@@ -68,16 +161,36 @@ export class ManuscriptImportService {
     if (!record) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
     }
+    if (record.status !== "awaiting_confirmation" && record.status !== "completed") {
+      throw new ApiError(409, "IMPORT_NOT_READY", "旧稿仍在分块处理，请完成后再确认");
+    }
     if (record.status !== "completed") {
-      const parsed = parseManuscriptText(
-        record.sourceText,
-        record.sourceName?.replace(/\.[^.]+$/u, "") || "全文",
-      );
-      if (parsed.status === "empty") {
-        throw new ApiError(400, "VALIDATION_INVALID", "空旧稿不能创建作品");
-      }
-      if (input.chapters.map((chapter) => chapter.content).join("") !== record.sourceText) {
-        throw new ApiError(400, "VALIDATION_INVALID", "章节调整改变了旧稿原文，请重新识别");
+      if (record.metadata.chunked === true) {
+        const hasSourceText = await this.repository.hasSourceText(userId, importId);
+        if (hasSourceText === undefined) {
+          throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+        }
+        if (!hasSourceText) {
+          throw new ApiError(400, "VALIDATION_INVALID", "空旧稿不能创建作品");
+        }
+        const matches = await this.repository.chaptersMatchSource(userId, importId, input.chapters);
+        if (matches === undefined) {
+          throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "导入记录不存在或无权访问");
+        }
+        if (!matches) {
+          throw new ApiError(400, "VALIDATION_INVALID", "章节调整改变了旧稿原文，请重新识别");
+        }
+      } else {
+        const parsed = parseManuscriptText(
+          record.sourceText,
+          record.sourceName?.replace(/\.[^.]+$/u, "") || "全文",
+        );
+        if (parsed.status === "empty") {
+          throw new ApiError(400, "VALIDATION_INVALID", "空旧稿不能创建作品");
+        }
+        if (input.chapters.map((chapter) => chapter.content).join("") !== record.sourceText) {
+          throw new ApiError(400, "VALIDATION_INVALID", "章节调整改变了旧稿原文，请重新识别");
+        }
       }
     }
 
@@ -107,9 +220,10 @@ export class ManuscriptImportService {
   private toContract(
     record: ManuscriptImportJobRecord,
     format: ManuscriptImportFormat,
+    sourceText = record.sourceText,
   ): ManuscriptImport {
     const parsed = parseManuscriptText(
-      record.sourceText,
+      sourceText,
       record.sourceName?.replace(/\.[^.]+$/u, "") || "全文",
     );
     return {
@@ -163,5 +277,27 @@ function toChapterVersionContract(
     versionNodeId: version.versionNodeId,
     parentNodeId: version.parentNodeId,
     createdAt: version.createdAt.toISOString(),
+  };
+}
+
+function toChunkedProgress(record: ManuscriptImportJobRecord): ChunkedImportProgress {
+  const status = [
+    "queued",
+    "processing",
+    "awaiting_confirmation",
+    "paused",
+    "partial",
+    "failed",
+    "cancelled",
+    "completed",
+  ].includes(record.status)
+    ? (record.status as ChunkedImportProgress["status"])
+    : "processing";
+  return {
+    importId: record.id,
+    status,
+    chunkCount: record.chunkCount,
+    processedChunks: record.processedChunks,
+    canConfirm: status === "awaiting_confirmation",
   };
 }

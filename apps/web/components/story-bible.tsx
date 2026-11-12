@@ -19,7 +19,6 @@ import {
   storyBibleChangeRequestResponseSchema,
   storyBibleResponseSchema,
   storyBibleVersionListResponseSchema,
-  workResponseSchema,
   type StoryBible,
   type StoryBibleCard,
   type StoryBibleVersion,
@@ -30,6 +29,7 @@ import {
 
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { fetchWorkOverview } from "../lib/work-api";
 
 const statusLabels: Record<StoryBible["status"], string> = {
   draft: "草稿",
@@ -81,11 +81,7 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
     setLoading(true);
     setError("");
     try {
-      const workResponse = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-      if (!workResponse.ok) {
-        throw new Error(await readError(workResponse, "作品加载失败。"));
-      }
-      const workData = workResponseSchema.parse(await workResponse.json()).data;
+      const workData = await fetchWorkOverview(workId);
       const bibleResponse = await fetch(
         `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/story-bible`,
         { cache: "no-store" },
@@ -344,7 +340,6 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
   const locked = storyBible.status === "locked";
   const empty = storyBible.readiness.completed === 0;
   const missingCount = storyBible.readiness.missingCards.length;
-  const supported = work.genre === "xianxia";
 
   return (
     <>
@@ -375,9 +370,9 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
           </Link>
           <button
             className="btn btn-ghost"
-            disabled={locked || !supported || busy === "generate"}
+            disabled={locked || busy === "generate"}
             onClick={generate}
-            title={supported ? "生成九卡提案" : "M0 故事圣经仅支持仙侠题材"}
+            title="生成九卡提案"
             type="button"
           >
             {busy === "generate" ? (
@@ -538,12 +533,6 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
           </div>
         </section>
       ) : null}
-      {!supported ? (
-        <div className="story-bible-notice warning">
-          <TriangleAlert size={16} aria-hidden="true" />
-          <span>M0 故事圣经仅支持仙侠题材，当前作品暂时只能查看空九卡。</span>
-        </div>
-      ) : null}
       {storyBible.status === "proposed" ? (
         <section
           className="story-bible-proposal panel"
@@ -564,20 +553,16 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
           <div>
             <span className="panel-kicker">空状态</span>
             <h2 id="story-bible-empty-title">故事圣经还没开始</h2>
-            <p>
-              {supported
-                ? "先根据作品想法生成九卡提案，再补主角、金手指和世界铁律。"
-                : "当前 M0 先支持仙侠故事圣经，历史与都市模板将在后续能力中开放。"}
-            </p>
+            <p>先根据作品想法生成九卡提案，再补主角、金手指和世界铁律。</p>
           </div>
           <button
             className="btn btn-primary"
-            disabled={!supported || busy === "generate"}
+            disabled={busy === "generate"}
             onClick={generate}
             type="button"
           >
             <Sparkles size={15} aria-hidden="true" />
-            {supported ? "生成九卡提案" : "当前仅支持仙侠"}
+            生成九卡提案
           </button>
         </section>
       ) : null}

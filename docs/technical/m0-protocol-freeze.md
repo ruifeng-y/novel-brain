@@ -69,15 +69,20 @@
 | `BIBLE_` / `SETTING_` | 故事圣经和最小设定 |
 | `JOB_` | 任务状态和检查点 |
 | `GEN_` | 生成和上下文编译 |
+| `BATCH_` | 批量计划、工作项和计划幂等 |
+| `NOTIFICATION_` | 站内通知读取和权限 |
 | `FACT_` | 事实决策和提交门禁 |
 | `CANON_` | 故事事实提交和版本节点 |
 | `IMPORT_` | 设定导入、旧稿导入和冲突 |
+| `GENRE_` | 题材包版本、幂等和跨题材冲突 |
 | `RATE_LIMIT_` | 接口限流 |
 | `INTERNAL_` | 未分类服务端错误 |
 
 M0 关键错误：
 
 - `VALIDATION_INVALID`
+- `GENRE_PACK_VERSION_NOT_FOUND`
+- `GENRE_PACK_IDEMPOTENCY_CONFLICT`
 - `AUTH_CODE_INVALID`
 - `AUTH_RATE_LIMITED`
 - `AUTH_EMAIL_TAKEN`
@@ -96,6 +101,18 @@ M0 关键错误：
 - `BIBLE_NOT_LOCKED`
 - `JOB_BUDGET_EXCEEDED`
 - `JOB_CANCELLED`
+- `BATCH_PLAN_NOT_FOUND`
+- `BATCH_PLAN_INVALID`
+- `BATCH_PLAN_OUTLINE_INCOMPLETE`
+- `BATCH_PLAN_IDEMPOTENCY_CONFLICT`
+- `BATCH_REVIEW_CONTEXT_NOT_FOUND`
+- `BATCH_REVIEW_CLAIM_CONFLICT`
+- `BATCH_REVIEW_IDEMPOTENCY_CONFLICT`
+- `NOTIFICATION_NOT_FOUND`
+- `CHANGE_NOT_FOUND`
+- `CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED`
+- `BRANCH_SOURCE_NOT_FOUND`
+- `IMPORT_NOT_READY`
 - `FACT_DECISION_REQUIRED`
 - `FACT_SUBMISSION_BLOCKED`
 - `CANON_CHAPTER_NOT_APPROVED`
@@ -164,6 +181,8 @@ M0 关键错误：
 | GET/POST | `/api/v1/works/:workId/branches/:branchId/entities` | 最小世界/人物/金手指实体 |
 | GET/PATCH | `/api/v1/works/:workId/branches/:branchId/entities/:entityId` | 实体详情 |
 | GET | `/api/v1/works/:workId/branches/:branchId/facts` | 已确认设定投影 |
+| GET | `/api/v1/genre-packs` | 可用题材包及版本化规则/UI hints |
+| POST | `/api/v1/works/:workId/genre-pack/version` | 幂等升级/回滚作品题材包版本 |
 
 ### 5.5 章节与生成
 
@@ -182,6 +201,19 @@ M0 关键错误：
 | GET | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId` | 任务状态和检查点 |
 | GET | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId/events` | SSE 事件 |
 | POST | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId/cancel` | 取消任务 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans` | 幂等创建按章/卷/区间/全本批量计划 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans` | 按状态分页发现批量计划 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId` | 批量计划摘要、计数和调度策略 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/items` | 分页检查工作项，不返回章节正文 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/start` | 开始或幂等重放批量执行 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/pause` | 在当前步骤结束后暂停 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/resume` | 从暂停工作项和子任务检查点恢复 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/cancel` | 取消剩余工作，保留已完成/待审核章节 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/retry` | 从失败步骤重试失败章节 |
+| GET | `/api/v1/works/:workId/branches/:branchId/review-queue` | 分页读取章节/卷审核队列 |
+| POST | `/api/v1/works/:workId/branches/:branchId/review-queue/claim` | 领取一个或一批审核项 |
+| POST | `/api/v1/works/:workId/branches/:branchId/review-queue/decisions` | 幂等提交逐项批准/驳回并返回部分失败 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/cost-report` | 按卷/章/模型/日期聚合成本、吞吐和硬停报告 |
 
 ### 5.7 审核、事实与故事事实提交
 
@@ -193,6 +225,51 @@ M0 关键错误：
 | POST | `/api/v1/works/:workId/branches/:branchId/chapters/:chapterId/review` | 批准或驳回章节 |
 | POST | `/api/v1/works/:workId/branches/:branchId/chapters/:chapterId/canon/commit` | 提交本章事实 |
 | GET | `/api/v1/works/:workId/branches/:branchId/canon/commits` | 提交记录 |
+
+### 5.8 站内通知
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/notifications` | 当前用户通知；支持 `unreadOnly`、`cursor`、`limit` |
+| PATCH | `/api/v1/notifications/:notificationId/read` | 标记当前用户的一条通知为已读 |
+| POST | `/api/v1/notifications/read-all` | 标记当前用户全部未读通知 |
+
+通知接口必须按当前用户隔离。写操作还须通过 Origin 和 CSRF 校验；跨用户通知统一返回 `NOTIFICATION_NOT_FOUND`，不得泄露目标是否存在。
+
+### 5.9 修改、平行版本与搜索
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET/POST | `/api/v1/works/:workId/branches/:branchId/changes` | 修改请求列表/创建 |
+| POST | `/api/v1/works/:workId/branches/:branchId/changes/:changeId/analyze` | 生成影响分析 |
+| POST | `/api/v1/works/:workId/branches/:branchId/changes/:changeId/apply` | 校验目标版本并写回对象，创建版本节点 |
+| POST | `/api/v1/works/:workId/branches/:branchId/rollback` | 以新 rollback 节点恢复目标版本 |
+| POST | `/api/v1/works/:workId/branches` | 从版本节点创建平行版本 |
+| GET | `/api/v1/works/:workId/branches/:branchId/compare/:sourceBranchId` | 逐对象比较 |
+| POST | `/api/v1/works/:workId/branches/:branchId/merge-items/:itemId/decision` | 接受/拒绝单个对象 |
+| POST | `/api/v1/works/:workId/branches/:branchId/merge-items/apply` | 校验目标 head 后应用已接受的摘取项 |
+| GET | `/api/v1/works/:workId/branches/:branchId/search` | 中文派生索引搜索 |
+| GET | `/api/v1/search` | 当前用户全部作品主线中文搜索 |
+| POST | `/api/v1/works/:workId/branches/:branchId/search/rebuild` | 创建并执行当前分支索引重建 |
+| GET | `/api/v1/works/:workId/branches/:branchId/search/rebuilds/:runId` | 查询可恢复索引重建进度 |
+| POST | `/api/v1/works/:workId/branches/:branchId/search/rebuilds/:runId/process` | 从检查点继续下一批索引 |
+
+修改创建必须记录目标对象版本，修改应用同时校验请求版本与目标版本；事实应用、摘取和回滚必须转交事实决策/正史提交状态机，不能由通用修改接口直接改写。分支创建和摘取必须经过租户校验并写审计；高风险操作必须二次确认。摘取只处理逐对象决策，不允许整分支静默覆盖。
+
+### 5.10 分块导入
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/v1/imports/manuscripts/chunked` | 创建带检查点的分块导入 |
+| POST | `/api/v1/imports/manuscripts/chunked/start` | 创建流式分块导入任务 |
+| POST | `/api/v1/imports/manuscripts/:importId/chunks` | 按序号追加单个分块 |
+| POST | `/api/v1/imports/manuscripts/:importId/process` | 处理下一个分块 |
+| GET | `/api/v1/imports/manuscripts/:importId/progress` | 查询分块进度 |
+| POST | `/api/v1/imports/manuscripts/:importId/pause` | 暂停分块处理 |
+| POST | `/api/v1/imports/manuscripts/:importId/resume` | 从已提交分块继续 |
+| POST | `/api/v1/imports/manuscripts/:importId/cancel` | 取消尚未处理的分块 |
+
+未完成全部分块时确认导入返回 `IMPORT_NOT_READY`。导入默认只保留原文，不自动写入语义候选或已确认设定。
 
 ## 6. M0 Resource Shapes
 
@@ -227,7 +304,7 @@ M0 关键错误：
 - 锁定后的直接写操作返回 `BIBLE_LOCKED`；修改请求先记录旧值、新值、标题、原因和中等风险，等待后续影响分析。
 - `versions` 与 `world-rules` 使用 `cursor`/`limit` 列表分页并返回 `meta.nextCursor`；修改请求创建支持 `Idempotency-Key`。
 - `lockedBy` 为锁定操作者的用户 ID；锁定时间同时写入故事圣经、版本快照和版本节点。
-- M0 故事圣经仅对仙侠作品开放生成、编辑和锁定；其他题材读取空九卡，写操作返回 `VALIDATION_INVALID`。
+- 仙侠、历史、都市作品均可生成、编辑和锁定故事圣经；题材包规则禁止的术语在作者编辑或修改请求中返回 `VALIDATION_INVALID`。
 
 ### Chapter
 
@@ -252,6 +329,35 @@ M0 关键错误：
 
 - `id`、`type`、`workId`、`branchId`、`chapterId`、`status`、`progress`、`currentStep`、`checkpoint`、`cost`、`errorCode`、`createdAt`、`startedAt`、`finishedAt`。
 - Job status：`queued`、`preparing`、`running`、`paused`、`waiting_review`、`completed`、`failed`、`cancelled`。
+
+### BatchPlan / WorkItem
+
+- `BatchPlan`：`id`、`jobId`、`workId`、`branchId`、`userId`、`status`、`scope`、`approvalMode`、`priorityClass`、`idempotencyKey`、`counts`、`scheduling`、`createdAt`、`updatedAt`。
+- `scope`：`chapter`（章节 ID 列表）、`volume`（卷节点 ID 列表）、`range`（连续章节号）、`book`。
+- `counts`：按 `book` / `volume` / `chapter` / `step` 和 `pending` / `ready` / `running` / `paused` / `waiting_review` / `succeeded` / `failed` / `skipped` / `cancelled` 聚合。
+- `scheduling.caps` 固定为 `global=4`、`perWork=2`、`perUser=2`；`effectivePerWork` 是请求并发被策略上限裁剪后的值。
+- `WorkItem`：`id`、`planId`、`workId`、`branchId`、`userId`、`key`、`type`、`parentKey`、`chapterId`、`outlineNodeId`、`status`、`attempt`、`priority`、`priorityClass`、`sortOrder`、`inputVersion`、`dependsOn`、`outputRefs`、`errorCode`、`errorMessage`。
+- `WorkItem.status`：`pending`、`ready`、`running`、`paused`、`waiting_review`、`succeeded`、`failed`、`skipped`、`cancelled`。
+- 工作项 key 稳定：`book`、`volume:<nodeId>`、`chapter:<chapterId>`、`step:<chapterId>:<stepKey>`。
+- 计划创建不向队列投递数千个 job；只创建一条父任务记录和 `job_work_items` 工作项。执行、暂停、恢复、重试和失败隔离由 #152 组合 #110/#115 的原语实现。
+- 执行通过小载荷 `batch_tick` 每次领取一个章节并投递单章生成子任务；子任务完成后再触发下一次 tick。暂停/取消在步骤边界生效，审核状态保持 `waiting_review`，不自动批准。
+
+### Notification
+
+- `id`、`userId`、`workId`、`branchId`、`type`、`targetType`、`targetId`、`payload`、`dedupeKey`、`readAt`、`createdAt`。
+- `type`：`job_completed`、`job_failed`、`review_required`、`merge_completed`、`merge_conflict`。
+- `targetType`：`job`、`review`、`merge`、`work`、`branch`。
+- `payload`：作者可读的 `title`、`message` 和站内 `href`。
+- 列表按 `createdAt DESC, id DESC` 游标分页；`meta.unreadCount` 是当前用户全部未读数，不是当前页未读数。
+- `POST /notifications/read-all` 返回 `{ updated }`，表示本次实际从“未读”变为“已读”的数量。
+- 批量计划和独立单章生成事件通知都在同一数据库事务内写入，去重键包含任务、事件类型和事件序号；重试后的新事件可以产生新通知，批量子任务不重复通知。
+
+### ChangeRequest / MergeItem
+
+- `ChangeRequest`：`id`、`workId`、`branchId`、`title`、`reason`、`targetType`、`targetId`、`objectType`、`before`、`after`、`diff`、`source`、`risk`、`status`、`version`。
+- `MergeItem`：来源/目标分支、来源/目标版本节点、对象类型和 ID、源/目标载荷、差异、风险、冲突、状态、原因和版本。
+- 修改应用、合并和回滚均创建不可变版本节点；分支之间共享历史节点但各自维护 head。
+- 搜索文档是派生索引，包含来源、标题、内容、别名、版本节点和章节有效期。
 
 ### ContextPack
 
@@ -324,6 +430,12 @@ M0 至少需要：
 - `import_candidates`
 - `import_conflicts`
 - `import_reports`
+- `notifications`
+- `change_requests`
+- `change_impacts`
+- `merge_items`
+- `merge_decisions`
+- `import_chunks`
 
 所有作品域表必须有 `work_id` 和 `user_id`（或可通过 work 可靠推导的租户键）；数据库启用 RLS，并至少有一个跨用户访问测试。
 

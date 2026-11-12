@@ -260,6 +260,198 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchPlanController_list"];
+    put?: never;
+    post: operations["BatchPlanController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchPlanController_get"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/items": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchPlanController_listItems"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/cost-report": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchPlanController_getCostReport"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_start"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/pause": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_pause"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/resume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_resume"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_cancel"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/batch-plans/{planId}/retry": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchPlanController_retry"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["BatchReviewController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue/claim": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchReviewController_claim"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/review-queue/decisions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["BatchReviewController_decide"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/chapters/{chapterId}/canon/commit": {
     parameters: {
       query?: never;
@@ -382,6 +574,134 @@ export interface paths {
     get: operations["ReadinessController_readiness"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/changes": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChangesController_list"];
+    put?: never;
+    post: operations["ChangesController_create"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/changes/{changeId}/analyze": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ChangesController_analyze"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/changes/{changeId}/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ChangesController_apply"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/rollback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ChangesController_rollback"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/compare/{sourceBranchId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ChangesController_compare"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/merge-items/{itemId}/decision": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ChangesController_decide"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/merge-items/apply": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ChangesController_applyMerge"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["WorksController_branches"];
+    put?: never;
+    post: operations["BranchController_create"];
     delete?: never;
     options?: never;
     head?: never;
@@ -852,6 +1172,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/imports/manuscripts/chunked": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_createChunked"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/chunked/start": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_startChunked"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/{importId}/chunks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_appendChunk"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/imports/manuscripts": {
     parameters: {
       query?: never;
@@ -878,6 +1246,86 @@ export interface paths {
     get: operations["ManuscriptImportController_get"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/{importId}/process": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_processChunk"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/{importId}/progress": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["ManuscriptImportController_progress"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/{importId}/pause": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_pause"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/{importId}/resume": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_resume"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/imports/manuscripts/{importId}/cancel": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["ManuscriptImportController_cancel"];
     delete?: never;
     options?: never;
     head?: never;
@@ -932,14 +1380,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/works/{workId}/branches": {
+  "/api/v1/works/{workId}/genre-pack/version": {
     parameters: {
       query?: never;
       header?: never;
       path?: never;
       cookie?: never;
     };
-    get: operations["WorksController_branches"];
+    get?: never;
+    put?: never;
+    post: operations["WorksController_changeGenrePackVersion"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/genre-packs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GenrePackController_list"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1086,6 +1550,54 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["ModelConfigController_test"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["NotificationController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notificationId}/read": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["NotificationController_markRead"];
+    trace?: never;
+  };
+  "/api/v1/notifications/read-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["NotificationController_markAllRead"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1374,6 +1886,86 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations["RetrievalController_search"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SearchController_search"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/search/rebuild": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SearchController_rebuild"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/search/rebuilds/{runId}/process": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["SearchController_process"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/works/{workId}/branches/{branchId}/search/rebuilds/{runId}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["SearchController_progress"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["GlobalSearchController_search"];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -3651,6 +4243,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -3970,6 +4581,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -4037,6 +4667,1296 @@ export interface operations {
             };
           };
         };
+      };
+    };
+  };
+  BatchPlanController_list: {
+    parameters: {
+      query?: {
+        status?:
+          | "queued"
+          | "preparing"
+          | "running"
+          | "paused"
+          | "waiting_review"
+          | "completed"
+          | "failed"
+          | "cancelled";
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Paginated batch plans */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_create: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same batch plan request */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          scope:
+            | {
+                /** @enum {string} */
+                type: "chapter";
+                chapterIds: string[];
+              }
+            | {
+                /** @enum {string} */
+                type: "volume";
+                volumeNodeIds: string[];
+              }
+            | {
+                /** @enum {string} */
+                type: "range";
+                fromChapterNumber: number;
+                toChapterNumber: number;
+              }
+            | {
+                /** @enum {string} */
+                type: "book";
+              };
+          /**
+           * @default per_volume
+           * @enum {string}
+           */
+          approvalMode?: "per_chapter" | "per_volume" | "auto";
+          /**
+           * @default batch
+           * @enum {string}
+           */
+          priorityClass?: "interactive" | "batch";
+          /**
+           * @default {
+           *       "chapterMaxCostCny": 2.5,
+           *       "volumeMaxCostCny": null,
+           *       "taskMaxCostCny": null,
+           *       "perTenThousandCharsMaxCostCny": null
+           *     }
+           */
+          costBudgetPolicy?: {
+            /** @default 2.5 */
+            chapterMaxCostCny?: number;
+            /** @default null */
+            volumeMaxCostCny?: number | null;
+            /** @default null */
+            taskMaxCostCny?: number | null;
+            /** @default null */
+            perTenThousandCharsMaxCostCny?: number | null;
+          };
+          /** @default 2 */
+          maxConcurrency?: number;
+          /**
+           * @default [
+           *       "prepare",
+           *       "compile_context",
+           *       "draft",
+           *       "verify",
+           *       "revise",
+           *       "extract_facts",
+           *       "await_review"
+           *     ]
+           */
+          stepKeys?: (
+            | "prepare"
+            | "compile_context"
+            | "draft"
+            | "verify"
+            | "revise"
+            | "extract_facts"
+            | "await_review"
+          )[];
+        };
+      };
+    };
+    responses: {
+      /** @description Persisted batch plan */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Batch plan summary */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_listItems: {
+    parameters: {
+      query?: {
+        type?: string;
+        status?: string;
+        cursor?: string;
+        limit?: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Paginated batch work items */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              planId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              key: string;
+              /** @enum {string} */
+              type: "book" | "volume" | "chapter" | "step";
+              parentKey: string | null;
+              chapterId: string | null;
+              outlineNodeId: string | null;
+              /** @enum {string} */
+              status:
+                | "pending"
+                | "ready"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "succeeded"
+                | "failed"
+                | "skipped"
+                | "cancelled";
+              attempt: number;
+              priority: number;
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              sortOrder: number;
+              inputVersion: {
+                outlineVersion: number | null;
+                chapterVersion: number | null;
+              };
+              dependsOn: string[];
+              outputRefs: {
+                /** @enum {string} */
+                type:
+                  | "chapter_version"
+                  | "context_pack"
+                  | "fact_proposal"
+                  | "canon_commit"
+                  | "artifact";
+                id: string;
+              }[];
+              errorCode: string | null;
+              errorMessage: string | null;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_getCostReport: {
+    parameters: {
+      query?: {
+        groupBy?: "volume" | "chapter" | "model" | "time";
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tenant-scoped batch cost and failure report */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              planId: string;
+              workId: string;
+              /** @enum {string} */
+              currency: "CNY";
+              /** Format: date-time */
+              generatedAt: string;
+              totals: {
+                chapters: number;
+                completedChapters: number;
+                statusCounts: {
+                  queued: number;
+                  preparing: number;
+                  running: number;
+                  paused: number;
+                  waitingReview: number;
+                  completed: number;
+                  failed: number;
+                  cancelled: number;
+                  skipped: number;
+                  budgetExceeded: number;
+                };
+                calls: number;
+                failedCalls: number;
+                inputTokens: number;
+                outputTokens: number;
+                reservedCostCny: number;
+                settledCostCny: number;
+                durationMs: number;
+                chaptersPerHour: number | null;
+              };
+              budget: {
+                policy: {
+                  /** @default 2.5 */
+                  chapterMaxCostCny: number;
+                  /** @default null */
+                  volumeMaxCostCny: number | null;
+                  /** @default null */
+                  taskMaxCostCny: number | null;
+                  /** @default null */
+                  perTenThousandCharsMaxCostCny: number | null;
+                };
+                projectedCharacters: number;
+                perTenThousandCharactersLimitCny: number | null;
+                remainingCostCny: number | null;
+                /** @enum {string} */
+                status: "ok" | "near_limit" | "exhausted";
+              };
+              groups: {
+                key: string;
+                label: string;
+                chapters: number;
+                completedChapters: number;
+                calls: number;
+                failedCalls: number;
+                inputTokens: number;
+                outputTokens: number;
+                costCny: number;
+                durationMs: number;
+                chaptersPerHour: number | null;
+              }[];
+              hardStops: {
+                jobId: string;
+                chapterId: string | null;
+                code: string;
+                message: string;
+                /** @enum {string|null} */
+                scope: "chapter" | "volume" | "task" | "per_ten_thousand_characters" | null;
+                /** Format: date-time */
+                occurredAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_start: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Started batch plan */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_pause: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Paused batch plan */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_resume: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Resumed batch plan */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_cancel: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancelled batch plan */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchPlanController_retry: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+        planId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Retried failed batch work */
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              jobId: string;
+              workId: string;
+              branchId: string;
+              userId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "preparing"
+                | "running"
+                | "paused"
+                | "waiting_review"
+                | "completed"
+                | "failed"
+                | "cancelled";
+              scope:
+                | {
+                    /** @enum {string} */
+                    type: "chapter";
+                    chapterIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "volume";
+                    volumeNodeIds: string[];
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "range";
+                    fromChapterNumber: number;
+                    toChapterNumber: number;
+                  }
+                | {
+                    /** @enum {string} */
+                    type: "book";
+                  };
+              /** @enum {string} */
+              approvalMode: "per_chapter" | "per_volume" | "auto";
+              costBudgetPolicy: {
+                /** @default 2.5 */
+                chapterMaxCostCny: number;
+                /** @default null */
+                volumeMaxCostCny: number | null;
+                /** @default null */
+                taskMaxCostCny: number | null;
+                /** @default null */
+                perTenThousandCharsMaxCostCny: number | null;
+              };
+              /** @enum {string} */
+              priorityClass: "interactive" | "batch";
+              idempotencyKey: string;
+              counts: {
+                total: number;
+                book: number;
+                volume: number;
+                chapter: number;
+                step: number;
+                pending: number;
+                ready: number;
+                running: number;
+                paused: number;
+                waiting_review: number;
+                succeeded: number;
+                failed: number;
+                skipped: number;
+                cancelled: number;
+              };
+              scheduling: {
+                caps: {
+                  global: number;
+                  perWork: number;
+                  perUser: number;
+                };
+                effectivePerWork: number;
+                priority: number;
+                initialRunnableKeys: string[];
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  BatchReviewController_list: {
+    parameters: {
+      query?: {
+        status?: string;
+        risk?: string;
+        targetType?: string;
+        cursor?: string;
+        limit?: string;
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tenant-scoped batch review queue */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BatchReviewController_claim: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          itemIds: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description Claimed batch review items */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  BatchReviewController_decide: {
+    parameters: {
+      query?: never;
+      header: {
+        /** @description Stable key for replaying the same review decision batch */
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          items: {
+            itemId: string;
+            expectedVersion: number;
+            /** @enum {string} */
+            action: "approve" | "reject";
+            reason?: string;
+          }[];
+        };
+      };
+    };
+    responses: {
+      /** @description Independent batch review decision results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
@@ -4946,6 +6866,626 @@ export interface operations {
                   href: string;
                 } | null;
               }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChangesController_list: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+        status?:
+          | "draft"
+          | "analyzing"
+          | "awaiting_confirmation"
+          | "applying"
+          | "applied"
+          | "rejected"
+          | "cancelled"
+          | "failed"
+          | "branched";
+        risk?: "low" | "medium" | "high";
+        targetType?: "entity" | "chapter" | "outline" | "fact" | "ledger" | "work";
+      };
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  ChangesController_create: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          title: string;
+          reason: string;
+          targetVersion: number;
+          /** @enum {string} */
+          targetType: "entity" | "chapter" | "outline" | "fact" | "ledger" | "work";
+          targetId: string;
+          objectType: string;
+          /** @default {} */
+          before: {
+            [key: string]: unknown;
+          };
+          /** @default {} */
+          after: {
+            [key: string]: unknown;
+          };
+          /**
+           * @default low
+           * @enum {string}
+           */
+          risk: "low" | "medium" | "high";
+          /**
+           * @default author
+           * @enum {string}
+           */
+          source: "author" | "ai" | "import" | "batch";
+        };
+      };
+    };
+    responses: {
+      /** @description Created change request */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              branchId: string;
+              title: string;
+              reason: string;
+              targetVersion: number;
+              /** @enum {string} */
+              targetType: "entity" | "chapter" | "outline" | "fact" | "ledger" | "work";
+              targetId: string;
+              objectType: string;
+              before: {
+                [key: string]: unknown;
+              };
+              after: {
+                [key: string]: unknown;
+              };
+              diff: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              source: "author" | "ai" | "import" | "batch";
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              /** @enum {string} */
+              status:
+                | "draft"
+                | "analyzing"
+                | "awaiting_confirmation"
+                | "applying"
+                | "applied"
+                | "rejected"
+                | "cancelled"
+                | "failed"
+                | "branched";
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChangesController_analyze: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        changeId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Change impact analysis */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              change: {
+                id: string;
+                workId: string;
+                branchId: string;
+                title: string;
+                reason: string;
+                targetVersion: number;
+                /** @enum {string} */
+                targetType: "entity" | "chapter" | "outline" | "fact" | "ledger" | "work";
+                targetId: string;
+                objectType: string;
+                before: {
+                  [key: string]: unknown;
+                };
+                after: {
+                  [key: string]: unknown;
+                };
+                diff: {
+                  [key: string]: unknown;
+                };
+                /** @enum {string} */
+                source: "author" | "ai" | "import" | "batch";
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                /** @enum {string} */
+                status:
+                  | "draft"
+                  | "analyzing"
+                  | "awaiting_confirmation"
+                  | "applying"
+                  | "applied"
+                  | "rejected"
+                  | "cancelled"
+                  | "failed"
+                  | "branched";
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              };
+              impacts: {
+                id: string;
+                /** @enum {string} */
+                category: "safe" | "repairable" | "structural";
+                affectedType: string;
+                affectedId: string | null;
+                chapterId: string | null;
+                summary: string;
+                evidence: {
+                  [key: string]: unknown;
+                };
+                confidence: number;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChangesController_apply: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        changeId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          expectedTargetVersion: number;
+          reason?: string;
+          /** @default false */
+          confirmHighRisk: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Applied change request */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              change: {
+                id: string;
+                workId: string;
+                branchId: string;
+                title: string;
+                reason: string;
+                targetVersion: number;
+                /** @enum {string} */
+                targetType: "entity" | "chapter" | "outline" | "fact" | "ledger" | "work";
+                targetId: string;
+                objectType: string;
+                before: {
+                  [key: string]: unknown;
+                };
+                after: {
+                  [key: string]: unknown;
+                };
+                diff: {
+                  [key: string]: unknown;
+                };
+                /** @enum {string} */
+                source: "author" | "ai" | "import" | "batch";
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                /** @enum {string} */
+                status:
+                  | "draft"
+                  | "analyzing"
+                  | "awaiting_confirmation"
+                  | "applying"
+                  | "applied"
+                  | "rejected"
+                  | "cancelled"
+                  | "failed"
+                  | "branched";
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              };
+              versionNodeId: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChangesController_rollback: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          targetNodeId: string;
+          expectedHeadNodeId: string;
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Appended rollback version node */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              versionNodeId: string;
+              /** @enum {string} */
+              nodeType: "rollback";
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChangesController_compare: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        sourceBranchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Object-level branch comparison */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              sourceBranchId: string;
+              targetBranchId: string;
+              items: {
+                id: string;
+                sourceBranchId: string;
+                targetBranchId: string;
+                sourceNodeId: string | null;
+                targetNodeId: string | null;
+                /** @enum {string} */
+                objectType: "chapter" | "entity" | "fact" | "outline" | "ledger";
+                objectId: string;
+                objectKey: string;
+                sourcePayload: {
+                  [key: string]: unknown;
+                };
+                targetPayload: {
+                  [key: string]: unknown;
+                };
+                diff: {
+                  [key: string]: unknown;
+                };
+                /** @enum {string} */
+                changeKind: "added" | "removed" | "changed" | "unchanged";
+                /** @enum {string} */
+                risk: "low" | "medium" | "high";
+                conflict: boolean;
+                /** @enum {string} */
+                status: "pending" | "accepted" | "rejected" | "applied" | "stale";
+                reason: string | null;
+                version: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+              }[];
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChangesController_decide: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        itemId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          version: number;
+          /** @enum {string} */
+          action: "accept" | "reject";
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Recorded merge decision */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              sourceBranchId: string;
+              targetBranchId: string;
+              sourceNodeId: string | null;
+              targetNodeId: string | null;
+              /** @enum {string} */
+              objectType: "chapter" | "entity" | "fact" | "outline" | "ledger";
+              objectId: string;
+              objectKey: string;
+              sourcePayload: {
+                [key: string]: unknown;
+              };
+              targetPayload: {
+                [key: string]: unknown;
+              };
+              diff: {
+                [key: string]: unknown;
+              };
+              /** @enum {string} */
+              changeKind: "added" | "removed" | "changed" | "unchanged";
+              /** @enum {string} */
+              risk: "low" | "medium" | "high";
+              conflict: boolean;
+              /** @enum {string} */
+              status: "pending" | "accepted" | "rejected" | "applied" | "stale";
+              reason: string | null;
+              version: number;
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ChangesController_applyMerge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          itemIds: string[];
+          expectedTargetHeadNodeId: string;
+          /** @default false */
+          confirmHighRisk: boolean;
+        };
+      };
+    };
+    responses: {
+      /** @description Applied merge items */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              applied: string[];
+              versionNodeId: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  WorksController_branches: {
+    parameters: {
+      query?: {
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Work branches */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              name: string;
+              headNodeId: string;
+              /** @enum {string} */
+              status: "active" | "archived";
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+            };
+          };
+        };
+      };
+    };
+  };
+  BranchController_create: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          name: string;
+          sourceNodeId: string;
+          reason: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created parallel branch */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              workId: string;
+              name: string;
+              headNodeId: string;
+              /** @enum {string} */
+              status: "active" | "archived";
             };
             /** Format: starts_with */
             requestId: string;
@@ -7961,6 +10501,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8504,6 +11063,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -8873,6 +11451,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9243,6 +11840,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9613,6 +12229,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -9996,6 +12631,25 @@ export interface operations {
                     | "REVISION_FINDING_REJECTED"
                     | "REVISION_ROUND_LIMIT_REACHED"
                     | "REVISION_INVALID_STATE"
+                    | "GENRE_PACK_VERSION_NOT_FOUND"
+                    | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_PLAN_NOT_FOUND"
+                    | "BATCH_PLAN_INVALID"
+                    | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                    | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                    | "NOTIFICATION_NOT_FOUND"
+                    | "CHANGE_NOT_FOUND"
+                    | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                    | "CHANGE_INVALID_STATE"
+                    | "CHANGE_TARGET_NOT_FOUND"
+                    | "CHANGE_ANALYSIS_REQUIRED"
+                    | "BRANCH_SOURCE_NOT_FOUND"
+                    | "VERSION_NODE_NOT_FOUND"
+                    | "IMPORT_NOT_READY"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -11964,6 +14618,162 @@ export interface operations {
       };
     };
   };
+  ManuscriptImportController_createChunked: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          sourceName: string;
+          chunks: string[];
+        };
+      };
+    };
+    responses: {
+      /** @description Chunked manuscript import */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              importId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "processing"
+                | "awaiting_confirmation"
+                | "paused"
+                | "partial"
+                | "failed"
+                | "cancelled"
+                | "completed";
+              chunkCount: number;
+              processedChunks: number;
+              canConfirm: boolean;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_startChunked: {
+    parameters: {
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
+      };
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          sourceName: string;
+          chunkCount: number;
+        };
+      };
+    };
+    responses: {
+      /** @description Started streamed manuscript import */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              importId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "processing"
+                | "awaiting_confirmation"
+                | "paused"
+                | "partial"
+                | "failed"
+                | "cancelled"
+                | "completed";
+              chunkCount: number;
+              processedChunks: number;
+              canConfirm: boolean;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_appendChunk: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          sequence: number;
+          sourceText: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Uploaded manuscript chunk */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              importId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "processing"
+                | "awaiting_confirmation"
+                | "paused"
+                | "partial"
+                | "failed"
+                | "cancelled"
+                | "completed";
+              chunkCount: number;
+              processedChunks: number;
+              canConfirm: boolean;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   ManuscriptImportController_create: {
     parameters: {
       query?: never;
@@ -12071,6 +14881,231 @@ export interface operations {
       };
     };
   };
+  ManuscriptImportController_processChunk: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Processed next manuscript chunk */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              importId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "processing"
+                | "awaiting_confirmation"
+                | "paused"
+                | "partial"
+                | "failed"
+                | "cancelled"
+                | "completed";
+              chunkCount: number;
+              processedChunks: number;
+              canConfirm: boolean;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_progress: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Chunked manuscript progress */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              importId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "processing"
+                | "awaiting_confirmation"
+                | "paused"
+                | "partial"
+                | "failed"
+                | "cancelled"
+                | "completed";
+              chunkCount: number;
+              processedChunks: number;
+              canConfirm: boolean;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_pause: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Paused manuscript import */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              importId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "processing"
+                | "awaiting_confirmation"
+                | "paused"
+                | "partial"
+                | "failed"
+                | "cancelled"
+                | "completed";
+              chunkCount: number;
+              processedChunks: number;
+              canConfirm: boolean;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_resume: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Resumed manuscript import */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              importId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "processing"
+                | "awaiting_confirmation"
+                | "paused"
+                | "partial"
+                | "failed"
+                | "cancelled"
+                | "completed";
+              chunkCount: number;
+              processedChunks: number;
+              canConfirm: boolean;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  ManuscriptImportController_cancel: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        importId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Cancelled manuscript import */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              importId: string;
+              /** @enum {string} */
+              status:
+                | "queued"
+                | "processing"
+                | "awaiting_confirmation"
+                | "paused"
+                | "partial"
+                | "failed"
+                | "cancelled"
+                | "completed";
+              chunkCount: number;
+              processedChunks: number;
+              canConfirm: boolean;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
   ManuscriptImportController_confirm: {
     parameters: {
       query?: never;
@@ -12138,6 +15173,37 @@ export interface operations {
                   fields: {
                     [key: string]: unknown;
                   };
+                  fieldSchema: {
+                    key: string;
+                    label: string;
+                    /** @enum {string} */
+                    type: "text" | "number" | "boolean" | "list";
+                    required: boolean;
+                    options: string[];
+                  }[];
+                  rules: {
+                    key: string;
+                    label: string;
+                    description: string;
+                  }[];
+                  uiHints: {
+                    worldLabel: string;
+                    powerSystemLabel: string;
+                    powerLevelLabel: string;
+                    factionLabel: string;
+                    itemLabel: string;
+                  };
+                  generationGuidance: {
+                    protagonistArchetypes: string[];
+                    conflictSeeds: string[];
+                    worldRuleSeeds: string[];
+                    forbiddenElements: string[];
+                  };
+                  migration: {
+                    fromVersion: number;
+                    toVersion: number;
+                    notes: string[];
+                  } | null;
                 } | null;
                 settings: {
                   [key: string]: unknown;
@@ -12263,6 +15329,37 @@ export interface operations {
                 fields: {
                   [key: string]: unknown;
                 };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
               } | null;
               settings: {
                 [key: string]: unknown;
@@ -12335,7 +15432,7 @@ export interface operations {
               /** @enum {string} */
               mode: "template";
               /** @enum {string} */
-              templateKey: "xianxia";
+              templateKey: "xianxia" | "history" | "urban";
               title: string;
               penName?: string;
               /**
@@ -12384,6 +15481,37 @@ export interface operations {
                 fields: {
                   [key: string]: unknown;
                 };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
               } | null;
               settings: {
                 [key: string]: unknown;
@@ -12434,7 +15562,9 @@ export interface operations {
   };
   WorksController_get: {
     parameters: {
-      query?: never;
+      query?: {
+        branchId?: string;
+      };
       header?: never;
       path: {
         workId: string;
@@ -12473,6 +15603,37 @@ export interface operations {
                 fields: {
                   [key: string]: unknown;
                 };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
               } | null;
               settings: {
                 [key: string]: unknown;
@@ -12521,21 +15682,27 @@ export interface operations {
       };
     };
   };
-  WorksController_branches: {
+  WorksController_changeGenrePackVersion: {
     parameters: {
-      query?: {
-        cursor?: string;
-        limit?: number;
+      query?: never;
+      header: {
+        "Idempotency-Key": string;
       };
-      header?: never;
       path: {
         workId: string;
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody: {
+      content: {
+        "application/json": {
+          targetVersion: number;
+          reason: string;
+        };
+      };
+    };
     responses: {
-      /** @description Work branches */
+      /** @description Work with changed genre pack version */
       200: {
         headers: {
           [name: string]: unknown;
@@ -12544,16 +15711,170 @@ export interface operations {
           "application/json": {
             data: {
               id: string;
-              workId: string;
-              name: string;
-              headNodeId: string;
+              title: string;
+              penName: string;
               /** @enum {string} */
-              status: "active" | "archived";
+              genre: "xianxia" | "history" | "urban";
+              /** @enum {string} */
+              status: "draft" | "preparing" | "serializing" | "paused" | "completed" | "archived";
+              /** @enum {string} */
+              scaleTarget: "short" | "medium" | "long" | "epic";
+              chapterLengthTarget: number;
+              /** @enum {string} */
+              sourceMode: "idea" | "blank" | "template" | "settings_import" | "manuscript_import";
+              idea: string | null;
+              templatePack: {
+                id: string;
+                /** @enum {string} */
+                key: "xianxia" | "history" | "urban";
+                version: number;
+                label: string;
+                fields: {
+                  [key: string]: unknown;
+                };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
+              } | null;
+              settings: {
+                [key: string]: unknown;
+              };
+              /** Format: date-time */
+              createdAt: string;
+              /** Format: date-time */
+              updatedAt: string;
+              mainBranch: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              };
+              branches: {
+                id: string;
+                workId: string;
+                name: string;
+                headNodeId: string;
+                /** @enum {string} */
+                status: "active" | "archived";
+              }[];
+              readiness: {
+                /** @enum {string} */
+                status: "not_ready" | "partial" | "ready";
+                completed: number;
+                total: number;
+                items: {
+                  /** @enum {string} */
+                  key: "main_branch" | "model_config" | "story_bible" | "outline";
+                  label: string;
+                  ready: boolean;
+                }[];
+              };
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  GenrePackController_list: {
+    parameters: {
+      query?: {
+        key?: "xianxia" | "history" | "urban";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Available genre packs */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              /** @enum {string} */
+              key: "xianxia" | "history" | "urban";
+              version: number;
+              label: string;
+              fields: {
+                [key: string]: unknown;
+              };
+              fieldSchema: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                type: "text" | "number" | "boolean" | "list";
+                required: boolean;
+                options: string[];
+              }[];
+              rules: {
+                key: string;
+                label: string;
+                description: string;
+              }[];
+              uiHints: {
+                worldLabel: string;
+                powerSystemLabel: string;
+                powerLevelLabel: string;
+                factionLabel: string;
+                itemLabel: string;
+              };
+              generationGuidance: {
+                protagonistArchetypes: string[];
+                conflictSeeds: string[];
+                worldRuleSeeds: string[];
+                forbiddenElements: string[];
+              };
+              migration: {
+                fromVersion: number;
+                toVersion: number;
+                notes: string[];
+              } | null;
             }[];
             /** Format: starts_with */
             requestId: string;
+            /** @default {} */
             meta: {
-              nextCursor: string | null;
+              [key: string]: unknown;
             };
           };
         };
@@ -13000,6 +16321,37 @@ export interface operations {
                 fields: {
                   [key: string]: unknown;
                 };
+                fieldSchema: {
+                  key: string;
+                  label: string;
+                  /** @enum {string} */
+                  type: "text" | "number" | "boolean" | "list";
+                  required: boolean;
+                  options: string[];
+                }[];
+                rules: {
+                  key: string;
+                  label: string;
+                  description: string;
+                }[];
+                uiHints: {
+                  worldLabel: string;
+                  powerSystemLabel: string;
+                  powerLevelLabel: string;
+                  factionLabel: string;
+                  itemLabel: string;
+                };
+                generationGuidance: {
+                  protagonistArchetypes: string[];
+                  conflictSeeds: string[];
+                  worldRuleSeeds: string[];
+                  forbiddenElements: string[];
+                };
+                migration: {
+                  fromVersion: number;
+                  toVersion: number;
+                  notes: string[];
+                } | null;
               } | null;
               settings: {
                 [key: string]: unknown;
@@ -13340,6 +16692,148 @@ export interface operations {
               status: "success";
               latencyMs: number;
               message: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  NotificationController_list: {
+    parameters: {
+      query?: {
+        unreadOnly?: "true" | "false";
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tenant-scoped notification list */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              userId: string;
+              workId: string | null;
+              branchId: string | null;
+              /** @enum {string} */
+              type:
+                | "job_completed"
+                | "job_failed"
+                | "review_required"
+                | "merge_completed"
+                | "merge_conflict";
+              /** @enum {string} */
+              targetType: "job" | "review" | "merge" | "work" | "branch";
+              targetId: string;
+              payload: {
+                title: string;
+                message: string;
+                href: string;
+              };
+              dedupeKey: string;
+              /** Format: date-time */
+              readAt: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+              unreadCount: number;
+            };
+          };
+        };
+      };
+    };
+  };
+  NotificationController_markRead: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notificationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Read notification */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              userId: string;
+              workId: string | null;
+              branchId: string | null;
+              /** @enum {string} */
+              type:
+                | "job_completed"
+                | "job_failed"
+                | "review_required"
+                | "merge_completed"
+                | "merge_conflict";
+              /** @enum {string} */
+              targetType: "job" | "review" | "merge" | "work" | "branch";
+              targetId: string;
+              payload: {
+                title: string;
+                message: string;
+                href: string;
+              };
+              dedupeKey: string;
+              /** Format: date-time */
+              readAt: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  NotificationController_markAllRead: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Marked all notifications read */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              updated: number;
             };
             /** Format: starts_with */
             requestId: string;
@@ -17607,6 +21101,105 @@ export interface operations {
             };
           };
         };
+      };
+    };
+  };
+  SearchController_search: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SearchController_rebuild: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      202: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SearchController_process: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  SearchController_progress: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        workId: string;
+        branchId: string;
+        runId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  GlobalSearchController_search: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };
@@ -27249,6 +30842,25 @@ export interface operations {
                     | "REVISION_FINDING_REJECTED"
                     | "REVISION_ROUND_LIMIT_REACHED"
                     | "REVISION_INVALID_STATE"
+                    | "GENRE_PACK_VERSION_NOT_FOUND"
+                    | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_PLAN_NOT_FOUND"
+                    | "BATCH_PLAN_INVALID"
+                    | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                    | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                    | "NOTIFICATION_NOT_FOUND"
+                    | "CHANGE_NOT_FOUND"
+                    | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                    | "CHANGE_INVALID_STATE"
+                    | "CHANGE_TARGET_NOT_FOUND"
+                    | "CHANGE_ANALYSIS_REQUIRED"
+                    | "BRANCH_SOURCE_NOT_FOUND"
+                    | "VERSION_NODE_NOT_FOUND"
+                    | "IMPORT_NOT_READY"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -27448,6 +31060,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -27623,6 +31254,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -37883,6 +41533,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -38639,6 +42308,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -39172,6 +42860,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -39705,6 +43412,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40238,6 +43964,25 @@ export interface operations {
                   | "REVISION_FINDING_REJECTED"
                   | "REVISION_ROUND_LIMIT_REACHED"
                   | "REVISION_INVALID_STATE"
+                  | "GENRE_PACK_VERSION_NOT_FOUND"
+                  | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_PLAN_NOT_FOUND"
+                  | "BATCH_PLAN_INVALID"
+                  | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                  | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                  | "BATCH_REVIEW_CLAIM_CONFLICT"
+                  | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                  | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
+                  | "CHANGE_NOT_FOUND"
+                  | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                  | "CHANGE_INVALID_STATE"
+                  | "CHANGE_TARGET_NOT_FOUND"
+                  | "CHANGE_ANALYSIS_REQUIRED"
+                  | "BRANCH_SOURCE_NOT_FOUND"
+                  | "VERSION_NODE_NOT_FOUND"
+                  | "IMPORT_NOT_READY"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40784,6 +44529,25 @@ export interface operations {
                     | "REVISION_FINDING_REJECTED"
                     | "REVISION_ROUND_LIMIT_REACHED"
                     | "REVISION_INVALID_STATE"
+                    | "GENRE_PACK_VERSION_NOT_FOUND"
+                    | "GENRE_PACK_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_PLAN_NOT_FOUND"
+                    | "BATCH_PLAN_INVALID"
+                    | "BATCH_PLAN_OUTLINE_INCOMPLETE"
+                    | "BATCH_PLAN_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_CONTEXT_NOT_FOUND"
+                    | "BATCH_REVIEW_CLAIM_CONFLICT"
+                    | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
+                    | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                    | "NOTIFICATION_NOT_FOUND"
+                    | "CHANGE_NOT_FOUND"
+                    | "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED"
+                    | "CHANGE_INVALID_STATE"
+                    | "CHANGE_TARGET_NOT_FOUND"
+                    | "CHANGE_ANALYSIS_REQUIRED"
+                    | "BRANCH_SOURCE_NOT_FOUND"
+                    | "VERSION_NODE_NOT_FOUND"
+                    | "IMPORT_NOT_READY"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;

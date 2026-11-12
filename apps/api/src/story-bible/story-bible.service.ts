@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import {
   STORY_BIBLE_CARD_KEYS,
   STORY_BIBLE_CARD_TITLES,
+  genrePackGenerationGuidanceSchema,
   type StoryBible,
   type StoryBibleCard,
   type StoryBibleCardKey,
@@ -98,7 +99,6 @@ export class StoryBibleService {
     audit: StoryBibleAuditContext,
   ): Promise<StoryBible> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    requireXianxia(context);
     const current = await this.repository.getOrCreate(
       userId,
       context,
@@ -129,7 +129,6 @@ export class StoryBibleService {
     audit: StoryBibleAuditContext,
   ): Promise<StoryBible> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    requireXianxia(context);
     const current = await this.repository.getOrCreate(
       userId,
       context,
@@ -140,6 +139,16 @@ export class StoryBibleService {
       throw versionConflict();
     }
     const cards = applyCardUpdates(current.cards as StoryBibleCard[], input.cards);
+    assertGenreLanguage(
+      context,
+      input.cards.map((card) => ({
+        key: card.key,
+        title: STORY_BIBLE_CARD_TITLES[card.key],
+        content: card.content,
+        complete: true,
+        worldRules: card.worldRules ?? [],
+      })),
+    );
     const updated = await this.repository.appendVersion({
       userId,
       storyBibleId: current.id,
@@ -162,7 +171,6 @@ export class StoryBibleService {
     audit: StoryBibleAuditContext,
   ): Promise<StoryBible> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    requireXianxia(context);
     const current = await this.repository.getOrCreate(
       userId,
       context,
@@ -210,7 +218,6 @@ export class StoryBibleService {
     audit: StoryBibleAuditContext,
   ): Promise<StoryBible> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    requireXianxia(context);
     const current = await this.repository.getOrCreate(
       userId,
       context,
@@ -248,7 +255,6 @@ export class StoryBibleService {
     idempotencyKey?: string,
   ): Promise<StoryBibleChangeRequest> {
     const context = await this.requireWorkContext(userId, workId, branchId);
-    requireXianxia(context);
     const current = await this.repository.getOrCreate(
       userId,
       context,
@@ -265,6 +271,7 @@ export class StoryBibleService {
     if (!before) {
       throw new ApiError(400, "VALIDATION_INVALID", "故事圣经卡片不存在");
     }
+    assertGenreLanguage(context, [normalizeCard(input.after)]);
     const request = await this.repository.createChangeRequest({
       userId,
       storyBibleId: current.id,
@@ -502,8 +509,22 @@ function versionConflict(): ApiError {
   return new ApiError(409, "VERSION_CONFLICT", "故事圣经已被其他操作更新，请刷新后重试");
 }
 
-function requireXianxia(context: StoryBibleWorkContext): void {
-  if (context.genre !== "xianxia") {
-    throw new ApiError(400, "VALIDATION_INVALID", "M0 故事圣经仅支持仙侠题材");
+function assertGenreLanguage(
+  context: StoryBibleWorkContext,
+  cards: Array<{ title: string; content: string }>,
+): void {
+  const guidance = genrePackGenerationGuidanceSchema.safeParse(context.generationGuidance);
+  if (!guidance.success || guidance.data.forbiddenElements.length === 0) {
+    return;
+  }
+  const content = cards.map((card) => `${card.title}\n${card.content}`).join("\n");
+  const violations = guidance.data.forbiddenElements.filter((term) => content.includes(term));
+  if (violations.length > 0) {
+    throw new ApiError(
+      400,
+      "VALIDATION_INVALID",
+      `当前题材不能使用这些术语：${violations.join("、")}`,
+      { violations },
+    );
   }
 }

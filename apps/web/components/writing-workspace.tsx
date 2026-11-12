@@ -57,7 +57,6 @@ import {
   writingActionJobListResponseSchema,
   writingActionJobResponseSchema,
   writingActionRecoveryResponseSchema,
-  workResponseSchema,
   type CanonCommit,
   type ChapterReadiness,
   type ChapterVersion,
@@ -81,6 +80,7 @@ import {
 
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { fetchWorkOverview } from "../lib/work-api";
 import { ReadinessRemediation } from "./readiness-remediation";
 import { StyleDriftFindings } from "./style-drift-findings";
 
@@ -332,11 +332,7 @@ export function WritingWorkspace({
     setLoading(true);
     setError("");
     try {
-      const workResponse = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-      if (!workResponse.ok) {
-        throw new Error(await readError(workResponse, "作品加载失败。"));
-      }
-      const workData = workResponseSchema.parse(await workResponse.json()).data;
+      const workData = await fetchWorkOverview(workId);
       const chapterData = await fetchAllCursorPages(
         `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/chapters`,
         chapterWorkspaceListResponseSchema.parse,
@@ -2170,7 +2166,10 @@ export function WritingWorkspace({
         <div>
           <span className="panel-kicker">当前题材规则</span>
           <strong>
-            {genreLabels[work.genre]} · {work.templatePack?.label ?? scaleLabels[work.scaleTarget]}
+            {genreLabels[work.genre]} ·{" "}
+            {work.sourceMode === "template" && work.templatePack
+              ? work.templatePack.label
+              : scaleLabels[work.scaleTarget]}
           </strong>
         </div>
         <div className="writing-genre-rules">

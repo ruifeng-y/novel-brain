@@ -10,12 +10,14 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import {
+  genrePackVersionChangeRequestSchema,
   uuidV7Schema,
   workBranchListQuerySchema,
   workBranchesResponseSchema,
   workCreateRequestSchema,
   workListQuerySchema,
   workListResponseSchema,
+  workOverviewQuerySchema,
   workResponseSchema,
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
@@ -39,6 +41,7 @@ const createBodySchema = schemaOf(workCreateRequestSchema);
 const workResponseJsonSchema = schemaOf(workResponseSchema);
 const worksResponseJsonSchema = schemaOf(workListResponseSchema);
 const branchesResponseJsonSchema = schemaOf(workBranchesResponseSchema);
+const genrePackVersionBodyJsonSchema = schemaOf(genrePackVersionChangeRequestSchema);
 
 @ApiTags("works")
 @Controller("works")
@@ -86,14 +89,52 @@ export class WorksController {
   }
 
   @Get(":workId")
+  @ApiQuerySchema(workOverviewQuerySchema)
   @ApiOkResponse({ description: "Work overview", schema: workResponseJsonSchema })
-  async get(@Req() request: AuthenticatedRequest, @Param("workId") workId: string) {
+  async get(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Query() query: unknown,
+  ) {
     const requestId = createRequestId();
+    const parsedQuery = workOverviewQuerySchema.parse(query ?? {});
     return workResponseSchema.parse({
-      data: await this.service.get(this.userId(request), uuidV7Schema.parse(workId)),
+      data: await this.service.get(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        parsedQuery.branchId,
+      ),
       requestId,
       meta: {},
     });
+  }
+
+  @Post(":workId/genre-pack/version")
+  @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiBody({ schema: genrePackVersionBodyJsonSchema })
+  @ApiOkResponse({
+    description: "Work with changed genre pack version",
+    schema: workResponseJsonSchema,
+  })
+  async changeGenrePackVersion(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    const idempotencyKey =
+      typeof request.headers["idempotency-key"] === "string"
+        ? request.headers["idempotency-key"]
+        : "";
+    const data = await this.service.changeGenrePackVersion(
+      this.userId(request),
+      uuidV7Schema.parse(workId),
+      genrePackVersionChangeRequestSchema.parse(body),
+      this.auditContext(request, requestId),
+      idempotencyKey,
+    );
+    return workResponseSchema.parse({ data, requestId, meta: {} });
   }
 
   @Get(":workId/branches")

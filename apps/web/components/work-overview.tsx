@@ -31,7 +31,6 @@ import {
   styleDriftWorkspaceResponseSchema,
   styleProfileResponseSchema,
   storyLedgerWorkspaceResponseSchema,
-  workResponseSchema,
   type ChapterWorkspace,
   type GenerationReadiness,
   type SettingEntity,
@@ -48,6 +47,7 @@ import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
 import { settingTypeLabels } from "../lib/setting-labels";
 import { requestWorkContextRefresh } from "../lib/work-context-events";
+import { fetchWorkOverview } from "../lib/work-api";
 import { branchLabel, isWorkReadonly, readonlyScopeLabel } from "../lib/work-presentation";
 
 const statusLabels: Record<Work["status"], string> = {
@@ -102,11 +102,7 @@ export function WorkOverview({ workId }: { workId: string }) {
       setLoading(true);
       setError("");
       try {
-        const response = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-        if (!response.ok) {
-          throw new Error(await readError(response));
-        }
-        const workData = workResponseSchema.parse(await response.json()).data;
+        const workData = await fetchWorkOverview(workId);
         const basePath = `/api/v1/works/${workId}/branches/${workData.mainBranch.id}`;
         const [readinessResponse, styleResponse, chapterData, entityData, ledgerResponse] =
           await Promise.all([
@@ -385,7 +381,7 @@ export function WorkOverview({ workId }: { workId: string }) {
           </span>
           <h2>主创作线</h2>
           <p>
-            {work.templatePack
+            {work.sourceMode === "template" && work.templatePack
               ? `${work.templatePack.label} · ${String(work.templatePack.fields.world ?? "")}`
               : work.idea
                 ? work.idea

@@ -802,45 +802,75 @@ describe("story bible HTTP integration", () => {
     expect(unchanged.body.data.cards[0].content).toBe("");
   });
 
-  it("keeps the M0 story bible template scoped to xianxia works", async () => {
-    const owner = await createAuthenticatedAgent("bible-history@example.com");
-    const work = await createWork(
-      owner,
-      "旧朝档案",
-      "一个失忆的书吏从旧朝档案里追查自己的名字。",
-      "history",
-    );
-    const token = await csrf(owner);
-    const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible`;
-    const initial = await owner.get(path).expect(200);
+  it("generates, edits and locks genre-specific story bibles", async () => {
+    const owner = await createAuthenticatedAgent("bible-genres@example.com");
+    const cases = [
+      {
+        genre: "history" as const,
+        title: "旧朝档案",
+        idea: "一个失忆的书吏从旧朝档案里追查自己的名字。",
+        expectedRule: "粮道约束",
+      },
+      {
+        genre: "urban" as const,
+        title: "旧城新局",
+        idea: "一个被裁员的项目经理追查旧城改造背后的平台报告。",
+        expectedRule: "资源约束",
+      },
+    ];
 
-    const generated = await owner
-      .post(`${path}/generate`)
-      .set("Origin", origin)
-      .set("X-CSRF-Token", token)
-      .send({})
-      .expect(400);
-    expect(generated.body.error.code).toBe("VALIDATION_INVALID");
+    for (const item of cases) {
+      const work = await createWork(owner, item.title, item.idea, item.genre);
+      const token = await csrf(owner);
+      const path = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}/story-bible`;
+      const generated = await owner
+        .post(`${path}/generate`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({})
+        .expect(200);
+      const worldLaws = generated.body.data.cards.find(
+        (card: { key: string }) => card.key === "worldLaws",
+      );
+      expect(worldLaws.content).toContain(item.expectedRule);
+      expect(worldLaws.content).not.toContain("境界差距");
+      if (item.genre === "history") {
+        const invalid = await owner
+          .patch(path)
+          .set("Origin", origin)
+          .set("X-CSRF-Token", token)
+          .send({
+            version: generated.body.data.version,
+            reason: "验证题材边界。",
+            cards: [{ key: "oneSentence", content: "主角突破境界，拜入宗门。" }],
+          })
+          .expect(400);
+        expect(invalid.body.error.code).toBe("VALIDATION_INVALID");
+        expect(invalid.body.error.message).toContain("境界");
+      }
 
-    const edited = await owner
-      .patch(path)
-      .set("Origin", origin)
-      .set("X-CSRF-Token", token)
-      .send({
-        version: initial.body.data.version,
-        reason: "历史作品不应写入仙侠模板。",
-        cards: [{ key: "oneSentence", content: "历史作品不应写入仙侠模板。" }],
-      })
-      .expect(400);
-    expect(edited.body.error.code).toBe("VALIDATION_INVALID");
-
-    const locked = await owner
-      .post(`${path}/lock`)
-      .set("Origin", origin)
-      .set("X-CSRF-Token", token)
-      .send({ version: initial.body.data.version })
-      .expect(400);
-    expect(locked.body.error.code).toBe("VALIDATION_INVALID");
+      const edited = await owner
+        .patch(path)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({
+          version: generated.body.data.version,
+          reason: "按题材补充作者判断。",
+          cards: [
+            {
+              key: "oneSentence",
+              content: `${item.title}：${item.idea}`,
+            },
+          ],
+        })
+        .expect(200);
+      await owner
+        .post(`${path}/lock`)
+        .set("Origin", origin)
+        .set("X-CSRF-Token", token)
+        .send({ version: edited.body.data.version })
+        .expect(200);
+    }
   });
 
   async function createAuthenticatedAgent(email: string): Promise<SuperAgentTest> {

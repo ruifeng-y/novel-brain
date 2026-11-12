@@ -87,6 +87,26 @@ Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者�
 
 签收人：ruifeng-y。#174 为 `bible`、`settings`、`outline`、`writing` 与 `account-settings` 补齐四档真实生产路由 `toHaveScreenshot`，生成 20 张代表性生产状态 Linux/CI Golden；同时补齐 `foreshadows` 的 `loading` 状态和 `entity-detail` 的 `prototype_only` 泄漏扫描附件。生成证据为 [Production CI #42948984698](https://github.com/ruifeng-y/novel-brain/actions/runs/42948984698)。8 个 M1 验收页面在正常 Linux 回归通过后进入 `parity-verified`；本记录不扩张到 work-settings、M2 或 M3 页面。
 
+## 2026-11-11 M2 Genre Pack settings/bible Golden 签收
+
+签收人：ruifeng-y。作者已确认 `artifacts/ui/candidates/m2-92/` 中 `settings` 与 `bible` 的 390 / 900 / 1180 / 1440 四档候选截图。
+
+正式 Linux/CI Golden 由 [Production CI #43024840541](https://github.com/ruifeng-y/novel-brain/actions/runs/43024840541) 的 `update_golden` 任务生成并上传 `playwright-evidence` artifact。`settings` 的 4 张正式 Golden 已更新；`bible` 的 4 张经当前回归确认保持既有正式基线。最终正常 PR CI 通过后，`bible` 与 `settings` 进入 `parity-verified`。
+
+该记录最初只覆盖 `settings`/`bible`；2026-11-12 的后续签收将范围扩展到 `new-project` 与 `entity-detail`，其他 M2 页面仍不在本次范围。
+
+## 2026-11-12 M2 Genre Pack 四页正式 Golden 签收
+
+签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m2-92/` 的四档视觉签收覆盖 new-project、settings、bible 与 entity-detail 的题材化变化。
+
+settings、bible、entity-detail 的 12 张正式 Golden 已按当前生产渲染更新；new-project 的现有正式 Golden 经四档回归继续有效。`new-project.spec.ts`、`settings.spec.ts`、`bible.spec.ts`、`entity-detail.spec.ts` 均使用真实生产路由和确定性数据，覆盖 390 / 900 / 1180 / 1440、作者语言、无横向溢出及 `toHaveScreenshot`。最终 PR CI 通过后四页保持 `parity-verified`。
+
+## 2026-11-12 M2 batch/changes 视觉签收
+
+签收人：ruifeng-y。作者确认 M2 batch 与 changes 页面采用当前生产布局，并要求在解决所有门禁后合并；本次后续指令未提出视觉结构偏差。
+
+Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和四档视口。Changes Golden 覆盖 390 / 900 / 1180 / 1440，语义测试同时覆盖加载、错误、冲突、部分失败、禁用应用、旧版本拒绝、当前作品/全部作品搜索与选中平行版本上下文。正式 Linux `toHaveScreenshot` 以最终 PR 的绿色 Production CI 为准；合并前不得用本地截图替代该回归证据。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

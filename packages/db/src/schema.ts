@@ -188,6 +188,7 @@ export const idempotencyRecords = pgTable(
       .references(() => users.id, { onDelete: "cascade" }),
     scope: text("scope").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash"),
     resourceType: text("resource_type").notNull(),
     resourceId: uuid("resource_id").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -211,6 +212,13 @@ export const genrePacks = pgTable(
     version: integer("version").notNull(),
     label: text("label").notNull(),
     fields: jsonb("fields").$type<Record<string, unknown>>().notNull(),
+    rules: jsonb("rules").$type<Array<Record<string, unknown>>>().notNull().default([]),
+    uiHints: jsonb("ui_hints").$type<Record<string, unknown>>().notNull().default({}),
+    generationGuidance: jsonb("generation_guidance")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
+    migration: jsonb("migration").$type<Record<string, unknown> | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -283,7 +291,6 @@ export const workBranches = pgTable(
   },
   (table) => [
     uniqueIndex("work_branches_work_name_unique").on(table.workId, table.name),
-    uniqueIndex("work_branches_head_node_unique").on(table.headNodeId),
     index("work_branches_user_work_idx").on(table.userId, table.workId),
     check("work_branches_status_check", sql`${table.status} in ('active', 'archived')`),
   ],
@@ -2311,6 +2318,11 @@ export const jobs = pgTable(
     modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
       onDelete: "restrict",
     }),
+    parentJobId: uuid("parent_job_id").references((): AnyPgColumn => jobs.id, {
+      onDelete: "cascade",
+    }),
+    jobType: text("job_type"),
+    workItemKey: text("work_item_key"),
     type: text("type").notNull(),
     status: text("status").notNull().default("queued"),
     progress: integer("progress").notNull().default(0),
@@ -2341,15 +2353,27 @@ export const jobs = pgTable(
     uniqueIndex("jobs_workflow_idempotency_unique")
       .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
       .where(sql`${table.type} = 'agent_workflow'`),
+    uniqueIndex("jobs_batch_plan_idempotency_unique")
+      .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
+      .where(sql`${table.type} = 'batch_plan'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
+    index("jobs_parent_created_idx").on(table.parentJobId, table.createdAt),
     check(
       "jobs_type_check",
-      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action')`,
+      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan')`,
     ),
     check(
       "jobs_required_scope_check",
-      sql`(${table.type} = 'agent_workflow') or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+      sql`(${table.type} in ('agent_workflow', 'batch_plan')) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
+    ),
+    check(
+      "jobs_job_type_check",
+      sql`${table.jobType} is null or ${table.jobType} in ('book', 'volume', 'chapter', 'step')`,
+    ),
+    check(
+      "jobs_batch_plan_scope_check",
+      sql`${table.type} <> 'batch_plan' or (${table.jobType} = 'book' and ${table.workItemKey} = 'book' and ${table.chapterId} is null and ${table.modelConfigId} is null)`,
     ),
     check(
       "jobs_writing_action_scope_check",
@@ -2360,6 +2384,272 @@ export const jobs = pgTable(
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
     ),
     check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
+  ],
+);
+
+export const jobWorkItems = pgTable(
+  "job_work_items",
+  {
+    id: uuid("id").primaryKey(),
+    jobId: uuid("job_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    parentId: uuid("parent_id").references((): AnyPgColumn => jobWorkItems.id, {
+      onDelete: "cascade",
+    }),
+    itemType: text("item_type").notNull(),
+    workItemKey: text("work_item_key").notNull(),
+    idempotencyKey: text("idempotency_key").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
+    outlineNodeId: uuid("outline_node_id").references(() => outlineNodes.id, {
+      onDelete: "set null",
+    }),
+    status: text("status").notNull().default("pending"),
+    attempt: integer("attempt").notNull().default(0),
+    priority: integer("priority").notNull().default(0),
+    priorityClass: text("priority_class").notNull().default("batch"),
+    sortOrder: integer("sort_order").notNull(),
+    inputVersion: jsonb("input_version")
+      .$type<{ outlineVersion: number | null; chapterVersion: number | null }>()
+      .notNull(),
+    dependencies: jsonb("dependencies").$type<string[]>().notNull().default([]),
+    outputRefs: jsonb("output_refs")
+      .$type<Array<{ type: string; id: string }>>()
+      .notNull()
+      .default([]),
+    cost: jsonb("cost").$type<Record<string, unknown>>().notNull().default({}),
+    checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull().default({}),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("job_work_items_job_key_unique").on(table.jobId, table.workItemKey),
+    uniqueIndex("job_work_items_job_idempotency_unique").on(table.jobId, table.idempotencyKey),
+    index("job_work_items_job_type_order_idx").on(table.jobId, table.itemType, table.sortOrder),
+    index("job_work_items_job_user_order_idx").on(
+      table.jobId,
+      table.userId,
+      table.sortOrder,
+      table.id,
+    ),
+    index("job_work_items_job_status_priority_idx").on(
+      table.jobId,
+      table.status,
+      table.priority,
+      table.sortOrder,
+    ),
+    index("job_work_items_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
+    index("job_work_items_parent_idx").on(table.parentId),
+    check(
+      "job_work_items_type_check",
+      sql`${table.itemType} in ('book', 'volume', 'chapter', 'step')`,
+    ),
+    check(
+      "job_work_items_status_check",
+      sql`${table.status} in ('pending', 'ready', 'running', 'paused', 'waiting_review', 'succeeded', 'failed', 'skipped', 'cancelled')`,
+    ),
+    check(
+      "job_work_items_priority_class_check",
+      sql`${table.priorityClass} in ('interactive', 'batch')`,
+    ),
+    check("job_work_items_key_check", sql`${table.workItemKey} ~ '^[a-z][a-z0-9:._-]{0,119}$'`),
+    check("job_work_items_sort_order_check", sql`${table.sortOrder} >= 0`),
+    check("job_work_items_attempt_check", sql`${table.attempt} >= 0`),
+    check(
+      "job_work_items_priority_check",
+      sql`${table.priority} >= 0 and ${table.priority} <= 1000`,
+    ),
+    check(
+      "job_work_items_parent_check",
+      sql`(${table.itemType} = 'book' and ${table.parentId} is null) or (${table.itemType} <> 'book' and ${table.parentId} is not null)`,
+    ),
+    check(
+      "job_work_items_chapter_check",
+      sql`(${table.itemType} in ('chapter', 'step') and ${table.chapterId} is not null) or (${table.itemType} in ('book', 'volume') and ${table.chapterId} is null)`,
+    ),
+    check(
+      "job_work_items_input_version_check",
+      sql`jsonb_typeof(${table.inputVersion}) = 'object'`,
+    ),
+    check("job_work_items_dependencies_check", sql`jsonb_typeof(${table.dependencies}) = 'array'`),
+    check("job_work_items_output_refs_check", sql`jsonb_typeof(${table.outputRefs}) = 'array'`),
+  ],
+);
+
+export type BatchReviewRiskReasonJson = {
+  code: string;
+  message: string;
+};
+
+export type BatchReviewQualityJson = {
+  reportState: "fresh" | "missing" | "stale";
+  canApprove: boolean;
+  scoreAverage: number | null;
+  blockerCount: number;
+};
+
+export const batchReviewItems = pgTable(
+  "batch_review_items",
+  {
+    id: uuid("id").primaryKey(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => jobs.id, { onDelete: "cascade" }),
+    workItemId: uuid("work_item_id")
+      .notNull()
+      .references(() => jobWorkItems.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
+    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
+      onDelete: "set null",
+    }),
+    targetVersion: integer("target_version").notNull(),
+    chapterNumber: integer("chapter_number"),
+    chapterTitle: text("chapter_title"),
+    volumeTitle: text("volume_title"),
+    status: text("status").notNull().default("pending"),
+    risk: text("risk").notNull(),
+    riskReasons: jsonb("risk_reasons").$type<BatchReviewRiskReasonJson[]>().notNull().default([]),
+    quality: jsonb("quality").$type<BatchReviewQualityJson>().notNull(),
+    claimedBy: uuid("claimed_by").references(() => users.id, { onDelete: "set null" }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("batch_review_items_plan_work_item_unique").on(table.planId, table.workItemId),
+    index("batch_review_items_queue_idx").on(
+      table.userId,
+      table.branchId,
+      table.status,
+      table.risk,
+    ),
+    index("batch_review_items_plan_idx").on(table.planId),
+    index("batch_review_items_target_idx").on(table.targetType, table.targetId),
+    check(
+      "batch_review_items_target_type_check",
+      sql`${table.targetType} in ('chapter', 'volume')`,
+    ),
+    check(
+      "batch_review_items_status_check",
+      sql`${table.status} in ('pending', 'claimed', 'approved', 'rejected', 'stale')`,
+    ),
+    check("batch_review_items_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
+    check("batch_review_items_target_version_check", sql`${table.targetVersion} > 0`),
+    check("batch_review_items_version_check", sql`${table.version} > 0`),
+    check(
+      "batch_review_items_risk_reasons_check",
+      sql`jsonb_typeof(${table.riskReasons}) = 'array'`,
+    ),
+    check(
+      "batch_review_items_target_check",
+      sql`(${table.targetType} = 'chapter' and ${table.chapterId} is not null) or (${table.targetType} = 'volume' and ${table.chapterId} is null)`,
+    ),
+    check(
+      "batch_review_items_claim_check",
+      sql`(${table.status} = 'claimed' and ${table.claimedBy} is not null and ${table.claimedAt} is not null) or (${table.status} <> 'claimed' and (${table.claimedBy} is null or ${table.status} in ('approved', 'rejected')))`,
+    ),
+  ],
+);
+
+export const batchReviewDecisionBatches = pgTable(
+  "batch_review_decision_batches",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    idempotencyKey: text("idempotency_key").notNull(),
+    requestHash: text("request_hash").notNull(),
+    response: jsonb("response").$type<Record<string, unknown>>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("batch_review_decision_batches_idempotency_unique").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.idempotencyKey,
+    ),
+    index("batch_review_decision_batches_user_created_idx").on(table.userId, table.createdAt),
+    check(
+      "batch_review_decision_batches_request_hash_check",
+      sql`${table.requestHash} ~ '^[a-f0-9]{64}$'`,
+    ),
+  ],
+);
+
+export const batchReviewDecisions = pgTable(
+  "batch_review_decisions",
+  {
+    id: uuid("id").primaryKey(),
+    batchId: uuid("batch_id")
+      .notNull()
+      .references(() => batchReviewDecisionBatches.id, { onDelete: "cascade" }),
+    queueItemId: uuid("queue_item_id")
+      .notNull()
+      .references(() => batchReviewItems.id, { onDelete: "restrict" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    risk: text("risk").notNull(),
+    reason: text("reason").notNull(),
+    actorId: uuid("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    actorName: text("actor_name").notNull(),
+    expectedVersion: integer("expected_version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("batch_review_decisions_batch_item_unique").on(table.batchId, table.queueItemId),
+    index("batch_review_decisions_user_created_idx").on(table.userId, table.createdAt),
+    index("batch_review_decisions_target_idx").on(table.targetType, table.targetId),
+    check(
+      "batch_review_decisions_target_type_check",
+      sql`${table.targetType} in ('chapter', 'volume')`,
+    ),
+    check("batch_review_decisions_action_check", sql`${table.action} in ('approve', 'reject')`),
+    check("batch_review_decisions_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
+    check("batch_review_decisions_expected_version_check", sql`${table.expectedVersion} > 0`),
   ],
 );
 
@@ -2633,6 +2923,220 @@ export const jobEvents = pgTable(
   (table) => [
     uniqueIndex("job_events_job_sequence_unique").on(table.jobId, table.sequence),
     index("job_events_job_occurred_idx").on(table.jobId, table.occurredAt),
+  ],
+);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id").references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id").references(() => workBranches.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    payload: jsonb("payload").$type<{ title: string; message: string; href: string }>().notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("notifications_user_dedupe_unique").on(table.userId, table.dedupeKey),
+    index("notifications_user_created_idx").on(table.userId, table.createdAt),
+    index("notifications_user_unread_idx").on(table.userId, table.readAt, table.createdAt),
+    check(
+      "notifications_type_check",
+      sql`${table.type} in ('job_completed', 'job_failed', 'review_required', 'merge_completed', 'merge_conflict')`,
+    ),
+    check(
+      "notifications_target_type_check",
+      sql`${table.targetType} in ('job', 'review', 'merge', 'work', 'branch')`,
+    ),
+    check("notifications_dedupe_key_check", sql`length(${table.dedupeKey}) between 1 and 200`),
+  ],
+);
+
+export const changeRequests = pgTable(
+  "change_requests",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    reason: text("reason").notNull(),
+    targetVersion: integer("target_version").notNull().default(1),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    objectType: text("object_type").notNull(),
+    before: jsonb("before").$type<Record<string, unknown>>().notNull().default({}),
+    after: jsonb("after").$type<Record<string, unknown>>().notNull().default({}),
+    diff: jsonb("diff").$type<Record<string, unknown>>().notNull().default({}),
+    source: text("source").notNull().default("author"),
+    risk: text("risk").notNull().default("low"),
+    status: text("status").notNull().default("draft"),
+    idempotencyKey: text("idempotency_key").notNull(),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("change_requests_user_branch_idempotency_unique").on(
+      table.userId,
+      table.branchId,
+      table.idempotencyKey,
+    ),
+    index("change_requests_branch_status_idx").on(table.branchId, table.status, table.updatedAt),
+    index("change_requests_user_work_idx").on(table.userId, table.workId),
+    check(
+      "change_requests_target_type_check",
+      sql`${table.targetType} in ('entity', 'chapter', 'outline', 'fact', 'ledger', 'work')`,
+    ),
+    check(
+      "change_requests_source_check",
+      sql`${table.source} in ('author', 'ai', 'import', 'batch')`,
+    ),
+    check("change_requests_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
+    check(
+      "change_requests_status_check",
+      sql`${table.status} in ('draft', 'analyzing', 'awaiting_confirmation', 'applying', 'applied', 'rejected', 'cancelled', 'failed', 'branched')`,
+    ),
+    check("change_requests_version_check", sql`${table.version} > 0`),
+    check("change_requests_target_version_check", sql`${table.targetVersion} > 0`),
+  ],
+);
+
+export const changeImpacts = pgTable(
+  "change_impacts",
+  {
+    id: uuid("id").primaryKey(),
+    changeId: uuid("change_id")
+      .notNull()
+      .references(() => changeRequests.id, { onDelete: "cascade" }),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    category: text("category").notNull(),
+    affectedType: text("affected_type").notNull(),
+    affectedId: uuid("affected_id"),
+    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
+    summary: text("summary").notNull(),
+    evidence: jsonb("evidence").$type<Record<string, unknown>>().notNull().default({}),
+    confidence: real("confidence").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("change_impacts_change_idx").on(table.changeId, table.category),
+    index("change_impacts_user_work_idx").on(table.userId, table.workId),
+    check(
+      "change_impacts_category_check",
+      sql`${table.category} in ('safe', 'repairable', 'structural')`,
+    ),
+    check(
+      "change_impacts_confidence_check",
+      sql`${table.confidence} >= 0 and ${table.confidence} <= 1`,
+    ),
+  ],
+);
+
+export const mergeItems = pgTable(
+  "merge_items",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    sourceBranchId: uuid("source_branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    targetBranchId: uuid("target_branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sourceNodeId: uuid("source_node_id").references(() => versionNodes.id, {
+      onDelete: "set null",
+    }),
+    targetNodeId: uuid("target_node_id").references(() => versionNodes.id, {
+      onDelete: "set null",
+    }),
+    objectType: text("object_type").notNull(),
+    objectId: uuid("object_id").notNull(),
+    objectKey: text("object_key").notNull(),
+    sourcePayload: jsonb("source_payload").$type<Record<string, unknown>>().notNull().default({}),
+    targetPayload: jsonb("target_payload").$type<Record<string, unknown>>().notNull().default({}),
+    diff: jsonb("diff").$type<Record<string, unknown>>().notNull().default({}),
+    changeKind: text("change_kind").notNull().default("changed"),
+    risk: text("risk").notNull().default("low"),
+    conflict: boolean("conflict").notNull().default(false),
+    status: text("status").notNull().default("pending"),
+    reason: text("reason"),
+    version: integer("version").notNull().default(1),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("merge_items_source_target_object_unique").on(
+      table.sourceBranchId,
+      table.targetBranchId,
+      table.objectType,
+      table.objectKey,
+    ),
+    index("merge_items_target_status_idx").on(table.targetBranchId, table.status),
+    index("merge_items_user_work_idx").on(table.userId, table.workId),
+    check(
+      "merge_items_object_type_check",
+      sql`${table.objectType} in ('chapter', 'entity', 'fact', 'outline', 'ledger')`,
+    ),
+    check(
+      "merge_items_change_kind_check",
+      sql`${table.changeKind} in ('added', 'removed', 'changed', 'unchanged')`,
+    ),
+    check("merge_items_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
+    check(
+      "merge_items_status_check",
+      sql`${table.status} in ('pending', 'accepted', 'rejected', 'applied', 'stale')`,
+    ),
+    check("merge_items_version_check", sql`${table.version} > 0`),
+  ],
+);
+
+export const mergeDecisions = pgTable(
+  "merge_decisions",
+  {
+    id: uuid("id").primaryKey(),
+    mergeItemId: uuid("merge_item_id")
+      .notNull()
+      .references(() => mergeItems.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    action: text("action").notNull(),
+    reason: text("reason").notNull(),
+    expectedVersion: integer("expected_version").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("merge_decisions_item_version_unique").on(table.mergeItemId, table.expectedVersion),
+    index("merge_decisions_user_created_idx").on(table.userId, table.createdAt),
+    check("merge_decisions_action_check", sql`${table.action} in ('accept', 'reject')`),
+    check("merge_decisions_version_check", sql`${table.expectedVersion} > 0`),
   ],
 );
 
@@ -3041,18 +3545,59 @@ export const importJobs = pgTable(
     sourceKind: text("source_kind").notNull(),
     sourceName: text("source_name"),
     sourceText: text("source_text").notNull(),
+    idempotencyKey: text("idempotency_key"),
+    chunkCount: integer("chunk_count").notNull().default(1),
+    processedChunks: integer("processed_chunks").notNull().default(0),
+    checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
     confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("import_jobs_user_created_idx").on(table.userId, table.createdAt),
+    uniqueIndex("import_jobs_user_idempotency_unique")
+      .on(table.userId, table.mode, table.idempotencyKey)
+      .where(sql`${table.idempotencyKey} is not null`),
     check("import_jobs_mode_check", sql`${table.mode} in ('settings', 'manuscript_text')`),
     check(
       "import_jobs_status_check",
-      sql`${table.status} in ('awaiting_confirmation', 'completed')`,
+      sql`${table.status} in ('queued', 'processing', 'awaiting_confirmation', 'paused', 'partial', 'failed', 'cancelled', 'completed')`,
     ),
     check("import_jobs_source_kind_check", sql`${table.sourceKind} in ('paste', 'file')`),
+    check("import_jobs_chunk_count_check", sql`${table.chunkCount} > 0`),
+    check(
+      "import_jobs_processed_chunks_check",
+      sql`${table.processedChunks} >= 0 and ${table.processedChunks} <= ${table.chunkCount}`,
+    ),
+  ],
+);
+
+export const importChunks = pgTable(
+  "import_chunks",
+  {
+    id: uuid("id").primaryKey(),
+    importJobId: uuid("import_job_id")
+      .notNull()
+      .references(() => importJobs.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sequence: integer("sequence").notNull(),
+    sourceText: text("source_text").notNull(),
+    startOffset: integer("start_offset").notNull().default(0),
+    endOffset: integer("end_offset").notNull().default(0),
+    status: text("status").notNull().default("pending"),
+    errorMessage: text("error_message"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("import_chunks_job_sequence_unique").on(table.importJobId, table.sequence),
+    index("import_chunks_job_status_idx").on(table.importJobId, table.status, table.sequence),
+    check("import_chunks_sequence_check", sql`${table.sequence} >= 0`),
+    check("import_chunks_offsets_check", sql`${table.endOffset} >= ${table.startOffset}`),
+    check("import_chunks_status_check", sql`${table.status} in ('pending', 'processed', 'failed')`),
   ],
 );
 
@@ -3391,7 +3936,7 @@ export const searchDocuments = pgTable(
     ),
     check(
       "search_documents_source_type_check",
-      sql`${table.sourceType} in ('entity', 'fact', 'timeline_event', 'map_node')`,
+      sql`${table.sourceType} in ('entity', 'fact', 'timeline_event', 'map_node', 'chapter')`,
     ),
     check(
       "search_documents_entity_type_check",
@@ -3408,6 +3953,47 @@ export const searchDocuments = pgTable(
     check(
       "search_documents_to_story_time_check",
       sql`(${table.toEra} is null and ${table.toStoryTimeLabel} is null and ${table.toStorySortKey} is null) or (${table.fromEra} is not null and ${table.toEra} is not null and ${table.toStoryTimeLabel} is not null and ${table.toStorySortKey} is not null)`,
+    ),
+  ],
+);
+
+export const searchRebuildRuns = pgTable(
+  "search_rebuild_runs",
+  {
+    id: uuid("id").primaryKey(),
+    workId: uuid("work_id")
+      .notNull()
+      .references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id")
+      .notNull()
+      .references(() => workBranches.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("queued"),
+    stage: integer("stage").notNull().default(0),
+    stageOffset: integer("stage_offset").notNull().default(0),
+    indexed: integer("indexed").notNull().default(0),
+    expectedTotal: integer("expected_total").notNull().default(0),
+    errorMessage: text("error_message"),
+    startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("search_rebuild_runs_scope_idx").on(
+      table.userId,
+      table.workId,
+      table.branchId,
+      table.startedAt,
+    ),
+    check(
+      "search_rebuild_runs_status_check",
+      sql`${table.status} in ('queued', 'running', 'completed', 'failed')`,
+    ),
+    check(
+      "search_rebuild_runs_progress_check",
+      sql`${table.stage} >= 0 and ${table.stageOffset} >= 0 and ${table.indexed} >= 0 and ${table.expectedTotal} >= 0`,
     ),
   ],
 );

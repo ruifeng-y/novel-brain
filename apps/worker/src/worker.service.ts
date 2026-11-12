@@ -4,6 +4,7 @@ import {
   type OnApplicationShutdown,
 } from "@nestjs/common";
 import {
+  BATCH_TICK_JOB,
   GENERATE_CHAPTER_JOB,
   SUMMARY_REBUILD_JOB,
   WORKER_QUEUE_NAME,
@@ -20,6 +21,9 @@ import pino, { type Logger } from "pino";
 import { GenerationJobProcessor } from "./generation/generation.processor";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+import { BatchPlanTickProcessor } from "./batch-plan/batch-plan.processor";
+// Nest uses the runtime class reference for dependency injection metadata.
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -34,6 +38,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
 
   constructor(
     private readonly processor: GenerationJobProcessor,
+    private readonly batchPlanProcessor: BatchPlanTickProcessor,
     private readonly summaryProcessor: SummaryRebuildProcessor,
     private readonly writingActionProcessor: WritingActionProcessor,
   ) {
@@ -74,7 +79,7 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       {
         event: "worker.ready",
         queue: WORKER_QUEUE_NAME,
-        jobTypes: [GENERATE_CHAPTER_JOB, WRITE_ACTION_JOB, SUMMARY_REBUILD_JOB],
+        jobTypes: [GENERATE_CHAPTER_JOB, WRITE_ACTION_JOB, SUMMARY_REBUILD_JOB, BATCH_TICK_JOB],
       },
       "Worker is consuming its queue",
     );
@@ -98,7 +103,9 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
         jobType: payload.jobType,
         ...(payload.jobType === SUMMARY_REBUILD_JOB
           ? { runId: payload.runId }
-          : { jobId: payload.jobId, checkpointStep: payload.checkpoint.step }),
+          : payload.jobType === BATCH_TICK_JOB
+            ? { planId: payload.planId }
+            : { jobId: payload.jobId, checkpointStep: payload.checkpoint.step }),
       },
       "Processing typed worker job",
     );
@@ -106,10 +113,15 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
       await this.summaryProcessor.process(payload);
       return;
     }
+    if (payload.jobType === BATCH_TICK_JOB) {
+      await this.batchPlanProcessor.process(payload);
+      return;
+    }
     if (payload.jobType === WRITE_ACTION_JOB) {
       await this.writingActionProcessor.process(payload);
       return;
     }
     await this.processor.process(payload);
+    await this.batchPlanProcessor.onChildFinished(payload);
   }
 }

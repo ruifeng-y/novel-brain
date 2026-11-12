@@ -12,8 +12,10 @@ import {
 import { useRef, useState } from "react";
 import {
   apiErrorSchema,
+  chunkedImportProgressResponseSchema,
   manuscriptImportConfirmResponseSchema,
   manuscriptImportResponseSchema,
+  type ChunkedImportProgress,
   type ManuscriptImport,
   type ManuscriptImportChapter,
   type WorkGenre,
@@ -56,6 +58,7 @@ export function ManuscriptImportPanel({
   const [manuscriptImport, setManuscriptImport] = useState<ManuscriptImport | null>(null);
   const [chapters, setChapters] = useState<ManuscriptImportChapter[]>([]);
   const [busy, setBusy] = useState<BusyState>(null);
+  const [chunkProgress, setChunkProgress] = useState<ChunkedImportProgress | null>(null);
   const [error, setError] = useState("");
   const [splitIndex, setSplitIndex] = useState<number | null>(null);
   const [splitOffset, setSplitOffset] = useState(1);
@@ -76,6 +79,7 @@ export function ManuscriptImportPanel({
     setSplitIndex(null);
     setError("");
     confirmKey.current = null;
+    setChunkProgress(null);
   }
 
   function selectFile(nextFile: File | undefined) {
@@ -103,6 +107,67 @@ export function ManuscriptImportPanel({
     confirmKey.current = null;
     try {
       const csrfToken = await getCsrfToken();
+      if (file.size > 1024 * 1024) {
+        const text = await file.text();
+        const chunks = splitIntoChunks(text, 500_000);
+        let response = await fetch("/api/v1/imports/manuscripts/chunked/start", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-csrf-token": csrfToken,
+            "idempotency-key": crypto.randomUUID(),
+          },
+          body: JSON.stringify({ sourceName: file.name, chunkCount: chunks.length }),
+        });
+        if (!response.ok) {
+          throw new Error(await readError(response));
+        }
+        let progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
+        setChunkProgress(progress);
+        for (const [sequence, sourceText] of chunks.entries()) {
+          response = await fetch(`/api/v1/imports/manuscripts/${progress.importId}/chunks`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-csrf-token": csrfToken,
+            },
+            body: JSON.stringify({ sequence, sourceText }),
+          });
+          if (!response.ok) {
+            throw new Error(await readError(response));
+          }
+          progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
+          setChunkProgress(progress);
+        }
+        while (progress.status === "queued" || progress.status === "processing") {
+          response = await fetch(`/api/v1/imports/manuscripts/${progress.importId}/process`, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              "x-csrf-token": csrfToken,
+            },
+            body: "{}",
+          });
+          if (!response.ok) {
+            throw new Error(await readError(response));
+          }
+          progress = chunkedImportProgressResponseSchema.parse(await response.json()).data;
+          setChunkProgress(progress);
+        }
+        if (progress.status !== "awaiting_confirmation") {
+          throw new Error("分块导入未能完成，请检查后重试。");
+        }
+        const previewResponse = await fetch(`/api/v1/imports/manuscripts/${progress.importId}`, {
+          cache: "no-store",
+        });
+        if (!previewResponse.ok) {
+          throw new Error(await readError(previewResponse));
+        }
+        const parsed = manuscriptImportResponseSchema.parse(await previewResponse.json()).data;
+        setManuscriptImport(parsed);
+        setChapters(parsed.chapters);
+        return;
+      }
       const body = new FormData();
       body.append("file", file);
       const response = await fetch("/api/v1/imports/manuscripts", {
@@ -259,7 +324,7 @@ export function ManuscriptImportPanel({
         <label className="settings-upload manuscript-upload" htmlFor="manuscript-file">
           <FileUp size={22} aria-hidden="true" />
           <strong>上传旧稿文件</strong>
-          <span>TXT 或 Markdown，最大 1 MB</span>
+          <span>TXT 或 Markdown；大于 1 MB 时自动分块处理</span>
           <input
             accept=".txt,.md,.markdown,text/plain,text/markdown"
             disabled={busy !== null}
@@ -293,6 +358,15 @@ export function ManuscriptImportPanel({
           <div className="model-notice danger" role="alert">
             <AlertTriangle size={15} aria-hidden="true" />
             <span>{error}</span>
+          </div>
+        ) : null}
+
+        {chunkProgress && chunkProgress.status !== "awaiting_confirmation" ? (
+          <div className="model-notice" role="status">
+            <LoaderCircle className="spin" size={15} aria-hidden="true" />
+            <span>
+              已处理 {chunkProgress.processedChunks} / {chunkProgress.chunkCount} 个分块
+            </span>
           </div>
         ) : null}
 
@@ -534,6 +608,25 @@ function safeSplitOffset(content: string, requested: number): number {
 
 function countWords(text: string): number {
   return Array.from(text.replace(/\s/gu, "")).length;
+}
+
+function splitIntoChunks(text: string, targetLength: number): string[] {
+  const chunks: string[] = [];
+  let offset = 0;
+  while (offset < text.length) {
+    let end = Math.min(text.length, offset + targetLength);
+    if (
+      end < text.length &&
+      end > offset &&
+      text.charCodeAt(end - 1) >= 0xd800 &&
+      text.charCodeAt(end - 1) <= 0xdbff
+    ) {
+      end -= 1;
+    }
+    chunks.push(text.slice(offset, end));
+    offset = end;
+  }
+  return chunks.length ? chunks : [""];
 }
 
 async function readError(response: Response): Promise<string> {
