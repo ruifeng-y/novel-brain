@@ -337,6 +337,13 @@
       "when": 1794395012253,
       "tag": "0047_calm_butterfly",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1794462258205,
+      "tag": "0048_large_killer_shrike",
+      "breakpoints": true
     }
   ]
 }
