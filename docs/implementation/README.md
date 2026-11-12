@@ -4,7 +4,7 @@
 
 ## 1. What is ready now
 
-The repository contains product/technical documentation, accepted ADRs, a signed-off static prototype, the M0 production Web/API/Worker source, and automated M0 acceptance evidence. M0 closeout evidence is recorded in `docs/implementation/m0-13-m0-closeout.md`.
+The repository contains product/technical documentation, accepted ADRs, a signed-off static prototype, and integrated M0–M2 production Web/API/Worker source. M0 closeout evidence is recorded in `docs/implementation/m0-13-m0-closeout.md`; M2 final integration and visual evidence are recorded by PR #185 and the M2 implementation reports.
 
 - M0 parent spec: #66; leaf implementation tickets: #67–#79.
 - M1 parent spec: #80; package/integration issues: #84–#90; leaf issues: #106–#119 and #141–#148.
@@ -14,6 +14,7 @@ The repository contains product/technical documentation, accepted ADRs, a signed
 - Machine-readable dependency graph: `docs/planning/v1-issue-dependency-graph.json`.
 - Capability-to-ticket ledger: `docs/planning/v1-capability-traceability.md`.
 - UI page ownership/evidence: `docs/ui/v1-ui-parity-matrix.md`.
+- Retro and immediate frontier: `docs/implementation/m2-retro.md`, `docs/planning/m1-tracker-reconciliation.md` and `docs/planning/implementation-frontier.md`.
 
 M1/M2/M3 package parents are not single /implement tasks: #84–#89, #91, #93–#96 and #98–#103. Implement their bounded child issues first, then close each parent with integration evidence. #90, #97 and #104 are integration/release gates. The new leaf issues are mapped, not automatically ready or verified. Never infer readiness from labels alone.
 

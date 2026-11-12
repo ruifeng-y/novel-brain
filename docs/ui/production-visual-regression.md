@@ -78,3 +78,16 @@ CI must fail on a visual mismatch beyond tolerance or on any semantic/action/sta
 A page can become parity-verified only when all applicable page actions call real production API/Worker behavior, required states and recovery paths pass, four viewport tests pass, screenshot comparison passes, author-language scan passes and the author has signed off the initial production golden.
 
 An approved product deviation must update the prototype, docs/ui/prototype-contract.md, docs/ui/v1-ui-parity-matrix.md, screenshot baseline and sign-off record. A pixel-only update must never be used to silently approve a product redesign.
+
+## 7. Controlled Linux baseline recovery
+
+When a shared shell or multi-page component changes, use this sequence:
+
+1. Finish the source change and get `pnpm format:check` plus `pnpm check:pr` green locally.
+2. Push the exact source commit and dispatch `Production CI` with `update_golden=true`.
+3. Download the `playwright-evidence` artifact from that run. Do not use local Windows screenshots as the committed Linux baseline.
+4. Compare file hashes with `artifacts/ui/golden/` and copy only changed Golden files.
+5. Commit the Golden files separately with a Simplified Chinese Conventional Commit message.
+6. Push and wait for a normal pull-request `Production CI` run to pass before merging.
+
+If the artifact workflow fails after the Playwright job succeeds, preserve the artifact, fix only the non-visual gate and rerun normal CI. Do not regenerate visually identical files merely to change timestamps or metadata.

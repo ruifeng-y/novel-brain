@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at": "2026-11-04",
+  "updated_at": "2026-11-12",
   "repository": "ruifeng-y/novel-brain",
   "semantics": {
     "blocked_by": "Issue cannot start until each blocker is complete and integrated.",
@@ -457,7 +457,8 @@
       "type": "leaf",
       "blocked_by": [
         144,
-        74
+        74,
+        166
       ],
       "children": [],
       "parent": 85
@@ -466,7 +467,8 @@
       "type": "leaf",
       "blocked_by": [
         144,
-        74
+        74,
+        166
       ],
       "children": [],
       "parent": 85
@@ -475,7 +477,8 @@
       "type": "leaf",
       "blocked_by": [
         144,
-        74
+        74,
+        166
       ],
       "children": [],
       "parent": 85
@@ -607,7 +610,8 @@
         106,
         145,
         146,
-        117
+        117,
+        166
       ],
       "children": [],
       "parent": 89
@@ -885,9 +889,12 @@
       "type": "leaf",
       "blocked_by": [
         74,
-        143
+        143,
+        166
       ],
-      "children": [],
+      "children": [
+        166
+      ],
       "parent": 84
     },
     "145": {
@@ -918,9 +925,14 @@
       "blocked_by": [
         143,
         145,
-        76
+        76,
+        162,
+        165
       ],
-      "children": [],
+      "children": [
+        162,
+        165
+      ],
       "parent": 87
     },
     "148": {
@@ -933,7 +945,8 @@
         107,
         108,
         69,
-        75
+        75,
+        147
       ],
       "children": [],
       "parent": 87
@@ -976,6 +989,24 @@
       ],
       "children": [],
       "parent": 91
+    },
+    "162": {
+      "type": "leaf",
+      "blocked_by": [],
+      "children": [],
+      "parent": 147
+    },
+    "165": {
+      "type": "leaf",
+      "blocked_by": [],
+      "children": [],
+      "parent": 147
+    },
+    "166": {
+      "type": "leaf",
+      "blocked_by": [],
+      "children": [],
+      "parent": 144
     }
   }
 }
