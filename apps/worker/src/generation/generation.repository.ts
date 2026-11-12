@@ -35,6 +35,7 @@ import {
   jobs,
   modelCalls,
   modelConfigs,
+  notifications,
   promptVersions,
   qualityFindings,
   revisionPlans,
@@ -2640,17 +2641,56 @@ async function appendEvent(
     .select({ sequence: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
     .from(jobEvents)
     .where(eq(jobEvents.jobId, job.id));
+  const sequence = Number(latest?.sequence ?? 0) + 1;
   await transaction.insert(jobEvents).values({
     id: uuidv7(),
     jobId: job.id,
     workId: job.workId,
     branchId: job.branchId,
     userId: job.userId,
-    sequence: Number(latest?.sequence ?? 0) + 1,
+    sequence,
     eventType,
     payload,
     occurredAt: new Date(),
   });
+  if (
+    job.type === "generate_chapter" &&
+    job.parentJobId === null &&
+    (eventType === "job.waiting_review" || eventType === "job.failed")
+  ) {
+    const notification =
+      eventType === "job.waiting_review"
+        ? {
+            type: "review_required" as const,
+            title: "章节已生成，等待审核",
+            message: "新章节已完成生成，可进入写作台审核。",
+          }
+        : {
+            type: "job_failed" as const,
+            title: "章节生成失败",
+            message: "任务已停止，可从检查点重试。",
+          };
+    await transaction
+      .insert(notifications)
+      .values({
+        id: uuidv7(),
+        userId: job.userId,
+        workId: job.workId,
+        branchId: job.branchId,
+        type: notification.type,
+        targetType: "job",
+        targetId: job.id,
+        payload: {
+          title: notification.title,
+          message: notification.message,
+          href: `/workspace/${job.workId}/write`,
+        },
+        dedupeKey: `job:${job.id}:${eventType}:${sequence}`,
+        readAt: null,
+        createdAt: new Date(),
+      })
+      .onConflictDoNothing();
+  }
 }
 
 function countWords(content: string): number {

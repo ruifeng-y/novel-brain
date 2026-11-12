@@ -14,6 +14,7 @@ import { HealthModule } from "./health/health.module";
 import { ManuscriptImportModule } from "./imports/manuscript-import.module";
 import { SettingsImportModule } from "./imports/settings-import.module";
 import { ModelConfigModule } from "./model-config/model-config.module";
+import { NotificationModule } from "./notifications/notification.module";
 import { OutlineModule } from "./outline/outline.module";
 import { ReadinessModule } from "./readiness/readiness.module";
 import { ReviewModule } from "./review/review.module";
@@ -45,6 +46,7 @@ import { WritingActionModule } from "./writing-actions/writing-action.module";
     ManuscriptImportModule,
     SettingsImportModule,
     ModelConfigModule,
+    NotificationModule,
     OutlineModule,
     ReadinessModule,
     ReviewModule,

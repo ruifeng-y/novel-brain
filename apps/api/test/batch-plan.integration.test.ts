@@ -9,6 +9,7 @@ import {
   batchPlanResponseSchema,
   batchCostReportResponseSchema,
   chapterVersionSaveResponseSchema,
+  notificationListResponseSchema,
   type GenerateChapterJob,
   type GenerationJobStatus,
   type BatchPlanSummary,
@@ -697,6 +698,21 @@ describe("batch plan integration", () => {
         [plan.id],
       );
       expect(retriedChapter.rows[0]?.status).toBe("pending");
+
+      const firstFailureNotifications = notificationListResponseSchema.parse(
+        (await owner.get("/api/v1/notifications?limit=20").expect(200)).body,
+      );
+      expect(
+        firstFailureNotifications.data.filter((notification) => notification.type === "job_failed"),
+      ).toHaveLength(1);
+
+      await restarted.process(tickPayload(plan));
+      const retryFailureNotifications = notificationListResponseSchema.parse(
+        (await owner.get("/api/v1/notifications?limit=20").expect(200)).body,
+      );
+      expect(
+        retryFailureNotifications.data.filter((notification) => notification.type === "job_failed"),
+      ).toHaveLength(2);
     } finally {
       await restartedRepository.onModuleDestroy();
     }

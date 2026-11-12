@@ -1284,6 +1284,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/notifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations["NotificationController_list"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notificationId}/read": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations["NotificationController_markRead"];
+    trace?: never;
+  };
+  "/api/v1/notifications/read-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations["NotificationController_markAllRead"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/works/{workId}/branches/{branchId}/outline": {
     parameters: {
       query?: never;
@@ -3851,6 +3899,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -4178,6 +4227,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR"
                   | null;
@@ -9467,6 +9517,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -10018,6 +10069,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -10395,6 +10447,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -10773,6 +10826,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11151,6 +11205,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -11542,6 +11597,7 @@ export interface operations {
                     | "BATCH_REVIEW_CLAIM_CONFLICT"
                     | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                     | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                    | "NOTIFICATION_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -14886,6 +14942,148 @@ export interface operations {
               status: "success";
               latencyMs: number;
               message: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  NotificationController_list: {
+    parameters: {
+      query?: {
+        unreadOnly?: "true" | "false";
+        cursor?: string;
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Tenant-scoped notification list */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              userId: string;
+              workId: string | null;
+              branchId: string | null;
+              /** @enum {string} */
+              type:
+                | "job_completed"
+                | "job_failed"
+                | "review_required"
+                | "merge_completed"
+                | "merge_conflict";
+              /** @enum {string} */
+              targetType: "job" | "review" | "merge" | "work" | "branch";
+              targetId: string;
+              payload: {
+                title: string;
+                message: string;
+                href: string;
+              };
+              dedupeKey: string;
+              /** Format: date-time */
+              readAt: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            }[];
+            /** Format: starts_with */
+            requestId: string;
+            meta: {
+              nextCursor: string | null;
+              unreadCount: number;
+            };
+          };
+        };
+      };
+    };
+  };
+  NotificationController_markRead: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notificationId: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Read notification */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              id: string;
+              userId: string;
+              workId: string | null;
+              branchId: string | null;
+              /** @enum {string} */
+              type:
+                | "job_completed"
+                | "job_failed"
+                | "review_required"
+                | "merge_completed"
+                | "merge_conflict";
+              /** @enum {string} */
+              targetType: "job" | "review" | "merge" | "work" | "branch";
+              targetId: string;
+              payload: {
+                title: string;
+                message: string;
+                href: string;
+              };
+              dedupeKey: string;
+              /** Format: date-time */
+              readAt: string | null;
+              /** Format: date-time */
+              createdAt: string;
+            };
+            /** Format: starts_with */
+            requestId: string;
+            /** @default {} */
+            meta: {
+              [key: string]: unknown;
+            };
+          };
+        };
+      };
+    };
+  };
+  NotificationController_markAllRead: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Marked all notifications read */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            data: {
+              updated: number;
             };
             /** Format: starts_with */
             requestId: string;
@@ -28803,6 +29001,7 @@ export interface operations {
                     | "BATCH_REVIEW_CLAIM_CONFLICT"
                     | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                     | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                    | "NOTIFICATION_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;
@@ -29010,6 +29209,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -29193,6 +29393,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -39461,6 +39662,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40225,6 +40427,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -40766,6 +40969,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -41307,6 +41511,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -41848,6 +42053,7 @@ export interface operations {
                   | "BATCH_REVIEW_CLAIM_CONFLICT"
                   | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                   | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                  | "NOTIFICATION_NOT_FOUND"
                   | "FORBIDDEN_TENANT_ACCESS"
                   | "INTERNAL_ERROR";
                 message: string;
@@ -42402,6 +42608,7 @@ export interface operations {
                     | "BATCH_REVIEW_CLAIM_CONFLICT"
                     | "BATCH_REVIEW_IDEMPOTENCY_CONFLICT"
                     | "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW"
+                    | "NOTIFICATION_NOT_FOUND"
                     | "FORBIDDEN_TENANT_ACCESS"
                     | "INTERNAL_ERROR";
                   message: string;

@@ -2708,6 +2708,7 @@
                                     "BATCH_REVIEW_CLAIM_CONFLICT",
                                     "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                     "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                    "NOTIFICATION_NOT_FOUND",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -3504,6 +3505,7 @@
                                   "BATCH_REVIEW_CLAIM_CONFLICT",
                                   "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                   "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                  "NOTIFICATION_NOT_FOUND",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -19815,6 +19817,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -21338,6 +21341,7 @@
                                   "BATCH_REVIEW_CLAIM_CONFLICT",
                                   "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                   "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                  "NOTIFICATION_NOT_FOUND",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -22281,6 +22285,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -23216,6 +23221,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -24151,6 +24157,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -25135,6 +25142,7 @@
                                     "BATCH_REVIEW_CLAIM_CONFLICT",
                                     "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                     "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                    "NOTIFICATION_NOT_FOUND",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]
@@ -36058,6 +36066,359 @@
           }
         },
         "tags": ["model-configs"]
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "NotificationController_list",
+        "parameters": [
+          {
+            "name": "unreadOnly",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": ["true", "false"]
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tenant-scoped notification list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "userId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "workId": {
+                            "nullable": true,
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "branchId": {
+                            "nullable": true,
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "job_completed",
+                              "job_failed",
+                              "review_required",
+                              "merge_completed",
+                              "merge_conflict"
+                            ]
+                          },
+                          "targetType": {
+                            "type": "string",
+                            "enum": ["job", "review", "merge", "work", "branch"]
+                          },
+                          "targetId": {
+                            "type": "string",
+                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                          },
+                          "payload": {
+                            "type": "object",
+                            "properties": {
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "message": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              },
+                              "href": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 2000,
+                                "pattern": "^\\/(?!\\/)(?!.*(?:\\\\|%5c))[^\\s]*$"
+                              }
+                            },
+                            "required": ["title", "message", "href"],
+                            "additionalProperties": false
+                          },
+                          "dedupeKey": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "readAt": {
+                            "nullable": true,
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "userId",
+                          "workId",
+                          "branchId",
+                          "type",
+                          "targetType",
+                          "targetId",
+                          "payload",
+                          "dedupeKey",
+                          "readAt",
+                          "createdAt"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "unreadCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": ["nextCursor", "unreadCount"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["notifications"]
+      }
+    },
+    "/api/v1/notifications/{notificationId}/read": {
+      "patch": {
+        "operationId": "NotificationController_markRead",
+        "parameters": [
+          {
+            "name": "notificationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Read notification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "userId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "workId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "branchId": {
+                          "nullable": true,
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "job_completed",
+                            "job_failed",
+                            "review_required",
+                            "merge_completed",
+                            "merge_conflict"
+                          ]
+                        },
+                        "targetType": {
+                          "type": "string",
+                          "enum": ["job", "review", "merge", "work", "branch"]
+                        },
+                        "targetId": {
+                          "type": "string",
+                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                        },
+                        "payload": {
+                          "type": "object",
+                          "properties": {
+                            "title": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "message": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1000
+                            },
+                            "href": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2000,
+                              "pattern": "^\\/(?!\\/)(?!.*(?:\\\\|%5c))[^\\s]*$"
+                            }
+                          },
+                          "required": ["title", "message", "href"],
+                          "additionalProperties": false
+                        },
+                        "dedupeKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "readAt": {
+                          "nullable": true,
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "userId",
+                        "workId",
+                        "branchId",
+                        "type",
+                        "targetType",
+                        "targetId",
+                        "payload",
+                        "dedupeKey",
+                        "readAt",
+                        "createdAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["notifications"]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationController_markAllRead",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Marked all notifications read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "updated": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        }
+                      },
+                      "required": ["updated"],
+                      "additionalProperties": false
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "format": "starts_with",
+                      "pattern": "^req_.*"
+                    },
+                    "meta": {
+                      "default": {},
+                      "type": "object",
+                      "additionalProperties": {}
+                    }
+                  },
+                  "required": ["data", "requestId", "meta"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        },
+        "tags": ["notifications"]
       }
     },
     "/api/v1/works/{workId}/branches/{branchId}/outline": {
@@ -83529,6 +83890,7 @@
                                       "BATCH_REVIEW_CLAIM_CONFLICT",
                                       "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                       "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                      "NOTIFICATION_NOT_FOUND",
                                       "FORBIDDEN_TENANT_ACCESS",
                                       "INTERNAL_ERROR"
                                     ]
@@ -83894,6 +84256,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -84194,6 +84557,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -115105,6 +115469,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -116657,6 +117022,7 @@
                                   "BATCH_REVIEW_CLAIM_CONFLICT",
                                   "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                   "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                  "NOTIFICATION_NOT_FOUND",
                                   "FORBIDDEN_TENANT_ACCESS",
                                   "INTERNAL_ERROR"
                                 ]
@@ -118197,6 +118563,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -119729,6 +120096,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -121261,6 +121629,7 @@
                                 "BATCH_REVIEW_CLAIM_CONFLICT",
                                 "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                 "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                "NOTIFICATION_NOT_FOUND",
                                 "FORBIDDEN_TENANT_ACCESS",
                                 "INTERNAL_ERROR"
                               ]
@@ -122852,6 +123221,7 @@
                                     "BATCH_REVIEW_CLAIM_CONFLICT",
                                     "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
                                     "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+                                    "NOTIFICATION_NOT_FOUND",
                                     "FORBIDDEN_TENANT_ACCESS",
                                     "INTERNAL_ERROR"
                                   ]

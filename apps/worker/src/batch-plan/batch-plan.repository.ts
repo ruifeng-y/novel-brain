@@ -1251,7 +1251,7 @@ async function appendPlanEvent(
   eventType: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  await transaction.query(
+  const event = await transaction.query<{ sequence: number }>(
     `INSERT INTO job_events (
        id, job_id, work_id, branch_id, user_id, sequence, event_type, payload, occurred_at
      ) VALUES (
@@ -1259,7 +1259,8 @@ async function appendPlanEvent(
        COALESCE((SELECT max(sequence) FROM job_events WHERE job_id = $2), 0) + 1,
        $6, $7::jsonb, now()
      )
-     ON CONFLICT (job_id, sequence) DO NOTHING`,
+     ON CONFLICT (job_id, sequence) DO NOTHING
+     RETURNING sequence`,
     [
       uuidv7(),
       plan.id,
@@ -1268,6 +1269,63 @@ async function appendPlanEvent(
       plan.userId,
       eventType,
       JSON.stringify(payload),
+    ],
+  );
+  const sequence = event.rows[0]?.sequence;
+  if (sequence === undefined) {
+    return;
+  }
+  await appendPlanNotification(transaction, plan, eventType, sequence);
+}
+
+async function appendPlanNotification(
+  transaction: BatchTransaction,
+  plan: WorkerBatchPlanContext,
+  eventType: string,
+  sequence: number,
+): Promise<void> {
+  const notification =
+    eventType === "job.completed"
+      ? {
+          type: "job_completed",
+          title: "批量任务已完成",
+          message: "批量计划已完成，可查看结果和成本报告。",
+        }
+      : eventType === "job.failed"
+        ? {
+            type: "job_failed",
+            title: "批量任务执行失败",
+            message: "批量计划需要处理失败项后重试。",
+          }
+        : eventType === "job.waiting_review"
+          ? {
+              type: "review_required",
+              title: "批量任务等待审核",
+              message: "批量计划有新的章节或卷边界待审核。",
+            }
+          : null;
+  if (!notification) {
+    return;
+  }
+  await transaction.query(
+    `INSERT INTO notifications (
+       id, user_id, work_id, branch_id, type, target_type, target_id,
+       payload, dedupe_key, read_at, created_at
+     ) VALUES ($1, $2, $3, $4, $5, 'job', $6, $7::jsonb, $8, NULL, now())
+     ON CONFLICT (user_id, dedupe_key) DO NOTHING`,
+    [
+      uuidv7(),
+      plan.userId,
+      plan.workId,
+      plan.branchId,
+      notification.type,
+      plan.id,
+      JSON.stringify({
+        title: notification.title,
+        message: notification.message,
+        href: `/workspace/${plan.workId}/batch`,
+      }),
+      `job:${plan.id}:${eventType}:${sequence}`,
     ],
   );
 }

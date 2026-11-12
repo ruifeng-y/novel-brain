@@ -70,6 +70,7 @@
 | `JOB_` | 任务状态和检查点 |
 | `GEN_` | 生成和上下文编译 |
 | `BATCH_` | 批量计划、工作项和计划幂等 |
+| `NOTIFICATION_` | 站内通知读取和权限 |
 | `FACT_` | 事实决策和提交门禁 |
 | `CANON_` | 故事事实提交和版本节点 |
 | `IMPORT_` | 设定导入、旧稿导入和冲突 |
@@ -104,6 +105,7 @@ M0 关键错误：
 - `BATCH_REVIEW_CONTEXT_NOT_FOUND`
 - `BATCH_REVIEW_CLAIM_CONFLICT`
 - `BATCH_REVIEW_IDEMPOTENCY_CONFLICT`
+- `NOTIFICATION_NOT_FOUND`
 - `FACT_DECISION_REQUIRED`
 - `FACT_SUBMISSION_BLOCKED`
 - `CANON_CHAPTER_NOT_APPROVED`
@@ -215,6 +217,16 @@ M0 关键错误：
 | POST | `/api/v1/works/:workId/branches/:branchId/chapters/:chapterId/canon/commit` | 提交本章事实 |
 | GET | `/api/v1/works/:workId/branches/:branchId/canon/commits` | 提交记录 |
 
+### 5.8 站内通知
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/notifications` | 当前用户通知；支持 `unreadOnly`、`cursor`、`limit` |
+| PATCH | `/api/v1/notifications/:notificationId/read` | 标记当前用户的一条通知为已读 |
+| POST | `/api/v1/notifications/read-all` | 标记当前用户全部未读通知 |
+
+通知接口必须按当前用户隔离。写操作还须通过 Origin 和 CSRF 校验；跨用户通知统一返回 `NOTIFICATION_NOT_FOUND`，不得泄露目标是否存在。
+
 ## 6. M0 Resource Shapes
 
 以下是字段语义冻结；具体 Zod schema 在实现时落到 `packages/contracts`。
@@ -285,6 +297,16 @@ M0 关键错误：
 - 工作项 key 稳定：`book`、`volume:<nodeId>`、`chapter:<chapterId>`、`step:<chapterId>:<stepKey>`。
 - 计划创建不向队列投递数千个 job；只创建一条父任务记录和 `job_work_items` 工作项。执行、暂停、恢复、重试和失败隔离由 #152 组合 #110/#115 的原语实现。
 - 执行通过小载荷 `batch_tick` 每次领取一个章节并投递单章生成子任务；子任务完成后再触发下一次 tick。暂停/取消在步骤边界生效，审核状态保持 `waiting_review`，不自动批准。
+
+### Notification
+
+- `id`、`userId`、`workId`、`branchId`、`type`、`targetType`、`targetId`、`payload`、`dedupeKey`、`readAt`、`createdAt`。
+- `type`：`job_completed`、`job_failed`、`review_required`、`merge_completed`、`merge_conflict`。
+- `targetType`：`job`、`review`、`merge`、`work`、`branch`。
+- `payload`：作者可读的 `title`、`message` 和站内 `href`。
+- 列表按 `createdAt DESC, id DESC` 游标分页；`meta.unreadCount` 是当前用户全部未读数，不是当前页未读数。
+- `POST /notifications/read-all` 返回 `{ updated }`，表示本次实际从“未读”变为“已读”的数量。
+- 批量计划和独立单章生成事件通知都在同一数据库事务内写入，去重键包含任务、事件类型和事件序号；重试后的新事件可以产生新通知，批量子任务不重复通知。
 
 ### ContextPack
 
@@ -357,6 +379,7 @@ M0 至少需要：
 - `import_candidates`
 - `import_conflicts`
 - `import_reports`
+- `notifications`
 
 所有作品域表必须有 `work_id` 和 `user_id`（或可通过 work 可靠推导的租户键）；数据库启用 RLS，并至少有一个跨用户访问测试。
 

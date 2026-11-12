@@ -125,6 +125,7 @@ export const ERROR_CODES = [
   "BATCH_REVIEW_CLAIM_CONFLICT",
   "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
   "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
+  "NOTIFICATION_NOT_FOUND",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -6000,6 +6001,72 @@ export const batchCostReportSchema = z
   .strict();
 export type BatchCostReport = z.infer<typeof batchCostReportSchema>;
 export const batchCostReportResponseSchema = apiEnvelopeSchema(batchCostReportSchema);
+
+export const notificationTypeSchema = z.enum([
+  "job_completed",
+  "job_failed",
+  "review_required",
+  "merge_completed",
+  "merge_conflict",
+]);
+export type NotificationType = z.infer<typeof notificationTypeSchema>;
+
+export const notificationTargetTypeSchema = z.enum(["job", "review", "merge", "work", "branch"]);
+export type NotificationTargetType = z.infer<typeof notificationTargetTypeSchema>;
+
+export const notificationPayloadSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    message: z.string().trim().min(1).max(1_000),
+    href: z
+      .string()
+      .trim()
+      .min(1)
+      .max(2_000)
+      .regex(/^\/(?!\/)(?!.*(?:\\|%5c))[^\s]*$/iu, "Expected an internal path"),
+  })
+  .strict();
+export type NotificationPayload = z.infer<typeof notificationPayloadSchema>;
+
+export const notificationSchema = z
+  .object({
+    id: uuidV7Schema,
+    userId: uuidV7Schema,
+    workId: uuidV7Schema.nullable(),
+    branchId: uuidV7Schema.nullable(),
+    type: notificationTypeSchema,
+    targetType: notificationTargetTypeSchema,
+    targetId: uuidV7Schema,
+    payload: notificationPayloadSchema,
+    dedupeKey: z.string().trim().min(1).max(200),
+    readAt: z.string().datetime().nullable(),
+    createdAt: z.string().datetime(),
+  })
+  .strict();
+export type Notification = z.infer<typeof notificationSchema>;
+
+export const notificationListQuerySchema = cursorPageQuerySchema
+  .extend({
+    unreadOnly: z
+      .enum(["true", "false"])
+      .transform((value) => value === "true")
+      .optional(),
+  })
+  .strict();
+export type NotificationListQuery = z.infer<typeof notificationListQuerySchema>;
+
+export const notificationListResponseSchema = z.object({
+  data: z.array(notificationSchema),
+  requestId: z.string().startsWith("req_"),
+  meta: z.object({
+    nextCursor: uuidV7Schema.nullable(),
+    unreadCount: z.number().int().nonnegative(),
+  }),
+});
+export const notificationReadResponseSchema = apiEnvelopeSchema(notificationSchema);
+export const notificationReadAllResponseSchema = apiEnvelopeSchema(
+  z.object({ updated: z.number().int().nonnegative() }).strict(),
+);
 
 export const batchReviewTargetTypeSchema = z.enum(["chapter", "volume"]);
 export type BatchReviewTargetType = z.infer<typeof batchReviewTargetTypeSchema>;

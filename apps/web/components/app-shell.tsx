@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
 import { subscribeWorkContextRefresh } from "../lib/work-context-events";
 import { branchLabel, isWorkReadonly, readonlyScopeLabel } from "../lib/work-presentation";
+import { NotificationCenter } from "./notification-center";
 
 const navigation = [
   { href: "/workspace", label: "工作台", icon: LayoutDashboard },
@@ -259,7 +260,10 @@ export function AppShell({
             <span aria-hidden="true">/</span>
             <strong>{current}</strong>
           </div>
-          <div className="topbar-note">NovelBrain</div>
+          <div className="topbar-actions">
+            <NotificationCenter enabled={Boolean(user)} />
+            <div className="topbar-note">NovelBrain</div>
+          </div>
         </header>
 
         {showWorkContext && activeWork ? (

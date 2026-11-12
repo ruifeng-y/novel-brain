@@ -84,6 +84,8 @@ In the columns below, the prototype screenshot path and production test/golden p
 > 2026-11-07：writing 右侧信息区已按原型改为 9 个 tab（编辑建议 / 本章参考 / 连续性 / 伏笔 / 事实 / 人物 / 质量 / 生成 / 版本），所有 tab 仍消费真实 API；伏笔和人物 tab 新增读取 `/ledger`、`/entities`。左侧卷导航/搜索和顶部题材规则条已补齐；原型题材切换按钮属于演示内容，不进入生产。编辑建议 tab 复用真实质量/修订面板，当前生产布局已由作者完成视觉签收，自动化 Golden 比较由 #174 补齐。
 >
 > #90 在 work-overview 增加真实卷末审计：选择卷、运行审计、定位章节/账本证据、记录作者通过或要求修改。`apps/web/e2e/parity/m1-closeout.spec.ts` 对 bible/settings/entity-detail/outline/foreshadows/writing/work-overview/account-settings 做四档视口、作者语言和溢出检查。作者视觉签收已记录；#172、#174、#176 与 #177 已补齐八个 M1 页面的自动 Golden 和必需状态证据。
+>
+> 2026-11-12：#97 完成站内通知数据、API、Worker 事件写入和 AppShell 右侧通知抽屉。`apps/web/e2e/parity/notifications.spec.ts` 使用真实数据库/API 覆盖未读数、单条已读、全部已读和 390/900/1180/1440 四档空态；Batch 四档候选图位于 `artifacts/ui/candidates/m2-97-batch/`。通知入口不替代 batch、changes、dashboard 或 work-overview 的页面 Golden；相关正式 Golden 和作者视觉签收仍未完成。
 
 ## 4. UI issue ownership rules
 

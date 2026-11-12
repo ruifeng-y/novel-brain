@@ -33,6 +33,7 @@
 | --- | --- | --- |
 | 壳层/侧栏 | `.sidebar`、`.app-shell` | 固定品牌、导航分组、当前作品/分支、用户卡 |
 | 顶栏/面包屑 | `.topbar`、`.crumbs` | 搜索、通知、账号菜单、当前作品/分支 |
+| 站内通知抽屉 | `.notification-drawer`、`.notification-item`、`.notification-foot` | 顶栏铃铛打开右侧抽屉；未读计数、加载/空/错误、单条已读、全部已读 |
 | 按钮/图标按钮 | `.btn`、`.icon-btn` | primary/ghost/danger/disabled/loading |
 | 面板/卡片 | `.panel`、`.project-card`、`.stat-card` | 统一边框、圆角、间距、空态 |
 | 表格/列表 | `.fact-table`、`.chapter-list`、`.review-item` | 长列表分页/虚拟化、空态、错误态 |

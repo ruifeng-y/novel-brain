@@ -2919,6 +2919,39 @@ export const jobEvents = pgTable(
   ],
 );
 
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: uuid("id").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    workId: uuid("work_id").references(() => works.id, { onDelete: "cascade" }),
+    branchId: uuid("branch_id").references(() => workBranches.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    payload: jsonb("payload").$type<{ title: string; message: string; href: string }>().notNull(),
+    dedupeKey: text("dedupe_key").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("notifications_user_dedupe_unique").on(table.userId, table.dedupeKey),
+    index("notifications_user_created_idx").on(table.userId, table.createdAt),
+    index("notifications_user_unread_idx").on(table.userId, table.readAt, table.createdAt),
+    check(
+      "notifications_type_check",
+      sql`${table.type} in ('job_completed', 'job_failed', 'review_required', 'merge_completed', 'merge_conflict')`,
+    ),
+    check(
+      "notifications_target_type_check",
+      sql`${table.targetType} in ('job', 'review', 'merge', 'work', 'branch')`,
+    ),
+    check("notifications_dedupe_key_check", sql`length(${table.dedupeKey}) between 1 and 200`),
+  ],
+);
+
 export const contextPackVersions = pgTable(
   "context_pack_versions",
   {
