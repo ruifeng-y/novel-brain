@@ -5,6 +5,7 @@ import {
   type CustomFieldDefinitionCreateRequest,
   type CustomFieldDefinitionPatchRequest,
   type CustomFieldValue,
+  settingEntityPatchRequestSchema,
   settingEntityTypeSchema,
   settingEntityVersionSnapshotSummarySchema,
   settingStatusSchema,
@@ -38,7 +39,7 @@ import { ApiError } from "../common/api-error";
 import { invalidCursorError, type CursorPageResult } from "../common/cursor-page";
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-import { SettingsRepository } from "./settings.repository";
+import { isSettingDomainDataAllowed, SettingsRepository } from "./settings.repository";
 import type {
   CustomFieldDefinitionRecord,
   SettingProposalRecord,
@@ -198,7 +199,7 @@ export class SettingsService {
     workId: string,
     branchId: string,
     entityId: string,
-    input: SettingEntityPatchRequest,
+    input: unknown,
     audit: SettingsAuditContext,
   ): Promise<SettingEntity> {
     const context = await this.requireWorkContext(userId, workId, branchId);
@@ -209,20 +210,17 @@ export class SettingsService {
     if (current.status === "locked") {
       throw new ApiError(409, "SETTING_LOCKED", "设定已锁定，不能直接编辑或修改别名");
     }
-    if (input.data !== undefined && current.type !== "world_rule") {
-      throw new ApiError(
-        400,
-        "SETTING_DOMAIN_DATA_FORBIDDEN",
-        "该设定类型必须通过专用接口编辑领域数据",
-      );
+    if (!isSettingDomainDataAllowed(current.type, settingDataField(input))) {
+      throw settingDomainDataForbidden();
     }
-    if (current.version !== input.version) {
+    const parsedInput = settingEntityPatchRequestSchema.parse(input);
+    if (current.version !== parsedInput.version) {
       throw new ApiError(409, "VERSION_CONFLICT", "设定已被其他操作更新，请刷新后重试");
     }
-    if (input.data !== undefined) {
-      requireWorldRuleData(input.data);
+    if (parsedInput.data !== undefined) {
+      requireWorldRuleData(parsedInput.data);
     }
-    const updated = await this.repository.update(userId, context, entityId, input, audit);
+    const updated = await this.repository.update(userId, context, entityId, parsedInput, audit);
     if (updated === "not_found") {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "设定不存在或无权访问");
     }
@@ -823,6 +821,21 @@ function requireWorldRuleData(data: SettingEntityPatchRequest["data"]): void {
   }
 }
 
+function settingDataField(input: unknown): unknown {
+  if (typeof input !== "object" || input === null || !("data" in input)) {
+    return undefined;
+  }
+  return (input as { data?: unknown }).data;
+}
+
+function settingDomainDataForbidden(): ApiError {
+  return new ApiError(
+    400,
+    "SETTING_DOMAIN_DATA_FORBIDDEN",
+    "该设定类型必须通过专用接口编辑领域数据",
+  );
+}
+
 function isSettingWriteViolation(
   value: Awaited<ReturnType<SettingsRepository["create"]>> | object,
 ): value is SettingWriteViolation {
@@ -839,6 +852,9 @@ function settingConflict(conflict: SettingWriteViolation): ApiError {
     return new ApiError(400, "CUSTOM_FIELD_INVALID", conflict.message, {
       fieldKey: conflict.fieldKey,
     });
+  }
+  if (conflict.kind === "domain_data_forbidden") {
+    return settingDomainDataForbidden();
   }
   if (conflict.kind === "name_conflict") {
     return new ApiError(409, "SETTING_NAME_CONFLICT", "同一栏目已有同名设定，请使用别名区分", {

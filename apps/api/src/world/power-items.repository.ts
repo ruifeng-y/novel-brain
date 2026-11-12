@@ -2339,6 +2339,64 @@ async function appendSnapshotAtVersion(
       };
     }
   }
+  if (entity.type === "golden_finger") {
+    const [mechanism] = await transaction
+      .select()
+      .from(specialMechanisms)
+      .where(
+        and(
+          eq(specialMechanisms.entityId, entity.id),
+          eq(specialMechanisms.userId, userId),
+          eq(specialMechanisms.workId, context.workId),
+          eq(specialMechanisms.branchId, context.branchId),
+        ),
+      )
+      .limit(1);
+    if (mechanism) {
+      snapshot.domain = {
+        mechanismType: mechanism.mechanismType,
+        ownerType: mechanism.ownerType,
+        ownerId: mechanism.ownerId,
+        ownerLabel: mechanism.ownerLabel,
+        powerSystemId: mechanism.powerSystemId,
+        rules: mechanism.rules,
+        costs: mechanism.costs,
+        limits: mechanism.limits,
+        growth: mechanism.growth,
+      };
+    }
+  }
+  if (entity.type === "item") {
+    const [item] = await transaction
+      .select()
+      .from(itemTechniques)
+      .where(
+        and(
+          eq(itemTechniques.entityId, entity.id),
+          eq(itemTechniques.userId, userId),
+          eq(itemTechniques.workId, context.workId),
+          eq(itemTechniques.branchId, context.branchId),
+        ),
+      )
+      .limit(1);
+    if (item) {
+      snapshot.domain = {
+        kind: item.kind,
+        category: item.category,
+        grade: item.grade,
+        effect: item.effect,
+        cost: item.cost,
+        limits: item.limits,
+        ownershipModel: item.ownershipModel,
+        consumable: item.consumable,
+        quantity: item.quantity,
+        equipmentSlot: item.equipmentSlot,
+        equippedByType: item.equippedByType,
+        equippedById: item.equippedById,
+        equippedByLabel: item.equippedByLabel,
+      };
+    }
+  }
   await transaction
     .update(versionNodes)
     .set({ snapshotId: entityVersionId, objectVersion: entity.version })

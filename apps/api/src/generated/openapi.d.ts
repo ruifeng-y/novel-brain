@@ -22386,51 +22386,9 @@ export interface operations {
           customFields?: {
             [key: string]: unknown;
           };
-          data?:
-            | {
-                rule?: string;
-              }
-            | {
-                bodyState?: string;
-                knowledgeBoundary?: string;
-                relationshipSummary?: string;
-              }
-            | {
-                details?: string;
-              }
-            | {
-                details?: string;
-              }
-            | {
-                details?: string;
-              }
-            | {
-                rules?: string;
-                cost?: string;
-                limits?: string;
-                growth?: string;
-              }
-            | {
-                category?: string;
-                /** @default  */
-                grade?: string;
-                effect?: string;
-                /** @default  */
-                cost?: string;
-                /** @default  */
-                ownership?: string;
-                /** @default  */
-                limits?: string;
-              }
-            | {
-                /** @default  */
-                era?: string;
-                storyTime?: string;
-                storySortKey?: number;
-                /** @default  */
-                duration?: string;
-                event?: string;
-              };
+          data?: {
+            rule?: string;
+          };
         };
       };
     };
