@@ -13,6 +13,7 @@ import type {
   GoldenThreeCandidateBatchRequest,
   GoldenThreeChapterPinInput,
   GoldenThreeContinuationRequest,
+  GoldenThreeContinuationStyleSource,
   GoldenThreeGateBlockerCode,
   GoldenThreeGenerateRequest,
   GoldenThreeLockRequest,
@@ -22,6 +23,7 @@ import type {
   GoldenThreeSelectionRequest,
   GoldenThreeWorkspace,
 } from "@novel-brain/contracts";
+import { goldenThreeContinuationStyleSourceSchema } from "@novel-brain/contracts";
 import {
   auditLogs,
   agentRuns,
@@ -1319,6 +1321,38 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           message: "黄金三章续写必须登记第 2、3 章",
         };
       }
+      const [selectionNode] = await transaction
+        .select({ id: versionNodes.id })
+        .from(versionNodes)
+        .where(
+          and(
+            eq(versionNodes.userId, userId),
+            eq(versionNodes.workId, context.workId),
+            eq(versionNodes.branchId, context.branchId),
+            eq(versionNodes.objectType, "golden_three_candidate"),
+            eq(versionNodes.objectId, candidate.id),
+            sql`${versionNodes.payload}->>'action' = 'golden_three.candidate_selected'`,
+          ),
+        )
+        .orderBy(desc(versionNodes.createdAt))
+        .limit(1);
+      const sourcePin = candidate.chapterPins[0];
+      if (!selectionNode || !sourcePin) {
+        return { kind: "selection_required" };
+      }
+      const styleSource: GoldenThreeContinuationStyleSource = {
+        candidateId: candidate.id,
+        selectionVersionNodeId: selectionNode.id,
+        strategy: candidate.strategy as GoldenThreeStrategy,
+        candidateLabel: candidate.label,
+        chapterId: sourcePin.chapterId,
+        chapterNumber: sourcePin.chapterNumber,
+        chapterVersionId: sourcePin.chapterVersionId,
+        chapterVersionNodeId: sourcePin.versionNodeId,
+        chapterTitle: sourcePin.chapterTitle,
+        contentHash: sourcePin.contentHash,
+        excerpt: sourcePin.content.slice(0, 600),
+      };
 
       const now = new Date();
       const headNodeId = await requireBranchHead(transaction, userId, context);
@@ -1337,6 +1371,7 @@ export class GoldenThreeRepository implements OnModuleDestroy {
           action: "golden_three.continuation_recorded",
           candidateId: candidate.id,
           pins,
+          styleSource,
         },
         actorId: userId,
         message: "登记黄金三章第 2、3 章续写",
@@ -1633,11 +1668,24 @@ async function readLatestContinuations(
   context: GoldenThreeContext,
   candidateIds: string[],
 ): Promise<
-  Map<string, { versionNodeId: string; pins: GoldenThreeChapterPinJson[]; createdAt: string }>
+  Map<
+    string,
+    {
+      versionNodeId: string;
+      pins: GoldenThreeChapterPinJson[];
+      styleSource: GoldenThreeContinuationStyleSource;
+      createdAt: string;
+    }
+  >
 > {
   const continuations = new Map<
     string,
-    { versionNodeId: string; pins: GoldenThreeChapterPinJson[]; createdAt: string }
+    {
+      versionNodeId: string;
+      pins: GoldenThreeChapterPinJson[];
+      styleSource: GoldenThreeContinuationStyleSource;
+      createdAt: string;
+    }
   >();
   if (candidateIds.length === 0) {
     return continuations;
@@ -1672,9 +1720,16 @@ async function readLatestContinuations(
     ) {
       continue;
     }
+    const styleSource = goldenThreeContinuationStyleSourceSchema.safeParse(
+      (payload as { styleSource?: unknown }).styleSource,
+    );
+    if (!styleSource.success) {
+      continue;
+    }
     continuations.set(row.objectId, {
       versionNodeId: row.id,
       pins: (payload as { pins: GoldenThreeChapterPinJson[] }).pins,
+      styleSource: styleSource.data,
       createdAt: row.createdAt.toISOString(),
     });
   }

@@ -166,6 +166,19 @@ describe("golden three contracts", () => {
           continuation: {
             versionNodeId: nodeIds[0]!,
             pins: [pinnedChapter(1), pinnedChapter(2)],
+            styleSource: {
+              candidateId: candidateAId,
+              selectionVersionNodeId: nodeIds[1]!,
+              strategy: "hook_focus",
+              candidateLabel: "候选 A · 钩子优先",
+              chapterId: chapterIds[0]!,
+              chapterNumber: 1,
+              chapterVersionId: versionIds[0]!,
+              chapterVersionNodeId: nodeIds[0]!,
+              chapterTitle: "断碑夜雨",
+              contentHash: "a".repeat(64),
+              excerpt: "残剑割掌，血逆流上碑。",
+            },
             createdAt: "2026-11-06T08:02:00.000Z",
           },
           trace: null,
@@ -224,5 +237,21 @@ describe("golden three contracts", () => {
       },
     });
     expect(workspace.gate.canLock).toBe(true);
+    expect(() =>
+      goldenThreeWorkspaceSchema.parse({
+        ...workspace,
+        candidates: workspace.candidates.map((candidate) =>
+          candidate.id === candidateAId && candidate.continuation
+            ? {
+                ...candidate,
+                continuation: {
+                  ...candidate.continuation,
+                  styleSource: undefined,
+                },
+              }
+            : candidate,
+        ),
+      }),
+    ).toThrow();
   });
 });
