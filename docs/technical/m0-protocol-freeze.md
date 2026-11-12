@@ -69,6 +69,8 @@
 | `BIBLE_` / `SETTING_` | 故事圣经和最小设定 |
 | `JOB_` | 任务状态和检查点 |
 | `GEN_` | 生成和上下文编译 |
+| `BATCH_` | 批量计划、工作项和计划幂等 |
+| `NOTIFICATION_` | 站内通知读取和权限 |
 | `FACT_` | 事实决策和提交门禁 |
 | `CANON_` | 故事事实提交和版本节点 |
 | `IMPORT_` | 设定导入、旧稿导入和冲突 |
@@ -96,6 +98,14 @@ M0 关键错误：
 - `BIBLE_NOT_LOCKED`
 - `JOB_BUDGET_EXCEEDED`
 - `JOB_CANCELLED`
+- `BATCH_PLAN_NOT_FOUND`
+- `BATCH_PLAN_INVALID`
+- `BATCH_PLAN_OUTLINE_INCOMPLETE`
+- `BATCH_PLAN_IDEMPOTENCY_CONFLICT`
+- `BATCH_REVIEW_CONTEXT_NOT_FOUND`
+- `BATCH_REVIEW_CLAIM_CONFLICT`
+- `BATCH_REVIEW_IDEMPOTENCY_CONFLICT`
+- `NOTIFICATION_NOT_FOUND`
 - `FACT_DECISION_REQUIRED`
 - `FACT_SUBMISSION_BLOCKED`
 - `CANON_CHAPTER_NOT_APPROVED`
@@ -182,6 +192,19 @@ M0 关键错误：
 | GET | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId` | 任务状态和检查点 |
 | GET | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId/events` | SSE 事件 |
 | POST | `/api/v1/works/:workId/branches/:branchId/jobs/:jobId/cancel` | 取消任务 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans` | 幂等创建按章/卷/区间/全本批量计划 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans` | 按状态分页发现批量计划 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId` | 批量计划摘要、计数和调度策略 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/items` | 分页检查工作项，不返回章节正文 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/start` | 开始或幂等重放批量执行 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/pause` | 在当前步骤结束后暂停 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/resume` | 从暂停工作项和子任务检查点恢复 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/cancel` | 取消剩余工作，保留已完成/待审核章节 |
+| POST | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/retry` | 从失败步骤重试失败章节 |
+| GET | `/api/v1/works/:workId/branches/:branchId/review-queue` | 分页读取章节/卷审核队列 |
+| POST | `/api/v1/works/:workId/branches/:branchId/review-queue/claim` | 领取一个或一批审核项 |
+| POST | `/api/v1/works/:workId/branches/:branchId/review-queue/decisions` | 幂等提交逐项批准/驳回并返回部分失败 |
+| GET | `/api/v1/works/:workId/branches/:branchId/batch-plans/:planId/cost-report` | 按卷/章/模型/日期聚合成本、吞吐和硬停报告 |
 
 ### 5.7 审核、事实与故事事实提交
 
@@ -193,6 +216,16 @@ M0 关键错误：
 | POST | `/api/v1/works/:workId/branches/:branchId/chapters/:chapterId/review` | 批准或驳回章节 |
 | POST | `/api/v1/works/:workId/branches/:branchId/chapters/:chapterId/canon/commit` | 提交本章事实 |
 | GET | `/api/v1/works/:workId/branches/:branchId/canon/commits` | 提交记录 |
+
+### 5.8 站内通知
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/v1/notifications` | 当前用户通知；支持 `unreadOnly`、`cursor`、`limit` |
+| PATCH | `/api/v1/notifications/:notificationId/read` | 标记当前用户的一条通知为已读 |
+| POST | `/api/v1/notifications/read-all` | 标记当前用户全部未读通知 |
+
+通知接口必须按当前用户隔离。写操作还须通过 Origin 和 CSRF 校验；跨用户通知统一返回 `NOTIFICATION_NOT_FOUND`，不得泄露目标是否存在。
 
 ## 6. M0 Resource Shapes
 
@@ -252,6 +285,28 @@ M0 关键错误：
 
 - `id`、`type`、`workId`、`branchId`、`chapterId`、`status`、`progress`、`currentStep`、`checkpoint`、`cost`、`errorCode`、`createdAt`、`startedAt`、`finishedAt`。
 - Job status：`queued`、`preparing`、`running`、`paused`、`waiting_review`、`completed`、`failed`、`cancelled`。
+
+### BatchPlan / WorkItem
+
+- `BatchPlan`：`id`、`jobId`、`workId`、`branchId`、`userId`、`status`、`scope`、`approvalMode`、`priorityClass`、`idempotencyKey`、`counts`、`scheduling`、`createdAt`、`updatedAt`。
+- `scope`：`chapter`（章节 ID 列表）、`volume`（卷节点 ID 列表）、`range`（连续章节号）、`book`。
+- `counts`：按 `book` / `volume` / `chapter` / `step` 和 `pending` / `ready` / `running` / `paused` / `waiting_review` / `succeeded` / `failed` / `skipped` / `cancelled` 聚合。
+- `scheduling.caps` 固定为 `global=4`、`perWork=2`、`perUser=2`；`effectivePerWork` 是请求并发被策略上限裁剪后的值。
+- `WorkItem`：`id`、`planId`、`workId`、`branchId`、`userId`、`key`、`type`、`parentKey`、`chapterId`、`outlineNodeId`、`status`、`attempt`、`priority`、`priorityClass`、`sortOrder`、`inputVersion`、`dependsOn`、`outputRefs`、`errorCode`、`errorMessage`。
+- `WorkItem.status`：`pending`、`ready`、`running`、`paused`、`waiting_review`、`succeeded`、`failed`、`skipped`、`cancelled`。
+- 工作项 key 稳定：`book`、`volume:<nodeId>`、`chapter:<chapterId>`、`step:<chapterId>:<stepKey>`。
+- 计划创建不向队列投递数千个 job；只创建一条父任务记录和 `job_work_items` 工作项。执行、暂停、恢复、重试和失败隔离由 #152 组合 #110/#115 的原语实现。
+- 执行通过小载荷 `batch_tick` 每次领取一个章节并投递单章生成子任务；子任务完成后再触发下一次 tick。暂停/取消在步骤边界生效，审核状态保持 `waiting_review`，不自动批准。
+
+### Notification
+
+- `id`、`userId`、`workId`、`branchId`、`type`、`targetType`、`targetId`、`payload`、`dedupeKey`、`readAt`、`createdAt`。
+- `type`：`job_completed`、`job_failed`、`review_required`、`merge_completed`、`merge_conflict`。
+- `targetType`：`job`、`review`、`merge`、`work`、`branch`。
+- `payload`：作者可读的 `title`、`message` 和站内 `href`。
+- 列表按 `createdAt DESC, id DESC` 游标分页；`meta.unreadCount` 是当前用户全部未读数，不是当前页未读数。
+- `POST /notifications/read-all` 返回 `{ updated }`，表示本次实际从“未读”变为“已读”的数量。
+- 批量计划和独立单章生成事件通知都在同一数据库事务内写入，去重键包含任务、事件类型和事件序号；重试后的新事件可以产生新通知，批量子任务不重复通知。
 
 ### ContextPack
 
@@ -324,6 +379,7 @@ M0 至少需要：
 - `import_candidates`
 - `import_conflicts`
 - `import_reports`
+- `notifications`
 
 所有作品域表必须有 `work_id` 和 `user_id`（或可通过 work 可靠推导的租户键）；数据库启用 RLS，并至少有一个跨用户访问测试。
 

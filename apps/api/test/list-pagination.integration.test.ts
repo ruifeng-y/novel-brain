@@ -45,7 +45,10 @@ describe("GET list cursor pagination HTTP integration", () => {
     process.env.ALLOW_INSECURE_LOCAL_MODEL_KEY = "true";
 
     await runMigrations(databaseUrl);
-    databasePool = createDatabasePool(databaseUrl);
+    databasePool = createDatabasePool(databaseUrl, {
+      query_timeout: 30_000,
+      statement_timeout: 30_000,
+    });
     redis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
