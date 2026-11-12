@@ -61,7 +61,8 @@
 ## 6. 视觉与边界
 
 - settings/bible 新增 pack 版本栏和历史题材故事圣经后，旧 production golden 不再代表当前布局。
-- 作者已确认 `artifacts/ui/candidates/m2-92/` 的 settings/bible 四档候选截图；正式 Linux/CI golden 已生成，settings 4 张更新，bible 4 张保持当前正式基线。
-- entity-detail 仍为 `production-built`，其题材化层级文案等待单独视觉签收。
+- 作者已确认 `artifacts/ui/candidates/m2-92/` 的四档视觉签收，覆盖 new-project、settings、bible 与 entity-detail 的题材化变化。
+- 正式 Golden 已按当前生产渲染更新：settings、bible、entity-detail 各 4 张；new-project 现有正式基线经四档回归继续有效。
+- 四个页面均通过真实路由、作者语言、无横向溢出和 `toHaveScreenshot` 检查，状态提升为 `parity-verified`。
 - 不实现题材包后台编辑器；题材包版本由受控迁移发布。
 - 不实现自动整库字段重写；版本切换只更新作品 pack 引用和默认字段快照，作者设定与历史版本保持不变。

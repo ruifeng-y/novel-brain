@@ -93,7 +93,13 @@ Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者�
 
 正式 Linux/CI Golden 由 [Production CI #43024840541](https://github.com/ruifeng-y/novel-brain/actions/runs/43024840541) 的 `update_golden` 任务生成并上传 `playwright-evidence` artifact。`settings` 的 4 张正式 Golden 已更新；`bible` 的 4 张经当前回归确认保持既有正式基线。最终正常 PR CI 通过后，`bible` 与 `settings` 进入 `parity-verified`。
 
-本次签收只覆盖 #92 引起的 `settings`/`bible` 视觉变化，不扩张到 `entity-detail`、`new-project` 或其他 M2 页面。
+该记录最初只覆盖 `settings`/`bible`；2026-11-12 的后续签收将范围扩展到 `new-project` 与 `entity-detail`，其他 M2 页面仍不在本次范围。
+
+## 2026-11-12 M2 Genre Pack 四页正式 Golden 签收
+
+签收人：ruifeng-y。作者确认 `artifacts/ui/candidates/m2-92/` 的四档视觉签收覆盖 new-project、settings、bible 与 entity-detail 的题材化变化。
+
+settings、bible、entity-detail 的 12 张正式 Golden 已按当前生产渲染更新；new-project 的现有正式 Golden 经四档回归继续有效。`new-project.spec.ts`、`settings.spec.ts`、`bible.spec.ts`、`entity-detail.spec.ts` 均使用真实生产路由和确定性数据，覆盖 390 / 900 / 1180 / 1440、作者语言、无横向溢出及 `toHaveScreenshot`。最终 PR CI 通过后四页保持 `parity-verified`。
 
 ## 变更规则
 
