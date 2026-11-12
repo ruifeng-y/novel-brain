@@ -12939,6 +12939,20 @@ export interface operations {
                     wordCount: number;
                     content: string;
                   }[];
+                  styleSource: {
+                    candidateId: string;
+                    selectionVersionNodeId: string;
+                    /** @enum {string} */
+                    strategy: "hook_focus" | "character_focus" | "world_focus";
+                    candidateLabel: string;
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterVersionId: string;
+                    chapterVersionNodeId: string;
+                    chapterTitle: string;
+                    contentHash: string;
+                    excerpt: string;
+                  };
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
@@ -13191,6 +13205,20 @@ export interface operations {
                     wordCount: number;
                     content: string;
                   }[];
+                  styleSource: {
+                    candidateId: string;
+                    selectionVersionNodeId: string;
+                    /** @enum {string} */
+                    strategy: "hook_focus" | "character_focus" | "world_focus";
+                    candidateLabel: string;
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterVersionId: string;
+                    chapterVersionNodeId: string;
+                    chapterTitle: string;
+                    contentHash: string;
+                    excerpt: string;
+                  };
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
@@ -13421,6 +13449,20 @@ export interface operations {
                     wordCount: number;
                     content: string;
                   }[];
+                  styleSource: {
+                    candidateId: string;
+                    selectionVersionNodeId: string;
+                    /** @enum {string} */
+                    strategy: "hook_focus" | "character_focus" | "world_focus";
+                    candidateLabel: string;
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterVersionId: string;
+                    chapterVersionNodeId: string;
+                    chapterTitle: string;
+                    contentHash: string;
+                    excerpt: string;
+                  };
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
@@ -13668,6 +13710,20 @@ export interface operations {
                     wordCount: number;
                     content: string;
                   }[];
+                  styleSource: {
+                    candidateId: string;
+                    selectionVersionNodeId: string;
+                    /** @enum {string} */
+                    strategy: "hook_focus" | "character_focus" | "world_focus";
+                    candidateLabel: string;
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterVersionId: string;
+                    chapterVersionNodeId: string;
+                    chapterTitle: string;
+                    contentHash: string;
+                    excerpt: string;
+                  };
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
@@ -13896,6 +13952,20 @@ export interface operations {
                     wordCount: number;
                     content: string;
                   }[];
+                  styleSource: {
+                    candidateId: string;
+                    selectionVersionNodeId: string;
+                    /** @enum {string} */
+                    strategy: "hook_focus" | "character_focus" | "world_focus";
+                    candidateLabel: string;
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterVersionId: string;
+                    chapterVersionNodeId: string;
+                    chapterTitle: string;
+                    contentHash: string;
+                    excerpt: string;
+                  };
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
@@ -14129,6 +14199,20 @@ export interface operations {
                     wordCount: number;
                     content: string;
                   }[];
+                  styleSource: {
+                    candidateId: string;
+                    selectionVersionNodeId: string;
+                    /** @enum {string} */
+                    strategy: "hook_focus" | "character_focus" | "world_focus";
+                    candidateLabel: string;
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterVersionId: string;
+                    chapterVersionNodeId: string;
+                    chapterTitle: string;
+                    contentHash: string;
+                    excerpt: string;
+                  };
                   /** Format: date-time */
                   createdAt: string;
                 } | null;
@@ -14362,6 +14446,20 @@ export interface operations {
                     wordCount: number;
                     content: string;
                   }[];
+                  styleSource: {
+                    candidateId: string;
+                    selectionVersionNodeId: string;
+                    /** @enum {string} */
+                    strategy: "hook_focus" | "character_focus" | "world_focus";
+                    candidateLabel: string;
+                    chapterId: string;
+                    chapterNumber: number;
+                    chapterVersionId: string;
+                    chapterVersionNodeId: string;
+                    chapterTitle: string;
+                    contentHash: string;
+                    excerpt: string;
+                  };
                   /** Format: date-time */
                   createdAt: string;
                 } | null;

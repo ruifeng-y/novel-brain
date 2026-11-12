@@ -7563,6 +7563,25 @@ export type GoldenThreeStrategy = z.infer<typeof goldenThreeStrategySchema>;
 export const goldenThreeCandidateStatusSchema = z.enum(["draft", "reviewed", "selected", "locked"]);
 export type GoldenThreeCandidateStatus = z.infer<typeof goldenThreeCandidateStatusSchema>;
 
+export const goldenThreeContinuationStyleSourceSchema = z
+  .object({
+    candidateId: uuidV7Schema,
+    selectionVersionNodeId: uuidV7Schema,
+    strategy: goldenThreeStrategySchema,
+    candidateLabel: z.string().min(1).max(100),
+    chapterId: uuidV7Schema,
+    chapterNumber: z.number().int().positive(),
+    chapterVersionId: uuidV7Schema,
+    chapterVersionNodeId: uuidV7Schema,
+    chapterTitle: z.string().min(1).max(200),
+    contentHash: z.string().regex(/^[a-f0-9]{64}$/),
+    excerpt: z.string().trim().min(1).max(600),
+  })
+  .strict();
+export type GoldenThreeContinuationStyleSource = z.infer<
+  typeof goldenThreeContinuationStyleSourceSchema
+>;
+
 export const goldenThreePromptProvenanceSchema = z
   .object({
     key: z.string().trim().min(1).max(200),
@@ -7753,6 +7772,7 @@ export const goldenThreeCandidateSchema = z
       .object({
         versionNodeId: uuidV7Schema,
         pins: z.array(goldenThreePinnedChapterSchema).length(2),
+        styleSource: goldenThreeContinuationStyleSourceSchema,
         createdAt: z.string().datetime(),
       })
       .strict()

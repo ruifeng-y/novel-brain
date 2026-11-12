@@ -7,6 +7,7 @@ import { Test } from "@nestjs/testing";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
+import { uuidv7 } from "uuidv7";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
 import { AppModule } from "../src/app.module";
@@ -233,6 +234,19 @@ describe("golden three HTTP integration", () => {
     expect(
       selected.body.data.candidates.find((entry: { id: string }) => entry.id === candidate.id),
     ).toMatchObject({ status: "selected", version: 3 });
+    const selectionNode = await databasePool.query<{ id: string }>(
+      `SELECT id
+         FROM version_nodes
+        WHERE object_id = $1
+          AND object_type = 'golden_three_candidate'
+          AND payload->>'action' = 'golden_three.candidate_selected'
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [candidate.id],
+    );
+    expect(selectionNode.rows[0]?.id).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u,
+    );
 
     const blocked = await owner
       .post(`${outlinePath}/candidates/${candidate.id}/lock`)
@@ -260,6 +274,35 @@ describe("golden three HTTP integration", () => {
         (pin: { chapterNumber: number }) => pin.chapterNumber,
       ),
     ).toEqual([2, 3]);
+    expect(continuedCandidate.continuation.styleSource).toMatchObject({
+      candidateId: candidate.id,
+      strategy: "hook_focus",
+      candidateLabel: "候选 A · 钩子优先",
+      chapterId: candidate.pins[0]!.chapterId,
+      chapterVersionId: candidate.pins[0]!.chapterVersionId,
+      chapterVersionNodeId: candidate.pins[0]!.versionNodeId,
+      chapterTitle: candidate.pins[0]!.chapterTitle,
+      contentHash: candidate.pins[0]!.contentHash,
+      excerpt: candidate.pins[0]!.content,
+    });
+    const continuationSource = await databasePool.query<{
+      selection_node_id: string;
+      style_source: Record<string, unknown>;
+    }>(
+      `SELECT payload->'styleSource'->>'selectionVersionNodeId' AS selection_node_id,
+              payload->'styleSource' AS style_source
+         FROM version_nodes
+        WHERE object_id = $1 AND object_type = 'golden_three_continuation'
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [candidate.id],
+    );
+    expect(continuationSource.rows[0]?.selection_node_id).toBe(selectionNode.rows[0]?.id);
+    expect(continuationSource.rows[0]?.style_source).toMatchObject({
+      candidateId: candidate.id,
+      chapterId: candidate.pins[0]!.chapterId,
+      chapterVersionId: candidate.pins[0]!.chapterVersionId,
+    });
 
     const locked = await owner
       .post(`${outlinePath}/candidates/${candidate.id}/lock`)
@@ -357,6 +400,149 @@ describe("golden three HTTP integration", () => {
         "golden_three.locked",
       ]),
     );
+  });
+
+  it("requires a selected candidate continuation before locking", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-continuation-required@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const chapters = await createGoldenThreeChapters(owner, token, basePath);
+    const outlinePath = `${basePath}/golden-three`;
+    const batch = await owner
+      .post(`${outlinePath}/candidates`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "golden-three-continuation-required")
+      .send({
+        candidates: [
+          candidateInput("候选 A · 钩子优先", "hook_focus", chapters, "f"),
+          candidateInput("候选 B · 人物优先", "character_focus", chapters, "a"),
+        ],
+      })
+      .expect(201);
+    const candidate = batch.body.data.candidates[0] as {
+      id: string;
+      version: number;
+      pins: Array<{
+        chapterId: string;
+        chapterVersionId: string;
+        content: string;
+      }>;
+    };
+    const reviewed = await owner
+      .put(`${outlinePath}/candidates/${candidate.id}/reviews`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: candidate.version,
+        reviews: [
+          "opening_hook",
+          "protagonist_appeal",
+          "world_rules",
+          "core_conflict",
+          "reader_promise",
+          "chapter_end_hook",
+        ].map((dimension, index) => ({
+          dimension,
+          score: 4,
+          evidence: {
+            chapterId: candidate.pins[0]!.chapterId,
+            chapterVersionId: candidate.pins[0]!.chapterVersionId,
+            passage: candidate.pins[0]!.content,
+            locator: `第 1 章 · 证据 ${index + 1}`,
+          },
+          reviewerOrigin: "model",
+        })),
+      })
+      .expect(200);
+    await owner
+      .post(`${outlinePath}/candidates/${candidate.id}/select`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: reviewed.body.data.candidates[0].version })
+      .expect(200);
+    const continuationPins = await databasePool.query<{
+      chapter_id: string;
+      chapter_number: number;
+      chapter_title: string;
+      chapter_version_id: string;
+      chapter_version: number;
+      version_node_id: string;
+      content_hash: string;
+      content: string;
+    }>(
+      `SELECT chapter.id AS chapter_id,
+              chapter.number AS chapter_number,
+              chapter.title AS chapter_title,
+              version.id AS chapter_version_id,
+              version.version AS chapter_version,
+              version.version_node_id,
+              version.content_hash,
+              version.content
+         FROM chapters chapter
+         JOIN chapter_versions version ON version.id = chapter.current_version_id
+        WHERE chapter.branch_id = $1 AND chapter.number IN (2, 3)
+        ORDER BY chapter.number`,
+      [work.mainBranch.id],
+    );
+    const legacyContinuationPin = continuationPins.rows.map((pin) => ({
+      chapterId: pin.chapter_id,
+      chapterNumber: pin.chapter_number,
+      chapterTitle: pin.chapter_title,
+      chapterVersionId: pin.chapter_version_id,
+      chapterVersion: pin.chapter_version,
+      versionNodeId: pin.version_node_id,
+      contentHash: pin.content_hash,
+      wordCount: Array.from(pin.content).length,
+      content: pin.content,
+    }));
+    const legacyContinuationNodeId = uuidv7();
+    await databasePool.query(
+      `INSERT INTO version_nodes (
+         id, work_id, branch_id, user_id, parent_node_id, node_type, object_type,
+         object_id, object_version, payload, actor_id, message, created_at
+       )
+       SELECT $1, candidate.work_id, candidate.branch_id, candidate.user_id,
+              branch.head_node_id, 'outline_version', 'golden_three_continuation',
+              candidate.id, candidate.version + 1, $3::jsonb,
+              candidate.user_id, '历史续写缺少来源引用', now()
+         FROM golden_three_candidates candidate
+         JOIN work_branches branch ON branch.id = candidate.branch_id
+        WHERE candidate.id = $2`,
+      [
+        legacyContinuationNodeId,
+        candidate.id,
+        JSON.stringify({
+          action: "golden_three.continuation_recorded",
+          candidateId: candidate.id,
+          pins: legacyContinuationPin,
+        }),
+      ],
+    );
+    await databasePool.query(
+      `UPDATE work_branches SET head_node_id = $1, updated_at = now() WHERE id = $2`,
+      [legacyContinuationNodeId, work.mainBranch.id],
+    );
+    await databasePool.query(
+      `UPDATE golden_three_candidates
+          SET version = version + 1, updated_at = now()
+        WHERE id = $1`,
+      [candidate.id],
+    );
+    const lock = await owner
+      .post(`${outlinePath}/candidates/${candidate.id}/lock`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({ version: reviewed.body.data.candidates[0].version + 2 })
+      .expect(409);
+    expect(lock.body.error.code).toBe("GOLDEN_THREE_CONTINUATION_REQUIRED");
+    const workspace = await owner.get(outlinePath).expect(200);
+    expect(workspace.body.data.gate).toMatchObject({
+      candidateId: candidate.id,
+      canLock: false,
+      blockers: [expect.objectContaining({ code: "CONTINUATION_REQUIRED" })],
+    });
   });
 
   it("generates reviewed first-chapter candidates without changing current versions", async () => {
