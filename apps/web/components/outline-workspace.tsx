@@ -34,7 +34,6 @@ import {
   outlineWorkspaceResponseSchema,
   settingEntityListResponseSchema,
   storyLedgerWorkspaceResponseSchema,
-  workResponseSchema,
   type ChapterBrief,
   type ChapterStatus,
   type DomainRef,
@@ -52,6 +51,7 @@ import {
 
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { fetchWorkOverview } from "../lib/work-api";
 import { GoldenThreePanel } from "./golden-three-panel";
 
 type OutlineView = "tree" | "board" | "tension" | "ledger";
@@ -197,11 +197,7 @@ export function OutlineWorkspace({
     setLoading(true);
     setError("");
     try {
-      const workResponse = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-      if (!workResponse.ok) {
-        throw new Error(await readError(workResponse, "作品加载失败。"));
-      }
-      const workData = workResponseSchema.parse(await workResponse.json()).data;
+      const workData = await fetchWorkOverview(workId);
       const branchPath = `/api/v1/works/${workData.id}/branches/${workData.mainBranch.id}`;
       const [outlineResponse, entityData, ledgerResponse] = await Promise.all([
         fetch(`${branchPath}/outline`, { cache: "no-store" }),

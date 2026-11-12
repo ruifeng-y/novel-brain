@@ -12,6 +12,10 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
+  chunkedImportCreateRequestSchema,
+  chunkedImportStartRequestSchema,
+  chunkedImportChunkRequestSchema,
+  chunkedImportProgressResponseSchema,
   manuscriptImportConfirmRequestSchema,
   manuscriptImportConfirmResponseSchema,
   manuscriptImportResponseSchema,
@@ -44,6 +48,10 @@ function schemaOf(schema: z.ZodType): SchemaObject {
 const importResponseJsonSchema = schemaOf(manuscriptImportResponseSchema);
 const confirmBodySchema = schemaOf(manuscriptImportConfirmRequestSchema);
 const confirmResponseJsonSchema = schemaOf(manuscriptImportConfirmResponseSchema);
+const chunkedCreateBodySchema = schemaOf(chunkedImportCreateRequestSchema);
+const chunkedStartBodySchema = schemaOf(chunkedImportStartRequestSchema);
+const chunkedChunkBodySchema = schemaOf(chunkedImportChunkRequestSchema);
+const chunkedProgressResponseSchema = schemaOf(chunkedImportProgressResponseSchema);
 const createRequestBodySchema: SchemaObject = {
   type: "object",
   required: ["file"],
@@ -65,6 +73,76 @@ interface UploadedTextFile {
 @UseGuards(SessionAuthGuard, CsrfGuard)
 export class ManuscriptImportController {
   constructor(private readonly service: ManuscriptImportService) {}
+
+  @Post("chunked")
+  @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiBody({ schema: chunkedCreateBodySchema })
+  @ApiOkResponse({
+    description: "Chunked manuscript import",
+    schema: chunkedProgressResponseSchema,
+  })
+  async createChunked(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const requestId = createRequestId();
+    return chunkedImportProgressResponseSchema.parse({
+      data: await this.service.createChunked(
+        this.userId(request),
+        chunkedImportCreateRequestSchema.parse(body),
+        typeof request.headers["idempotency-key"] === "string"
+          ? request.headers["idempotency-key"]
+          : "",
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post("chunked/start")
+  @HttpCode(200)
+  @ApiHeader({ name: "Idempotency-Key", required: true })
+  @ApiBody({ schema: chunkedStartBodySchema })
+  @ApiOkResponse({
+    description: "Started streamed manuscript import",
+    schema: chunkedProgressResponseSchema,
+  })
+  async startChunked(@Req() request: AuthenticatedRequest, @Body() body: unknown) {
+    const requestId = createRequestId();
+    return chunkedImportProgressResponseSchema.parse({
+      data: await this.service.startChunked(
+        this.userId(request),
+        chunkedImportStartRequestSchema.parse(body),
+        typeof request.headers["idempotency-key"] === "string"
+          ? request.headers["idempotency-key"]
+          : "",
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":importId/chunks")
+  @HttpCode(200)
+  @ApiBody({ schema: chunkedChunkBodySchema })
+  @ApiOkResponse({
+    description: "Uploaded manuscript chunk",
+    schema: chunkedProgressResponseSchema,
+  })
+  async appendChunk(
+    @Req() request: AuthenticatedRequest,
+    @Param("importId") importId: string,
+    @Body() body: unknown,
+  ) {
+    const requestId = createRequestId();
+    return chunkedImportProgressResponseSchema.parse({
+      data: await this.service.appendChunk(
+        this.userId(request),
+        uuidV7Schema.parse(importId),
+        chunkedImportChunkRequestSchema.parse(body),
+      ),
+      requestId,
+      meta: {},
+    });
+  }
 
   @Post()
   @HttpCode(200)
@@ -110,6 +188,92 @@ export class ManuscriptImportController {
     const requestId = createRequestId();
     return manuscriptImportResponseSchema.parse({
       data: await this.service.get(this.userId(request), uuidV7Schema.parse(importId)),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":importId/process")
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: "Processed next manuscript chunk",
+    schema: chunkedProgressResponseSchema,
+  })
+  async processChunk(@Req() request: AuthenticatedRequest, @Param("importId") importId: string) {
+    const requestId = createRequestId();
+    return chunkedImportProgressResponseSchema.parse({
+      data: await this.service.processChunk(this.userId(request), uuidV7Schema.parse(importId)),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Get(":importId/progress")
+  @ApiOkResponse({
+    description: "Chunked manuscript progress",
+    schema: chunkedProgressResponseSchema,
+  })
+  async progress(@Req() request: AuthenticatedRequest, @Param("importId") importId: string) {
+    const requestId = createRequestId();
+    return chunkedImportProgressResponseSchema.parse({
+      data: await this.service.progress(this.userId(request), uuidV7Schema.parse(importId)),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":importId/pause")
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: "Paused manuscript import",
+    schema: chunkedProgressResponseSchema,
+  })
+  async pause(@Req() request: AuthenticatedRequest, @Param("importId") importId: string) {
+    const requestId = createRequestId();
+    return chunkedImportProgressResponseSchema.parse({
+      data: await this.service.controlChunked(
+        this.userId(request),
+        uuidV7Schema.parse(importId),
+        "pause",
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":importId/resume")
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: "Resumed manuscript import",
+    schema: chunkedProgressResponseSchema,
+  })
+  async resume(@Req() request: AuthenticatedRequest, @Param("importId") importId: string) {
+    const requestId = createRequestId();
+    return chunkedImportProgressResponseSchema.parse({
+      data: await this.service.controlChunked(
+        this.userId(request),
+        uuidV7Schema.parse(importId),
+        "resume",
+      ),
+      requestId,
+      meta: {},
+    });
+  }
+
+  @Post(":importId/cancel")
+  @HttpCode(200)
+  @ApiOkResponse({
+    description: "Cancelled manuscript import",
+    schema: chunkedProgressResponseSchema,
+  })
+  async cancel(@Req() request: AuthenticatedRequest, @Param("importId") importId: string) {
+    const requestId = createRequestId();
+    return chunkedImportProgressResponseSchema.parse({
+      data: await this.service.controlChunked(
+        this.userId(request),
+        uuidV7Schema.parse(importId),
+        "cancel",
+      ),
       requestId,
       meta: {},
     });

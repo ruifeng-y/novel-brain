@@ -128,6 +128,14 @@ export const ERROR_CODES = [
   "BATCH_REVIEW_IDEMPOTENCY_CONFLICT",
   "BATCH_REVIEW_HIGH_RISK_REQUIRES_INDIVIDUAL_REVIEW",
   "NOTIFICATION_NOT_FOUND",
+  "CHANGE_NOT_FOUND",
+  "CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED",
+  "CHANGE_INVALID_STATE",
+  "CHANGE_TARGET_NOT_FOUND",
+  "CHANGE_ANALYSIS_REQUIRED",
+  "BRANCH_SOURCE_NOT_FOUND",
+  "VERSION_NODE_NOT_FOUND",
+  "IMPORT_NOT_READY",
   "FORBIDDEN_TENANT_ACCESS",
   "INTERNAL_ERROR",
 ] as const;
@@ -624,6 +632,13 @@ export const workOverviewSchema = workSchema.extend({
   readiness: workReadinessSchema,
 });
 export type WorkOverview = z.infer<typeof workOverviewSchema>;
+
+export const workOverviewQuerySchema = z
+  .object({
+    branchId: uuidV7Schema.optional(),
+  })
+  .strict();
+export type WorkOverviewQuery = z.infer<typeof workOverviewQuerySchema>;
 
 export const workListQuerySchema = cursorPageQuerySchema
   .extend({
@@ -6145,6 +6160,288 @@ export const notificationReadResponseSchema = apiEnvelopeSchema(notificationSche
 export const notificationReadAllResponseSchema = apiEnvelopeSchema(
   z.object({ updated: z.number().int().nonnegative() }).strict(),
 );
+
+export const changeTargetTypeSchema = z.enum([
+  "entity",
+  "chapter",
+  "outline",
+  "fact",
+  "ledger",
+  "work",
+]);
+export type ChangeTargetType = z.infer<typeof changeTargetTypeSchema>;
+
+export const changeRiskSchema = z.enum(["low", "medium", "high"]);
+export type ChangeRisk = z.infer<typeof changeRiskSchema>;
+
+export const changeStatusSchema = z.enum([
+  "draft",
+  "analyzing",
+  "awaiting_confirmation",
+  "applying",
+  "applied",
+  "rejected",
+  "cancelled",
+  "failed",
+  "branched",
+]);
+export type ChangeStatus = z.infer<typeof changeStatusSchema>;
+
+export const changeRequestCreateRequestSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    reason: z.string().trim().min(1).max(2_000),
+    targetVersion: z.number().int().positive(),
+    targetType: changeTargetTypeSchema,
+    targetId: uuidV7Schema,
+    objectType: z.string().trim().min(1).max(80),
+    before: z.record(z.string(), z.unknown()).default({}),
+    after: z.record(z.string(), z.unknown()).default({}),
+    risk: changeRiskSchema.default("low"),
+    source: z.enum(["author", "ai", "import", "batch"]).default("author"),
+  })
+  .strict();
+export type ChangeRequestCreateRequest = z.infer<typeof changeRequestCreateRequestSchema>;
+
+export const changeRequestSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    branchId: uuidV7Schema,
+    title: z.string(),
+    reason: z.string(),
+    targetVersion: z.number().int().positive(),
+    targetType: changeTargetTypeSchema,
+    targetId: uuidV7Schema,
+    objectType: z.string(),
+    before: z.record(z.string(), z.unknown()),
+    after: z.record(z.string(), z.unknown()),
+    diff: z.record(z.string(), z.unknown()),
+    source: z.enum(["author", "ai", "import", "batch"]),
+    risk: changeRiskSchema,
+    status: changeStatusSchema,
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type ChangeRequest = z.infer<typeof changeRequestSchema>;
+
+export const changeRequestListQuerySchema = cursorPageQuerySchema
+  .extend({
+    status: changeStatusSchema.optional(),
+    risk: changeRiskSchema.optional(),
+    targetType: changeTargetTypeSchema.optional(),
+  })
+  .strict();
+export type ChangeRequestListQuery = z.infer<typeof changeRequestListQuerySchema>;
+export const changeRequestListResponseSchema = cursorListResponseSchema(
+  z.array(changeRequestSchema),
+);
+export const changeRequestResponseSchema = apiEnvelopeSchema(changeRequestSchema);
+
+export const changeImpactSchema = z
+  .object({
+    id: uuidV7Schema,
+    category: z.enum(["safe", "repairable", "structural"]),
+    affectedType: z.string(),
+    affectedId: uuidV7Schema.nullable(),
+    chapterId: uuidV7Schema.nullable(),
+    summary: z.string(),
+    evidence: z.record(z.string(), z.unknown()),
+    confidence: z.number().min(0).max(1),
+  })
+  .strict();
+export type ChangeImpact = z.infer<typeof changeImpactSchema>;
+
+export const changeAnalysisResponseSchema = apiEnvelopeSchema(
+  z.object({
+    change: changeRequestSchema,
+    impacts: z.array(changeImpactSchema),
+  }),
+);
+
+export const changeApplyRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    expectedTargetVersion: z.number().int().positive(),
+    reason: z.string().trim().max(2_000).optional(),
+    confirmHighRisk: z.boolean().default(false),
+  })
+  .strict();
+export type ChangeApplyRequest = z.infer<typeof changeApplyRequestSchema>;
+export const changeApplyResponseSchema = apiEnvelopeSchema(
+  z.object({
+    change: changeRequestSchema,
+    versionNodeId: uuidV7Schema,
+  }),
+);
+
+export const branchCreateRequestSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    sourceNodeId: uuidV7Schema,
+    reason: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type BranchCreateRequest = z.infer<typeof branchCreateRequestSchema>;
+export const branchCreateResponseSchema = apiEnvelopeSchema(workBranchSchema);
+
+export const mergeObjectTypeSchema = z.enum(["chapter", "entity", "fact", "outline", "ledger"]);
+export type MergeObjectType = z.infer<typeof mergeObjectTypeSchema>;
+export const mergeChangeKindSchema = z.enum(["added", "removed", "changed", "unchanged"]);
+export type MergeChangeKind = z.infer<typeof mergeChangeKindSchema>;
+
+export const mergeItemSchema = z
+  .object({
+    id: uuidV7Schema,
+    sourceBranchId: uuidV7Schema,
+    targetBranchId: uuidV7Schema,
+    sourceNodeId: uuidV7Schema.nullable(),
+    targetNodeId: uuidV7Schema.nullable(),
+    objectType: mergeObjectTypeSchema,
+    objectId: uuidV7Schema,
+    objectKey: z.string(),
+    sourcePayload: z.record(z.string(), z.unknown()),
+    targetPayload: z.record(z.string(), z.unknown()),
+    diff: z.record(z.string(), z.unknown()),
+    changeKind: mergeChangeKindSchema,
+    risk: changeRiskSchema,
+    conflict: z.boolean(),
+    status: z.enum(["pending", "accepted", "rejected", "applied", "stale"]),
+    reason: z.string().nullable(),
+    version: z.number().int().positive(),
+    createdAt: z.string().datetime(),
+    updatedAt: z.string().datetime(),
+  })
+  .strict();
+export type MergeItem = z.infer<typeof mergeItemSchema>;
+export const mergeItemListResponseSchema = apiEnvelopeSchema(z.array(mergeItemSchema));
+
+export const branchComparisonResponseSchema = apiEnvelopeSchema(
+  z.object({
+    sourceBranchId: uuidV7Schema,
+    targetBranchId: uuidV7Schema,
+    items: z.array(mergeItemSchema),
+  }),
+);
+
+export const mergeItemDecisionRequestSchema = z
+  .object({
+    version: z.number().int().positive(),
+    action: z.enum(["accept", "reject"]),
+    reason: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type MergeItemDecisionRequest = z.infer<typeof mergeItemDecisionRequestSchema>;
+export const mergeItemDecisionResponseSchema = apiEnvelopeSchema(mergeItemSchema);
+
+export const mergeApplyRequestSchema = z
+  .object({
+    itemIds: z.array(uuidV7Schema).min(1).max(100),
+    expectedTargetHeadNodeId: uuidV7Schema,
+    confirmHighRisk: z.boolean().default(false),
+  })
+  .strict();
+export type MergeApplyRequest = z.infer<typeof mergeApplyRequestSchema>;
+export const mergeApplyResponseSchema = apiEnvelopeSchema(
+  z.object({
+    applied: z.array(uuidV7Schema),
+    versionNodeId: uuidV7Schema,
+  }),
+);
+
+export const versionRollbackRequestSchema = z
+  .object({
+    targetNodeId: uuidV7Schema,
+    expectedHeadNodeId: uuidV7Schema,
+    reason: z.string().trim().min(1).max(2_000),
+  })
+  .strict();
+export type VersionRollbackRequest = z.infer<typeof versionRollbackRequestSchema>;
+
+export const versionRollbackResponseSchema = apiEnvelopeSchema(
+  z.object({
+    versionNodeId: uuidV7Schema,
+    nodeType: z.literal("rollback"),
+  }),
+);
+
+export const searchQuerySchema = z
+  .object({
+    q: z.string().trim().min(1).max(200),
+    limit: z.coerce.number().int().min(1).max(50).default(20),
+  })
+  .strict();
+export type SearchQuery = z.infer<typeof searchQuerySchema>;
+export const searchResultSchema = z
+  .object({
+    id: uuidV7Schema,
+    workId: uuidV7Schema,
+    sourceType: z.enum(["entity", "fact", "timeline_event", "map_node", "chapter", "setting"]),
+    sourceId: uuidV7Schema,
+    title: z.string(),
+    snippet: z.string(),
+    score: z.number(),
+    versionNodeId: uuidV7Schema,
+  })
+  .strict();
+export type SearchResult = z.infer<typeof searchResultSchema>;
+export const searchResponseSchema = apiEnvelopeSchema(z.array(searchResultSchema));
+export const searchRebuildProgressSchema = z
+  .object({
+    runId: uuidV7Schema,
+    status: z.enum(["queued", "running", "completed", "failed"]),
+    indexed: z.number().int().nonnegative(),
+    expectedTotal: z.number().int().nonnegative(),
+    stage: z.number().int().nonnegative(),
+    stageOffset: z.number().int().nonnegative(),
+  })
+  .strict();
+export type SearchRebuildProgress = z.infer<typeof searchRebuildProgressSchema>;
+export const searchRebuildResponseSchema = apiEnvelopeSchema(searchRebuildProgressSchema);
+
+export const chunkedImportCreateRequestSchema = z
+  .object({
+    sourceName: z.string().trim().min(1).max(240),
+    chunks: z.array(z.string().min(1).max(5_000_000)).min(1).max(10_000),
+  })
+  .strict();
+export type ChunkedImportCreateRequest = z.infer<typeof chunkedImportCreateRequestSchema>;
+export const chunkedImportStartRequestSchema = z
+  .object({
+    sourceName: z.string().trim().min(1).max(240),
+    chunkCount: z.number().int().min(1).max(10_000),
+  })
+  .strict();
+export type ChunkedImportStartRequest = z.infer<typeof chunkedImportStartRequestSchema>;
+export const chunkedImportChunkRequestSchema = z
+  .object({
+    sequence: z.number().int().nonnegative().max(9_999),
+    sourceText: z.string().min(1).max(5_000_000),
+  })
+  .strict();
+export type ChunkedImportChunkRequest = z.infer<typeof chunkedImportChunkRequestSchema>;
+export const chunkedImportProgressSchema = z
+  .object({
+    importId: uuidV7Schema,
+    status: z.enum([
+      "queued",
+      "processing",
+      "awaiting_confirmation",
+      "paused",
+      "partial",
+      "failed",
+      "cancelled",
+      "completed",
+    ]),
+    chunkCount: z.number().int().positive(),
+    processedChunks: z.number().int().nonnegative(),
+    canConfirm: z.boolean(),
+  })
+  .strict();
+export type ChunkedImportProgress = z.infer<typeof chunkedImportProgressSchema>;
+export const chunkedImportProgressResponseSchema = apiEnvelopeSchema(chunkedImportProgressSchema);
 
 export const batchReviewTargetTypeSchema = z.enum(["chapter", "volume"]);
 export type BatchReviewTargetType = z.infer<typeof batchReviewTargetTypeSchema>;

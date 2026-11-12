@@ -152,7 +152,7 @@ export async function registerUser(
 export async function createWork(
   request: APIRequestContext,
   payload: Record<string, unknown>,
-): Promise<{ id: string; title: string; mainBranch: { id: string } }> {
+): Promise<{ id: string; title: string; mainBranch: { id: string; headNodeId: string } }> {
   const token = await getCsrf(request);
   const response = await request.post("/api/v1/works", {
     headers: {
@@ -166,6 +166,6 @@ export async function createWork(
   return (await response.json()).data as {
     id: string;
     title: string;
-    mainBranch: { id: string };
+    mainBranch: { id: string; headNodeId: string };
   };
 }

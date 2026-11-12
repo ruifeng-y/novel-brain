@@ -20,7 +20,6 @@ import {
   batchReviewClaimResponseSchema,
   batchReviewDecisionResponseSchema,
   batchReviewQueueListResponseSchema,
-  workResponseSchema,
   type BatchReviewDecisionResult,
   type BatchReviewQueueItem,
   type BatchReviewRisk,
@@ -32,6 +31,7 @@ import {
 
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { fetchWorkOverview } from "../lib/work-api";
 
 const riskLabels: Record<BatchReviewRisk, string> = {
   low: "低风险",
@@ -78,11 +78,7 @@ export function BatchWorkspace({ workId }: { workId: string }) {
     setError("");
     setPlanStateError("");
     try {
-      const workResponse = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-      if (!workResponse.ok) {
-        throw new Error(await readError(workResponse));
-      }
-      const workData = workResponseSchema.parse(await workResponse.json()).data;
+      const workData = await fetchWorkOverview(workId);
       const params = new URLSearchParams({ limit: "100" });
       if (risk) {
         params.set("risk", risk);
@@ -100,18 +96,33 @@ export function BatchWorkspace({ workId }: { workId: string }) {
       const queue = batchReviewQueueListResponseSchema.parse(await queueResponse.json());
       let planStateLoadFailed = false;
       let pausedPlans: Array<{ id: string }> = [];
-      try {
-        pausedPlans = await fetchAllCursorPages(
+      let failedPlans: Array<{ id: string }> = [];
+      const [pausedPlanResult, failedPlanResult] = await Promise.allSettled([
+        fetchAllCursorPages(
           `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans?status=paused`,
           batchPlanListResponseSchema.parse,
           "暂停计划加载失败。",
-        );
-      } catch {
+        ),
+        fetchAllCursorPages(
+          `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/batch-plans?status=failed`,
+          batchPlanListResponseSchema.parse,
+          "失败计划加载失败。",
+        ),
+      ]);
+      if (pausedPlanResult.status === "fulfilled") {
+        pausedPlans = pausedPlanResult.value;
+      } else {
+        planStateLoadFailed = true;
+      }
+      if (failedPlanResult.status === "fulfilled") {
+        failedPlans = failedPlanResult.value;
+      } else {
         planStateLoadFailed = true;
       }
       const planIds = [
         ...new Set([
           ...pausedPlans.map((plan) => plan.id),
+          ...failedPlans.map((plan) => plan.id),
           ...queue.data.map((item) => item.planId),
         ]),
       ].slice(0, 100);

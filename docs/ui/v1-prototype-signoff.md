@@ -101,6 +101,12 @@ Golden 文件位于 `artifacts/ui/golden/<page>/<page>-<viewport>.png`。作者�
 
 settings、bible、entity-detail 的 12 张正式 Golden 已按当前生产渲染更新；new-project 的现有正式 Golden 经四档回归继续有效。`new-project.spec.ts`、`settings.spec.ts`、`bible.spec.ts`、`entity-detail.spec.ts` 均使用真实生产路由和确定性数据，覆盖 390 / 900 / 1180 / 1440、作者语言、无横向溢出及 `toHaveScreenshot`。最终 PR CI 通过后四页保持 `parity-verified`。
 
+## 2026-11-12 M2 batch/changes 视觉签收
+
+签收人：ruifeng-y。作者确认 M2 batch 与 changes 页面采用当前生产布局，并要求在解决所有门禁后合并；本次后续指令未提出视觉结构偏差。
+
+Batch Golden 覆盖暂停、失败、成本硬停、审核决策部分失败和四档视口。Changes Golden 覆盖 390 / 900 / 1180 / 1440，语义测试同时覆盖加载、错误、冲突、部分失败、禁用应用、旧版本拒绝、当前作品/全部作品搜索与选中平行版本上下文。正式 Linux `toHaveScreenshot` 以最终 PR 的绿色 Production CI 为准；合并前不得用本地截图替代该回归证据。
+
 ## 变更规则
 
 原型页面结构、关键动作或门禁发生变化时，先更新原型、页面/动作矩阵、`docs/ui/v1-ui-parity-matrix.md` 和截图，再发起新的签收。生产 UI 不得自行偏离本基线。

@@ -1,17 +1,19 @@
 import "reflect-metadata";
 
 import { NestFactory } from "@nestjs/core";
+import type { NestExpressApplication } from "@nestjs/platform-express";
 
 import { AppModule } from "./app.module";
 import { ApiExceptionFilter } from "./common/api-exception.filter";
 import { AppLogger } from "./logging/app-logger";
 
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   const logger = new AppLogger();
 
   app.useLogger(logger);
   app.setGlobalPrefix("api/v1");
+  app.useBodyParser("json", { limit: "32mb" });
   app.useGlobalFilters(new ApiExceptionFilter());
   const express = app.getHttpAdapter().getInstance();
   express.disable("x-powered-by");

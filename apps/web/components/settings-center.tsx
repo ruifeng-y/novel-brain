@@ -71,6 +71,7 @@ import {
 
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { fetchWorkOverview } from "../lib/work-api";
 import { settingTypeLabels } from "../lib/setting-labels";
 
 type ColumnKey = "world" | "characters" | "factions" | "map" | "power" | "items" | "timeline";
@@ -457,11 +458,7 @@ export function SettingsCenter({
     setLoading(true);
     setError("");
     try {
-      const workResponse = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-      if (!workResponse.ok) {
-        throw new Error(await readError(workResponse, "作品加载失败。"));
-      }
-      const workData = workResponseSchema.parse(await workResponse.json()).data;
+      const workData = await fetchWorkOverview(workId);
       const basePath = settingsPath(workData);
       const [entityData, confirmedData, fieldData, packData] = await Promise.all([
         fetchAllCursorPages(

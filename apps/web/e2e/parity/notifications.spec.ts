@@ -46,21 +46,29 @@ test("reads individual and all notifications from the real API", async ({ page, 
       message: "有一章需要作者确认。",
       dedupeKey: "review:second:required",
     },
+    {
+      type: "merge_conflict",
+      targetType: "merge",
+      title: "平行版本摘取存在冲突",
+      message: "有一个对象覆盖了目标分支的已有版本。",
+      dedupeKey: "merge:conflict:first",
+    },
   ]);
 
   await page.goto("/workspace");
-  const trigger = page.getByRole("button", { name: "通知，10 条未读" });
+  const trigger = page.getByRole("button", { name: "通知，11 条未读" });
   await trigger.click();
   const drawer = page.getByRole("dialog");
   await expect(drawer).toBeVisible();
   await expect(page.getByText("批量任务已完成")).toBeVisible();
   await expect(page.getByText("批量任务等待审核")).toBeVisible();
+  await expect(page.getByText("平行版本摘取存在冲突")).toBeVisible();
 
   await page.getByRole("button", { name: /批量任务已完成/u }).click();
   await expect(drawer).not.toBeVisible();
-  await expect(page.getByRole("button", { name: "通知，9 条未读" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "通知，10 条未读" })).toBeVisible();
 
-  await page.getByRole("button", { name: "通知，9 条未读" }).click();
+  await page.getByRole("button", { name: "通知，10 条未读" }).click();
   await page.getByRole("button", { name: "全部已读" }).click();
   await expect(page.getByRole("button", { name: "通知", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "没有未读通知" })).toBeVisible();
@@ -114,7 +122,7 @@ async function authenticatedPage(page: Page, context: BrowserContext): Promise<s
 
 interface NotificationSeed {
   type: NotificationType;
-  targetType: "job" | "review";
+  targetType: "job" | "review" | "merge";
   title: string;
   message: string;
   dedupeKey: string;

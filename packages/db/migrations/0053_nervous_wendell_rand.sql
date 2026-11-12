@@ -1,0 +1,2 @@
+ALTER TABLE "merge_items" ADD COLUMN "change_kind" text DEFAULT 'changed' NOT NULL;--> statement-breakpoint
+ALTER TABLE "merge_items" ADD CONSTRAINT "merge_items_change_kind_check" CHECK ("merge_items"."change_kind" in ('added', 'removed', 'changed', 'unchanged'));

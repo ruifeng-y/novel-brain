@@ -109,6 +109,10 @@ M0 关键错误：
 - `BATCH_REVIEW_CLAIM_CONFLICT`
 - `BATCH_REVIEW_IDEMPOTENCY_CONFLICT`
 - `NOTIFICATION_NOT_FOUND`
+- `CHANGE_NOT_FOUND`
+- `CHANGE_HIGH_RISK_CONFIRMATION_REQUIRED`
+- `BRANCH_SOURCE_NOT_FOUND`
+- `IMPORT_NOT_READY`
 - `FACT_DECISION_REQUIRED`
 - `FACT_SUBMISSION_BLOCKED`
 - `CANON_CHAPTER_NOT_APPROVED`
@@ -232,6 +236,41 @@ M0 关键错误：
 
 通知接口必须按当前用户隔离。写操作还须通过 Origin 和 CSRF 校验；跨用户通知统一返回 `NOTIFICATION_NOT_FOUND`，不得泄露目标是否存在。
 
+### 5.9 修改、平行版本与搜索
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET/POST | `/api/v1/works/:workId/branches/:branchId/changes` | 修改请求列表/创建 |
+| POST | `/api/v1/works/:workId/branches/:branchId/changes/:changeId/analyze` | 生成影响分析 |
+| POST | `/api/v1/works/:workId/branches/:branchId/changes/:changeId/apply` | 校验目标版本并写回对象，创建版本节点 |
+| POST | `/api/v1/works/:workId/branches/:branchId/rollback` | 以新 rollback 节点恢复目标版本 |
+| POST | `/api/v1/works/:workId/branches` | 从版本节点创建平行版本 |
+| GET | `/api/v1/works/:workId/branches/:branchId/compare/:sourceBranchId` | 逐对象比较 |
+| POST | `/api/v1/works/:workId/branches/:branchId/merge-items/:itemId/decision` | 接受/拒绝单个对象 |
+| POST | `/api/v1/works/:workId/branches/:branchId/merge-items/apply` | 校验目标 head 后应用已接受的摘取项 |
+| GET | `/api/v1/works/:workId/branches/:branchId/search` | 中文派生索引搜索 |
+| GET | `/api/v1/search` | 当前用户全部作品主线中文搜索 |
+| POST | `/api/v1/works/:workId/branches/:branchId/search/rebuild` | 创建并执行当前分支索引重建 |
+| GET | `/api/v1/works/:workId/branches/:branchId/search/rebuilds/:runId` | 查询可恢复索引重建进度 |
+| POST | `/api/v1/works/:workId/branches/:branchId/search/rebuilds/:runId/process` | 从检查点继续下一批索引 |
+
+修改创建必须记录目标对象版本，修改应用同时校验请求版本与目标版本；事实应用、摘取和回滚必须转交事实决策/正史提交状态机，不能由通用修改接口直接改写。分支创建和摘取必须经过租户校验并写审计；高风险操作必须二次确认。摘取只处理逐对象决策，不允许整分支静默覆盖。
+
+### 5.10 分块导入
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| POST | `/api/v1/imports/manuscripts/chunked` | 创建带检查点的分块导入 |
+| POST | `/api/v1/imports/manuscripts/chunked/start` | 创建流式分块导入任务 |
+| POST | `/api/v1/imports/manuscripts/:importId/chunks` | 按序号追加单个分块 |
+| POST | `/api/v1/imports/manuscripts/:importId/process` | 处理下一个分块 |
+| GET | `/api/v1/imports/manuscripts/:importId/progress` | 查询分块进度 |
+| POST | `/api/v1/imports/manuscripts/:importId/pause` | 暂停分块处理 |
+| POST | `/api/v1/imports/manuscripts/:importId/resume` | 从已提交分块继续 |
+| POST | `/api/v1/imports/manuscripts/:importId/cancel` | 取消尚未处理的分块 |
+
+未完成全部分块时确认导入返回 `IMPORT_NOT_READY`。导入默认只保留原文，不自动写入语义候选或已确认设定。
+
 ## 6. M0 Resource Shapes
 
 以下是字段语义冻结；具体 Zod schema 在实现时落到 `packages/contracts`。
@@ -313,6 +352,13 @@ M0 关键错误：
 - `POST /notifications/read-all` 返回 `{ updated }`，表示本次实际从“未读”变为“已读”的数量。
 - 批量计划和独立单章生成事件通知都在同一数据库事务内写入，去重键包含任务、事件类型和事件序号；重试后的新事件可以产生新通知，批量子任务不重复通知。
 
+### ChangeRequest / MergeItem
+
+- `ChangeRequest`：`id`、`workId`、`branchId`、`title`、`reason`、`targetType`、`targetId`、`objectType`、`before`、`after`、`diff`、`source`、`risk`、`status`、`version`。
+- `MergeItem`：来源/目标分支、来源/目标版本节点、对象类型和 ID、源/目标载荷、差异、风险、冲突、状态、原因和版本。
+- 修改应用、合并和回滚均创建不可变版本节点；分支之间共享历史节点但各自维护 head。
+- 搜索文档是派生索引，包含来源、标题、内容、别名、版本节点和章节有效期。
+
 ### ContextPack
 
 - `id`、`compilerVersion`、`tokenBudget`、`selected`、`evicted`、`sourceRefs`、`createdAt`。
@@ -385,6 +431,11 @@ M0 至少需要：
 - `import_conflicts`
 - `import_reports`
 - `notifications`
+- `change_requests`
+- `change_impacts`
+- `merge_items`
+- `merge_decisions`
+- `import_chunks`
 
 所有作品域表必须有 `work_id` 和 `user_id`（或可通过 work 可靠推导的租户键）；数据库启用 RLS，并至少有一个跨用户访问测试。
 

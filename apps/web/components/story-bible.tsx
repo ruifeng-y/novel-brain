@@ -19,7 +19,6 @@ import {
   storyBibleChangeRequestResponseSchema,
   storyBibleResponseSchema,
   storyBibleVersionListResponseSchema,
-  workResponseSchema,
   type StoryBible,
   type StoryBibleCard,
   type StoryBibleVersion,
@@ -30,6 +29,7 @@ import {
 
 import { getCsrfToken } from "../lib/csrf-client";
 import { fetchAllCursorPages } from "../lib/cursor-pagination";
+import { fetchWorkOverview } from "../lib/work-api";
 
 const statusLabels: Record<StoryBible["status"], string> = {
   draft: "草稿",
@@ -81,11 +81,7 @@ export function StoryBibleWorkspace({ workId }: { workId: string }) {
     setLoading(true);
     setError("");
     try {
-      const workResponse = await fetch(`/api/v1/works/${workId}`, { cache: "no-store" });
-      if (!workResponse.ok) {
-        throw new Error(await readError(workResponse, "作品加载失败。"));
-      }
-      const workData = workResponseSchema.parse(await workResponse.json()).data;
+      const workData = await fetchWorkOverview(workId);
       const bibleResponse = await fetch(
         `/api/v1/works/${workId}/branches/${workData.mainBranch.id}/story-bible`,
         { cache: "no-store" },

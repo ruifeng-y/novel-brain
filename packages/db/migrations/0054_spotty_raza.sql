@@ -1,0 +1,2 @@
+ALTER TABLE "change_requests" ADD COLUMN "target_version" integer DEFAULT 1 NOT NULL;--> statement-breakpoint
+ALTER TABLE "change_requests" ADD CONSTRAINT "change_requests_target_version_check" CHECK ("change_requests"."target_version" > 0);

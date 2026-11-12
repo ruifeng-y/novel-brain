@@ -17,6 +17,7 @@ import {
   workCreateRequestSchema,
   workListQuerySchema,
   workListResponseSchema,
+  workOverviewQuerySchema,
   workResponseSchema,
 } from "@novel-brain/contracts";
 import { createRequestId } from "@novel-brain/core";
@@ -88,11 +89,21 @@ export class WorksController {
   }
 
   @Get(":workId")
+  @ApiQuerySchema(workOverviewQuerySchema)
   @ApiOkResponse({ description: "Work overview", schema: workResponseJsonSchema })
-  async get(@Req() request: AuthenticatedRequest, @Param("workId") workId: string) {
+  async get(
+    @Req() request: AuthenticatedRequest,
+    @Param("workId") workId: string,
+    @Query() query: unknown,
+  ) {
     const requestId = createRequestId();
+    const parsedQuery = workOverviewQuerySchema.parse(query ?? {});
     return workResponseSchema.parse({
-      data: await this.service.get(this.userId(request), uuidV7Schema.parse(workId)),
+      data: await this.service.get(
+        this.userId(request),
+        uuidV7Schema.parse(workId),
+        parsedQuery.branchId,
+      ),
       requestId,
       meta: {},
     });

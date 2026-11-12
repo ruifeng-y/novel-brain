@@ -1,0 +1,2 @@
+ALTER TABLE "search_documents" DROP CONSTRAINT "search_documents_source_type_check";--> statement-breakpoint
+ALTER TABLE "search_documents" ADD CONSTRAINT "search_documents_source_type_check" CHECK ("search_documents"."source_type" in ('entity', 'fact', 'timeline_event', 'map_node', 'chapter'));

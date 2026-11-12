@@ -1,7 +1,11 @@
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 import { createWork, registerUser, resetRateLimits, uniqueEmail } from "../helpers/auth";
-import { expectAuthorFacingLanguage, expectNoPrototypeOnlyLeakage } from "../helpers/ui";
+import {
+  expectAuthorFacingLanguage,
+  expectNoPrototypeOnlyLeakage,
+  productionScreenshotOptions,
+} from "../helpers/ui";
 
 const itemId = "019c1e8c-8e1c-7000-8000-000000000001";
 const chapterId = "019c1e8c-8e1c-7000-8000-000000000002";
@@ -428,6 +432,83 @@ test("keeps the review queue usable when paused plan discovery fails", async ({
   await expect(page.getByText("当前没有待处理的审核项")).toBeVisible();
 });
 
+test("discovers a failed batch plan and preserves its failure state", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "失败计划发现",
+  });
+  const branchPath = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+  await page.route(`**${branchPath}/review-queue?**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [],
+        requestId: "req_batch_review_empty_for_failed_plan",
+        meta: {
+          nextCursor: null,
+          counts: { total: 0, pending: 0, claimed: 0, highRisk: 0, stale: 0 },
+        },
+      }),
+    });
+  });
+  await page.route(`**${branchPath}/batch-plans?status=paused&limit=20**`, (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [],
+        requestId: "req_batch_paused_empty",
+        meta: { nextCursor: null },
+      }),
+    }),
+  );
+  await page.route(`**${branchPath}/batch-plans?status=failed&limit=20**`, async (route) => {
+    const response = pausedPlanResponse();
+    response.data.workId = work.id;
+    response.data.branchId = work.mainBranch.id;
+    response.data.status = "failed";
+    response.data.counts.paused = 0;
+    response.data.counts.failed = 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        data: [response.data],
+        requestId: "req_batch_failed_plan",
+        meta: { nextCursor: null },
+      }),
+    });
+  });
+  await page.route(`**${branchPath}/batch-plans/${planId}`, async (route) => {
+    const response = pausedPlanResponse();
+    response.data.workId = work.id;
+    response.data.branchId = work.mainBranch.id;
+    response.data.status = "failed";
+    response.data.counts.paused = 0;
+    response.data.counts.failed = 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(response),
+    });
+  });
+  await page.route(`**${branchPath}/batch-plans/${planId}/cost-report?**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(pausedCostReportResponse(work.id)),
+    });
+  });
+
+  await page.goto(`/workspace/${work.id}/batch`);
+  await expect(page.getByText("执行失败")).toBeVisible();
+  await expect(page.getByText("当前没有待处理的审核项")).toBeVisible();
+  await expectAuthorFacingLanguage(page);
+});
+
 test("keeps the batch review workspace within four viewports", async ({
   page,
   context,
@@ -592,5 +673,9 @@ test("keeps the batch review workspace within four viewports", async ({
       body: await page.screenshot({ animations: "disabled", caret: "hide", fullPage: true }),
       contentType: "image/png",
     });
+    await expect(page).toHaveScreenshot(
+      ["batch", `batch-${width}.png`],
+      productionScreenshotOptions,
+    );
   }
 });

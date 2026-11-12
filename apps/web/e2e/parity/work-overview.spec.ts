@@ -212,6 +212,60 @@ test("offers an outline recovery path for an empty work", async ({ page, context
   ).toHaveAttribute("href", `/workspace/${work.id}/outline`);
 });
 
+test("uses the selected parallel branch across work pages", async ({ page, context }) => {
+  await authenticatedPage(page, context);
+  const work = await createWork(page.request, {
+    mode: "blank",
+    title: "全局创作线",
+  });
+  const token = await getCsrf(page.request);
+  const branchResponse = await page.request.post(`/api/v1/works/${work.id}/branches`, {
+    headers: { Origin: origin, "X-CSRF-Token": token },
+    data: {
+      name: "what-if",
+      sourceNodeId: work.mainBranch.headNodeId,
+      reason: "验证全局创作线切换",
+    },
+  });
+  expect(branchResponse.status()).toBe(200);
+  const branch = (await branchResponse.json()).data as { id: string };
+  await page.request
+    .post(`/api/v1/works/${work.id}/branches/${branch.id}/entities`, {
+      headers: { Origin: origin, "X-CSRF-Token": token },
+      data: {
+        type: "character",
+        name: "平行线角色",
+        aliases: [],
+        summary: "只存在于平行版本。",
+        description: "用于验证全局分支上下文。",
+        tags: [],
+        data: {
+          bodyState: "正常",
+          knowledgeBoundary: "不知道主线秘密",
+          relationshipSummary: "尚未登场",
+        },
+      },
+    })
+    .then((response) => expect(response.status()).toBe(201));
+
+  await page.goto("/workspace");
+  await page.evaluate(
+    ({ branchId, workId }) => {
+      window.localStorage.setItem(`nb_active_branch_id:${workId}`, branchId);
+    },
+    { branchId: branch.id, workId: work.id },
+  );
+  await page.goto(`/workspace/${work.id}/settings`);
+  await expect(page.getByLabel("切换创作线")).toHaveValue(branch.id);
+  await expect(page.getByText("平行线角色")).toBeVisible();
+  await expect(page.locator(".workspace-copy")).toContainText("what-if");
+
+  await page.getByLabel("切换创作线").selectOption(work.mainBranch.id);
+  await expect(page.getByLabel("切换创作线")).toHaveValue(work.mainBranch.id);
+  await expect(page.getByText("平行线角色")).toHaveCount(0);
+  await expect(page.locator(".workspace-copy")).toContainText("主线");
+});
+
 test("treats an archived branch as read-only without write links", async ({ page, context }) => {
   await authenticatedPage(page, context);
   const work = await createWork(page.request, {

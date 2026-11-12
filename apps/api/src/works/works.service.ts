@@ -174,12 +174,12 @@ export class WorksService {
     return this.toOverview(userId, result.work, undefined, result.pack);
   }
 
-  async get(userId: string, workId: string): Promise<WorkOverview> {
+  async get(userId: string, workId: string, branchId?: string): Promise<WorkOverview> {
     const work = await this.repository.find(userId, workId);
     if (!work) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "作品不存在或无权访问");
     }
-    return this.toOverview(userId, work);
+    return this.toOverview(userId, work, undefined, undefined, branchId);
   }
 
   async branches(
@@ -206,13 +206,16 @@ export class WorksService {
     work: WorkRecord,
     suppliedBranch?: WorkBranchRecord,
     suppliedTemplatePack?: GenrePackRecord,
+    requestedBranchId?: string,
   ): Promise<WorkOverview> {
     const branches = suppliedBranch
       ? [suppliedBranch]
       : await this.repository.findBranches(userId, work.id);
-    const mainBranch = branches.find((branch) => branch.name === "main");
+    const mainBranch = requestedBranchId
+      ? branches.find((branch) => branch.id === requestedBranchId)
+      : branches.find((branch) => branch.name === "main");
     if (!mainBranch?.headNodeId) {
-      throw new Error("Work is missing its main branch head");
+      throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "创作线不存在或无权访问");
     }
     const readiness = await this.readiness.workReadiness(userId, work.id, mainBranch.id);
     const templatePack =

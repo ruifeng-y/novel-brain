@@ -344,6 +344,55 @@
       "when": 1794462258205,
       "tag": "0048_large_killer_shrike",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1794462946129,
+      "tag": "0049_useful_captain_cross",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1794465073467,
+      "tag": "0050_amazing_fat_cobra",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1794468495193,
+      "tag": "0051_goofy_unicorn",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1794468672604,
+      "tag": "0052_naive_loki",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1794468806558,
+      "tag": "0053_nervous_wendell_rand",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1794471266434,
+      "tag": "0054_spotty_raza",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794475057632,
+      "tag": "0055_odd_stephen_strange",
+      "breakpoints": true
     }
   ]
 }

@@ -149,6 +149,16 @@ a:focus-visible {
   border-radius: 8px;
 }
 
+.workspace-branch-select {
+  max-width: 88px;
+  padding: 3px 5px;
+  color: var(--ink-2);
+  font-size: 10px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+}
+
 .workspace-avatar {
   display: grid;
   flex-shrink: 0;
@@ -356,6 +366,82 @@ a:focus-visible {
 
 .notification-shell {
   position: relative;
+}
+
+.search-center {
+  position: relative;
+}
+
+.search-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 95;
+  width: min(420px, calc(100vw - 32px));
+  padding: 12px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+}
+
+.search-popover-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.search-popover-head input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 10px;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.search-popover > .btn {
+  margin-top: 8px;
+}
+
+.search-results {
+  display: grid;
+  max-height: 320px;
+  margin-top: 8px;
+  overflow-y: auto;
+}
+
+.search-results a {
+  display: grid;
+  gap: 3px;
+  padding: 10px 8px;
+  color: var(--ink);
+  text-decoration: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.search-results a:hover {
+  background: var(--jade-soft);
+}
+
+.search-results strong {
+  font-size: 12px;
+}
+
+.search-results span,
+.search-results small,
+.search-state {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.search-state {
+  padding: 12px 4px;
+}
+
+.search-state.error {
+  color: var(--cinnabar);
 }
 
 .notification-trigger {
@@ -568,6 +654,185 @@ a:focus-visible {
   line-height: 1.55;
   background: rgba(255, 255, 255, 0.72);
   border-bottom: 1px solid var(--line);
+}
+
+.changes-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.section-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+}
+
+.section-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.form-grid .field {
+  display: grid;
+  gap: 6px;
+}
+
+.form-grid .field.full {
+  grid-column: 1 / -1;
+}
+
+.form-grid input,
+.form-grid select,
+.form-grid textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  color: var(--ink);
+  font: inherit;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.form-grid textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.compare-row {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.compare-row .field {
+  flex: 1;
+}
+
+.compact-field {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+}
+
+.compact-field select {
+  height: 32px;
+  padding: 0 8px;
+  font: inherit;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.changes-list,
+.merge-list,
+.impact-list {
+  display: grid;
+  gap: 8px;
+}
+
+.change-row,
+.merge-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper-2);
+}
+
+.change-row > div:first-child,
+.merge-row > div:first-child,
+.impact-list > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.change-row strong,
+.merge-row strong,
+.impact-list strong {
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.change-row span,
+.merge-row span,
+.impact-list span {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+
+.change-row small,
+.merge-row small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.impact-list {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.impact-list > div {
+  padding: 10px 12px;
+  background: var(--jade-soft);
+  border-radius: 6px;
+}
+
+.merge-list {
+  margin-top: 12px;
+}
+
+.empty-state {
+  padding: 24px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+}
+
+@media (max-width: 900px) {
+  .changes-layout,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compare-row,
+  .change-row,
+  .merge-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
 }
 
 .work-context-bar strong,
