@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { AiGateway, GenerationResult } from "@novel-brain/ai";
-import { BudgetReservationError } from "@novel-brain/db";
 
 import {
   BudgetedProviderCallExecutor,
@@ -46,17 +45,9 @@ describe("budgeted provider call", () => {
     const generateText = vi.fn(async () => RESULT);
     const repository = {
       beginModelCall: vi.fn(async () => {
-        throw new BudgetReservationError({
-          maxCostCny: 1,
-          maxTokens: 10_000,
-          usedCostCny: 0.9,
-          usedTokens: 9_000,
-          reservedCostCny: 0,
-          reservedTokens: 0,
-          requestedCostCny: 0.2,
-          requestedTokens: 2_000,
-          bindingScope: "volume",
-        });
+        const error = new Error("reservation rejected");
+        error.name = "BudgetReservationError";
+        throw error;
       }),
       recordBudgetFailure,
     } as unknown as WorkerGenerationRepository;
@@ -89,7 +80,6 @@ describe("budgeted provider call", () => {
         step: "draft",
         attempt: 1,
         errorCode: "JOB_BUDGET_EXCEEDED",
-        bindingScope: "volume",
       }),
     );
   });

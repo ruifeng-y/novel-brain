@@ -11,8 +11,6 @@ Batch planning and execution are M2 work and do not belong to M1 release accepta
 
 The M2 implementation is preserved on `codex/m2-batch-isolation`. Because #91 depends on the M1 Agent Runtime, recovery and cost contracts from #110/#114/#115, the M2 pull request is stacked on the cleaned M1 branch. Basing it directly on `origin/main` would duplicate unverified M1 work and is therefore explicitly rejected.
 
-The rebased M2 branch descends from the cleaned M1 tip and consolidates the former 0043–0045 batch migrations into `0047_remarkable_krista_starr.sql`. M1 keeps its existing `0046_gorgeous_epoch` search-index migration chain.
-
 ## M2 commits moved out of M1
 
 - `8af3180` `feat(batch): 实现批量任务层级与 DAG 计划器`

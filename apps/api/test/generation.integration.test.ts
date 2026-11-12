@@ -9,7 +9,6 @@ import {
   contextPackPreviewResponseSchema,
   generationJobListResponseSchema,
   jobRecoveryResponseSchema,
-  notificationListResponseSchema,
   generationJobResponseSchema,
   generateChapterJobSchema,
   WORKER_JOB_STEPS,
@@ -292,17 +291,6 @@ describe("generation HTTP integration", () => {
     expect(completedJob.contextPack?.budget?.layers.P0.selectedCount).toBeGreaterThan(0);
     expect(completedJob.contextPack?.manifestHash).toMatch(/^[a-f0-9]{64}$/);
     expect(completedJob.contextPack?.sourceRefs.length).toBeGreaterThan(0);
-    const completedNotifications = notificationListResponseSchema.parse(
-      (await owner.get("/api/v1/notifications?limit=20").expect(200)).body,
-    );
-    expect(completedNotifications.data).toContainEqual(
-      expect.objectContaining({
-        type: "review_required",
-        targetType: "job",
-        targetId: job.id,
-        payload: expect.objectContaining({ href: `/workspace/${work.id}/write` }),
-      }),
-    );
 
     const versions = await owner.get(`${branchPath}/chapters/${chapter.id}/versions`).expect(200);
     expect(versions.body.data.map((version: { version: number }) => version.version)).toEqual([
@@ -634,17 +622,6 @@ describe("generation HTTP integration", () => {
       status: "failed",
       error: { code: "MODEL_RATE_LIMITED" },
     });
-    const failedNotifications = notificationListResponseSchema.parse(
-      (await owner.get("/api/v1/notifications?limit=20").expect(200)).body,
-    );
-    expect(failedNotifications.data).toContainEqual(
-      expect.objectContaining({
-        type: "job_failed",
-        targetType: "job",
-        targetId: job.id,
-        payload: expect.objectContaining({ href: `/workspace/${work.id}/write` }),
-      }),
-    );
     const traces = agentRunTraceListResponseSchema.parse(
       (await owner.get(`${branchPath}/agent-runs?jobId=${job.id}`).expect(200)).body,
     ).data;

@@ -2,12 +2,10 @@ import { createHash } from "node:crypto";
 
 import { Injectable, type OnModuleDestroy } from "@nestjs/common";
 import {
-  batchCostBindingScopeSchema,
   contextPackManifestSchema,
   contextPackVersionSchema,
   WRITING_ACTION_STEPS,
   WORKER_JOB_STEPS,
-  type BatchCostBindingScope,
   type ContextPackManifest,
   type GenerateChapterJob,
   type GenerationCost,
@@ -35,7 +33,6 @@ import {
   jobs,
   modelCalls,
   modelConfigs,
-  notifications,
   promptVersions,
   qualityFindings,
   revisionPlans,
@@ -2014,12 +2011,7 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
         .where(eq(jobs.id, job.id))
         .returning();
       if (failedJob) {
-        const bindingScope = batchCostBindingScopeSchema.safeParse(
-          (job.budget as { bindingScope?: unknown }).bindingScope,
-        );
         await appendEvent(transaction, failedJob, "job.budget.exceeded", {
-          code: "JOB_BUDGET_EXCEEDED",
-          message: BUDGET_EXHAUSTED_MESSAGE,
           step: input.step,
           attempt: input.call.attempt,
           reservationId: settlement.id,
@@ -2027,7 +2019,6 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           reservedCostCny: settlement.reservedCostCny,
           actualTokens: totalTokens,
           actualCostCny: costCny,
-          ...(bindingScope.success ? { bindingScope: bindingScope.data } : {}),
         });
         await appendEvent(transaction, failedJob, "job.step.failed", {
           step: input.step,
@@ -2110,18 +2101,9 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
     errorCode: string;
     message: string;
     escalationReason: string;
-    bindingScope?: BatchCostBindingScope;
   }): Promise<void> {
     await this.withTenant(input.payload.actorId, async (transaction) => {
       const now = new Date();
-      const [job] = await transaction
-        .select()
-        .from(jobs)
-        .where(and(eq(jobs.id, input.payload.jobId), eq(jobs.userId, input.payload.actorId)))
-        .limit(1);
-      if (!job) {
-        throw new Error("Budget failure job is not accessible for this tenant");
-      }
       const promptHash = sha256(input.prompt);
       const systemHash = sha256(input.system);
       const inputHash = sha256(`${input.system}\u0000${input.prompt}`);
@@ -2224,16 +2206,6 @@ export class WorkerGenerationRepository implements OnModuleDestroy {
           finishedAt: now,
         })
         .where(eq(agentRuns.id, run.id));
-      await appendEvent(transaction, job, "job.budget.exceeded", {
-        code: input.errorCode,
-        message: input.message,
-        step: input.step,
-        attempt: input.attempt,
-        reservationId: reservation.id,
-        estimatedTokens: input.estimatedTokens,
-        estimatedCostCny: input.estimatedCostCny,
-        ...(input.bindingScope ? { bindingScope: input.bindingScope } : {}),
-      });
     });
   }
 
@@ -2641,56 +2613,17 @@ async function appendEvent(
     .select({ sequence: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
     .from(jobEvents)
     .where(eq(jobEvents.jobId, job.id));
-  const sequence = Number(latest?.sequence ?? 0) + 1;
   await transaction.insert(jobEvents).values({
     id: uuidv7(),
     jobId: job.id,
     workId: job.workId,
     branchId: job.branchId,
     userId: job.userId,
-    sequence,
+    sequence: Number(latest?.sequence ?? 0) + 1,
     eventType,
     payload,
     occurredAt: new Date(),
   });
-  if (
-    job.type === "generate_chapter" &&
-    job.parentJobId === null &&
-    (eventType === "job.waiting_review" || eventType === "job.failed")
-  ) {
-    const notification =
-      eventType === "job.waiting_review"
-        ? {
-            type: "review_required" as const,
-            title: "章节已生成，等待审核",
-            message: "新章节已完成生成，可进入写作台审核。",
-          }
-        : {
-            type: "job_failed" as const,
-            title: "章节生成失败",
-            message: "任务已停止，可从检查点重试。",
-          };
-    await transaction
-      .insert(notifications)
-      .values({
-        id: uuidv7(),
-        userId: job.userId,
-        workId: job.workId,
-        branchId: job.branchId,
-        type: notification.type,
-        targetType: "job",
-        targetId: job.id,
-        payload: {
-          title: notification.title,
-          message: notification.message,
-          href: `/workspace/${job.workId}/write`,
-        },
-        dedupeKey: `job:${job.id}:${eventType}:${sequence}`,
-        readAt: null,
-        createdAt: new Date(),
-      })
-      .onConflictDoNothing();
-  }
 }
 
 function countWords(content: string): number {
