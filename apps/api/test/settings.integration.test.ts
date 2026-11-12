@@ -2730,6 +2730,131 @@ describe("settings center HTTP integration", () => {
     ).toBe("第一版事件描述。");
   });
 
+  it("restores golden-finger and item projections from historical snapshots", async () => {
+    const owner = await createAuthenticatedAgent("settings-restore-power-items@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const base = `/api/v1/works/${work.id}/branches/${work.mainBranch.id}`;
+
+    const mechanism = await owner
+      .post(`${base}/world/mechanisms`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "忘川书",
+        aliases: [],
+        summary: "吞噬记忆的古书。",
+        description: "",
+        tags: [],
+        mechanismType: "金手指",
+        owner: null,
+        powerSystem: null,
+        rules: "吞噬一段记忆，获得一页新法。",
+        costs: "每次施展遗忘一件事。",
+        limits: "不能吞噬本命记忆。",
+        growth: "每十页解锁一层。",
+      })
+      .expect(201);
+    const updatedMechanism = await owner
+      .patch(`${base}/world/mechanisms/${mechanism.body.data.mechanism.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: mechanism.body.data.version,
+        mechanismType: "特殊机制",
+        rules: "第二版规则。",
+        costs: "第二版代价。",
+        limits: "第二版限制。",
+        growth: "第二版成长。",
+      })
+      .expect(200);
+    await owner
+      .post(`${base}/entities/${mechanism.body.data.mechanism.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: updatedMechanism.body.data.version,
+        targetVersion: 1,
+        reason: "恢复金手指初版规则。",
+      })
+      .expect(200);
+    const restoredMechanism = await owner
+      .get(`${base}/world/mechanisms/${mechanism.body.data.mechanism.id}`)
+      .expect(200);
+    expect(restoredMechanism.body.data).toMatchObject({
+      mechanismType: "金手指",
+      rules: "吞噬一段记忆，获得一页新法。",
+      costs: "每次施展遗忘一件事。",
+      limits: "不能吞噬本命记忆。",
+      growth: "每十页解锁一层。",
+    });
+
+    const item = await owner
+      .post(`${base}/world/items`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        name: "听潮剑",
+        aliases: [],
+        summary: "会记录持剑者杀意的法器。",
+        description: "",
+        tags: [],
+        kind: "equipment",
+        category: "法器",
+        grade: "玄阶",
+        effect: "第一版效果。",
+        cost: "第一版代价。",
+        limits: "第一版限制。",
+        ownershipModel: "unique",
+        consumable: false,
+        quantity: 1,
+        equipmentSlot: "main_hand",
+      })
+      .expect(201);
+    const updatedItem = await owner
+      .patch(`${base}/world/items/${item.body.data.item.id}`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: item.body.data.version,
+        kind: "item",
+        category: "信物",
+        grade: "黄阶",
+        effect: "第二版效果。",
+        cost: "第二版代价。",
+        limits: "第二版限制。",
+        ownershipModel: "shared",
+        consumable: true,
+        equipmentSlot: null,
+      })
+      .expect(200);
+    await owner
+      .post(`${base}/entities/${item.body.data.item.id}/restore`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .send({
+        version: updatedItem.body.data.version,
+        targetVersion: 1,
+        reason: "恢复物品初版档案。",
+      })
+      .expect(200);
+    const restoredItem = await owner
+      .get(`${base}/world/items/${item.body.data.item.id}`)
+      .expect(200);
+    expect(restoredItem.body.data).toMatchObject({
+      kind: "equipment",
+      category: "法器",
+      grade: "玄阶",
+      effect: "第一版效果。",
+      cost: "第一版代价。",
+      limits: "第一版限制。",
+      ownershipModel: "unique",
+      consumable: false,
+      quantity: 1,
+      equipmentSlot: "main_hand",
+    });
+  });
+
   it("allows only one concurrent restore for the same current version", async () => {
     const owner = await createAuthenticatedAgent("settings-restore-concurrency@example.com");
     const work = await createWork(owner);

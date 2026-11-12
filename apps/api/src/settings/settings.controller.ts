@@ -194,7 +194,7 @@ export class SettingsController {
         uuidV7Schema.parse(workId),
         uuidV7Schema.parse(branchId),
         uuidV7Schema.parse(entityId),
-        settingEntityPatchRequestSchema.parse(body),
+        body,
         this.auditContext(request, requestId),
       ),
       requestId,

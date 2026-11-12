@@ -1547,12 +1547,29 @@ describe("shared contracts", () => {
       }),
     ).toMatchObject({ data: { rule: "世界规则仍可通过通用接口更新。" } });
 
-    expect(
-      settingEntityPatchRequestSchema.parse({
-        version: 2,
-        data: { bodyState: "左臂已愈。" },
-      }),
-    ).toMatchObject({ data: { bodyState: "左臂已愈。" } });
+    for (const data of [
+      { bodyState: "左臂已愈。" },
+      { details: "势力总览。" },
+      { details: "地图说明。" },
+      { details: "力量体系总览。" },
+      { rules: "吞噬记忆换取力量。", cost: "", limits: "", growth: "" },
+      {
+        category: "信物",
+        grade: "玄阶",
+        effect: "剑身会记录杀意。",
+        cost: "",
+        ownership: "",
+        limits: "",
+      },
+      { era: "大玄历", storyTime: "十六年前", event: "忘川村灭门。" },
+    ]) {
+      expect(() =>
+        settingEntityPatchRequestSchema.parse({
+          version: 2,
+          data,
+        }),
+      ).toThrow();
+    }
   });
 
   it("validates append-only setting version restoration requests", () => {

@@ -12,11 +12,13 @@ import {
   entities,
   entityVersions,
   factionProfiles,
+  itemTechniques,
   powerPaths,
   powerRealms,
   powerSystems,
   settingChangeRequests,
   settingProposals,
+  specialMechanisms,
   timelineEvents,
   versionNodes,
   workBranches,
@@ -30,6 +32,8 @@ import {
   factionDataSchema,
   goldenFingerDataSchema,
   itemDataSchema,
+  itemKindSchema,
+  itemOwnershipModelSchema,
   mapDataSchema,
   powerSystemDataSchema,
   powerLifespanPolicySchema,
@@ -52,6 +56,7 @@ import {
   type SettingEntityPatchRequest,
   type SettingEntityRestoreRequest,
   type SettingEntityVersionListQuery,
+  uuidV7Schema,
 } from "@novel-brain/contracts";
 import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { InferSelectModel } from "drizzle-orm";
@@ -92,14 +97,55 @@ export interface SettingWriteValidationError {
   message: string;
 }
 
-export type SettingWriteViolation = SettingWriteConflict | SettingWriteValidationError;
+export interface SettingDomainDataViolation {
+  kind: "domain_data_forbidden";
+}
+
+export type SettingWriteViolation =
+  SettingWriteConflict | SettingWriteValidationError | SettingDomainDataViolation;
 export type EntityCustomFieldValues = Record<string, Record<string, unknown>>;
+
+export function isSettingDomainDataAllowed(entityType: string, data: unknown): boolean {
+  return data === undefined || entityType === "world_rule";
+}
 
 const powerSystemDomainSnapshotSchema = z
   .object({
     overview: z.string(),
     lifespanPolicy: powerLifespanPolicySchema,
     paths: z.array(powerPathSchema),
+  })
+  .strict();
+
+const specialMechanismDomainSnapshotSchema = z
+  .object({
+    mechanismType: z.string(),
+    ownerType: z.enum(["character", "faction", "item"]).nullable(),
+    ownerId: uuidV7Schema.nullable(),
+    ownerLabel: z.string().nullable(),
+    powerSystemId: uuidV7Schema.nullable(),
+    rules: z.string(),
+    costs: z.string(),
+    limits: z.string(),
+    growth: z.string(),
+  })
+  .strict();
+
+const itemDomainSnapshotSchema = z
+  .object({
+    kind: itemKindSchema,
+    category: z.string(),
+    grade: z.string(),
+    effect: z.string(),
+    cost: z.string(),
+    limits: z.string(),
+    ownershipModel: itemOwnershipModelSchema,
+    consumable: z.boolean(),
+    quantity: z.number().int().nonnegative(),
+    equipmentSlot: z.string().nullable(),
+    equippedByType: z.enum(["character", "faction"]).nullable(),
+    equippedById: uuidV7Schema.nullable(),
+    equippedByLabel: z.string().nullable(),
   })
   .strict();
 
@@ -1216,6 +1262,10 @@ export class SettingsRepository implements OnModuleDestroy {
       if (current.status === "discarded") {
         return "discarded";
       }
+      // The service checks first so HTTP callers receive a stable domain error before Zod parsing.
+      if (!isSettingDomainDataAllowed(current.type, input.data)) {
+        return { kind: "domain_data_forbidden" };
+      }
       if (current.version !== input.version) {
         return "version_conflict";
       }
@@ -1454,6 +1504,32 @@ export class SettingsRepository implements OnModuleDestroy {
       if (historicalPowerSystem && !historicalPowerSystem.success) {
         return "invalid_snapshot";
       }
+      const historicalMechanismDomain =
+        current.type === "golden_finger" && domainSnapshot
+          ? specialMechanismDomainSnapshotSchema.safeParse(domainSnapshot)
+          : undefined;
+      if (historicalMechanismDomain && !historicalMechanismDomain.success) {
+        return "invalid_snapshot";
+      }
+      const restoredMechanismData =
+        current.type === "golden_finger"
+          ? goldenFingerDataSchema.safeParse(restoredInput.data)
+          : undefined;
+      if (restoredMechanismData && !restoredMechanismData.success) {
+        return "invalid_snapshot";
+      }
+      const historicalItemDomain =
+        current.type === "item" && domainSnapshot
+          ? itemDomainSnapshotSchema.safeParse(domainSnapshot)
+          : undefined;
+      if (historicalItemDomain && !historicalItemDomain.success) {
+        return "invalid_snapshot";
+      }
+      const restoredItemData =
+        current.type === "item" ? itemDataSchema.safeParse(restoredInput.data) : undefined;
+      if (restoredItemData && !restoredItemData.success) {
+        return "invalid_snapshot";
+      }
       const factionProfileSnapshot =
         current.type === "faction" && domainSnapshot
           ? readNestedRecord(domainSnapshot, "profile")
@@ -1572,6 +1648,28 @@ export class SettingsRepository implements OnModuleDestroy {
           versionNodeId,
           now,
           historicalPowerSystem.data,
+        );
+      }
+      if (restoredMechanismData?.success) {
+        await restoreSpecialMechanismProjection(
+          transaction,
+          userId,
+          context,
+          restored.id,
+          historicalMechanismDomain?.success ? historicalMechanismDomain.data : undefined,
+          restoredMechanismData.data,
+          now,
+        );
+      }
+      if (restoredItemData?.success) {
+        await restoreItemProjection(
+          transaction,
+          userId,
+          context,
+          restored.id,
+          historicalItemDomain?.success ? historicalItemDomain.data : undefined,
+          restoredItemData.data,
+          now,
         );
       }
       await syncWorldProjection(
@@ -2399,6 +2497,114 @@ async function syncWorldProjection(
     .onConflictDoUpdate({
       target: timelineEvents.id,
       set: timelineValues,
+    });
+}
+
+async function restoreSpecialMechanismProjection(
+  transaction: DatabaseTransaction,
+  userId: string,
+  context: SettingsWorkContext,
+  entityId: string,
+  historical: z.infer<typeof specialMechanismDomainSnapshotSchema> | undefined,
+  data: z.infer<typeof goldenFingerDataSchema>,
+  now: Date,
+): Promise<void> {
+  const [current] = await transaction
+    .select()
+    .from(specialMechanisms)
+    .where(
+      and(
+        eq(specialMechanisms.entityId, entityId),
+        eq(specialMechanisms.userId, userId),
+        eq(specialMechanisms.workId, context.workId),
+        eq(specialMechanisms.branchId, context.branchId),
+      ),
+    )
+    .limit(1);
+  const values = historical ?? {
+    mechanismType: current?.mechanismType ?? "特殊机制",
+    ownerType: current?.ownerType ?? null,
+    ownerId: current?.ownerId ?? null,
+    ownerLabel: current?.ownerLabel ?? null,
+    powerSystemId: current?.powerSystemId ?? null,
+    rules: data.rules,
+    costs: data.cost,
+    limits: data.limits,
+    growth: data.growth,
+  };
+  await transaction
+    .insert(specialMechanisms)
+    .values({
+      entityId,
+      workId: context.workId,
+      branchId: context.branchId,
+      userId,
+      ...values,
+      createdAt: current?.createdAt ?? now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: specialMechanisms.entityId,
+      set: {
+        ...values,
+        updatedAt: now,
+      },
+    });
+}
+
+async function restoreItemProjection(
+  transaction: DatabaseTransaction,
+  userId: string,
+  context: SettingsWorkContext,
+  entityId: string,
+  historical: z.infer<typeof itemDomainSnapshotSchema> | undefined,
+  data: z.infer<typeof itemDataSchema>,
+  now: Date,
+): Promise<void> {
+  const [current] = await transaction
+    .select()
+    .from(itemTechniques)
+    .where(
+      and(
+        eq(itemTechniques.entityId, entityId),
+        eq(itemTechniques.userId, userId),
+        eq(itemTechniques.workId, context.workId),
+        eq(itemTechniques.branchId, context.branchId),
+      ),
+    )
+    .limit(1);
+  const values = historical ?? {
+    kind: current?.kind ?? "item",
+    category: data.category,
+    grade: data.grade,
+    effect: data.effect,
+    cost: data.cost,
+    limits: data.limits,
+    ownershipModel: current?.ownershipModel ?? "shared",
+    consumable: current?.consumable ?? false,
+    quantity: current?.quantity ?? 1,
+    equipmentSlot: current?.equipmentSlot ?? null,
+    equippedByType: current?.equippedByType ?? null,
+    equippedById: current?.equippedById ?? null,
+    equippedByLabel: current?.equippedByLabel ?? null,
+  };
+  await transaction
+    .insert(itemTechniques)
+    .values({
+      entityId,
+      workId: context.workId,
+      branchId: context.branchId,
+      userId,
+      ...values,
+      createdAt: current?.createdAt ?? now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: itemTechniques.entityId,
+      set: {
+        ...values,
+        updatedAt: now,
+      },
     });
 }
 
