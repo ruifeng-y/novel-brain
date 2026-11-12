@@ -1,0 +1,1981 @@
+{
+  "scope": "public tables with user_id, work_id or branch_id",
+  "tables": [
+    {
+      "table": "agent_grants",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "agent_grants_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "agent_runs",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "agent_runs_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "agent_tool_calls",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "agent_tool_calls_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "batch_review_decision_batches",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "batch_review_decision_batches_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "batch_review_decisions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "batch_review_decisions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "batch_review_items",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "batch_review_items_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "canon_commits",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "canon_commits_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "change_impacts",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "change_impacts_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "change_requests",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "change_requests_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "chapter_versions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "chapter_versions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "chapters",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "chapters_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "character_arcs",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "character_arcs_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "character_change_requests",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "character_change_requests_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "character_itineraries",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "character_itineraries_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "character_knowledge_states",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "character_knowledge_states_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "character_profiles",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "character_profiles_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "character_relationships",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "character_relationships_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "character_state_transitions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "character_state_transitions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "context_pack_versions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "context_pack_versions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "cost_reservations",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "cost_reservations_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "custom_field_definitions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "custom_field_definitions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "custom_field_values",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "custom_field_values_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "entities",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "entities_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "entity_versions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "entity_versions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "fact_decisions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "fact_decisions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "fact_proposals",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "fact_proposals_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "faction_profiles",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "faction_profiles_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "faction_relationships",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "faction_relationships_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "facts",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "facts_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "foreshadows",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "foreshadows_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "golden_three_candidates",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "golden_three_candidates_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "golden_three_locks",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "golden_three_locks_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "golden_three_reviews",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "golden_three_reviews_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "idempotency_records",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "idempotency_records_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "import_candidates",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "import_candidates_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "import_chunks",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "import_chunks_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "import_conflicts",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "import_conflicts_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "import_jobs",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "import_jobs_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "import_reports",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "import_reports_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "item_rights",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "item_rights_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "item_techniques",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "item_techniques_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "job_checkpoints",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "job_checkpoints_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "job_events",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "job_events_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "job_recoveries",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "job_recoveries_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "job_step_attempts",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "job_step_attempts_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "job_steps",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "job_steps_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "job_work_items",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "job_work_items_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "jobs",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "jobs_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "map_control",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "map_control_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "map_edges",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "map_edges_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "map_layers",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "map_layers_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "map_markers",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "map_markers_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "map_nodes",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "map_nodes_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "mechanism_ownership_events",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "mechanism_ownership_events_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "merge_decisions",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "merge_decisions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "merge_items",
+      "tenantColumns": [
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "merge_items_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "model_calls",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "model_calls_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "model_configs",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "model_configs_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "notifications",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "notifications_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "outline_nodes",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "outline_nodes_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "password_resets",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "password_resets_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "pen_names",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "pen_names_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "plot_threads",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "plot_threads_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "power_paths",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "power_paths_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "power_realms",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "power_realms_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "power_systems",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "power_systems_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "prompt_versions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "prompt_versions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "quality_findings",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "quality_findings_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "quality_reports",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "quality_reports_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "review_decisions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "review_decisions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "revision_feedback_events",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "revision_feedback_events_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "revision_plans",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "revision_plans_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "revision_rounds",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "revision_rounds_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "scene_cards",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "scene_cards_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "search_documents",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "search_documents_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "search_rebuild_runs",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "search_rebuild_runs_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "sessions",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "sessions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "setting_change_requests",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "setting_change_requests_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "setting_proposals",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "setting_proposals_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "special_mechanisms",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "special_mechanisms_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "story_bible_change_requests",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "story_bible_change_requests_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "story_bible_versions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "story_bible_versions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "story_bible_world_rules",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "story_bible_world_rules_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "story_bibles",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "story_bibles_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "style_baselines",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "style_baselines_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "style_drift_findings",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "style_drift_findings_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "style_drift_reports",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "style_drift_reports_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "style_profiles",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "style_profiles_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "summary_rebuild_items",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "summary_rebuild_items_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "summary_rebuild_runs",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "summary_rebuild_runs_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "summary_records",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "summary_records_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "timeline_eras",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "timeline_eras_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "timeline_events",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "timeline_events_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "usage_records",
+      "tenantColumns": [
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "usage_records_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "version_nodes",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "version_nodes_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "volume_audit_reports",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "volume_audit_reports_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "volume_contracts",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "volume_contracts_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "work_branches",
+      "tenantColumns": [
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "work_branches_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "works",
+      "tenantColumns": [
+        "user_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "works_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    },
+    {
+      "table": "writing_actions",
+      "tenantColumns": [
+        "branch_id",
+        "user_id",
+        "work_id"
+      ],
+      "ownershipKey": "user_id",
+      "rlsEnabled": true,
+      "rlsForced": true,
+      "policies": [
+        {
+          "name": "writing_actions_tenant_policy",
+          "command": "ALL",
+          "using": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)",
+          "withCheck": "(user_id = (NULLIF(current_setting('app.user_id'::text, true), ''::text))::uuid)"
+        }
+      ],
+      "covered": true
+    }
+  ],
+  "uncovered": []
+}
