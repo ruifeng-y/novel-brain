@@ -2311,11 +2311,6 @@ export const jobs = pgTable(
     modelConfigId: uuid("model_config_id").references(() => modelConfigs.id, {
       onDelete: "restrict",
     }),
-    parentJobId: uuid("parent_job_id").references((): AnyPgColumn => jobs.id, {
-      onDelete: "cascade",
-    }),
-    jobType: text("job_type"),
-    workItemKey: text("work_item_key"),
     type: text("type").notNull(),
     status: text("status").notNull().default("queued"),
     progress: integer("progress").notNull().default(0),
@@ -2346,27 +2341,15 @@ export const jobs = pgTable(
     uniqueIndex("jobs_workflow_idempotency_unique")
       .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
       .where(sql`${table.type} = 'agent_workflow'`),
-    uniqueIndex("jobs_batch_plan_idempotency_unique")
-      .on(table.userId, table.workId, table.branchId, table.idempotencyKey)
-      .where(sql`${table.type} = 'batch_plan'`),
     index("jobs_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
     index("jobs_chapter_created_idx").on(table.chapterId, table.createdAt),
-    index("jobs_parent_created_idx").on(table.parentJobId, table.createdAt),
     check(
       "jobs_type_check",
-      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action', 'batch_plan')`,
+      sql`${table.type} in ('generate_chapter', 'agent_workflow', 'write_action')`,
     ),
     check(
       "jobs_required_scope_check",
-      sql`(${table.type} in ('agent_workflow', 'batch_plan')) or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
-    ),
-    check(
-      "jobs_job_type_check",
-      sql`${table.jobType} is null or ${table.jobType} in ('book', 'volume', 'chapter', 'step')`,
-    ),
-    check(
-      "jobs_batch_plan_scope_check",
-      sql`${table.type} <> 'batch_plan' or (${table.jobType} = 'book' and ${table.workItemKey} = 'book' and ${table.chapterId} is null and ${table.modelConfigId} is null)`,
+      sql`(${table.type} = 'agent_workflow') or (${table.type} in ('generate_chapter', 'write_action') and ${table.chapterId} is not null and ${table.modelConfigId} is not null)`,
     ),
     check(
       "jobs_writing_action_scope_check",
@@ -2377,272 +2360,6 @@ export const jobs = pgTable(
       sql`${table.status} in ('queued', 'preparing', 'running', 'paused', 'waiting_review', 'completed', 'failed', 'cancelled')`,
     ),
     check("jobs_progress_check", sql`${table.progress} >= 0 and ${table.progress} <= 100`),
-  ],
-);
-
-export const jobWorkItems = pgTable(
-  "job_work_items",
-  {
-    id: uuid("id").primaryKey(),
-    jobId: uuid("job_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    workId: uuid("work_id")
-      .notNull()
-      .references(() => works.id, { onDelete: "cascade" }),
-    branchId: uuid("branch_id")
-      .notNull()
-      .references(() => workBranches.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    parentId: uuid("parent_id").references((): AnyPgColumn => jobWorkItems.id, {
-      onDelete: "cascade",
-    }),
-    itemType: text("item_type").notNull(),
-    workItemKey: text("work_item_key").notNull(),
-    idempotencyKey: text("idempotency_key").notNull(),
-    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
-    outlineNodeId: uuid("outline_node_id").references(() => outlineNodes.id, {
-      onDelete: "set null",
-    }),
-    status: text("status").notNull().default("pending"),
-    attempt: integer("attempt").notNull().default(0),
-    priority: integer("priority").notNull().default(0),
-    priorityClass: text("priority_class").notNull().default("batch"),
-    sortOrder: integer("sort_order").notNull(),
-    inputVersion: jsonb("input_version")
-      .$type<{ outlineVersion: number | null; chapterVersion: number | null }>()
-      .notNull(),
-    dependencies: jsonb("dependencies").$type<string[]>().notNull().default([]),
-    outputRefs: jsonb("output_refs")
-      .$type<Array<{ type: string; id: string }>>()
-      .notNull()
-      .default([]),
-    cost: jsonb("cost").$type<Record<string, unknown>>().notNull().default({}),
-    checkpoint: jsonb("checkpoint").$type<Record<string, unknown>>().notNull().default({}),
-    errorCode: text("error_code"),
-    errorMessage: text("error_message"),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("job_work_items_job_key_unique").on(table.jobId, table.workItemKey),
-    uniqueIndex("job_work_items_job_idempotency_unique").on(table.jobId, table.idempotencyKey),
-    index("job_work_items_job_type_order_idx").on(table.jobId, table.itemType, table.sortOrder),
-    index("job_work_items_job_user_order_idx").on(
-      table.jobId,
-      table.userId,
-      table.sortOrder,
-      table.id,
-    ),
-    index("job_work_items_job_status_priority_idx").on(
-      table.jobId,
-      table.status,
-      table.priority,
-      table.sortOrder,
-    ),
-    index("job_work_items_user_work_created_idx").on(table.userId, table.workId, table.createdAt),
-    index("job_work_items_parent_idx").on(table.parentId),
-    check(
-      "job_work_items_type_check",
-      sql`${table.itemType} in ('book', 'volume', 'chapter', 'step')`,
-    ),
-    check(
-      "job_work_items_status_check",
-      sql`${table.status} in ('pending', 'ready', 'running', 'paused', 'waiting_review', 'succeeded', 'failed', 'skipped', 'cancelled')`,
-    ),
-    check(
-      "job_work_items_priority_class_check",
-      sql`${table.priorityClass} in ('interactive', 'batch')`,
-    ),
-    check("job_work_items_key_check", sql`${table.workItemKey} ~ '^[a-z][a-z0-9:._-]{0,119}$'`),
-    check("job_work_items_sort_order_check", sql`${table.sortOrder} >= 0`),
-    check("job_work_items_attempt_check", sql`${table.attempt} >= 0`),
-    check(
-      "job_work_items_priority_check",
-      sql`${table.priority} >= 0 and ${table.priority} <= 1000`,
-    ),
-    check(
-      "job_work_items_parent_check",
-      sql`(${table.itemType} = 'book' and ${table.parentId} is null) or (${table.itemType} <> 'book' and ${table.parentId} is not null)`,
-    ),
-    check(
-      "job_work_items_chapter_check",
-      sql`(${table.itemType} in ('chapter', 'step') and ${table.chapterId} is not null) or (${table.itemType} in ('book', 'volume') and ${table.chapterId} is null)`,
-    ),
-    check(
-      "job_work_items_input_version_check",
-      sql`jsonb_typeof(${table.inputVersion}) = 'object'`,
-    ),
-    check("job_work_items_dependencies_check", sql`jsonb_typeof(${table.dependencies}) = 'array'`),
-    check("job_work_items_output_refs_check", sql`jsonb_typeof(${table.outputRefs}) = 'array'`),
-  ],
-);
-
-export type BatchReviewRiskReasonJson = {
-  code: string;
-  message: string;
-};
-
-export type BatchReviewQualityJson = {
-  reportState: "fresh" | "missing" | "stale";
-  canApprove: boolean;
-  scoreAverage: number | null;
-  blockerCount: number;
-};
-
-export const batchReviewItems = pgTable(
-  "batch_review_items",
-  {
-    id: uuid("id").primaryKey(),
-    planId: uuid("plan_id")
-      .notNull()
-      .references(() => jobs.id, { onDelete: "cascade" }),
-    workItemId: uuid("work_item_id")
-      .notNull()
-      .references(() => jobWorkItems.id, { onDelete: "cascade" }),
-    workId: uuid("work_id")
-      .notNull()
-      .references(() => works.id, { onDelete: "cascade" }),
-    branchId: uuid("branch_id")
-      .notNull()
-      .references(() => workBranches.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    targetType: text("target_type").notNull(),
-    targetId: uuid("target_id").notNull(),
-    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "cascade" }),
-    chapterVersionId: uuid("chapter_version_id").references(() => chapterVersions.id, {
-      onDelete: "set null",
-    }),
-    targetVersion: integer("target_version").notNull(),
-    chapterNumber: integer("chapter_number"),
-    chapterTitle: text("chapter_title"),
-    volumeTitle: text("volume_title"),
-    status: text("status").notNull().default("pending"),
-    risk: text("risk").notNull(),
-    riskReasons: jsonb("risk_reasons").$type<BatchReviewRiskReasonJson[]>().notNull().default([]),
-    quality: jsonb("quality").$type<BatchReviewQualityJson>().notNull(),
-    claimedBy: uuid("claimed_by").references(() => users.id, { onDelete: "set null" }),
-    claimedAt: timestamp("claimed_at", { withTimezone: true }),
-    version: integer("version").notNull().default(1),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("batch_review_items_plan_work_item_unique").on(table.planId, table.workItemId),
-    index("batch_review_items_queue_idx").on(
-      table.userId,
-      table.branchId,
-      table.status,
-      table.risk,
-    ),
-    index("batch_review_items_plan_idx").on(table.planId),
-    index("batch_review_items_target_idx").on(table.targetType, table.targetId),
-    check(
-      "batch_review_items_target_type_check",
-      sql`${table.targetType} in ('chapter', 'volume')`,
-    ),
-    check(
-      "batch_review_items_status_check",
-      sql`${table.status} in ('pending', 'claimed', 'approved', 'rejected', 'stale')`,
-    ),
-    check("batch_review_items_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
-    check("batch_review_items_target_version_check", sql`${table.targetVersion} > 0`),
-    check("batch_review_items_version_check", sql`${table.version} > 0`),
-    check(
-      "batch_review_items_risk_reasons_check",
-      sql`jsonb_typeof(${table.riskReasons}) = 'array'`,
-    ),
-    check(
-      "batch_review_items_target_check",
-      sql`(${table.targetType} = 'chapter' and ${table.chapterId} is not null) or (${table.targetType} = 'volume' and ${table.chapterId} is null)`,
-    ),
-    check(
-      "batch_review_items_claim_check",
-      sql`(${table.status} = 'claimed' and ${table.claimedBy} is not null and ${table.claimedAt} is not null) or (${table.status} <> 'claimed' and (${table.claimedBy} is null or ${table.status} in ('approved', 'rejected')))`,
-    ),
-  ],
-);
-
-export const batchReviewDecisionBatches = pgTable(
-  "batch_review_decision_batches",
-  {
-    id: uuid("id").primaryKey(),
-    workId: uuid("work_id")
-      .notNull()
-      .references(() => works.id, { onDelete: "cascade" }),
-    branchId: uuid("branch_id")
-      .notNull()
-      .references(() => workBranches.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    idempotencyKey: text("idempotency_key").notNull(),
-    requestHash: text("request_hash").notNull(),
-    response: jsonb("response").$type<Record<string, unknown>>().notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("batch_review_decision_batches_idempotency_unique").on(
-      table.userId,
-      table.workId,
-      table.branchId,
-      table.idempotencyKey,
-    ),
-    index("batch_review_decision_batches_user_created_idx").on(table.userId, table.createdAt),
-    check(
-      "batch_review_decision_batches_request_hash_check",
-      sql`${table.requestHash} ~ '^[a-f0-9]{64}$'`,
-    ),
-  ],
-);
-
-export const batchReviewDecisions = pgTable(
-  "batch_review_decisions",
-  {
-    id: uuid("id").primaryKey(),
-    batchId: uuid("batch_id")
-      .notNull()
-      .references(() => batchReviewDecisionBatches.id, { onDelete: "cascade" }),
-    queueItemId: uuid("queue_item_id")
-      .notNull()
-      .references(() => batchReviewItems.id, { onDelete: "restrict" }),
-    workId: uuid("work_id")
-      .notNull()
-      .references(() => works.id, { onDelete: "cascade" }),
-    branchId: uuid("branch_id")
-      .notNull()
-      .references(() => workBranches.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    targetType: text("target_type").notNull(),
-    targetId: uuid("target_id").notNull(),
-    chapterId: uuid("chapter_id").references(() => chapters.id, { onDelete: "set null" }),
-    action: text("action").notNull(),
-    risk: text("risk").notNull(),
-    reason: text("reason").notNull(),
-    actorId: uuid("actor_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "restrict" }),
-    actorName: text("actor_name").notNull(),
-    expectedVersion: integer("expected_version").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("batch_review_decisions_batch_item_unique").on(table.batchId, table.queueItemId),
-    index("batch_review_decisions_user_created_idx").on(table.userId, table.createdAt),
-    index("batch_review_decisions_target_idx").on(table.targetType, table.targetId),
-    check(
-      "batch_review_decisions_target_type_check",
-      sql`${table.targetType} in ('chapter', 'volume')`,
-    ),
-    check("batch_review_decisions_action_check", sql`${table.action} in ('approve', 'reject')`),
-    check("batch_review_decisions_risk_check", sql`${table.risk} in ('low', 'medium', 'high')`),
-    check("batch_review_decisions_expected_version_check", sql`${table.expectedVersion} > 0`),
   ],
 );
 
@@ -2916,39 +2633,6 @@ export const jobEvents = pgTable(
   (table) => [
     uniqueIndex("job_events_job_sequence_unique").on(table.jobId, table.sequence),
     index("job_events_job_occurred_idx").on(table.jobId, table.occurredAt),
-  ],
-);
-
-export const notifications = pgTable(
-  "notifications",
-  {
-    id: uuid("id").primaryKey(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    workId: uuid("work_id").references(() => works.id, { onDelete: "cascade" }),
-    branchId: uuid("branch_id").references(() => workBranches.id, { onDelete: "cascade" }),
-    type: text("type").notNull(),
-    targetType: text("target_type").notNull(),
-    targetId: uuid("target_id").notNull(),
-    payload: jsonb("payload").$type<{ title: string; message: string; href: string }>().notNull(),
-    dedupeKey: text("dedupe_key").notNull(),
-    readAt: timestamp("read_at", { withTimezone: true }),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (table) => [
-    uniqueIndex("notifications_user_dedupe_unique").on(table.userId, table.dedupeKey),
-    index("notifications_user_created_idx").on(table.userId, table.createdAt),
-    index("notifications_user_unread_idx").on(table.userId, table.readAt, table.createdAt),
-    check(
-      "notifications_type_check",
-      sql`${table.type} in ('job_completed', 'job_failed', 'review_required', 'merge_completed', 'merge_conflict')`,
-    ),
-    check(
-      "notifications_target_type_check",
-      sql`${table.targetType} in ('job', 'review', 'merge', 'work', 'branch')`,
-    ),
-    check("notifications_dedupe_key_check", sql`length(${table.dedupeKey}) between 1 and 200`),
   ],
 );
 

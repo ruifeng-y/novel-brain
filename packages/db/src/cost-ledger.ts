@@ -2,8 +2,6 @@ import { and, eq, sql } from "drizzle-orm";
 import type { Pool } from "pg";
 import { uuidv7 } from "uuidv7";
 
-import { batchCostBindingScopeSchema, type BatchCostBindingScope } from "@novel-brain/contracts";
-
 import { createDatabaseClient, createDatabasePool, type DatabaseClient } from "./client";
 import { costReservations, jobs } from "./schema";
 
@@ -45,7 +43,6 @@ export class BudgetReservationError extends Error {
       reservedTokens: number;
       requestedCostCny: number;
       requestedTokens: number;
-      bindingScope?: BatchCostBindingScope;
     },
   ) {
     super("Generation budget reservation would exceed the job budget");
@@ -75,22 +72,6 @@ export async function reserveBudgetInTransaction(
   },
 ): Promise<{ reservation: CostReservationRecord; created: boolean }> {
   const now = input.now ?? new Date();
-  const [jobMetadata] = await transaction
-    .select({ parentJobId: jobs.parentJobId })
-    .from(jobs)
-    .where(and(eq(jobs.id, input.jobId), eq(jobs.userId, input.userId)))
-    .limit(1);
-  if (!jobMetadata) {
-    throw new Error("Cost reservation job is not accessible for this tenant");
-  }
-  const [parentJob] = jobMetadata.parentJobId
-    ? await transaction
-        .select()
-        .from(jobs)
-        .where(and(eq(jobs.id, jobMetadata.parentJobId), eq(jobs.userId, input.userId)))
-        .for("update")
-        .limit(1)
-    : [undefined];
   const [job] = await transaction
     .select()
     .from(jobs)
@@ -117,20 +98,16 @@ export async function reserveBudgetInTransaction(
 
   const active = await activeReservationTotals(transaction, input.jobId);
   const cost = job.cost as { costCny?: unknown; totalTokens?: unknown };
-  const budget = job.budget as {
-    maxCostCny?: unknown;
-    maxTokens?: unknown;
-    bindingScope?: unknown;
-  };
+  const budget = job.budget as { maxCostCny?: unknown; maxTokens?: unknown };
   const usedCostCny = finiteNumber(cost.costCny, 0);
   const usedTokens = finiteNumber(cost.totalTokens, 0);
   const maxCostCny = finiteNumber(budget.maxCostCny, Number.POSITIVE_INFINITY);
   const maxTokens = finiteNumber(budget.maxTokens, Number.POSITIVE_INFINITY);
-  const bindingScope = batchCostBindingScopeSchema.safeParse(budget.bindingScope);
-  const costExceeded = usedCostCny + active.costCny + input.estimatedCostCny > maxCostCny;
-  const tokensExceeded = usedTokens + active.tokens + input.estimatedTokens > maxTokens;
   // ADR 0021 requires a hard stop before the provider call when the reservation cannot fit.
-  if (costExceeded || tokensExceeded) {
+  if (
+    usedCostCny + active.costCny + input.estimatedCostCny > maxCostCny ||
+    usedTokens + active.tokens + input.estimatedTokens > maxTokens
+  ) {
     throw new BudgetReservationError({
       maxCostCny,
       maxTokens,
@@ -140,63 +117,7 @@ export async function reserveBudgetInTransaction(
       reservedTokens: active.tokens,
       requestedCostCny: input.estimatedCostCny,
       requestedTokens: input.estimatedTokens,
-      ...(bindingScope.success ? { bindingScope: bindingScope.data } : {}),
     });
-  }
-  if (parentJob) {
-    const planBudget = parentJob.budget as {
-      taskMaxCostCny?: unknown;
-      volumeMaxCostCny?: unknown;
-      perTenThousandCharactersLimitCny?: unknown;
-    };
-    const taskMaxCostCny = finiteNumber(planBudget.taskMaxCostCny, Number.POSITIVE_INFINITY);
-    const volumeMaxCostCny = finiteNumber(planBudget.volumeMaxCostCny, Number.POSITIVE_INFINITY);
-    const perTenThousandCharactersLimitCny = finiteNumber(
-      planBudget.perTenThousandCharactersLimitCny,
-      Number.POSITIVE_INFINITY,
-    );
-    const planUsage = await batchPlanUsage(transaction, parentJob.id, job.chapterId);
-    const limits: Array<{
-      max: number;
-      used: number;
-      reserved: number;
-      bindingScope: BatchCostBindingScope;
-    }> = [
-      {
-        max: taskMaxCostCny,
-        used: planUsage.taskCostCny,
-        reserved: planUsage.taskReservedCostCny,
-        bindingScope: "task",
-      },
-      {
-        max: volumeMaxCostCny,
-        used: planUsage.volumeCostCny,
-        reserved: planUsage.volumeReservedCostCny,
-        bindingScope: "volume",
-      },
-      {
-        max: perTenThousandCharactersLimitCny,
-        used: planUsage.taskCostCny,
-        reserved: planUsage.taskReservedCostCny,
-        bindingScope: "per_ten_thousand_characters",
-      },
-    ];
-    const binding = limits.find(
-      (limit) => limit.used + limit.reserved + input.estimatedCostCny > limit.max,
-    );
-    if (binding) {
-      throw new BudgetReservationError({
-        maxCostCny: binding.max,
-        maxTokens: Number.POSITIVE_INFINITY,
-        usedCostCny: binding.used,
-        usedTokens: 0,
-        reservedCostCny: binding.reserved,
-        reservedTokens: 0,
-        requestedCostCny: input.estimatedCostCny,
-        requestedTokens: input.estimatedTokens,
-        bindingScope: binding.bindingScope,
-      });
-    }
   }
 
   const [reservation] = await transaction
@@ -221,83 +142,6 @@ export async function reserveBudgetInTransaction(
     throw new Error("Cost reservation insert returned no row");
   }
   return { reservation: toReservationRecord(reservation), created: true };
-}
-
-async function batchPlanUsage(
-  transaction: Transaction,
-  planId: string,
-  chapterId: string | null,
-): Promise<{
-  taskCostCny: number;
-  taskReservedCostCny: number;
-  volumeCostCny: number;
-  volumeReservedCostCny: number;
-}> {
-  const result = await transaction.execute(sql`
-    WITH RECURSIVE child_jobs AS (
-      SELECT id, chapter_id, cost
-      FROM jobs
-      WHERE parent_job_id = ${planId}
-    ),
-    child_reservations AS (
-      SELECT reservation.reserved_cost_cny, child.chapter_id
-      FROM cost_reservations reservation
-      INNER JOIN child_jobs child ON child.id = reservation.job_id
-      WHERE reservation.status = 'reserved'
-    ),
-    ancestors AS (
-      SELECT id, parent_id, level
-      FROM outline_nodes
-      WHERE chapter_id = ${chapterId}
-      UNION ALL
-      SELECT parent.id, parent.parent_id, parent.level
-      FROM outline_nodes parent
-      INNER JOIN ancestors child ON child.parent_id = parent.id
-    ),
-    volume_node AS (
-      SELECT id FROM ancestors WHERE level = 'volume' LIMIT 1
-    ),
-    volume_descendants AS (
-      SELECT id FROM volume_node
-      UNION ALL
-      SELECT node.id
-      FROM outline_nodes node
-      INNER JOIN volume_descendants parent ON node.parent_id = parent.id
-    ),
-    volume_chapters AS (
-      SELECT chapter_id FROM outline_nodes
-      WHERE id IN (SELECT id FROM volume_descendants) AND chapter_id IS NOT NULL
-    )
-    SELECT
-      COALESCE((SELECT sum(COALESCE((cost ->> 'costCny')::numeric, 0)) FROM child_jobs), 0)::text
-        AS task_cost,
-      COALESCE((SELECT sum(reserved_cost_cny) FROM child_reservations), 0)::text
-        AS task_reserved_cost,
-      COALESCE((
-        SELECT sum(COALESCE((cost ->> 'costCny')::numeric, 0))
-        FROM child_jobs
-        WHERE chapter_id IN (SELECT chapter_id FROM volume_chapters)
-      ), 0)::text AS volume_cost,
-      COALESCE((
-        SELECT sum(reserved_cost_cny)
-        FROM child_reservations
-        WHERE chapter_id IN (SELECT chapter_id FROM volume_chapters)
-      ), 0)::text AS volume_reserved_cost
-  `);
-  const row = result.rows[0] as
-    | {
-        task_cost: string;
-        task_reserved_cost: string;
-        volume_cost: string;
-        volume_reserved_cost: string;
-      }
-    | undefined;
-  return {
-    taskCostCny: Number(row?.task_cost ?? 0),
-    taskReservedCostCny: Number(row?.task_reserved_cost ?? 0),
-    volumeCostCny: Number(row?.volume_cost ?? 0),
-    volumeReservedCostCny: Number(row?.volume_reserved_cost ?? 0),
-  };
 }
 
 export async function settleBudgetInTransaction(
@@ -522,9 +366,6 @@ export function calculateModelCallCost(tokens: number, costPerTokenCny: number):
 }
 
 function finiteNumber(value: unknown, fallback: number): number {
-  if (value === null || value === undefined || value === "") {
-    return fallback;
-  }
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 }

@@ -17,7 +17,7 @@
 | outline | `/workspace/[workId]/outline` | 树/看板/张力曲线/账本、黄金三章；章节/场景规划张力（0–100） | loading/empty/error/locked/partial | 黄金三章候选 | 五层大纲、卷契约、场景卡、剧情账本与黄金三章候选比较/选择/失败阻断/锁定已实现；作者视觉签收通过；自动化 Golden 比较由 #174 跟踪 |
 | foreshadows | `/workspace/[workId]/foreshadows` | 新增/编辑/埋设/推进/回收/失败回收/放弃/延期/检查 | loading/empty/error/disabled/long | 逾期提醒 | M1 生产实现，作者视觉签收通过；四档 Golden 比较已由 #172 补齐；loading 状态与完整 checklist 由 #174 跟踪 |
 | writing | `/workspace/[workId]/write` | 生成/续写/改写/检查/批准章节/确认事实/提交本章事实/版本 | loading/empty/error/disabled/partial/conflict/long | 本章参考/来源/淘汰/修订 diff/成本/检查点 | 已含三段状态机和页面状态 |
-| batch | `/workspace/[workId]/batch` | 开始/暂停/恢复/取消/重试/审核/报告 | loading/empty/error/partial/disabled/long | 失败断点/成本/审批 | 审核队列、自动通过、成本硬停和报告已生产实现；最终页面 parity 待 #97 |
+| batch | `/workspace/[workId]/batch` | 开始/暂停/恢复/取消/重试/审核/报告 | loading/empty/error/partial/disabled/long | 失败断点/成本/审批 | 部分，缺父子任务和失败章节明细 |
 | changes | `/workspace/[workId]/changes` | 新建/分析/应用/撤销/分支/比较/合并 | loading/error/conflict/partial/disabled | 逐对象比较/摘取 | 部分，对象比较已加，合并门禁待补 |
 | export-publish | `/workspace/[workId]/export` | 导出/下载/发布检查/预览/文案 | loading/empty/error/partial/expired/long | 任务报告 | 部分，缺失败/过期/长目录 |
 | work-settings | `/workspace/[workId]/work-settings` | 封面/标签/状态/复制/归档/删除 | loading/error/disabled/readonly | 无 | 已含删除强制导出和权限/只读状态 |
@@ -33,7 +33,6 @@
 | --- | --- | --- |
 | 壳层/侧栏 | `.sidebar`、`.app-shell` | 固定品牌、导航分组、当前作品/分支、用户卡 |
 | 顶栏/面包屑 | `.topbar`、`.crumbs` | 搜索、通知、账号菜单、当前作品/分支 |
-| 站内通知抽屉 | `.notification-drawer`、`.notification-item`、`.notification-foot` | 顶栏铃铛打开右侧抽屉；未读计数、加载/空/错误、单条已读、全部已读 |
 | 按钮/图标按钮 | `.btn`、`.icon-btn` | primary/ghost/danger/disabled/loading |
 | 面板/卡片 | `.panel`、`.project-card`、`.stat-card` | 统一边框、圆角、间距、空态 |
 | 表格/列表 | `.fact-table`、`.chapter-list`、`.review-item` | 长列表分页/虚拟化、空态、错误态 |

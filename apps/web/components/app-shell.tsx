@@ -7,7 +7,6 @@ import {
   ChevronDown,
   CircleHelp,
   LayoutDashboard,
-  Layers3,
   ListTree,
   LogOut,
   Milestone,
@@ -22,7 +21,6 @@ import { useEffect, useState } from "react";
 import { clearCsrfCache, getCsrfToken } from "../lib/csrf-client";
 import { subscribeWorkContextRefresh } from "../lib/work-context-events";
 import { branchLabel, isWorkReadonly, readonlyScopeLabel } from "../lib/work-presentation";
-import { NotificationCenter } from "./notification-center";
 
 const navigation = [
   { href: "/workspace", label: "工作台", icon: LayoutDashboard },
@@ -36,7 +34,6 @@ const workNavigation = [
   { suffix: "outline", label: "大纲工作台", icon: ListTree },
   { suffix: "foreshadows", label: "伏笔账本", icon: Milestone },
   { suffix: "write", label: "写作台", icon: PenLine },
-  { suffix: "batch", label: "批量生产", icon: Layers3 },
 ];
 
 interface ActiveWorkContext {
@@ -70,15 +67,13 @@ export function AppShell({
             ? "伏笔账本"
             : pathname.endsWith("/write")
               ? "写作台"
-              : pathname.endsWith("/batch")
-                ? "批量生产"
-                : pathname === "/workspace/new-project"
-                  ? "新建作品"
-                  : pathname.startsWith("/workspace/settings")
-                    ? "账号与模型"
-                    : pathname.startsWith("/workspace")
-                      ? "工作台"
-                      : "服务状态";
+              : pathname === "/workspace/new-project"
+                ? "新建作品"
+                : pathname.startsWith("/workspace/settings")
+                  ? "账号与模型"
+                  : pathname.startsWith("/workspace")
+                    ? "工作台"
+                    : "服务状态";
 
   useEffect(() => {
     if (!workId || !showWorkContext) {
@@ -260,10 +255,7 @@ export function AppShell({
             <span aria-hidden="true">/</span>
             <strong>{current}</strong>
           </div>
-          <div className="topbar-actions">
-            <NotificationCenter enabled={Boolean(user)} />
-            <div className="topbar-note">NovelBrain</div>
-          </div>
+          <div className="topbar-note">NovelBrain</div>
         </header>
 
         {showWorkContext && activeWork ? (
