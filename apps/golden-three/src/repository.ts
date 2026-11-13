@@ -196,6 +196,7 @@ export class GoldenThreeRepository {
     private readonly providerFactory: GoldenThreeProviderFactory,
     private readonly generationStepHook?: (stepKey: string) => void | Promise<void>,
     private readonly beforeRecordSuccessHook?: (stepKey: string) => void | Promise<void>,
+    private readonly afterClaimHook?: () => void | Promise<void>,
   ) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
@@ -449,7 +450,7 @@ export class GoldenThreeRepository {
     userId: string,
     context: GoldenThreeContext,
     jobId: string,
-  ): Promise<GoldenThreeGenerationJob | undefined> {
+  ): Promise<{ job: GoldenThreeGenerationJob; worker: GenerateGoldenThreeJob } | undefined> {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       const [job] = await transaction
         .select()
@@ -465,7 +466,9 @@ export class GoldenThreeRepository {
           ),
         )
         .limit(1);
-      return job ? toGoldenThreeGenerationJob(job) : undefined;
+      return job
+        ? { job: toGoldenThreeGenerationJob(job), worker: toGoldenThreeWorkerJob(job) }
+        : undefined;
     });
   }
 
@@ -502,7 +505,7 @@ export class GoldenThreeRepository {
               : payload.checkpoint.batchId,
         };
       }
-      if (job.status === "failed" || job.status === "canceled") {
+      if (job.status === "failed" || job.status === "cancelled") {
         return {
           kind: "failed" as const,
           message: job.errorMessage ?? "黄金三章生成任务已失败",
@@ -512,6 +515,9 @@ export class GoldenThreeRepository {
               : "unknown",
         };
       }
+      if (!["queued", "preparing", "running"].includes(job.status)) {
+        return { kind: "generation_in_progress" as const };
+      }
       const now = new Date();
       const durableCheckpoint = parseGoldenThreeCheckpoint(job);
       const checkpoint = goldenThreeJobCheckpointSchema.parse({
@@ -520,7 +526,7 @@ export class GoldenThreeRepository {
         stage: "preparing",
         failureClass: null,
       });
-      await transaction
+      const [claimedJob] = await transaction
         .update(jobs)
         .set({
           status: "running",
@@ -539,11 +545,22 @@ export class GoldenThreeRepository {
             eq(jobs.workId, payload.workId),
             eq(jobs.branchId, payload.branchId),
           ),
-        );
+        )
+        .returning({ leaseVersion: jobs.goldenThreeLeaseVersion });
+      if (!claimedJob) {
+        throw new Error("Golden three job could not be claimed");
+      }
       const [sequence] = await transaction
         .select({ value: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
         .from(jobEvents)
-        .where(eq(jobEvents.jobId, payload.jobId));
+        .where(
+          and(
+            eq(jobEvents.jobId, payload.jobId),
+            eq(jobEvents.userId, payload.actorId),
+            eq(jobEvents.workId, payload.workId),
+            eq(jobEvents.branchId, payload.branchId),
+          ),
+        );
       await transaction.insert(jobEvents).values({
         id: uuidv7(),
         jobId: payload.jobId,
@@ -555,7 +572,7 @@ export class GoldenThreeRepository {
         payload: { candidateCount: payload.candidateCount },
         occurredAt: now,
       });
-      return { kind: "claimed" as const };
+      return { kind: "claimed" as const, leaseVersion: claimedJob.leaseVersion };
     });
     if (claimed.kind === "not_found") {
       return claimed;
@@ -570,14 +587,46 @@ export class GoldenThreeRepository {
         failureClass: claimed.failureClass,
       };
     }
-    return this.generateCandidates(
+    await this.afterClaimHook?.();
+    const result = await this.generateCandidates(
       payload.actorId,
       { workId: payload.workId, branchId: payload.branchId },
       payload.idempotencyKey,
       { candidateCount: payload.candidateCount },
       audit,
       payload.jobId,
+      claimed.leaseVersion,
     );
+    if (
+      result.kind === "candidates_exist" ||
+      result.kind === "chapters_empty" ||
+      result.kind === "model_config_missing"
+    ) {
+      const failure =
+        result.kind === "model_config_missing"
+          ? { failureClass: "provider", message: "作者模型配置已失效" }
+          : result.kind === "chapters_empty"
+            ? { failureClass: "schema", message: "黄金三章章节正文已失效" }
+            : { failureClass: "policy", message: "当前创作线已经有黄金三章候选" };
+      await withTenantTransaction(this.db, payload.actorId, async (transaction) => {
+        await recordGoldenThreeInitializationFailure(transaction, {
+          userId: payload.actorId,
+          workId: payload.workId,
+          branchId: payload.branchId,
+          chapterId: payload.chapterId,
+          modelConfigId: payload.modelConfigId,
+          jobId: payload.jobId,
+          idempotencyKey: payload.idempotencyKey,
+          maxTokens: payload.budget.maxTokens,
+          maxCostCny: payload.budget.maxCostCny,
+          candidateCount: payload.candidateCount,
+          failureClass: failure.failureClass,
+          message: failure.message,
+          contextPackId: payload.checkpoint.contextPackId ?? uuidv7(),
+        });
+      });
+    }
+    return result;
   }
 
   async workspace(userId: string, context: GoldenThreeContext): Promise<GoldenThreeWorkspace> {
@@ -600,7 +649,14 @@ export class GoldenThreeRepository {
           : await transaction
               .select()
               .from(goldenThreeReviews)
-              .where(inArray(goldenThreeReviews.candidateId, candidateIds))
+              .where(
+                and(
+                  inArray(goldenThreeReviews.candidateId, candidateIds),
+                  eq(goldenThreeReviews.userId, userId),
+                  eq(goldenThreeReviews.workId, context.workId),
+                  eq(goldenThreeReviews.branchId, context.branchId),
+                ),
+              )
               .orderBy(asc(goldenThreeReviews.createdAt));
       const [activeGenerationJob] = await transaction
         .select()
@@ -632,7 +688,14 @@ export class GoldenThreeRepository {
         ? await transaction
             .select()
             .from(styleBaselines)
-            .where(eq(styleBaselines.id, lockRecord.styleBaselineId))
+            .where(
+              and(
+                eq(styleBaselines.id, lockRecord.styleBaselineId),
+                eq(styleBaselines.userId, userId),
+                eq(styleBaselines.workId, context.workId),
+                eq(styleBaselines.branchId, context.branchId),
+              ),
+            )
             .limit(1)
         : [undefined];
       const reviewsByCandidate = new Map<string, GoldenThreeReviewRecord[]>();
@@ -1010,6 +1073,7 @@ export class GoldenThreeRepository {
     input: GoldenThreeGenerateRequest,
     audit: GoldenThreeAuditContext,
     resumeJobId?: string,
+    expectedLeaseVersion?: number,
   ): Promise<GoldenThreeWriteResult<{ batchId: string }>> {
     const strategies = goldenThreeGenerationStrategies.slice(0, input.candidateCount);
     const configuredStaleJobMs = Number(process.env.GOLDEN_THREE_STALE_JOB_MS ?? "");
@@ -1039,6 +1103,12 @@ export class GoldenThreeRepository {
       : undefined;
     if (resumeJobId && !resumeJob) {
       return { kind: "not_found" };
+    }
+    if (
+      expectedLeaseVersion !== undefined &&
+      resumeJob?.goldenThreeLeaseVersion !== expectedLeaseVersion
+    ) {
+      return { kind: "generation_in_progress" };
     }
     const resumeCheckpoint = resumeJob ? parseGoldenThreeCheckpoint(resumeJob) : undefined;
     const existingRun =
@@ -1202,7 +1272,14 @@ export class GoldenThreeRepository {
       const [versionRow] = await transaction
         .select({ maxVersion: sql<number>`coalesce(max(${chapterVersions.version}), 0)` })
         .from(chapterVersions)
-        .where(eq(chapterVersions.chapterId, chapter.chapter.id));
+        .where(
+          and(
+            eq(chapterVersions.chapterId, chapter.chapter.id),
+            eq(chapterVersions.userId, userId),
+            eq(chapterVersions.workId, context.workId),
+            eq(chapterVersions.branchId, context.branchId),
+          ),
+        );
       return {
         kind: "ok" as const,
         replay: false,
@@ -1426,6 +1503,13 @@ export class GoldenThreeRepository {
         )
         .limit(1);
       if (existingJob) {
+        if (
+          expectedLeaseVersion !== undefined &&
+          (existingJob.status !== "running" ||
+            existingJob.goldenThreeLeaseVersion !== expectedLeaseVersion)
+        ) {
+          return { kind: "generation_in_progress" as const };
+        }
         const resumable =
           existingJob.id === resumeJobId &&
           ["queued", "preparing", "running"].includes(existingJob.status);
@@ -1572,7 +1656,14 @@ export class GoldenThreeRepository {
       const [eventSequence] = await transaction
         .select({ value: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
         .from(jobEvents)
-        .where(eq(jobEvents.jobId, jobId));
+        .where(
+          and(
+            eq(jobEvents.jobId, jobId),
+            eq(jobEvents.userId, userId),
+            eq(jobEvents.workId, context.workId),
+            eq(jobEvents.branchId, context.branchId),
+          ),
+        );
       await transaction.insert(jobEvents).values({
         id: uuidv7(),
         jobId,
@@ -1586,7 +1677,7 @@ export class GoldenThreeRepository {
       });
       const calls: GoldenThreePreparedCall[] = [];
       const completed: GoldenThreeCompletedCall[] = [];
-      const leaseVersion = existingJob?.goldenThreeLeaseVersion ?? 1;
+      const leaseVersion = expectedLeaseVersion ?? existingJob?.goldenThreeLeaseVersion ?? 1;
       const checkpointBase = prepareCheckpointRevision;
       for (const [planIndex, plan] of promptPlans.entries()) {
         const stepKey = `golden_three.candidate.${plan.strategy}`;
@@ -2346,7 +2437,12 @@ export class GoldenThreeRepository {
           },
           createdAt: now,
         });
-        const completedSequence = await nextGoldenThreeJobEventSequence(transaction, jobId);
+        const completedSequence = await nextGoldenThreeJobEventSequence(
+          transaction,
+          userId,
+          context,
+          jobId,
+        );
         await transaction.insert(jobEvents).values({
           id: uuidv7(),
           jobId,
@@ -2560,7 +2656,14 @@ export class GoldenThreeRepository {
         const [count] = await transaction
           .select({ value: sql<number>`count(*)::int` })
           .from(goldenThreeReviews)
-          .where(eq(goldenThreeReviews.candidateId, previous.id));
+          .where(
+            and(
+              eq(goldenThreeReviews.candidateId, previous.id),
+              eq(goldenThreeReviews.userId, userId),
+              eq(goldenThreeReviews.workId, context.workId),
+              eq(goldenThreeReviews.branchId, context.branchId),
+            ),
+          );
         await transaction
           .update(goldenThreeCandidates)
           .set({
@@ -2840,7 +2943,14 @@ export class GoldenThreeRepository {
       const reviews = await transaction
         .select()
         .from(goldenThreeReviews)
-        .where(eq(goldenThreeReviews.candidateId, candidate.id))
+        .where(
+          and(
+            eq(goldenThreeReviews.candidateId, candidate.id),
+            eq(goldenThreeReviews.userId, userId),
+            eq(goldenThreeReviews.workId, context.workId),
+            eq(goldenThreeReviews.branchId, context.branchId),
+          ),
+        )
         .orderBy(asc(goldenThreeReviews.dimension));
       if (reviews.length < 6) {
         return { kind: "review_incomplete", completed: reviews.length };
@@ -3015,7 +3125,7 @@ async function recordGoldenThreeInitializationFailure(
 ): Promise<void> {
   await lockBranch(transaction, input.branchId);
   const [existing] = await transaction
-    .select({ id: jobs.id })
+    .select({ id: jobs.id, checkpointVersion: jobs.checkpointVersion })
     .from(jobs)
     .where(
       and(
@@ -3030,6 +3140,7 @@ async function recordGoldenThreeInitializationFailure(
     .limit(1);
   if (existing) {
     const now = new Date();
+    const revision = existing.checkpointVersion + 1;
     await transaction
       .update(jobs)
       .set({
@@ -3038,7 +3149,7 @@ async function recordGoldenThreeInitializationFailure(
         currentStep: "failed",
         checkpoint: {
           schemaVersion: 1,
-          revision: 1,
+          revision,
           stage: "failed",
           batchId: uuidv7(),
           stepKey: "failed",
@@ -3046,7 +3157,7 @@ async function recordGoldenThreeInitializationFailure(
           completedStepKeys: [],
           failureClass: input.failureClass,
         },
-        checkpointVersion: 1,
+        checkpointVersion: revision,
         errorCode: "GOLDEN_THREE_GENERATION_FAILED",
         errorMessage: input.message,
         finishedAt: now,
@@ -3063,7 +3174,14 @@ async function recordGoldenThreeInitializationFailure(
     const [sequence] = await transaction
       .select({ value: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
       .from(jobEvents)
-      .where(eq(jobEvents.jobId, existing.id));
+      .where(
+        and(
+          eq(jobEvents.jobId, existing.id),
+          eq(jobEvents.userId, input.userId),
+          eq(jobEvents.workId, input.workId),
+          eq(jobEvents.branchId, input.branchId),
+        ),
+      );
     await transaction.insert(jobEvents).values({
       id: uuidv7(),
       jobId: existing.id,
@@ -3148,7 +3266,14 @@ async function recordGoldenThreeInitializationFailure(
   const [checkpointRevisionRow] = await transaction
     .select({ revision: sql<number>`coalesce(max(${jobCheckpoints.revision}), 0)::int` })
     .from(jobCheckpoints)
-    .where(eq(jobCheckpoints.jobId, input.jobId));
+    .where(
+      and(
+        eq(jobCheckpoints.jobId, input.jobId),
+        eq(jobCheckpoints.userId, input.userId),
+        eq(jobCheckpoints.workId, input.workId),
+        eq(jobCheckpoints.branchId, input.branchId),
+      ),
+    );
   await transaction.insert(jobCheckpoints).values({
     id: uuidv7(),
     jobId: input.jobId,
@@ -3169,7 +3294,12 @@ async function recordGoldenThreeInitializationFailure(
     errorMessage: input.message,
     createdAt: now,
   });
-  const sequence = await nextGoldenThreeJobEventSequence(transaction, input.jobId);
+  const sequence = await nextGoldenThreeJobEventSequence(
+    transaction,
+    input.userId,
+    { workId: input.workId, branchId: input.branchId },
+    input.jobId,
+  );
   await transaction.insert(jobEvents).values({
     id: uuidv7(),
     jobId: input.jobId,
@@ -3672,7 +3802,12 @@ async function recordGoldenThreeCallFailure(
     errorMessage: "作者模型生成失败",
     createdAt: now,
   });
-  const sequence = await nextGoldenThreeJobEventSequence(transaction, call.jobId);
+  const sequence = await nextGoldenThreeJobEventSequence(
+    transaction,
+    userId,
+    { workId: call.workId, branchId: call.branchId },
+    call.jobId,
+  );
   await transaction.insert(jobEvents).values({
     id: uuidv7(),
     jobId: call.jobId,
@@ -3911,7 +4046,12 @@ async function recordGoldenThreePostCallFailure(
     errorMessage: "生成结果提交失败",
     createdAt: now,
   });
-  const sequence = await nextGoldenThreeJobEventSequence(transaction, call.jobId);
+  const sequence = await nextGoldenThreeJobEventSequence(
+    transaction,
+    userId,
+    { workId: call.workId, branchId: call.branchId },
+    call.jobId,
+  );
   await transaction.insert(jobEvents).values({
     id: uuidv7(),
     jobId: call.jobId,
@@ -4272,12 +4412,21 @@ async function lockBranch(transaction: DatabaseTransaction, branchId: string): P
 
 async function nextGoldenThreeJobEventSequence(
   transaction: DatabaseTransaction,
+  userId: string,
+  context: GoldenThreeContext,
   jobId: string,
 ): Promise<number> {
   const [event] = await transaction
     .select({ sequence: sql<number>`coalesce(max(${jobEvents.sequence}), 0)::int` })
     .from(jobEvents)
-    .where(eq(jobEvents.jobId, jobId));
+    .where(
+      and(
+        eq(jobEvents.jobId, jobId),
+        eq(jobEvents.userId, userId),
+        eq(jobEvents.workId, context.workId),
+        eq(jobEvents.branchId, context.branchId),
+      ),
+    );
   return Number(event?.sequence ?? 0) + 1;
 }
 

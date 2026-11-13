@@ -163,11 +163,14 @@ export class GoldenThreeService {
     jobId: string,
   ): Promise<GoldenThreeGenerationJob> {
     const context = await this.requireContext(userId, workId, branchId);
-    const job = await this.repository.generationJob(userId, context, jobId);
-    if (!job) {
+    const loaded = await this.repository.generationJob(userId, context, jobId);
+    if (!loaded) {
       throw new ApiError(403, "FORBIDDEN_TENANT_ACCESS", "生成任务不存在或无权访问");
     }
-    return job;
+    if (loaded.job.status === "queued") {
+      await this.queue.enqueue(loaded.worker);
+    }
+    return loaded.job;
   }
 
   async selectCandidate(

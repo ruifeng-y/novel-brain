@@ -11,7 +11,7 @@ import {
   goldenThreeGenerationJobResponseSchema,
   workerJobSchema,
 } from "@novel-brain/contracts";
-import { Worker } from "bullmq";
+import { Queue, Worker } from "bullmq";
 import { FakeAiProvider, type AiGateway } from "@novel-brain/ai";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
 import { GoldenThreeRepository } from "@novel-brain/golden-three";
@@ -108,6 +108,7 @@ describe("golden three HTTP integration", () => {
     options: {
       stepHook?: (stepKey: string) => void | Promise<void>;
       beforeRecordSuccessHook?: (stepKey: string) => void | Promise<void>;
+      afterClaimHook?: () => void | Promise<void>;
       forbidContextCompile?: boolean;
     } = {},
   ) {
@@ -157,6 +158,7 @@ describe("golden three HTTP integration", () => {
       { create: () => goldenThreeTestProvider() },
       options.stepHook,
       options.beforeRecordSuccessHook,
+      options.afterClaimHook,
     );
     try {
       await new GoldenThreeJobProcessor(repository).process(payload);
@@ -1069,6 +1071,176 @@ describe("golden three HTTP integration", () => {
       failed_calls: "1",
       released_reservations: "1",
       attempts: "4",
+    });
+  });
+
+  it("fences concurrent worker claims by their claimed lease version", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-lease-claim@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const outlinePath = `${basePath}/golden-three`;
+    await createGoldenThreeChapters(owner, token, basePath);
+    await createModelConfig(owner, token);
+    await createGoldenThreeContext(owner, token, basePath);
+
+    const queued = await startGoldenThreeGeneration(
+      owner,
+      outlinePath,
+      "golden-three-lease-claim",
+      token,
+    );
+    let claimed = 0;
+    let releaseClaims!: () => void;
+    let bothClaimed!: () => void;
+    const claimBarrier = new Promise<void>((resolve) => {
+      releaseClaims = resolve;
+    });
+    const twoClaims = new Promise<void>((resolve) => {
+      bothClaimed = () => {
+        claimed += 1;
+        if (claimed === 2) {
+          resolve();
+        }
+      };
+    });
+    const afterClaimHook = async () => {
+      bothClaimed();
+      await claimBarrier;
+    };
+
+    const first = runGoldenThreeWorker(queued.id, { afterClaimHook });
+    const second = runGoldenThreeWorker(queued.id, { afterClaimHook });
+    await twoClaims;
+    releaseClaims();
+    await Promise.all([first, second]);
+
+    expect(await generationJob(owner, outlinePath, queued.id)).toMatchObject({
+      status: "completed",
+      progress: 100,
+    });
+    const counts = await databasePool.query<{
+      candidates: string;
+      model_calls: string;
+      usage_records: string;
+    }>(
+      `SELECT
+         (SELECT count(*) FROM golden_three_candidates WHERE generation_job_id = $1) AS candidates,
+         (SELECT count(*) FROM model_calls WHERE job_id = $1) AS model_calls,
+         (SELECT count(*) FROM usage_records WHERE job_id = $1) AS usage_records`,
+      [queued.id],
+    );
+    expect(counts.rows[0]).toEqual({
+      candidates: "3",
+      model_calls: "3",
+      usage_records: "3",
+    });
+  });
+
+  it("settles a claimed job when its saved model configuration was removed", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-missing-model@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const outlinePath = `${basePath}/golden-three`;
+    await createGoldenThreeChapters(owner, token, basePath);
+    await createModelConfig(owner, token);
+    await createGoldenThreeContext(owner, token, basePath);
+
+    const queued = await startGoldenThreeGeneration(
+      owner,
+      outlinePath,
+      "golden-three-missing-model",
+      token,
+    );
+    await databasePool.query(
+      `UPDATE model_configs
+          SET deleted_at = now()
+        WHERE id = (SELECT model_config_id FROM jobs WHERE id = $1)`,
+      [queued.id],
+    );
+    await runGoldenThreeWorker(queued.id);
+
+    expect(await generationJob(owner, outlinePath, queued.id)).toMatchObject({
+      status: "failed",
+      error: { code: "GOLDEN_THREE_GENERATION_FAILED" },
+    });
+    const calls = await databasePool.query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM model_calls WHERE job_id = $1",
+      [queued.id],
+    );
+    expect(calls.rows[0]?.count).toBe("0");
+  });
+
+  it.each(["cancelled", "paused"] as const)(
+    "does not run a %s golden-three job",
+    async (status) => {
+      const owner = await createAuthenticatedAgent(`golden-three-${status}@example.com`);
+      const work = await createWork(owner);
+      const token = await csrf(owner);
+      const basePath = branchPathOf(work);
+      const outlinePath = `${basePath}/golden-three`;
+      await createGoldenThreeChapters(owner, token, basePath);
+      await createModelConfig(owner, token);
+      await createGoldenThreeContext(owner, token, basePath);
+
+      const queued = await startGoldenThreeGeneration(
+        owner,
+        outlinePath,
+        `golden-three-${status}`,
+        token,
+      );
+      await databasePool.query("UPDATE jobs SET status = $2 WHERE id = $1", [queued.id, status]);
+      await runGoldenThreeWorker(queued.id);
+
+      expect(await generationJob(owner, outlinePath, queued.id)).toMatchObject({ status });
+      const calls = await databasePool.query<{ count: string }>(
+        "SELECT count(*)::text AS count FROM model_calls WHERE job_id = $1",
+        [queued.id],
+      );
+      expect(calls.rows[0]?.count).toBe("0");
+    },
+  );
+
+  it("requeues a queued job when polling repairs a lost queue delivery", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-enqueue-recovery@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const outlinePath = `${basePath}/golden-three`;
+    await createGoldenThreeChapters(owner, token, basePath);
+    await createModelConfig(owner, token);
+    await createGoldenThreeContext(owner, token, basePath);
+
+    const queued = await startGoldenThreeGeneration(
+      owner,
+      outlinePath,
+      "golden-three-enqueue-recovery",
+      token,
+    );
+    const connection = new Redis(redisUrl, { maxRetriesPerRequest: null });
+    const queue = new Queue(WORKER_QUEUE_NAME, { connection });
+    const queueJobId = `golden-three-${queued.id}`;
+    try {
+      await queue.remove(queueJobId);
+      expect(await queue.getJob(queueJobId)).toBeUndefined();
+      expect(await generationJob(owner, outlinePath, queued.id)).toMatchObject({
+        status: "queued",
+      });
+      expect(await queue.getJob(queueJobId)).toBeDefined();
+    } finally {
+      await queue.close();
+      if (connection.status === "ready") {
+        await connection.quit();
+      } else {
+        connection.disconnect();
+      }
+    }
+
+    await runGoldenThreeQueue(queued.id);
+    expect(await generationJob(owner, outlinePath, queued.id)).toMatchObject({
+      status: "completed",
+      progress: 100,
     });
   });
 
