@@ -1545,6 +1545,13 @@ describe("golden three HTTP integration", () => {
     process.env.GOLDEN_THREE_STALE_JOB_MS = "1000";
     try {
       expect(await generationJob(owner, `${basePath}/golden-three`, staleJobId)).toMatchObject({
+        status: "running",
+      });
+      await databasePool.query(
+        "UPDATE jobs SET updated_at = now() - interval '30 minutes' WHERE id = $1",
+        [staleJobId],
+      );
+      expect(await generationJob(owner, `${basePath}/golden-three`, staleJobId)).toMatchObject({
         status: "failed",
         error: { code: "JOB_ATTEMPTS_EXHAUSTED" },
       });
@@ -1651,6 +1658,45 @@ describe("golden three HTTP integration", () => {
       ).toHaveLength(0);
     },
   );
+
+  it("does not release reservations owned by a successor lease", async () => {
+    const owner = await createAuthenticatedAgent("golden-three-successor-lease@example.com");
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    await createGoldenThreeChapters(owner, token, basePath);
+    await createModelConfig(owner, token);
+    await createGoldenThreeContext(owner, token, basePath);
+    const key = "golden-three-successor-lease";
+    process.env.GOLDEN_THREE_FAKE_DELAY_MS = "100";
+    try {
+      const queued = await startGoldenThreeGeneration(
+        owner,
+        `${basePath}/golden-three`,
+        key,
+        token,
+      );
+      const pending = runGoldenThreeWorker(queued.id);
+      const jobId = await waitForGoldenCallInFlight(key);
+      await databasePool.query(
+        `UPDATE jobs
+            SET golden_three_lease_version = golden_three_lease_version + 1,
+                updated_at = now()
+          WHERE id = $1`,
+        [jobId],
+      );
+      await pending;
+    } finally {
+      delete process.env.GOLDEN_THREE_FAKE_DELAY_MS;
+    }
+    const reservations = await databasePool.query<{ statuses: string[] }>(
+      `SELECT array_agg(status ORDER BY status) AS statuses
+         FROM cost_reservations
+        WHERE job_id = (SELECT id FROM jobs WHERE golden_three_generation_key = $1)`,
+      [key],
+    );
+    expect(reservations.rows[0]?.statuses).toEqual(["reserved", "reserved", "settled"]);
+  });
 
   it("returns a recoverable model failure without persisting template candidates", async () => {
     const owner = await createAuthenticatedAgent("golden-three-model-failure@example.com");

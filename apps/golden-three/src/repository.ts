@@ -296,7 +296,7 @@ export class GoldenThreeRepository {
           : 15 * 60 * 1_000;
       const staleBefore = new Date(Date.now() - staleJobMs);
       const [active] = await transaction
-        .select({ id: jobs.id, startedAt: jobs.startedAt })
+        .select({ id: jobs.id, status: jobs.status, updatedAt: jobs.updatedAt })
         .from(jobs)
         .where(
           and(
@@ -309,7 +309,11 @@ export class GoldenThreeRepository {
           ),
         )
         .limit(1);
-      if (active?.startedAt && active.startedAt < staleBefore) {
+      if (
+        active &&
+        ["queued", "preparing", "running"].includes(active.status) &&
+        active.updatedAt < staleBefore
+      ) {
         await expireStaleGoldenThreeJob(
           transaction,
           userId,
@@ -470,8 +474,7 @@ export class GoldenThreeRepository {
       if (
         job &&
         ["queued", "preparing", "running"].includes(job.status) &&
-        job.startedAt &&
-        job.startedAt < goldenThreeStaleBefore()
+        job.updatedAt < goldenThreeStaleBefore()
       ) {
         await expireStaleGoldenThreeJob(
           transaction,
@@ -944,7 +947,7 @@ export class GoldenThreeRepository {
     return withTenantTransaction(this.db, userId, async (transaction) => {
       await lockBranch(transaction, context.branchId);
       const [activeGeneration] = await transaction
-        .select({ id: jobs.id, startedAt: jobs.startedAt })
+        .select({ id: jobs.id, status: jobs.status, updatedAt: jobs.updatedAt })
         .from(jobs)
         .where(
           and(
@@ -957,7 +960,11 @@ export class GoldenThreeRepository {
           ),
         )
         .limit(1);
-      if (activeGeneration?.startedAt && activeGeneration.startedAt < staleBefore) {
+      if (
+        activeGeneration &&
+        ["queued", "preparing", "running"].includes(activeGeneration.status) &&
+        activeGeneration.updatedAt < staleBefore
+      ) {
         await expireStaleGoldenThreeJob(
           transaction,
           userId,
@@ -1164,6 +1171,7 @@ export class GoldenThreeRepository {
                 status: jobs.status,
                 checkpoint: jobs.checkpoint,
                 startedAt: jobs.startedAt,
+                updatedAt: jobs.updatedAt,
               })
               .from(jobs)
               .where(
@@ -1181,7 +1189,7 @@ export class GoldenThreeRepository {
               return { kind: "same_key" as const, job: sameKey };
             }
             const [active] = await transaction
-              .select({ id: jobs.id, startedAt: jobs.startedAt })
+              .select({ id: jobs.id, status: jobs.status, updatedAt: jobs.updatedAt })
               .from(jobs)
               .where(
                 and(
@@ -1194,7 +1202,11 @@ export class GoldenThreeRepository {
                 ),
               )
               .limit(1);
-            if (active?.startedAt && active.startedAt < staleBefore) {
+            if (
+              active &&
+              ["queued", "preparing", "running"].includes(active.status) &&
+              active.updatedAt < staleBefore
+            ) {
               await expireStaleGoldenThreeJob(
                 transaction,
                 userId,
@@ -1212,8 +1224,7 @@ export class GoldenThreeRepository {
     if (existingRun.kind === "same_key") {
       if (
         ["queued", "preparing", "running"].includes(existingRun.job.status) &&
-        existingRun.job.startedAt &&
-        existingRun.job.startedAt < staleBefore
+        existingRun.job.updatedAt < staleBefore
       ) {
         await withTenantTransaction(this.db, userId, async (transaction) => {
           await expireStaleGoldenThreeJob(
@@ -3966,7 +3977,22 @@ async function recordGoldenThreeLeaseLostUsage(
   const remainingReservationIds = preparedReservationIds.filter(
     (reservationId) => reservationId !== call.reservationId,
   );
-  if (remainingReservationIds.length > 0) {
+  const [currentJob] = await transaction
+    .select({ status: jobs.status, leaseVersion: jobs.goldenThreeLeaseVersion })
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.id, call.jobId),
+        eq(jobs.userId, userId),
+        eq(jobs.workId, call.workId),
+        eq(jobs.branchId, call.branchId),
+      ),
+    )
+    .for("update")
+    .limit(1);
+  const hasSuccessor =
+    currentJob?.status === "running" && currentJob.leaseVersion !== call.leaseVersion;
+  if (!hasSuccessor && remainingReservationIds.length > 0) {
     await transaction
       .update(costReservations)
       .set({
@@ -4156,7 +4182,11 @@ async function expireStaleGoldenThreeJob(
   branchId: string,
 ): Promise<void> {
   const [job] = await transaction
-    .select({ checkpointVersion: jobs.checkpointVersion })
+    .select({
+      status: jobs.status,
+      checkpointVersion: jobs.checkpointVersion,
+      updatedAt: jobs.updatedAt,
+    })
     .from(jobs)
     .where(
       and(
@@ -4168,7 +4198,11 @@ async function expireStaleGoldenThreeJob(
     )
     .for("update")
     .limit(1);
-  if (!job) {
+  if (
+    !job ||
+    !["queued", "preparing", "running"].includes(job.status) ||
+    job.updatedAt >= goldenThreeStaleBefore()
+  ) {
     return;
   }
   const now = new Date();
