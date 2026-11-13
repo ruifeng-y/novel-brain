@@ -1,7 +1,7 @@
 # Implementation frontier v2
 
 > Updated: 2026-11-13.
-> Repository baseline: `main@37dedac`, after PR #191 integrated the Golden Three provenance, budget and lease work.
+> Repository baseline: `main@5192fa6`, after PR #193 integrated the Golden Three durable Worker work.
 
 ## 1. Current truth
 
@@ -14,7 +14,8 @@
 - M3 specification: #82; M3 package/integration tickets: #98–#104.
 - New bounded leaf tickets: #106–#152. They are mapped; their existence does not make them startable.
 - PR #105 established the first M1–M3 ticket layer; PR #153 subsequently added bounded leaf tasks, unique capability ownership, explicit UI evidence paths and independent scale/quality gates.
-- Review decisions #162, #165 and #166 are closed. #147 is closed after PR #191; durable Worker follow-up #190 remains open.
+- Review decisions #162, #165 and #166 are closed. #147 and durable Worker follow-up #190 are closed.
+- #90 product acceptance is complete after the author signed both the fixed 40-chapter sample audit and a clean-volume audit on 2026-11-13.
 - The M3 tenant authorization audit #132 is closed. Logging and trace hardening #133 is the next bounded security/release ticket after M1 tracker reconciliation.
 
 ## 2. Immediate frontier
@@ -22,8 +23,7 @@
 1. Reconcile M1 tracker state against `docs/implementation/m1-spec-closeout.md`, `docs/planning/m1-tracker-reconciliation.md` and the current main-branch evidence.
 2. Audit the already integrated #144, #106–#108 and #148 acceptance evidence. Close #144, #106–#108, #84 and #85 when their code, tests, production Golden and panel closure are present; verify and close #148 only after its dependency tickets close.
 3. Close #87 after #147 and #148 are complete, then finish #90 as the M1 integration gate.
-4. Complete #190 or record an explicit release exception before M1 production sign-off; the generate API must not remain the final durable-execution architecture.
-5. After M1 is stable, start #133. Do not start M3 #129 until its storage, backup and export blockers are complete.
+4. Start #133, the next bounded security/release task. Do not start M3 #129 until its storage, backup and export blockers are complete.
 
 ## 3. First executable frontier (historical)
 
