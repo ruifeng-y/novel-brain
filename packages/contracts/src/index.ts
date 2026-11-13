@@ -4734,6 +4734,10 @@ export const WORKER_QUEUE_NAME = "novel-brain-jobs";
 export const RUNTIME_METRICS_TTL_SECONDS = 90_000;
 export const JOB_METRICS_KEY = "novelbrain:metrics:jobs";
 export const MODEL_METRICS_KEY = "novelbrain:metrics:models";
+export function runtimeMetricsBucketKey(base: string, date: Date): string {
+  const bucket = date.toISOString().slice(0, 13).replaceAll("-", "").replace("T", "");
+  return `${base}:${bucket}`;
+}
 export const GENERATE_CHAPTER_JOB = "generate_chapter";
 export const GENERATE_GOLDEN_THREE_JOB = "generate_golden_three";
 export const SUMMARY_REBUILD_JOB = "rebuild_summaries";

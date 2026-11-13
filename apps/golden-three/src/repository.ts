@@ -98,6 +98,14 @@ export interface GoldenThreeProviderFactory {
   create(config: InferSelectModel<typeof modelConfigs>): AiGateway;
 }
 
+export interface GoldenThreeModelCallObservation {
+  status: "succeeded" | "failed";
+  latencyMs: number;
+  inputTokens: number;
+  outputTokens: number;
+  costCny: number;
+}
+
 interface GoldenThreePreparedCall {
   workId: string;
   branchId: string;
@@ -197,6 +205,9 @@ export class GoldenThreeRepository {
     private readonly generationStepHook?: (stepKey: string) => void | Promise<void>,
     private readonly beforeRecordSuccessHook?: (stepKey: string) => void | Promise<void>,
     private readonly afterClaimHook?: () => void | Promise<void>,
+    private readonly modelCallObserver?: (
+      observation: GoldenThreeModelCallObservation,
+    ) => void | Promise<void>,
   ) {
     const databaseUrl = process.env.DATABASE_URL;
     if (!databaseUrl) {
@@ -2156,6 +2167,7 @@ export class GoldenThreeRepository {
     const preparedReservationIds = prepared.calls.map((preparedCall) => preparedCall.reservationId);
     for (const call of prepared.calls) {
       let result: GenerationResult;
+      const modelCallStartedAt = Date.now();
       try {
         const leaseActive = await withTenantTransaction(this.db, userId, async (transaction) => {
           if (!(await goldenThreeLeaseActive(transaction, userId, call))) {
@@ -2206,6 +2218,13 @@ export class GoldenThreeRepository {
           maxTokens: GOLDEN_THREE_MAX_OUTPUT_TOKENS,
         });
       } catch (error) {
+        await this.observeModelCall({
+          status: "failed",
+          latencyMs: Date.now() - modelCallStartedAt,
+          inputTokens: 0,
+          outputTokens: 0,
+          costCny: 0,
+        });
         const failureClass = goldenThreeFailureClass(error, "unknown");
         await withTenantTransaction(this.db, userId, async (transaction) => {
           await recordGoldenThreeCallFailure(transaction, userId, call, failureClass, completed);
@@ -2216,6 +2235,14 @@ export class GoldenThreeRepository {
           failureClass,
         };
       }
+      const callTokens = result.usage.inputTokens + result.usage.outputTokens;
+      await this.observeModelCall({
+        status: "succeeded",
+        latencyMs: Date.now() - modelCallStartedAt,
+        inputTokens: result.usage.inputTokens,
+        outputTokens: result.usage.outputTokens,
+        costCny: calculateModelCallCost(callTokens, M0_COST_PER_TOKEN_CNY),
+      });
       const content = result.text.trim();
       if (content.length === 0) {
         const leaseLost = await withTenantTransaction(this.db, userId, async (transaction) =>
@@ -3171,6 +3198,14 @@ export class GoldenThreeRepository {
 
   async onModuleDestroy(): Promise<void> {
     await this.pool.end();
+  }
+
+  private async observeModelCall(observation: GoldenThreeModelCallObservation): Promise<void> {
+    try {
+      await this.modelCallObserver?.(observation);
+    } catch {
+      // Operational telemetry must not change the durable generation outcome.
+    }
   }
 }
 

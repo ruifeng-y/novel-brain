@@ -3,7 +3,11 @@ import "reflect-metadata";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
-import { JOB_METRICS_KEY, MODEL_METRICS_KEY } from "@novel-brain/contracts";
+import {
+  JOB_METRICS_KEY,
+  MODEL_METRICS_KEY,
+  runtimeMetricsBucketKey,
+} from "@novel-brain/contracts";
 import Redis from "ioredis";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -65,8 +69,10 @@ describe("observability HTTP integration", () => {
       ]),
     );
 
-    await redis.hset(JOB_METRICS_KEY, "generate_chapter:failed", "2");
-    await redis.hset(MODEL_METRICS_KEY, {
+    const jobMetricsKey = runtimeMetricsBucketKey(JOB_METRICS_KEY, new Date());
+    const modelMetricsKey = runtimeMetricsBucketKey(MODEL_METRICS_KEY, new Date());
+    await redis.hset(jobMetricsKey, "generate_chapter:failed", "2");
+    await redis.hset(modelMetricsKey, {
       "calls:succeeded": "4",
       "latency_sum_ms:succeeded": "3200",
       "input_tokens:succeeded": "400",

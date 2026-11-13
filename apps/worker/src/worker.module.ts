@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 import { AgentGrantStore } from "@novel-brain/db";
 import type { AiGateway } from "@novel-brain/ai";
 import { GoldenThreeRepository } from "@novel-brain/golden-three";
+import Redis from "ioredis";
 
 import { AgentGrantGuard, WorkerAgentGrantStore } from "./agent-runtime/agent-grant.guard";
 import { AgentOrchestrator } from "./agent-runtime/agent-orchestrator";
@@ -16,6 +17,8 @@ import { WorkerGenerationRepository } from "./generation/generation.repository";
 import { AI_GATEWAY } from "./generation/generation.tokens";
 import { WorkerGoldenThreeContextCompiler } from "./golden-three/golden-three-context.compiler";
 import { GoldenThreeJobProcessor } from "./golden-three/golden-three.processor";
+import { WorkerOperationalMetricsRecorder } from "./metrics/operational-metrics-recorder";
+import { WORKER_REDIS } from "./metrics/operational-metrics.tokens";
 import {
   ByokAiGatewayFactory,
   isFakeGenerationOperation,
@@ -47,15 +50,41 @@ import { WritingActionProcessor } from "./writing-actions/writing-action.process
     GenerationJobProcessor,
     WorkerGoldenThreeContextCompiler,
     {
+      provide: WORKER_REDIS,
+      useFactory: () => {
+        const redisUrl = process.env.REDIS_URL;
+        if (!redisUrl) {
+          throw new Error("REDIS_URL is required");
+        }
+        return new Redis(redisUrl, {
+          maxRetriesPerRequest: null,
+          enableReadyCheck: true,
+        });
+      },
+    },
+    {
+      provide: WorkerOperationalMetricsRecorder,
+      inject: [WORKER_REDIS],
+      useFactory: (redis: Redis) => new WorkerOperationalMetricsRecorder(redis),
+    },
+    {
       provide: GoldenThreeRepository,
-      inject: [WorkerGoldenThreeContextCompiler, AI_GATEWAY],
+      inject: [WorkerGoldenThreeContextCompiler, AI_GATEWAY, WorkerOperationalMetricsRecorder],
       useFactory: (
         compiler: WorkerGoldenThreeContextCompiler,
         resolver: AiGateway | Pick<ByokAiGatewayFactory, "create">,
+        metrics: WorkerOperationalMetricsRecorder,
       ) =>
-        new GoldenThreeRepository(compiler, {
-          create: (config) => ("generateText" in resolver ? resolver : resolver.create(config)),
-        }),
+        new GoldenThreeRepository(
+          compiler,
+          {
+            create: (config) => ("generateText" in resolver ? resolver : resolver.create(config)),
+          },
+          undefined,
+          undefined,
+          undefined,
+          (observation) => metrics.recordModelAggregate(observation),
+        ),
     },
     GoldenThreeJobProcessor,
     WorkerSummaryRepository,

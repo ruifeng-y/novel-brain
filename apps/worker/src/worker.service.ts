@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   type OnApplicationBootstrap,
   type OnApplicationShutdown,
@@ -15,7 +16,7 @@ import {
 } from "@novel-brain/contracts";
 import { emitTraceEnvelope, resolveTracePolicy, type TracePolicy } from "@novel-brain/core";
 import { Queue, Worker as BullWorker, type Job } from "bullmq";
-import Redis from "ioredis";
+import type Redis from "ioredis";
 
 // Nest uses the runtime class reference for dependency injection metadata.
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -34,15 +35,14 @@ import { SummaryRebuildProcessor } from "./summaries/summary-rebuild.processor";
 import { WritingActionProcessor } from "./writing-actions/writing-action.processor";
 import { SafePinoLogger } from "./logging/safe-logger";
 import { WorkerOperationalMetricsRecorder } from "./metrics/operational-metrics-recorder";
+import { WORKER_REDIS } from "./metrics/operational-metrics.tokens";
 
 @Injectable()
 export class WorkerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger: SafePinoLogger;
   private readonly tracePolicy: TracePolicy;
-  private readonly connection: Redis;
   private readonly queue: Queue<WorkerJob>;
   private readonly worker: BullWorker<WorkerJob, void>;
-  private readonly metrics: WorkerOperationalMetricsRecorder;
 
   constructor(
     private readonly processor: GenerationJobProcessor,
@@ -50,12 +50,10 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     private readonly batchPlanProcessor: BatchPlanTickProcessor,
     private readonly summaryProcessor: SummaryRebuildProcessor,
     private readonly writingActionProcessor: WritingActionProcessor,
+    @Inject(WORKER_REDIS) private readonly connection: Redis,
+    @Inject(WorkerOperationalMetricsRecorder)
+    private readonly metrics: WorkerOperationalMetricsRecorder,
   ) {
-    const redisUrl = process.env.REDIS_URL;
-    if (!redisUrl) {
-      throw new Error("REDIS_URL is required");
-    }
-
     const tracePolicy = resolveTracePolicy(process.env);
     this.tracePolicy = tracePolicy;
     this.logger = new SafePinoLogger();
@@ -68,11 +66,6 @@ export class WorkerService implements OnApplicationBootstrap, OnApplicationShutd
     this.processor.setTraceLogger(this.logger);
     this.processor.configureRecovery({ maxAutomaticAttempts: 3 });
     this.writingActionProcessor.setTraceLogger(this.logger);
-    this.connection = new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
-      enableReadyCheck: true,
-    });
-    this.metrics = new WorkerOperationalMetricsRecorder(this.connection);
     this.logger.setTelemetrySink((payload) => {
       void this.metrics.recordModelCall(payload);
     });

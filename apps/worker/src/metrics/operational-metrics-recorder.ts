@@ -2,48 +2,76 @@ import {
   JOB_METRICS_KEY,
   MODEL_METRICS_KEY,
   RUNTIME_METRICS_TTL_SECONDS,
+  runtimeMetricsBucketKey,
 } from "@novel-brain/contracts";
 import type Redis from "ioredis";
 
 interface MetricsRedis {
   pipeline(): {
     hincrby(key: string, field: string, value: number): unknown;
+    hincrbyfloat(key: string, field: string, value: number): unknown;
     expire(key: string, seconds: number): unknown;
-    exec(): Promise<unknown>;
+    exec(): Promise<Array<[Error | null, unknown]> | null>;
   };
 }
 
 export class WorkerOperationalMetricsRecorder {
-  constructor(private readonly redis: MetricsRedis | Redis) {}
+  constructor(
+    private readonly redis: MetricsRedis | Redis,
+    private readonly now: () => number = Date.now,
+  ) {}
 
   async recordJob(jobType: string, status: string): Promise<void> {
-    await this.record(JOB_METRICS_KEY, [[`${safeField(jobType)}:${safeField(status)}`, 1]]);
+    await this.record(runtimeMetricsBucketKey(JOB_METRICS_KEY, new Date(this.now())), [
+      [`${safeField(jobType)}:${safeField(status)}`, 1],
+    ]);
   }
 
   async recordModelCall(payload: Record<string, unknown>): Promise<void> {
     const event = typeof payload.event === "string" ? payload.event : "";
     if (event === "worker.model_call.succeeded") {
-      await this.record(MODEL_METRICS_KEY, [
-        ["calls:succeeded", 1],
-        ["latency_sum_ms:succeeded", positiveNumber(payload.latencyMs)],
-        ["input_tokens:succeeded", positiveNumber(payload.inputTokens)],
-        ["output_tokens:succeeded", positiveNumber(payload.outputTokens)],
-        ["cost_cny:succeeded", positiveNumber(payload.costCny)],
-      ]);
+      await this.recordModelAggregate({
+        status: "succeeded",
+        latencyMs: positiveNumber(payload.latencyMs),
+        inputTokens: positiveNumber(payload.inputTokens),
+        outputTokens: positiveNumber(payload.outputTokens),
+        costCny: positiveNumber(payload.costCny),
+      });
       return;
     }
     if (event === "worker.model_call.failed") {
-      await this.record(MODEL_METRICS_KEY, [
-        ["calls:failed", 1],
-        ["latency_sum_ms:failed", positiveNumber(payload.latencyMs)],
-      ]);
+      await this.recordModelAggregate({
+        status: "failed",
+        latencyMs: positiveNumber(payload.latencyMs),
+        inputTokens: 0,
+        outputTokens: 0,
+        costCny: 0,
+      });
       return;
     }
     if (event === "worker.model_call.budget_overrun") {
-      await this.record(MODEL_METRICS_KEY, [
+      await this.record(runtimeMetricsBucketKey(MODEL_METRICS_KEY, new Date(this.now())), [
         ["calls:failed", 1],
         ["tokens:overrun", positiveNumber(payload.actualTokens)],
       ]);
+    }
+  }
+
+  async recordModelAggregate(input: {
+    status: "succeeded" | "failed";
+    latencyMs: number;
+    inputTokens: number;
+    outputTokens: number;
+    costCny: number;
+  }): Promise<void> {
+    await this.record(runtimeMetricsBucketKey(MODEL_METRICS_KEY, new Date(this.now())), [
+      [`calls:${input.status}`, 1],
+      [`latency_sum_ms:${input.status}`, input.latencyMs],
+      [`input_tokens:${input.status}`, input.inputTokens],
+      [`output_tokens:${input.status}`, input.outputTokens],
+    ]);
+    if (input.costCny > 0) {
+      await this.recordFloat(`cost_cny:${input.status}`, input.costCny);
     }
   }
 
@@ -62,10 +90,28 @@ export class WorkerOperationalMetricsRecorder {
         }
       }
       pipeline.expire(key, RUNTIME_METRICS_TTL_SECONDS);
-      await pipeline.exec();
+      ensurePipelineSucceeded(await pipeline.exec());
     } catch {
       // Metrics must never fail the durable job path.
     }
+  }
+
+  private async recordFloat(field: string, value: number): Promise<void> {
+    try {
+      const pipeline = this.redis.pipeline();
+      const key = runtimeMetricsBucketKey(MODEL_METRICS_KEY, new Date(this.now()));
+      pipeline.hincrbyfloat(key, field, value);
+      pipeline.expire(key, RUNTIME_METRICS_TTL_SECONDS);
+      ensurePipelineSucceeded(await pipeline.exec());
+    } catch {
+      // Metrics must never fail the durable job path.
+    }
+  }
+}
+
+function ensurePipelineSucceeded(result: Array<[Error | null, unknown]> | null): void {
+  if (!result || result.some(([error]) => error)) {
+    throw new Error("Redis metrics pipeline failed");
   }
 }
 

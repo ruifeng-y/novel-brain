@@ -74,6 +74,7 @@ services:
     restart: "no"
 
   fake-ai-smoke:
+    profiles: ["tools"]
     build:
       context: ../..
       dockerfile: infra/docker/Dockerfile

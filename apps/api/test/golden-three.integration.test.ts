@@ -14,7 +14,10 @@ import {
 import { Queue, Worker } from "bullmq";
 import { FakeAiProvider, type AiGateway } from "@novel-brain/ai";
 import { createDatabasePool, runMigrations } from "@novel-brain/db";
-import { GoldenThreeRepository } from "@novel-brain/golden-three";
+import {
+  GoldenThreeRepository,
+  type GoldenThreeModelCallObservation,
+} from "@novel-brain/golden-three";
 import Redis from "ioredis";
 import request, { type SuperAgentTest } from "supertest";
 import { uuidv7 } from "uuidv7";
@@ -110,6 +113,7 @@ describe("golden three HTTP integration", () => {
       beforeRecordSuccessHook?: (stepKey: string) => void | Promise<void>;
       afterClaimHook?: () => void | Promise<void>;
       forbidContextCompile?: boolean;
+      modelCallObserver?: (observation: GoldenThreeModelCallObservation) => void | Promise<void>;
     } = {},
   ) {
     const result = await databasePool.query<{
@@ -159,6 +163,7 @@ describe("golden three HTTP integration", () => {
       options.stepHook,
       options.beforeRecordSuccessHook,
       options.afterClaimHook,
+      options.modelCallObserver,
     );
     try {
       await new GoldenThreeJobProcessor(repository).process(payload);
@@ -748,12 +753,33 @@ describe("golden three HTTP integration", () => {
       [queued.id],
     );
     expect(beforeWorker.rows[0]).toEqual({ candidates: "0", model_calls: "0" });
-    await runGoldenThreeWorker(queued.id);
+    const observations: GoldenThreeModelCallObservation[] = [];
+    await runGoldenThreeWorker(queued.id, {
+      modelCallObserver: (observation) => {
+        observations.push(observation);
+        throw new Error("metrics unavailable");
+      },
+    });
     const resumedJob = await generationJob(owner, outlinePath, queued.id);
     expect(resumedJob).toMatchObject({
       status: "completed",
       progress: 100,
     });
+    expect(observations).toHaveLength(3);
+    expect(observations).toEqual(
+      observations.map(() =>
+        expect.objectContaining({
+          status: "succeeded",
+          inputTokens: expect.any(Number),
+          outputTokens: expect.any(Number),
+          costCny: expect.any(Number),
+        }),
+      ),
+    );
+    for (const observation of observations) {
+      expect(observation.inputTokens + observation.outputTokens).toBeGreaterThan(0);
+      expect(observation.costCny).toBeGreaterThan(0);
+    }
     const workspace = (await owner.get(outlinePath).expect(200)).body.data;
     expect(workspace.candidates).toHaveLength(3);
     expect(
@@ -1709,6 +1735,7 @@ describe("golden three HTTP integration", () => {
 
     process.env.GOLDEN_THREE_FAKE_FAILURE = "1";
     let failedJobId = "";
+    const observations: GoldenThreeModelCallObservation[] = [];
     try {
       const queued = await startGoldenThreeGeneration(
         owner,
@@ -1717,7 +1744,11 @@ describe("golden three HTTP integration", () => {
         token,
       );
       failedJobId = queued.id;
-      await runGoldenThreeWorker(queued.id);
+      await runGoldenThreeWorker(queued.id, {
+        modelCallObserver: (observation) => {
+          observations.push(observation);
+        },
+      });
       expect(await generationJob(owner, `${basePath}/golden-three`, queued.id)).toMatchObject({
         status: "failed",
         error: { code: "GOLDEN_THREE_GENERATION_FAILED" },
@@ -1737,6 +1768,15 @@ describe("golden three HTTP integration", () => {
     } finally {
       delete process.env.GOLDEN_THREE_FAKE_FAILURE;
     }
+    expect(observations).toEqual([
+      {
+        status: "failed",
+        latencyMs: expect.any(Number),
+        inputTokens: 0,
+        outputTokens: 0,
+        costCny: 0,
+      },
+    ]);
     expect(
       (await owner.get(`${basePath}/golden-three`).expect(200)).body.data.candidates,
     ).toHaveLength(0);

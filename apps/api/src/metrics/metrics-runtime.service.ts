@@ -1,9 +1,14 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { JOB_METRICS_KEY, MODEL_METRICS_KEY } from "@novel-brain/contracts";
+import { Inject, Injectable, Optional } from "@nestjs/common";
+import {
+  JOB_METRICS_KEY,
+  MODEL_METRICS_KEY,
+  runtimeMetricsBucketKey,
+} from "@novel-brain/contracts";
 
 import type { RuntimeMetricsSource } from "./operational-metrics.collector";
 
 export const METRICS_REDIS = Symbol("METRICS_REDIS");
+export const METRICS_RUNTIME_NOW = Symbol("METRICS_RUNTIME_NOW");
 
 interface MetricsRedis {
   hgetall(key: string): Promise<Record<string, string>>;
@@ -13,13 +18,29 @@ const STATUS_ORDER = ["succeeded", "failed", "cancelled", "completed", "unknown"
 
 @Injectable()
 export class MetricsRuntimeService implements RuntimeMetricsSource {
-  constructor(@Inject(METRICS_REDIS) private readonly redis: MetricsRedis) {}
+  constructor(
+    @Inject(METRICS_REDIS) private readonly redis: MetricsRedis,
+    @Optional()
+    @Inject(METRICS_RUNTIME_NOW)
+    private readonly now: () => number = Date.now,
+  ) {}
 
   async collect(): Promise<Awaited<ReturnType<RuntimeMetricsSource["collect"]>>> {
-    const [jobs, models] = await Promise.all([
-      this.redis.hgetall(JOB_METRICS_KEY),
-      this.redis.hgetall(MODEL_METRICS_KEY),
+    const bucketDates = runtimeMetricBucketDates(this.now());
+    const [jobBuckets, modelBuckets] = await Promise.all([
+      Promise.all(
+        bucketDates.map((date) =>
+          this.redis.hgetall(runtimeMetricsBucketKey(JOB_METRICS_KEY, date)),
+        ),
+      ),
+      Promise.all(
+        bucketDates.map((date) =>
+          this.redis.hgetall(runtimeMetricsBucketKey(MODEL_METRICS_KEY, date)),
+        ),
+      ),
     ]);
+    const jobs = mergeMetricBuckets(jobBuckets);
+    const models = mergeMetricBuckets(modelBuckets);
     const statuses = new Set<string>();
     for (const field of Object.keys(models)) {
       const [kind, status] = field.split(":", 2);
@@ -62,6 +83,28 @@ export class MetricsRuntimeService implements RuntimeMetricsSource {
       }),
     };
   }
+}
+
+function runtimeMetricBucketDates(now: number): Date[] {
+  const current = new Date(now);
+  current.setUTCMinutes(0, 0, 0);
+  return Array.from(
+    { length: 25 },
+    (_, offset) => new Date(current.getTime() - offset * 60 * 60 * 1_000),
+  );
+}
+
+function mergeMetricBuckets(buckets: Array<Record<string, string>>): Record<string, string> {
+  const merged = new Map<string, number>();
+  for (const bucket of buckets) {
+    for (const [field, value] of Object.entries(bucket)) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) {
+        merged.set(field, (merged.get(field) ?? 0) + parsed);
+      }
+    }
+  }
+  return Object.fromEntries([...merged].map(([field, value]) => [field, String(value)]));
 }
 
 function integer(value: unknown): number {
