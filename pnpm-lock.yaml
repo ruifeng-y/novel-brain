@@ -252,7 +252,7 @@ importers:
         version: link:../../packages/db
       '@novel-brain/golden-three':
         specifier: workspace:*
-        version: link:../../packages/golden-three
+        version: link:../golden-three
       bullmq:
         specifier: 6.6.0
         version: 6.6.0(ioredis@6.0.0(supports-color@10.2.2))(pg@8.23.1)
@@ -297,6 +297,27 @@ importers:
         specifier: 7.13.0
         version: 7.13.0(typescript@5.9.3)
 
+  apps/golden-three:
+    dependencies:
+      '@novel-brain/ai':
+        specifier: workspace:*
+        version: link:../../packages/ai
+      '@novel-brain/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@novel-brain/db':
+        specifier: workspace:*
+        version: link:../../packages/db
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+      uuidv7:
+        specifier: 1.2.1
+        version: 1.2.1
+
   apps/web:
     dependencies:
       '@novel-brain/contracts':
@@ -340,7 +361,7 @@ importers:
         version: link:../../packages/db
       '@novel-brain/golden-three':
         specifier: workspace:*
-        version: link:../../packages/golden-three
+        version: link:../golden-three
       bullmq:
         specifier: 6.6.0
         version: 6.6.0(ioredis@6.0.0(supports-color@7.2.0))(pg@8.23.1)
@@ -398,27 +419,6 @@ importers:
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11
-
-  packages/golden-three:
-    dependencies:
-      '@novel-brain/ai':
-        specifier: workspace:*
-        version: link:../ai
-      '@novel-brain/contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@novel-brain/db':
-        specifier: workspace:*
-        version: link:../db
-      drizzle-orm:
-        specifier: 0.45.4
-        version: 0.45.4(@types/pg@8.23.1)(pg@8.23.1)
-      pg:
-        specifier: 8.23.1
-        version: 8.23.1
-      uuidv7:
-        specifier: 1.2.1
-        version: 1.2.1
 
 packages:
 

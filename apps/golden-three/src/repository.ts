@@ -26,6 +26,7 @@ import type {
 } from "@novel-brain/contracts";
 import {
   GENERATE_GOLDEN_THREE_JOB,
+  contextPackPreviewSchema,
   generateGoldenThreeJobSchema,
   goldenThreeContinuationStyleSourceSchema,
   goldenThreeGenerationJobSchema,
@@ -418,7 +419,18 @@ export class GoldenThreeRepository {
         occurredAt: now,
       });
       await writeAudit(transaction, userId, audit, "golden_three.generation_queued", jobId);
-      const [created] = await transaction.select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
+      const [created] = await transaction
+        .select()
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.id, jobId),
+            eq(jobs.userId, userId),
+            eq(jobs.workId, context.workId),
+            eq(jobs.branchId, context.branchId),
+          ),
+        )
+        .limit(1);
       if (!created) {
         throw new Error("Golden three queued job could not be reloaded");
       }
@@ -518,7 +530,14 @@ export class GoldenThreeRepository {
           startedAt: job.startedAt ?? now,
           updatedAt: now,
         })
-        .where(eq(jobs.id, payload.jobId));
+        .where(
+          and(
+            eq(jobs.id, payload.jobId),
+            eq(jobs.userId, payload.actorId),
+            eq(jobs.workId, payload.workId),
+            eq(jobs.branchId, payload.branchId),
+          ),
+        );
       const [sequence] = await transaction
         .select({ value: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
         .from(jobEvents)
@@ -590,7 +609,7 @@ export class GoldenThreeRepository {
             eq(jobs.workId, context.workId),
             eq(jobs.branchId, context.branchId),
             eq(jobs.type, "agent_workflow"),
-            inArray(jobs.status, ["queued", "preparing", "running"]),
+            inArray(jobs.status, ["queued", "preparing", "running", "failed", "cancelled"]),
             sql`${jobs.orchestration}->>'kind' = 'golden_three_generation'`,
           ),
         )
@@ -1238,16 +1257,38 @@ export class GoldenThreeRepository {
     }
     let contextPack: ContextPackPreview;
     try {
-      contextPack = await this.contextCompiler.compile(
-        userId,
-        {
-          jobId,
-          workId: context.workId,
-          branchId: context.branchId,
-          chapterId: chapter.id,
-        },
-        GOLDEN_THREE_TOKEN_BUDGET,
-      );
+      if (resumeCheckpoint?.contextPackId) {
+        const [savedContext] = await withTenantTransaction(this.db, userId, async (transaction) =>
+          transaction
+            .select({ snapshot: contextPackVersions.snapshot })
+            .from(contextPackVersions)
+            .where(
+              and(
+                eq(contextPackVersions.id, resumeCheckpoint.contextPackId!),
+                eq(contextPackVersions.jobId, jobId),
+                eq(contextPackVersions.userId, userId),
+                eq(contextPackVersions.workId, context.workId),
+                eq(contextPackVersions.branchId, context.branchId),
+              ),
+            )
+            .limit(1),
+        );
+        if (!savedContext) {
+          throw new Error("Golden three checkpoint ContextPack is missing");
+        }
+        contextPack = contextPackPreviewSchema.parse(savedContext.snapshot);
+      } else {
+        contextPack = await this.contextCompiler.compile(
+          userId,
+          {
+            jobId,
+            workId: context.workId,
+            branchId: context.branchId,
+            chapterId: chapter.id,
+          },
+          GOLDEN_THREE_TOKEN_BUDGET,
+        );
+      }
     } catch {
       await withTenantTransaction(this.db, userId, async (transaction) => {
         await recordGoldenThreeInitializationFailure(transaction, {
@@ -1422,7 +1463,14 @@ export class GoldenThreeRepository {
             startedAt: existingJob.startedAt ?? now,
             updatedAt: now,
           })
-          .where(eq(jobs.id, existingJob.id));
+          .where(
+            and(
+              eq(jobs.id, existingJob.id),
+              eq(jobs.userId, userId),
+              eq(jobs.workId, context.workId),
+              eq(jobs.branchId, context.branchId),
+            ),
+          );
       } else {
         const [activeJob] = await transaction
           .select({ id: jobs.id })
@@ -2849,7 +2897,14 @@ async function recordGoldenThreeInitializationFailure(
         finishedAt: now,
         updatedAt: now,
       })
-      .where(eq(jobs.id, existing.id));
+      .where(
+        and(
+          eq(jobs.id, existing.id),
+          eq(jobs.userId, input.userId),
+          eq(jobs.workId, input.workId),
+          eq(jobs.branchId, input.branchId),
+        ),
+      );
     const [sequence] = await transaction
       .select({ value: sql<number>`coalesce(max(${jobEvents.sequence}), 0)` })
       .from(jobEvents)
@@ -3176,39 +3231,6 @@ async function recordGoldenThreeCallSuccess(
         eq(jobs.userId, userId),
         eq(jobs.workId, call.workId),
         eq(jobs.branchId, call.branchId),
-      ),
-    );
-  await transaction
-    .update(costReservations)
-    .set({
-      status: "settled",
-      settledTokens: inputTokens + outputTokens,
-      settledCostCny: costCny,
-      failureClass: "timeout",
-      settledAt: now,
-    })
-    .where(
-      and(
-        eq(costReservations.id, call.reservationId),
-        eq(costReservations.userId, userId),
-        eq(costReservations.jobId, call.jobId),
-      ),
-    );
-  await transaction
-    .update(costReservations)
-    .set({
-      status: "released",
-      settledTokens: 0,
-      settledCostCny: 0,
-      failureClass: "timeout",
-      settledAt: null,
-    })
-    .where(
-      and(
-        eq(costReservations.jobId, call.jobId),
-        eq(costReservations.userId, userId),
-        eq(costReservations.status, "reserved"),
-        sql`${costReservations.id} <> ${call.reservationId}`,
       ),
     );
   await transaction.insert(usageRecords).values({

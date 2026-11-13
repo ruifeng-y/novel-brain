@@ -105,7 +105,10 @@ describe("golden three HTTP integration", () => {
 
   async function runGoldenThreeWorker(
     jobId: string,
-    options: { stepHook?: (stepKey: string) => void | Promise<void> } = {},
+    options: {
+      stepHook?: (stepKey: string) => void | Promise<void>;
+      forbidContextCompile?: boolean;
+    } = {},
   ) {
     const result = await databasePool.query<{
       user_id: string;
@@ -141,8 +144,15 @@ describe("golden three HTTP integration", () => {
       checkpoint: row.checkpoint,
     });
     const generationRepository = new WorkerGenerationRepository();
+    const contextCompiler = new WorkerGoldenThreeContextCompiler(generationRepository);
     const repository = new GoldenThreeRepository(
-      new WorkerGoldenThreeContextCompiler(generationRepository),
+      options.forbidContextCompile
+        ? {
+            compile() {
+              throw new Error("Golden three resume must reuse the saved ContextPack");
+            },
+          }
+        : contextCompiler,
       { create: () => goldenThreeTestProvider() },
       options.stepHook,
     );
@@ -907,7 +917,7 @@ describe("golden three HTTP integration", () => {
       usage_records: "1",
     });
 
-    await runGoldenThreeWorker(queued.id);
+    await runGoldenThreeWorker(queued.id, { forbidContextCompile: true });
     const resumedJob = await generationJob(owner, outlinePath, queued.id);
     expect(resumedJob).toMatchObject({
       status: "completed",
@@ -977,6 +987,58 @@ describe("golden three HTTP integration", () => {
       usage_records: "3",
       succeeded_steps: "3",
     });
+  });
+
+  it("reads historical completed golden-three jobs without a second state machine", async () => {
+    const email = "golden-three-history@example.com";
+    const owner = await createAuthenticatedAgent(email);
+    const work = await createWork(owner);
+    const token = await csrf(owner);
+    const basePath = branchPathOf(work);
+    const outlinePath = `${basePath}/golden-three`;
+    const chapters = await createGoldenThreeChapters(owner, token, basePath);
+    const batch = await owner
+      .post(`${outlinePath}/candidates`)
+      .set("Origin", origin)
+      .set("X-CSRF-Token", token)
+      .set("Idempotency-Key", "golden-three-history-candidates")
+      .send({
+        candidates: [
+          candidateInput("候选 A · 钩子优先", "hook_focus", chapters, "f"),
+          candidateInput("候选 B · 人物优先", "character_focus", chapters, "a"),
+        ],
+      })
+      .expect(201);
+    const batchId = batch.body.data.candidates[0].batchId as string;
+    const legacyJobId = uuidv7();
+    await databasePool.query(
+      `INSERT INTO jobs (
+         id, work_id, branch_id, user_id, type, status, progress, current_step,
+         idempotency_key, golden_three_generation_key, budget, checkpoint, cost,
+         orchestration, started_at, finished_at, created_at, updated_at
+       )
+       SELECT $1, $2, $3, users.id, 'agent_workflow', 'completed', 100, 'completed',
+              'golden-three-history-job', 'golden-three-history-job',
+              '{"maxTokens":30000,"maxCostCny":0.2,"maxRevisionRounds":0}'::jsonb,
+              jsonb_build_object('batchId', $5::text, 'stage', 'completed'),
+              '{"inputTokens":0,"outputTokens":0,"totalTokens":0,"costCny":0}'::jsonb,
+              '{"kind":"golden_three_generation","candidateCount":2}'::jsonb,
+              now(), now(), now(), now()
+         FROM users
+        WHERE users.email = $4`,
+      [legacyJobId, work.id, work.mainBranch.id, email, batchId],
+    );
+
+    const workspace = (await owner.get(outlinePath).expect(200)).body.data;
+    expect(workspace.candidates).toHaveLength(2);
+    expect(workspace.activeGenerationJob).toBeNull();
+    const jobs = await databasePool.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM jobs
+        WHERE work_id = $1 AND branch_id = $2 AND golden_three_generation_key IS NOT NULL`,
+      [work.id, work.mainBranch.id],
+    );
+    expect(jobs.rows[0]?.count).toBe("1");
   });
 
   it("returns a recoverable empty-chapter error before creating candidates", async () => {
@@ -1325,6 +1387,7 @@ describe("golden three HTTP integration", () => {
     await createGoldenThreeContext(owner, token, basePath);
 
     process.env.GOLDEN_THREE_FAKE_FAILURE = "1";
+    let failedJobId = "";
     try {
       const queued = await startGoldenThreeGeneration(
         owner,
@@ -1332,6 +1395,7 @@ describe("golden three HTTP integration", () => {
         "golden-three-model-failure",
         token,
       );
+      failedJobId = queued.id;
       await runGoldenThreeWorker(queued.id);
       expect(await generationJob(owner, `${basePath}/golden-three`, queued.id)).toMatchObject({
         status: "failed",
@@ -1355,6 +1419,13 @@ describe("golden three HTTP integration", () => {
     expect(
       (await owner.get(`${basePath}/golden-three`).expect(200)).body.data.candidates,
     ).toHaveLength(0);
+    expect(
+      (await owner.get(`${basePath}/golden-three`).expect(200)).body.data.activeGenerationJob,
+    ).toMatchObject({
+      id: failedJobId,
+      status: "failed",
+      error: { code: "GOLDEN_THREE_GENERATION_FAILED" },
+    });
     const failure = await databasePool.query<{
       job_status: string;
       model_call_status: string;
